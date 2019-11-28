@@ -52,7 +52,7 @@ func TestPipelineRun(t *testing.T) {
 	t.Parallel()
 	type tests struct {
 		name                   string
-		testSetup              func(t *testing.T, c *clients, namespace string, index int)
+		testSetup              func(t *testing.T, c *Client, namespace string, index int)
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
 		pipelineRunFunc        func(int, string) *v1alpha1.PipelineRun
@@ -60,7 +60,7 @@ func TestPipelineRun(t *testing.T) {
 
 	tds := []tests{{
 		name: "fan-in and fan-out",
-		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+		testSetup: func(t *testing.T, c *Client, namespace string, index int) {
 			t.Helper()
 			for _, task := range getFanInFanOutTasks(namespace) {
 				if _, err := c.TaskClient.Create(task); err != nil {
@@ -84,7 +84,7 @@ func TestPipelineRun(t *testing.T) {
 		expectedNumberOfEvents: 5,
 	}, {
 		name: "service account propagation and pipeline param",
-		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+		testSetup: func(t *testing.T, c *Client, namespace string, index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
 				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
@@ -117,7 +117,7 @@ func TestPipelineRun(t *testing.T) {
 		pipelineRunFunc:        getHelloWorldPipelineRun,
 	}, {
 		name: "pipeline succeeds when task skipped due to failed condition",
-		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+		testSetup: func(t *testing.T, c *Client, namespace string, index int) {
 			t.Helper()
 			cond := getFailingCondition(namespace)
 			if _, err := c.ConditionClient.Create(cond); err != nil {
@@ -418,7 +418,7 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 
 // checkLabelPropagation checks that labels are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
-func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
+func checkLabelPropagation(t *testing.T, c *Client, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
 	// Our controllers add 4 labels automatically. If custom labels are set on
 	// the Pipeline, PipelineRun, or Task then the map will have to be resized.
 	labels := make(map[string]string, 4)
@@ -471,7 +471,7 @@ func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineR
 
 // checkAnnotationPropagation checks that annotations are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
-func checkAnnotationPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
+func checkAnnotationPropagation(t *testing.T, c *Client, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
 	annotations := make(map[string]string)
 
 	// Check annotation propagation to PipelineRuns.

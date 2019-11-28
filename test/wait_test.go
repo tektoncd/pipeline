@@ -100,12 +100,12 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	}
 }
 
-func fakeClients(t *testing.T, d Data) (*clients, func()) {
+func fakeClients(t *testing.T, d Data) (*Client, func()) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	fakeClients, _ := SeedTestData(t, ctx, d)
 	// 	c.KubeClient = fakeClients.Kube
-	return &clients{
+	return &Client{
 		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),
 		PipelineResourceClient: fakeClients.Pipeline.TektonV1alpha1().PipelineResources(waitNamespace),
 		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(waitNamespace),

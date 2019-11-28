@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func withRegistry(t *testing.T, c *clients, namespace string) {
+func withRegistry(t *testing.T, c *Client, namespace string) {
 	deployment := getRegistryDeployment(namespace)
 	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(deployment); err != nil {
 		t.Fatalf("Failed to create the local registry deployment: %v", err)

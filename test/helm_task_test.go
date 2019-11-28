@@ -212,7 +212,7 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	))
 }
 
-func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
+func setupClusterBindingForHelm(c *Client, t *testing.T, namespace string) {
 	tillerServiceAccount = &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tiller",
@@ -283,7 +283,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
 	}
 }
 
-func helmCleanup(c *clients, t *testing.T, namespace string) {
+func helmCleanup(c *Client, t *testing.T, namespace string) {
 	t.Logf("Cleaning up helm from cluster...")
 
 	removeAllHelmReleases(c, t, namespace)
@@ -302,7 +302,7 @@ func helmCleanup(c *clients, t *testing.T, namespace string) {
 	}
 }
 
-func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
+func removeAllHelmReleases(c *Client, t *testing.T, namespace string) {
 	helmRemoveAllTaskName := "helm-remove-all-task"
 	helmRemoveAllTask := tb.Task(helmRemoveAllTaskName, namespace, tb.TaskSpec(
 		tb.Step("helm-remove-all", "alpine/helm:2.14.0", tb.StepCommand("/bin/sh"),
@@ -331,7 +331,7 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 	}
 }
 
-func removeHelmFromCluster(c *clients, t *testing.T, namespace string) {
+func removeHelmFromCluster(c *Client, t *testing.T, namespace string) {
 	helmResetTaskName := "helm-reset-task"
 	helmResetTask := tb.Task(helmResetTaskName, namespace, tb.TaskSpec(
 		tb.Step("helm-reset", "alpine/helm:2.14.0", tb.StepArgs("reset", "--force")),

@@ -177,7 +177,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 // to the "outside" of the test, this means it can be query by the test itself. It can only be query from
 // a pod in the namespace. skopeo is able to do that query and we use jq to extract the digest from its
 // output. The image used for this pod is build in the tektoncd/plumbing repository.
-func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string, error) {
+func getRemoteDigest(t *testing.T, c *Client, namespace, image string) (string, error) {
 	t.Helper()
 	podName := "skopeo-jq"
 	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(&corev1.Pod{

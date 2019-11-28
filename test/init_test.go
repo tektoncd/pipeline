@@ -45,7 +45,7 @@ import (
 
 var initMetrics sync.Once
 
-func setup(t *testing.T, fn ...func(*testing.T, *clients, string)) (*clients, string) {
+func setup(t *testing.T, fn ...func(*testing.T, *Client, string)) (*Client, string) {
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
@@ -72,7 +72,7 @@ func header(logf logging.FormatLogger, text string) {
 	logf(bar)
 }
 
-func tearDown(t *testing.T, cs *clients, namespace string) {
+func tearDown(t *testing.T, cs *Client, namespace string) {
 	t.Helper()
 	if cs.KubeClient == nil {
 		return
@@ -149,7 +149,7 @@ func TestMain(m *testing.M) {
 	os.Exit(c)
 }
 
-func getCRDYaml(cs *clients, ns string) ([]byte, error) {
+func getCRDYaml(cs *Client, ns string) ([]byte, error) {
 	var output []byte
 	printOrAdd := func(i interface{}) {
 		bs, err := yaml.Marshal(i)

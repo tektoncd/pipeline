@@ -219,19 +219,19 @@ func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Sec
 	}
 }
 
-func deleteBucketSecret(c *clients, t *testing.T, namespace string) {
+func deleteBucketSecret(c *Client, t *testing.T, namespace string) {
 	if err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Delete(bucketSecretName, &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete Secret `%s`: %s", bucketSecretName, err)
 	}
 }
 
-func resetConfigMap(t *testing.T, c *clients, namespace, configName string, values map[string]string) {
+func resetConfigMap(t *testing.T, c *Client, namespace, configName string, values map[string]string) {
 	if err := updateConfigMap(c.KubeClient, namespace, configName, values); err != nil {
 		t.Log(err)
 	}
 }
 
-func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
+func runTaskToDeleteBucket(c *Client, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
 	deletelbuckettask := tb.Task("deletelbuckettask", namespace, tb.TaskSpec(
 		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{

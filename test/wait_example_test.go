@@ -30,7 +30,7 @@ var (
 	// it so that examples still compiles (`go test` tries to compile those) and look
 	// nice in the go documentation.
 	t testingT
-	c *clients
+	c *Client
 )
 
 type testingT interface {

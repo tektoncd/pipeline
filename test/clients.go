@@ -46,8 +46,8 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-// clients holds instances of interfaces for making requests to the Pipeline controllers.
-type clients struct {
+// Client holds instances of interfaces for making requests to the Pipeline controllers.
+type Client struct {
 	KubeClient *knativetest.KubeClient
 
 	PipelineClient         v1alpha1.PipelineInterface
@@ -61,10 +61,10 @@ type clients struct {
 // newClients instantiates and returns several clientsets required for making requests to the
 // Pipeline cluster specified by the combination of clusterName and configPath. Clients can
 // make requests within namespace.
-func newClients(t *testing.T, configPath, clusterName, namespace string) *clients {
+func newClients(t *testing.T, configPath, clusterName, namespace string) *Client {
 	t.Helper()
 	var err error
-	c := &clients{}
+	c := &Client{}
 
 	c.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
 	if err != nil {
