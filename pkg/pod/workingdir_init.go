@@ -21,7 +21,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -32,14 +31,10 @@ import (
 //
 // If no such directories need to be created (i.e., no relative workingDirs
 // are specified), this method returns nil, as no init container is necessary.
-//
-// TODO(#1605): This should take []corev1.Container instead of
-// []corev1.Step, but this makes it easier to use in pod.go. When pod.go is
-// cleaned up, this can take []corev1.Container.
-func workingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []corev1.VolumeMount) *corev1.Container {
+func workingDirInit(shellImage string, stepContainers []corev1.Container, volumeMounts []corev1.VolumeMount) *corev1.Container {
 	// Gather all unique workingDirs.
 	workingDirs := map[string]struct{}{}
-	for _, step := range steps {
+	for _, step := range stepContainers {
 		if step.WorkingDir != "" {
 			workingDirs[step.WorkingDir] = struct{}{}
 		}

@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -69,18 +68,7 @@ func TestWorkingDirInit(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			// TODO(#1605): WorkingDirInit should take
-			// Containers instead of Steps, but while we're
-			// cleaning up pod.go it's easier to have it take
-			// Steps. This test doesn't care, so let's hide this
-			// conversion in the test where it's easier to remove
-			// later.
-			var steps []v1alpha1.Step
-			for _, c := range c.stepContainers {
-				steps = append(steps, v1alpha1.Step{Container: c})
-			}
-
-			got := workingDirInit(images.ShellImage, steps, volumeMounts)
+			got := workingDirInit(images.ShellImage, c.stepContainers, volumeMounts)
 			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff (-want, +got): %s", d)
 			}

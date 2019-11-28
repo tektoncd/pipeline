@@ -316,7 +316,7 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         "working-dir-initializer-9l9zj",
+				Name:         "working-dir-initializer-mz4c7",
 				Image:        images.ShellImage,
 				Command:      []string{"sh"},
 				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
