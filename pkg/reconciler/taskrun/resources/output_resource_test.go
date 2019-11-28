@@ -765,7 +765,7 @@ func TestValidOutputResources(t *testing.T) {
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace"},
+			Command: []string{"mkdir", "-p", "/workspace/workspace"},
 		}}},
 	}, {
 		desc: "image output resource with no steps",

@@ -80,7 +80,7 @@ func AddOutputResources(
 		if output.TargetPath == "" {
 			sourcePath = filepath.Join(outputDir, boundResource.Name)
 		} else {
-			sourcePath = output.TargetPath
+			sourcePath = filepath.Join(workspaceDir, output.TargetPath)
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
