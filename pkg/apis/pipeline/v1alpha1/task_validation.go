@@ -132,9 +132,9 @@ func validateSteps(steps []Step) *apis.FieldError {
 		}
 
 		if s.Script != "" {
-			if len(s.Args) > 0 || len(s.Command) > 0 {
+			if len(s.Command) > 0 {
 				return &apis.FieldError{
-					Message: "script cannot be used with args or command",
+					Message: "script cannot be used with command",
 					Paths:   []string{"script"},
 				}
 			}

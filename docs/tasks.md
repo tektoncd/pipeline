@@ -151,10 +151,12 @@ or container images that you define:
 #### Step Script
 
 To simplify executing scripts inside a container, a step can specify a `script`.
-If this field is present, the step cannot specify `command` or `args`.
+If this field is present, the step cannot specify `command`.
 
 When specified, a `script` gets invoked as if it were the contents of a file in
-the container. Scripts should start with a
+the container. Any `args` are passed to the script file.
+
+Scripts should start with a
 [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) line to declare what
 tool should be used to interpret the script. That tool must then also be
 available within the step's container.
