@@ -60,6 +60,12 @@ To apply the yaml files, use the following command:
 kubectl apply -f <name-of-file.yaml>
 ```
 
+To start the `TaskRun`, use the following command:
+
+```bash
+tkn taskrun start echo-hello-world-task-run
+```
+
 To see the output of the `TaskRun`, use the following command:
 
 ```bash
