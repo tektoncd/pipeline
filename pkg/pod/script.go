@@ -90,8 +90,13 @@ cat > ${tmpfile} << '%s'
 %s
 `, tmpFile, heredoc, s.Script, heredoc)
 
-		// Set the command to execute the correct script in the mounted volume.
+		// Set the command to execute the correct script in the mounted
+		// volume.
+		// A previous merge with stepTemplate may have populated
+		// Command and Args, even though this is not normally valid, so
+		// we'll clear out the Args and overwrite Command.
 		steps[i].Command = []string{tmpFile}
+		steps[i].Args = nil // TODO(#1652): Don't overwrite this.
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 		containers = append(containers, steps[i].Container)
 	}

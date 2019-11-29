@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -92,7 +91,7 @@ func (f fakeCache) Get(imageName, _, _ string) ([]string, name.Digest, error) {
 
 	d, found := f[imageName]
 	if !found {
-		return nil, name.Digest{}, errors.New("not found")
+		return nil, name.Digest{}, fmt.Errorf("Image %q not found", imageName)
 	}
 	if d.seen {
 		return nil, name.Digest{}, fmt.Errorf("Image %q was already looked up!", imageName)
