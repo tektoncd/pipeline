@@ -204,6 +204,19 @@ func TestTaskSpecValidate(t *testing.T) {
 				hello world`,
 			}},
 		},
+	}, {
+		name: "valid  step with script and args",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello $1`,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -619,21 +632,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"volumes.name"},
 		},
 	}, {
-		name: "step with script and args",
-		fields: fields{
-			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "myimage",
-					Args:  []string{"arg"},
-				},
-				Script: "script",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "script cannot be used with args or command",
-			Paths:   []string{"steps.script"},
-		},
-	}, {
 		name: "step with script without shebang",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
@@ -659,7 +657,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: "script cannot be used with args or command",
+			Message: "script cannot be used with command",
 			Paths:   []string{"steps.script"},
 		},
 	}}
