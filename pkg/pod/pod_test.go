@@ -479,8 +479,12 @@ func TestMakePod(t *testing.T) {
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
-		desc: "step with script",
+		desc: "step with script and stepTemplate",
 		ts: v1alpha1.TaskSpec{
+			StepTemplate: &corev1.Container{
+				Env:  []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
+				Args: []string{"template", "args"},
+			},
 			Steps: []v1alpha1.Step{{
 				Container: corev1.Container{
 					Name:  "one",
@@ -495,6 +499,12 @@ func TestMakePod(t *testing.T) {
 				},
 				Script: `#!/usr/bin/env python
 print("Hello from Python")`,
+			}, {
+				Container: corev1.Container{
+					Name:    "regular-step",
+					Image:   "image",
+					Command: []string{"regular", "command"},
+				},
 			}},
 		},
 		want: &corev1.PodSpec{
@@ -537,7 +547,7 @@ script-heredoc-randomly-generated-6nl7g
 					"/tekton/scripts/script-0-mz4c7",
 					"--",
 				},
-				Env:          implicitEnvVars,
+				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
@@ -560,8 +570,34 @@ script-heredoc-randomly-generated-6nl7g
 					"/tekton/scripts/script-1-78c5n",
 					"--",
 				},
-				Env:          implicitEnvVars,
+				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, toolsMount}, implicitVolumeMounts...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}, {
+				Name:    "step-regular-step",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/tools/1",
+					"-post_file",
+					"/tekton/tools/2",
+					"-entrypoint",
+					"regular",
+					"--",
+					"command",
+					"template",
+					"args",
+				},
+				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -604,10 +640,10 @@ script-heredoc-randomly-generated-6nl7g
 				},
 				Spec: c.trs,
 			}
-			entrypointCache, err := NewEntrypointCache(kubeclient)
-			if err != nil {
-				t.Fatalf("NewEntrypointCache: %v", err)
-			}
+
+			// No entrypoints should be looked up.
+			entrypointCache := fakeCache{}
+
 			got, err := MakePod(images, tr, c.ts, kubeclient, entrypointCache)
 			if err != nil {
 				t.Fatalf("MakePod: %v", err)
