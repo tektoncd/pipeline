@@ -58,27 +58,6 @@ spec:
       - name: GOOGLE_APPLICATION_CREDENTIALS
         value: /secret/release.json
 
-  - name: create-ko-yaml
-    image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      set -x
-
-      cat <<EOF > /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
-      # By default ko will build images on top of distroless
-      baseImageOverrides:
-        # Use the images we just built as base images
-        ${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
-        ${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
-        ${inputs.params.pathToProject}/${outputs.resources.builtEntrypointImage.url}: busybox # image should have shell in $PATH
-      EOF
-
-      cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
-
   - name: ensure-release-dirs-exist
     image: busybox
     command: ["mkdir"]
@@ -106,6 +85,35 @@ spec:
       VERSION_TAG="$DATE-$COMMIT"
 
       echo $VERSION_TAG > "/builder/home/version"
+
+  - name: create-ko-yaml
+    image: busybox
+    command:
+      - /bin/sh
+    args:
+      - -ce
+      - |
+        set -e
+        set -x
+
+        cat <<EOF > /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
+        # By default ko will build images on top of distroless
+        baseImageOverrides:
+          # Use the images we just built as base images
+          ${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
+          ${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
+          ${inputs.params.pathToProject}/${outputs.resources.builtEntrypointImage.url}: busybox # image should have shell in $PATH
+        baseBuildOverrides:
+          $(input.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
+            env:
+              - name: CGO_ENABLED
+                value: 1
+            flags:
+              - name: ldflags
+                value: "-X $(inputs.params.pathToProject)/pkg/version.PipelineVersion=$(cat /builder/home/version)"
+        EOF
+
+        cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
 
   - name: run-ko
     # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding

@@ -77,6 +77,14 @@ spec:
         $(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): busybox # image should have shell in $PATH
+      baseBuildOverrides:
+        $(input.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
+          env:
+            - name: CGO_ENABLED
+              value: 1
+          flags:
+            - name: ldflags
+              value: "-X $(inputs.params.pathToProject)/pkg/version.PipelineVersion=$(inputs.params.versionTag)"
       EOF
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
