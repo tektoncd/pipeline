@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -76,8 +75,6 @@ var (
 		Name:         "tekton-home",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
-
-	zeroQty = resource.MustParse("0")
 
 	// Random byte reader used for pod name generation.
 	// var for testing.
@@ -136,12 +133,8 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
-	// Zero out non-max resource requests.
-	// TODO(#1605): Split this out so it's more easily testable.
-	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
-	for i := range stepContainers {
-		zeroNonMaxResourceRequests(&stepContainers[i], i, maxIndicesByResource)
-	}
+	// Zero out non-max resource requests, move max resource requests to the last step.
+	stepContainers = resolveResourceRequests(stepContainers)
 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
@@ -254,44 +247,4 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[taskRunLabelKey] = s.Name
 	return labels
-}
-
-// zeroNonMaxResourceRequests zeroes out the container's cpu, memory, or
-// ephemeral storage resource requests if the container does not have the
-// largest request out of all containers in the pod. This is done because Tekton
-// overwrites each container's entrypoint to make containers effectively execute
-// one at a time, so we want pods to only request the maximum resources needed
-// at any single point in time. If no container has an explicit resource
-// request, all requests are set to 0.
-func zeroNonMaxResourceRequests(c *corev1.Container, stepIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
-	if c.Resources.Requests == nil {
-		c.Resources.Requests = corev1.ResourceList{}
-	}
-	for name, maxIdx := range maxIndicesByResource {
-		if maxIdx != stepIndex {
-			c.Resources.Requests[name] = zeroQty
-		}
-	}
-}
-
-// findMaxResourceRequest returns the index of the container with the maximum
-// request for the given resource from among the given set of containers.
-func findMaxResourceRequest(steps []v1alpha1.Step, resourceNames ...corev1.ResourceName) map[corev1.ResourceName]int {
-	maxIdxs := make(map[corev1.ResourceName]int, len(resourceNames))
-	maxReqs := make(map[corev1.ResourceName]resource.Quantity, len(resourceNames))
-	for _, name := range resourceNames {
-		maxIdxs[name] = -1
-		maxReqs[name] = zeroQty
-	}
-	for i, s := range steps {
-		for _, name := range resourceNames {
-			maxReq := maxReqs[name]
-			req, exists := s.Container.Resources.Requests[name]
-			if exists && req.Cmp(maxReq) > 0 {
-				maxIdxs[name] = i
-				maxReqs[name] = req
-			}
-		}
-	}
-	return maxIdxs
 }
