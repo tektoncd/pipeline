@@ -39,9 +39,6 @@ var (
 		CredsImage:      "override-with-creds:latest",
 		ShellImage:      "busybox",
 	}
-	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
-		return x.Cmp(y) == 0
-	})
 )
 
 func TestMakePod(t *testing.T) {
@@ -103,13 +100,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
@@ -160,13 +151,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, secretsVolume, toolsVolume, downwardVolume),
 		},
@@ -209,13 +194,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 			SecurityContext: &corev1.PodSecurityContext{
@@ -254,13 +233,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
@@ -293,13 +266,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
@@ -342,13 +309,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   filepath.Join(workspaceDir, "test"),
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
@@ -386,13 +347,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}, {
 				Name:  "sidecar-sc-name",
 				Image: "sidecar-image",
@@ -445,13 +400,7 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("8"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}, {
 				Name:    "step-unnamed-1",
 				Image:   "image",
@@ -470,7 +419,7 @@ func TestMakePod(t *testing.T) {
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceCPU:              resource.MustParse("8"),
 						corev1.ResourceMemory:           resource.MustParse("100Gi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
@@ -550,13 +499,7 @@ script-heredoc-randomly-generated-6nl7g
 				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}, {
 				Name:    "step-two",
 				Image:   "image",
@@ -573,13 +516,7 @@ script-heredoc-randomly-generated-6nl7g
 				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, toolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}, {
 				Name:    "step-regular-step",
 				Image:   "image",
@@ -599,13 +536,7 @@ script-heredoc-randomly-generated-6nl7g
 				Env:          append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume),
 		},
