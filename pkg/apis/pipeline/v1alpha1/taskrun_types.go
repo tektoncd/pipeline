@@ -48,9 +48,11 @@ type TaskRunSpec struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
 	// PodTemplate holds pod specific configuration
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	// Env, if specified will provide variables to all task steps.
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

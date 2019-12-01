@@ -144,10 +144,12 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}
 
 	// Add implicit env vars.
-	// They're prepended to the list, so that if the user specified any
-	// themselves their value takes precedence.
+	// Append to an empty list to ensure we don't alter implicitEnvVars.
+	// Precedence: step.Env > taskRun.Spec.Env > implicitEnvVars
 	for i, s := range stepContainers {
-		env := append(implicitEnvVars, s.Env...)
+		env := append([]corev1.EnvVar{}, implicitEnvVars...)
+		env = append(env, taskRun.Spec.Env...)
+		env = append(env, s.Env...)
 		stepContainers[i].Env = env
 	}
 

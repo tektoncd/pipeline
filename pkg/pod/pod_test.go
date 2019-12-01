@@ -573,7 +573,55 @@ script-heredoc-randomly-generated-6nl7g
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume),
 		},
-	}} {
+	}, {
+		desc: "env is set",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "step-with-env",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			Env: []corev1.EnvVar{
+				{Name: "FOO", Value: "bar"},
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-step-with-env",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				// Append to an empty slice to avoid manipulating
+				// implicitEnvVars, but keep user variables last to ensure
+				// precedence.
+				Env:          append(append([]corev1.EnvVar{}, implicitEnvVars...), corev1.EnvVar{Name: "FOO", Value: "bar"}),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+		},
+	},
+	} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(

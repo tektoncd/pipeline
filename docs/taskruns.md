@@ -17,6 +17,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Providing resources](#providing-resources)
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
+  - [Environment Variables](#environment-variables)
   - [Pod Template](#pod-template)
 - [Status](#status)
   - [Steps](#steps)
@@ -55,6 +56,8 @@ following fields:
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
     there is no timeout. You can also follow the instruction [here](#Configuring-default-timeout)
     to configure the default timeout.
+  - [`Env`] - Specifies [environment variables](#environment-variables) that
+    will be available to each step container.
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
 	configuration that will be used as the basis for the `Task` pod.
@@ -166,6 +169,20 @@ of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
+
+### Environment Variables
+
+Specifies environment variables to be set on each step container. They are an
+array of type [`corev1.EnvVar`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#envvar-v1-core).
+
+```yaml
+spec:
+  env:
+  - name: FOO
+    value: bar
+  - name: BAZ
+    value: foo
+```
 
 ## Pod Template
 

@@ -1717,6 +1717,13 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		**out = **in
 	}
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
