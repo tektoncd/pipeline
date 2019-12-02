@@ -17,11 +17,7 @@ limitations under the License.
 package pod
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -75,10 +71,6 @@ var (
 		Name:         "tekton-home",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
-
-	// Random byte reader used for pod name generation.
-	// var for testing.
-	randReader = rand.Reader
 )
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
@@ -185,13 +177,6 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		return nil, err
 	}
 
-	// Generate a short random hex string.
-	b, err := ioutil.ReadAll(io.LimitReader(randReader, 3))
-	if err != nil {
-		return nil, err
-	}
-	gibberish := hex.EncodeToString(b)
-
 	// Merge sidecar containers with step containers.
 	mergedPodContainers := stepContainers
 	for _, sc := range taskSpec.Sidecars {
@@ -208,7 +193,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			// Add a unique suffix to avoid confusion when a build
 			// is deleted and re-created with the same name.
 			// We don't use RestrictLengthWithRandomSuffix here because k8s fakes don't support it.
-			Name: fmt.Sprintf("%s-pod-%s", taskRun.Name, gibberish),
+			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-pod", taskRun.Name)),
 			// If our parent TaskRun is deleted, then we should be as well.
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),

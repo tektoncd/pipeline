@@ -72,11 +72,12 @@ var (
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
-	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
+	// Pods are created with a random 5-character suffix that we want to
+	// ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
 		return path.GoString() == "{v1.ObjectMeta}.Name"
 	}, cmp.Comparer(func(name1, name2 string) bool {
-		return name1[:len(name1)-6] == name2[:len(name2)-6]
+		return name1[:len(name1)-5] == name2[:len(name2)-5]
 	}))
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
@@ -285,7 +286,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -325,7 +326,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -526,7 +527,7 @@ func TestReconcile(t *testing.T) {
 
 	taskRunWithPod := tb.TaskRun("test-taskrun-with-pod", "foo",
 		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
-		tb.TaskRunStatus(tb.PodName("some-pod-that-no-longer-exists")),
+		tb.TaskRunStatus(tb.PodName("some-pod-abcdethat-no-longer-exists")),
 	)
 
 	taskruns := []*v1alpha1.TaskRun{
@@ -549,7 +550,7 @@ func TestReconcile(t *testing.T) {
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -588,7 +589,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -628,7 +629,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "params",
 		taskRun: taskRunSubstitution,
-		wantPod: tb.Pod("test-taskrun-substitution-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-substitution-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -723,7 +724,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
-		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-abcde", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
@@ -784,7 +785,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
-		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -823,7 +824,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
-		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-abcde", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
@@ -882,7 +883,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
-		wantPod: tb.Pod("test-taskrun-with-pod-pod-123456", "foo",
+		wantPod: tb.Pod("test-taskrun-with-pod-pod-abcde", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
@@ -974,6 +975,7 @@ func TestReconcile(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
 			}
 
+			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
 			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
 				t.Errorf("Pod spec doesn't match (-want, +got): %s", d)
 			}
