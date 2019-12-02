@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"crypto/rand"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -61,9 +60,6 @@ func TestMakePod(t *testing.T) {
 	}
 
 	runtimeClassName := "gvisor"
-
-	randReader = strings.NewReader(strings.Repeat("a", 10000))
-	defer func() { randReader = rand.Reader }()
 
 	for _, c := range []struct {
 		desc            string
@@ -580,10 +576,8 @@ script-heredoc-randomly-generated-6nl7g
 				t.Fatalf("MakePod: %v", err)
 			}
 
-			// Generated name from hexlifying a stream of 'a's.
-			wantName := "taskrun-name-pod-616161"
-			if got.Name != wantName {
-				t.Errorf("Pod name got %q, want %q", got.Name, wantName)
+			if !strings.HasPrefix(got.Name, "taskrun-name-pod-") {
+				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
 			}
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
