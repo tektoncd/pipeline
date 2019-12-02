@@ -235,6 +235,9 @@ func manifestFromDisk(path string) (Manifest, error) {
 
 func commentsFromDisk(path string) ([]*scm.Comment, Manifest, error) {
 	fis, err := ioutil.ReadDir(path)
+	if isNotExistError(err) {
+		return nil, nil, nil
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -265,6 +268,9 @@ func commentsFromDisk(path string) ([]*scm.Comment, Manifest, error) {
 
 func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
 	fis, err := ioutil.ReadDir(path)
+	if isNotExistError(err) {
+		return nil, nil, nil
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -290,6 +296,9 @@ func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
 
 func statusesFromDisk(path string) (*scm.CombinedStatus, error) {
 	fis, err := ioutil.ReadDir(path)
+	if isNotExistError(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -321,4 +330,8 @@ func refFromDisk(path, name string) (scm.PullRequestBranch, error) {
 		return scm.PullRequestBranch{}, err
 	}
 	return ref, nil
+}
+
+func isNotExistError(err error) bool {
+	return err != nil && os.IsNotExist(err)
 }

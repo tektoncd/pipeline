@@ -204,6 +204,52 @@ func TestToDisk(t *testing.T) {
 	}
 }
 
+func TestFromDiskWithoutComments(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(d)
+
+	// Write some refs
+	base := scm.PullRequestBranch{
+		Repo: scm.Repository{Name: "repo1"},
+		Ref:  "refs/heads/branch1",
+		Sha:  "sha1",
+	}
+	head := scm.PullRequestBranch{
+		Repo: scm.Repository{Name: "repo2"},
+		Ref:  "refs/heads/branch2",
+		Sha:  "sha2",
+	}
+
+	writeFile := func(p string, v interface{}) {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ioutil.WriteFile(p, b, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeFile(filepath.Join(d, "base.json"), &base)
+	writeFile(filepath.Join(d, "head.json"), &head)
+
+	rsrc, err := FromDisk(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the refs
+	if diff := cmp.Diff(rsrc.PR.Base, base); diff != "" {
+		t.Errorf("Get Base: -want +got: %s", diff)
+	}
+	if diff := cmp.Diff(rsrc.PR.Head, head); diff != "" {
+		t.Errorf("Get Head: -want +got: %s", diff)
+	}
+
+}
+
 func TestFromDisk(t *testing.T) {
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
