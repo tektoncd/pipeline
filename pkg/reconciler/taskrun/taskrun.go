@@ -202,7 +202,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 	kind := v1alpha1.NamespacedTaskKind
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.clusterTaskLister.Get(name)
+			t, err := c.PipelineClientSet.TektonV1alpha1().ClusterTasks().Get(name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -211,7 +211,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 		kind = v1alpha1.ClusterTaskKind
 	} else {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.taskLister.Tasks(tr.Namespace).Get(name)
+			t, err := c.PipelineClientSet.TektonV1alpha1().Tasks(tr.Namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
