@@ -11,7 +11,7 @@ The following flags are available :
   finished. If the sub-process failed, it will write to
   `{{post_file}}.err` instead of `{{post_file}}`.
 - `-wait_file`: file path to watch before starting the sub-process. It
-  watches for `{{wait_file}}` and `{{wait_file}}.err` precense and
+  watches for `{{wait_file}}` and `{{wait_file}}.err` presence and
   will either execute the sub-process (in case of `{{wait_file}}`) or
   skip the execution, write to `{{post_file}}.err` and return an error
   (`exitCode` >= 0)
