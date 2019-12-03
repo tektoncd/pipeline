@@ -100,6 +100,28 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 				Value: "NEW_VALUE",
 			}},
 		}}},
+	}, {
+		name: "merge-preserves-script",
+		template: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "FOO",
+				Value: "bar",
+			}},
+		},
+		steps: []Step{{
+			Script:    "my-script",
+			Container: corev1.Container{Image: "image"},
+		}},
+		expected: []Step{{
+			Script: "my-script",
+			Container: corev1.Container{
+				Image: "image",
+				Env: []corev1.EnvVar{{
+					Name:  "FOO",
+					Value: "bar",
+				}},
+			},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := MergeStepsWithStepTemplate(tc.template, tc.steps)
