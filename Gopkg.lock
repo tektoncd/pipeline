@@ -267,7 +267,7 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:729f263f2e42c3dddf2de8f62b7d1236560346d89b546f6ac87fdf1a92c9547c"
+  digest = "1:2e9b6076a7020566594ca46f36481acc240a5652ebf1a69d0d1665180647bd7f"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
@@ -276,11 +276,13 @@
     "pkg/v1",
     "pkg/v1/empty",
     "pkg/v1/layout",
+    "pkg/v1/mutate",
     "pkg/v1/partial",
     "pkg/v1/random",
     "pkg/v1/remote",
     "pkg/v1/remote/transport",
     "pkg/v1/stream",
+    "pkg/v1/tarball",
     "pkg/v1/types",
     "pkg/v1/v1util",
   ]
@@ -1357,10 +1359,9 @@
     "github.com/google/go-containerregistry/pkg/v1",
     "github.com/google/go-containerregistry/pkg/v1/empty",
     "github.com/google/go-containerregistry/pkg/v1/layout",
-    "github.com/google/go-containerregistry/pkg/v1/partial",
+    "github.com/google/go-containerregistry/pkg/v1/mutate",
     "github.com/google/go-containerregistry/pkg/v1/random",
     "github.com/google/go-containerregistry/pkg/v1/remote",
-    "github.com/google/go-containerregistry/pkg/v1/types",
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/golang-lru",
     "github.com/jenkins-x/go-scm/scm",
