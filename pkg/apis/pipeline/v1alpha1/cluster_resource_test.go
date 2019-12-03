@@ -35,13 +35,12 @@ func TestNewClusterResource(t *testing.T) {
 		desc: "basic cluster resource",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCluster,
-			tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:                  "test_cluster_resource",
+			Name:                  "test-cluster-resource",
 			Type:                  v1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
@@ -52,14 +51,13 @@ func TestNewClusterResource(t *testing.T) {
 		desc: "resource with password instead of token",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCluster,
-			tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("username", "user"),
 			tb.PipelineResourceSpecParam("password", "pass"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:                  "test_cluster_resource",
+			Name:                  "test-cluster-resource",
 			Type:                  v1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
@@ -71,12 +69,11 @@ func TestNewClusterResource(t *testing.T) {
 		desc: "set insecure flag to true when there is no cert",
 		resource: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCluster,
-			tb.PipelineResourceSpecParam("name", "test.cluster.resource"),
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:                  "test.cluster.resource",
+			Name:                  "test-cluster-resource",
 			Type:                  v1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			Token:                 "my-token",
@@ -87,14 +84,13 @@ func TestNewClusterResource(t *testing.T) {
 		desc: "basic cluster resource with namespace",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCluster,
-			tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 			tb.PipelineResourceSpecParam("namespace", "my-namespace"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:                  "test_cluster_resource",
+			Name:                  "test-cluster-resource",
 			Type:                  v1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
@@ -106,7 +102,6 @@ func TestNewClusterResource(t *testing.T) {
 		desc: "basic resource with secrets",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCluster,
-			tb.PipelineResourceSpecParam("name", "test-cluster-resource"),
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecSecretParam("cadata", "secret1", "cadatakey"),
 			tb.PipelineResourceSpecSecretParam("token", "secret1", "tokenkey"),

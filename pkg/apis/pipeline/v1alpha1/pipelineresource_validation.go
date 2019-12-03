@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
-	logging "knative.dev/pkg/logging"
 )
 
 var _ apis.Validatable = (*PipelineResource)(nil)
@@ -43,7 +42,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 	if rs.Type == PipelineResourceTypeCluster {
-		var authFound, cadataFound, nameFound, isInsecure bool
+		var authFound, cadataFound, isInsecure bool
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
@@ -57,8 +56,6 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 				cadataFound = true
 			case strings.EqualFold(param.Name, "Token"):
 				authFound = true
-			case strings.EqualFold(param.Name, "name"):
-				nameFound = true
 			case strings.EqualFold(param.Name, "insecure"):
 				b, _ := strconv.ParseBool(param.Value)
 				isInsecure = b
@@ -75,10 +72,6 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 			}
 		}
 
-		if nameFound {
-			logging.FromContext(ctx).Warn(
-				"The name parameter on the cluster resource is deprecated. Support will be removed in a future release")
-		}
 		// One auth method must be supplied
 		if !(authFound) {
 			return apis.ErrMissingField("username or CAData  or token param")

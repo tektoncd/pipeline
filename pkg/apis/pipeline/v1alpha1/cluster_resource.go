@@ -66,8 +66,6 @@ func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*Clu
 	}
 	for _, param := range r.Spec.Params {
 		switch {
-		case strings.EqualFold(param.Name, "Name"):
-			clusterResource.Name = param.Value
 		case strings.EqualFold(param.Name, "URL"):
 			clusterResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
