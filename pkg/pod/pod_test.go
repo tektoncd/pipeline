@@ -417,7 +417,7 @@ func TestMakePod(t *testing.T) {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("8"),
 						corev1.ResourceMemory:           resource.MustParse("100Gi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: zeroQty,
 					},
 				},
 			}},
