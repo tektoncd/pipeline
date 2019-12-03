@@ -66,6 +66,7 @@ func TestConvertScripts(t *testing.T) {
 		Container: corev1.Container{
 			Image:        "step-3",
 			VolumeMounts: preExistingVolumeMounts,
+			Args: []string{"my", "args"},
 		},
 	}})
 	wantInit := &corev1.Container{
@@ -95,6 +96,7 @@ script-heredoc-randomly-generated-6nl7g
 	}, {
 		Image:        "step-3",
 		Command:      []string{"/tekton/scripts/script-2-78c5n"},
+		Args: []string{"my", "args"},
 		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
