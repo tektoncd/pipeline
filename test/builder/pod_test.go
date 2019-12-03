@@ -35,7 +35,7 @@ func TestPod(t *testing.T) {
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
 	}
-	pod := tb.Pod("foo-pod-123456", "foo",
+	got := tb.Pod("foo-pod-123456", "foo",
 		tb.PodAnnotation("annotation", "annotation-value"),
 		tb.PodLabel("label", "label-value"),
 		tb.PodOwnerReference("TaskRun", "taskrun-foo",
@@ -62,7 +62,7 @@ func TestPod(t *testing.T) {
 			tb.PodVolumes(volume),
 		),
 	)
-	expectedPod := &corev1.Pod{
+	want := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-pod-123456",
@@ -86,6 +86,13 @@ func TestPod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:  "nop",
 				Image: "nop:latest",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			}},
 			InitContainers: []corev1.Container{{
 				Name:       "basic",
@@ -114,7 +121,7 @@ func TestPod(t *testing.T) {
 			Volumes: []corev1.Volume{volume},
 		},
 	}
-	if d := cmp.Diff(expectedPod, pod, resourceQuantityCmp); d != "" {
+	if d := cmp.Diff(want, got, resourceQuantityCmp); d != "" {
 		t.Fatalf("Pod diff -want, +got: %v", d)
 	}
 }
