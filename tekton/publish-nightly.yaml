@@ -105,7 +105,7 @@ spec:
       DATE=$(date +"%Y%m%d")
       VERSION_TAG="$DATE-$COMMIT"
 
-      echo $VERSION_TAG > "/tekton/home/version"
+      echo $VERSION_TAG > "/builder/home/version"
 
   - name: run-ko
     # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
@@ -126,7 +126,7 @@ spec:
       set -x
 
       # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
-      export VERSION_TAG="$(cat /tekton/home/version)"
+      export VERSION_TAG="$(cat /builder/home/version)"
 
       # Auth with CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
       gcloud auth configure-docker
@@ -170,7 +170,7 @@ spec:
       cd /workspace/bucket
 
       # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
-      export VERSION_TAG="$(cat /tekton/home/version)"
+      export VERSION_TAG="$(cat /builder/home/version)"
 
       mkdir -p /workspace/bucket/previous/$VERSION_TAG/
       cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/$VERSION_TAG/release.yaml
@@ -186,7 +186,7 @@ spec:
       set -x
 
       # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
-      export VERSION_TAG="$(cat /tekton/home/version)"
+      export VERSION_TAG="$(cat /builder/home/version)"
 
       REGIONS=(us eu asia)
       IMAGES=(
