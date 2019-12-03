@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
 	"k8s.io/client-go/kubernetes"
@@ -75,6 +76,15 @@ func (e *entrypointCache) Get(imageName, namespace, serviceAccountName string) (
 	if err != nil {
 		return nil, name.Digest{}, fmt.Errorf("Error getting image manifest: %v", err)
 	}
+	ep, digest, err := imageData(ref, img)
+	if err != nil {
+		return nil, name.Digest{}, err
+	}
+	e.lru.Add(digest.String(), ep) // Populate the cache.
+	return ep, digest, err
+}
+
+func imageData(ref name.Reference, img v1.Image) ([]string, name.Digest, error) {
 	digest, err := img.Digest()
 	if err != nil {
 		return nil, name.Digest{}, fmt.Errorf("Error getting image digest: %v", err)
@@ -87,9 +97,8 @@ func (e *entrypointCache) Get(imageName, namespace, serviceAccountName string) (
 	if len(ep) == 0 {
 		ep = cfg.Config.Cmd
 	}
-	e.lru.Add(digest.String(), ep) // Populate the cache.
 
-	d, err = name.NewDigest(imageName+"@"+digest.String(), name.WeakValidation)
+	d, err := name.NewDigest(ref.Context().String()+"@"+digest.String(), name.WeakValidation)
 	if err != nil {
 		return nil, name.Digest{}, fmt.Errorf("Error constructing resulting digest: %v", err)
 	}
