@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	"encoding/json"
@@ -26,7 +26,6 @@ import (
 // MergeStepsWithStepTemplate takes a possibly nil container template and a
 // list of steps, merging each of the steps with the container template, if
 // it's not nil, and returning the resulting list.
-// Deprecated
 func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, error) {
 	if template == nil {
 		return steps, nil

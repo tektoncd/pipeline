@@ -27,11 +27,16 @@ import (
 
 type TektonV1alpha2Interface interface {
 	RESTClient() rest.Interface
+	TasksGetter
 }
 
 // TektonV1alpha2Client is used to interact with features provided by the tekton.dev group.
 type TektonV1alpha2Client struct {
 	restClient rest.Interface
+}
+
+func (c *TektonV1alpha2Client) Tasks(namespace string) TaskInterface {
+	return newTasks(c, namespace)
 }
 
 // NewForConfig creates a new TektonV1alpha2Client for the given config.
