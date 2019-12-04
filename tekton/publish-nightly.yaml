@@ -117,7 +117,8 @@ spec:
 
   - name: run-ko
     # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
-    image: gcr.io/tekton-nightly/ko-ci
+    # FIXME(vdemeester) use a tagged version once 0.2 is released
+    image: gcr.io/tekton-releases/dogfooding/ko:latest
     env:
     - name: KO_DOCKER_REPO
       value: ${inputs.params.imageRegistry}
