@@ -56,13 +56,23 @@ func TestConvertScripts(t *testing.T) {
 	}}
 
 	gotInit, got := convertScripts(images.ShellImage, []v1alpha1.Step{{
-		Script:    "script-1",
+		Script: `#!/bin/sh
+script-1`,
 		Container: corev1.Container{Image: "step-1"},
 	}, {
 		// No script to convert here.
 		Container: corev1.Container{Image: "step-2"},
 	}, {
-		Script: "script-3",
+		Script: `
+#!/bin/sh
+script-3`,
+		Container: corev1.Container{
+			Image:        "step-3",
+			VolumeMounts: preExistingVolumeMounts,
+			Args:         []string{"my", "args"},
+		},
+	}, {
+		Script: `no-shebang`,
 		Container: corev1.Container{
 			Image:        "step-3",
 			VolumeMounts: preExistingVolumeMounts,
@@ -77,13 +87,22 @@ func TestConvertScripts(t *testing.T) {
 		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
+#!/bin/sh
 script-1
 script-heredoc-randomly-generated-mssqb
 tmpfile="/tekton/scripts/script-2-78c5n"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
+
+#!/bin/sh
 script-3
 script-heredoc-randomly-generated-6nl7g
+tmpfile="/tekton/scripts/script-3-j2tds"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-vr6ds'
+#!/bin/sh
+no-shebang
+script-heredoc-randomly-generated-vr6ds
 `},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}
@@ -98,6 +117,15 @@ script-heredoc-randomly-generated-6nl7g
 		Command:      []string{"/tekton/scripts/script-2-78c5n"},
 		Args:         []string{"my", "args"},
 		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
+	}, {
+		Image:   "step-3",
+		Command: []string{"/tekton/scripts/script-3-j2tds"},
+		Args:    []string{"my", "args"},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
+			{Name: "another-one", MountPath: "/another/one"},
+			{Name: "scripts", MountPath: "/tekton/scripts"},
+		},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff (-want, +got): %s", d)

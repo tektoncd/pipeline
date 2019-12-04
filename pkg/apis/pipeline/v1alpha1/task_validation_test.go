@@ -632,20 +632,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"volumes.name"},
 		},
 	}, {
-		name: "step with script without shebang",
-		fields: fields{
-			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "my-image",
-				},
-				Script: "does not begin with shebang",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "script must start with a shebang (#!)",
-			Paths:   []string{"steps.script"},
-		},
-	}, {
 		name: "step with script and command",
 		fields: fields{
 			Steps: []v1alpha1.Step{{

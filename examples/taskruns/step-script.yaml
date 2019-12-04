@@ -10,6 +10,9 @@ spec:
         default: param-value
 
     steps:
+    - name: noshebang
+      image: ubuntu
+      script: echo "no shebang"
     - name: bash
       image: ubuntu
       env:

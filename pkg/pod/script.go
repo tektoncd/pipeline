@@ -19,6 +19,7 @@ package pod
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -28,6 +29,7 @@ import (
 const (
 	scriptsVolumeName = "scripts"
 	scriptsDir        = "/tekton/scripts"
+	defaultShebang    = "#!/bin/sh\n"
 )
 
 var (
@@ -68,6 +70,16 @@ func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 			continue
 		}
 
+		// Check for a shebang, and add a default if it's not set.
+		// The shebang must be the first non-empty line.
+		cleaned := strings.TrimSpace(s.Script)
+		hasShebang := strings.HasPrefix(cleaned, "#!")
+
+		script := s.Script
+		if !hasShebang {
+			script = defaultShebang + s.Script
+		}
+
 		// At least one step uses a script, so we should return a
 		// non-nil init container.
 		placeScripts = true
@@ -88,7 +100,7 @@ touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << '%s'
 %s
 %s
-`, tmpFile, heredoc, s.Script, heredoc)
+`, tmpFile, heredoc, script, heredoc)
 
 		// Set the command to execute the correct script in the mounted
 		// volume.
