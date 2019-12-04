@@ -169,7 +169,11 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	updated := false
 	if newPod.Status.Phase == corev1.PodRunning {
 		for _, s := range newPod.Status.ContainerStatuses {
-			if isContainerSidecar(s.Name) && s.State.Running != nil {
+			// Stop any running container that isn't a step.
+			// An injected sidecar container might not have the
+			// "sidecar-" prefix, so we can't just look for that
+			// prefix.
+			if !isContainerStep(s.Name) && s.State.Running != nil {
 				for j, c := range newPod.Spec.Containers {
 					if c.Name == s.Name && c.Image != nopImage {
 						updated = true
@@ -187,14 +191,17 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	return nil
 }
 
-// isContainerStep returns true if the container name indicates that it represents a step.
+// isContainerStep returns true if the container name indicates that it
+// represents a step.
 func isContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 
-// isContainerSidecar returns true if the container name indicates that it represents a sidecar.
+// isContainerSidecar returns true if the container name indicates that it
+// represents a sidecar.
 func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
 
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar prefix.
+// trimSidecarPrefix returns the container name, stripped of its sidecar
+// prefix.
 func trimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

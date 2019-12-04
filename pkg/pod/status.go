@@ -71,7 +71,11 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 		return false
 	}
 	for _, s := range podStatus.ContainerStatuses {
-		if !isContainerSidecar(s.Name) {
+		// If the step indicates that it's a step, skip it.
+		// An injected sidecar might not have the "sidecar-" prefix, so
+		// we can't just look for that prefix, we need to look at any
+		// non-step container.
+		if isContainerStep(s.Name) {
 			continue
 		}
 		if s.State.Running != nil && s.Ready {
