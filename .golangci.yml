@@ -3,7 +3,7 @@ run:
   - e2e
   skip-dirs:
   - vendor
-  - pkg/client/clientset/versioned/fake
+  - pkg/client/clientset/(.*)/fake
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
@@ -14,3 +14,4 @@ linters:
   - goimports
   - gosec
   - gocritic
+  - golint
