@@ -340,6 +340,7 @@ Example file structure:
 /workspace/<resource>/comments/<comment>
 /workspace/<resource>/head.json
 /workspace/<resource>/base.json
+/workspace/<resource>/pr.json
 ```
 
 More details:
@@ -347,66 +348,19 @@ More details:
 Labels are empty files, named after the desired label string.
 
 Statuses describe pull request statuses. It is represented as a set of json
-files, structured like this:
-
-```json
-{
-    "Desc": "Job succeeded.",
-    "Label": "pull-tekton-pipeline-build-tests",
-    "State": "success",
-    "Target": "https://tekton-releases.appspot.com/build/tekton-prow/pr-logs/pull/tektoncd_pipeline/995/pull-tekton-pipeline-build-tests/1146102490727452672/"
-}
-```
+files.
 
 References (head and base) describe Git references. They are represented as a
-set of json files, structured like this:
-
-```json
-{
-    "Ref": "master",
-    "Repo": {
-        "Branch": "master",
-        "Clone": "https://github.com/tektoncd/pipeline.git",
-        "CloneSSH": "git@github.com:tektoncd/pipeline.git",
-        "Created": "2018-08-29T18:21:55Z",
-        "FullName": "tektoncd/pipeline",
-        "ID": "146641150",
-        "Link": "https://github.com/tektoncd/pipeline",
-        "Name": "pipeline",
-        "Namespace": "tektoncd",
-        "Perm": {
-            "Admin": false,
-            "Pull": false,
-            "Push": false
-        },
-        "Private": false,
-        "Updated": "2019-11-04T18:54:10Z"
-    },
-    "Sha": "723b9a9d560bdf4dc8fc6f697d53f662d3454ac8"
-}
-```
+set of json files.
 
 Comments describe a pull request comment. They are represented as a set of json
-files, structured like this:
+files.
 
-```json
-{
-    "Author": {
-        "Avatar": "https://avatars3.githubusercontent.com/u/1844673?v=4",
-        "Created": "0001-01-01T00:00:00Z",
-        "Email": "",
-        "Link": "",
-        "Login": "wlynch",
-        "Name": "",
-        "Updated": "0001-01-01T00:00:00Z"
-    },
-    "Body": "/retest",
-    "Created": "2019-06-25T00:48:38Z",
-    "ID": 505233618,
-    "Link": "https://github.com/tektoncd/pipeline/pull/995#issuecomment-505233618",
-    "Updated": "2019-06-25T00:48:38Z"
-}
-```
+Other pull request information can be found in `pr.json`. This is a read-only
+resource. Users should use other subresources (labels, comments, etc)
+to interact with the PR.
+
+For an example of the output this resource provides, see [`example`](../cmd/pullrequest-init/example).
 
 To create a pull request resource using the `PipelineResource` CRD:
 

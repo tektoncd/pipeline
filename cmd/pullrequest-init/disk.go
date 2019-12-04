@@ -33,6 +33,7 @@ import (
 
 // /workspace/
 // /workspace/<resource>/
+// /workspace/<resource>/pr.json
 // /workspace/<resource>/labels/
 // /workspace/<resource>/labels/<label>
 // /workspace/<resource>/status/
@@ -72,12 +73,16 @@ func ToDisk(r *Resource, path string) error {
 		}
 	}
 
-	// Start with comments
+	// Make PR read-only. Users should use corresponding subresources if they
+	// want to interact with the PR.
+	if err := toDisk(filepath.Join(path, "pr.json"), r.PR, 0400); err != nil {
+		return err
+	}
+
 	if err := commentsToDisk(commentsPath, r.Comments); err != nil {
 		return err
 	}
 
-	// Now labels
 	if err := labelsToDisk(labelsPath, r.PR.Labels); err != nil {
 		return err
 	}
@@ -85,7 +90,6 @@ func ToDisk(r *Resource, path string) error {
 	// Now status
 	if err := statusToDisk(statusesPath, r.Status.Statuses); err != nil {
 		log.Print(err)
-
 		return err
 	}
 
@@ -105,11 +109,7 @@ func commentsToDisk(path string, comments []*scm.Comment) error {
 	for _, c := range comments {
 		id := strconv.Itoa(c.ID)
 		commentPath := filepath.Join(path, id+".json")
-		b, err := json.Marshal(c)
-		if err != nil {
-			return err
-		}
-		if err := ioutil.WriteFile(commentPath, b, 0600); err != nil {
+		if err := toDisk(commentPath, c, 0600); err != nil {
 			return err
 		}
 		manifest[id] = true
@@ -139,11 +139,7 @@ func statusToDisk(path string, statuses []*scm.Status) error {
 	for _, s := range statuses {
 		statusName := url.QueryEscape(s.Label) + ".json"
 		statusPath := filepath.Join(path, statusName)
-		b, err := json.Marshal(s)
-		if err != nil {
-			return err
-		}
-		if err := ioutil.WriteFile(statusPath, b, 0700); err != nil {
+		if err := toDisk(statusPath, s, 0600); err != nil {
 			return err
 		}
 	}
@@ -155,7 +151,15 @@ func refToDisk(name, path string, r scm.PullRequestBranch) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(path, name+".json"), b, 0700)
+	return ioutil.WriteFile(filepath.Join(path, name+".json"), b, 0600)
+}
+
+func toDisk(path string, r interface{}, perm os.FileMode) error {
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, b, perm)
 }
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
