@@ -80,6 +80,16 @@ func TestToDisk(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Base PR
+	pr := &scm.PullRequest{}
+	readAndUnmarshal(t, filepath.Join(d, "pr.json"), pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(pr, rsrc.PR); diff != "" {
+		t.Errorf("PullRequest: -want +got: %s", diff)
+	}
+
 	// Check the refs
 	checkRef := func(name string, r scm.PullRequestBranch) {
 		actualRef := scm.PullRequestBranch{}
