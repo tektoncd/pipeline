@@ -65,9 +65,9 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	for _, resource := range ps.Resources {
 		provided = append(provided, resource.Name)
 	}
-	err := list.IsSame(required, provided)
-	if err != nil {
-		return xerrors.Errorf("Pipeline declared resources didn't match usage in Tasks: %w", err)
+	missing := list.DiffLeft(required, provided)
+	if len(missing) > 0 {
+		return xerrors.Errorf("Pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing)
 	}
 	return nil
 }
