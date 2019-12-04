@@ -48,16 +48,11 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 	}, nil
 }
 
-func (e *entrypointCache) Get(imageName, namespace, serviceAccountName string) (cmd []string, d name.Digest, err error) {
-	ref, err := name.ParseReference(imageName, name.WeakValidation)
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error parsing reference %q: %v", imageName, err)
-	}
-
+func (e *entrypointCache) Get(ref name.Reference, namespace, serviceAccountName string) (v1.Image, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
-		if ep, ok := e.lru.Get(digest.String()); ok {
-			return ep.([]string), digest, nil
+		if img, ok := e.lru.Get(digest.String()); ok {
+			return img.(v1.Image), nil
 		}
 	}
 
@@ -69,38 +64,14 @@ func (e *entrypointCache) Get(imageName, namespace, serviceAccountName string) (
 		ServiceAccountName: serviceAccountName,
 	})
 	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error creating k8schain: %v", err)
+		return nil, fmt.Errorf("Error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error getting image manifest: %v", err)
+		return nil, fmt.Errorf("Error getting image manifest: %v", err)
 	}
-	ep, digest, err := imageData(ref, img)
-	if err != nil {
-		return nil, name.Digest{}, err
-	}
-	e.lru.Add(digest.String(), ep) // Populate the cache.
-	return ep, digest, err
+	return img, nil
 }
 
-func imageData(ref name.Reference, img v1.Image) ([]string, name.Digest, error) {
-	digest, err := img.Digest()
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error getting image digest: %v", err)
-	}
-	cfg, err := img.ConfigFile()
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error getting image config: %v", err)
-	}
-	ep := cfg.Config.Entrypoint
-	if len(ep) == 0 {
-		ep = cfg.Config.Cmd
-	}
-
-	d, err := name.NewDigest(ref.Context().String()+"@"+digest.String(), name.WeakValidation)
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error constructing resulting digest: %v", err)
-	}
-	return ep, d, nil
-}
+func (e *entrypointCache) Set(d name.Digest, img v1.Image) { e.lru.Add(d.String(), img) }
