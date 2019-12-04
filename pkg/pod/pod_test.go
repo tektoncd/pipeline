@@ -435,7 +435,7 @@ func TestMakePod(t *testing.T) {
 					Name:  "one",
 					Image: "image",
 				},
-				Script: "echo hello from step one",
+				Script: "#!/bin/sh\necho hello from step one",
 			}, {
 				Container: corev1.Container{
 					Name:         "two",
@@ -462,6 +462,7 @@ print("Hello from Python")`,
 				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
+#!/bin/sh
 echo hello from step one
 script-heredoc-randomly-generated-mssqb
 tmpfile="/tekton/scripts/script-1-78c5n"
