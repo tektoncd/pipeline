@@ -189,13 +189,13 @@ func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.Sugar
 		logger.Warn("the configmap has no data")
 		return true, nil
 	}
-	if location, ok := configMap.Data[BucketLocationKey]; !ok {
+	location, ok := configMap.Data[BucketLocationKey]
+	if !ok {
 		return true, nil
-	} else {
-		logger.Warnf("the configmap key %q is empty", BucketLocationKey)
-		if strings.TrimSpace(location) == "" {
-			return true, nil
-		}
+	}
+	logger.Warnf("the configmap key %q is empty", BucketLocationKey)
+	if strings.TrimSpace(location) == "" {
+		return true, nil
 	}
 	return false, nil
 }

@@ -55,7 +55,7 @@ const (
 	taskNameLabelKey    = pipeline.GroupName + pipeline.TaskLabelKey
 	taskRunNameLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 	workspaceDir        = "/workspace"
-	currentApiVersion   = "tekton.dev/v1alpha1"
+	currentAPIVersion   = "tekton.dev/v1alpha1"
 )
 
 var (
@@ -237,7 +237,7 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
+func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
@@ -246,7 +246,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
 	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
-	return test.TestAssets{
+	return test.Assets{
 		Controller: NewController(images)(ctx, configMapWatcher),
 		Clients:    c,
 	}, cancel
@@ -286,7 +286,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName(defaultSAName),
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
@@ -321,7 +321,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
@@ -540,7 +540,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
@@ -574,7 +574,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
@@ -609,7 +609,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(
 					workspaceVolume, homeVolume, toolsVolume, downwardVolume,
@@ -683,7 +683,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
@@ -735,7 +735,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
@@ -768,7 +768,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
@@ -818,7 +818,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
 			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
-				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),

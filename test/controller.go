@@ -72,14 +72,15 @@ type Informers struct {
 	Pod              coreinformers.PodInformer
 }
 
-// TestAssets holds references to the controller, logs, clients, and informers.
-type TestAssets struct {
+// Assets holds references to the controller, logs, clients, and informers.
+type Assets struct {
 	Controller *controller.Impl
 	Clients    Clients
 }
 
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
+// nolint: golint
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	c := Clients{
 		Kube:     fakekubeclient.Get(ctx),
