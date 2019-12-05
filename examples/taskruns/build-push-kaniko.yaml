@@ -48,8 +48,6 @@ spec:
     env:
     - name: "DOCKER_CONFIG"
       value: "/tekton/home/.docker/"
-    command:
-    - /kaniko/executor
     args:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)

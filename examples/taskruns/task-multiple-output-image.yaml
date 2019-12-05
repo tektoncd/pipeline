@@ -67,11 +67,7 @@ spec:
   steps:
   - name: build-and-push-1
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -ex
       mkdir -p /tekton/home/image-outputs/builtImage1
       cat <<EOF > /tekton/home/image-outputs/builtImage1/index.json
@@ -85,14 +81,9 @@ spec:
           }
         ]
       }
-      EOF
   - name: build-and-push-2
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -e
       mkdir -p /tekton/home/image-outputs/builtImage2
       cat <<EOF > /tekton/home/image-outputs/builtImage2/index.json
@@ -106,7 +97,6 @@ spec:
           }
         ]
       }
-      EOF
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

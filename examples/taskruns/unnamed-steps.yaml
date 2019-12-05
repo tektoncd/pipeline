@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: 'ubuntu'
-      command: ['true']
-    - image: 'ubuntu'
-      command: ['true']
-    - image: 'ubuntu'
-      command: ['true']
+    - image: ubuntu
+      script: 'true'
+    - image: ubuntu
+      script: 'true'
+    - image: ubuntu
+      script: 'true'

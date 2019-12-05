@@ -7,18 +7,17 @@ spec:
     steps:
     - name: write
       image: ubuntu
-      command: ['bash']
-      args: ['-c', 'echo some stuff > /workspace/stuff']
+      script: echo some stuff > /workspace/stuff
     - name: read
       image: ubuntu
-      command: ['cat']
-      args: ['/workspace/stuff']
+      script: cat /workspace/stuff
 
     - name: override-workspace
       image: ubuntu
-      command: ['bash']
       # /workspace/stuff *doesn't* exist.
-      args: ['-c', '[[ ! -f /workspace/stuff ]]']
+      script: |
+        #!/usr/bin/env bash
+        [[ ! -f /workspace/stuff ]]
       volumeMounts:
       - name: empty
         mountPath: /workspace

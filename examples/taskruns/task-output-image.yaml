@@ -56,11 +56,7 @@ spec:
   steps:
   - name: build-and-push
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -e
       cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
       {
@@ -73,16 +69,9 @@ spec:
           }
         ]
       }
-      EOF
   - name: echo
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      cat $(inputs.resources.sourcerepo.path)/index.json
+    script: cat $(inputs.resources.sourcerepo.path)/index.json
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

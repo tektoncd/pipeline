@@ -7,15 +7,13 @@ spec:
     steps:
     - name: default
       image: ubuntu
-      command: ['bash']
-      args:
-      - '-c'
-      - '[[ $PWD == /workspace ]]'
+      script: |
+        #!/usr/bin/env bash
+        [[ $PWD == /workspace ]]
 
     - name: override
       image: ubuntu
-      command: ['bash']
       workingDir: '/a/path/too/far'
-      args:
-      - '-c'
-      - '[[ $PWD == /a/path/too/far ]]'
+      script: |
+        #!/usr/bin/env bash
+        [[ $PWD == /a/path/too/far ]]
