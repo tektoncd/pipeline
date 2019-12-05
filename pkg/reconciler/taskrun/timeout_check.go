@@ -35,9 +35,5 @@ func CheckTimeout(tr *v1alpha1.TaskRun) bool {
 		return false
 	}
 	runtime := time.Since(tr.Status.StartTime.Time)
-	if runtime > timeout {
-		return true
-	} else {
-		return false
-	}
+	return runtime > timeout
 }

@@ -45,8 +45,8 @@ type StatusKey interface {
 	GetRunKey() string
 }
 
-// backoff contains state of exponential backoff for a given StatusKey
-type backoff struct {
+// Backoff contains state of exponential backoff for a given StatusKey
+type Backoff struct {
 	// NumAttempts reflects the number of times a given StatusKey has been delayed
 	NumAttempts uint
 	// NextAttempt is the point in time at which this backoff expires
@@ -66,7 +66,7 @@ type TimeoutSet struct {
 	stopCh                  <-chan struct{}
 	done                    map[string]chan bool
 	doneMut                 sync.Mutex
-	backoffs                map[string]backoff
+	backoffs                map[string]Backoff
 	backoffsMut             sync.Mutex
 }
 
@@ -78,7 +78,7 @@ func NewTimeoutHandler(
 	return &TimeoutSet{
 		stopCh:   stopCh,
 		done:     make(map[string]chan bool),
-		backoffs: make(map[string]backoff),
+		backoffs: make(map[string]Backoff),
 		logger:   logger,
 	}
 }
@@ -135,14 +135,14 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 // describing the time at which the next attempt should be performed.
 // Additionally a boolean is returned indicating whether a backoff for the
 // TaskRun is already in progress.
-func (t *TimeoutSet) GetBackoff(tr *v1alpha1.TaskRun) (backoff, bool) {
+func (t *TimeoutSet) GetBackoff(tr *v1alpha1.TaskRun) (Backoff, bool) {
 	t.backoffsMut.Lock()
 	defer t.backoffsMut.Unlock()
 	b := t.backoffs[tr.GetRunKey()]
 	if time.Now().Before(b.NextAttempt) {
 		return b, true
 	}
-	b.NumAttempts += 1
+	b.NumAttempts++
 	b.NextAttempt = time.Now().Add(backoffDuration(b.NumAttempts, rand.Intn))
 	timeoutDeadline := tr.Status.StartTime.Time.Add(tr.Spec.Timeout.Duration)
 	if timeoutDeadline.Before(b.NextAttempt) {

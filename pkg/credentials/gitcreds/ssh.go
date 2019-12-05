@@ -63,7 +63,7 @@ func (dc *sshGitConfig) Set(value string) error {
 	secretName := parts[0]
 	url := parts[1]
 
-	e, err := newSshEntry(url, secretName)
+	e, err := newSSHEntry(url, secretName)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (be *sshEntry) Write(sshDir string) error {
 	return ioutil.WriteFile(be.path(sshDir), []byte(be.privateKey), 0600)
 }
 
-func newSshEntry(u, secretName string) (*sshEntry, error) {
+func newSSHEntry(u, secretName string) (*sshEntry, error) {
 	secretPath := credentials.VolumeName(secretName)
 
 	pk, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.SSHAuthPrivateKey))

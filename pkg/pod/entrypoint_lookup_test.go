@@ -121,7 +121,7 @@ func (f fakeCache) Get(ref name.Reference, _, _ string) (v1.Image, error) {
 		return nil, fmt.Errorf("image %q not found", ref)
 	}
 	if d.seen {
-		return nil, fmt.Errorf("image %q was already looked up!", ref)
+		return nil, fmt.Errorf("image %q was already looked up", ref)
 	}
 	return d.img, nil
 }
