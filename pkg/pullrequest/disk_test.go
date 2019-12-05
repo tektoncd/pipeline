@@ -342,6 +342,9 @@ func TestFromDisk(t *testing.T) {
 	if diff := cmp.Diff(rsrc.PR.Head, head); diff != "" {
 		t.Errorf("Get Head: -want +got: %s", diff)
 	}
+	if diff := cmp.Diff(rsrc.PR.Sha, head.Sha); diff != "" {
+		t.Errorf("Get Sha: -want +got: %s", diff)
+	}
 
 	// Check the comments
 	commentMap := map[int]scm.Comment{}
