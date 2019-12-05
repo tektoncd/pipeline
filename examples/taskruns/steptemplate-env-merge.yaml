@@ -28,35 +28,40 @@ spec:
       # Test the environment variables are set in the task
       - name: foo
         image: ubuntu
-        command: ["bash"]
-        args: ["-c", '[[ $(FOO) == "foo" ]]']
+        script: |
+          #!/usr/bin/env bash
+          [[ $FOO == "foo" ]]
         env:
         - name: FOO
           value: $(inputs.params.FOO)
       - name: foobar
         image: ubuntu
-        command: ["bash"]
-        args: ["-c", '[[ $(FOOBAR) == "foobar" ]]']
+        script: |
+          #!/usr/bin/env bash
+          [[ $FOOBAR == "foobar" ]]
         env:
         - name: FOOBAR
           value: $(inputs.params.FOOBAR)
       - name: bar
         image: ubuntu
-        command: ["bash"]
-        args: ["-c", '[[ $(BAR) == "bar" ]]']
+        script: |
+          #!/usr/bin/env bash
+          [[ $BAR == "bar" ]]
         env:
         - name: BAR
           value: $(inputs.params.BAR)
       # Use the env var from the stepTemplate
       - name: qux-no-override
         image: ubuntu
-        command: ["bash"]
-        args: ["-c", '[[ $(QUX) == "original" ]]']
+        script: |
+          #!/usr/bin/env bash
+          [[ $QUX == "original" ]]
       # Override the env var in the stepTemplate
       - name: qux-override
         image: ubuntu
-        command: ["bash"]
-        args: ["-c", '[[ $(QUX) == "override" ]]']
+        script: |
+          #!/usr/bin/env bash
+          [[ $QUX == "override" ]]
         env:
         - name: QUX
           value: override

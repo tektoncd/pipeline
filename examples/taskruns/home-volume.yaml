@@ -7,18 +7,17 @@ spec:
     steps:
     - name: write
       image: ubuntu
-      command: ['bash']
-      args: ['-c', 'echo some stuff > /tekton/home/stuff']
+      script: echo some stuff > /tekton/home/stuff
     - name: read
       image: ubuntu
-      command: ['cat']
-      args: ['/tekton/home/stuff']
+      script: cat /tekton/home/stuff
     - name: override-homevol
       image: ubuntu
-      command: ['bash']
       # /tekton/home/stuff *doesn't* exist, because the specified volumeMount
       # conflicts with it, and the user's explicit declaration wins the tie.
-      args: ['-c', '[[ ! -f /tekton/home/stuff ]]']
+      script: |
+        #!/usr/bin/env bash
+        [[ ! -f /tekton/home/stuff ]]
       volumeMounts:
       - name: empty
         mountPath: /tekton/home

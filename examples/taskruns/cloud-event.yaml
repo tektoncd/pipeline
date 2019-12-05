@@ -77,11 +77,8 @@ spec:
     - name: wait-for-sink
       image: python:3-alpine
       imagePullPolicy: IfNotPresent
-      command: ["/bin/sh"]
-      args:
-      - -ce
-      - |
-        cat <<EOF | python
+      script: |
+        #!/usr/bin/env python3
         import http.client
         import json
         import sys
@@ -97,14 +94,9 @@ spec:
             # resolve or it does not accept connections on 8080 yet
             print("Not yet...")
             time.sleep(10)
-        EOF
     - name: build-index-json
       image: busybox
-      command:
-      - /bin/sh
-      args:
-      - -ce
-      - |
+      script: |
         set -e
         cat <<EOF > $(outputs.resources.myimage.path)/index.json
         {
@@ -117,7 +109,6 @@ spec:
             }
           ]
         }
-        EOF
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Task
@@ -128,11 +119,8 @@ spec:
   - name: polling
     image: python:3-alpine
     imagePullPolicy: IfNotPresent
-    command: ["/bin/sh"]
-    args:
-    - -ce
-    - |
-      cat <<EOF | python
+    script: |
+      #!/usr/bin/env python3
       import http.client
       import json
       import sys
@@ -162,7 +150,6 @@ spec:
         else:
           print("Not yet...")
           time.sleep(10)
-      EOF
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

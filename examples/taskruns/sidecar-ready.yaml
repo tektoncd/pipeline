@@ -26,7 +26,7 @@ spec:
       image: ubuntu
       # The step will only succeed if the sidecar has written this file, which
       # it does 5s after it starts, before it reports Ready.
-      command: ['cat', '/shared/ready']
+      script: cat /shared/ready
       volumeMounts:
       - name: shared
         mountPath: /shared
