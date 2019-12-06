@@ -47,6 +47,10 @@ const (
 	// completed successfully
 	ReasonSucceeded = "Succeeded"
 
+	// ReasonCompleted indicates that the reason for the finished status is that all of the TaskRuns
+	// completed successfully but with some conditions checking failed
+	ReasonCompleted = "Completed"
+
 	// ReasonTimedOut indicates that the PipelineRun has taken longer than its configured
 	// timeout
 	ReasonTimedOut = "PipelineRunTimeout"
@@ -411,22 +415,32 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 
 	allTasks := []string{}
 	successOrSkipTasks := []string{}
+	skipTasks := int(0)
 
 	// Check to see if all tasks are success or skipped
 	for _, rprt := range state {
 		allTasks = append(allTasks, rprt.PipelineTask.Name)
-		if rprt.IsSuccessful() || isSkipped(rprt, state.toMap(), dag) {
+		if rprt.IsSuccessful() {
+			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
+		}
+		if isSkipped(rprt, state.toMap(), dag) {
+			skipTasks++
 			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}
 	}
 
 	if reflect.DeepEqual(allTasks, successOrSkipTasks) {
 		logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", pr.Name)
+		reason := ReasonSucceeded
+		if skipTasks != 0 {
+			reason = ReasonCompleted
+		}
+
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
-			Reason:  ReasonSucceeded,
-			Message: "All Tasks have completed executing",
+			Reason:  reason,
+			Message: fmt.Sprintf("Tasks Completed: %d, Skipped: %d", len(successOrSkipTasks)-skipTasks, skipTasks),
 		}
 	}
 
@@ -436,7 +450,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Reason:  ReasonRunning,
-		Message: "Not all Tasks in the Pipeline have finished executing",
+		Message: fmt.Sprintf("Tasks Completed: %d, Incomplete: %d, Skipped: %d", len(successOrSkipTasks)-skipTasks, len(allTasks)-len(successOrSkipTasks), skipTasks),
 	}
 }
 
