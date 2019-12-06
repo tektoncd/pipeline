@@ -32,7 +32,6 @@ import (
 const (
 	workspaceDir = "/workspace"
 	homeDir      = "/tekton/home"
-	oldHomeDir   = "/builder/home"
 
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
@@ -57,12 +56,6 @@ var (
 	}, {
 		Name:      "tekton-home",
 		MountPath: homeDir,
-	}, {
-		// Mount the home Volume to both /tekton/home and (old,
-		// deprecated) /builder/home.
-		// TODO(#1633): After v0.10, we can remove this old path.
-		Name:      "tekton-home",
-		MountPath: oldHomeDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "workspace",
