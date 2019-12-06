@@ -80,52 +80,52 @@ script-3`,
 		},
 	}})
 	wantInit := &corev1.Container{
-		Name:    "place-scripts-9l9zj",
+		Name:    "place-scripts",
 		Image:   images.ShellImage,
 		TTY:     true,
 		Command: []string{"sh"},
-		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
+		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
 script-1
-script-heredoc-randomly-generated-mssqb
-tmpfile="/tekton/scripts/script-2-78c5n"
+script-heredoc-randomly-generated-mz4c7
+tmpfile="/tekton/scripts/script-2-mssqb"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
 
 #!/bin/sh
 script-3
-script-heredoc-randomly-generated-6nl7g
-tmpfile="/tekton/scripts/script-3-j2tds"
+script-heredoc-randomly-generated-78c5n
+tmpfile="/tekton/scripts/script-3-6nl7g"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-vr6ds'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-j2tds'
 #!/bin/sh
 set -xe
 no-shebang
-script-heredoc-randomly-generated-vr6ds
+script-heredoc-randomly-generated-j2tds
 `},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
-		Command:      []string{"/tekton/scripts/script-0-mz4c7"},
+		Command:      []string{"/tekton/scripts/script-0-9l9zj"},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
 		Image:        "step-3",
-		Command:      []string{"/tekton/scripts/script-2-78c5n"},
+		Command:      []string{"/tekton/scripts/script-2-mssqb"},
 		Args:         []string{"my", "args"},
 		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
 	}, {
 		Image:   "step-3",
-		Command: []string{"/tekton/scripts/script-3-j2tds"},
+		Command: []string{"/tekton/scripts/script-3-6nl7g"},
 		Args:    []string{"my", "args"},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			{Name: "scripts", MountPath: "/tekton/scripts"},
+			scriptsVolumeMount,
 		},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {

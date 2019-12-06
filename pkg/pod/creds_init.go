@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
-	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -65,7 +64,7 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 		}
 
 		if matched {
-			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("secret-volume-%s", secret.Name))
+			name := fmt.Sprintf("tekton-internal-secret-volume-%s", secret.Name)
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
@@ -87,7 +86,7 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("credential-initializer"),
+		Name:         "credential-initializer",
 		Image:        credsImage,
 		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,

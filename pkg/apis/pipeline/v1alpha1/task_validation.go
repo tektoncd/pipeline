@@ -126,7 +126,7 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
 	names := map[string]struct{}{}
-	for _, s := range steps {
+	for idx, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
 		}
@@ -134,19 +134,34 @@ func validateSteps(steps []Step) *apis.FieldError {
 		if s.Script != "" {
 			if len(s.Command) > 0 {
 				return &apis.FieldError{
-					Message: "script cannot be used with command",
+					Message: fmt.Sprintf("step %d script cannot be used with command", idx),
 					Paths:   []string{"script"},
 				}
 			}
 		}
 
-		if s.Name == "" {
-			continue
+		if s.Name != "" {
+			if _, ok := names[s.Name]; ok {
+				return apis.ErrInvalidValue(s.Name, "name")
+			}
+			names[s.Name] = struct{}{}
 		}
-		if _, ok := names[s.Name]; ok {
-			return apis.ErrInvalidValue(s.Name, "name")
+
+		for _, vm := range s.VolumeMounts {
+			if strings.HasPrefix(vm.MountPath, "/tekton/") &&
+				!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("step %d volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", idx, vm.Name, vm.MountPath),
+					Paths:   []string{"volumeMounts.mountPath"},
+				}
+			}
+			if strings.HasPrefix(vm.Name, "tekton-internal-") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf(`step %d volumeMount name %q cannot start with "tekton-internal-"`, idx, vm.Name),
+					Paths:   []string{"volumeMounts.name"},
+				}
+			}
 		}
-		names[s.Name] = struct{}{}
 	}
 	return nil
 }

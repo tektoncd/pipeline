@@ -25,11 +25,6 @@ import (
 )
 
 func TestWorkingDirInit(t *testing.T) {
-	volumeMounts := []corev1.VolumeMount{{
-		Name:      "my-volume-mount",
-		MountPath: "/blah",
-	}}
-
 	names.TestingSeed()
 	for _, c := range []struct {
 		desc           string
@@ -59,16 +54,16 @@ func TestWorkingDirInit(t *testing.T) {
 			WorkingDir: "/workspace/bbb",
 		}},
 		want: &corev1.Container{
-			Name:         "working-dir-initializer-9l9zj",
+			Name:         "working-dir-initializer",
 			Image:        images.ShellImage,
 			Command:      []string{"sh"},
 			Args:         []string{"-c", "mkdir -p /workspace/bbb aaa zzz"},
 			WorkingDir:   workspaceDir,
-			VolumeMounts: volumeMounts,
+			VolumeMounts: implicitVolumeMounts,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got := workingDirInit(images.ShellImage, c.stepContainers, volumeMounts)
+			got := workingDirInit(images.ShellImage, c.stepContainers)
 			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff (-want, +got): %s", d)
 			}
