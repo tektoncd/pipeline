@@ -205,7 +205,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "valid  step with script and args",
+		name: "valid step with script and args",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
 				Container: corev1.Container{
@@ -216,6 +216,17 @@ func TestTaskSpecValidate(t *testing.T) {
 				#!/usr/bin/env  bash
 				hello $1`,
 			}},
+		},
+	}, {
+		name: "valid step with volumeMount under /tekton/home",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home",
+				}},
+			}}},
 		},
 	}}
 	for _, tt := range tests {
@@ -643,8 +654,38 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: "script cannot be used with command",
+			Message: "step 0 script cannot be used with command",
 			Paths:   []string{"steps.script"},
+		},
+	}, {
+		name: "step volume mounts under /tekton/",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/foo",
+				}},
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `step 0 volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"steps.volumeMounts.mountPath"},
+		},
+	}, {
+		name: "step volume mount name starts with tekton-internal-",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tekton-internal-foo",
+					MountPath: "/this/is/fine",
+				}},
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `step 0 volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
+			Paths:   []string{"steps.volumeMounts.name"},
 		},
 	}}
 	for _, tt := range tests {

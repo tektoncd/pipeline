@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	scriptsVolumeName     = "scripts"
+	scriptsVolumeName     = "tekton-internal-scripts"
 	scriptsDir            = "/tekton/scripts"
 	defaultScriptPreamble = "#!/bin/sh\nset -xe\n"
 )
@@ -35,7 +35,6 @@ const (
 var (
 	// Volume definition attached to Pods generated from TaskRuns that have
 	// steps that specify a Script.
-	// TODO(#1605): Generate volumeMount names, to avoid collisions.
 	scriptsVolume = corev1.Volume{
 		Name:         scriptsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -54,7 +53,7 @@ var (
 func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container, []corev1.Container) {
 	placeScripts := false
 	placeScriptsInit := corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
+		Name:         "place-scripts",
 		Image:        shellImage,
 		TTY:          true,
 		Command:      []string{"sh"},

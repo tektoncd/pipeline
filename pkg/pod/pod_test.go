@@ -44,11 +44,11 @@ func TestMakePod(t *testing.T) {
 	names.TestingSeed()
 
 	secretsVolumeMount := corev1.VolumeMount{
-		Name:      "secret-volume-multi-creds-9l9zj",
-		MountPath: "/var/build-secrets/multi-creds",
+		Name:      "tekton-internal-secret-volume-multi-creds",
+		MountPath: "/tekton/creds-secrets/multi-creds",
 	}
 	secretsVolume := corev1.Volume{
-		Name:         "secret-volume-multi-creds-9l9zj",
+		Name:         "tekton-internal-secret-volume-multi-creds",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	}
 
@@ -116,7 +116,7 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:    "credential-initializer-mz4c7",
+				Name:    "credential-initializer",
 				Image:   images.CredsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
@@ -279,7 +279,7 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         "working-dir-initializer-mz4c7",
+				Name:         "working-dir-initializer",
 				Image:        images.ShellImage,
 				Command:      []string{"sh"},
 				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
@@ -455,22 +455,22 @@ print("Hello from Python")`,
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:    "place-scripts-9l9zj",
+				Name:    "place-scripts",
 				Image:   images.ShellImage,
 				Command: []string{"sh"},
 				TTY:     true,
-				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
+				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
 echo hello from step one
-script-heredoc-randomly-generated-mssqb
-tmpfile="/tekton/scripts/script-1-78c5n"
+script-heredoc-randomly-generated-mz4c7
+tmpfile="/tekton/scripts/script-1-mssqb"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
 #!/usr/bin/env python
 print("Hello from Python")
-script-heredoc-randomly-generated-6nl7g
+script-heredoc-randomly-generated-78c5n
 `},
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}, {
@@ -490,7 +490,7 @@ script-heredoc-randomly-generated-6nl7g
 					"-post_file",
 					"/tekton/tools/0",
 					"-entrypoint",
-					"/tekton/scripts/script-0-mz4c7",
+					"/tekton/scripts/script-0-9l9zj",
 					"--",
 					"template",
 					"args",
@@ -509,7 +509,7 @@ script-heredoc-randomly-generated-6nl7g
 					"-post_file",
 					"/tekton/tools/1",
 					"-entrypoint",
-					"/tekton/scripts/script-1-78c5n",
+					"/tekton/scripts/script-1-mssqb",
 					"--",
 					"template",
 					"args",

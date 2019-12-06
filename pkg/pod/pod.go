@@ -30,8 +30,10 @@ import (
 )
 
 const (
-	workspaceDir = "/workspace"
-	homeDir      = "/tekton/home"
+	workspaceVolumeName = "tekton-internal-workspace"
+	homeVolumeName      = "tekton-internal-home"
+	workspaceDir        = "/workspace"
+	homeDir             = "/tekton/home"
 
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
@@ -51,17 +53,17 @@ var (
 		Value: homeDir,
 	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
-		Name:      "workspace",
+		Name:      "tekton-internal-workspace",
 		MountPath: workspaceDir,
 	}, {
-		Name:      "tekton-home",
+		Name:      "tekton-internal-home",
 		MountPath: homeDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
-		Name:         "workspace",
+		Name:         "tekton-internal-workspace",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
-		Name:         "tekton-home",
+		Name:         "tekton-internal-home",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 )
@@ -99,7 +101,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}
 
 	// Initialize any workingDirs under /workspace.
-	if workingDirInit := workingDirInit(images.ShellImage, stepContainers, implicitVolumeMounts); workingDirInit != nil {
+	if workingDirInit := workingDirInit(images.ShellImage, stepContainers); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 

@@ -99,7 +99,7 @@ func TestCredsInit(t *testing.T) {
 			},
 		},
 		want: &corev1.Container{
-			Name:    "credential-initializer-mz4c7",
+			Name:    "credential-initializer",
 			Image:   images.CredsImage,
 			Command: []string{"/ko-app/creds-init"},
 			Args: []string{
@@ -110,8 +110,8 @@ func TestCredsInit(t *testing.T) {
 			},
 			Env: envVars,
 			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
-				Name:      "secret-volume-my-creds-9l9zj",
-				MountPath: "/var/build-secrets/my-creds",
+				Name:      "tekton-internal-secret-volume-my-creds",
+				MountPath: "/tekton/creds-secrets/my-creds",
 			}),
 		},
 	}} {

@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	toolsVolumeName  = "tools"
+	toolsVolumeName  = "tekton-internal-tools"
 	mountPoint       = "/tekton/tools"
 	entrypointBinary = mountPoint + "/entrypoint"
 
-	downwardVolumeName     = "downward"
+	downwardVolumeName     = "tekton-internal-downward"
 	downwardMountPoint     = "/tekton/downward"
 	downwardMountReadyFile = "ready"
 	readyAnnotation        = "tekton.dev/ready"
