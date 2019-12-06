@@ -57,6 +57,12 @@ var (
 				},
 			}},
 		},
+		StepTemplate: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: "$(inputs.params.FOO)",
+			}},
+		},
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "foo",
 			Image: "$(inputs.params.myimage)",
@@ -67,25 +73,29 @@ var (
 			Args:       []string{"$(inputs.resources.workspace.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "qux",
-			Image: "quux",
+			Image: "$(inputs.params.something)",
 			Args:  []string{"$(outputs.resources.imageToUse.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "foo",
 			Image: "$(inputs.params.myimage)",
 		}}, {Container: corev1.Container{
 			Name:       "baz",
-			Image:      "bat",
+			Image:      "$(inputs.params.somethingelse)",
 			WorkingDir: "$(inputs.resources.workspace.path)",
 			Args:       []string{"$(inputs.resources.workspace.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "qux",
 			Image: "quux",
 			Args:  []string{"$(outputs.resources.imageToUse.url)"},
-		}}},
-	}
-
-	envTaskSpec = &v1alpha1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "busybox:$(inputs.params.FOO)",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(inputs.params.FOO)",
+				MountPath: "path/to/$(inputs.params.FOO)",
+				SubPath:   "sub/$(inputs.params.FOO)/path",
+			}},
+		}}, {Container: corev1.Container{
 			Name:  "foo",
 			Image: "busybox:$(inputs.params.FOO)",
 			Env: []corev1.EnvVar{{
@@ -120,38 +130,30 @@ var (
 				},
 			}},
 		}}},
-	}
-
-	stepTemplateTaskSpec = &v1alpha1.TaskSpec{
-		StepTemplate: &corev1.Container{
-			Env: []corev1.EnvVar{{
-				Name:  "template-var",
-				Value: "$(inputs.params.FOO)",
-			}},
-		},
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:  "simple-image",
-			Image: "$(inputs.params.myimage)",
-		}}, {Container: corev1.Container{
-			Name:  "image-with-env-specified",
-			Image: "some-other-image",
-			Env: []corev1.EnvVar{{
-				Name:  "template-var",
-				Value: "overridden-value",
-			}},
-		}}},
-	}
-
-	volumeMountTaskSpec = &v1alpha1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:  "foo",
-			Image: "busybox:$(inputs.params.FOO)",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "$(inputs.params.FOO)",
-				MountPath: "path/to/$(inputs.params.FOO)",
-				SubPath:   "sub/$(inputs.params.FOO)/path",
-			}},
-		}}},
+		Volumes: []corev1.Volume{{
+			Name: "$(inputs.params.FOO)",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(inputs.params.FOO)",
+					},
+				},
+			},
+		}, {
+			Name: "some-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "$(inputs.params.FOO)",
+				},
+			},
+		}, {
+			Name: "some-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "$(inputs.params.FOO)",
+				},
+			},
+		}},
 	}
 
 	gcsTaskSpec = &v1alpha1.TaskSpec{
@@ -215,17 +217,6 @@ var (
 			Command: []string{"cmd", "$(inputs.params.array-param1)"},
 			Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
 		}}},
-	}
-
-	paramTaskRun = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "myimage",
-					Value: *builder.ArrayOrString("bar"),
-				}},
-			},
-		},
 	}
 
 	arrayTaskRun0Elements = &v1alpha1.TaskRun{
@@ -370,7 +361,7 @@ func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.
 	return ts
 }
 
-func TestApplyParameters(t *testing.T) {
+func TestApplyArrayParameters(t *testing.T) {
 	type args struct {
 		ts *v1alpha1.TaskSpec
 		tr *v1alpha1.TaskRun
@@ -381,16 +372,6 @@ func TestApplyParameters(t *testing.T) {
 		args args
 		want *v1alpha1.TaskSpec
 	}{{
-		name: "single parameter",
-		args: args{
-			ts: simpleTaskSpec,
-			tr: paramTaskRun,
-		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].Image = "bar"
-			spec.Steps[3].Image = "bar"
-		}),
-	}, {
 		name: "array parameter with 0 elements",
 		args: args{
 			ts: arrayParamTaskSpec,
@@ -462,111 +443,6 @@ func TestApplyParameters(t *testing.T) {
 		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "defaulted", "value!", "last"}
 		}),
-	}, {
-		name: "volume mount parameter",
-		args: args{
-			ts: volumeMountTaskSpec,
-			tr: &v1alpha1.TaskRun{
-				Spec: v1alpha1.TaskRunSpec{
-					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
-							Name:  "FOO",
-							Value: *builder.ArrayOrString("world"),
-						}},
-					},
-				},
-			},
-		},
-		want: applyMutation(volumeMountTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].VolumeMounts[0].Name = "world"
-			spec.Steps[0].VolumeMounts[0].SubPath = "sub/world/path"
-			spec.Steps[0].VolumeMounts[0].MountPath = "path/to/world"
-			spec.Steps[0].Image = "busybox:world"
-		}),
-	}, {
-		name: "envs parameter",
-		args: args{
-			ts: envTaskSpec,
-			tr: &v1alpha1.TaskRun{
-				Spec: v1alpha1.TaskRunSpec{
-					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
-							Name:  "FOO",
-							Value: *builder.ArrayOrString("world"),
-						}},
-					},
-				},
-			},
-		},
-		want: applyMutation(envTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].Env[0].Value = "value-world"
-			spec.Steps[0].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
-			spec.Steps[0].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
-			spec.Steps[0].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
-			spec.Steps[0].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
-			spec.Steps[0].EnvFrom[0].Prefix = "prefix-0-world"
-			spec.Steps[0].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
-			spec.Steps[0].EnvFrom[1].Prefix = "prefix-1-world"
-			spec.Steps[0].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
-			spec.Steps[0].Image = "busybox:world"
-		}),
-	}, {
-		name: "stepTemplate parameter",
-		args: args{
-			ts: stepTemplateTaskSpec,
-			tr: &v1alpha1.TaskRun{
-				Spec: v1alpha1.TaskRunSpec{
-					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
-							Name:  "FOO",
-							Value: *builder.ArrayOrString("BAR"),
-						}},
-					},
-				},
-			},
-			dp: []v1alpha1.ParamSpec{
-				{
-					Name:    "myimage",
-					Default: builder.ArrayOrString("replaced-image-name"),
-				},
-			},
-		},
-		want: applyMutation(stepTemplateTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.StepTemplate.Env[0].Value = "BAR"
-			spec.Steps[0].Image = "replaced-image-name"
-		}),
-	}, {
-		name: "with default parameter",
-		args: args{
-			ts: simpleTaskSpec,
-			tr: &v1alpha1.TaskRun{},
-			dp: []v1alpha1.ParamSpec{
-				{
-					Name:    "myimage",
-					Default: builder.ArrayOrString("mydefault"),
-				},
-			},
-		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].Image = "mydefault"
-			spec.Steps[3].Image = "mydefault"
-		}),
-	}, {
-		name: "with empty string default parameter",
-		args: args{
-			ts: simpleTaskSpec,
-			tr: &v1alpha1.TaskRun{},
-			dp: []v1alpha1.ParamSpec{
-				{
-					Name:    "myimage",
-					Default: builder.ArrayOrString(""),
-				},
-			},
-		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].Image = ""
-			spec.Steps[3].Image = ""
-		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -575,6 +451,61 @@ func TestApplyParameters(t *testing.T) {
 				t.Errorf("ApplyParameters() got diff %s", d)
 			}
 		})
+	}
+}
+func TestApplyParameters(t *testing.T) {
+	tr := &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "myimage",
+					Value: *builder.ArrayOrString("bar"),
+				}, {
+					Name:  "FOO",
+					Value: *builder.ArrayOrString("world"),
+				}},
+			},
+		},
+	}
+	dp := []v1alpha1.ParamSpec{{
+		Name:    "something",
+		Default: builder.ArrayOrString("mydefault"),
+	}, {
+		Name:    "somethingelse",
+		Default: builder.ArrayOrString(""),
+	}}
+	want := applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		spec.StepTemplate.Env[0].Value = "world"
+
+		spec.Steps[0].Image = "bar"
+		spec.Steps[2].Image = "mydefault"
+		spec.Steps[3].Image = "bar"
+		spec.Steps[4].Image = ""
+
+		spec.Steps[6].VolumeMounts[0].Name = "world"
+		spec.Steps[6].VolumeMounts[0].SubPath = "sub/world/path"
+		spec.Steps[6].VolumeMounts[0].MountPath = "path/to/world"
+		spec.Steps[6].Image = "busybox:world"
+
+		spec.Steps[7].Env[0].Value = "value-world"
+		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
+		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
+		spec.Steps[7].EnvFrom[0].Prefix = "prefix-0-world"
+		spec.Steps[7].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
+		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[7].Image = "busybox:world"
+
+		spec.Volumes[0].Name = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
+		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
+		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
+	})
+	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("ApplyParameters() got diff %s", d)
 	}
 }
 
@@ -641,213 +572,6 @@ func TestApplyResources(t *testing.T) {
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() -want, +got: %v", d)
-			}
-		})
-	}
-}
-
-func TestVolumeReplacement(t *testing.T) {
-	tests := []struct {
-		name string
-		ts   *v1alpha1.TaskSpec
-		repl map[string]string
-		want *v1alpha1.TaskSpec
-	}{{
-		name: "volume replacement",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(foo)",
-			}},
-		},
-		repl: map[string]string{"foo": "bar"},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "bar",
-			}},
-		},
-	}, {
-		name: "volume configmap",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "$(configmapname)",
-						},
-					},
-				}},
-			},
-		},
-		repl: map[string]string{
-			"name":          "myname",
-			"configmapname": "cfgmapname",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "myname",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "cfgmapname",
-						},
-					},
-				}},
-			},
-		},
-	}, {
-		name: "volume secretname",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "$(secretname)",
-					},
-				}},
-			},
-		},
-		repl: map[string]string{
-			"name":       "mysecret",
-			"secretname": "totallysecure",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "mysecret",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "totallysecure",
-					},
-				}},
-			},
-		},
-	}, {
-		name: "volume PVC name",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "$(FOO)",
-					},
-				},
-			}},
-		},
-		repl: map[string]string{
-			"name": "mypvc",
-			"FOO":  "pvcrocks",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "mypvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pvcrocks",
-					},
-				},
-			}},
-		},
-	}, {
-		name: "deprecated volume replacement",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(foo)",
-			}},
-		},
-		repl: map[string]string{"foo": "bar"},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "bar",
-			}},
-		},
-	}, {
-		name: "deprecated volume configmap",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "$(configmapname)",
-						},
-					},
-				}},
-			},
-		},
-		repl: map[string]string{
-			"name":          "myname",
-			"configmapname": "cfgmapname",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "myname",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "cfgmapname",
-						},
-					},
-				}},
-			},
-		},
-	}, {
-		name: "deprecated volume secretname",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "$(secretname)",
-					},
-				}},
-			},
-		},
-		repl: map[string]string{
-			"name":       "mysecret",
-			"secretname": "totallysecure",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "mysecret",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "totallysecure",
-					},
-				}},
-			},
-		},
-	}, {
-		name: "deprecated volume PVC name",
-		ts: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "$(name)",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "$(FOO)",
-					},
-				},
-			}},
-		},
-		repl: map[string]string{
-			"name": "mypvc",
-			"FOO":  "pvcrocks",
-		},
-		want: &v1alpha1.TaskSpec{
-			Volumes: []corev1.Volume{{
-				Name: "mypvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pvcrocks",
-					},
-				},
-			}},
-		},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := resources.ApplyReplacements(tt.ts, tt.repl, map[string][]string{})
-			if d := cmp.Diff(got, tt.want); d != "" {
-				t.Errorf("ApplyResources() diff %s", d)
 			}
 		})
 	}
