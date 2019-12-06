@@ -611,11 +611,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6adfb125a4b886c749f68f3b7c46c4e9e489e175574ec5ed80c507cbeb91efa1"
+  digest = "1:a98ee7e08ab41b33297be8dcc9608f696daf098e22ae141447cc586825bec813"
   name = "github.com/tektoncd/plumbing"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "51c53a31e7791871544c7a6526b6e0ad6ce25d65"
+  revision = "712d544c2c2118dc8e0d97e51f44e94a9d037d28"
 
 [[projects]]
   digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
