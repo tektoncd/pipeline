@@ -14,16 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package builder
+package v1alpha1
 
 import (
-	builder "github.com/tektoncd/pipeline/test/builder/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // OwnerReferenceOp is an operation which modifies an OwnerReference struct.
-type OwnerReferenceOp = builder.OwnerReferenceOp
+type OwnerReferenceOp func(*metav1.OwnerReference)
 
-var (
-	// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
-	OwnerReferenceAPIVersion = builder.OwnerReferenceAPIVersion
-)
+// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
+func OwnerReferenceAPIVersion(version string) OwnerReferenceOp {
+	return func(o *metav1.OwnerReference) {
+		o.APIVersion = version
+	}
+}

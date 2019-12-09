@@ -17,679 +17,252 @@ limitations under the License.
 package builder
 
 import (
-	"time"
-
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+	builder "github.com/tektoncd/pipeline/test/builder/v1alpha1"
 )
 
 // TaskOp is an operation which modify a Task struct.
-type TaskOp func(*v1alpha1.Task)
+type TaskOp = builder.TaskOp
 
 // ClusterTaskOp is an operation which modify a ClusterTask struct.
-type ClusterTaskOp func(*v1alpha1.ClusterTask)
+type ClusterTaskOp = builder.ClusterTaskOp
 
 // TaskSpeOp is an operation which modify a TaskSpec struct.
-type TaskSpecOp func(*v1alpha1.TaskSpec)
+type TaskSpecOp = builder.TaskSpecOp
 
 // InputsOp is an operation which modify an Inputs struct.
-type InputsOp func(*v1alpha1.Inputs)
+type InputsOp = builder.InputsOp
 
 // OutputsOp is an operation which modify an Outputs struct.
-type OutputsOp func(*v1alpha1.Outputs)
+type OutputsOp = builder.OutputsOp
 
 // TaskRunOp is an operation which modify a TaskRun struct.
-type TaskRunOp func(*v1alpha1.TaskRun)
+type TaskRunOp = builder.TaskRunOp
 
 // TaskRunSpecOp is an operation which modify a TaskRunSpec struct.
-type TaskRunSpecOp func(*v1alpha1.TaskRunSpec)
+type TaskRunSpecOp = builder.TaskRunSpecOp
 
 // TaskResourceOp is an operation which modify a TaskResource struct.
-type TaskResourceOp func(*v1alpha1.TaskResource)
+type TaskResourceOp = builder.TaskResourceOp
 
 // TaskResourceBindingOp is an operation which modify a TaskResourceBinding struct.
-type TaskResourceBindingOp func(*v1alpha1.TaskResourceBinding)
+type TaskResourceBindingOp = builder.TaskResourceBindingOp
 
 // TaskRunStatusOp is an operation which modify a TaskRunStatus struct.
-type TaskRunStatusOp func(*v1alpha1.TaskRunStatus)
+type TaskRunStatusOp = builder.TaskRunStatusOp
 
 // TaskRefOp is an operation which modify a TaskRef struct.
-type TaskRefOp func(*v1alpha1.TaskRef)
+type TaskRefOp = builder.TaskRefOp
 
 // TaskRunInputsOp is an operation which modify a TaskRunInputs struct.
-type TaskRunInputsOp func(*v1alpha1.TaskRunInputs)
+type TaskRunInputsOp = builder.TaskRunInputsOp
 
 // TaskRunOutputsOp is an operation which modify a TaskRunOutputs struct.
-type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
+type TaskRunOutputsOp = builder.TaskRunOutputsOp
 
 // ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
-type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
+type ResolvedTaskResourcesOp = builder.ResolvedTaskResourcesOp
 
 // StepStateOp is an operation which modify a StepStep struct.
-type StepStateOp func(*v1alpha1.StepState)
+type StepStateOp = builder.StepStateOp
 
 // VolumeOp is an operation which modify a Volume struct.
-type VolumeOp func(*corev1.Volume)
+type VolumeOp = builder.VolumeOp
 
 var (
-	trueB = true
+	// Task creates a Task with default values.
+	// Any number of Task modifier can be passed to transform it.
+	Task = builder.Task
+
+	// ClusterTask creates a ClusterTask with default values.
+	// Any number of ClusterTask modifier can be passed to transform it.
+	ClusterTask = builder.ClusterTask
+
+	// ClusterTaskSpec sets the specified spec of the cluster task.
+	// Any number of TaskSpec modifier can be passed to create it.
+	ClusterTaskSpec = builder.ClusterTaskSpec
+
+	// TaskSpec sets the specified spec of the task.
+	// Any number of TaskSpec modifier can be passed to create/modify it.
+	TaskSpec = builder.TaskSpec
+
+	// Step adds a step with the specified name and image to the TaskSpec.
+	// Any number of Container modifier can be passed to transform it.
+	Step = builder.Step
+
+	Sidecar = builder.Sidecar
+
+	// TaskStepTemplate adds a base container for all steps in the task.
+	TaskStepTemplate = builder.TaskStepTemplate
+
+	// TaskVolume adds a volume with specified name to the TaskSpec.
+	// Any number of Volume modifier can be passed to transform it.
+	TaskVolume = builder.TaskVolume
+
+	// VolumeSource sets the VolumeSource to the Volume.
+	VolumeSource = builder.VolumeSource
+
+	// TaskInputs sets inputs to the TaskSpec.
+	// Any number of Inputs modifier can be passed to transform it.
+	TaskInputs = builder.TaskInputs
+
+	// TaskOutputs sets inputs to the TaskSpec.
+	// Any number of Outputs modifier can be passed to transform it.
+	TaskOutputs = builder.TaskOutputs
+
+	// InputsResource adds a resource, with specified name and type, to the Inputs.
+	// Any number of TaskResource modifier can be passed to transform it.
+	InputsResource = builder.InputsResource
+
+	ResourceTargetPath = builder.ResourceTargetPath
+
+	// OutputsResource adds a resource, with specified name and type, to the Outputs.
+	OutputsResource = builder.OutputsResource
+
+	// InputsParamSpec adds a ParamSpec, with specified name and type, to the Inputs.
+	// Any number of TaskParamSpec modifier can be passed to transform it.
+	InputsParamSpec = builder.InputsParamSpec
+
+	// TaskRun creates a TaskRun with default values.
+	// Any number of TaskRun modifier can be passed to transform it.
+	TaskRun = builder.TaskRun
+
+	// TaskRunStatus sets the TaskRunStatus to tshe TaskRun
+	TaskRunStatus = builder.TaskRunStatus
+
+	// PodName sets the Pod name to the TaskRunStatus.
+	PodName = builder.PodName
+
+	// StatusCondition adds a StatusCondition to the TaskRunStatus.
+	StatusCondition = builder.StatusCondition
+
+	Retry = builder.Retry
+
+	// StepState adds a StepState to the TaskRunStatus.
+	StepState = builder.StepState
+
+	// TaskRunStartTime sets the start time to the TaskRunStatus.
+	TaskRunStartTime = builder.TaskRunStartTime
+
+	// TaskRunCompletionTime sets the start time to the TaskRunStatus.
+	TaskRunCompletionTime = builder.TaskRunCompletionTime
+
+	// TaskRunCloudEvent adds an event to the TaskRunStatus.
+	TaskRunCloudEvent = builder.TaskRunCloudEvent
+
+	// TaskRunTimeout sets the timeout duration to the TaskRunSpec.
+	TaskRunTimeout = builder.TaskRunTimeout
+
+	// TaskRunNilTimeout sets the timeout duration to nil on the TaskRunSpec.
+	TaskRunNilTimeout = builder.TaskRunNilTimeout
+
+	// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
+	TaskRunNodeSelector = builder.TaskRunNodeSelector
+
+	// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
+	TaskRunTolerations = builder.TaskRunTolerations
+
+	// TaskRunAffinity sets the Affinity to the TaskRunSpec.
+	TaskRunAffinity = builder.TaskRunAffinity
+
+	// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
+	TaskRunPodSecurityContext = builder.TaskRunPodSecurityContext
+
+	// StateTerminated sets Terminated to the StepState.
+	StateTerminated = builder.StateTerminated
+
+	// SetStepStateTerminated sets Terminated state of a step.
+	SetStepStateTerminated = builder.SetStepStateTerminated
+
+	// SetStepStateRunning sets Running state of a step.
+	SetStepStateRunning = builder.SetStepStateRunning
+
+	// SetStepStateWaiting sets Waiting state of a step.
+	SetStepStateWaiting = builder.SetStepStateWaiting
+
+	// TaskRunOwnerReference sets the OwnerReference, with specified kind and name, to the TaskRun.
+	TaskRunOwnerReference = builder.TaskRunOwnerReference
+
+	Controller = builder.Controller
+
+	BlockOwnerDeletion = builder.BlockOwnerDeletion
+
+	TaskRunLabel = builder.TaskRunLabel
+
+	TaskRunAnnotation = builder.TaskRunAnnotation
+
+	// TaskRunSelfLink adds a SelfLink
+	TaskRunSelfLink = builder.TaskRunSelfLink
+
+	// TaskRunSpec sets the specified spec of the TaskRun.
+	// Any number of TaskRunSpec modifier can be passed to transform it.
+	TaskRunSpec = builder.TaskRunSpec
+
+	// TaskRunCancelled sets the status to cancel to the TaskRunSpec.
+	TaskRunCancelled = builder.TaskRunCancelled
+
+	// TaskRunTaskRef sets the specified Task reference to the TaskRunSpec.
+	// Any number of TaskRef modifier can be passed to transform it.
+	TaskRunTaskRef = builder.TaskRunTaskRef
+
+	// TaskRunSpecStatus sets the Status in the Spec, used for operations
+	// such as cancelling executing TaskRuns.
+	TaskRunSpecStatus = builder.TaskRunSpecStatus
+
+	// TaskRefKind set the specified kind to the TaskRef.
+	TaskRefKind = builder.TaskRefKind
+
+	// TaskRefAPIVersion sets the specified api version to the TaskRef.
+	TaskRefAPIVersion = builder.TaskRefAPIVersion
+
+	// TaskRunTaskSpec sets the specified TaskRunSpec reference to the TaskRunSpec.
+	// Any number of TaskRunSpec modifier can be passed to transform it.
+	TaskRunTaskSpec = builder.TaskRunTaskSpec
+
+	// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
+	TaskRunServiceAccountName = builder.TaskRunServiceAccountName
+
+	// TaskRunInputs sets inputs to the TaskRunSpec.
+	// Any number of TaskRunInputs modifier can be passed to transform it.
+	TaskRunInputs = builder.TaskRunInputs
+
+	// TaskRunInputsParam add a param, with specified name and value, to the TaskRunInputs.
+	TaskRunInputsParam = builder.TaskRunInputsParam
+
+	// TaskRunInputsResource adds a resource, with specified name, to the TaskRunInputs.
+	// Any number of TaskResourceBinding modifier can be passed to transform it.
+	TaskRunInputsResource = builder.TaskRunInputsResource
+
+	// TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
+	TaskResourceBindingRef = builder.TaskResourceBindingRef
+
+	// TaskResourceBindingResourceSpec set the PipelineResourceResourceSpec to the TaskResourceBinding.
+	TaskResourceBindingResourceSpec = builder.TaskResourceBindingResourceSpec
+
+	// TaskResourceBindingRefAPIVersion set the PipelineResourceRef APIVersion to the TaskResourceBinding.
+	TaskResourceBindingRefAPIVersion = builder.TaskResourceBindingRefAPIVersion
+
+	// TaskResourceBindingPaths add any number of path to the TaskResourceBinding.
+	TaskResourceBindingPaths = builder.TaskResourceBindingPaths
+
+	// TaskRunOutputs sets inputs to the TaskRunSpec.
+	// Any number of TaskRunOutputs modifier can be passed to transform it.
+	TaskRunOutputs = builder.TaskRunOutputs
+
+	// TaskRunOutputsResource adds a TaskResourceBinding, with specified name, to the TaskRunOutputs.
+	// Any number of TaskResourceBinding modifier can be passed to modifiy it.
+	TaskRunOutputsResource = builder.TaskRunOutputsResource
+
+	// ResolvedTaskResources creates a ResolvedTaskResources with default values.
+	// Any number of ResolvedTaskResources modifier can be passed to transform it.
+	ResolvedTaskResources = builder.ResolvedTaskResources
+
+	// ResolvedTaskResourcesTaskSpec sets a TaskSpec to the ResolvedTaskResources.
+	// Any number of TaskSpec modifier can be passed to transform it.
+	ResolvedTaskResourcesTaskSpec = builder.ResolvedTaskResourcesTaskSpec
+
+	// ResolvedTaskResourcesInputs adds an input PipelineResource, with specified name, to the ResolvedTaskResources.
+	ResolvedTaskResourcesInputs = builder.ResolvedTaskResourcesInputs
+
+	// ResolvedTaskResourcesOutputs adds an output PipelineResource, with specified name, to the ResolvedTaskResources.
+	ResolvedTaskResourcesOutputs = builder.ResolvedTaskResourcesOutputs
 )
-
-// Task creates a Task with default values.
-// Any number of Task modifier can be passed to transform it.
-func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
-	t := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-	}
-
-	for _, op := range ops {
-		op(t)
-	}
-
-	return t
-}
-
-// ClusterTask creates a ClusterTask with default values.
-// Any number of ClusterTask modifier can be passed to transform it.
-func ClusterTask(name string, ops ...ClusterTaskOp) *v1alpha1.ClusterTask {
-	t := &v1alpha1.ClusterTask{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-
-	for _, op := range ops {
-		op(t)
-	}
-
-	return t
-}
-
-// ClusterTaskSpec sets the specified spec of the cluster task.
-// Any number of TaskSpec modifier can be passed to create it.
-func ClusterTaskSpec(ops ...TaskSpecOp) ClusterTaskOp {
-	return func(t *v1alpha1.ClusterTask) {
-		spec := &t.Spec
-		for _, op := range ops {
-			op(spec)
-		}
-		t.Spec = *spec
-	}
-}
-
-// TaskSpec sets the specified spec of the task.
-// Any number of TaskSpec modifier can be passed to create/modify it.
-func TaskSpec(ops ...TaskSpecOp) TaskOp {
-	return func(t *v1alpha1.Task) {
-		spec := &t.Spec
-		for _, op := range ops {
-			op(spec)
-		}
-		t.Spec = *spec
-	}
-}
-
-// Step adds a step with the specified name and image to the TaskSpec.
-// Any number of Container modifier can be passed to transform it.
-func Step(name, image string, ops ...StepOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		if spec.Steps == nil {
-			spec.Steps = []v1alpha1.Step{}
-		}
-		step := v1alpha1.Step{Container: corev1.Container{
-			Name:  name,
-			Image: image,
-		}}
-		for _, op := range ops {
-			op(&step)
-		}
-		spec.Steps = append(spec.Steps, step)
-	}
-}
-
-func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		c := corev1.Container{
-			Name:  name,
-			Image: image,
-		}
-		for _, op := range ops {
-			op(&c)
-		}
-		spec.Sidecars = append(spec.Sidecars, c)
-	}
-}
-
-// TaskStepTemplate adds a base container for all steps in the task.
-func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		base := &corev1.Container{}
-		for _, op := range ops {
-			op(base)
-		}
-		spec.StepTemplate = base
-	}
-}
-
-// TaskVolume adds a volume with specified name to the TaskSpec.
-// Any number of Volume modifier can be passed to transform it.
-func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		v := &corev1.Volume{Name: name}
-		for _, op := range ops {
-			op(v)
-		}
-		spec.Volumes = append(spec.Volumes, *v)
-	}
-}
-
-// VolumeSource sets the VolumeSource to the Volume.
-func VolumeSource(s corev1.VolumeSource) VolumeOp {
-	return func(v *corev1.Volume) {
-		v.VolumeSource = s
-	}
-}
-
-// TaskInputs sets inputs to the TaskSpec.
-// Any number of Inputs modifier can be passed to transform it.
-func TaskInputs(ops ...InputsOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		if spec.Inputs == nil {
-			spec.Inputs = &v1alpha1.Inputs{}
-		}
-		for _, op := range ops {
-			op(spec.Inputs)
-		}
-	}
-}
-
-// TaskOutputs sets inputs to the TaskSpec.
-// Any number of Outputs modifier can be passed to transform it.
-func TaskOutputs(ops ...OutputsOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		if spec.Outputs == nil {
-			spec.Outputs = &v1alpha1.Outputs{}
-		}
-		for _, op := range ops {
-			op(spec.Outputs)
-		}
-	}
-}
-
-// InputsResource adds a resource, with specified name and type, to the Inputs.
-// Any number of TaskResource modifier can be passed to transform it.
-func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) InputsOp {
-	return func(i *v1alpha1.Inputs) {
-		r := &v1alpha1.TaskResource{
-			ResourceDeclaration: v1alpha1.ResourceDeclaration{
-				Name: name,
-				Type: resourceType,
-			}}
-		for _, op := range ops {
-			op(r)
-		}
-		i.Resources = append(i.Resources, *r)
-	}
-}
-
-func ResourceTargetPath(path string) TaskResourceOp {
-	return func(r *v1alpha1.TaskResource) {
-		r.TargetPath = path
-	}
-}
-
-// OutputsResource adds a resource, with specified name and type, to the Outputs.
-func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
-	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{
-			ResourceDeclaration: v1alpha1.ResourceDeclaration{
-				Name: name,
-				Type: resourceType,
-			}})
-	}
-}
-
-// InputsParamSpec adds a ParamSpec, with specified name and type, to the Inputs.
-// Any number of TaskParamSpec modifier can be passed to transform it.
-func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) InputsOp {
-	return func(i *v1alpha1.Inputs) {
-		ps := &v1alpha1.ParamSpec{Name: name, Type: pt}
-		for _, op := range ops {
-			op(ps)
-		}
-		i.Params = append(i.Params, *ps)
-	}
-}
-
-// TaskRun creates a TaskRun with default values.
-// Any number of TaskRun modifier can be passed to transform it.
-func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
-	tr := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   namespace,
-			Name:        name,
-			Annotations: map[string]string{},
-		},
-	}
-
-	for _, op := range ops {
-		op(tr)
-	}
-
-	return tr
-}
-
-// TaskRunStatus sets the TaskRunStatus to tshe TaskRun
-func TaskRunStatus(ops ...TaskRunStatusOp) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		status := &tr.Status
-		for _, op := range ops {
-			op(status)
-		}
-		tr.Status = *status
-	}
-}
-
-// PodName sets the Pod name to the TaskRunStatus.
-func PodName(name string) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		s.PodName = name
-	}
-}
-
-// StatusCondition adds a StatusCondition to the TaskRunStatus.
-func StatusCondition(condition apis.Condition) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		s.Conditions = append(s.Conditions, condition)
-	}
-}
-
-func Retry(retry v1alpha1.TaskRunStatus) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		s.RetriesStatus = append(s.RetriesStatus, retry)
-	}
-}
-
-// StepState adds a StepState to the TaskRunStatus.
-func StepState(ops ...StepStateOp) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		state := &v1alpha1.StepState{}
-		for _, op := range ops {
-			op(state)
-		}
-		s.Steps = append(s.Steps, *state)
-	}
-}
-
-// TaskRunStartTime sets the start time to the TaskRunStatus.
-func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		s.StartTime = &metav1.Time{Time: startTime}
-	}
-}
-
-// TaskRunCompletionTime sets the start time to the TaskRunStatus.
-func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		s.CompletionTime = &metav1.Time{Time: completionTime}
-	}
-}
-
-// TaskRunCloudEvent adds an event to the TaskRunStatus.
-func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		if len(s.CloudEvents) == 0 {
-			s.CloudEvents = make([]v1alpha1.CloudEventDelivery, 0)
-		}
-		cloudEvent := v1alpha1.CloudEventDelivery{
-			Target: target,
-			Status: v1alpha1.CloudEventDeliveryState{
-				Condition:  condition,
-				RetryCount: retryCount,
-				Error:      error,
-			},
-		}
-		s.CloudEvents = append(s.CloudEvents, cloudEvent)
-	}
-}
-
-// TaskRunTimeout sets the timeout duration to the TaskRunSpec.
-func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Timeout = &metav1.Duration{Duration: d}
-	}
-}
-
-// TaskRunNilTimeout sets the timeout duration to nil on the TaskRunSpec.
-func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
-	spec.Timeout = nil
-}
-
-// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
-func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.PodTemplate.NodeSelector = values
-	}
-}
-
-// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
-func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.PodTemplate.Tolerations = values
-	}
-}
-
-// TaskRunAffinity sets the Affinity to the TaskRunSpec.
-func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.PodTemplate.Affinity = affinity
-	}
-}
-
-// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
-func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.PodTemplate.SecurityContext = context
-	}
-}
-
-// StateTerminated sets Terminated to the StepState.
-func StateTerminated(exitcode int) StepStateOp {
-	return func(s *v1alpha1.StepState) {
-		s.ContainerState = corev1.ContainerState{
-			Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(exitcode)},
-		}
-	}
-}
-
-// SetStepStateTerminated sets Terminated state of a step.
-func SetStepStateTerminated(terminated corev1.ContainerStateTerminated) StepStateOp {
-	return func(s *v1alpha1.StepState) {
-		s.ContainerState = corev1.ContainerState{
-			Terminated: &terminated,
-		}
-	}
-}
-
-// SetStepStateRunning sets Running state of a step.
-func SetStepStateRunning(running corev1.ContainerStateRunning) StepStateOp {
-	return func(s *v1alpha1.StepState) {
-		s.ContainerState = corev1.ContainerState{
-			Running: &running,
-		}
-	}
-}
-
-// SetStepStateWaiting sets Waiting state of a step.
-func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
-	return func(s *v1alpha1.StepState) {
-		s.ContainerState = corev1.ContainerState{
-			Waiting: &waiting,
-		}
-	}
-}
-
-// TaskRunOwnerReference sets the OwnerReference, with specified kind and name, to the TaskRun.
-func TaskRunOwnerReference(kind, name string, ops ...OwnerReferenceOp) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		o := &metav1.OwnerReference{
-			Kind: kind,
-			Name: name,
-		}
-		for _, op := range ops {
-			op(o)
-		}
-		tr.ObjectMeta.OwnerReferences = append(tr.ObjectMeta.OwnerReferences, *o)
-	}
-}
-
-func Controller(o *metav1.OwnerReference) {
-	o.Controller = &trueB
-}
-
-func BlockOwnerDeletion(o *metav1.OwnerReference) {
-	o.BlockOwnerDeletion = &trueB
-}
-
-func TaskRunLabel(key, value string) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		if tr.ObjectMeta.Labels == nil {
-			tr.ObjectMeta.Labels = map[string]string{}
-		}
-		tr.ObjectMeta.Labels[key] = value
-	}
-}
-
-func TaskRunAnnotation(key, value string) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		if tr.ObjectMeta.Annotations == nil {
-			tr.ObjectMeta.Annotations = map[string]string{}
-		}
-		tr.ObjectMeta.Annotations[key] = value
-	}
-}
-
-// TaskRunSelfLink adds a SelfLink
-func TaskRunSelfLink(selflink string) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		tr.ObjectMeta.SelfLink = selflink
-	}
-}
-
-// TaskRunSpec sets the specified spec of the TaskRun.
-// Any number of TaskRunSpec modifier can be passed to transform it.
-func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
-	return func(tr *v1alpha1.TaskRun) {
-		spec := &tr.Spec
-		// Set a default timeout
-		spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
-		for _, op := range ops {
-			op(spec)
-		}
-		tr.Spec = *spec
-	}
-}
-
-// TaskRunCancelled sets the status to cancel to the TaskRunSpec.
-func TaskRunCancelled(spec *v1alpha1.TaskRunSpec) {
-	spec.Status = v1alpha1.TaskRunSpecStatusCancelled
-}
-
-// TaskRunTaskRef sets the specified Task reference to the TaskRunSpec.
-// Any number of TaskRef modifier can be passed to transform it.
-func TaskRunTaskRef(name string, ops ...TaskRefOp) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		ref := &v1alpha1.TaskRef{Name: name}
-		for _, op := range ops {
-			op(ref)
-		}
-		spec.TaskRef = ref
-	}
-}
-
-// TaskRunSpecStatus sets the Status in the Spec, used for operations
-// such as cancelling executing TaskRuns.
-func TaskRunSpecStatus(status v1alpha1.TaskRunSpecStatus) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Status = status
-	}
-}
-
-// TaskRefKind set the specified kind to the TaskRef.
-func TaskRefKind(kind v1alpha1.TaskKind) TaskRefOp {
-	return func(ref *v1alpha1.TaskRef) {
-		ref.Kind = kind
-	}
-}
-
-// TaskRefAPIVersion sets the specified api version to the TaskRef.
-func TaskRefAPIVersion(version string) TaskRefOp {
-	return func(ref *v1alpha1.TaskRef) {
-		ref.APIVersion = version
-	}
-}
-
-// TaskRunTaskSpec sets the specified TaskRunSpec reference to the TaskRunSpec.
-// Any number of TaskRunSpec modifier can be passed to transform it.
-func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		taskSpec := &v1alpha1.TaskSpec{}
-		for _, op := range ops {
-			op(taskSpec)
-		}
-		spec.TaskSpec = taskSpec
-	}
-}
-
-// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
-	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccountName = sa
-	}
-}
-
-// TaskRunInputs sets inputs to the TaskRunSpec.
-// Any number of TaskRunInputs modifier can be passed to transform it.
-func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		inputs := &spec.Inputs
-		for _, op := range ops {
-			op(inputs)
-		}
-		spec.Inputs = *inputs
-	}
-}
-
-// TaskRunInputsParam add a param, with specified name and value, to the TaskRunInputs.
-func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.Param{
-			Name:  name,
-			Value: *arrayOrString,
-		})
-	}
-}
-
-// TaskRunInputsResource adds a resource, with specified name, to the TaskRunInputs.
-// Any number of TaskResourceBinding modifier can be passed to transform it.
-func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInputsOp {
-	return func(i *v1alpha1.TaskRunInputs) {
-		binding := &v1alpha1.TaskResourceBinding{
-			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-				Name: name,
-			},
-		}
-		for _, op := range ops {
-			op(binding)
-		}
-		i.Resources = append(i.Resources, *binding)
-	}
-}
-
-// TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
-func TaskResourceBindingRef(name string) TaskResourceBindingOp {
-	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef = &v1alpha1.PipelineResourceRef{
-			Name: name,
-		}
-	}
-}
-
-// TaskResourceBindingResourceSpec set the PipelineResourceResourceSpec to the TaskResourceBinding.
-func TaskResourceBindingResourceSpec(spec *v1alpha1.PipelineResourceSpec) TaskResourceBindingOp {
-	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceSpec = spec
-	}
-}
-
-// TaskResourceBindingRefAPIVersion set the PipelineResourceRef APIVersion to the TaskResourceBinding.
-func TaskResourceBindingRefAPIVersion(version string) TaskResourceBindingOp {
-	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef.APIVersion = version
-	}
-}
-
-// TaskResourceBindingPaths add any number of path to the TaskResourceBinding.
-func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
-	return func(b *v1alpha1.TaskResourceBinding) {
-		b.Paths = paths
-	}
-}
-
-// TaskRunOutputs sets inputs to the TaskRunSpec.
-// Any number of TaskRunOutputs modifier can be passed to transform it.
-func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		outputs := &spec.Outputs
-		for _, op := range ops {
-			op(outputs)
-		}
-		spec.Outputs = *outputs
-	}
-}
-
-// TaskRunOutputsResource adds a TaskResourceBinding, with specified name, to the TaskRunOutputs.
-// Any number of TaskResourceBinding modifier can be passed to modifiy it.
-func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOutputsOp {
-	return func(i *v1alpha1.TaskRunOutputs) {
-		binding := &v1alpha1.TaskResourceBinding{
-			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-				Name: name,
-			},
-		}
-		for _, op := range ops {
-			op(binding)
-		}
-		i.Resources = append(i.Resources, *binding)
-	}
-}
-
-// ResolvedTaskResources creates a ResolvedTaskResources with default values.
-// Any number of ResolvedTaskResources modifier can be passed to transform it.
-func ResolvedTaskResources(ops ...ResolvedTaskResourcesOp) *resources.ResolvedTaskResources {
-	resources := &resources.ResolvedTaskResources{}
-	for _, op := range ops {
-		op(resources)
-	}
-	return resources
-}
-
-// ResolvedTaskResourcesTaskSpec sets a TaskSpec to the ResolvedTaskResources.
-// Any number of TaskSpec modifier can be passed to transform it.
-func ResolvedTaskResourcesTaskSpec(ops ...TaskSpecOp) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		spec := &v1alpha1.TaskSpec{}
-		for _, op := range ops {
-			op(spec)
-		}
-		r.TaskSpec = spec
-	}
-}
-
-// ResolvedTaskResourcesInputs adds an input PipelineResource, with specified name, to the ResolvedTaskResources.
-func ResolvedTaskResourcesInputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		if r.Inputs == nil {
-			r.Inputs = map[string]*v1alpha1.PipelineResource{}
-		}
-		r.Inputs[name] = resource
-	}
-}
-
-// ResolvedTaskResourcesOutputs adds an output PipelineResource, with specified name, to the ResolvedTaskResources.
-func ResolvedTaskResourcesOutputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		if r.Outputs == nil {
-			r.Outputs = map[string]*v1alpha1.PipelineResource{}
-		}
-		r.Outputs[name] = resource
-	}
-}
