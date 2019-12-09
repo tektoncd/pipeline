@@ -18,10 +18,9 @@ package pullrequest
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"strconv"
-
-	"golang.org/x/xerrors"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jenkins-x/go-scm/scm"
@@ -55,7 +54,7 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 	h.logger.Info("finding pr")
 	pr, _, err := h.client.PullRequests.Find(ctx, h.repo, h.prNum)
 	if err != nil {
-		return nil, xerrors.Errorf("finding pr: %s", h.prNum, err)
+		return nil, fmt.Errorf("finding pr %d: %w", h.prNum, err)
 	}
 
 	// Statuses
@@ -65,7 +64,7 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 		body, _ := ioutil.ReadAll(out.Body)
 		defer out.Body.Close()
 		h.logger.Warnf("%v: %s", err, string(body))
-		return nil, xerrors.Errorf("finding combined status: %s", h.prNum, err)
+		return nil, fmt.Errorf("finding combined status for pr %d: %w", h.prNum, err)
 	}
 
 	// Comments
@@ -73,13 +72,13 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 	h.logger.Info("finding comments: %v", h)
 	comments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("finding comments: %s", h.prNum, err)
+		return nil, fmt.Errorf("finding comments for pr %d: %w", h.prNum, err)
 	}
 	h.logger.Info("found comments: %v", comments)
 
 	labels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("finding labels: %s", h.prNum, err)
+		return nil, fmt.Errorf("finding labels for pr %d: %w", h.prNum, err)
 	}
 	pr.Labels = labels
 
@@ -143,7 +142,7 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 	// which labels are new and should not be modified.
 	currentLabels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
-		return xerrors.Errorf("listing labels %s: %w", h.prNum, err)
+		return fmt.Errorf("listing labels for pr %d: %w", h.prNum, err)
 	}
 	current := make(map[string]bool)
 	for _, l := range currentLabels {
@@ -163,7 +162,7 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 	h.logger.Debugf("Creating labels %v for PR %d", create, h.prNum)
 	for _, l := range create {
 		if _, err := h.client.PullRequests.AddLabel(ctx, h.repo, h.prNum, l); err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("adding label %s: %w", l, err))
+			merr = multierror.Append(merr, fmt.Errorf("adding label %s: %w", l, err))
 		}
 	}
 
@@ -173,7 +172,7 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 		if !labels[l] && manifest[l] {
 			h.logger.Debugf("Removing label %s for PR %d", l, h.prNum)
 			if _, err := h.client.PullRequests.DeleteLabel(ctx, h.repo, h.prNum, l); err != nil {
-				merr = multierror.Append(merr, xerrors.Errorf("finding pr %s: %w", h.prNum, err))
+				merr = multierror.Append(merr, fmt.Errorf("finding pr %d: %w", h.prNum, err))
 			}
 		}
 	}
@@ -198,11 +197,11 @@ func (h *Handler) uploadComments(ctx context.Context, manifest Manifest, comment
 
 	var merr error
 	if err := h.maybeDeleteComments(ctx, manifest, existingComments); err != nil {
-		merr = multierror.Append(merr, xerrors.Errorf("deleting comments: %s", existingComments, err))
+		merr = multierror.Append(merr, fmt.Errorf("deleting comments %v: %w", existingComments, err))
 	}
 
 	if err := h.createNewComments(ctx, newComments); err != nil {
-		merr = multierror.Append(merr, xerrors.Errorf("creating comments: %s", newComments, err))
+		merr = multierror.Append(merr, fmt.Errorf("creating comments %v: %s", newComments, err))
 	}
 
 	return merr
@@ -239,7 +238,7 @@ func (h *Handler) maybeDeleteComments(ctx context.Context, manifest Manifest, co
 		// upstream source.
 		h.logger.Infof("Deleting comment %d for PR %d", ec.ID, h.prNum)
 		if _, err := h.client.PullRequests.DeleteComment(ctx, h.repo, h.prNum, ec.ID); err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("deleting comment: %s", ec.ID, err))
+			merr = multierror.Append(merr, fmt.Errorf("deleting comment %d: %w", ec.ID, err))
 			continue
 		}
 	}
@@ -254,7 +253,7 @@ func (h *Handler) createNewComments(ctx context.Context, comments []*scm.Comment
 		}
 		h.logger.Infof("Creating comment %s for PR %d", c.Body, h.prNum)
 		if _, _, err := h.client.PullRequests.CreateComment(ctx, h.repo, h.prNum, c); err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("creating comment: %s", c, err))
+			merr = multierror.Append(merr, fmt.Errorf("creating comment %v: %w", c, err))
 		}
 	}
 	return merr
@@ -294,7 +293,7 @@ func (h *Handler) uploadStatuses(ctx context.Context, statuses []*scm.Status, sh
 		}
 		h.logger.Infof("Creating status %s on %s", si.Label, sha)
 		if _, _, err := h.client.Repositories.CreateStatus(ctx, h.repo, sha, si); err != nil {
-			merr = multierror.Append(merr, xerrors.Errorf("creating status: %s", si.Label, err))
+			merr = multierror.Append(merr, fmt.Errorf("creating status %q: %w", si.Label, err))
 			continue
 		}
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -28,9 +29,8 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -1096,7 +1096,7 @@ func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.Errorf("IT HAS ALL GONE WRONG")
+		return nil, fmt.Errorf("IT HAS ALL GONE WRONG")
 	}
 	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {
@@ -1240,14 +1240,14 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 
 	// Return an error when the Task is retrieved, as if it didn't exist
 	getTask := func(name string) (v1alpha1.TaskInterface, error) {
-		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
+		return nil, kerrors.NewNotFound(v1alpha1.Resource("task"), name)
 	}
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) {
-		return nil, errors.NewNotFound(v1alpha1.Resource("clustertask"), name)
+		return nil, kerrors.NewNotFound(v1alpha1.Resource("clustertask"), name)
 	}
 
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
-		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+		return nil, kerrors.NewNotFound(v1alpha1.Resource("taskrun"), name)
 	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
 		return nil, nil
@@ -1396,7 +1396,7 @@ func TestResolveConditionChecks(t *testing.T) {
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, errors.New("should not get called") }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1418,7 +1418,7 @@ func TestResolveConditionChecks(t *testing.T) {
 				case "pipelinerun-mytask1-9l9zj":
 					return &trs[0], nil
 				default:
-					return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
+					return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 				}
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
@@ -1437,7 +1437,7 @@ func TestResolveConditionChecks(t *testing.T) {
 				} else if name == "pipelinerun-mytask1-mssqb" {
 					return &trs[0], nil
 				}
-				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
+				return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
 				ConditionCheckName:    "pipelinerun-mytask1-mssqb-always-true-78c5n",
@@ -1497,7 +1497,7 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, errors.New("should not get called") }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1521,7 +1521,7 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 				case "pipelinerun-mytask1-9l9zj-always-true-mssqb":
 					return cc2, nil
 				}
-				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
+				return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
 				ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-mz4c7",
@@ -1569,15 +1569,15 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
 		if name == ccName {
-			return nil, xerrors.Errorf("should not be called")
+			return nil, fmt.Errorf("should not be called")
 		} else if name == trName {
 			return &trs[0], nil
 		}
-		return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
+		return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 	}
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, errors.New("should not get called") }
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
-		return nil, errors.NewNotFound(v1alpha1.Resource("condition"), name)
+		return nil, kerrors.NewNotFound(v1alpha1.Resource("condition"), name)
 	}
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1628,9 +1628,9 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		} else if name == trName {
 			return &trs[0], nil
 		}
-		return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
+		return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 	}
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, errors.New("should not get called") }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 
 	ccStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
@@ -1695,7 +1695,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, errors.New("should not get called") }
 
 	// This err result is required to satisfy the type alias on this function, but it triggers
 	// a false positive in the linter: https://github.com/mvdan/unparam/issues/40

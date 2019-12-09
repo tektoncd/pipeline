@@ -17,10 +17,11 @@ limitations under the License.
 package taskrun
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"golang.org/x/xerrors"
 )
 
 func validateInputResources(inputs *v1alpha1.Inputs, providedResources map[string]*v1alpha1.PipelineResource) error {
@@ -48,16 +49,16 @@ func validateResources(requiredResources []v1alpha1.TaskResource, providedResour
 	}
 	err := list.IsSame(required, provided)
 	if err != nil {
-		return xerrors.Errorf("TaskRun's declared resources didn't match usage in Task: %w", err)
+		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %w", err)
 	}
 	for _, resource := range requiredResources {
 		r := providedResources[resource.Name]
 		if r == nil {
 			// This case should never be hit due to the check for missing resources at the beginning of the function
-			return xerrors.Errorf("resource %q is missing", resource.Name)
+			return fmt.Errorf("resource %q is missing", resource.Name)
 		}
 		if resource.Type != r.Spec.Type {
-			return xerrors.Errorf("resource %q should be type %q but was %q", resource.Name, r.Spec.Type, resource.Type)
+			return fmt.Errorf("resource %q should be type %q but was %q", resource.Name, r.Spec.Type, resource.Type)
 		}
 	}
 	return nil
@@ -87,11 +88,11 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 		}
 	}
 	if len(missingParamsNoDefaults) > 0 {
-		return xerrors.Errorf("missing values for these params which have no default values: %s", missingParamsNoDefaults)
+		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNoDefaults)
 	}
 	extraParams := list.DiffLeft(providedParams, neededParams)
 	if len(extraParams) != 0 {
-		return xerrors.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
+		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
 	}
 
 	// Now that we have checked against missing/extra params, make sure each param's actual type matches
@@ -103,7 +104,7 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 		}
 	}
 	if len(wrongTypeParamNames) != 0 {
-		return xerrors.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
+		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 
 	return nil
@@ -112,13 +113,13 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
 func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
 	if err := validateParams(rtr.TaskSpec.Inputs, params); err != nil {
-		return xerrors.Errorf("invalid input params: %w", err)
+		return fmt.Errorf("invalid input params: %w", err)
 	}
 	if err := validateInputResources(rtr.TaskSpec.Inputs, rtr.Inputs); err != nil {
-		return xerrors.Errorf("invalid input resources: %w", err)
+		return fmt.Errorf("invalid input resources: %w", err)
 	}
 	if err := validateOutputResources(rtr.TaskSpec.Outputs, rtr.Outputs); err != nil {
-		return xerrors.Errorf("invalid output resources: %w", err)
+		return fmt.Errorf("invalid output resources: %w", err)
 	}
 
 	return nil

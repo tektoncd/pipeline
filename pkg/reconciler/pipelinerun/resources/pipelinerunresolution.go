@@ -21,7 +21,6 @@ import (
 	"reflect"
 
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
@@ -178,7 +177,7 @@ func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.Ge
 	for _, resource := range pr.Spec.Resources {
 		r, err := resources.GetResourceFromBinding(&resource, getResource)
 		if err != nil {
-			return rs, xerrors.Errorf("Error following resource reference for %s: %w", resource.Name, err)
+			return rs, fmt.Errorf("Error following resource reference for %s: %w", resource.Name, err)
 		}
 		rs[resource.Name] = r
 	}
@@ -196,7 +195,7 @@ func ValidateResourceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun
 		provided = append(provided, resource.Name)
 	}
 	if err := list.IsSame(required, provided); err != nil {
-		return xerrors.Errorf("PipelineRun bound resources didn't match Pipeline: %w", err)
+		return fmt.Errorf("PipelineRun bound resources didn't match Pipeline: %w", err)
 	}
 	return nil
 }
@@ -261,7 +260,7 @@ func ResolvePipelineRun(
 		spec := t.TaskSpec()
 		rtr, err := ResolvePipelineTaskResources(pt, &spec, t.TaskMetadata().Name, pt.TaskRef.Kind, providedResources)
 		if err != nil {
-			return nil, xerrors.Errorf("couldn't match referenced resources with declared resources: %w", err)
+			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
 		}
 
 		rprt.ResolvedTaskResources = rtr
@@ -269,7 +268,7 @@ func ResolvePipelineRun(
 		taskRun, err := getTaskRun(rprt.TaskRunName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return nil, xerrors.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
+				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
 			}
 		}
 		if taskRun != nil {
@@ -422,14 +421,14 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask, taskRunStatus map[string]
 		cctr, err := getTaskRun(conditionCheckName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return nil, xerrors.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
+				return nil, fmt.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
 			}
 		}
 		conditionResources := map[string]*v1alpha1.PipelineResource{}
 		for _, declared := range ptc.Resources {
 			r, ok := providedResources[declared.Resource]
 			if !ok {
-				return nil, xerrors.Errorf("resources %s missing for condition %s in pipeline task %s", declared.Resource, cName, pt.Name)
+				return nil, fmt.Errorf("resources %s missing for condition %s in pipeline task %s", declared.Resource, cName, pt.Name)
 			}
 			conditionResources[declared.Name] = r
 		}
@@ -461,14 +460,14 @@ func ResolvePipelineTaskResources(pt v1alpha1.PipelineTask, ts *v1alpha1.TaskSpe
 		for _, taskInput := range pt.Resources.Inputs {
 			resource, ok := providedResources[taskInput.Resource]
 			if !ok {
-				return nil, xerrors.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
+				return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
 			}
 			rtr.Inputs[taskInput.Name] = resource
 		}
 		for _, taskOutput := range pt.Resources.Outputs {
 			resource, ok := providedResources[taskOutput.Resource]
 			if !ok {
-				return nil, xerrors.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
+				return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
 			}
 			rtr.Outputs[taskOutput.Name] = resource
 		}

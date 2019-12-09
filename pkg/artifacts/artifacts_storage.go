@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -180,7 +179,7 @@ func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.Sugar
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
+		return false, fmt.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
 	if configMap == nil {
 		return true, nil
@@ -206,7 +205,7 @@ func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Inte
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(BucketConfigName, metav1.GetOptions{})
 	pvc, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
-		return nil, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
+		return nil, fmt.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
 	if pvc {
 		return &v1alpha1.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}, nil
@@ -252,7 +251,7 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 
 			configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(PvcConfigName, metav1.GetOptions{})
 			if err != nil && !errors.IsNotFound(err) {
-				return nil, xerrors.Errorf("failed to get PVC ConfigMap %s for %q due to error: %w", PvcConfigName, pr.Name, err)
+				return nil, fmt.Errorf("failed to get PVC ConfigMap %s for %q due to error: %w", PvcConfigName, pr.Name, err)
 			}
 			var pvcSizeStr string
 			var pvcStorageClassNameStr string
@@ -265,7 +264,7 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 			}
 			pvcSize, err := resource.ParseQuantity(pvcSizeStr)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to create Persistent Volume spec for %q due to error: %w", pr.Name, err)
+				return nil, fmt.Errorf("failed to create Persistent Volume spec for %q due to error: %w", pr.Name, err)
 			}
 			var pvcStorageClassName *string
 			if pvcStorageClassNameStr == "" {
@@ -277,11 +276,11 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 			pvcSpec := GetPVCSpec(pr, pvcSize, pvcStorageClassName)
 			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvcSpec)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to claim Persistent Volume %q due to error: %w", pr.Name, err)
+				return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %w", pr.Name, err)
 			}
 			return pvc, nil
 		}
-		return nil, xerrors.Errorf("failed to get claim Persistent Volume %q due to error: %w", pr.Name, err)
+		return nil, fmt.Errorf("failed to get claim Persistent Volume %q due to error: %w", pr.Name, err)
 	}
 	return nil, nil
 }
@@ -289,10 +288,10 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 func deletePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("failed to get Persistent Volume %q due to error: %w", GetPVCName(pr), err)
+			return fmt.Errorf("failed to get Persistent Volume %q due to error: %w", GetPVCName(pr), err)
 		}
 	} else if err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(GetPVCName(pr), &metav1.DeleteOptions{}); err != nil {
-		return xerrors.Errorf("failed to delete Persistent Volume %q due to error: %w", pr.Name, err)
+		return fmt.Errorf("failed to delete Persistent Volume %q due to error: %w", pr.Name, err)
 	}
 	return nil
 }

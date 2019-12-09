@@ -779,17 +779,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:da4baf48e12c5766130e8ec8ae5058cb3b5e8b533606c75340f7fb59604a4018"
-  name = "golang.org/x/xerrors"
-  packages = [
-    ".",
-    "internal",
-  ]
-  pruneopts = "NUT"
-  revision = "a985d3407aa71f30cf86696ee0a2f409709f22e1"
-
-[[projects]]
-  branch = "master"
   digest = "1:ef0144000c413fdaab3f94116a11e6a2e3994fcb085b052ecf01fcb312e99a13"
   name = "google.golang.org/api"
   packages = [
@@ -1380,7 +1369,6 @@
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
     "golang.org/x/oauth2",
-    "golang.org/x/xerrors",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1beta1",

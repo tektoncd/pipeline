@@ -17,10 +17,10 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -80,7 +80,7 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, xerrors.New("shouldn't be called") }
+	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("shouldn't be called") }
 	pipelineMeta, pipelineSpec, err := GetPipelineData(pr, gt)
 
 	if err != nil {
@@ -102,7 +102,7 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 			Name: "mypipelinerun",
 		},
 	}
-	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, xerrors.New("shouldn't be called") }
+	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("shouldn't be called") }
 	_, _, err := GetPipelineData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced pipeline spec but didn't get error")
@@ -120,7 +120,7 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, xerrors.New("something went wrong") }
+	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("something went wrong") }
 	_, _, err := GetPipelineData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")

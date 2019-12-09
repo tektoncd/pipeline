@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -125,7 +124,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 				return false, nil
 			}
 			if resp != nil && resp.StatusCode != http.StatusOK {
-				return true, xerrors.Errorf("Expected 200 but received %d response code	from service at http://%s:8080", resp.StatusCode, serviceIP)
+				return true, fmt.Errorf("Expected 200 but received %d response code from service at http://%s:8080", resp.StatusCode, serviceIP)
 			}
 			return true, nil
 		})

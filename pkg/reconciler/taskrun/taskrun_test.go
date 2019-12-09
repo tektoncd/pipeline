@@ -36,7 +36,6 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1098,7 +1097,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 	clients := testAssets.Clients
 
 	clients.Kube.PrependReactor("get", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, xerrors.New("induce failure fetching pods")
+		return true, nil, errors.New("induce failure fetching pods")
 	})
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {

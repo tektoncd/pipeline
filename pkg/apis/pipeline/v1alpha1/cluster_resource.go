@@ -19,11 +19,11 @@ package v1alpha1
 import (
 	b64 "encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -57,7 +57,7 @@ type ClusterResource struct {
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
 func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*ClusterResource, error) {
 	if r.Spec.Type != PipelineResourceTypeCluster {
-		return nil, xerrors.Errorf("ClusterResource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("ClusterResource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	clusterResource := ClusterResource{
 		Type:                  r.Spec.Type,

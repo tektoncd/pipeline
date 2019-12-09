@@ -34,7 +34,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -411,7 +410,7 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, log
 func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
 	results := []v1alpha1.PipelineResourceResult{}
 	if err := json.Unmarshal(logContent, &results); err != nil {
-		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
+		return fmt.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
 	}
 	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
 	return nil
@@ -420,7 +419,7 @@ func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newtaskrun, err := c.taskRunLister.TaskRuns(taskrun.Namespace).Get(taskrun.Name)
 	if err != nil {
-		return nil, xerrors.Errorf("Error getting TaskRun %s when updating status: %w", taskrun.Name, err)
+		return nil, fmt.Errorf("Error getting TaskRun %s when updating status: %w", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
@@ -432,7 +431,7 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, xerrors.Errorf("Error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		return nil, fmt.Errorf("Error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
@@ -490,7 +489,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {
-		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
+		return nil, fmt.Errorf("translating Build to Pod: %w", err)
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
@@ -533,7 +532,7 @@ func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images
 	for rName, r := range resources {
 		i, err := v1alpha1.ResourceFromType(r, images)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
+			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}
 		p[rName] = i
 	}

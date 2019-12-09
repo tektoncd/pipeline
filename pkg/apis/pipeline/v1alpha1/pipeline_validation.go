@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
-	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
@@ -67,7 +66,7 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	}
 	missing := list.DiffLeft(required, provided)
 	if len(missing) > 0 {
-		return xerrors.Errorf("Pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing)
+		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing)
 	}
 	return nil
 }
@@ -99,10 +98,10 @@ func validateFrom(tasks []PipelineTask) error {
 				for _, pb := range rd.From {
 					outputs, found := taskOutputs[pb]
 					if !found {
-						return xerrors.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
+						return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
 					}
 					if !isOutput(outputs, rd.Resource) {
-						return xerrors.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
+						return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
 					}
 				}
 			}
