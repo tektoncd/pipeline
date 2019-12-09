@@ -51,10 +51,10 @@ var (
 			Name:      "pipelineruntest",
 		},
 	}
-	defaultStorageClass   *string = nil
-	customStorageClass            = "custom-storage-class"
-	persistentVolumeClaim         = GetPersistentVolumeClaim(DefaultPvcSize, defaultStorageClass)
-	quantityComparer              = cmp.Comparer(func(x, y resource.Quantity) bool {
+	defaultStorageClass   *string
+	customStorageClass    = "custom-storage-class"
+	persistentVolumeClaim = GetPersistentVolumeClaim(DefaultPvcSize, defaultStorageClass)
+	quantityComparer      = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
 
