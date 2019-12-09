@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"fmt"
+
 	"github.com/google/go-cmp/cmp"
-	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -152,7 +153,7 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 			if volume.Name == v.Name {
 				// If a Volume with the same name but different contents has already been added, we can't add both
 				if d := cmp.Diff(volume, v); d != "" {
-					return xerrors.Errorf("Tried to add volume %s already added but with different contents", volume.Name)
+					return fmt.Errorf("Tried to add volume %s already added but with different contents", volume.Name)
 				}
 				// If an identical Volume has already been added, don't add it again
 				alreadyAdded = true
@@ -169,7 +170,7 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 func checkStepNotAlreadyAdded(s Step, steps []Step) error {
 	for _, step := range steps {
 		if s.Name == step.Name {
-			return xerrors.Errorf("Step %s cannot be added again", step.Name)
+			return fmt.Errorf("Step %s cannot be added again", step.Name)
 		}
 	}
 	return nil

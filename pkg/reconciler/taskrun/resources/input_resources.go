@@ -17,13 +17,13 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -34,7 +34,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 			return &br, nil
 		}
 	}
-	return nil, xerrors.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
 }
 
 // AddInputResource reads the inputs resources and adds the corresponding container steps
@@ -76,11 +76,11 @@ func AddInputResource(
 		input := taskSpec.Inputs.Resources[i]
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get bound resource: %w", err)
+			return nil, fmt.Errorf("failed to get bound resource: %w", err)
 		}
 		resource, ok := inputResources[boundResource.Name]
 		if !ok || resource == nil {
-			return nil, xerrors.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
+			return nil, fmt.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
 		var copyStepsFromPrevTasks []v1alpha1.Step
 		dPath := destinationPath(input.Name, input.TargetPath)
@@ -114,7 +114,7 @@ func AddInputResource(
 				return nil, err
 			}
 			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
-				return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+				return nil, fmt.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
 			}
 		}
 	}

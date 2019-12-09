@@ -17,8 +17,10 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,7 +56,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 	for _, r := range inputs {
 		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
 		if err != nil {
-			return nil, xerrors.Errorf("couldn't retrieve referenced input PipelineResource: %w", err)
+			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource: %w", err)
 		}
 
 		rtr.Inputs[r.Name] = rr
@@ -64,7 +66,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
 
 		if err != nil {
-			return nil, xerrors.Errorf("couldn't retrieve referenced output PipelineResource: %w", err)
+			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource: %w", err)
 		}
 
 		rtr.Outputs[r.Name] = rr
@@ -76,7 +78,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 // instantiating it from the embedded spec.
 func GetResourceFromBinding(r *v1alpha1.PipelineResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
 	if (r.ResourceRef != nil && r.ResourceRef.Name != "") && r.ResourceSpec != nil {
-		return nil, xerrors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
+		return nil, errors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
 	}
 	if r.ResourceRef != nil && r.ResourceRef.Name != "" {
 		return getter(r.ResourceRef.Name)
@@ -89,5 +91,5 @@ func GetResourceFromBinding(r *v1alpha1.PipelineResourceBinding, getter GetResou
 			Spec: *r.ResourceSpec,
 		}, nil
 	}
-	return nil, xerrors.New("Neither ResourseRef nor ResourceSpec is defined")
+	return nil, errors.New("Neither ResourseRef nor ResourceSpec is defined")
 }

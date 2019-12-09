@@ -17,8 +17,9 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 )
 
 // Validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
@@ -41,7 +42,7 @@ func ValidateParamTypesMatching(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineR
 
 	// Return an error with the misconfigured parameters' names, or return nil if there are none.
 	if len(wrongTypeParamNames) != 0 {
-		return xerrors.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames)
+		return fmt.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames)
 	}
 	return nil
 }

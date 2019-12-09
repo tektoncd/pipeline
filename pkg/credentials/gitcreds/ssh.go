@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/credentials"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -58,7 +57,7 @@ func (dc *sshGitConfig) String() string {
 func (dc *sshGitConfig) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {
-		return xerrors.Errorf("Expect entries of the form secret=url, got: %v", value)
+		return fmt.Errorf("Expect entries of the form secret=url, got: %v", value)
 	}
 	secretName := parts[0]
 	url := parts[1]

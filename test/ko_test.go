@@ -19,11 +19,10 @@ limitations under the License.
 package test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
-
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -48,7 +47,7 @@ func getDockerRepo() (string, error) {
 	// it is used here to dynamically get the docker registry to push the image to
 	dockerRepo := os.Getenv("KO_DOCKER_REPO")
 	if dockerRepo == "" {
-		return "", xerrors.New("KO_DOCKER_REPO env variable is required")
+		return "", errors.New("KO_DOCKER_REPO env variable is required")
 	}
 	return fmt.Sprintf("%s/kanikotasktest", dockerRepo), nil
 }

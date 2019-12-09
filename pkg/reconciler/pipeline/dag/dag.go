@@ -17,10 +17,11 @@ limitations under the License.
 package dag
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/list"
-	"golang.org/x/xerrors"
 )
 
 type Task interface {
@@ -55,7 +56,7 @@ func newGraph() *Graph {
 
 func (g *Graph) addPipelineTask(t Task) (*Node, error) {
 	if _, ok := g.Nodes[t.HashKey()]; ok {
-		return nil, xerrors.New("duplicate pipeline task")
+		return nil, errors.New("duplicate pipeline task")
 	}
 	newNode := &Node{
 		Task: t,
@@ -72,7 +73,7 @@ func Build(tasks Tasks) (*Graph, error) {
 	// Add all Tasks mentioned in the `PipelineSpec`
 	for _, pt := range tasks.Items() {
 		if _, err := d.addPipelineTask(pt); err != nil {
-			return nil, xerrors.Errorf("task %s is already present in Graph, can't add it again: %w", pt.HashKey(), err)
+			return nil, fmt.Errorf("task %s is already present in Graph, can't add it again: %w", pt.HashKey(), err)
 		}
 		deps[pt.HashKey()] = pt.Deps()
 	}
@@ -80,7 +81,7 @@ func Build(tasks Tasks) (*Graph, error) {
 	for pt, taskDeps := range deps {
 		for _, previousTask := range taskDeps {
 			if err := addLink(pt, previousTask, d.Nodes); err != nil {
-				return nil, xerrors.Errorf("couldn't add link between %s and %s: %w", pt, previousTask, err)
+				return nil, fmt.Errorf("couldn't add link between %s and %s: %w", pt, previousTask, err)
 			}
 		}
 	}
@@ -112,7 +113,7 @@ func GetSchedulable(g *Graph, doneTasks ...string) (map[string]struct{}, error) 
 
 	notVisited := list.DiffLeft(doneTasks, visitedNames)
 	if len(notVisited) > 0 {
-		return map[string]struct{}{}, xerrors.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
+		return map[string]struct{}{}, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
 	}
 
 	return d, nil
@@ -121,13 +122,13 @@ func GetSchedulable(g *Graph, doneTasks ...string) (map[string]struct{}, error) 
 func linkPipelineTasks(prev *Node, next *Node) error {
 	// Check for self cycle
 	if prev.Task.HashKey() == next.Task.HashKey() {
-		return xerrors.Errorf("cycle detected; task %q depends on itself", next.Task.HashKey())
+		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.HashKey())
 	}
 	// Check if we are adding cycles.
 	visited := map[string]bool{prev.Task.HashKey(): true, next.Task.HashKey(): true}
 	path := []string{next.Task.HashKey(), prev.Task.HashKey()}
 	if err := visit(next.Task.HashKey(), prev.Prev, path, visited); err != nil {
-		return xerrors.Errorf("cycle detected: %w", err)
+		return fmt.Errorf("cycle detected: %w", err)
 	}
 	next.Prev = append(next.Prev, prev)
 	prev.Next = append(prev.Next, next)
@@ -138,7 +139,7 @@ func visit(currentName string, nodes []*Node, path []string, visited map[string]
 	for _, n := range nodes {
 		path = append(path, n.Task.HashKey())
 		if _, ok := visited[n.Task.HashKey()]; ok {
-			return xerrors.New(getVisitedPath(path))
+			return errors.New(getVisitedPath(path))
 		}
 		visited[currentName+"."+n.Task.HashKey()] = true
 		if err := visit(n.Task.HashKey(), n.Prev, path, visited); err != nil {
@@ -160,11 +161,11 @@ func getVisitedPath(path []string) string {
 func addLink(pt string, previousTask string, nodes map[string]*Node) error {
 	prev, ok := nodes[previousTask]
 	if !ok {
-		return xerrors.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt, previousTask, previousTask)
+		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt, previousTask, previousTask)
 	}
 	next := nodes[pt]
 	if err := linkPipelineTasks(prev, next); err != nil {
-		return xerrors.Errorf("Couldn't create link from %s to %s: %w", prev.Task.HashKey(), next.Task.HashKey(), err)
+		return fmt.Errorf("Couldn't create link from %s to %s: %w", prev.Task.HashKey(), next.Task.HashKey(), err)
 	}
 	return nil
 }

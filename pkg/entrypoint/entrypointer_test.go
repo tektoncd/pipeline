@@ -17,11 +17,11 @@ limitations under the License.
 package entrypoint
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"golang.org/x/xerrors"
 )
 
 func TestEntrypointerFailures(t *testing.T) {
@@ -199,12 +199,12 @@ type fakeErrorWaiter struct{ waited *string }
 
 func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 	f.waited = &file
-	return xerrors.New("waiter failed")
+	return errors.New("waiter failed")
 }
 
 type fakeErrorRunner struct{ args *[]string }
 
 func (f *fakeErrorRunner) Run(args ...string) error {
 	f.args = &args
-	return xerrors.New("runner failed")
+	return errors.New("runner failed")
 }
