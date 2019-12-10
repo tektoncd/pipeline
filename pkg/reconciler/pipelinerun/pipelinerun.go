@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -230,7 +231,7 @@ func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipe
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
-	pr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	getPipelineFunc := c.getPipelineFunc(pr)
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(pr, getPipelineFunc)

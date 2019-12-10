@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -97,7 +98,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				Timeout:     &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
-		wc: v1alpha1.WithUpgradeViaDefaulting,
+		wc: contexts.WithUpgradeViaDefaulting,
 	}, {
 		name: "PipelineRef default config context",
 		in: &v1alpha1.PipelineRun{
