@@ -121,7 +121,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 					err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 						if c := tr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 							if c.IsTrue() || c.IsFalse() {
-								return true, fmt.Errorf("taskRun %q already finished!", name)
+								return true, fmt.Errorf("taskRun %q already finished", name)
 							} else if c.IsUnknown() && (c.Reason == "Running" || c.Reason == "Pending") {
 								return true, nil
 							}
