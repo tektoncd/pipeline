@@ -248,14 +248,19 @@ Params that can be added are the following:
 
 1.  `url`: represents the location of the git repository, you can use this to
     change the repo, e.g. [to use a fork](#using-a-fork)
-1.  `revision`: Git
-    [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions)
-    (branch, tag, commit SHA or ref) to clone. You can use this to control what
-    commit [or branch](#using-a-branch) is used. _If no revision is specified,
-    the resource will default to `latest` from `master`._
+1.  `revision`: Git [revision][git-rev] (branch, tag, commit SHA or ref) to
+    clone. You can use this to control what commit [or branch](#using-a-branch)
+    is used. _If no revision is specified, the resource will default to `latest`
+    from `master`._
 1.  `submodules`: defines if the resource should initialize and
     fetch the submodules, value is either `true` or `false`. _If not
     specified, this will default to true_
+1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
+    commit(s) will be fetched. If set to `'0'`, all commits will be fetched.
+    _If not specified, the default depth is 1._
+
+[git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
+[git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
 
 When used as an input, the Git resource includes the exact commit fetched in the
 `resourceResults` section of the `taskRun`'s status object:
