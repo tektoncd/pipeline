@@ -4,6 +4,7 @@ run:
   skip-dirs:
   - vendor
   - pkg/client/clientset/(.*)/fake
+  timeout: 5m
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
