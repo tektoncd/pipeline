@@ -169,6 +169,12 @@ func FromDisk(path string) (*Resource, error) {
 	var err error
 	var manifest Manifest
 
+	pr, err := prFromDisk(path, "pr.json")
+	if err != nil {
+		return nil, err
+	}
+	r.PR = &pr
+
 	commentsPath := filepath.Join(path, "comments")
 	r.Comments, manifest, err = commentsFromDisk(commentsPath)
 	if err != nil {
@@ -327,6 +333,18 @@ func refFromDisk(path, name string) (scm.PullRequestBranch, error) {
 		return scm.PullRequestBranch{}, err
 	}
 	return ref, nil
+}
+
+func prFromDisk(path, name string) (scm.PullRequest, error) {
+	b, err := ioutil.ReadFile(filepath.Join(path, name))
+	if err != nil {
+		return scm.PullRequest{}, err
+	}
+	pr := scm.PullRequest{}
+	if err := json.Unmarshal(b, &pr); err != nil {
+		return scm.PullRequest{}, err
+	}
+	return pr, nil
 }
 
 func isNotExistError(err error) bool {

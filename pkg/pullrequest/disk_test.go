@@ -208,6 +208,11 @@ func TestFromDiskWithoutComments(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	// Write some refs
+	pr := scm.PullRequest{
+		Number: 123,
+		Sha:    "0922babb0ea5c0e91a244c5ea8acea902c077281",
+		Ref:    "refs/pull/100/head",
+	}
 	base := scm.PullRequestBranch{
 		Repo: scm.Repository{Name: "repo1"},
 		Ref:  "refs/heads/branch1",
@@ -230,6 +235,7 @@ func TestFromDiskWithoutComments(t *testing.T) {
 	}
 	writeFile(filepath.Join(d, "base.json"), &base)
 	writeFile(filepath.Join(d, "head.json"), &head)
+	writeFile(filepath.Join(d, "pr.json"), &pr)
 
 	rsrc, err := FromDisk(d)
 	if err != nil {
@@ -254,6 +260,11 @@ func TestFromDisk(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	// Write some refs
+	pr := scm.PullRequest{
+		Number: 123,
+		Sha:    "0922babb0ea5c0e91a244c5ea8acea902c077281",
+		Ref:    "refs/pull/100/head",
+	}
 	base := scm.PullRequestBranch{
 		Repo: scm.Repository{Name: "repo1"},
 		Ref:  "refs/heads/branch1",
@@ -276,6 +287,7 @@ func TestFromDisk(t *testing.T) {
 	}
 	writeFile(filepath.Join(d, "base.json"), &base)
 	writeFile(filepath.Join(d, "head.json"), &head)
+	writeFile(filepath.Join(d, "pr.json"), &pr)
 
 	// Write some statuses
 	statuses := []scm.Status{
