@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -78,9 +79,14 @@ func main() {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}
 
+	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
+	if serviceName == "" {
+		serviceName = "tekton-pipelines-webhook"
+	}
+
 	options := webhook.ControllerOptions{
-		ServiceName:                     "tekton-pipelines-webhook",
-		DeploymentName:                  "tekton-pipelines-webhook",
+		ServiceName:                     serviceName,
+		DeploymentName:                  serviceName,
 		Namespace:                       system.GetNamespace(),
 		Port:                            8443,
 		SecretName:                      "webhook-certs",
