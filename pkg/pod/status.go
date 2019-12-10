@@ -17,12 +17,14 @@ limitations under the License.
 package pod
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -108,8 +110,41 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 
 	trs.Steps = []v1alpha1.StepState{}
 	trs.Sidecars = []v1alpha1.SidecarState{}
+	logger, _ := logging.NewLogger("", "status")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
 	for _, s := range pod.Status.ContainerStatuses {
 		if isContainerStep(s.Name) {
+			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
+				msg := s.State.Terminated.Message
+				var r []v1alpha1.PipelineResourceResult
+				if err := json.Unmarshal([]byte(msg), &r); err != nil {
+					logger.Errorf("Could not parse json message %q because of %w", msg, err)
+					break
+				}
+				for index, result := range r {
+					if result.Key == "StartedAt" {
+						t, err := time.Parse(time.RFC3339, result.Value)
+						if err != nil {
+							logger.Errorf("Could not parse time: %q: %w", result.Value, err)
+							break
+						}
+						s.State.Terminated.StartedAt = metav1.NewTime(t)
+						// remove the entry for the starting time
+						r = append(r[:index], r[index+1:]...)
+						if len(r) == 0 {
+							s.State.Terminated.Message = ""
+						} else if bytes, err := json.Marshal(r); err != nil {
+							logger.Errorf("Error marshalling remaining results: %w", err)
+						} else {
+							s.State.Terminated.Message = string(bytes)
+						}
+						break
+					}
+				}
+			}
 			trs.Steps = append(trs.Steps, v1alpha1.StepState{
 				ContainerState: *s.State.DeepCopy(),
 				Name:           trimStepPrefix(s.Name),

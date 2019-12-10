@@ -17,11 +17,15 @@ limitations under the License.
 package entrypoint
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 func TestEntrypointerFailures(t *testing.T) {
@@ -63,16 +67,17 @@ func TestEntrypointerFailures(t *testing.T) {
 			}
 			fpw := &fakePostWriter{}
 			err := Entrypointer{
-				Entrypoint: "echo",
-				WaitFiles:  c.waitFiles,
-				PostFile:   c.postFile,
-				Args:       []string{"some", "args"},
-				Waiter:     fw,
-				Runner:     fr,
-				PostWriter: fpw,
+				Entrypoint:      "echo",
+				WaitFiles:       c.waitFiles,
+				PostFile:        c.postFile,
+				Args:            []string{"some", "args"},
+				Waiter:          fw,
+				Runner:          fr,
+				PostWriter:      fpw,
+				TerminationPath: "termination",
 			}.Go()
 			if err == nil {
-				t.Fatalf("Entrpointer didn't fail")
+				t.Fatalf("Entrypointer didn't fail")
 			}
 			if d := cmp.Diff(c.expectedError, err.Error()); d != "" {
 				t.Errorf("Entrypointer error diff -want, +got: %v", d)
@@ -125,13 +130,14 @@ func TestEntrypointer(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
 			err := Entrypointer{
-				Entrypoint: c.entrypoint,
-				WaitFiles:  c.waitFiles,
-				PostFile:   c.postFile,
-				Args:       c.args,
-				Waiter:     fw,
-				Runner:     fr,
-				PostWriter: fpw,
+				Entrypoint:      c.entrypoint,
+				WaitFiles:       c.waitFiles,
+				PostFile:        c.postFile,
+				Args:            c.args,
+				Waiter:          fw,
+				Runner:          fr,
+				PostWriter:      fpw,
+				TerminationPath: "termination",
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
@@ -172,6 +178,27 @@ func TestEntrypointer(t *testing.T) {
 			}
 			if c.postFile == "" && fpw.wrote != nil {
 				t.Errorf("Wrote post file when not required")
+			}
+			fileContents, err := ioutil.ReadFile("termination")
+			if err == nil {
+				var entries []v1alpha1.PipelineResourceResult
+				if err := json.Unmarshal([]byte(fileContents), &entries); err == nil {
+					var found = false
+					for _, result := range entries {
+						if result.Key == "StartedAt" {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Error("Didn't find the startedAt entry")
+					}
+				}
+			} else if !os.IsNotExist(err) {
+				t.Error("Wanted termination file written, got nil")
+			}
+			if err := os.Remove("termination"); err != nil {
+				t.Errorf("Could not remove termination path: %s", err)
 			}
 		})
 	}

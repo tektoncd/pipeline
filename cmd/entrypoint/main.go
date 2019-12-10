@@ -33,6 +33,7 @@ var (
 	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
 	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
 	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
+	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 
 	waitPollingInterval = time.Second
 )
@@ -45,6 +46,7 @@ func main() {
 		WaitFiles:       strings.Split(*waitFiles, ","),
 		WaitFileContent: *waitFileContent,
 		PostFile:        *postFile,
+		TerminationPath: *terminationPath,
 		Args:            flag.Args(),
 		Waiter:          &realWaiter{},
 		Runner:          &realRunner{},

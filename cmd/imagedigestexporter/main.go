@@ -29,7 +29,7 @@ import (
 
 var (
 	images                 = flag.String("images", "", "List of images resources built by task in json format")
-	terminationMessagePath = flag.String("terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
+	terminationMessagePath = flag.String("terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
 )
 
 /* The input of this go program will be a JSON string with all the output PipelineResources of type
@@ -78,5 +78,7 @@ func main() {
 
 	}
 
-	termination.WriteMessage(logger, *terminationMessagePath, output)
+	if err := termination.WriteMessage(*terminationMessagePath, output); err != nil {
+		logger.Fatalf("Unexpected error writing message %s to %s", *terminationMessagePath, err)
+	}
 }
