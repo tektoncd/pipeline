@@ -1,15 +1,25 @@
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: tekton-pipelines-git
-spec:
-  type: git
-  params:
-  - name: url
-    value: https://github.com/tektoncd/pipeline
-  - name: revision
-    value: vX.Y.Z-invalid-tags-boouuhhh  # REPLACE with the commit you want to release
----
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: tekton-pipelines-git
+# spec:
+#   type: git
+#   params:
+#   - name: url
+#     value: https://github.com/tektoncd/pipeline
+#   - name: revision
+#     value: vX.Y.Z-invalid-tags-boouuhhh  # REPLACE with the commit you want to release
+# ---
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: post-release-trigger
+# spec:
+#   type: cloudEvent
+#   params:
+#   - name: targetURI
+#     value: http://post-release-trigger-sink  # This has to be changed to a valid URL
+# ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -137,13 +147,3 @@ spec:
   params:
   - name: url
     value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher  # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: post-release-trigger
-spec:
-  type: cloudEvent
-  params:
-  - name: targetURI
-    value: http://post-release-trigger-sink  # This has to be changed to a valid URL
