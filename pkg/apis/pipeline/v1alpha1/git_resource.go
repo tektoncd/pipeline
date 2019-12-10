@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -42,6 +43,8 @@ type GitResource struct {
 	Revision   string `json:"revision"`
 	Submodules bool   `json:"submodules"`
 
+	Depth uint `json:"depth"`
+
 	GitImage string `json:"-"`
 }
 
@@ -55,6 +58,7 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 		Type:       r.Spec.Type,
 		GitImage:   gitImage,
 		Submodules: true,
+		Depth:      1,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -64,6 +68,8 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 			gitResource.Revision = param.Value
 		case strings.EqualFold(param.Name, "Submodules"):
 			gitResource.Submodules = toBool(param.Value, true)
+		case strings.EqualFold(param.Name, "Depth"):
+			gitResource.Depth = toUint(param.Value, 1)
 		}
 	}
 	// default revision to master if nothing is provided
@@ -82,6 +88,14 @@ func toBool(s string, d bool) bool {
 	default:
 		return d
 	}
+}
+
+func toUint(s string, d uint) uint {
+	v, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return d
+	}
+	return uint(v)
 }
 
 // GetName returns the name of the resource
@@ -120,6 +134,9 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 
 	if !s.Submodules {
 		args = append(args, "-submodules", "false")
+	}
+	if s.Depth != 1 {
+		args = append(args, "-depth", strconv.FormatUint(uint64(s.Depth), 10))
 	}
 
 	step := Step{

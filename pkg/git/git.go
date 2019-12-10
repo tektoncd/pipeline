@@ -43,42 +43,57 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 	return output.String(), nil
 }
 
+// FetchSpec describes how to initialize and fetch from a Git repository.
+type FetchSpec struct {
+	URL      string
+	Revision string
+	Path     string
+	Depth    uint
+}
+
 // Fetch fetches the specified git repository at the revision into path.
-func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
+func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	if err := ensureHomeEnv(logger); err != nil {
 		return err
 	}
 
-	if revision == "" {
-		revision = "master"
+	if spec.Revision == "" {
+		spec.Revision = "master"
 	}
-	if path != "" {
-		if _, err := run(logger, "", "init", path); err != nil {
+	if spec.Path != "" {
+		if _, err := run(logger, "", "init", spec.Path); err != nil {
 			return err
 		}
-		if err := os.Chdir(path); err != nil {
-			return fmt.Errorf("failed to change directory with path %s; err: %w", path, err)
+		if err := os.Chdir(spec.Path); err != nil {
+			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
 		}
 	} else if _, err := run(logger, "", "init"); err != nil {
 		return err
 	}
-	trimmedURL := strings.TrimSpace(url)
+	trimmedURL := strings.TrimSpace(spec.URL)
 	if _, err := run(logger, "", "remote", "add", "origin", trimmedURL); err != nil {
 		return err
 	}
-	if _, err := run(logger, "", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
+
+	fetchArgs := []string{"fetch", "--recurse-submodules=yes"}
+	if spec.Depth > 0 {
+		fetchArgs = append(fetchArgs, fmt.Sprintf("--depth=%d", spec.Depth))
+	}
+	fetchArgs = append(fetchArgs, "origin", spec.Revision)
+
+	if _, err := run(logger, "", fetchArgs...); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
 		if _, err := run(logger, "", "pull", "--recurse-submodules=yes", "origin"); err != nil {
 			logger.Warnf("Failed to pull origin : %s", err)
 		}
-		if _, err := run(logger, "", "checkout", revision); err != nil {
+		if _, err := run(logger, "", "checkout", spec.Revision); err != nil {
 			return err
 		}
 	} else if _, err := run(logger, "", "reset", "--hard", "FETCH_HEAD"); err != nil {
 		return err
 	}
-	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, revision, path)
+	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, spec.Revision, spec.Path)
 	return nil
 }
 
