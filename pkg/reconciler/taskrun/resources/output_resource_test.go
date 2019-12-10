@@ -1059,7 +1059,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "tekton-pipelines",
-						Name:      artifacts.BucketConfigName,
+						Name:      artifacts.GetBucketConfigName(),
 					},
 					Data: map[string]string{
 						artifacts.BucketLocationKey: "gs://fake-bucket",

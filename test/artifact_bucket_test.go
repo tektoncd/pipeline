@@ -100,22 +100,22 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	defer runTaskToDeleteBucket(c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
-	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(artifacts.BucketConfigName, metav1.GetOptions{})
+	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(artifacts.GetBucketConfigName(), metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", artifacts.BucketConfigName, err)
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", artifacts.GetBucketConfigName(), err)
 	}
 	originalConfigMapData := originalConfigMap.Data
 
-	t.Logf("Creating ConfigMap %s", artifacts.BucketConfigName)
+	t.Logf("Creating ConfigMap %s", artifacts.GetBucketConfigName())
 	configMapData := map[string]string{
 		artifacts.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
 		artifacts.BucketServiceAccountSecretName: bucketSecretName,
 		artifacts.BucketServiceAccountSecretKey:  bucketSecretKey,
 	}
-	if err := updateConfigMap(c.KubeClient, systemNamespace, artifacts.BucketConfigName, configMapData); err != nil {
+	if err := updateConfigMap(c.KubeClient, systemNamespace, artifacts.GetBucketConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
-	defer resetConfigMap(t, c, systemNamespace, artifacts.BucketConfigName, originalConfigMapData)
+	defer resetConfigMap(t, c, systemNamespace, artifacts.GetBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(

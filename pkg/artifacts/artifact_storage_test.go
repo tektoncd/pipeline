@@ -53,50 +53,44 @@ var (
 	}
 	defaultStorageClass   *string
 	customStorageClass    = "custom-storage-class"
-	persistentVolumeClaim = GetPersistentVolumeClaim(DefaultPvcSize, defaultStorageClass)
+	persistentVolumeClaim = GetPersistentVolumeClaim(DefaultPVCSize, defaultStorageClass)
 	quantityComparer      = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
 
-	pipelineWithtasksWithFrom = v1alpha1.Pipeline{
+	pipelineWithTasksWithFrom = v1alpha1.Pipeline{
 		Spec: v1alpha1.PipelineSpec{
-			Resources: []v1alpha1.PipelineDeclaredResource{
-				{
-					Name: "input1",
-					Type: "git",
+			Resources: []v1alpha1.PipelineDeclaredResource{{
+				Name: "input1",
+				Type: "git",
+			}, {
+				Name: "output",
+				Type: "git",
+			}},
+			Tasks: []v1alpha1.PipelineTask{{
+				Name: "task1",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "task",
 				},
-				{
-					Name: "output",
-					Type: "git",
+				Resources: &v1alpha1.PipelineTaskResources{
+					Outputs: []v1alpha1.PipelineTaskOutputResource{{
+						Name:     "foo",
+						Resource: "output",
+					}},
 				},
-			},
-			Tasks: []v1alpha1.PipelineTask{
-				{
-					Name: "task1",
-					TaskRef: v1alpha1.TaskRef{
-						Name: "task",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Outputs: []v1alpha1.PipelineTaskOutputResource{{
-							Name:     "foo",
-							Resource: "output",
-						}},
-					},
+			}, {
+				Name: "task2",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "task",
 				},
-				{
-					Name: "task2",
-					TaskRef: v1alpha1.TaskRef{
-						Name: "task",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
-							Name:     "foo",
-							Resource: "output",
-							From:     []string{"task1"},
-						}},
-					},
+				Resources: &v1alpha1.PipelineTaskResources{
+					Inputs: []v1alpha1.PipelineTaskInputResource{{
+						Name:     "foo",
+						Resource: "output",
+						From:     []string{"task1"},
+					}},
 				},
-			},
+			}},
 		},
 	}
 )
@@ -124,7 +118,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "gs://fake-bucket",
@@ -138,7 +132,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "",
@@ -152,7 +146,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketServiceAccountSecretName: "secret1",
@@ -165,7 +159,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 		},
 		pvcNeeded: true,
@@ -174,7 +168,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey: "gs://fake-bucket",
@@ -207,10 +201,10 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      PvcConfigName,
+				Name:      GetPVCConfigName(),
 			},
 			Data: map[string]string{
-				PvcSizeKey: "10Gi",
+				PVCSizeKey: "10Gi",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -224,10 +218,10 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      PvcConfigName,
+				Name:      GetPVCConfigName(),
 			},
 			Data: map[string]string{
-				PvcStorageClassNameKey: customStorageClass,
+				PVCStorageClassNameKey: customStorageClass,
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -241,7 +235,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "gs://fake-bucket",
@@ -265,7 +259,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "",
@@ -284,7 +278,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketServiceAccountSecretName: "secret1",
@@ -302,7 +296,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -316,7 +310,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey: "gs://fake-bucket",
@@ -333,7 +327,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "s3://fake-bucket",
@@ -356,7 +350,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
-			artifactStorage, err := InitializeArtifactStorage(images, pipelinerun, &pipelineWithtasksWithFrom.Spec, fakekubeclient, logger)
+			artifactStorage, err := InitializeArtifactStorage(images, pipelinerun, &pipelineWithTasksWithFrom.Spec, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
@@ -450,10 +444,10 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      PvcConfigName,
+				Name:      GetPVCConfigName(),
 			},
 			Data: map[string]string{
-				PvcSizeKey: "10Gi",
+				PVCSizeKey: "10Gi",
 			},
 		},
 	}, {
@@ -461,7 +455,7 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "gs://fake-bucket",
@@ -474,7 +468,7 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "",
@@ -512,7 +506,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "",
@@ -525,7 +519,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketServiceAccountSecretName: "secret1",
@@ -537,7 +531,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 		},
 	}} {
@@ -570,7 +564,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
 
-	pvc, err := InitializeArtifactStorage(images, pipelinerun, &pipelineWithtasksWithFrom.Spec, fakekubeclient, logger)
+	pvc, err := InitializeArtifactStorage(images, pipelinerun, &pipelineWithTasksWithFrom.Spec, fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
@@ -603,7 +597,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "gs://fake-bucket",
@@ -626,7 +620,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketLocationKey:              "",
@@ -643,7 +637,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 			Data: map[string]string{
 				BucketServiceAccountSecretName: "secret1",
@@ -659,7 +653,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      BucketConfigName,
+				Name:      GetBucketConfigName(),
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -700,7 +694,7 @@ func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 	}
 }
 
-func TestGetArtifactStorageWithPvcConfigMap(t *testing.T) {
+func TestGetArtifactStorageWithPVCConfigMap(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	prName := "pipelineruntest"
 	for _, c := range []struct {
@@ -712,10 +706,10 @@ func TestGetArtifactStorageWithPvcConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      PvcConfigName,
+				Name:      GetPVCConfigName(),
 			},
 			Data: map[string]string{
-				PvcSizeKey: "10Gi",
+				PVCSizeKey: "10Gi",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{

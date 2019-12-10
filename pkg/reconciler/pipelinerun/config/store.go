@@ -53,7 +53,7 @@ func NewStore(images pipeline.Images, logger configmap.Logger) *Store {
 			"pipelinerun",
 			logger,
 			configmap.Constructors{
-				artifacts.BucketConfigName: artifacts.NewArtifactBucketConfigFromConfigMap(images),
+				artifacts.GetBucketConfigName(): artifacts.NewArtifactBucketConfigFromConfigMap(images),
 			},
 		),
 		images: images,
@@ -65,7 +65,7 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 }
 
 func (s *Store) Load() *Config {
-	ep := s.UntypedLoad(artifacts.BucketConfigName)
+	ep := s.UntypedLoad(artifacts.GetBucketConfigName())
 	if ep == nil {
 		return &Config{
 			ArtifactBucket: &v1alpha1.ArtifactBucket{
