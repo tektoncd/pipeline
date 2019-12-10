@@ -17,29 +17,40 @@ package termination
 
 import (
 	"encoding/json"
-	"log"
+	"io/ioutil"
 	"os"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"go.uber.org/zap"
 )
 
-func WriteMessage(logger *zap.SugaredLogger, path string, pro []v1alpha1.PipelineResourceResult) {
+func WriteMessage(path string, pro []v1alpha1.PipelineResourceResult) error {
+	// if the file at path exists, concatenate the new values otherwise create it
+	// file at path already exists
+	fileContents, err := ioutil.ReadFile(path)
+	if err == nil {
+		var existingEntries []v1alpha1.PipelineResourceResult
+		if err := json.Unmarshal([]byte(fileContents), &existingEntries); err == nil {
+			// append new entries to existing entries
+			pro = append(existingEntries, pro...)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
 	jsonOutput, err := json.Marshal(pro)
 	if err != nil {
-		logger.Fatalf("Error marshaling json: %s", err)
+		return err
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatalf("Unexpected error converting output to json %v: %v", pro, err)
+		return err
 	}
 	defer f.Close()
 
-	_, err = f.Write(jsonOutput)
-	if err != nil {
-		logger.Fatalf("Unexpected error converting output to json %v: %v", pro, err)
+	if _, err = f.Write(jsonOutput); err != nil {
+		return err
 	}
 	if err := f.Sync(); err != nil {
-		logger.Fatalf("Unexpected error converting output to json %v: %v", pro, err)
+		return err
 	}
+	return nil
 }

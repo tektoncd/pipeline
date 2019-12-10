@@ -34,6 +34,7 @@ const (
 
 	downwardVolumeName     = "tekton-internal-downward"
 	downwardMountPoint     = "/tekton/downward"
+	terminationPath        = "/tekton/termination"
 	downwardMountReadyFile = "ready"
 	readyAnnotation        = "tekton.dev/ready"
 	readyAnnotationValue   = "READY"
@@ -106,12 +107,14 @@ func orderContainers(entrypointImage string, steps []corev1.Container) (corev1.C
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				"-termination_path", terminationPath,
 			}
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
 				"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				"-termination_path", terminationPath,
 			}
 		}
 
@@ -129,6 +132,7 @@ func orderContainers(entrypointImage string, steps []corev1.Container) (corev1.C
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, toolsMount)
+		steps[i].TerminationMessagePath = terminationPath
 	}
 	// Mount the Downward volume into the first step container.
 	steps[0].VolumeMounts = append(steps[0].VolumeMounts, downwardMount)

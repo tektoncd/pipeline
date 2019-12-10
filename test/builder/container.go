@@ -138,3 +138,10 @@ func TerminationMessagePolicy(terminationMessagePolicy corev1.TerminationMessage
 		c.TerminationMessagePolicy = terminationMessagePolicy
 	}
 }
+
+// TerminationMessagePath sets the termination message path.
+func TerminationMessagePath(terminationMessagePath string) ContainerOp {
+	return func(c *corev1.Container) {
+		c.TerminationMessagePath = terminationMessagePath
+	}
+}

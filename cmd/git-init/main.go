@@ -37,7 +37,7 @@ func init() {
 	flag.BoolVar(&fetchSpec.SSLVerify, "sslVerify", true, "Enable/Disable SSL verification in the git config")
 	flag.BoolVar(&submodules, "submodules", true, "Initialize and fetch Git submodules")
 	flag.UintVar(&fetchSpec.Depth, "depth", 1, "Perform a shallow clone to this depth")
-	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
+	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
 }
 
 func main() {
@@ -68,5 +68,7 @@ func main() {
 		},
 	}
 
-	termination.WriteMessage(logger, terminationMessagePath, output)
+	if err := termination.WriteMessage(terminationMessagePath, output); err != nil {
+		logger.Fatalf("Error writing message to %s : %s", terminationMessagePath, err)
+	}
 }

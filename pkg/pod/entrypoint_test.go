@@ -53,31 +53,37 @@ func TestOrderContainers(t *testing.T) {
 			"-wait_file", "/tekton/downward/ready",
 			"-wait_file_content",
 			"-post_file", "/tekton/tools/0",
+			"-termination_path", "/tekton/termination",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{toolsMount, downwardMount},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
+		TerminationMessagePath: "/tekton/termination",
 	}, {
 		Image:   "step-2",
 		Command: []string{entrypointBinary},
 		Args: []string{
 			"-wait_file", "/tekton/tools/0",
 			"-post_file", "/tekton/tools/1",
+			"-termination_path", "/tekton/termination",
 			"-entrypoint", "cmd1", "--",
 			"cmd2", "cmd3",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{volumeMount, toolsMount},
+		VolumeMounts:           []corev1.VolumeMount{volumeMount, toolsMount},
+		TerminationMessagePath: "/tekton/termination",
 	}, {
 		Image:   "step-3",
 		Command: []string{entrypointBinary},
 		Args: []string{
 			"-wait_file", "/tekton/tools/1",
 			"-post_file", "/tekton/tools/2",
+			"-termination_path", "/tekton/termination",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{toolsMount},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount},
+		TerminationMessagePath: "/tekton/termination",
 	}}
 	gotInit, got, err := orderContainers(images.EntrypointImage, steps)
 	if err != nil {

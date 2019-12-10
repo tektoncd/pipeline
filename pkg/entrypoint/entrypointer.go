@@ -18,6 +18,11 @@ package entrypoint
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/termination"
 )
 
 // Entrypointer holds fields for running commands with redirected
@@ -36,6 +41,9 @@ type Entrypointer struct {
 	// PostFile is the file to write when complete. If not specified, no
 	// file is written.
 	PostFile string
+
+	// Termination path is the path of a file to write the starting time of this endpopint
+	TerminationPath string
 
 	// Waiter encapsulates waiting for files to exist.
 	Waiter Waiter
@@ -65,6 +73,11 @@ type PostWriter interface {
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
 func (e Entrypointer) Go() error {
+	logger, _ := logging.NewLogger("", "entrypoint")
+	defer func() {
+		_ = logger.Sync()
+	}()
+	output := []v1alpha1.PipelineResourceResult{}
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
@@ -77,12 +90,19 @@ func (e Entrypointer) Go() error {
 	if e.Entrypoint != "" {
 		e.Args = append([]string{e.Entrypoint}, e.Args...)
 	}
+	output = append(output, v1alpha1.PipelineResourceResult{
+		Key:   "StartedAt",
+		Value: time.Now().Format(time.RFC3339),
+	})
 
 	err := e.Runner.Run(e.Args...)
 
 	// Write the post file *no matter what*
 	e.WritePostFile(e.PostFile, err)
 
+	if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
+		logger.Fatalf("Error while writing message: %s", wErr)
+	}
 	return err
 }
 
