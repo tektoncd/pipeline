@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -223,7 +224,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
-	tr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {

@@ -24,6 +24,7 @@ import (
 
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -110,7 +111,7 @@ func main() {
 
 	// Decorate contexts with the current state of the config.
 	ctxFunc := func(ctx context.Context) context.Context {
-		return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
+		return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
 	}
 
 	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)
