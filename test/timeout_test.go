@@ -68,7 +68,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipelineRun %q already finished!", pipelineRun.Name)
+				return true, fmt.Errorf("pipelineRun %q already finished", pipelineRun.Name)
 			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 				return true, nil
 			}
@@ -93,7 +93,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 				c := tr.Status.GetCondition(apis.ConditionSucceeded)
 				if c != nil {
 					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-						return true, fmt.Errorf("taskRun %q already finished!", name)
+						return true, fmt.Errorf("taskRun %q already finished", name)
 					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 						return true, nil
 					}
