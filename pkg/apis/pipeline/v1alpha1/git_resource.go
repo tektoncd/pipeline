@@ -106,16 +106,21 @@ func (s *GitResource) Replacements() map[string]string {
 		"type":     string(s.Type),
 		"url":      s.URL,
 		"revision": s.Revision,
+		"depth":    strconv.FormatUint(uint64(s.Depth), 10),
 	}
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifier, error) {
-	args := []string{"-url", s.URL,
+	args := []string{
+		"-url", s.URL,
 		"-revision", s.Revision,
+		"-path", path,
 	}
 
-	args = append(args, []string{"-path", path}...)
+	if !s.Submodules {
+		args = append(args, "-submodules", "false")
+	}
 
 	step := Step{
 		Container: corev1.Container{
