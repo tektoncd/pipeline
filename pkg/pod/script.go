@@ -27,9 +27,9 @@ import (
 )
 
 const (
-	scriptsVolumeName = "scripts"
-	scriptsDir        = "/tekton/scripts"
-	defaultShebang    = "#!/bin/sh\n"
+	scriptsVolumeName     = "scripts"
+	scriptsDir            = "/tekton/scripts"
+	defaultScriptPreamble = "#!/bin/sh\nset -xe\n"
 )
 
 var (
@@ -77,7 +77,7 @@ func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 
 		script := s.Script
 		if !hasShebang {
-			script = defaultShebang + s.Script
+			script = defaultScriptPreamble + s.Script
 		}
 
 		// At least one step uses a script, so we should return a
