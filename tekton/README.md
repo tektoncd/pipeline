@@ -18,7 +18,7 @@ The Pipelines and Tasks in this folder are used for:
 
 To start from scratch and use these Pipelines and Tasks:
 
-1. [Install Tekton v0.3.1](#install-tekton)
+1. [Install Tekton](#install-tekton)
 1. [Setup the Tasks and Pipelines](#setup)
 1. [Create the required service account + secrets](#service-account-and-secrets)
 
@@ -114,7 +114,8 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 
    # Change the environment variable to the version you would like to use.
    # Be careful: due to #983 it is possible to overwrite previous releases.
-   export VERSION_TAG=v0.X.Y
+   export VERSION_TAG=vX.Y.Z
+   export GIT_RESOURCE_NAME=tekton-pipelines-git-vX-Y-Z
    export IMAGE_REGISTRY=gcr.io/tekton-releases
 
    # Double-check the git revision that is going to be used for the release:
@@ -124,7 +125,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--param=versionTag=${VERSION_TAG} \
 		--param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
-		--resource=source-repo=tekton-pipelines-git-${VERSION_TAG} \
+		--resource=source-repo=${GIT_RESOURCE_NAME} \
 		--resource=bucket=tekton-bucket \
 		--resource=builtBaseImage=base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
@@ -136,7 +137,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtDigestExporterImage=digest-exporter-image \
 		--resource=builtPullRequestInitImage=pull-request-init-image \
 		--resource=builtGcsFetcherImage=gcs-fetcher-image \
-		--resource=notification=post-release-trigger
+		--resource=notification=post-release-trigger \
 		pipeline-release
    ```
 
