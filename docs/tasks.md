@@ -156,11 +156,16 @@ If this field is present, the step cannot specify `command`.
 When specified, a `script` gets invoked as if it were the contents of a file in
 the container. Any `args` are passed to the script file.
 
-Scripts that do not start with a shebang
-[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) line will use a default
-value of `#!/bin/sh`, although users can override this by starting their script
-with a shebang to declare what tool should be used to interpret the script.
-That tool must then also be available within the step's container.
+Scripts that do not start with a [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))
+line will use the following default preamble:
+
+```bash
+#!/bin/sh
+set -xe
+```
+Users can override this by starting their script with a shebang to declare what
+tool should be used to interpret the script. That tool must then also be
+available within the step's container.
 
 This allows you to execute a Bash script, if the image includes `bash`:
 

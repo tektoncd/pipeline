@@ -101,6 +101,7 @@ tmpfile="/tekton/scripts/script-3-j2tds"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-vr6ds'
 #!/bin/sh
+set -xe
 no-shebang
 script-heredoc-randomly-generated-vr6ds
 `},
