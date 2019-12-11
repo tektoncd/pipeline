@@ -89,11 +89,11 @@ func resolveEntrypoints(cache EntrypointCache, namespace, serviceAccountName str
 func imageData(ref name.Reference, img v1.Image) ([]string, name.Digest, error) {
 	digest, err := img.Digest()
 	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error getting image digest: %v", err)
+		return nil, name.Digest{}, fmt.Errorf("error getting image digest: %v", err)
 	}
 	cfg, err := img.ConfigFile()
 	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error getting image config: %v", err)
+		return nil, name.Digest{}, fmt.Errorf("error getting image config: %v", err)
 	}
 
 	// Entrypoint can be specified in either .Config.Entrypoint or
@@ -105,7 +105,7 @@ func imageData(ref name.Reference, img v1.Image) ([]string, name.Digest, error) 
 
 	d, err := name.NewDigest(ref.Context().String()+"@"+digest.String(), name.WeakValidation)
 	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("Error constructing resulting digest: %v", err)
+		return nil, name.Digest{}, fmt.Errorf("error constructing resulting digest: %v", err)
 	}
 	return ep, d, nil
 }

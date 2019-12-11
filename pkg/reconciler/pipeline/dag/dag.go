@@ -161,11 +161,11 @@ func getVisitedPath(path []string) string {
 func addLink(pt string, previousTask string, nodes map[string]*Node) error {
 	prev, ok := nodes[previousTask]
 	if !ok {
-		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt, previousTask, previousTask)
+		return fmt.Errorf("task %s depends on %s but %s wasn't present in Pipeline", pt, previousTask, previousTask)
 	}
 	next := nodes[pt]
 	if err := linkPipelineTasks(prev, next); err != nil {
-		return fmt.Errorf("Couldn't create link from %s to %s: %w", prev.Task.HashKey(), next.Task.HashKey(), err)
+		return fmt.Errorf("couldn't create link from %s to %s: %w", prev.Task.HashKey(), next.Task.HashKey(), err)
 	}
 	return nil
 }

@@ -113,7 +113,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to replace resource template strings %w", err)
+		return nil, fmt.Errorf("failed to replace resource template strings %w", err)
 	}
 
 	return t, nil
@@ -137,7 +137,7 @@ func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
 			r, err := v1alpha1.ResourceFromType(rSpec, images)
 			if err != nil {
-				return fmt.Errorf("Error trying to create resource: %w", err)
+				return fmt.Errorf("error trying to create resource: %w", err)
 			}
 			for k, v := range r.Replacements() {
 				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, k)] = v

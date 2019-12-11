@@ -54,7 +54,7 @@ func cancelPipelineRun(pr *v1alpha1.PipelineRun, pipelineState []*resources.Reso
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("Error cancelled PipelineRun's TaskRun(s): %s", strings.Join(errs, "\n"))
+		return fmt.Errorf("error cancelled PipelineRun's TaskRun(s): %s", strings.Join(errs, "\n"))
 	}
 	return nil
 }

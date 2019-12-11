@@ -41,17 +41,17 @@ func AddOutputImageDigestExporter(
 		for _, trb := range tr.Spec.Outputs.Resources {
 			boundResource, err := getBoundResource(trb.Name, tr.Spec.Outputs.Resources)
 			if err != nil {
-				return fmt.Errorf("Failed to get bound resource: %w while adding output image digest exporter", err)
+				return fmt.Errorf("failed to get bound resource: %w while adding output image digest exporter", err)
 			}
 
 			resource, err := GetResourceFromBinding(&boundResource.PipelineResourceBinding, gr)
 			if err != nil {
-				return fmt.Errorf("Failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
+				return fmt.Errorf("failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
 			}
 			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
 				imageResource, err := v1alpha1.NewImageResource(resource)
 				if err != nil {
-					return fmt.Errorf("Invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
+					return fmt.Errorf("invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
 				}
 				for _, o := range taskSpec.Outputs.Resources {
 					if o.Name == boundResource.Name {
@@ -71,7 +71,7 @@ func AddOutputImageDigestExporter(
 			augmentedSteps := []v1alpha1.Step{}
 			imagesJSON, err := json.Marshal(output)
 			if err != nil {
-				return fmt.Errorf("Failed to format image resource data for output image exporter: %w", err)
+				return fmt.Errorf("failed to format image resource data for output image exporter: %w", err)
 			}
 
 			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)

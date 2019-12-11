@@ -1047,7 +1047,7 @@ func TestGetResourcesFromBindings(t *testing.T) {
 	r := tb.PipelineResource("sweet-resource", "namespace")
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
 		if name != "sweet-resource" {
-			return nil, fmt.Errorf("Request for unexpected resource %s", name)
+			return nil, fmt.Errorf("request for unexpected resource %s", name)
 		}
 		return r, nil
 	}
@@ -1083,7 +1083,7 @@ func TestGetResourcesFromBindings_Missing(t *testing.T) {
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, fmt.Errorf("Request for unexpected resource %s", name)
+		return nil, fmt.Errorf("request for unexpected resource %s", name)
 	}
 	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {
@@ -1096,7 +1096,7 @@ func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, fmt.Errorf("IT HAS ALL GONE WRONG")
+		return nil, fmt.Errorf("iT HAS ALL GONE WRONG")
 	}
 	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {

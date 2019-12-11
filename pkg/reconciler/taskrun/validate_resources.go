@@ -49,7 +49,7 @@ func validateResources(requiredResources []v1alpha1.TaskResource, providedResour
 	}
 	err := list.IsSame(required, provided)
 	if err != nil {
-		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %w", err)
+		return fmt.Errorf("taskRun's declared resources didn't match usage in Task: %w", err)
 	}
 	for _, resource := range requiredResources {
 		r := providedResources[resource.Name]

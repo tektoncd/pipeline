@@ -45,7 +45,7 @@ func GetPipelineData(pipelineRun *v1alpha1.PipelineRun, getPipeline GetPipeline)
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec
 	default:
-		return nil, nil, fmt.Errorf("PipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
+		return nil, nil, fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
 	}
 	return &pipelineMeta, &pipelineSpec, nil
 }

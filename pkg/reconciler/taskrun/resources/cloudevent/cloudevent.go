@@ -73,7 +73,7 @@ func SendCloudEvent(sinkURI, eventID, eventSourceURI string, data []byte, eventT
 	cloudEventSource := types.ParseURLRef(eventSourceURI)
 	if cloudEventSource == nil {
 		logger.Errorf("Invalid eventSourceURI: %s", eventSourceURI)
-		return event, fmt.Errorf("Invalid eventSourceURI: %s", eventSourceURI)
+		return event, fmt.Errorf("invalid eventSourceURI: %s", eventSourceURI)
 	}
 
 	event = cloudevents.Event{
@@ -122,7 +122,7 @@ func SendTaskRunCloudEvent(sinkURI string, taskRun *v1alpha1.TaskRun, logger *za
 	case taskRunStatus.IsTrue():
 		eventType = TektonTaskRunSuccessfulV1
 	default:
-		return event, fmt.Errorf("Unknown condition for in TaskRun.Status %s", taskRunStatus.Status)
+		return event, fmt.Errorf("unknown condition for in TaskRun.Status %s", taskRunStatus.Status)
 	}
 	eventSourceURI := taskRun.ObjectMeta.SelfLink
 	data, _ := json.Marshal(NewTektonCloudEventData(taskRun))

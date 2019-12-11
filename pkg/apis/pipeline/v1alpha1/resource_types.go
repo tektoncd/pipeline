@@ -118,7 +118,7 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 			if volume.Name == v.Name {
 				// If a Volume with the same name but different contents has already been added, we can't add both
 				if d := cmp.Diff(volume, v); d != "" {
-					return fmt.Errorf("Tried to add volume %s already added but with different contents", volume.Name)
+					return fmt.Errorf("tried to add volume %s already added but with different contents", volume.Name)
 				}
 				// If an identical Volume has already been added, don't add it again
 				alreadyAdded = true

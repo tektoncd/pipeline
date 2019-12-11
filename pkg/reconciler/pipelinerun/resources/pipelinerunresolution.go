@@ -177,7 +177,7 @@ func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.Ge
 	for _, resource := range pr.Spec.Resources {
 		r, err := resources.GetResourceFromBinding(&resource, getResource)
 		if err != nil {
-			return rs, fmt.Errorf("Error following resource reference for %s: %w", resource.Name, err)
+			return rs, fmt.Errorf("error following resource reference for %s: %w", resource.Name, err)
 		}
 		rs[resource.Name] = r
 	}
@@ -195,7 +195,7 @@ func ValidateResourceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun
 		provided = append(provided, resource.Name)
 	}
 	if err := list.IsSame(required, provided); err != nil {
-		return fmt.Errorf("PipelineRun bound resources didn't match Pipeline: %w", err)
+		return fmt.Errorf("pipelineRun bound resources didn't match Pipeline: %w", err)
 	}
 	return nil
 }
