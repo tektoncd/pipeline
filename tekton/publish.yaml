@@ -106,9 +106,8 @@ spec:
     - "/workspace/output/bucket/previous/"
 
   - name: run-ko
-    # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
     # FIXME(vdemeester) use a tagged version once 0.2 is released
-    image: gcr.io/tekton-releases/dogfooding/ko:latest
+    image: gcr.io/tekton-releases/dogfooding/ko:gcloud-latest
     env:
     - name: KO_DOCKER_REPO
       value: $(inputs.params.imageRegistry)
