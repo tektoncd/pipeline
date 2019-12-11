@@ -93,7 +93,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 
 	for _, test := range testData {
 		t.Run(test.name, func(t *testing.T) {
-			defer unregisterMetrics()
+			unregisterMetrics()
 
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
@@ -102,12 +102,13 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			assertErrIsNil(err, "DurationAndCount recording recording got an error", t)
 			metricstest.CheckDistributionData(t, "pipelinerun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
 			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedTags, test.expectedCount)
+
 		})
 	}
 }
 
 func TestRecordRunningPipelineRunsCount(t *testing.T) {
-	defer unregisterMetrics()
+	unregisterMetrics()
 
 	ctx, _ := rtesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
@@ -121,6 +122,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	err = metrics.RunningPipelineRuns(informer.Lister())
 	assertErrIsNil(err, "RunningPrsCount recording expected to return nil but got error", t)
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
+
 }
 
 func addPipelineRun(informer alpha1.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
@@ -156,4 +158,5 @@ func assertErrIsNil(err error, message string, t *testing.T) {
 
 func unregisterMetrics() {
 	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_count")
+
 }

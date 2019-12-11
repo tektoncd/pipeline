@@ -101,7 +101,7 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 
 	for _, test := range testData {
 		t.Run(test.name, func(t *testing.T) {
-			defer unregisterMetrics()
+			unregisterMetrics()
 
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
@@ -110,6 +110,7 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 			assertErrIsNil(err, "DurationAndCount recording got an error", t)
 			metricstest.CheckDistributionData(t, "taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
 			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
+
 		})
 	}
 }
@@ -179,8 +180,7 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 
 	for _, test := range testData {
 		t.Run(test.name, func(t *testing.T) {
-			defer unregisterMetrics()
-
+			unregisterMetrics()
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
 
@@ -188,12 +188,13 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 			assertErrIsNil(err, "DurationAndCount recording got an error", t)
 			metricstest.CheckDistributionData(t, "pipelinerun_taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
 			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
+
 		})
 	}
 }
 
 func TestRecordRunningTaskrunsCount(t *testing.T) {
-	defer unregisterMetrics()
+	unregisterMetrics()
 
 	ctx, _ := rtesting.SetupFakeContext(t)
 	informer := faketaskruninformer.Get(ctx)
@@ -255,7 +256,7 @@ func TestRecordPodLatency(t *testing.T) {
 
 	for _, td := range testData {
 		t.Run(td.name, func(t *testing.T) {
-			defer unregisterMetrics()
+			unregisterMetrics()
 
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
@@ -267,6 +268,7 @@ func TestRecordPodLatency(t *testing.T) {
 			}
 			assertErrIsNil(err, "RecordPodLatency recording expected to return nil but got error", t)
 			metricstest.CheckLastValueData(t, "taskruns_pod_latency", td.expectedTags, td.expectedValue)
+
 		})
 	}
 
