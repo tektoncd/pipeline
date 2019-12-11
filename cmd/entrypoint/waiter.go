@@ -32,7 +32,7 @@ func (*realWaiter) Wait(file string, expectContent bool) error {
 				return nil
 			}
 		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("Waiting for %q: %w", file, err)
+			return fmt.Errorf("waiting for %q: %w", file, err)
 		}
 		if _, err := os.Stat(file + ".err"); err == nil {
 			return skipError("error file present, bail and skip the step")

@@ -57,7 +57,7 @@ func (dc *sshGitConfig) String() string {
 func (dc *sshGitConfig) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {
-		return fmt.Errorf("Expect entries of the form secret=url, got: %v", value)
+		return fmt.Errorf("expect entries of the form secret=url, got: %v", value)
 	}
 	secretName := parts[0]
 	url := parts[1]

@@ -114,7 +114,7 @@ func AddInputResource(
 				return nil, err
 			}
 			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
-				return nil, fmt.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+				return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
 			}
 		}
 	}

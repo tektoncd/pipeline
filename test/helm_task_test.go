@@ -124,7 +124,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 				return false, nil
 			}
 			if resp != nil && resp.StatusCode != http.StatusOK {
-				return true, fmt.Errorf("Expected 200 but received %d response code from service at http://%s:8080", resp.StatusCode, serviceIP)
+				return true, fmt.Errorf("expected 200 but received %d response code from service at http://%s:8080", resp.StatusCode, serviceIP)
 			}
 			return true, nil
 		})

@@ -410,7 +410,7 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, log
 func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
 	results := []v1alpha1.PipelineResourceResult{}
 	if err := json.Unmarshal(logContent, &results); err != nil {
-		return fmt.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
+		return fmt.Errorf("failed to unmarshal output image exporter JSON output: %w", err)
 	}
 	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
 	return nil
@@ -419,7 +419,7 @@ func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newtaskrun, err := c.taskRunLister.TaskRuns(taskrun.Namespace).Get(taskrun.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting TaskRun %s when updating status: %w", taskrun.Name, err)
+		return nil, fmt.Errorf("error getting TaskRun %s when updating status: %w", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
@@ -431,7 +431,7 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels

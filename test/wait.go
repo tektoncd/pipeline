@@ -213,7 +213,7 @@ func PipelineRunFailed(name string) PipelineRunStateFn {
 		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("task run %q succeeded!", name)
+				return true, fmt.Errorf("task run %q succeeded", name)
 			} else if c.Status == corev1.ConditionFalse {
 				return true, nil
 			}

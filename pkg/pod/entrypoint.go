@@ -141,7 +141,7 @@ func orderContainers(entrypointImage string, steps []corev1.Container) (corev1.C
 func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Error getting Pod %q when updating ready annotation: %w", pod.Name, err)
+		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
 	}
 
 	// Update the Pod's "READY" annotation to signal the first step to
@@ -152,7 +152,7 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
 		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
 		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
+			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
 		}
 	}
 	return nil
@@ -163,7 +163,7 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Error getting Pod %q when stopping sidecars: %w", pod.Name, err)
+		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
 	}
 
 	updated := false
@@ -185,7 +185,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	}
 	if updated {
 		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
+			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
 		}
 	}
 	return nil

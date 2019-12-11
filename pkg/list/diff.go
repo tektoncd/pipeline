@@ -24,11 +24,11 @@ import "fmt"
 func IsSame(required, provided []string) error {
 	missing := DiffLeft(required, provided)
 	if len(missing) > 0 {
-		return fmt.Errorf("Didn't provide required values: %s", missing)
+		return fmt.Errorf("didn't provide required values: %s", missing)
 	}
 	extra := DiffLeft(provided, required)
 	if len(extra) > 0 {
-		return fmt.Errorf("Provided extra values: %s", extra)
+		return fmt.Errorf("provided extra values: %s", extra)
 	}
 	return nil
 }

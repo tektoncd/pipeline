@@ -622,7 +622,7 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %w", pr.Name, err)
+		return nil, fmt.Errorf("error getting PipelineRun %s when updating status: %w", pr.Name, err)
 	}
 	succeeded := pr.Status.GetCondition(apis.ConditionSucceeded)
 	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
@@ -640,7 +640,7 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 func (c *Reconciler) updateLabelsAndAnnotations(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
+		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
 	}
 	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
 		newPr.ObjectMeta.Labels = pr.ObjectMeta.Labels
@@ -656,7 +656,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 
 	taskSpec, err := rcc.ConditionToTaskSpec()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get TaskSpec from Condition: %w", err)
+		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
 	}
 
 	tr := &v1alpha1.TaskRun{

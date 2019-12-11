@@ -64,12 +64,12 @@ func (e *entrypointCache) Get(ref name.Reference, namespace, serviceAccountName 
 		ServiceAccountName: serviceAccountName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Error creating k8schain: %v", err)
+		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
-		return nil, fmt.Errorf("Error getting image manifest: %v", err)
+		return nil, fmt.Errorf("error getting image manifest: %v", err)
 	}
 	return img, nil
 }

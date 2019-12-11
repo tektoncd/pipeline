@@ -57,7 +57,7 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 			return err
 		}
 		if err := os.Chdir(path); err != nil {
-			return fmt.Errorf("Failed to change directory with path %s; err: %w", path, err)
+			return fmt.Errorf("failed to change directory with path %s; err: %w", path, err)
 		}
 	} else if _, err := run(logger, "", "init"); err != nil {
 		return err
@@ -97,7 +97,7 @@ func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
 
 	if path != "" {
 		if err := os.Chdir(path); err != nil {
-			return fmt.Errorf("Failed to change directory with path %s; err: %w", path, err)
+			return fmt.Errorf("failed to change directory with path %s; err: %w", path, err)
 		}
 	}
 	if _, err := run(logger, "", "submodule", "init"); err != nil {
