@@ -83,7 +83,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			metrics:           metrics,
 			entrypointCache:   entrypointCache,
 		}
-		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
+		impl := controller.NewImpl(c, c.Logger, pipeline.TaskRunControllerName)
 
 		timeoutHandler.SetTaskRunCallbackFunc(impl.Enqueue)
 		timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)

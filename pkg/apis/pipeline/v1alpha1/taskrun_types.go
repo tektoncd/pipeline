@@ -251,7 +251,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 		return ""
 	}
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return fmt.Sprintf("%s-pvc", ref.Name)
 		}
 	}
@@ -262,7 +262,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return true
 		}
 	}

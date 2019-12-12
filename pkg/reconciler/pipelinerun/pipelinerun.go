@@ -74,8 +74,6 @@ const (
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
-	// pipelineRunControllerName defines name for PipelineRun Controller
-	pipelineRunControllerName = "PipelineRun"
 
 	// Event reasons
 	eventReasonFailed    = "PipelineRunFailed"

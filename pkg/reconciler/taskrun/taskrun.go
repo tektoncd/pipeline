@@ -48,11 +48,6 @@ import (
 const (
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
-	// taskRunControllerName defines name for TaskRun Controller
-	taskRunControllerName = "TaskRun"
-
-	// imageDigestExporterContainerName defines the name of the container that will collect the
-	// built images digest
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.

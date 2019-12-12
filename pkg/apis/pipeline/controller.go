@@ -23,10 +23,4 @@ const (
 
 	// TaskRunControllerName holds the name of the PipelineRun controller
 	TaskRunControllerName = "TaskRun"
-
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	ArtifactStorageBucketType = "bucket"
-
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	ArtifactStoragePVCType = "pvc"
 )
