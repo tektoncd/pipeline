@@ -17,16 +17,9 @@ limitations under the License.
 package pipeline
 
 const (
-	// PipelineRunControllerName holds the name of the PipelineRun controller
-	// nolint: golint
-	PipelineRunControllerName = "PipelineRun"
-
-	// TaskRunControllerName holds the name of the PipelineRun controller
-	TaskRunControllerName = "TaskRun"
-
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	// ArtifactStorageBucketType holds the name of the PipelineResource type for a bucket
 	ArtifactStorageBucketType = "bucket"
 
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	// ArtifactStoragePVCType holds the name of the PipelineResource type for a pvc
 	ArtifactStoragePVCType = "pvc"
 )
