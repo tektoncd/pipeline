@@ -1,0 +1,5 @@
+# values.yaml
+
+namespace:
+  annotations:
+    # scheduler.alpha.kubernetes.io/node-selector: main-pool
