@@ -201,8 +201,6 @@ func FromDisk(path string) (*Resource, error) {
 		return nil, err
 	}
 
-	r.PR.Sha = r.PR.Head.Sha
-
 	return r, nil
 }
 
