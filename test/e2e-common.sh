@@ -21,7 +21,7 @@ source $(go list -m -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/e2e-test
 
 function teardown() {
     subheader "Tearing down Tekton Pipelines"
-    ko delete --ignore-not-found=true -f config/
+    ko delete --ignore-not-found=true -f charts/tekton-pipelines/release.yaml
     # teardown will be called when run against an existing cluster to cleanup before
     # continuing, so we must wait for the cleanup to complete or the subsequent attempt
     # to deploy to the same namespace will fail
@@ -129,7 +129,7 @@ function run_yaml_tests() {
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko apply -f config/ || fail_test "Build pipeline installation failed"
+  ko apply -f charts/tekton-pipelines/release.yaml || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
 }
 
@@ -152,7 +152,7 @@ function verify_pipeline_installation() {
 
 function uninstall_pipeline_crd() {
   echo ">> Uninstalling Tekton Pipelines"
-  ko delete --ignore-not-found=true -f config/
+  ko delete --ignore-not-found=true -f charts/tekton-pipelines/release.yaml
 
   # Make sure that everything is cleaned up in the current namespace.
   for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
