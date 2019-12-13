@@ -37,4 +37,4 @@ When you're ready to release the configs, simply write them out to release.yaml.
 - `cd ..`
 - `helm package tekton-pipelines`
 - `mv tekton-pipelines-version.tgz tekton-pipelines`
-- `helm repo index . --url https://raw.githubusercontent.com/tektoncd/pipeline/master/charts/tekton-pipelines`
+- `helm repo index . --url https://raw.githubusercontent.com/adjavaherian/pipeline/master/charts`

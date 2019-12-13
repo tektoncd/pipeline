@@ -3,12 +3,12 @@ entries:
   tekton-pipelines:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2019-12-13T16:20:48.030996-05:00"
+    created: "2019-12-13T16:30:34.228777-05:00"
     description: A Helm chart for Tekton Pipelines
     digest: 8f93704f1a1f3befdb454c50ed74d4466b7534f360382b73bc8708b920eb2c63
     icon: https://raw.githubusercontent.com/jenkins-x/jenkins-x-platform/master/images/go.png
     name: tekton-pipelines
     urls:
-    - https://raw.githubusercontent.com/adjavaherian/pipeline/master/charts/tekton-pipelines/tekton-pipelines/tekton-pipelines-0.9.0.tgz
+    - https://raw.githubusercontent.com/adjavaherian/pipeline/master/charts/tekton-pipelines/tekton-pipelines-0.9.0.tgz
     version: 0.9.0
-generated: "2019-12-13T16:20:48.030157-05:00"
+generated: "2019-12-13T16:30:34.227644-05:00"
