@@ -1096,10 +1096,6 @@ func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.ExpirationTime != nil {
-		in, out := &in.ExpirationTime, &out.ExpirationTime
-		*out = (*in).DeepCopy()
-	}
 	return
 }
 
@@ -1826,10 +1822,6 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 		in, out := &in.ResourcesResult, &out.ResourcesResult
 		*out = make([]PipelineResourceResult, len(*in))
 		copy(*out, *in)
-	}
-	if in.ExpirationTime != nil {
-		in, out := &in.ExpirationTime, &out.ExpirationTime
-		*out = (*in).DeepCopy()
 	}
 	return
 }

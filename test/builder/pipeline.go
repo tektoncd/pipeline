@@ -459,16 +459,6 @@ func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
 	}
 }
 
-// PipelineRunExpirationTime sets the expiration time to the PipelineRunStatus.
-func PipelineRunExpirationTime() PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		var spec v1alpha1.PipelineRunSpec
-		if spec.ExpirationSecondsTTL != nil {
-			s.ExpirationTime.Time = s.CompletionTime.Add(spec.ExpirationSecondsTTL.Duration * time.Second)
-		}
-	}
-}
-
 // PipelineRunTaskRunsStatus sets the status of TaskRun to the PipelineRunStatus.
 func PipelineRunTaskRunsStatus(taskRunName string, status *v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {

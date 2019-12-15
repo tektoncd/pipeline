@@ -8,18 +8,28 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
 )
 
-func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Duration) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(pr)
-	if err != nil {
-		tc.Logger.Errorf("couldn't get key for object %#v: %v", pr, err)
-		return
-	}
+const ControllerName = "TTLExpiredController"
 
-	tc.queue.AddAfter(key, after)
+func (tc *Reconciler) AddPipelineRun(obj interface{}) {
+	pr := obj.(*apispipeline.PipelineRun)
+	tc.Logger.Infof("Adding PipelineRun %s/%s if the PipelineRun has succeeded or failed and has a TTL set.", pr.Namespace, pr.Name)
+
+	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+		controller.NewImpl(tc, tc.Logger, ControllerName).Enqueue(pr)
+	}
+}
+
+func (tc *Reconciler) UpdatePipelineRun(old, cur interface{}) {
+	pr := cur.(*apispipeline.PipelineRun)
+	tc.Logger.Infof("Updating PipelineRun %s/%s if the PipelineRun has succeed or failed and has a TTL set.", pr.Namespace, pr.Name)
+
+	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+		controller.NewImpl(tc, tc.Logger, ControllerName).Enqueue(pr)
+	}
 }
 
 // processPipelineRun will check the PipelineRun's state and TTL and delete the PipelineRun when it
@@ -27,9 +37,8 @@ func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Du
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
-func (tc *Reconciler) processPipelineRunExpired(namespace, name string, obj interface{}) error {
-	ob := obj.(*apispipeline.PipelineRun)
-	if expired, err := tc.processPrTTL(ob); err != nil {
+func (tc *Reconciler) processPipelineRunExpired(namespace, name string, pr *apispipeline.PipelineRun) error {
+	if expired, err := tc.processPrTTL(pr); err != nil {
 		return err
 	} else if !expired {
 		return nil
@@ -82,17 +91,8 @@ func (tc *Reconciler) processPrTTL(pr *apispipeline.PipelineRun) (expired bool, 
 		return true, nil
 	}
 
-	tc.PrEnqueueAfter(pr, *t)
+	controller.NewImpl(tc, tc.Logger, ControllerName).EnqueueAfter(pr, *t)
 	return false, nil
-}
-
-func IsPipelineRunSucceeded(pr *apispipeline.PipelineRun) bool {
-	for _, con := range pr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
-			return true
-		}
-	}
-	return false
 }
 
 func getPrFinishAndExpireTime(pr *apispipeline.PipelineRun) (*time.Time, *time.Time, error) {
@@ -116,15 +116,17 @@ func (tc *Reconciler) prTimeLeft(pr *apispipeline.PipelineRun, since *time.Time)
 	if finishAt.UTC().After(since.UTC()) {
 		tc.Logger.Warnf("Warning: Found PipelineRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. PipelineRun cleanup will be deferred.", pr.Namespace, pr.Name)
 	}
+
 	remaining := expireAt.UTC().Sub(since.UTC())
 	tc.Logger.Infof("Found PipelineRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v", pr.Namespace, pr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
+
 	return &remaining, nil
 }
 
 // PipelineRunFinishTime takes an already succeeded PipelineRun and returns the time it finishes.
 func pipelineRunFinishTime(pr *apispipeline.PipelineRun) (apis.VolatileTime, error) {
 	for _, con := range pr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
+		if con.Type == apis.ConditionSucceeded && con.Status != v1.ConditionUnknown {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
 				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the PipelineRun %s/%s succeeded", pr.Namespace, pr.Name)
@@ -133,11 +135,11 @@ func pipelineRunFinishTime(pr *apispipeline.PipelineRun) (apis.VolatileTime, err
 		}
 	}
 
-	// This should never happen if the PipelineRuns has succeeded
-	return apis.VolatileTime{}, fmt.Errorf("unable to find the status of the succeeded PipelineRun %s/%s", pr.Namespace, pr.Name)
+	// This should never happen if the PipelineRuns has succeeded or failed
+	return apis.VolatileTime{}, fmt.Errorf("unable to find the status of the succeeded or failed PipelineRun %s/%s", pr.Namespace, pr.Name)
 }
 
-// pipelineRunCleanup checks whether a PipelineRun or PipelineRun has succeeded and has a TTL set.
+// pipelineRunCleanup checks whether a PipelineRun has succeeded or failed and has a TTL set.
 func pipelineRunCleanup(pr *apispipeline.PipelineRun) bool {
-	return pr.Spec.ExpirationSecondsTTL != nil && IsPipelineRunSucceeded(pr)
+	return pr.Spec.ExpirationSecondsTTL != nil && pr.IsDone()
 }

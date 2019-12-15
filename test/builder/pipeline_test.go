@@ -140,7 +140,6 @@ func TestPipelineRun(t *testing.T) {
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
 		tb.PipelineRunCompletionTime(completedTime),
-		tb.PipelineRunExpirationTime(),
 		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
 			PipelineTaskName: "task-1",
 		}),
@@ -211,7 +210,6 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
 		tb.PipelineRunCompletionTime(completedTime),
-		tb.PipelineRunExpirationTime(),
 		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
 			PipelineTaskName: "task-1",
 		}),

@@ -342,15 +342,6 @@ func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
 	}
 }
 
-func TaskRunExpirationTime() TaskRunStatusOp {
-	return func(s *v1alpha1.TaskRunStatus) {
-		var spec v1alpha1.TaskRunSpec
-		if spec.ExpirationSecondsTTL != nil {
-			s.ExpirationTime.Time = s.CompletionTime.Add(spec.ExpirationSecondsTTL.Duration * time.Second)
-		}
-	}
-}
-
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {

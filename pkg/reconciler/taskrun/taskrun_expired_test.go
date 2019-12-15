@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-func newTaskRun(completionTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.TaskRun {
-	tr := tb.TaskRun("test-pipeline-run-with-annotations-hello-world-1-9l9zj", "foo",
+func newTaskRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.TaskRun {
+	tr := tb.TaskRun("test-task-run-with-expiration-ttl", "foo",
 		//tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-annotations",
 		//	tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 		//	tb.Controller, tb.BlockOwnerDeletion,
@@ -32,6 +32,11 @@ func newTaskRun(completionTime apis.VolatileTime, ttl *metav1.Duration) *apispip
 
 	if !completionTime.Inner.IsZero() {
 		c := apis.Condition{Type: apis.ConditionSucceeded, Status: v1.ConditionTrue, LastTransitionTime: completionTime}
+		tr.Status.Conditions = append(tr.Status.Conditions, c)
+	}
+
+	if !failedTime.Inner.IsZero() {
+		c := apis.Condition{Type: apis.ConditionSucceeded, Status: v1.ConditionFalse, LastTransitionTime: failedTime}
 		tr.Status.Conditions = append(tr.Status.Conditions, c)
 	}
 
@@ -53,6 +58,7 @@ func TestTimeLeft(t *testing.T) {
 	testCases := []struct {
 		name             string
 		completionTime   apis.VolatileTime
+		failedTime       apis.VolatileTime
 		ttl              *metav1.Duration
 		since            *time.Time
 		expectErr        bool
@@ -64,14 +70,14 @@ func TestTimeLeft(t *testing.T) {
 			ttl:          &metav1.Duration{Duration: 10 * time.Second},
 			since:        &now.Inner.Time,
 			expectErr:    true,
-			expectErrStr: "should not be cleaned up",
+			expectErrStr: "TaskRun foo/test-task-run-with-expiration-ttl should not be cleaned up",
 		},
 		{
 			name:           "Error case: TaskRun completed now, no TTL",
 			completionTime: now,
 			since:          &now.Inner.Time,
 			expectErr:      true,
-			expectErrStr:   "should not be cleaned up",
+			expectErrStr:   "TaskRun foo/test-task-run-with-expiration-ttl should not be cleaned up",
 		},
 		{
 			name:             "TaskRun completed now, 0s TTL",
@@ -94,12 +100,42 @@ func TestTimeLeft(t *testing.T) {
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(5),
 		},
+		{
+			name:         "Error case: TaskRun failed now, no TTL",
+			failedTime:   now,
+			since:        &now.Inner.Time,
+			expectErr:    true,
+			expectErrStr: "TaskRun foo/test-task-run-with-expiration-ttl should not be cleaned up",
+		},
+		{
+			name:             "TaskRun failed now, 0s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration: 0 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(0),
+		},
+		{
+			name:             "TaskRun failed now, 10s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration: 10 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(10),
+		},
+		{
+			name:             "TaskRun failed 10s ago, 15s TTL",
+			failedTime:       apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
+			ttl:              &metav1.Duration{Duration: 15 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(5),
+		},
 	}
 	for _, tc := range testCases {
-		tr := newTaskRun(tc.completionTime, tc.ttl)
+		tr := newTaskRun(tc.completionTime, tc.failedTime, tc.ttl)
+		ts := tb.Task("hello-world", "foo")
 
 		d := test.Data{
 			TaskRuns: []*apispipeline.TaskRun{tr},
+			Tasks:    []*apispipeline.Task{ts},
 		}
 		testAssets, cancel := getTaskRunController(t, d)
 		defer cancel()

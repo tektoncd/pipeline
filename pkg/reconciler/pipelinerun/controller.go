@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
@@ -34,7 +33,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -83,7 +81,6 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
 			metrics:           metrics,
-			queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_pipelineruns_to_delete"),
 		}
 		impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
 
@@ -97,27 +94,10 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			DeleteFunc: impl.Enqueue,
 		})
 
-		AddPipelineRun := func(obj interface{}) {
-			pr := obj.(*v1alpha1.PipelineRun)
-			c.Logger.Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
-
-			if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-				impl.Enqueue(pr)
-			}
-		}
-
-		UpdatePipelineRun := func(old, cur interface{}) {
-			pr := cur.(*v1alpha1.PipelineRun)
-			c.Logger.Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
-
-			if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-				impl.Enqueue(pr)
-			}
-		}
-
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    AddPipelineRun,
-			UpdateFunc: UpdatePipelineRun,
+			AddFunc:    c.AddPipelineRun,
+			UpdateFunc: c.UpdatePipelineRun,
+			DeleteFunc: impl.Enqueue,
 		})
 
 		c.pipelineRunLister = pipelineRunInformer.Lister()
@@ -127,6 +107,9 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 		})
+
+		c.taskRunLister = taskRunInformer.Lister()
+		c.ListerSynced = taskRunInformer.Informer().HasSynced
 
 		c.clock = clock.RealClock{}
 		c.Logger.Info("Setting up ConfigMap receivers")

@@ -2,24 +2,34 @@ package taskrun
 
 import (
 	"fmt"
+	"knative.dev/pkg/controller"
 	"time"
 
 	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 )
 
-func (tc *Reconciler) TrEnqueueAfter(tr *apispipeline.TaskRun, after time.Duration) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(tr)
-	if err != nil {
-		tc.Logger.Errorf("couldn't get key for object %#v: %v", tr, err)
-		return
-	}
+const ControllerName = "TTLExpiredControoler"
 
-	tc.queue.AddAfter(key, after)
+func (tc *Reconciler) AddTaskRun(obj interface{}) {
+	tr := obj.(*apispipeline.TaskRun)
+	tc.Logger.Infof("Adding TaskRun %s/%s if the TaskRun has succeeded or failed and has a TTL set.", tr.Namespace, tr.Name)
+
+	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
+		controller.NewImpl(tc, tc.Logger, ControllerName).Enqueue(tr)
+	}
+}
+
+func (tc *Reconciler) UpdateTaskRun(old, cur interface{}) {
+	tr := cur.(*apispipeline.TaskRun)
+	tc.Logger.Infof("Updating TaskRun %s/%s if the TaskRun has succeeded or failed and has a TTL set.", tr.Namespace, tr.Name)
+
+	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
+		controller.NewImpl(tc, tc.Logger, ControllerName).Enqueue(tr)
+	}
 }
 
 // processTaskRun will check the TaskRun's state and TTL and delete the TaskRun when it
@@ -89,22 +99,13 @@ func (tc *Reconciler) processTrTTL(tr *apispipeline.TaskRun) (expired bool, err 
 		return true, nil
 	}
 
-	tc.TrEnqueueAfter(tr, *t)
+	controller.NewImpl(tc, tc.Logger, ControllerName).EnqueueAfter(tr, *t)
 	return false, nil
-}
-
-func IsTaskRunSucceeded(tr *apispipeline.TaskRun) bool {
-	for _, con := range tr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
-			return true
-		}
-	}
-	return false
 }
 
 func getFinishAndExpireTime(tr *apispipeline.TaskRun) (*time.Time, *time.Time, error) {
 	if !taskRunCleanup(tr) {
-		return nil, nil, fmt.Errorf("taskRun %s/%s should not be cleaned up", tr.Namespace, tr.Name)
+		return nil, nil, fmt.Errorf("TaskRun %s/%s should not be cleaned up", tr.Namespace, tr.Name)
 	}
 	finishAt, err := taskRunFinishTime(tr)
 	if err != nil {
@@ -121,7 +122,7 @@ func (tc *Reconciler) trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*t
 		return nil, err
 	}
 	if finishAt.UTC().After(since.UTC()) {
-		tc.Logger.Infof("Warning: Found taskRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. taskrun cleanup will be deferred.", tr.Namespace, tr.Name)
+		tc.Logger.Warnf("Warning: Found taskRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. taskrun cleanup will be deferred.", tr.Namespace, tr.Name)
 	}
 
 	remaining := expireAt.UTC().Sub(since.UTC())
@@ -133,7 +134,7 @@ func (tc *Reconciler) trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*t
 // taskRunFinishTime takes an already succeeded taskRun and returns the time it finishes.
 func taskRunFinishTime(tr *apispipeline.TaskRun) (apis.VolatileTime, error) {
 	for _, con := range tr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
+		if con.Type == apis.ConditionSucceeded && con.Status != v1.ConditionUnknown {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
 				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the taskRun %s/%s succeeded", tr.Namespace, tr.Name)
@@ -146,7 +147,7 @@ func taskRunFinishTime(tr *apispipeline.TaskRun) (apis.VolatileTime, error) {
 	return apis.VolatileTime{}, fmt.Errorf("unable to find the status of the succeeded taskRun %s/%s", tr.Namespace, tr.Name)
 }
 
-// taskRunCleanup checks whether a TaskRun or PipelineRun has succeeded and has a TTL set.
+// taskRunCleanup checks whether a TaskRun has succeeded or failed and has a TTL set.
 func taskRunCleanup(tr *apispipeline.TaskRun) bool {
-	return tr.Spec.ExpirationSecondsTTL != nil && IsTaskRunSucceeded(tr) && !tr.HasPipelineRunOwnerReference()
+	return tr.Spec.ExpirationSecondsTTL != nil && tr.IsDone() && !tr.HasPipelineRunOwnerReference()
 }

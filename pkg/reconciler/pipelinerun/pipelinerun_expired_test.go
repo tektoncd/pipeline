@@ -15,7 +15,7 @@ import (
 )
 
 func newPipelineRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.PipelineRun {
-	pr := tb.PipelineRun("test-pipeline-run-with-annotations-hello-world-1-9l9zj", "foo",
+	pr := tb.PipelineRun("test-pipeline-run-with-expiration-ttl", "foo",
 		tb.PipelineRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.PipelineRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.PipelineRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-annotations"),
@@ -32,7 +32,7 @@ func newPipelineRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Du
 	}
 
 	if !failedTime.Inner.IsZero() {
-		c := apis.Condition{Type: apis.ConditionSucceeded, Status: v1.ConditionTrue, LastTransitionTime: failedTime}
+		c := apis.Condition{Type: apis.ConditionSucceeded, Status: v1.ConditionFalse, LastTransitionTime: failedTime}
 		pr.Status.Conditions = append(pr.Status.Conditions, c)
 	}
 
@@ -66,14 +66,14 @@ func TestTimeLeft(t *testing.T) {
 			ttl:          &metav1.Duration{Duration: 10 * time.Second},
 			since:        &now.Inner.Time,
 			expectErr:    true,
-			expectErrStr: "should not be cleaned up",
+			expectErrStr: "PipelineRun foo/test-pipeline-run-with-expiration-ttl should not be cleaned up",
 		},
 		{
 			name:           "Error case: PipelineRun completed now, no TTL",
 			completionTime: now,
 			since:          &now.Inner.Time,
 			expectErr:      true,
-			expectErrStr:   "should not be cleaned up",
+			expectErrStr:   "PipelineRun foo/test-pipeline-run-with-expiration-ttl should not be cleaned up",
 		},
 		{
 			name:             "PipelineRun completed now, 0s TTL",
@@ -92,6 +92,34 @@ func TestTimeLeft(t *testing.T) {
 		{
 			name:             "PipelineRun completed 10s ago, 15s TTL",
 			completionTime:   apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
+			ttl:              &metav1.Duration{Duration: 15 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(5),
+		},
+		{
+			name:         "Error case: PipelineRun failed now, no TTL",
+			failedTime:   now,
+			since:        &now.Inner.Time,
+			expectErr:    true,
+			expectErrStr: "PipelineRun foo/test-pipeline-run-with-expiration-ttl should not be cleaned up",
+		},
+		{
+			name:             "PipelineRun failed now, 0s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration: 0 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(0),
+		},
+		{
+			name:             "PipelineRun failed now, 10s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration: 10 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(10),
+		},
+		{
+			name:             "PipelineRun failed 10s ago, 15s TTL",
+			failedTime:       apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
 			ttl:              &metav1.Duration{Duration: 15 * time.Second},
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(5),

@@ -130,9 +130,6 @@ type PipelineRunStatus struct {
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
-
-	// ExpirationTime is the time the PipelineRun expired.
-	ExpirationTime *metav1.Time `json:"expirationTime, omitempty"`
 }
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status

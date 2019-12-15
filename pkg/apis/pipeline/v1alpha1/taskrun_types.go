@@ -143,11 +143,6 @@ type TaskRunStatus struct {
 	// the digest of build container images
 	// optional
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
-
-	// ExpirationTime is the time the build expired.
-	// If TaskRun is built from PipelineRun, the time is the PipelineRun's ExpirationTime.
-	// If TaskRun doesn't have PipelineRun OwnerReference, then the time is TaskRun's ExpirationTime
-	ExpirationTime *metav1.Time `json:"expirationTime, omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
