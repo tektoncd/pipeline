@@ -53,6 +53,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 	}, {
 		desc: "Without Revision",
@@ -69,6 +70,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 	}, {
 		desc: "With Submodules",
@@ -86,6 +88,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 	}, {
 		desc: "Without Submodules",
@@ -104,6 +107,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: false,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 	}, {
 		desc: "With positive depth",
@@ -122,6 +126,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      8,
+			SSLVerify:  true,
 		},
 	}, {
 		desc: "With zero depth",
@@ -140,6 +145,27 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      0,
+			SSLVerify:  true,
+		},
+	}, {
+		desc: "Without SSLVerify",
+		pipelineResource: tb.PipelineResource("git-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
+				tb.PipelineResourceSpecParam("Revision", "test"),
+				tb.PipelineResourceSpecParam("Depth", "0"),
+				tb.PipelineResourceSpecParam("SSLVerify", "false"),
+			),
+		),
+		want: &v1alpha1.GitResource{
+			Name:       "git-resource",
+			Type:       v1alpha1.PipelineResourceTypeGit,
+			URL:        "git@github.com:test/test.git",
+			Revision:   "test",
+			GitImage:   "override-with-git:latest",
+			Submodules: true,
+			Depth:      0,
+			SSLVerify:  false,
 		},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -157,19 +183,21 @@ func Test_Valid_NewGitResource(t *testing.T) {
 
 func Test_GitResource_Replacements(t *testing.T) {
 	r := &v1alpha1.GitResource{
-		Name:     "git-resource",
-		Type:     v1alpha1.PipelineResourceTypeGit,
-		URL:      "git@github.com:test/test.git",
-		Revision: "master",
-		Depth:    16,
+		Name:      "git-resource",
+		Type:      v1alpha1.PipelineResourceTypeGit,
+		URL:       "git@github.com:test/test.git",
+		Revision:  "master",
+		Depth:     16,
+		SSLVerify: false,
 	}
 
 	want := map[string]string{
-		"name":     "git-resource",
-		"type":     string(v1alpha1.PipelineResourceTypeGit),
-		"url":      "git@github.com:test/test.git",
-		"revision": "master",
-		"depth":    "16",
+		"name":      "git-resource",
+		"type":      string(v1alpha1.PipelineResourceTypeGit),
+		"url":       "git@github.com:test/test.git",
+		"revision":  "master",
+		"depth":     "16",
+		"sslVerify": "false",
 	}
 
 	got := r.Replacements()
@@ -196,6 +224,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 		want: corev1.Container{
 			Name:    "git-source-git-resource-9l9zj",
@@ -222,6 +251,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: false,
 			Depth:      1,
+			SSLVerify:  true,
 		},
 		want: corev1.Container{
 			Name:    "git-source-git-resource-mz4c7",
@@ -250,6 +280,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 			GitImage:   "override-with-git:latest",
 			Submodules: true,
 			Depth:      8,
+			SSLVerify:  true,
 		},
 		want: corev1.Container{
 			Name:    "git-source-git-resource-mssqb",
@@ -264,6 +295,36 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 				"/test/test",
 				"-depth",
 				"8",
+			},
+			WorkingDir: "/workspace",
+			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"}},
+		},
+	}, {
+		desc: "Without sslVerify",
+		gitResource: &v1alpha1.GitResource{
+			Name:       "git-resource",
+			Type:       v1alpha1.PipelineResourceTypeGit,
+			URL:        "git@github.com:test/test.git",
+			Revision:   "master",
+			GitImage:   "override-with-git:latest",
+			Submodules: false,
+			Depth:      1,
+			SSLVerify:  false,
+		},
+		want: corev1.Container{
+			Name:    "git-source-git-resource-78c5n",
+			Image:   "override-with-git:latest",
+			Command: []string{"/ko-app/git-init"},
+			Args: []string{
+				"-url",
+				"git@github.com:test/test.git",
+				"-revision",
+				"master",
+				"-path",
+				"/test/test",
+				"-submodules",
+				"false",
+				"-sslVerify=false",
 			},
 			WorkingDir: "/workspace",
 			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"}},

@@ -147,6 +147,24 @@ func setUp() {
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      "the-git-with-sslVerify-false",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Url",
+				Value: "https://github.com/grafeas/kritis",
+			}, {
+				Name:  "Revision",
+				Value: "branch",
+			}, {
+				Name:  "SSLVerify",
+				Value: "false",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cluster2",
 			Namespace: "marshmallow",
 		},
@@ -553,6 +571,42 @@ func TestAddResourceToTask(t *testing.T) {
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
 				},
 			}},
+		},
+	}, {
+		desc: "simple with sslVerify false",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "simpleTask",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "the-git-with-sslVerify-false",
+							},
+							Name: "gitspace",
+						},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:       "git-source-the-git-with-sslVerify-false-9l9zj",
+				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace", "-sslVerify=false"},
+				WorkingDir: "/workspace",
+				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-sslVerify-false"}},
+			}}},
 		},
 	}, {
 		desc: "storage resource as input with target path",

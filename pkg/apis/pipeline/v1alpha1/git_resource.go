@@ -42,9 +42,9 @@ type GitResource struct {
 	Revision   string `json:"revision"`
 	Submodules bool   `json:"submodules"`
 
-	Depth uint `json:"depth"`
-
-	GitImage string `json:"-"`
+	Depth     uint   `json:"depth"`
+	SSLVerify bool   `json:"sslVerify"`
+	GitImage  string `json:"-"`
 }
 
 // NewGitResource creates a new git resource to pass to a Task
@@ -58,6 +58,7 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 		GitImage:   gitImage,
 		Submodules: true,
 		Depth:      1,
+		SSLVerify:  true,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -69,6 +70,8 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 			gitResource.Submodules = toBool(param.Value, true)
 		case strings.EqualFold(param.Name, "Depth"):
 			gitResource.Depth = toUint(param.Value, 1)
+		case strings.EqualFold(param.Name, "SSLVerify"):
+			gitResource.SSLVerify = toBool(param.Value, true)
 		}
 	}
 	// default revision to master if nothing is provided
@@ -115,11 +118,12 @@ func (s *GitResource) GetURL() string {
 // Replacements is used for template replacement on a GitResource inside of a Taskrun.
 func (s *GitResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":     s.Name,
-		"type":     string(s.Type),
-		"url":      s.URL,
-		"revision": s.Revision,
-		"depth":    strconv.FormatUint(uint64(s.Depth), 10),
+		"name":      s.Name,
+		"type":      string(s.Type),
+		"url":       s.URL,
+		"revision":  s.Revision,
+		"depth":     strconv.FormatUint(uint64(s.Depth), 10),
+		"sslVerify": strconv.FormatBool(s.SSLVerify),
 	}
 }
 
@@ -137,6 +141,9 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 	if s.Depth != 1 {
 		args = append(args, "-depth", strconv.FormatUint(uint64(s.Depth), 10))
 	}
+	if !s.SSLVerify {
+		args = append(args, "-sslVerify=false")
+	}
 
 	step := Step{
 		Container: corev1.Container{
@@ -152,6 +159,7 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 			}},
 		},
 	}
+
 	return &InternalTaskModifier{
 		StepsToPrepend: []Step{step},
 	}, nil
