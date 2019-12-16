@@ -235,13 +235,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(pr, getPipelineFunc)
 	if err != nil {
 		c.Logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonCouldntGetPipeline,
-			Message: fmt.Sprintf("Error retrieving pipeline for pipelinerun %s: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
-		})
+		pr.Fail(ReasonCouldntGetPipeline,
+			fmt.Sprintf("Error retrieving pipeline for pipelinerun %s: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err))
 		return nil
 	}
 
@@ -265,49 +261,33 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	d, err := dag.Build(v1alpha1.PipelineTaskList(pipelineSpec.Tasks))
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonInvalidGraph,
-			Message: fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
-		})
+		pr.Fail(ReasonInvalidGraph,
+			fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err))
 		return nil
 	}
 
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonFailedValidation,
-			Message: fmt.Sprintf("Pipeline %s can't be Run; it has an invalid spec: %s",
-				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
-		})
+		pr.Fail(ReasonFailedValidation,
+			fmt.Sprintf("Pipeline %s can't be Run; it has an invalid spec: %s",
+				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
 		return nil
 	}
 
 	if err := resources.ValidateResourceBindings(pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonInvalidBindings,
-			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
-		})
+		pr.Fail(ReasonInvalidBindings,
+			fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err))
 		return nil
 	}
 	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonCouldntGetResource,
-			Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
-				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
-		})
+		pr.Fail(ReasonCouldntGetResource,
+			fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
+				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
 		return nil
 	}
 
@@ -316,13 +296,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	err = resources.ValidateParamTypesMatching(pipelineSpec, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonParameterTypeMismatch,
-			Message: fmt.Sprintf("PipelineRun %s parameters have mismatching types with Pipeline %s's parameters: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
-		})
+		pr.Fail(ReasonParameterTypeMismatch,
+			fmt.Sprintf("PipelineRun %s parameters have mismatching types with Pipeline %s's parameters: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err))
 		return nil
 	}
 
@@ -350,29 +326,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		switch err := err.(type) {
 		case *resources.TaskNotFoundError:
-			pr.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: ReasonCouldntGetTask,
-				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pipelineMeta.Name), err),
-			})
+			pr.Fail(ReasonCouldntGetTask,
+				fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pipelineMeta.Name), err))
 		case *resources.ConditionNotFoundError:
-			pr.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: ReasonCouldntGetCondition,
-				Message: fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
-			})
+			pr.Fail(ReasonCouldntGetCondition,
+				fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
 		default:
-			pr.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: ReasonFailedValidation,
-				Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
-			})
+			pr.Fail(ReasonFailedValidation,
+				fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
 		}
 		return nil
 	}
@@ -387,13 +351,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
 		if err != nil {
 			c.Logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
-			pr.Status.SetCondition(&apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  ReasonFailedValidation,
-				Message: err.Error(),
-			})
-			// update pr completed time
+			pr.Fail(ReasonFailedValidation, err.Error())
 			return nil
 		}
 	}
@@ -444,6 +402,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 	after := resources.GetPipelineConditionStatus(pr, pipelineState, c.Logger, d)
 	pr.Status.SetCondition(after)
+	pr.Status.CompletionTime = resources.GetPipelineCompletionTime(pr, pipelineState, c.Logger, d)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
@@ -622,12 +581,6 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating status: %w", pr.Name, err)
-	}
-	succeeded := pr.Status.GetCondition(apis.ConditionSucceeded)
-	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
-		// update pr completed time
-		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status

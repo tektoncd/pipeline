@@ -635,15 +635,18 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 }
 
 func TestReconcileOnCompletedPipelineRun(t *testing.T) {
+	completionTime := time.Unix(1000, 0).UTC()
 	taskRunName := "test-pipeline-run-completed-hello-world"
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionTrue,
-			Reason:  resources.ReasonSucceeded,
-			Message: "All Tasks have completed executing",
-		}),
+		tb.PipelineRunStatus(
+			tb.PipelineRunCompletionTime(completionTime),
+			tb.PipelineRunStatusCondition(apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  resources.ReasonSucceeded,
+				Message: "All Tasks have completed executing",
+			}),
 			tb.PipelineRunTaskRunsStatus(taskRunName, &v1alpha1.PipelineRunTaskRunStatus{
 				PipelineTaskName: "hello-world-1",
 				Status:           &v1alpha1.TaskRunStatus{},
@@ -660,6 +663,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
 			tb.TaskRunStatus(
+				tb.TaskRunCompletionTime(completionTime),
 				tb.StatusCondition(apis.Condition{
 					Type: apis.ConditionSucceeded,
 				}),
@@ -713,9 +717,14 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 
 	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
+
 		PipelineTaskName: "hello-world-1",
 		Status: &v1alpha1.TaskRunStatus{
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				CompletionTime: &metav1.Time{Time: completionTime},
+			},
 			Status: duckv1beta1.Status{
+
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 		},

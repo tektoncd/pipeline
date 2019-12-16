@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -374,6 +375,34 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 		Reason:  ReasonRunning,
 		Message: "Not all Tasks in the Pipeline have finished executing",
 	}
+}
+
+// GetPipelineCompletionTime will return the CompletionTime that the PipelineRun pr should be
+// updated with, based on the status and CompletionTime of the TaskRuns in state.
+func GetPipelineCompletionTime(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *dag.Graph) *metav1.Time {
+	if pr.IsTimedOut() {
+		return &metav1.Time{Time: pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)}
+	}
+	completionTime := pr.Status.StartTime
+	// Check to see if all tasks are success or skipped
+	for _, rprt := range state {
+		if isSkipped(rprt, state.toMap(), dag) {
+			// Skipped tasks do not factor into the CompletionTime of a PipelineRun
+			continue
+		}
+		if rprt.TaskRun.Status.CompletionTime == nil || rprt.TaskRun.Status.CompletionTime.IsZero() {
+			// There is still a TaskRun that wasn't skipped but has no
+			// completion time. We assume this means it is still running or, at
+			// least, has not been marked as successful/failed. As such, we
+			// treat the PipelineRun as not having completed yet, and do not set
+			// its CompletionTime.
+			return nil
+		}
+		if t := rprt.TaskRun.Status.CompletionTime; t.After(completionTime.Time) {
+			completionTime = t
+		}
+	}
+	return completionTime
 }
 
 // isSkipped returns true if a Task in a TaskRun will not be run either because

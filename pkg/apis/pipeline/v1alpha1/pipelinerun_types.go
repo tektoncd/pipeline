@@ -229,12 +229,34 @@ func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.
 func (pr *PipelineRun) IsDone() bool {
-	return !pr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+	return pr.Status.CompletionTime != nil && !pr.Status.CompletionTime.IsZero()
 }
 
 // HasStarted function check whether pipelinerun has valid start time set in its status
 func (pr *PipelineRun) HasStarted() bool {
 	return pr.Status.StartTime != nil && !pr.Status.StartTime.IsZero()
+}
+
+// IsSuccessful returns true if the PipelineRun's status indicates that it succeeded.
+func (pr *PipelineRun) IsSuccessful() bool {
+	return pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+}
+
+// IsFailed returns true if the PipelineRun's status indicates that it has failed.
+func (pr *PipelineRun) IsFailed() bool {
+	return pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+}
+
+func (pr *PipelineRun) Fail(reason, msg string) {
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  reason,
+		Message: msg,
+	})
+	if !pr.IsDone() {
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	}
 }
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state

@@ -112,9 +112,9 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 
 	ctx, _ := rtesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
-	addPipelineRun(informer, "pipelinerun-1", "pipeline-1", "ns", corev1.ConditionTrue, t)
-	addPipelineRun(informer, "pipelinerun-2", "pipeline-2", "ns", corev1.ConditionFalse, t)
-	addPipelineRun(informer, "pipelinerun-3", "pipeline-3", "ns", corev1.ConditionUnknown, t)
+	addPipelineRun(informer, "pipelinerun-1", "pipeline-1", "ns", time.Time{}, t)
+	addPipelineRun(informer, "pipelinerun-2", "pipeline-2", "ns", time.Now(), t)
+	addPipelineRun(informer, "pipelinerun-3", "pipeline-3", "ns", time.Now(), t)
 
 	metrics, err := NewRecorder()
 	assertErrIsNil(err, "Recorder initialization failed", t)
@@ -125,16 +125,13 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 
 }
 
-func addPipelineRun(informer alpha1.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
+func addPipelineRun(informer alpha1.PipelineRunInformer, run, pipeline, ns string, completionTime time.Time, t *testing.T) {
 	t.Helper()
 
 	err := informer.Informer().GetIndexer().Add(tb.PipelineRun(run, ns,
 		tb.PipelineRunSpec(pipeline),
 		tb.PipelineRunStatus(
-			tb.PipelineRunStatusCondition(apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: status,
-			}),
+			tb.PipelineRunCompletionTime(completionTime),
 		)))
 
 	if err != nil {

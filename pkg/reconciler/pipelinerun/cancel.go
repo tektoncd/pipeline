@@ -19,26 +19,15 @@ package pipelinerun
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 // cancelPipelineRun makrs the PipelineRun as cancelled and any resolved taskrun too.
 func cancelPipelineRun(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask, clientSet clientset.Interface) error {
-	pr.Status.SetCondition(&apis.Condition{
-		Type:    apis.ConditionSucceeded,
-		Status:  corev1.ConditionFalse,
-		Reason:  "PipelineRunCancelled",
-		Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
-	})
-	// update pr completed time
-	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	pr.Fail("PipelineRunCancelled", fmt.Sprintf("PipelineRun %q was cancelled", pr.Name))
 	errs := []string{}
 	for _, rprt := range pipelineState {
 		if rprt.TaskRun == nil {
