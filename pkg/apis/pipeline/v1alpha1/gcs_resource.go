@@ -26,8 +26,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var (
-	gcsSecretVolumeMountPath = "/var/secret"
+const (
+	gcsSecretVolumeMountPath     = "/var/secret"
+	activateServiceAccountScript = `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+`
 )
 
 // GCSResource is a GCS endpoint from which to get artifacts which is required
@@ -133,24 +139,26 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 	if path == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
-	var args []string
+	script := activateServiceAccountScript
 	if s.TypeDir {
-		args = []string{"rsync", "-d", "-r", s.Location, path}
+		script += fmt.Sprintf("gsutil rsync -d -r %s %s\n", s.Location, path)
 	} else {
-		args = []string{"cp", s.Location, path}
+		script += fmt.Sprintf("gsutil cp %s %s\n", s.Location, path)
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	steps := []Step{
 		CreateDirStep(s.ShellImage, s.Name, path),
-		{Container: corev1.Container{
-			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
-			Image:        s.GsutilImage,
-			Command:      []string{"gsutil"},
-			Args:         args,
-			Env:          envVars,
-			VolumeMounts: secretVolumeMount,
-		}}}
+		{
+			Script: script,
+			Container: corev1.Container{
+				Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
+				Image:        s.GsutilImage,
+				Env:          envVars,
+				VolumeMounts: secretVolumeMount,
+			},
+		},
+	}
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
