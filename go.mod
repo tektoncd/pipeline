@@ -41,7 +41,7 @@ require (
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tektoncd/plumbing v0.0.0-20191210145340-e34ec9c0a739
+	github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
 	go.opencensus.io v0.22.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.9.2-0.20180814183419-67bc79d13d15
@@ -97,6 +97,3 @@ replace (
 	k8s.io/kubernetes => k8s.io/kubernetes v1.13.12
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191004105814-56635b1b5a0c
 )
-
-// Local overrides for testing. Remove before submitting.
-replace github.com/tektoncd/plumbing => github.com/wlynch/plumbing v0.0.0-20191206183032-e43af7f0d688

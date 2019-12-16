@@ -255,7 +255,7 @@ github.com/shurcooL/graphql/internal/jsonutil
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/plumbing v0.0.0-20191210145340-e34ec9c0a739 => github.com/wlynch/plumbing v0.0.0-20191206183032-e43af7f0d688
+# github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
 github.com/tektoncd/plumbing
 # go.opencensus.io v0.22.1
 go.opencensus.io
