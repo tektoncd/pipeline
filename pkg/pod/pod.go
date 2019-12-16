@@ -30,10 +30,8 @@ import (
 )
 
 const (
-	workspaceVolumeName = "tekton-internal-workspace"
-	homeVolumeName      = "tekton-internal-home"
-	workspaceDir        = "/workspace"
-	homeDir             = "/tekton/home"
+	workspaceDir = "/workspace"
+	homeDir      = "/tekton/home"
 
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
