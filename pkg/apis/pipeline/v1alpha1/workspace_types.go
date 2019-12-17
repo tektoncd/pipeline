@@ -33,6 +33,9 @@ type WorkspaceDeclaration struct {
 	// MountPath overrides the directory that the volume will be made available at.
 	// +optional
 	MountPath string `json:"mountPath,omitempty"`
+	// ReadOnly dictates whether a mounted volume is writable. By default this
+	// field is false and so mounted volumes are writable.
+	ReadOnly bool `json:"readOnly,omitempty"`
 }
 
 // GetMountPath returns the mountPath for w which is the MountPath if provided or the

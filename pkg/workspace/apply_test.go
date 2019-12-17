@@ -413,8 +413,44 @@ func TestApply(t *testing.T) {
 				MountPath: "/my/fancy/mount/path",
 			}},
 		},
-	},
-	} {
+	}, {
+		name: "readOnly true marks volume mount readOnly",
+		ts: v1alpha1.TaskSpec{
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/my/fancy/mount/path",
+				ReadOnly:  true,
+			}},
+		},
+		workspaces: []v1alpha1.WorkspaceBinding{{
+			Name: "custom",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "mypvc",
+			},
+		}},
+		expectedTaskSpec: v1alpha1.TaskSpec{
+			StepTemplate: &corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-twkr2",
+					MountPath: "/my/fancy/mount/path",
+					ReadOnly:  true,
+				}},
+			},
+			Volumes: []corev1.Volume{{
+				Name: "ws-twkr2",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "mypvc",
+					},
+				},
+			}},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/my/fancy/mount/path",
+				ReadOnly:  true,
+			}},
+		},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ts, err := workspace.Apply(tc.ts, tc.workspaces)
 			if err != nil {
