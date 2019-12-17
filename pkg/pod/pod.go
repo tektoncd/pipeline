@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,6 +40,9 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
+	ReleaseAnnotation      = "tekton.dev/release"
+	ReleaseAnnotationValue = version.PipelineVersion
+
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1alpha1.SchemeGroupVersion.Group,
 		Version: v1alpha1.SchemeGroupVersion.Version,
@@ -186,6 +190,9 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		priorityClassName = *taskRun.Spec.PodTemplate.PriorityClassName
 	}
 
+	podAnnotations := taskRun.Annotations
+	podAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -200,7 +207,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
-			Annotations: taskRun.Annotations,
+			Annotations: podAnnotations,
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
