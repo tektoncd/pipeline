@@ -53,7 +53,8 @@ func main() {
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {
 		case skipError:
-			os.Exit(0)
+			log.Print("Skipping step because a previous step failed")
+			os.Exit(1)
 		case *exec.ExitError:
 			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
 			// This works on both Unix and Windows. Although

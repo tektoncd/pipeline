@@ -150,13 +150,17 @@ func TestPipelineRunHasStarted(t *testing.T) {
 	}, {
 		name: "prWithStartTime",
 		prStatus: v1alpha1.PipelineRunStatus{
-			StartTime: &metav1.Time{Time: time.Now()},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
 		},
 		expectedValue: true,
 	}, {
 		name: "prWithZeroStartTime",
 		prStatus: v1alpha1.PipelineRunStatus{
-			StartTime: &metav1.Time{},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{},
+			},
 		},
 		expectedValue: false,
 	}}
@@ -236,30 +240,17 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 			},
 		},
 		{
-			"deprecated default SA",
-			tb.PipelineRun("pr", "ns",
-				tb.PipelineRunSpec("prs",
-					tb.PipelineRunDeprecatedServiceAccountName("", "deprecatedSA"),
-					tb.PipelineRunDeprecatedServiceAccountTask("taskName", "deprecatedTaskSA"))),
-			map[string]string{
-				"unknown":  "deprecatedSA",
-				"taskName": "deprecatedTaskSA",
-			},
-		},
-		{
 			"mixed default SA",
 			tb.PipelineRun("defaultSA", "defaultSA",
 				tb.PipelineRunSpec("defaultSA",
-					tb.PipelineRunDeprecatedServiceAccountName("defaultSA", "deprecatedSA"),
+					tb.PipelineRunServiceAccountName("defaultSA"),
 					tb.PipelineRunServiceAccountNameTask("task1", "task1SA"),
 					tb.PipelineRunServiceAccountNameTask("task2", "task2SA"),
-					tb.PipelineRunDeprecatedServiceAccountTask("deprecatedTask3", "deprecatedTask3SA"),
-					tb.PipelineRunDeprecatedServiceAccountTask("task2", "deprecated"))),
+				)),
 			map[string]string{
-				"unknown":         "defaultSA",
-				"task1":           "task1SA",
-				"task2":           "task2SA",
-				"deprecatedTask3": "deprecatedTask3SA",
+				"unknown": "defaultSA",
+				"task1":   "task1SA",
+				"task2":   "task2SA",
 			},
 		},
 	} {

@@ -30,9 +30,9 @@ func TestPullRequest_NewResource(t *testing.T) {
 	url := "https://github.com/tektoncd/pipeline/pulls/1"
 	pr := tb.PipelineResource("foo", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypePullRequest,
-		tb.PipelineResourceSpecParam("type", "github"),
 		tb.PipelineResourceSpecParam("url", url),
-		tb.PipelineResourceSpecSecretParam("githubToken", "test-secret-key", "test-secret-name"),
+		tb.PipelineResourceSpecParam("provider", "github"),
+		tb.PipelineResourceSpecSecretParam("authToken", "test-secret-key", "test-secret-name"),
 	))
 	got, err := v1alpha1.NewPullRequestResource("override-with-pr:latest", pr)
 	if err != nil {
@@ -40,11 +40,12 @@ func TestPullRequest_NewResource(t *testing.T) {
 	}
 
 	want := &v1alpha1.PullRequestResource{
-		Name:    pr.Name,
-		Type:    v1alpha1.PipelineResourceTypePullRequest,
-		URL:     url,
-		Secrets: pr.Spec.SecretParams,
-		PRImage: "override-with-pr:latest",
+		Name:     pr.Name,
+		Type:     v1alpha1.PipelineResourceTypePullRequest,
+		URL:      url,
+		Provider: "github",
+		Secrets:  pr.Spec.SecretParams,
+		PRImage:  "override-with-pr:latest",
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error(diff)
@@ -85,20 +86,21 @@ func containerTestCases(mode string) []testcase {
 			Name: "creds",
 			URL:  "https://example.com",
 			Secrets: []v1alpha1.SecretParam{{
-				FieldName:  "githubToken",
+				FieldName:  "authToken",
 				SecretName: "github-creds",
 				SecretKey:  "token",
 			}},
-			PRImage: "override-with-pr:latest",
+			PRImage:  "override-with-pr:latest",
+			Provider: "github",
 		},
 		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-creds-mz4c7",
 			Image:      "override-with-pr:latest",
 			WorkingDir: v1alpha1.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
+			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode, "-provider", "github"},
 			Env: []corev1.EnvVar{{
-				Name: "GITHUBTOKEN",
+				Name: "AUTH_TOKEN",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{

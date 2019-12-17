@@ -132,13 +132,17 @@ func TestTaskRunHasStarted(t *testing.T) {
 	}, {
 		name: "trWithStartTime",
 		trStatus: v1alpha1.TaskRunStatus{
-			StartTime: &metav1.Time{Time: time.Now()},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
 		},
 		expectedValue: true,
 	}, {
 		name: "trWithZeroStartTime",
 		trStatus: v1alpha1.TaskRunStatus{
-			StartTime: &metav1.Time{},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				StartTime: &metav1.Time{},
+			},
 		},
 		expectedValue: false,
 	}}
@@ -150,33 +154,6 @@ func TestTaskRunHasStarted(t *testing.T) {
 				t.Fatalf("Expected taskrun HasStarted() to return %t but got %t", tc.expectedValue, tr.HasStarted())
 			}
 		})
-	}
-}
-
-func TestTaskRunGetServiceAccountName(t *testing.T) {
-	for _, tt := range []struct {
-		name       string
-		tr         *v1alpha1.TaskRun
-		expectedSA string
-	}{{
-		"service account",
-		tb.TaskRun("name", "ns", tb.TaskRunSpec(tb.TaskRunServiceAccountName("defaultSA"))),
-		"defaultSA",
-	},
-		{
-			"deprecated SA",
-			tb.TaskRun("name", "ns", tb.TaskRunSpec(tb.TaskRunDeprecatedServiceAccount("", "deprecatedSA"))),
-			"deprecatedSA",
-		},
-		{
-			"both SA",
-			tb.TaskRun("name", "ns", tb.TaskRunSpec(tb.TaskRunDeprecatedServiceAccount("defaultSA", "deprecatedSA"))),
-			"defaultSA",
-		},
-	} {
-		if e, a := tt.expectedSA, tt.tr.GetServiceAccountName(); e != a {
-			t.Errorf("%s: wrong service account name: got: %q want: %q", tt.name, a, e)
-		}
 	}
 }
 

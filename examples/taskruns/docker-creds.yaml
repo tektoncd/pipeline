@@ -33,11 +33,10 @@ kind: TaskRun
 metadata:
   name: docker-creds
 spec:
-  serviceAccount: robot-docker-basic
+  serviceAccountName: robot-docker-basic
   taskSpec:
     steps:
     - name: test
       image: quay.io/rhpipeline/skopeo:alpine
       # Test pulling a private builder container.
-      command: ["skopeo"]
-      args: ["copy", "docker://gcr.io/build-crd-testing/secret-sauce", "dir:///tmp/"]
+      script: skopeo copy docker://gcr.io/build-crd-testing/secret-sauce dir:///tmp/

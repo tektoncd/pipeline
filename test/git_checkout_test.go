@@ -45,34 +45,36 @@ func TestGitPipelineRun(t *testing.T) {
 
 	for _, revision := range revisions {
 
-		c, namespace := setup(t)
-		knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-		defer tearDown(t, c, namespace)
+		t.Run(revision, func(t *testing.T) {
+			c, namespace := setup(t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+			defer tearDown(t, c, namespace)
 
-		t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-		if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision)); err != nil {
-			t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
-		}
+			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision)); err != nil {
+				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
+			}
 
-		t.Logf("Creating Task %s", gitTestTaskName)
-		if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
-			t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
-		}
+			t.Logf("Creating Task %s", gitTestTaskName)
+			if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
+			}
 
-		t.Logf("Creating Pipeline %s", gitTestPipelineName)
-		if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
-			t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
-		}
+			t.Logf("Creating Pipeline %s", gitTestPipelineName)
+			if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
+			}
 
-		t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-		if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
-			t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
-		}
+			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
+			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
+			}
 
-		if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
-			t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
-			t.Fatalf("PipelineRun execution failed")
-		}
+			if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+				t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
+				t.Fatalf("PipelineRun execution failed")
+			}
+		})
 	}
 }
 

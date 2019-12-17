@@ -17,8 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -29,7 +27,6 @@ import (
 )
 
 func TestAddOutputImageDigestExporter(t *testing.T) {
-	currentDir, _ := os.Getwd()
 	for _, c := range []struct {
 		desc      string
 		task      *v1alpha1.Task
@@ -56,7 +53,6 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							Name: "source-image",
 							Type: "image",
 						},
-						OutputImageDir: currentDir,
 					}},
 				},
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -74,7 +70,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -84,7 +80,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -98,7 +94,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Name:                     "image-digest-exporter-9l9zj",
 			Image:                    "override-with-imagedigest-exporter-image:latest",
 			Command:                  []string{"/ko-app/imagedigestexporter"},
-			Args:                     []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
+			Args:                     []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
 			TerminationMessagePolicy: "FallbackToLogsOnError",
 		}}},
 	}, {
@@ -122,7 +118,6 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							Name: "source-image",
 							Type: "image",
 						},
-						OutputImageDir: currentDir,
 					}},
 				},
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -142,7 +137,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -152,7 +147,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -165,10 +160,11 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 		}}, {Container: corev1.Container{
 			Name: "step2",
 		}}, {Container: corev1.Container{
-			Name:                     "image-digest-exporter-9l9zj",
-			Image:                    "override-with-imagedigest-exporter-image:latest",
-			Command:                  []string{"/ko-app/imagedigestexporter"},
-			Args:                     []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
+			Name:    "image-digest-exporter-9l9zj",
+			Image:   "override-with-imagedigest-exporter-image:latest",
+			Command: []string{"/ko-app/imagedigestexporter"},
+			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
+
 			TerminationMessagePolicy: "FallbackToLogsOnError",
 		}}},
 	}} {

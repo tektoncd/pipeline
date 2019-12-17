@@ -17,13 +17,13 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -34,7 +34,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 			return &br, nil
 		}
 	}
-	return nil, xerrors.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
 }
 
 // AddInputResource reads the inputs resources and adds the corresponding container steps
@@ -75,26 +75,31 @@ func AddInputResource(
 	for i := len(taskSpec.Inputs.Resources) - 1; i >= 0; i-- {
 		input := taskSpec.Inputs.Resources[i]
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get bound resource: %w", err)
+		// Continue if the declared resource is optional and not specified in TaskRun
+		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
+		if input.Optional && boundResource == nil {
+			continue
+		} else if err != nil {
+			// throw an error for required resources, if not specified in the TaskRun
+			return nil, fmt.Errorf("failed to get bound resource: %w", err)
 		}
 		resource, ok := inputResources[boundResource.Name]
 		if !ok || resource == nil {
-			return nil, xerrors.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
+			return nil, fmt.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
 		var copyStepsFromPrevTasks []v1alpha1.Step
 		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
-				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+				if as.GetType() == pipeline.ArtifactStoragePVCType {
 					mountPVC = true
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {
@@ -113,7 +118,9 @@ func AddInputResource(
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+				return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
+			}
 		}
 	}
 
@@ -125,6 +132,8 @@ func AddInputResource(
 	}
 	return taskSpec, nil
 }
+
+const workspaceDir = "/workspace"
 
 func destinationPath(name, path string) string {
 	if path == "" {

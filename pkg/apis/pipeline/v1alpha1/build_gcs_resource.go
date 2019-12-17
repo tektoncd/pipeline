@@ -22,7 +22,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -65,17 +64,17 @@ type BuildGCSResource struct {
 	Location     string
 	ArtifactType GCSArtifactType
 
-	BashNoopImage        string `json:"-"`
+	ShellImage           string `json:"-"`
 	BuildGCSFetcherImage string `json:"-"`
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task.
 func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	if r.Spec.SecretParams != nil {
-		return nil, xerrors.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
+		return nil, fmt.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
 	}
 	var location string
 	var aType GCSArtifactType
@@ -87,22 +86,22 @@ func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCS
 			var err error
 			aType, err = getArtifactType(param.Value)
 			if err != nil {
-				return nil, xerrors.Errorf("BuildGCSResource %s : %w", r.Name, err)
+				return nil, fmt.Errorf("BuildGCSResource %s : %w", r.Name, err)
 			}
 		}
 	}
 	if location == "" {
-		return nil, xerrors.Errorf("BuildGCSResource: Need Location to be specified in order to create BuildGCS resource %s", r.Name)
+		return nil, fmt.Errorf("BuildGCSResource: Need Location to be specified in order to create BuildGCS resource %s", r.Name)
 	}
 	if aType == GCSArtifactType("") {
-		return nil, xerrors.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
+		return nil, fmt.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
 		Name:                 r.Name,
 		Type:                 r.Spec.Type,
 		Location:             location,
 		ArtifactType:         aType,
-		BashNoopImage:        images.BashNoopImage,
+		ShellImage:           images.ShellImage,
 		BuildGCSFetcherImage: images.BuildGCSFetcherImage,
 	}, nil
 }
@@ -134,7 +133,7 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 	}
 
 	steps := []Step{
-		CreateDirStep(s.BashNoopImage, s.Name, sourcePath),
+		CreateDirStep(s.ShellImage, s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},
@@ -162,5 +161,5 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 			return a, nil
 		}
 	}
-	return "", xerrors.Errorf("Invalid ArtifactType %s. Should be one of %s", val, validArtifactTypes)
+	return "", fmt.Errorf("Invalid ArtifactType %s. Should be one of %s", val, validArtifactTypes)
 }

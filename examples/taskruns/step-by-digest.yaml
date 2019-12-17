@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: step-by-digest-
+spec:
+  taskSpec:
+    steps:
+    # Step images can be specified by digest.
+    - image: busybox@sha256:1303dbf110c57f3edf68d9f5a16c082ec06c4cf7604831669faf2c712260b5a0
+      # NB: command is not set, so it must be looked up from the registry.
+      args: ['-c', 'echo hello']

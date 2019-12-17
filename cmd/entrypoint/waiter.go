@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
-	"golang.org/x/xerrors"
 )
 
 // realWaiter actually waits for files, by polling.
@@ -32,7 +32,7 @@ func (*realWaiter) Wait(file string, expectContent bool) error {
 				return nil
 			}
 		} else if !os.IsNotExist(err) {
-			return xerrors.Errorf("Waiting for %q: %w", file, err)
+			return fmt.Errorf("waiting for %q: %w", file, err)
 		}
 		if _, err := os.Stat(file + ".err"); err == nil {
 			return skipError("error file present, bail and skip the step")

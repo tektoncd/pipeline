@@ -195,15 +195,6 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
-		name: "unused resources declared",
-		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
-			tb.PipelineDeclaredResource("extra-resource", v1alpha1.PipelineResourceTypeImage),
-			tb.PipelineTask("foo", "foo-task",
-				tb.PipelineTaskInputResource("the-resource", "great-resource")),
-		)),
-		failureExpected: true,
-	}, {
 		name: "output resources missing from declaration",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),

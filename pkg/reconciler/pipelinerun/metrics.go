@@ -134,9 +134,13 @@ func (r *Recorder) DurationAndCount(pr *v1alpha1.PipelineRun) error {
 		status = "failed"
 	}
 
+	pipelineName := "anonymous"
+	if pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "" {
+		pipelineName = pr.Spec.PipelineRef.Name
+	}
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Insert(r.pipeline, pr.Spec.PipelineRef.Name),
+		tag.Insert(r.pipeline, pipelineName),
 		tag.Insert(r.pipelineRun, pr.Name),
 		tag.Insert(r.namespace, pr.Namespace),
 		tag.Insert(r.status, status),

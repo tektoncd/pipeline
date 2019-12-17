@@ -18,7 +18,7 @@ The Pipelines and Tasks in this folder are used for:
 
 To start from scratch and use these Pipelines and Tasks:
 
-1. [Install Tekton v0.3.1](#install-tekton)
+1. [Install Tekton](#install-tekton)
 1. [Setup the Tasks and Pipelines](#setup)
 1. [Create the required service account + secrets](#service-account-and-secrets)
 
@@ -34,8 +34,7 @@ To make a new release:
 1. (If you haven't already) [Install `tkn`](https://github.com/tektoncd/cli#installing-tkn)
 1. [Run the Pipeline](#run-the-pipeline)
 1. Create the new tag and release in GitHub
-   ([see one of way of doing that here](https://github.com/tektoncd/pipeline/issues/530#issuecomment-477409459)).
-   _TODO(#530): Automate as much of this as possible with Tekton._
+   ([see one of way of doing that here](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release#create-draft-release)).
 1. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for
    the new release ([README.md#read-the-docs](../README.md#read-the-docs)).
 1. Update the new release in GitHub with the same links to the docs and examples, see
@@ -63,7 +62,9 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
        value: revision-for-vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from (not a tag, since that's not created yet)
    ```
 
- 1. To use release post-processing services, update the
+ 1. Post-processing services perform post release automated tasks. Today the only
+    service available collects the `PipelineRun` logs uploads them to the release
+    bucker. To use release post-processing services, update the
     [`resources.yaml`](./resources.yaml) file to add a valid targetURL in the
     cloud event `PipelineResoruce` named `post-release-trigger`:
 
@@ -108,12 +109,13 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    [all the Tasks and Pipelines already exist](#setup)):
 
    ```shell
-   # Create the resoruces - i.e. set the revision that you wan to build from
+   # Create the resources - i.e. set the revision that you wan to build from
    kubectl apply -f tekton/resources.yaml
 
    # Change the environment variable to the version you would like to use.
    # Be careful: due to #983 it is possible to overwrite previous releases.
-   export VERSION_TAG=v0.X.Y
+   export VERSION_TAG=vX.Y.Z
+   export GIT_RESOURCE_NAME=tekton-pipelines-git-vX-Y-Z
    export IMAGE_REGISTRY=gcr.io/tekton-releases
 
    # Double-check the git revision that is going to be used for the release:
@@ -123,22 +125,19 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--param=versionTag=${VERSION_TAG} \
 		--param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
-		--resource=source-repo=tekton-pipelines-git \
+		--resource=source-repo=${GIT_RESOURCE_NAME} \
 		--resource=bucket=tekton-bucket \
 		--resource=builtBaseImage=base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
 		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
 		--resource=builtCredsInitImage=creds-init-image \
 		--resource=builtGitInitImage=git-init-image \
-		--resource=builtNopImage=nop-image \
-		--resource=builtBashImage=bash-image \
-		--resource=builtGsutilImage=gsutil-image \
 		--resource=builtControllerImage=controller-image \
 		--resource=builtWebhookImage=webhook-image \
 		--resource=builtDigestExporterImage=digest-exporter-image \
 		--resource=builtPullRequestInitImage=pull-request-init-image \
 		--resource=builtGcsFetcherImage=gcs-fetcher-image \
-		--resource=notification=post-release-trigger
+		--resource=notification=post-release-trigger \
 		pipeline-release
    ```
 
@@ -150,27 +149,13 @@ image registry instead._
 ## Nightly releases
 
 [The nightly release pipeline](release-pipeline-nightly.yaml) is
-[triggered nightly by Prow](https://github.com/tektoncd/plumbing/tree/master/prow).
+[triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/master/tekton).
 
 This Pipeline uses:
 
-- [ci-images.yaml](ci-images.yaml)
-- [publish-nightly.yaml](publish-nightly.yaml) (See [triggers#87](https://github.com/tektoncd/triggers/issues/87))
-
-The nightly release Pipeline is currently missing Tasks which we want to add once we are able:
-
-- The unit tests aren't run due to the data race reported in [#1124](http://github.com/tektoncd/pipeline/issues/1124)
-- Linting isn't run due to it being flakey [#1205](http://github.com/tektoncd/pipeline/issues/1205)
-- Build isn't run because it uses `workingDir` which is broken in v0.3.1 ([kubernetes/test-infra#13948](https://github.com/kubernetes/test-infra/issues/13948))
+- [publish.yaml](publish.yaml)
 
 ## Install Tekton
-
-Some of the Pipelines and Tasks in this repo work with v0.3.1 due to
-[Prow #13948](https://github.com/kubernetes/test-infra/issues/13948), so that
-they can be used [with Prow](https://github.com/tektoncd/plumbing/tree/master/prow).
-
-Specifically, nightly releases are triggered by Prow, so they are compatible with
-v0.3.1, while full releases are triggered manually and require Tekton >= v0.7.0.
 
 ```bash
 # If this is your first time installing Tekton in the cluster you might need to give yourself permission to do so
@@ -178,11 +163,9 @@ kubectl create clusterrolebinding cluster-admin-binding-someusername \
   --clusterrole=cluster-admin \
   --user=$(gcloud config get-value core/account)
 
-# For Tekton v0.3.1 - apply version v0.3.1
-kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v0.3.1/release.yaml
-
-# For Tekton v0.7.0 - apply version v0.7.0 - Do not apply both versions in the same cluster!
-kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v0.3.1/release.yaml
+# Example, Tekton v0.9.1
+export TEKTON_VERSION=0.9.1
+kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v${TEKTON_VERSION}/release.yaml
 ```
 
 ## Setup
@@ -191,37 +174,25 @@ Add all the `Tasks` to the cluster, including the
 [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
 Tasks from the
 [`tektoncd/catalog`](https://github.com/tektoncd/catalog), and the
-[release pre-check](https://github.com/tektoncd/plumbing/tree/master/tekton/) Task from
+[release](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release) Tasks from
 [`tektoncd/plumbing`](https://github.com/tektoncd/plumbing).
 
-For nightly releases, use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
-tasks that is compatible with Tekton v0.3.1:
-
-```bash
-# Apply the Tasks we are using from the catalog
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/lint.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/build.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/tests.yaml
-```
-
-For full releases, use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
-tasks that is compatible with Tekton v0.7.0 (`master`) and install the pre-release
-check Task from plumbing too:
+Use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
+tasks that is compatible with version of Tekton being released, usually `master`.
+Install Task from plumbing too:
 
 ```bash
 # Apply the Tasks we are using from the catalog
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/prerelease_checks.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/resources/release/
 ```
 
 Apply the tasks from the `pipeline` repo:
 ```bash
 # Apply the Tasks and Pipelines we use from this repo
-kubectl apply -f tekton/ci-images.yaml
 kubectl apply -f tekton/publish.yaml
-kubectl apply -f tekton/publish-nightly.yaml
 kubectl apply -f tekton/release-pipeline.yaml
 kubectl apply -f tekton/release-pipeline-nightly.yaml
 
@@ -229,12 +200,8 @@ kubectl apply -f tekton/release-pipeline-nightly.yaml
 kubectl apply -f tekton/resources.yaml
 ```
 
-`Tasks` from this repo are:
+`Tasks` and `Pipelines` from this repo are:
 
-- [`ci-images.yaml`](ci-images.yaml) - This `Task` uses
-  [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
-  publish [images for the CI itself](#supporting-images), which can then be used
-  as `steps` in downstream `Tasks`
 - [`publish.yaml`](publish.yaml) - This `Task` uses
   [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
   publish base images, and uses

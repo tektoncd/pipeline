@@ -19,6 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	scheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +39,6 @@ type PipelinesGetter interface {
 type PipelineInterface interface {
 	Create(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
 	Update(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
-	UpdateStatus(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
 	Delete(name string, options *v1.DeleteOptions) error
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Pipeline, error)
@@ -76,11 +77,16 @@ func (c *pipelines) Get(name string, options v1.GetOptions) (result *v1alpha1.Pi
 
 // List takes label and field selectors, and returns the list of Pipelines that match those selectors.
 func (c *pipelines) List(opts v1.ListOptions) (result *v1alpha1.PipelineList, err error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	result = &v1alpha1.PipelineList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("pipelines").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Do().
 		Into(result)
 	return
@@ -88,11 +94,16 @@ func (c *pipelines) List(opts v1.ListOptions) (result *v1alpha1.PipelineList, er
 
 // Watch returns a watch.Interface that watches the requested pipelines.
 func (c *pipelines) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	var timeout time.Duration
+	if opts.TimeoutSeconds != nil {
+		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
+	}
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
 		Resource("pipelines").
 		VersionedParams(&opts, scheme.ParameterCodec).
+		Timeout(timeout).
 		Watch()
 }
 
@@ -121,22 +132,6 @@ func (c *pipelines) Update(pipeline *v1alpha1.Pipeline) (result *v1alpha1.Pipeli
 	return
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *pipelines) UpdateStatus(pipeline *v1alpha1.Pipeline) (result *v1alpha1.Pipeline, err error) {
-	result = &v1alpha1.Pipeline{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("pipelines").
-		Name(pipeline.Name).
-		SubResource("status").
-		Body(pipeline).
-		Do().
-		Into(result)
-	return
-}
-
 // Delete takes name of the pipeline and deletes it. Returns an error if one occurs.
 func (c *pipelines) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
@@ -150,10 +145,15 @@ func (c *pipelines) Delete(name string, options *v1.DeleteOptions) error {
 
 // DeleteCollection deletes a collection of objects.
 func (c *pipelines) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	var timeout time.Duration
+	if listOptions.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("pipelines").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
+		Timeout(timeout).
 		Body(options).
 		Do().
 		Error()

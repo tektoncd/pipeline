@@ -19,8 +19,8 @@ package pipeline
 // Images holds the images reference for a number of container images used
 // across tektoncd pipelines.
 type Images struct {
-	// EntryPointImage is container image containing our entrypoint binary.
-	EntryPointImage string
+	// EntrypointImage is container image containing our entrypoint binary.
+	EntrypointImage string
 	// NopImage is the container image used to kill sidecars.
 	NopImage string
 	// GitImage is the container image with Git that we use to implement the Git source step.
@@ -29,8 +29,8 @@ type Images struct {
 	CredsImage string
 	// KubeconfigWriterImage is the container image containing our kubeconfig writer binary.
 	KubeconfigWriterImage string
-	// BashNoopImage is the container image containing bash shell.
-	BashNoopImage string
+	// ShellImage is the container image containing bash shell.
+	ShellImage string
 	// GsutilImage is the container miage containing gsutil.
 	GsutilImage string
 	// BuildGCSFetcherImage is the container image containing our GCS fetcher binary.

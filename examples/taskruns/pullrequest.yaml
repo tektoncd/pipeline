@@ -20,14 +20,11 @@ spec:
     steps:
     - name: dump-workspace
       image: ubuntu
-      command: ["sh"]
-      args: ["-c", "find $(inputs.resources.pr.path)/* -type f | xargs tail -n +1"]
+      script: find $(inputs.resources.pr.path)/* -type f | xargs tail -n +1
+
     - name: ensure-approved
       image: ubuntu
-      command: ["/bin/bash"]
-      args:
-      - -c
-      - |
+      script: |
         if [ -f "$(inputs.resources.pr.path)/labels/approved" ]; then
           echo "PR is approved!"
         else

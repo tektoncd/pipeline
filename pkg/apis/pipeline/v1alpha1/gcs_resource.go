@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -41,14 +40,14 @@ type GCSResource struct {
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
 
-	BashNoopImage string `json:"-"`
-	GsutilImage   string `json:"-"`
+	ShellImage  string `json:"-"`
+	GsutilImage string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
 func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, xerrors.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	var location string
 	var locationSpecified, dir bool
@@ -66,16 +65,16 @@ func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, 
 	}
 
 	if !locationSpecified {
-		return nil, xerrors.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
+		return nil, fmt.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
-		Name:          r.Name,
-		Type:          r.Spec.Type,
-		Location:      location,
-		TypeDir:       dir,
-		Secrets:       r.Spec.SecretParams,
-		BashNoopImage: images.BashNoopImage,
-		GsutilImage:   images.GsutilImage,
+		Name:        r.Name,
+		Type:        r.Spec.Type,
+		Location:    location,
+		TypeDir:     dir,
+		Secrets:     r.Spec.SecretParams,
+		ShellImage:  images.ShellImage,
+		GsutilImage: images.GsutilImage,
 	}, nil
 }
 
@@ -105,9 +104,9 @@ func (s *GCSResource) Replacements() map[string]string {
 func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", path, s.Location)}
+		args = []string{"rsync", "-d", "-r", path, s.Location}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(path, "*"), s.Location)}
+		args = []string{"cp", filepath.Join(path, "*"), s.Location}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
@@ -115,7 +114,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 	step := Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        s.GsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
+		Command:      []string{"gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars},
@@ -132,22 +131,22 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	if path == "" {
-		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
+		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, path)}
+		args = []string{"rsync", "-d", "-r", s.Location, path}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, path)}
+		args = []string{"cp", s.Location, path}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	steps := []Step{
-		CreateDirStep(s.BashNoopImage, s.Name, path),
+		CreateDirStep(s.ShellImage, s.Name, path),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        s.GsutilImage,
-			Command:      []string{"/ko-app/gsutil"},
+			Command:      []string{"gsutil"},
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,

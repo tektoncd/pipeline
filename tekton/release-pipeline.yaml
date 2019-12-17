@@ -27,12 +27,6 @@ spec:
     type: image
   - name: builtGitInitImage
     type: image
-  - name: builtNopImage
-    type: image
-  - name: builtBashImage
-    type: image
-  - name: builtGsutilImage
-    type: image
   - name: builtControllerImage
     type: image
   - name: builtWebhookImage
@@ -69,6 +63,8 @@ spec:
           value: $(params.package)
         - name: flags
           value: -v
+        - name: version
+          value: v1.21
       resources:
         inputs:
           - name: source
@@ -91,6 +87,8 @@ spec:
       params:
         - name: package
           value: $(params.package)
+        - name: flags
+          value: -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
       resources:
         inputs:
           - name: source
@@ -125,12 +123,6 @@ spec:
             resource: builtCredsInitImage
           - name: builtGitInitImage
             resource: builtGitInitImage
-          - name: builtNopImage
-            resource: builtNopImage
-          - name: builtBashImage
-            resource: builtBashImage
-          - name: builtGsutilImage
-            resource: builtGsutilImage
           - name: builtControllerImage
             resource: builtControllerImage
           - name: builtWebhookImage

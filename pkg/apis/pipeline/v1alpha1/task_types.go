@@ -19,7 +19,8 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 )
 
 func (t *Task) TaskSpec() TaskSpec {
@@ -64,23 +65,7 @@ type TaskSpec struct {
 
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
-type Step struct {
-	corev1.Container
-
-	// Script is the contents of an executable file to execute.
-	//
-	// If Script is not empty, the Step cannot have an Command or Args.
-	Script string `json:"script,omitempty"`
-}
-
-// Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*Task)(nil)
-var _ apis.Defaultable = (*Task)(nil)
-
-const (
-	// TaskOutputImageDefaultDir is the default directory for output image resource,
-	TaskOutputImageDefaultDir = "/builder/home/image-outputs"
-)
+type Step = v1alpha2.Step
 
 // +genclient
 // +genclient:noStatus
@@ -121,11 +106,7 @@ type Inputs struct {
 // the Task definition, and when provided as an Input, the Name will be the
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
-type TaskResource struct {
-	ResourceDeclaration `json:",inline"`
-	// +optional
-	OutputImageDir string `json:"outputImageDir,omitempty"`
-}
+type TaskResource = v1alpha2.TaskResource
 
 // Outputs allow a task to declare what data the Build/Task will be producing,
 // i.e. results such as logs and artifacts such as images.

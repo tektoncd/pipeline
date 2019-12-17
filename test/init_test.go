@@ -30,7 +30,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,11 +39,13 @@ import (
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	// Mysteriously by k8s libs, or they fail to create `KubeClient`s when using oidc authentication. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/345
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 var initMetrics sync.Once
 
-func setup(t *testing.T) (*clients, string) {
+func setup(t *testing.T, fn ...func(*testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
@@ -53,6 +54,11 @@ func setup(t *testing.T) (*clients, string) {
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(t, namespace, c.KubeClient)
 	verifyServiceAccountExistence(t, namespace, c.KubeClient)
+
+	for _, f := range fn {
+		f(t, c, namespace)
+	}
+
 	return c, namespace
 }
 
@@ -156,7 +162,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	ps, err := cs.PipelineClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get pipeline: %w", err)
+		return nil, fmt.Errorf("could not get pipeline: %w", err)
 	}
 	for _, i := range ps.Items {
 		printOrAdd(i)
@@ -164,7 +170,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	prs, err := cs.PipelineResourceClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get pipelinerun resource: %w", err)
+		return nil, fmt.Errorf("could not get pipelinerun resource: %w", err)
 	}
 	for _, i := range prs.Items {
 		printOrAdd(i)
@@ -172,7 +178,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	prrs, err := cs.PipelineRunClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get pipelinerun: %w", err)
+		return nil, fmt.Errorf("could not get pipelinerun: %w", err)
 	}
 	for _, i := range prrs.Items {
 		printOrAdd(i)
@@ -180,14 +186,14 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	ts, err := cs.TaskClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get tasks: %w", err)
+		return nil, fmt.Errorf("could not get tasks: %w", err)
 	}
 	for _, i := range ts.Items {
 		printOrAdd(i)
 	}
 	trs, err := cs.TaskRunClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get taskrun: %w", err)
+		return nil, fmt.Errorf("could not get taskrun: %w", err)
 	}
 	for _, i := range trs.Items {
 		printOrAdd(i)
@@ -195,7 +201,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 
 	pods, err := cs.KubeClient.Kube.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	if err != nil {
-		return nil, xerrors.Errorf("could not get pods: %w", err)
+		return nil, fmt.Errorf("could not get pods: %w", err)
 	}
 	for _, i := range pods.Items {
 		printOrAdd(i)

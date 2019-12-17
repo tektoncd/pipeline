@@ -239,6 +239,12 @@ func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops
 	}
 }
 
+func ResourceOptional(optional bool) TaskResourceOp {
+	return func(r *v1alpha1.TaskResource) {
+		r.Optional = optional
+	}
+}
+
 func ResourceTargetPath(path string) TaskResourceOp {
 	return func(r *v1alpha1.TaskResource) {
 		r.TargetPath = path
@@ -246,13 +252,17 @@ func ResourceTargetPath(path string) TaskResourceOp {
 }
 
 // OutputsResource adds a resource, with specified name and type, to the Outputs.
-func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
+func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) OutputsOp {
 	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{
+		r := &v1alpha1.TaskResource{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: name,
 				Type: resourceType,
-			}})
+			}}
+		for _, op := range ops {
+			op(r)
+		}
+		o.Resources = append(o.Resources, *r)
 	}
 }
 
@@ -372,21 +382,21 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 	spec.Timeout = nil
 }
 
-// TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
+// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.NodeSelector = values
 	}
 }
 
-// TaskRunTolerations sets the Tolerations to the PipelineSpec.
+// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Tolerations = values
 	}
 }
 
-// TaskRunAffinity sets the Affinity to the PipelineSpec.
+// TaskRunAffinity sets the Affinity to the TaskRunSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Affinity = affinity
@@ -404,11 +414,45 @@ func TaskRunNilExpirationSecondsTTL(spec *v1alpha1.TaskRunSpec) {
 	spec.ExpirationSecondsTTL = nil
 }
 
-// StateTerminated set Terminated to the StepState.
+// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
+func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+	        spec.PodTemplate.SecurityContext = context
+	}
+}
+
+// StateTerminated sets Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {
 		s.ContainerState = corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(exitcode)},
+		}
+	}
+}
+
+// SetStepStateTerminated sets Terminated state of a step.
+func SetStepStateTerminated(terminated corev1.ContainerStateTerminated) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Terminated: &terminated,
+		}
+	}
+}
+
+// SetStepStateRunning sets Running state of a step.
+func SetStepStateRunning(running corev1.ContainerStateRunning) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Running: &running,
+		}
+	}
+}
+
+// SetStepStateWaiting sets Waiting state of a step.
+func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Waiting: &waiting,
 		}
 	}
 }
@@ -532,14 +576,6 @@ func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	}
 }
 
-// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunDeprecatedServiceAccount(sa, deprecatedSA string) TaskRunSpecOp {
-	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccountName = sa
-		trs.DeprecatedServiceAccount = deprecatedSA
-	}
-}
-
 // TaskRunInputs sets inputs to the TaskRunSpec.
 // Any number of TaskRunInputs modifier can be passed to transform it.
 func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
@@ -582,7 +618,9 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 // TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
 func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
 	}
 }
 

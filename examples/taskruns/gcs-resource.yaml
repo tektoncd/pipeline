@@ -10,9 +10,7 @@ spec:
         type: storage
     steps:
     - image: alpine
-      command: ['unzip', 'source/archive.zip']
-    - image: alpine
-      command: ['cat', 'file.txt']
+      script: unzip source/archive.zip && cat file.txt
   inputs:
     resources:
     - name: source

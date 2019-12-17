@@ -18,15 +18,14 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
-
-	"golang.org/x/xerrors"
 )
 
 // NewImageResource creates a new ImageResource from a PipelineResource.
 func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 	if r.Spec.Type != PipelineResourceTypeImage {
-		return nil, xerrors.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	ir := &ImageResource{
 		Name: r.Name,
@@ -82,11 +81,6 @@ func (s *ImageResource) GetInputTaskModifier(_ *TaskSpec, _ string) (TaskModifie
 // GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *ImageResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
-}
-
-// GetOutputImageDir return the path to get the index.json file
-func (s *ImageResource) GetOutputImageDir() string {
-	return s.OutputImageDir
 }
 
 func (s ImageResource) String() string {

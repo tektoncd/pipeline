@@ -90,7 +90,7 @@ spec:
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
           - name: "DOCKER_CONFIG"
-            value: "/builder/home/.docker/"
+            value: "/tekton/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -377,7 +377,7 @@ spec:
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
           - name: "DOCKER_CONFIG"
-            value: "/builder/home/.docker/"
+            value: "/tekton/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -590,11 +590,20 @@ order to terminate the sidecars they will be restarted with a new
 Pod will include the sidecar container with a Retry Count of 1 and
 with a different container image than you might be expecting.
 
-Note: The configured "nop" image must not provide the command that the
+Note: There are some known issues with the existing implementation of sidecars:
+
+- The configured "nop" image must not provide the command that the
 sidecar is expected to run. If it does provide the command then it will
 not exit. This will result in the sidecar running forever and the Task
 eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
 is the issue where this bug is being tracked.
+
+- `kubectl get pods` will show a TaskRun's Pod as "Completed" if a sidecar
+exits successfully and "Error" if the sidecar exits with an error, regardless
+of how the step containers inside that pod exited. This issue only manifests
+with the `get pods` command. The Pod description will instead show a Status of
+Failed and the individual container statuses will correctly reflect how and why
+they exited.
 
 ---
 

@@ -5,12 +5,10 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - name: test
-      image: ubuntu
-      command: ['bash']
-      args:
-      - '-c'
-      - '[[ $MY_VAR1 == foo ]]'
+    - image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        [[ $MY_VAR1 == foo ]]
       env:
       - name: MY_VAR1
         value: foo

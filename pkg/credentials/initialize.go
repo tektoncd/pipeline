@@ -26,7 +26,7 @@ import (
 
 // VolumePath is the path where build secrets are written.
 // It is mutable and exported for testing.
-var VolumePath = "/var/build-secrets"
+var VolumePath = "/tekton/creds-secrets"
 
 // Builder is the interface for a credential initializer of any type.
 type Builder interface {

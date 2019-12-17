@@ -19,6 +19,7 @@ package taskrun
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -29,18 +30,15 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/sidecars"
-	"github.com/tektoncd/pipeline/pkg/status"
-
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
@@ -53,11 +51,6 @@ import (
 const (
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
-	// taskRunControllerName defines name for TaskRun Controller
-	taskRunControllerName = "TaskRun"
-
-	// imageDigestExporterContainerName defines the name of the container that will collect the
-	// built images digest
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -71,7 +64,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
-	cache             *entrypoint.Cache
+	entrypointCache   podconvert.EntrypointCache
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
 
@@ -103,7 +96,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Get the Task Run resource with this namespace/name
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
-	if errors.IsNotFound(err) {
+	if kerrors.IsNotFound(err) {
 		// The resource no longer exists, in which case we stop processing.
 		c.Logger.Infof("task run %q in work queue no longer exists", key)
 		return nil
@@ -140,25 +133,24 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			return merr.ErrorOrNil()
 		}
 		c.timeoutHandler.Release(tr)
-		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-		if err == nil {
-			err = sidecars.Stop(pod, c.Images.NopImage, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
-		} else if errors.IsNotFound(err) {
-			return merr.ErrorOrNil()
-		}
+		pod, err := getPod(tr, c.KubeClientSet)
 		if err != nil {
+			return multierror.Append(merr, err)
+		}
+
+		if err := podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod); err != nil {
 			c.Logger.Errorf("Error stopping sidecars for TaskRun %q: %v", name, err)
 			merr = multierror.Append(merr, err)
 		}
 
 		go func(metrics *Recorder) {
-			err := metrics.DurationAndCount(tr)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			if err := metrics.DurationAndCount(tr); err != nil {
+				c.Logger.Warnf("Failed to log TaskRun duration and count metrics: %v", err)
 			}
-			err = metrics.RecordPodLatency(pod, tr)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			if pod != nil {
+				if err := metrics.RecordPodLatency(pod, tr); err != nil {
+					c.Logger.Warnf("Failed to log Pod latency metrics : %v", err)
+				}
 			}
 		}(c.metrics)
 
@@ -205,9 +197,8 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.Tas
 
 	if updated {
 		go func(metrics *Recorder) {
-			err := metrics.RunningTaskRuns(c.taskRunLister)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			if err := metrics.RunningTaskRuns(c.taskRunLister); err != nil {
+				c.Logger.Warnf("Failed to log Running TaskRuns metrics : %v", err)
 			}
 		}(c.metrics)
 	}
@@ -220,7 +211,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 	kind := v1alpha1.NamespacedTaskKind
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.clusterTaskLister.Get(name)
+			t, err := c.PipelineClientSet.TektonV1alpha1().ClusterTasks().Get(name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -229,7 +220,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 		kind = v1alpha1.ClusterTaskKind
 	} else {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.taskLister.Tasks(tr.Namespace).Get(name)
+			t, err := c.PipelineClientSet.TektonV1alpha1().Tasks(tr.Namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -242,14 +233,19 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
-	tr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
-		err := cancelTaskRun(tr, c.KubeClientSet, c.Logger)
+		c.Logger.Warnf("Cancelling TaskRun %q", tr.Name)
+		err := cancelTaskRun(tr, c.KubeClientSet)
 		after := tr.Status.GetCondition(apis.ConditionSucceeded)
 		reconciler.EmitEvent(c.Recorder, before, after, tr)
+		if err == errNoPodForTaskRun {
+			c.Logger.Warnf("TaskRun %q has no Pod running yet", tr.Name)
+			return nil
+		}
 		return err
 	}
 
@@ -260,7 +256,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedResolution,
+			Reason:  podconvert.ReasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -291,7 +287,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if CheckTimeout(tr) {
-		if err := c.updateTaskRunStatusForTimeout(tr, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
+		if err := c.updateTaskRunStatusForTimeout(tr); err != nil {
 			return err
 		}
 		return nil
@@ -303,7 +299,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedResolution,
+			Reason:  podconvert.ReasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -314,7 +310,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedValidation,
+			Reason:  podconvert.ReasonFailedValidation,
 			Message: err.Error(),
 		})
 		return nil
@@ -332,43 +328,41 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	cloudevent.InitializeCloudEvents(tr, prs)
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
-	pod, err := resources.TryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
-	if err != nil {
-		c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
-		return err
-	}
-	if pod == nil {
+	var pod *corev1.Pod
+	if pod, err = getPod(tr, c.KubeClientSet); err == errNoPodForTaskRun {
 		pod, err = c.createPod(tr, rtr)
 		if err != nil {
 			c.handlePodCreationError(tr, err)
 			return nil
 		}
 		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
+	} else if err != nil {
+		c.Logger.Errorf("Error getting Pod for TaskRun %q: %v", tr.Name, err)
+		return err
 	}
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}
 
-	if status.IsPodExceedingNodeResources(pod) {
-		c.Recorder.Eventf(tr, corev1.EventTypeWarning, status.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+	if podconvert.IsPodExceedingNodeResources(pod) {
+		c.Recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+	}
+
+	if podconvert.SidecarsReady(pod.Status) {
+		if err := podconvert.UpdateReady(c.KubeClientSet, *pod); err != nil {
+			return err
+		}
 	}
 
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	addReady := status.UpdateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
-
-	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
+	// Convert the Pod's status to the equivalent TaskRun Status.
+	tr.Status = podconvert.MakeTaskRunStatus(*tr, pod, *taskSpec)
 
 	updateTaskRunResourceResult(tr, pod, c.Logger)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
-
-	if addReady {
-		if err := c.updateReady(pod); err != nil {
-			return err
-		}
-	}
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -381,15 +375,15 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	var succeededStatus corev1.ConditionStatus
 	if isExceededResourceQuotaError(err) {
 		succeededStatus = corev1.ConditionUnknown
-		reason = status.ReasonExceededResourceQuota
+		reason = podconvert.ReasonExceededResourceQuota
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
 		if !currentlyBackingOff {
 			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
 		}
-		msg = fmt.Sprintf("%s, reattempted %d times", status.GetExceededResourcesMessage(tr), backoff.NumAttempts)
+		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 	} else {
 		succeededStatus = corev1.ConditionFalse
-		reason = status.ReasonCouldntGetTask
+		reason = podconvert.ReasonCouldntGetTask
 		if tr.Spec.TaskRef != nil {
 			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 		} else {
@@ -425,7 +419,7 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, log
 func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
 	results := []v1alpha1.PipelineResourceResult{}
 	if err := json.Unmarshal(logContent, &results); err != nil {
-		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
+		return fmt.Errorf("failed to unmarshal output image exporter JSON output: %w", err)
 	}
 	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
 	return nil
@@ -434,7 +428,7 @@ func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newtaskrun, err := c.taskRunLister.TaskRuns(taskrun.Namespace).Get(taskrun.Name)
 	if err != nil {
-		return nil, xerrors.Errorf("Error getting TaskRun %s when updating status: %w", taskrun.Name, err)
+		return nil, fmt.Errorf("error getting TaskRun %s when updating status: %w", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
@@ -446,7 +440,7 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, xerrors.Errorf("Error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
+		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
@@ -454,23 +448,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(tr.Namespace).Update(newTr)
 	}
 	return newTr, nil
-}
-
-// updateReady updates a Pod to include the "ready" annotation, which will be projected by
-// the Downward API into a volume mounted by the entrypoint container. This will signal to
-// the entrypoint that the TaskRun can proceed.
-func (c *Reconciler) updateReady(pod *corev1.Pod) error {
-	newPod, err := c.KubeClientSet.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return xerrors.Errorf("Error getting Pod %q when updating ready annotation: %w", pod.Name, err)
-	}
-	updatePod := c.KubeClientSet.CoreV1().Pods(newPod.Namespace).Update
-	if err := resources.AddReadyAnnotation(newPod, updatePod); err != nil {
-		c.Logger.Errorf("Failed to update ready annotation for pod %q for taskrun %q: %v", pod.Name, pod.Name, err)
-		return xerrors.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
-	}
-
-	return nil
 }
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
@@ -508,11 +485,6 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
-	}
-
 	var defaults []v1alpha1.ParamSpec
 	if ts.Inputs != nil {
 		defaults = append(defaults, ts.Inputs.Params...)
@@ -524,68 +496,29 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet)
+	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {
-		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
+		return nil, fmt.Errorf("translating Build to Pod: %w", err)
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
-// CreateRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
-// an entrypoint cache creates a build where all entrypoints are switched to
-// be the entrypoint redirector binary. This function assumes that it receives
-// its own copy of the TaskSpec and modifies it freely
-func createRedirectedTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
-	// RedirectSteps the entrypoint in each container so that we can use our custom
-	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to add entrypoint to steps of TaskRun %s: %w", tr.Name, err)
-	}
-	// Add the step which will copy the entrypoint into the volume
-	// we are going to be using, so that all of the steps will have
-	// access to it.
-	entrypoint.AddCopyStep(entrypointImage, ts)
-
-	// Add the volume used for storing the binary and logs
-	ts.Volumes = append(ts.Volumes, corev1.Volume{
-		Name: entrypoint.MountName,
-		VolumeSource: corev1.VolumeSource{
-			// TODO(#107) we need to actually stream these logs somewhere, probably via sidecar.
-			// Currently these logs will be lost when the pod is unscheduled.
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-
-	ts.Volumes = append(ts.Volumes, corev1.Volume{
-		Name: entrypoint.DownwardMountName,
-		VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: entrypoint.DownwardMountReadyFile,
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: fmt.Sprintf("metadata.annotations['%s']", resources.ReadyAnnotation),
-						},
-					},
-				},
-			},
-		},
-	})
-
-	return ts, nil
-}
-
-type DeletePod func(podName string, options *metav1.DeleteOptions) error
-
-func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp DeletePod) error {
-	c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
-	// tr.Status.PodName will be empty if the pod was never successfully created. This condition
-	// can be reached, for example, by the pod never being schedulable due to limits imposed by
-	// a namespace's ResourceQuota.
-	if tr.Status.PodName != "" {
-		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun) error {
+	// There might not be a Pod yet for the TaskRun, for example if the Pod
+	// failed to be created due to limits imposed by a namespace's
+	// ResourceQuota.
+	//
+	// If there's no such Pod, there's nothing to delete.
+	pod, err := getPod(tr, c.KubeClientSet)
+	switch {
+	case err == nil:
+		// Nothing to delete.
+	case err != nil:
+		return err
+	default:
+		c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
+		if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
 			c.Logger.Errorf("Failed to terminate pod: %v", err)
 			return err
 		}
@@ -596,21 +529,17 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp Dele
 	tr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
-		Reason:  status.ReasonTimedOut,
+		Reason:  podconvert.ReasonTimedOut,
 		Message: timeoutMsg,
 	})
 	// update tr completed time
 	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 
-	// update tr expiration time
-	//if tr.Spec.ExpirationSecondsTTL != nil {
-	//	tr.Status.ExpirationTime.Time = tr.Status.CompletionTime.Add(tr.Spec.ExpirationSecondsTTL.Duration * time.Second)
-	//}
 	return nil
 }
 
 func isExceededResourceQuotaError(err error) bool {
-	return err != nil && errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
+	return err != nil && kerrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
 }
 
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
@@ -619,9 +548,35 @@ func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images
 	for rName, r := range resources {
 		i, err := v1alpha1.ResourceFromType(r, images)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
+			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}
 		p[rName] = i
 	}
 	return p, nil
 }
+
+// getPod returns the Pod associated with the TaskRun.
+//
+// It does so by querying for the label we set on the Pod generated from the
+// TaskRun.
+//
+// If zero or more than one Pod matches the query, an error is returned.
+func getPod(tr *v1alpha1.TaskRun, clientset kubernetes.Interface) (*corev1.Pod, error) {
+	taskRunLabelKey := pipeline.GroupName + pipeline.TaskRunLabelKey
+	labelSelector := fmt.Sprintf("%s=%s", taskRunLabelKey, tr.Name)
+	pods, err := clientset.CoreV1().Pods(tr.Namespace).List(metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(pods.Items) == 0 {
+		return nil, errNoPodForTaskRun
+	}
+	if l := len(pods.Items); l > 1 {
+		return nil, fmt.Errorf("Found %d pods for label selector %q", l, labelSelector)
+	}
+	return &pods.Items[0], nil
+}
+
+var errNoPodForTaskRun = errors.New("Found zero Pods for TaskRun")

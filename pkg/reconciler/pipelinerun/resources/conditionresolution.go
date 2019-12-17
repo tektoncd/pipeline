@@ -22,7 +22,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -114,7 +113,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
-		return nil, xerrors.Errorf("Failed to replace resource template strings %w", err)
+		return nil, fmt.Errorf("failed to replace resource template strings %w", err)
 	}
 
 	return t, nil
@@ -138,7 +137,7 @@ func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
 			r, err := v1alpha1.ResourceFromType(rSpec, images)
 			if err != nil {
-				return xerrors.Errorf("Error trying to create resource: %w", err)
+				return fmt.Errorf("error trying to create resource: %w", err)
 			}
 			for k, v := range r.Replacements() {
 				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, k)] = v
@@ -162,11 +161,13 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.Condition
 	}
 
 	return &v1alpha1.ConditionCheckStatus{
-		Status:         trs.Status,
-		PodName:        trs.PodName,
-		StartTime:      trs.StartTime,
-		CompletionTime: trs.CompletionTime,
-		Check:          checkStep,
+		Status: trs.Status,
+		ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
+			PodName:        trs.PodName,
+			StartTime:      trs.StartTime,
+			CompletionTime: trs.CompletionTime,
+			Check:          checkStep,
+		},
 	}
 }
 
@@ -180,7 +181,7 @@ func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResou
 			},
 		}
 		if r.SelfLink != "" {
-			tr.ResourceRef = v1alpha1.PipelineResourceRef{
+			tr.ResourceRef = &v1alpha1.PipelineResourceRef{
 				Name:       r.Name,
 				APIVersion: r.APIVersion,
 			}

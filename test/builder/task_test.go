@@ -44,10 +44,14 @@ func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
+			tb.InputsResource("optional_workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
 			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
 			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		),
-		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
+		tb.TaskOutputs(
+			tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage),
+			tb.OutputsResource("myoptionalimage", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
+		),
 		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
@@ -73,6 +77,12 @@ func TestTask(t *testing.T) {
 						Name:       "workspace",
 						Type:       v1alpha1.PipelineResourceTypeGit,
 						TargetPath: "/foo/bar",
+					}}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "optional_workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "",
+						Optional:   true,
 					}}},
 				Params: []v1alpha1.ParamSpec{{
 					Name:        "param",
@@ -90,6 +100,12 @@ func TestTask(t *testing.T) {
 					ResourceDeclaration: v1alpha1.ResourceDeclaration{
 						Name: "myotherimage",
 						Type: v1alpha1.PipelineResourceTypeImage,
+					}}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "myoptionalimage",
+						Type:       v1alpha1.PipelineResourceTypeImage,
+						TargetPath: "",
+						Optional:   true,
 					}}},
 			},
 			Volumes: []corev1.Volume{{
@@ -191,7 +207,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Resources: []v1alpha1.TaskResourceBinding{{
 					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 						Name: "git-resource",
-						ResourceRef: v1alpha1.PipelineResourceRef{
+						ResourceRef: &v1alpha1.PipelineResourceRef{
 							Name:       "my-git",
 							APIVersion: "a1",
 						},
@@ -216,7 +232,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Resources: []v1alpha1.TaskResourceBinding{{
 					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 						Name: "git-resource",
-						ResourceRef: v1alpha1.PipelineResourceRef{
+						ResourceRef: &v1alpha1.PipelineResourceRef{
 							Name: "git-resource",
 						},
 					},
@@ -232,13 +248,15 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			},
 		},
 		Status: v1alpha1.TaskRunStatus{
-			PodName: "my-pod-name",
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-			}}},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				PodName: "my-pod-name",
+				Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+				}}},
+			},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
@@ -250,6 +268,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskSpec(
 			tb.Step("step", "image", tb.StepCommand("/mycmd")),
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
 		),
 		tb.TaskRunServiceAccountName("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
@@ -268,6 +287,15 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Image:   "image",
 					Command: []string{"/mycmd"},
 				}}},
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:     "workspace",
+							Type:     v1alpha1.PipelineResourceTypeGit,
+							Optional: true,
+						}}},
+					Params: nil,
+				},
 			},
 			ServiceAccountName:   "sa",
 			Status:               v1alpha1.TaskRunSpecStatusCancelled,

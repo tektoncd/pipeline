@@ -27,4 +27,4 @@ metadata:
 spec:
   pipelineRef:
     name: sample-pipeline-cluster-task-4
-  serviceAccount: 'default'
+  serviceAccountName: 'default'

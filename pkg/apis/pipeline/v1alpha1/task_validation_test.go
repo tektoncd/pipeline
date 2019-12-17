@@ -49,6 +49,22 @@ var invalidResource = v1alpha1.TaskResource{
 	},
 }
 
+var optionalResource = v1alpha1.TaskResource{
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name:     "source",
+		Type:     "git",
+		Optional: true,
+	},
+}
+
+var requiredResource = v1alpha1.TaskResource{
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name:     "source",
+		Type:     "git",
+		Optional: false,
+	},
+}
+
 var validSteps = []v1alpha1.Step{{Container: corev1.Container{
 	Name:  "mystep",
 	Image: "myimage",
@@ -106,6 +122,22 @@ func TestTaskSpecValidate(t *testing.T) {
 			Steps: validSteps,
 		},
 	}, {
+		name: "valid inputs (required)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{requiredResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid inputs (optional)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{optionalResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
 		name: "valid outputs",
 		fields: fields{
 			Outputs: &v1alpha1.Outputs{
@@ -132,6 +164,22 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid outputs (required)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{requiredResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid outputs (optional)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{optionalResource},
 			},
 			Steps: validSteps,
 		},
@@ -203,6 +251,30 @@ func TestTaskSpecValidate(t *testing.T) {
 				#!/usr/bin/env bash
 				hello world`,
 			}},
+		},
+	}, {
+		name: "valid step with script and args",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello $1`,
+			}},
+		},
+	}, {
+		name: "valid step with volumeMount under /tekton/home",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/home",
+				}},
+			}}},
 		},
 	}}
 	for _, tt := range tests {
@@ -619,35 +691,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"volumes.name"},
 		},
 	}, {
-		name: "step with script and args",
-		fields: fields{
-			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "myimage",
-					Args:  []string{"arg"},
-				},
-				Script: "script",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "script cannot be used with args or command",
-			Paths:   []string{"steps.script"},
-		},
-	}, {
-		name: "step with script without shebang",
-		fields: fields{
-			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "my-image",
-				},
-				Script: "does not begin with shebang",
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: "script must start with a shebang (#!)",
-			Paths:   []string{"steps.script"},
-		},
-	}, {
 		name: "step with script and command",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
@@ -659,8 +702,38 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: "script cannot be used with args or command",
+			Message: "step 0 script cannot be used with command",
 			Paths:   []string{"steps.script"},
+		},
+	}, {
+		name: "step volume mounts under /tekton/",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/foo",
+				}},
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `step 0 volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"steps.volumeMounts.mountPath"},
+		},
+	}, {
+		name: "step volume mount name starts with tekton-internal-",
+		fields: fields{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tekton-internal-foo",
+					MountPath: "/this/is/fine",
+				}},
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `step 0 volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
+			Paths:   []string{"steps.volumeMounts.name"},
 		},
 	}}
 	for _, tt := range tests {

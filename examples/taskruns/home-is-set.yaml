@@ -5,9 +5,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - name: test
-      image: ubuntu
-      command: ['bash']
-      args:
-      - '-c'
-      - '[[ $HOME == /builder/home ]]'
+    - image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        [[ $HOME == /tekton/home ]]

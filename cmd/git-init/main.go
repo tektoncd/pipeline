@@ -25,22 +25,38 @@ import (
 )
 
 var (
-	url                    = flag.String("url", "", "The url of the Git repository to initialize.")
-	revision               = flag.String("revision", "", "The Git revision to make the repository HEAD")
-	path                   = flag.String("path", "", "Path of directory under which git repository will be copied")
-	terminationMessagePath = flag.String("terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
+	fetchSpec              git.FetchSpec
+	submodules             bool
+	terminationMessagePath string
 )
+
+func init() {
+	flag.StringVar(&fetchSpec.URL, "url", "", "Git origin URL to fetch")
+	flag.StringVar(&fetchSpec.Revision, "revision", "", "The Git revision to make the repository HEAD")
+	flag.StringVar(&fetchSpec.Path, "path", "", "Path of directory under which Git repository will be copied")
+	flag.BoolVar(&submodules, "submodules", true, "Initialize and fetch Git submodules")
+	flag.UintVar(&fetchSpec.Depth, "depth", 1, "Perform a shallow clone to this depth")
+	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
+}
 
 func main() {
 	flag.Parse()
-	logger, _ := logging.NewLogger("", "git-init")
-	defer logger.Sync()
 
-	if err := git.Fetch(logger, *revision, *path, *url); err != nil {
+	logger, _ := logging.NewLogger("", "git-init")
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	if err := git.Fetch(logger, fetchSpec); err != nil {
 		logger.Fatalf("Error fetching git repository: %s", err)
 	}
+	if submodules {
+		if err := git.SubmoduleFetch(logger, fetchSpec.Path); err != nil {
+			logger.Fatalf("Error initalizing or fetching the git submodules")
+		}
+	}
 
-	commit, err := git.Commit(logger, *revision, *path)
+	commit, err := git.Commit(logger, fetchSpec.Revision, fetchSpec.Path)
 	if err != nil {
 		logger.Fatalf("Error parsing commit of git repository: %s", err)
 	}
@@ -51,5 +67,5 @@ func main() {
 		},
 	}
 
-	termination.WriteMessage(logger, *terminationMessagePath, output)
+	termination.WriteMessage(logger, terminationMessagePath, output)
 }

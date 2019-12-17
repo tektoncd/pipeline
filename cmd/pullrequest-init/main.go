@@ -18,23 +18,34 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"os"
 
+	"github.com/tektoncd/pipeline/pkg/pullrequest"
+	"go.uber.org/zap"
 	"knative.dev/pkg/logging"
 )
 
 var (
-	prURL = flag.String("url", "", "The url of the pull request to initialize.")
-	path  = flag.String("path", "", "Path of directory under which PR will be copied")
-	mode  = flag.String("mode", "download", "Whether to operate in download or upload mode")
+	prURL    = flag.String("url", "", "The url of the pull request to initialize.")
+	path     = flag.String("path", "", "Path of directory under which PR will be copied")
+	mode     = flag.String("mode", "download", "Whether to operate in download or upload mode")
+	provider = flag.String("provider", "", "The SCM provider to use. Optional")
 )
 
 func main() {
 	flag.Parse()
 	logger, _ := logging.NewLogger("", "pullrequest-init")
-	defer logger.Sync()
+	logger = logger.With(
+		zap.String("resource_type", "pullrequest"),
+		zap.String("mode", *mode))
+	defer func() {
+		_ = logger.Sync()
+	}()
 	ctx := context.Background()
 
-	client, err := NewGitHubHandler(ctx, logger, *prURL)
+	token := os.Getenv("AUTH_TOKEN")
+	client, err := pullrequest.NewSCMHandler(logger, *prURL, *provider, token)
 	if err != nil {
 		logger.Fatalf("error creating GitHub client: %v", err)
 	}
@@ -42,21 +53,22 @@ func main() {
 	switch *mode {
 	case "download":
 		logger.Info("RUNNING DOWNLOAD!")
-		pr, err := client.Download(ctx, *path)
+		pr, err := client.Download(ctx)
 		if err != nil {
+			fmt.Println(err)
 			logger.Fatal(err)
 		}
-		if err := ToDisk(pr, *path); err != nil {
+		if err := pullrequest.ToDisk(pr, *path); err != nil {
 			logger.Fatal(err)
 		}
 
 	case "upload":
 		logger.Info("RUNNING UPLOAD!")
-		pr, manifests, err := FromDisk(*path)
+		r, err := pullrequest.FromDisk(*path)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		if err := client.Upload(ctx, pr, manifests); err != nil {
+		if err := client.Upload(ctx, r); err != nil {
 			logger.Fatal(err)
 		}
 	}

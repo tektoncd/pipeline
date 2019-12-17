@@ -17,8 +17,9 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,11 +33,11 @@ func GetPipelineData(pipelineRun *v1alpha1.PipelineRun, getPipeline GetPipeline)
 	pipelineMeta := metav1.ObjectMeta{}
 	pipelineSpec := v1alpha1.PipelineSpec{}
 	switch {
-	case pipelineRun.Spec.PipelineRef.Name != "":
+	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
 		t, err := getPipeline(pipelineRun.Spec.PipelineRef.Name)
 		if err != nil {
-			return nil, nil, xerrors.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
+			return nil, nil, fmt.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
 		}
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
@@ -44,7 +45,7 @@ func GetPipelineData(pipelineRun *v1alpha1.PipelineRun, getPipeline GetPipeline)
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec
 	default:
-		return nil, nil, xerrors.Errorf("PipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
+		return nil, nil, fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
 	}
 	return &pipelineMeta, &pipelineSpec, nil
 }

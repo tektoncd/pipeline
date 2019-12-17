@@ -17,10 +17,11 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -39,7 +40,10 @@ type GitResource struct {
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
-	Revision string `json:"revision"`
+	Revision   string `json:"revision"`
+	Submodules bool   `json:"submodules"`
+
+	Depth uint `json:"depth"`
 
 	GitImage string `json:"-"`
 }
@@ -47,12 +51,14 @@ type GitResource struct {
 // NewGitResource creates a new git resource to pass to a Task
 func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
-		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := GitResource{
-		Name:     r.Name,
-		Type:     r.Spec.Type,
-		GitImage: gitImage,
+		Name:       r.Name,
+		Type:       r.Spec.Type,
+		GitImage:   gitImage,
+		Submodules: true,
+		Depth:      1,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -60,6 +66,10 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 			gitResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			gitResource.Revision = param.Value
+		case strings.EqualFold(param.Name, "Submodules"):
+			gitResource.Submodules = toBool(param.Value, true)
+		case strings.EqualFold(param.Name, "Depth"):
+			gitResource.Depth = toUint(param.Value, 1)
 		}
 	}
 	// default revision to master if nothing is provided
@@ -67,6 +77,25 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 		gitResource.Revision = "master"
 	}
 	return &gitResource, nil
+}
+
+func toBool(s string, d bool) bool {
+	switch s {
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return d
+	}
+}
+
+func toUint(s string, d uint) uint {
+	v, err := strconv.ParseUint(s, 10, 32)
+	if err != nil {
+		return d
+	}
+	return uint(v)
 }
 
 // GetName returns the name of the resource
@@ -91,16 +120,24 @@ func (s *GitResource) Replacements() map[string]string {
 		"type":     string(s.Type),
 		"url":      s.URL,
 		"revision": s.Revision,
+		"depth":    strconv.FormatUint(uint64(s.Depth), 10),
 	}
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifier, error) {
-	args := []string{"-url", s.URL,
+	args := []string{
+		"-url", s.URL,
 		"-revision", s.Revision,
+		"-path", path,
 	}
 
-	args = append(args, []string{"-path", path}...)
+	if !s.Submodules {
+		args = append(args, "-submodules", "false")
+	}
+	if s.Depth != 1 {
+		args = append(args, "-depth", strconv.FormatUint(uint64(s.Depth), 10))
+	}
 
 	step := Step{
 		Container: corev1.Container{

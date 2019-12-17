@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -48,7 +47,7 @@ type PipelineStorageResourceInterface interface {
 // to add input and output steps and volumes to an executing pod.
 func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 
 	for _, param := range r.Spec.Params {
@@ -59,11 +58,11 @@ func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineSt
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
 				return NewBuildGCSResource(images, r)
 			default:
-				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
+				return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
 		}
 	}
-	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
+	return nil, fmt.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
 func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) []corev1.Volume {

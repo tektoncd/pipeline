@@ -16,16 +16,10 @@ on path `/pvc` by PipelineRun.
   adds a step to copy from PVC directory path:
   `/pvc/previous_task/resource_name`.
 
-Another alternatives is to use a GCS storage bucket to share the artifacts. This
-can be configured using a ConfigMap with the name `config-artifact-bucket` with
-the following attributes:
+Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
+This can be configured using a ConfigMap with the name `config-artifact-bucket`.
 
-- location: the address of the bucket (for example gs://mybucket)
-- bucket.service.account.secret.name: the name of the secret that will contain
-  the credentials for the service account with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required
-  service account json. The bucket is recommended to be configured with a
-  retention policy after which files will be deleted.
+See [here](../install.md#how-are-resources-shared-between-tasks) for configuration details.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
@@ -150,12 +144,11 @@ If the image is a private registry, the service account should include an
 
 ## Builder namespace on containers
 
-The `/builder/` namespace is reserved on containers for various system tools,
+The `/tekton/` namespace is reserved on containers for various system tools,
 such as the following:
 
-- The environment variable HOME is set to `/builder/home`, used by the builder
+- The environment variable HOME is set to `/tekton/home`, used by the builder
   tools and injected on into all of the step containers
-- Default location for output-images `/builder/output-images`
 
 ## Handling of injected sidecars
 
@@ -188,10 +181,17 @@ with updated container image. The nop container image exits immediately
 The container is considered `Terminated` by Kubernetes and the TaskRun's Pod
 stops.
 
-There is a known issue with this implementation of sidecar support. When the
-`nop` image does provide the sidecar's command, the sidecar will continue to
+There are known issues with the existing implementation of sidecars:
+
+- When the `nop` image does provide the sidecar's command, the sidecar will continue to
 run even after `nop` has been swapped into the sidecar container's image
 field. See https://github.com/tektoncd/pipeline/issues/1347 for the issue
 tracking this bug. Until this issue is resolved the best way to avoid it is to
 avoid overriding the `nop` image when deploying the tekton controller, or
 ensuring that the overridden `nop` image contains as few commands as possible.
+
+- `kubectl get pods` will show a Completed pod when a sidecar exits successfully
+but an Error when the sidecar exits with an error. This is only apparent when
+using `kubectl` to get the pods of a TaskRun, not when describing the Pod
+using `kubectl describe pod ...` nor when looking at the TaskRun, but can be quite
+confusing.

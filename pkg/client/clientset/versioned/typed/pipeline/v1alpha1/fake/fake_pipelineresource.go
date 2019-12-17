@@ -100,18 +100,6 @@ func (c *FakePipelineResources) Update(pipelineResource *v1alpha1.PipelineResour
 	return obj.(*v1alpha1.PipelineResource), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakePipelineResources) UpdateStatus(pipelineResource *v1alpha1.PipelineResource) (*v1alpha1.PipelineResource, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(pipelineresourcesResource, "status", c.ns, pipelineResource), &v1alpha1.PipelineResource{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.PipelineResource), err
-}
-
 // Delete takes name of the pipelineResource and deletes it. Returns an error if one occurs.
 func (c *FakePipelineResources) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
@@ -131,7 +119,7 @@ func (c *FakePipelineResources) DeleteCollection(options *v1.DeleteOptions, list
 // Patch applies the patch and returns the patched pipelineResource.
 func (c *FakePipelineResources) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelineresourcesResource, c.ns, name, data, subresources...), &v1alpha1.PipelineResource{})
+		Invokes(testing.NewPatchSubresourceAction(pipelineresourcesResource, c.ns, name, pt, data, subresources...), &v1alpha1.PipelineResource{})
 
 	if obj == nil {
 		return nil, err

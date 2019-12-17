@@ -18,7 +18,11 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/apis"
 )
+
+var _ apis.Defaultable = (*ClusterTask)(nil)
 
 func (t *ClusterTask) SetDefaults(ctx context.Context) {
 	t.Spec.SetDefaults(ctx)

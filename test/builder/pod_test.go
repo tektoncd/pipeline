@@ -35,7 +35,7 @@ func TestPod(t *testing.T) {
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
 	}
-	pod := tb.Pod("foo-pod-123456", "foo",
+	got := tb.Pod("foo-pod-123456", "foo",
 		tb.PodAnnotation("annotation", "annotation-value"),
 		tb.PodLabel("label", "label-value"),
 		tb.PodOwnerReference("TaskRun", "taskrun-foo",
@@ -45,10 +45,10 @@ func TestPod(t *testing.T) {
 			tb.PodRestartPolicy(corev1.RestartPolicyNever),
 			tb.PodContainer("nop", "nop:latest"),
 			tb.PodInitContainer("basic", "ubuntu",
-				tb.Command("/bin/sh"),
-				tb.Args("-c", "ls -l"),
+				tb.Command("ls", "-l"),
+				tb.Args(),
 				tb.WorkingDir("/workspace"),
-				tb.EnvVar("HOME", "/builder/home"),
+				tb.EnvVar("HOME", "/tekton/home"),
 				tb.VolumeMount("tools-volume", "/tools"),
 				tb.Resources(
 					tb.Limits(tb.Memory("1.5Gi")),
@@ -62,7 +62,7 @@ func TestPod(t *testing.T) {
 			tb.PodVolumes(volume),
 		),
 	)
-	expectedPod := &corev1.Pod{
+	want := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-pod-123456",
@@ -86,16 +86,22 @@ func TestPod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:  "nop",
 				Image: "nop:latest",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			}},
 			InitContainers: []corev1.Container{{
 				Name:       "basic",
 				Image:      "ubuntu",
-				Command:    []string{"/bin/sh"},
-				Args:       []string{"-c", "ls -l"},
+				Command:    []string{"ls", "-l"},
 				WorkingDir: "/workspace",
 				Env: []corev1.EnvVar{{
 					Name:  "HOME",
-					Value: "/builder/home",
+					Value: "/tekton/home",
 				}},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "tools-volume",
@@ -115,7 +121,7 @@ func TestPod(t *testing.T) {
 			Volumes: []corev1.Volume{volume},
 		},
 	}
-	if d := cmp.Diff(expectedPod, pod, resourceQuantityCmp); d != "" {
+	if d := cmp.Diff(want, got, resourceQuantityCmp); d != "" {
 		t.Fatalf("Pod diff -want, +got: %v", d)
 	}
 }

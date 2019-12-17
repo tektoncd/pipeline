@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,22 +100,22 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	defer runTaskToDeleteBucket(c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
-	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(artifacts.GetBucketConfigName(), metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", v1alpha1.BucketConfigName, err)
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", artifacts.GetBucketConfigName(), err)
 	}
 	originalConfigMapData := originalConfigMap.Data
 
-	t.Logf("Creating ConfigMap %s", v1alpha1.BucketConfigName)
+	t.Logf("Creating ConfigMap %s", artifacts.GetBucketConfigName())
 	configMapData := map[string]string{
-		v1alpha1.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
-		v1alpha1.BucketServiceAccountSecretName: bucketSecretName,
-		v1alpha1.BucketServiceAccountSecretKey:  bucketSecretKey,
+		artifacts.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
+		artifacts.BucketServiceAccountSecretName: bucketSecretName,
+		artifacts.BucketServiceAccountSecretKey:  bucketSecretKey,
 	}
-	if err := updateConfigMap(c.KubeClient, systemNamespace, v1alpha1.BucketConfigName, configMapData); err != nil {
+	if err := updateConfigMap(c.KubeClient, systemNamespace, artifacts.GetBucketConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
-	defer resetConfigMap(t, c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
+	defer resetConfigMap(t, c, systemNamespace, artifacts.GetBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(

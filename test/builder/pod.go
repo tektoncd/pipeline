@@ -20,6 +20,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,8 +38,9 @@ type PodStatusOp func(status *corev1.PodStatus)
 func Pod(name, namespace string, ops ...PodOp) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace:   namespace,
+			Name:        name,
+			Annotations: map[string]string{},
 		},
 	}
 	for _, op := range ops {
@@ -117,6 +119,15 @@ func PodContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 		c := &corev1.Container{
 			Name:  name,
 			Image: image,
+			// By default, containers request zero resources. Ops
+			// can override this.
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("0"),
+					corev1.ResourceMemory:           resource.MustParse("0"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+				},
+			},
 		}
 		for _, op := range ops {
 			op(c)

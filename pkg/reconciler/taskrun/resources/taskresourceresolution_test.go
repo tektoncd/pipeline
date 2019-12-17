@@ -17,11 +17,11 @@ limitations under the License.
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,14 +30,14 @@ func TestResolveTaskRun(t *testing.T) {
 	inputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 		},
 	}, {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "clusterToUse",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "k8s-cluster",
 			},
 		},
@@ -53,14 +53,14 @@ func TestResolveTaskRun(t *testing.T) {
 	outputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "imageToBuild",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "image",
 			},
 		},
 	}, {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "gitRepoToUpdate",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "another-git-repo",
 			},
 		},
@@ -168,12 +168,12 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 	outputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToUpdate",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "another-git-repo",
 			},
 		}}}
 
-	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, xerrors.New("nope") }
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, errors.New("nope") }
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", v1alpha1.NamespacedTaskKind, []v1alpha1.TaskResourceBinding{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
@@ -184,11 +184,11 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 	inputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 		}}}
-	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, xerrors.New("nope") }
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, errors.New("nope") }
 
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", v1alpha1.NamespacedTaskKind, inputs, []v1alpha1.TaskResourceBinding{}, gr)
 	if err == nil {
@@ -230,7 +230,7 @@ func TestResolveTaskRun_InvalidBothSpecified(t *testing.T) {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
 			// Can't specify both ResourceRef and ResourceSpec
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 			ResourceSpec: &v1alpha1.PipelineResourceSpec{
@@ -267,7 +267,7 @@ func TestGetResourceFromBinding_Ref(t *testing.T) {
 		},
 	}
 	binding := &v1alpha1.PipelineResourceBinding{
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}
@@ -331,7 +331,7 @@ func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
 				Value: "github.com/mycoolorg/mycoolrepo",
 			}},
 		},
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}
@@ -347,7 +347,7 @@ func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
 
 func TestGetResourceFromBinding_ErrorGettingResource(t *testing.T) {
 	binding := &v1alpha1.PipelineResourceBinding{
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}

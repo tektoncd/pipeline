@@ -20,7 +20,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-#Builds an image via kaniko and pushes it to registry.
+# Builds an image via kaniko and pushes it to registry.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
@@ -47,14 +47,14 @@ spec:
     # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
     env:
     - name: "DOCKER_CONFIG"
-      value: "/builder/home/.docker/"
-    command:
-    - /kaniko/executor
+      value: "/tekton/home/.docker/"
     args:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
-    - --oci-layout-path=/builder/home/image-outputs/builtImage
+    - --oci-layout-path=$(inputs.resources.builtImage.path)
+    securityContext:
+      runAsUser: 0
   sidecars:
     - image: registry
       name: registry

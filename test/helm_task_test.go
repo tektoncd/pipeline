@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,12 +98,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	t.Log("Waiting for service to get external IP")
-	var serviceIp string
+	var serviceIP string
 	if err := WaitForServiceExternalIPState(c, namespace, helmDeployServiceName, func(svc *corev1.Service) (bool, error) {
 		ingress := svc.Status.LoadBalancer.Ingress
 		if ingress != nil {
 			if len(ingress) > 0 {
-				serviceIp = ingress[0].IP
+				serviceIP = ingress[0].IP
 				return true, nil
 			}
 		}
@@ -117,20 +116,20 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { helmCleanup(c, t, namespace) }, t.Logf)
 	defer helmCleanup(c, t, namespace)
 
-	if serviceIp != "" {
+	if serviceIP != "" {
 		t.Log("Polling service with external IP")
 		waitErr := wait.PollImmediate(100*time.Millisecond, 30*time.Second, func() (bool, error) {
-			resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
+			resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIP))
 			if err != nil {
 				return false, nil
 			}
 			if resp != nil && resp.StatusCode != http.StatusOK {
-				return true, xerrors.Errorf("Expected 200 but received %d response code	from service at http://%s:8080", resp.StatusCode, serviceIp)
+				return true, fmt.Errorf("expected 200 but received %d response code from service at http://%s:8080", resp.StatusCode, serviceIP)
 			}
 			return true, nil
 		})
 		if waitErr != nil {
-			t.Errorf("Error from pinging service IP %s : %s", serviceIp, waitErr)
+			t.Errorf("Error from pinging service IP %s : %s", serviceIP, waitErr)
 		}
 
 	} else {

@@ -14,10 +14,9 @@ spec:
     steps:
     - name: secret
       image: ubuntu
-      command: ['bash']
-      args:
-      - '-c'
-      - '[[ $(cat /config/test.data) == $TEST_DATA ]]'
+      script: |
+        #!/usr/bin/env bash
+        [[ $(cat /config/test.data) == $TEST_DATA ]]
       env:
       - name: TEST_DATA
         valueFrom:

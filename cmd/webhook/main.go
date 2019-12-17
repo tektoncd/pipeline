@@ -20,9 +20,11 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -50,7 +52,9 @@ func main() {
 		log.Fatalf("Error parsing logging configuration: %v", err)
 	}
 	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
 
 	logger.Info("Starting the Configuration Webhook")
@@ -78,9 +82,14 @@ func main() {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}
 
+	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
+	if serviceName == "" {
+		serviceName = "tekton-pipelines-webhook"
+	}
+
 	options := webhook.ControllerOptions{
-		ServiceName:                     "tekton-pipelines-webhook",
-		DeploymentName:                  "tekton-pipelines-webhook",
+		ServiceName:                     serviceName,
+		DeploymentName:                  serviceName,
 		Namespace:                       system.GetNamespace(),
 		Port:                            8443,
 		SecretName:                      "webhook-certs",
@@ -104,7 +113,7 @@ func main() {
 
 	// Decorate contexts with the current state of the config.
 	ctxFunc := func(ctx context.Context) context.Context {
-		return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
+		return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
 	}
 
 	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)

@@ -151,11 +151,19 @@ or container images that you define:
 #### Step Script
 
 To simplify executing scripts inside a container, a step can specify a `script`.
-If this field is present, the step cannot specify `command` or `args`.
+If this field is present, the step cannot specify `command`.
 
 When specified, a `script` gets invoked as if it were the contents of a file in
-the container. Scripts should start with a
-[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) line to declare what
+the container. Any `args` are passed to the script file.
+
+Scripts that do not start with a [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))
+line will use the following default preamble:
+
+```bash
+#!/bin/sh
+set -xe
+```
+Users can override this by starting their script with a shebang to declare what
 tool should be used to interpret the script. That tool must then also be
 available within the step's container.
 
@@ -297,8 +305,8 @@ next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
 
 ```yaml
-resources:
-  outputs:
+outputs:
+  resources:
     name: storage-gcs
     type: gcs
 steps:
@@ -325,11 +333,12 @@ directory. After execution of the Task steps, (new) tar file in directory
 `tar-artifact` resource definition.
 
 ```yaml
-resources:
-  inputs:
+inputs:
+  resources:
     name: tar-artifact
     targetPath: customworkspace
-  outputs:
+outputs:
+  resources:
     name: tar-artifact
 steps:
  - name: untar
@@ -415,11 +424,8 @@ use it to build a docker image:
 steps:
   - image: docker
     name: client
-    workingDir: /workspace
-    command:
-      - /bin/sh
-      - -c
-      - |
+    script: |
+        #!/usr/bin/env bash
         cat > Dockerfile << EOF
         FROM ubuntu
         RUN apt-get update
@@ -462,7 +468,7 @@ has been created to track this bug.
 [`outputs`](#outputs).
 
 
-Input parameters can be referenced in the `Task` spec using the variable substitution syntax below, 
+Input parameters can be referenced in the `Task` spec using the variable substitution syntax below,
 where `<name>` is the name of the parameter:
 
 ```shell
@@ -480,19 +486,19 @@ So, with the following parameter:
 inputs:
     params:
       - name: array-param
-        value: 
+        value:
           - "some"
           - "array"
           - "elements"
 ```
-then `command: ["first", "$(inputs.params.array-param)", "last"]` will become 
+then `command: ["first", "$(inputs.params.array-param)", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
 
 
-Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array. 
-Any other attempt to reference an array is invalid and will throw an error. 
+Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
+Any other attempt to reference an array is invalid and will throw an error.
 
-For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because 
+For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because
 the string isn't isolated:
 ```
  - name: build-step
@@ -607,14 +613,17 @@ Mounting multiple volumes:
 spec:
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "curl https://foo.com > /var/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        curl https://foo.com > /var/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /var/my-volume
 
     - image: ubuntu
-      args: ["cat", "/etc/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        cat /etc/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /etc/my-volume
@@ -638,8 +647,9 @@ spec:
         description: Name of volume
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "cat /var/configmap/test"]
+      script: |
+        #!/usr/bin/env bash
+        cat /var/configmap/test
       volumeMounts:
         - name: "$(inputs.params.volumeName)"
           mountPath: /var/configmap
@@ -694,7 +704,7 @@ Except as otherwise noted, the content of this page is licensed under the
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
 
-## Debugging a Task
+## Debugging
 
 In software, we do things not because they are easy, but because we think they will be.
 Lots of things can go wrong when writing a Task.
@@ -736,3 +746,14 @@ To see the contents of every file, you can use a similar step:
 ```
 
 These steps are useful both before and after your Task steps!
+
+### Inspecting the pod
+
+One `task` will map to one `Pod`, to check arbitrary thing in `Pod`, the best way is to login the `pod`, add a step at the position you want to `pause` the task, then checking.
+
+```yaml
+- name: pause
+  image: docker
+  args: ["sleep", "6000"]
+
+```

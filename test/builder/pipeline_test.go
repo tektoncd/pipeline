@@ -153,7 +153,7 @@ func TestPipelineRun(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:         v1alpha1.PipelineRef{Name: "tomatoes"},
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1alpha1.Param{{
@@ -167,7 +167,7 @@ func TestPipelineRun(t *testing.T) {
 			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				ResourceRef: &v1alpha1.PipelineResourceRef{
 					Name: "my-special-resource",
 				},
 			}},
@@ -176,10 +176,12 @@ func TestPipelineRun(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime:      &metav1.Time{Time: startTime},
-			CompletionTime: &metav1.Time{Time: completedTime},
-			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				"trname": {PipelineTaskName: "task-1"},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
 			},
 		},
 	}
@@ -223,7 +225,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:         v1alpha1.PipelineRef{Name: "tomatoes"},
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1alpha1.Param{{
@@ -251,10 +253,12 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime:      &metav1.Time{Time: startTime},
-			CompletionTime: &metav1.Time{Time: completedTime},
-			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				"trname": {PipelineTaskName: "task-1"},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
 			},
 		},
 	}

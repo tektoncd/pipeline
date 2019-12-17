@@ -21,14 +21,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*Task)(nil)
+
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return t.Spec.Validate(ctx)
@@ -122,33 +126,42 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
 	names := map[string]struct{}{}
-	for _, s := range steps {
+	for idx, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
 		}
 
 		if s.Script != "" {
-			if len(s.Args) > 0 || len(s.Command) > 0 {
+			if len(s.Command) > 0 {
 				return &apis.FieldError{
-					Message: "script cannot be used with args or command",
-					Paths:   []string{"script"},
-				}
-			}
-			if !strings.HasPrefix(strings.TrimSpace(s.Script), "#!") {
-				return &apis.FieldError{
-					Message: "script must start with a shebang (#!)",
+					Message: fmt.Sprintf("step %d script cannot be used with command", idx),
 					Paths:   []string{"script"},
 				}
 			}
 		}
 
-		if s.Name == "" {
-			continue
+		if s.Name != "" {
+			if _, ok := names[s.Name]; ok {
+				return apis.ErrInvalidValue(s.Name, "name")
+			}
+			names[s.Name] = struct{}{}
 		}
-		if _, ok := names[s.Name]; ok {
-			return apis.ErrInvalidValue(s.Name, "name")
+
+		for _, vm := range s.VolumeMounts {
+			if strings.HasPrefix(vm.MountPath, "/tekton/") &&
+				!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("step %d volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", idx, vm.Name, vm.MountPath),
+					Paths:   []string{"volumeMounts.mountPath"},
+				}
+			}
+			if strings.HasPrefix(vm.Name, "tekton-internal-") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf(`step %d volumeMount name %q cannot start with "tekton-internal-"`, idx, vm.Name),
+					Paths:   []string{"volumeMounts.name"},
+				}
+			}
 		}
-		names[s.Name] = struct{}{}
 	}
 	return nil
 }
@@ -210,11 +223,6 @@ func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs) *
 	if outputs != nil {
 		for _, r := range outputs.Resources {
 			resourceNames[r.Name] = struct{}{}
-			if r.Type == PipelineResourceTypeImage {
-				if r.OutputImageDir == "" {
-					return apis.ErrMissingField("OutputImageDir")
-				}
-			}
 		}
 	}
 	return validateVariables(steps, "resources", resourceNames)
@@ -303,15 +311,15 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 }
 
 func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
+	return substitution.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

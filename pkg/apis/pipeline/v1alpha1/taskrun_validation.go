@@ -21,13 +21,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*TaskRun)(nil)
+
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
+	if err := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
 	}
 	return tr.Spec.Validate(ctx)
@@ -108,11 +111,11 @@ func validatePipelineResources(ctx context.Context, resources []TaskResourceBind
 		}
 		encountered[name] = struct{}{}
 		// Check that both resource ref and resource Spec are not present
-		if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
+		if r.ResourceRef != nil && r.ResourceSpec != nil {
 			return apis.ErrDisallowedFields(fmt.Sprintf("%s.ResourceRef", path), fmt.Sprintf("%s.ResourceSpec", path))
 		}
 		// Check that one of resource ref and resource Spec is present
-		if r.ResourceRef.Name == "" && r.ResourceSpec == nil {
+		if (r.ResourceRef == nil || r.ResourceRef.Name == "") && r.ResourceSpec == nil {
 			return apis.ErrMissingField(fmt.Sprintf("%s.ResourceRef", path), fmt.Sprintf("%s.ResourceSpec", path))
 		}
 		if r.ResourceSpec != nil && r.ResourceSpec.Validate(ctx) != nil {

@@ -213,7 +213,7 @@ func TestPipelineRun(t *testing.T) {
 				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
 				pvc, errWait := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
 				if errWait != nil && !errors.IsNotFound(errWait) {
-					return true, fmt.Errorf("Error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
+					return true, fmt.Errorf("error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
 				}
 				// If we are not found then we are okay since it got cleaned up
 				if errors.IsNotFound(errWait) {
