@@ -55,13 +55,14 @@ func TestTask(t *testing.T) {
 		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
+		tb.Step("mycontainer2", "myimage2", tb.StepScript("echo foo")),
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
 		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "BANANA"),
 		),
-		tb.TaskWorkspace("bread", "kind of bread", "/bread/path"),
+		tb.TaskWorkspace("bread", "kind of bread", "/bread/path", false),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -71,6 +72,9 @@ func TestTask(t *testing.T) {
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
 				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
+			}}, {Script: "echo foo", Container: corev1.Container{
+				Name:  "mycontainer2",
+				Image: "myimage2",
 			}}},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
@@ -125,6 +129,7 @@ func TestTask(t *testing.T) {
 				Name:        "bread",
 				Description: "kind of bread",
 				MountPath:   "/bread/path",
+				ReadOnly:    false,
 			}},
 		},
 	}

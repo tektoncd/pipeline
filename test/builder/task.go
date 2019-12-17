@@ -168,12 +168,13 @@ func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
 }
 
 // TaskWorkspace adds a workspace declaration.
-func TaskWorkspace(name, desc, mountPath string) TaskSpecOp {
+func TaskWorkspace(name, desc, mountPath string, readOnly bool) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceDeclaration{
 			Name:        name,
 			Description: desc,
 			MountPath:   mountPath,
+			ReadOnly:    readOnly,
 		})
 	}
 }

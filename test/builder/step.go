@@ -74,6 +74,12 @@ func StepVolumeMount(name, mountPath string, ops ...VolumeMountOp) StepOp {
 	}
 }
 
+func StepScript(script string) StepOp {
+	return func(step *v1alpha1.Step) {
+		step.Script = script
+	}
+}
+
 // StepResources adds ResourceRequirements to the Container (step).
 func StepResources(ops ...ResourceRequirementsOp) StepOp {
 	return func(step *v1alpha1.Step) {
