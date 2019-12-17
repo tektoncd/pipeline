@@ -589,6 +589,9 @@ script-heredoc-randomly-generated-78c5n
 			tr := &v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "taskrun-name",
+					Annotations: map[string]string{
+						ReleaseAnnotation: ReleaseAnnotationValue,
+					},
 				},
 				Spec: c.trs,
 			}
