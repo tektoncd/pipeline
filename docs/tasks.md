@@ -282,7 +282,7 @@ spec:
   inputs:
     params:
       - name: flags
-        value: 
+        value:
           - "--set"
           - "arg1=foo"
           - "--randomflag"
@@ -746,7 +746,7 @@ spec:
   steps:
   - name: release
     image: goreleaser/goreleaser
-    workingdir: /workspace/src/$(inputs.params.package)
+    workingDir: /workspace/src/$(inputs.params.package)
     command:
     - goreleaser
     args:
