@@ -6,6 +6,7 @@ This document defines `Pipelines` and their capabilities.
 
 - [Syntax](#syntax)
   - [Declared resources](#declared-resources)
+  - [Workspaces][#declared-workspaces]
   - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
@@ -71,6 +72,12 @@ spec:
     - name: my-image
       type: image
 ```
+
+### Declared Workspaces
+
+It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
+or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used with them until
+[#1438](https://github.com/tektoncd/pipeline/issues/1438) is completed.
 
 ### Parameters
 

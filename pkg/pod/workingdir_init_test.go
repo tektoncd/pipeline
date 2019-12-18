@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -58,7 +59,7 @@ func TestWorkingDirInit(t *testing.T) {
 			Image:        images.ShellImage,
 			Command:      []string{"sh"},
 			Args:         []string{"-c", "mkdir -p /workspace/bbb aaa zzz"},
-			WorkingDir:   workspaceDir,
+			WorkingDir:   pipeline.WorkspaceDir,
 			VolumeMounts: implicitVolumeMounts,
 		},
 	}} {

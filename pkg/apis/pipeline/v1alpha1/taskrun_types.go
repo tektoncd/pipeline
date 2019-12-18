@@ -50,6 +50,7 @@ type TaskRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
+	// +optional
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
 
 	// ExpirationSecondsTTL limits the lifetime of a TaskRun that has finished
@@ -65,6 +66,10 @@ type TaskRunSpec struct {
 	// This field is alpha-level.
 	// +optional
 	ExpirationSecondsTTL *metav1.Duration `json:"expirationSecondsTTL,omitempty"`
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	// +optional
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

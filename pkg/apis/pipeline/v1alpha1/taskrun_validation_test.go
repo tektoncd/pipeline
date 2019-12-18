@@ -30,7 +30,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestTaskRun_Invalidate(t *testing.T) {
+func TestTaskRun_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		task *v1alpha1.TaskRun
@@ -66,7 +66,42 @@ func TestTaskRun_Validate(t *testing.T) {
 	}
 }
 
-func TestTaskRunSpec_Invalidate(t *testing.T) {
+func Test_TaskRun_Workspaces_Invalid(t *testing.T) {
+	tests := []struct {
+		name    string
+		tr      *v1alpha1.TaskRun
+		wantErr *apis.FieldError
+	}{{
+		name: "make sure WorkspaceBinding validation invoked",
+		tr: tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+			tb.TaskRunTaskRef("task"),
+			// When using PVC it's required that you provide a volume name
+			tb.TaskRunWorkspacePVC("workspace", "", ""),
+		)),
+		wantErr: apis.ErrMissingField("workspace.persistentvolumeclaim.claimname"),
+	}, {
+		name: "bind same workspace twice",
+		tr: tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+			tb.TaskRunTaskRef("task"),
+			tb.TaskRunWorkspaceEmptyDir("workspace", ""),
+			tb.TaskRunWorkspaceEmptyDir("workspace", ""),
+		)),
+		wantErr: apis.ErrMultipleOneOf("spec.workspaces.name"),
+	}}
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			err := ts.tr.Validate(context.Background())
+			if err == nil {
+				t.Errorf("Expected error for invalid TaskRun but got none")
+			}
+			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
+				t.Errorf("TaskRunSpec.Validate/%s (-want, +got) = %v", ts.name, d)
+			}
+		})
+	}
+}
+
+func TestTaskRunSpec_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
 		spec    v1alpha1.TaskRunSpec
@@ -185,7 +220,7 @@ func TestInput_Validate(t *testing.T) {
 	}
 }
 
-func TestInput_Invalidate(t *testing.T) {
+func TestInput_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
 		inputs  v1alpha1.TaskRunInputs
@@ -295,7 +330,7 @@ func TestOutput_Validate(t *testing.T) {
 		t.Errorf("TaskRunOutputs.Validate() error = %v", err)
 	}
 }
-func TestOutput_Invalidate(t *testing.T) {
+func TestOutput_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
 		outputs v1alpha1.TaskRunOutputs
