@@ -18,8 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-go get -d github.com/tektoncd/plumbing
-source $(go list -m -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/library.sh
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(go list -m -f '{{.Dir}}' k8s.io/code-generator)}

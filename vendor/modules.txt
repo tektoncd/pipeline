@@ -257,6 +257,7 @@ github.com/sirupsen/logrus
 github.com/spf13/pflag
 # github.com/tektoncd/plumbing v0.0.0-20191210145340-e34ec9c0a739 => github.com/wlynch/plumbing v0.0.0-20191206183032-e43af7f0d688
 github.com/tektoncd/plumbing
+github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.22.1
 go.opencensus.io
 go.opencensus.io/internal
