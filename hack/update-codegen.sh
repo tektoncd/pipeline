@@ -20,11 +20,6 @@ set -o pipefail
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-CODEGEN_PKG=${CODEGEN_PKG:-$(go list -m -f '{{.Dir}}' k8s.io/code-generator)}
-
-KNATIVE_CODEGEN_PKG=${KNATIVE_CODEGEN_PKG:-$(go list -m -f '{{.Dir}}' knative.dev/pkg)}
-
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
