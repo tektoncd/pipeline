@@ -6,7 +6,7 @@ This document defines `Pipelines` and their capabilities.
 
 - [Syntax](#syntax)
   - [Declared resources](#declared-resources)
-  - [Workspaces][#declared-workspaces]
+  - [Workspaces](#declared-workspaces)
   - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
