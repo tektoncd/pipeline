@@ -129,24 +129,3 @@ func TestApplyStepReplacements(t *testing.T) {
 		t.Errorf("Container replacements failed: %s", d)
 	}
 }
-
-func TestApplyStepReplacements_NotDefined(t *testing.T) {
-	s := v1alpha1.Step{Container: corev1.Container{
-		Name: "$(params.not.defined)",
-	}}
-	replacements := map[string]string{
-		"replace.me": "replaced!",
-	}
-
-	arrayReplacements := map[string][]string{
-		"array.replace.me": {"val1", "val2"},
-	}
-
-	expected := v1alpha1.Step{Container: corev1.Container{
-		Name: "$(params.not.defined)",
-	}}
-	v1alpha1.ApplyStepReplacements(&s, replacements, arrayReplacements)
-	if d := cmp.Diff(s, expected); d != "" {
-		t.Errorf("Unexpected container replacement: %s", d)
-	}
-}

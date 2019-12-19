@@ -58,6 +58,14 @@ var (
 				},
 			}},
 		},
+		Sidecars: []corev1.Container{{
+			Name:  "foo",
+			Image: "$(inputs.params.myimage)",
+			Env: []corev1.EnvVar{{
+				Name:  "foo",
+				Value: "$(inputs.params.FOO)",
+			}},
+		}},
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
@@ -504,6 +512,9 @@ func TestApplyParameters(t *testing.T) {
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
 		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
 		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
+
+		spec.Sidecars[0].Image = "bar"
+		spec.Sidecars[0].Env[0].Value = "world"
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(got, want); d != "" {

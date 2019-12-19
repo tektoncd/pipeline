@@ -765,6 +765,33 @@ spec:
           key: bot-token
 ```
 
+#### Using a sidecar
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: with-sidecar-task
+spec:
+  inputs:
+    params:
+    - name: sidecar-image
+      type: string
+      description: Image name of the sidecar container
+    - name: sidecar-env
+      type: string
+      description: Environment variable value
+  sidecars:
+  - name: sidecar
+    image: $(inputs.params.sidecar-image)
+    env:
+    - name: SIDECAR_ENV
+      value: $(inputs.params.sidecar-env)  
+  steps:
+  - name: test
+    image: hello-world
+```
+
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
