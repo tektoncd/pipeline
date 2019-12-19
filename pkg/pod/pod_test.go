@@ -60,6 +60,10 @@ func TestMakePod(t *testing.T) {
 	}
 
 	runtimeClassName := "gvisor"
+	automountServiceAccountToken := false
+	dnsPolicy := corev1.DNSNone
+	enableServiceLinks := false
+	priorityClassName := "system-cluster-critical"
 
 	for _, c := range []struct {
 		desc            string
@@ -167,7 +171,15 @@ func TestMakePod(t *testing.T) {
 						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
 					},
 				},
-				RuntimeClassName: &runtimeClassName,
+				RuntimeClassName:             &runtimeClassName,
+				AutomountServiceAccountToken: &automountServiceAccountToken,
+				DNSPolicy:                    &dnsPolicy,
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"8.8.8.8"},
+					Searches:    []string{"tekton.local"},
+				},
+				EnableServiceLinks: &enableServiceLinks,
+				PriorityClassName:  &priorityClassName,
 			},
 		},
 		want: &corev1.PodSpec{
@@ -198,7 +210,15 @@ func TestMakePod(t *testing.T) {
 					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
 				},
 			},
-			RuntimeClassName: &runtimeClassName,
+			RuntimeClassName:             &runtimeClassName,
+			AutomountServiceAccountToken: &automountServiceAccountToken,
+			DNSPolicy:                    dnsPolicy,
+			DNSConfig: &corev1.PodDNSConfig{
+				Nameservers: []string{"8.8.8.8"},
+				Searches:    []string{"tekton.local"},
+			},
+			EnableServiceLinks: &enableServiceLinks,
+			PriorityClassName:  priorityClassName,
 		},
 	}, {
 		desc: "very long step name",

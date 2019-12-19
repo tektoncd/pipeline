@@ -220,6 +220,24 @@ allows to customize some Pod specific field per `Task` execution, aka
 - `runtimeClassName`: the name of a
   [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
   to use to run the pod.
+- `automountServiceAccountToken`: whether the token for the service account
+  being used by the pod should be automatically provided inside containers at a
+  predefined path. Defaults to `true`.
+- `dnsPolicy`: the
+  [DNS policy](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy)
+  for the pod, one of `ClusterFirst`, `Default`, or `None`. Defaults to
+  `ClusterFirst`. Note that `ClusterFirstWithHostNet` is not supported by Tekton
+  as Tekton pods cannot run with host networking.
+- `dnsConfig`:
+  [additional DNS configuration](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-config)
+  for the pod, such as nameservers and search domains.
+- `enableServiceLinks`: whether services in the same namespace as the pod will
+  be exposed as environment variables to the pod, similar to Docker service
+  links. Defaults to `true`.
+- `priorityClassName`: the name of the
+  [priority class](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/)
+  to use when running the pod. Use this, for example, to selectively enable
+  preemption on lower priority workloads.
 
 In the following example, the `Task` is defined with a `volumeMount`
 (`my-cache`), that is provided by the `PipelineRun`, using a
