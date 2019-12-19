@@ -346,7 +346,7 @@ function update_licenses() {
 # Run dep-collector to check for forbidden liceses.
 # Parameters: $1...$n - directories and files to inspect.
 function check_licenses() {
-  if [ -f "${REPO_ROOT_DIR}/vendor" ]; then
+  if [ -f "${REPO_ROOT_DIR}/go.mod" ]; then
     run_go_tool github.com/google/go-licenses go-licenses check ./...
   else
     # Fetch the google/licenseclassifier for its license db
