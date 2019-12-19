@@ -1565,7 +1565,7 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		in, out := &in.ExpirationSecondsTTL, &out.ExpirationSecondsTTL
 		*out = new(metav1.Duration)
 		**out = **in
-  }
+        }
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
 		*out = make([]WorkspaceBinding, len(*in))
