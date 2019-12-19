@@ -53,7 +53,7 @@ func main() {
 	}
 	if submodules {
 		if err := git.SubmoduleFetch(logger, fetchSpec.Path); err != nil {
-			logger.Fatalf("Error initalizing or fetching the git submodules")
+			logger.Fatalf("Error initializing or fetching the git submodules")
 		}
 	}
 
