@@ -9,7 +9,8 @@ This tutorial will walk you through creating and running some simple
 - [Creating a hello world `Task`](#task)
 - [Creating a hello world `Pipeline`](#pipeline)
 
-Before starting this tutorial, please install the [Tekton CLI](https://github.com/tektoncd/cli).
+Before starting this tutorial, please install the
+[Tekton CLI](https://github.com/tektoncd/cli).
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
@@ -94,6 +95,7 @@ echo
 The status of type `Succeeded` shows that the `Task` ran successfully.
 
 To see the actual outcome, use the following command:
+
 ```bash
 tkn taskrun logs echo-hello-world-task-run
 ```
@@ -111,8 +113,9 @@ resources to process. For example a `Task` could fetch source code from a GitHub
 repository and build a Docker image from it.
 
 [`PipelineResources`](resources.md) are used to define the artifacts that can be
-passed in and out of a `Task`. There are a few system defined resource types ready
-to use, and the following are two examples of the resources commonly needed.
+passed in and out of a `Task`. There are a few system defined resource types
+ready to use, and the following are two examples of the resources commonly
+needed.
 
 The [`git` resource](resources.md#git-resource) represents a git repository with
 a specific revision:
@@ -148,8 +151,8 @@ spec:
 
 The following is a `Task` with inputs and outputs. The input resource is a
 GitHub repository and the output is the image produced from that source. The
-args of the `Task` command support variable substitution so that the definition of `Task` is
-constant and the value of parameters can change in runtime.
+args of the `Task` command support variable substitution so that the definition
+of `Task` is constant and the value of parameters can change in runtime.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -191,8 +194,8 @@ spec:
         - --context=$(inputs.params.pathToContext)
 ```
 
-Before you continue with the `TaskRun` you will have to
-create a `secret` to push your image to your desired registry.
+Before you continue with the `TaskRun` you will have to create a `secret` to
+push your image to your desired registry.
 
 To do so, use the following command:
 
@@ -217,7 +220,8 @@ secrets:
   - name: regcred
 ```
 
-You need to put your new `ServiceAccount` into action, to do so, use the following command:
+You need to put your new `ServiceAccount` into action, to do so, use the
+following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -226,8 +230,8 @@ kubectl apply -f <name-of-file.yaml>
 Now you are ready for your first `TaskRun`.
 
 A `TaskRun` binds the inputs and outputs to already defined `PipelineResources`,
-sets values to the parameters used for variable substitution in addition to executing the
-`Task` steps.
+sets values to the parameters used for variable substitution in addition to
+executing the `Task` steps.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -321,9 +325,9 @@ git-source-skaffold-git-tck6k
 image-digest-exporter-hlbsq
 ```
 
-The status of type `Succeeded` shows the Task ran successfully and you
-can also validate the Docker image is created in the location specified in the
-resource definition.
+The status of type `Succeeded` shows the Task ran successfully and you can also
+validate the Docker image is created in the location specified in the resource
+definition.
 
 If you run into issues, use the following command to receive the logs:
 
@@ -333,11 +337,12 @@ tkn taskrun logs build-docker-image-from-git-source-task-run
 
 ## Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of `Tasks` to execute in order, while
-also indicating if any outputs should be used as inputs of a following `Task` by
-using [the `from` field](pipelines.md#from) and also indicating
+A [`Pipeline`](pipelines.md) defines a list of `Tasks` to execute in order,
+while also indicating if any outputs should be used as inputs of a following
+`Task` by using [the `from` field](pipelines.md#from) and also indicating
 [the order of executing (using the `runAfter` and `from` fields)](pipelines.md#ordering).
-The same variable substitution you used in `Tasks` is also available in a `Pipeline`.
+The same variable substitution you used in `Tasks` is also available in a
+`Pipeline`.
 
 For example:
 
@@ -428,11 +433,13 @@ spec:
         - "$(inputs.params.path)"
 ```
 
-With the new `Task` inside of your `Pipeline`,
-you need to give your `ServiceAccount` additional permissions to be able to execute the `run-kubectl` step.
+With the new `Task` inside of your `Pipeline`, you need to give your
+`ServiceAccount` additional permissions to be able to execute the `run-kubectl`
+step.
 
-First you have to create a new role, which you have to assign to your `ServiceAccount`,
-to do so, use the following command:
+First you have to create a new role, which you have to assign to your
+`ServiceAccount`, to do so, use the following command:
+
 ```bash
 kubectl create clusterrole tutorial-role \
                --verb=get,list,watch,create,update,patch,delete \
@@ -447,7 +454,6 @@ kubectl create clusterrolebinding tutorial-binding \
              --clusterrole=tutorial-role \
              --serviceaccount=default:tutorial-service
 ```
-
 
 To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as follows:
 
@@ -479,7 +485,8 @@ To apply the yaml files use the following command, you will need to apply the
 kubectl apply -f <name-of-file.yaml>
 ```
 
-While the `Pipeline` is running, you can see what exactly is happening, just use the following command:
+While the `Pipeline` is running, you can see what exactly is happening, just use
+the following command:
 
 ```bash
 tkn pipelinerun logs tutorial-pipeline-run-1 -f
@@ -516,8 +523,8 @@ tutorial-pipeline-run-1-deploy-web-jjf2l           deploy-web           4 hours 
 tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours ago   1 minute     Succeeded
 ```
 
-The status of type `Succeeded` shows the `Pipeline` ran successfully, also
-the status of individual Task runs are shown.
+The status of type `Succeeded` shows the `Pipeline` ran successfully, also the
+status of individual Task runs are shown.
 
 ## Local development
 
@@ -525,9 +532,10 @@ the status of individual Task runs are shown.
 
 Tekton Pipelines is known to work with:
 
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop). A known good
-  configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space. 
-- These [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop). A known
+  good configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space.
+- These
+  [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Setting `host.docker.local:5000` as an insecure registry with Docker for
   Desktop (set via preferences or configuration, see the
   [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).

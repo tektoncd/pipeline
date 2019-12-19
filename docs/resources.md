@@ -7,52 +7,51 @@ A `Task` can have multiple inputs and outputs.
 
 For example:
 
--   A `Task`'s input could be a GitHub source which contains your application
-    code.
--   A `Task`'s output can be your application container image which can be then
-    deployed in a cluster.
--   A `Task`'s output can be a jar file to be uploaded to a storage bucket.
+- A `Task`'s input could be a GitHub source which contains your application
+  code.
+- A `Task`'s output can be your application container image which can be then
+  deployed in a cluster.
+- A `Task`'s output can be a jar file to be uploaded to a storage bucket.
 
---------------------------------------------------------------------------------
+---
 
--   [Syntax](#syntax)
--   [Using Resources](#using-resources)
-    - [Variable substitution](#variable-substitution)
-    - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
-    - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
-    - [Resource Status](#resource-status)
-    - [Optional Resources](#optional-resources)
--   [Resource types](#resource-types)
-    -   [Git Resource](#git-resource)
-    -   [Pull Request Resource](#pull-request-resource)
-    -   [Image Resource](#image-resource)
-    -   [Cluster Resource](#cluster-resource)
-    -   [Storage Resource](#storage-resource)
-        -   [GCS Storage Resource](#gcs-storage-resource)
-        -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
-    -   [Cloud Event Resource](#cloud-event-resource)
+- [Syntax](#syntax)
+- [Using Resources](#using-resources)
+  - [Variable substitution](#variable-substitution)
+  - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
+  - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
+  - [Resource Status](#resource-status)
+  - [Optional Resources](#optional-resources)
+- [Resource types](#resource-types)
+  - [Git Resource](#git-resource)
+  - [Pull Request Resource](#pull-request-resource)
+  - [Image Resource](#image-resource)
+  - [Cluster Resource](#cluster-resource)
+  - [Storage Resource](#storage-resource)
+    - [GCS Storage Resource](#gcs-storage-resource)
+    - [BuildGCS Storage Resource](#buildgcs-storage-resource)
+  - [Cloud Event Resource](#cloud-event-resource)
 
 ## Syntax
 
 To define a configuration file for a `PipelineResource`, you can specify the
 following fields:
 
--   Required:
-    -   [`apiVersion`][kubernetes-overview] - Specifies the API version, for
-        example `tekton.dev/v1alpha1`.
-    -   [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource
-        object.
-    -   [`metadata`][kubernetes-overview] - Specifies data to uniquely identify
-        the `PipelineResource` object, for example a `name`.
-    -   [`spec`][kubernetes-overview] - Specifies the configuration information
-        for your `PipelineResource` resource object.
-    -   [`type`](#resource-types) - Specifies the `type` of the
-        `PipelineResource`
--   Optional:
-    -   [`params`](#resource-types) - Parameters which are specific to each type
-        of `PipelineResource`
-    -   [`optional`](#optional-resources) - Boolean flag to mark a resource optional
-        (by default, `optional` is set to `false` making resources mandatory).
+- Required:
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
+    `tekton.dev/v1alpha1`.
+  - [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource
+    object.
+  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
+    `PipelineResource` object, for example a `name`.
+  - [`spec`][kubernetes-overview] - Specifies the configuration information for
+    your `PipelineResource` resource object.
+  - [`type`](#resource-types) - Specifies the `type` of the `PipelineResource`
+- Optional:
+  - [`params`](#resource-types) - Parameters which are specific to each type of
+    `PipelineResource`
+  - [`optional`](#optional-resources) - Boolean flag to mark a resource optional
+    (by default, `optional` is set to `false` making resources mandatory).
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -219,16 +218,17 @@ For an example of what this output looks like:
 
 ```yaml
 resourcesResult:
-- key: digest
-  value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
-  resourceRef:
-    name: skaffold-image-leeroy-web
+  - key: digest
+    value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
+    resourceRef:
+      name: skaffold-image-leeroy-web
 ```
 
 ### Optional Resources
 
-By default, a resource is declared as mandatory unless `optional` is set `true` for that resource.
-Resources declared as `optional` in a `Task` does not have be specified in `TaskRun`.
+By default, a resource is declared as mandatory unless `optional` is set `true`
+for that resource. Resources declared as `optional` in a `Task` does not have be
+specified in `TaskRun`.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -243,7 +243,8 @@ spec:
         optional: true
 ```
 
-You can refer to different examples demonstrating usage of optional resources in `Task` and `Condition`:
+You can refer to different examples demonstrating usage of optional resources in
+`Task` and `Condition`:
 
 - [Task](../examples/taskruns/optional-resources.yaml)
 - [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
@@ -283,28 +284,31 @@ Params that can be added are the following:
     clone. You can use this to control what commit [or branch](#using-a-branch)
     is used. _If no revision is specified, the resource will default to `latest`
     from `master`._
-1.  `submodules`: defines if the resource should initialize and
-    fetch the submodules, value is either `true` or `false`. _If not
-    specified, this will default to true_
+1.  `submodules`: defines if the resource should initialize and fetch the
+    submodules, value is either `true` or `false`. _If not specified, this will
+    default to true_
 1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
-    commit(s) will be fetched. If set to `'0'`, all commits will be fetched.
-    _If not specified, the default depth is 1._
-1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set to `true` or `false`
-    in the global git config. _Defaults to `true` if omitted._
+    commit(s) will be fetched. If set to `'0'`, all commits will be fetched. _If
+    not specified, the default depth is 1._
+1.  `sslVerify`: defines if [http.sslVerify][git-http.sslverify] should be set
+    to `true` or `false` in the global git config. _Defaults to `true` if
+    omitted._
 
 [git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
-[git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
-[git-http.sslVerify]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify
+[git-depth]:
+  https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
+[git-http.sslverify]:
+  https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify
 
 When used as an input, the Git resource includes the exact commit fetched in the
 `resourceResults` section of the `taskRun`'s status object:
 
 ```yaml
 resourceResults:
-- key: commit
-  value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
-  resourceRef:
-    name: skaffold-git
+  - key: commit
+    value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
+    resourceRef:
+      name: skaffold-git
 ```
 
 #### Using a fork
@@ -396,10 +400,11 @@ Comments describe a pull request comment. They are represented as a set of json
 files.
 
 Other pull request information can be found in `pr.json`. This is a read-only
-resource. Users should use other subresources (labels, comments, etc)
-to interact with the PR.
+resource. Users should use other subresources (labels, comments, etc) to
+interact with the PR.
 
-For an example of the output this resource provides, see [`example`](../cmd/pullrequest-init/example).
+For an example of the output this resource provides, see
+[`example`](../cmd/pullrequest-init/example).
 
 To create a pull request resource using the `PipelineResource` CRD:
 
@@ -426,14 +431,13 @@ metadata:
 type: Opaque
 data:
   token: github_personal_access_token_secret # in base64 encoded form
-
 ```
 
 Params that can be added are the following:
 
 1.  `url`: represents the location of the pull request to fetch.
-1.  `provider`: represents the SCM provider to use. This will be "guessed" based on the url if not set.
-    Valid values are `github` or `gitlab` today.
+1.  `provider`: represents the SCM provider to use. This will be "guessed" based
+    on the url if not set. Valid values are `github` or `gitlab` today.
 
 #### Statuses
 
@@ -442,8 +446,8 @@ https://godoc.org/github.com/jenkins-x/go-scm/scm#State
 
 #### Pull Request
 
-The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication tokens in
-spec secrets with a field name called `authToken`.
+The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication
+tokens in spec secrets with a field name called `authToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 
@@ -547,16 +551,16 @@ cluster. The kubeconfig will be placed in
 
 The Cluster resource has the following parameters:
 
--   `url` (required): Host url of the master node
--   `username` (required): the user with access to the cluster
--   `password`: to be used for clusters with basic auth
--   `namespace`: The namespace to target in the cluster
--   `token`: to be used for authentication, if present will be used ahead of the
-    password
--   `insecure`: to indicate server should be accessed without verifying the TLS
-    certificate.
--   `cadata` (required): holds PEM-encoded bytes (typically read from a root
-    certificates bundle).
+- `url` (required): Host url of the master node
+- `username` (required): the user with access to the cluster
+- `password`: to be used for clusters with basic auth
+- `namespace`: The namespace to target in the cluster
+- `token`: to be used for authentication, if present will be used ahead of the
+  password
+- `insecure`: to indicate server should be accessed without verifying the TLS
+  certificate.
+- `cadata` (required): holds PEM-encoded bytes (typically read from a root
+  certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a
 `token` or a `password` should be provided, if both are provided, the `password`
@@ -730,13 +734,13 @@ Params that can be added are the following:
 1.  `dir`: represents whether the blob storage is a directory or not. By default
     a storage artifact is not considered a directory.
 
-    -   If the artifact is a directory then `-r`(recursive) flag is used, to
-        copy all files under the source directory to a GCS bucket. Eg: `gsutil
-        cp -r source_dir/* gs://some-bucket`
-    -   If an artifact is a single file like a zip or tar, then the copy will be
-        only 1 level deep(not recursive). It will not trigger a copy of sub
-        directories in the source directory. Eg: `gsutil cp source.tar
-        gs://some-bucket.tar`.
+    - If the artifact is a directory then `-r`(recursive) flag is used, to copy
+      all files under the source directory to a GCS bucket. Eg:
+      `gsutil cp -r source_dir/* gs://some-bucket`
+    - If an artifact is a single file like a zip or tar, then the copy will be
+      only 1 level deep(not recursive). It will not trigger a copy of sub
+      directories in the source directory. Eg:
+      `gsutil cp source.tar gs://some-bucket.tar`.
 
 Private buckets can also be configured as storage resources. To access GCS
 private buckets, service accounts with correct permissions are required. The
@@ -782,7 +786,7 @@ service account.
           secretKey: service_account.json
     ```
 
---------------------------------------------------------------------------------
+---
 
 #### BuildGCS Storage Resource
 
@@ -829,21 +833,21 @@ Params that can be added are the following:
 1.  `artifactType`: represent the type of `gcs` resource. Right now, we support
     following types:
 
-*   `ZipArchive`:
-    *   ZipArchive indicates that the resource fetched is an archive file in the
-        zip format.
-    *   It unzips the archive and places all the files in the directory, which
-        is set at runtime.
-    *   `Archive` is also supported and is equivalent to `ZipArchive`, but is
-        deprecated.
-*   `TarGzArchive`:
-    *   TarGzArchive indicates that the resource fetched is a gzipped archive
-        file in the tar format.
-    *   It unzips the archive and places all the files in the directory, which
-        is set at runtime.
-*   [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
-    *   Manifest indicates that the resource should be fetched using a source
-        manifest file.
+- `ZipArchive`:
+  - ZipArchive indicates that the resource fetched is an archive file in the zip
+    format.
+  - It unzips the archive and places all the files in the directory, which is
+    set at runtime.
+  - `Archive` is also supported and is equivalent to `ZipArchive`, but is
+    deprecated.
+- `TarGzArchive`:
+  - TarGzArchive indicates that the resource fetched is a gzipped archive file
+    in the tar format.
+  - It unzips the archive and places all the files in the directory, which is
+    set at runtime.
+- [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
+  - Manifest indicates that the resource should be fetched using a source
+    manifest file.
 
 Private buckets other than the ones accessible by a
 [TaskRun Service Account](./taskruns.md#service-account) can not be configured
@@ -860,9 +864,9 @@ The `cloudevent` resource represents a
 specific events; the body of the event includes the entire `TaskRun` spec plus
 status; the types of events defined for now are:
 
--   dev.tekton.event.task.unknown
--   dev.tekton.event.task.successful
--   dev.tekton.event.task.failed
+- dev.tekton.event.task.unknown
+- dev.tekton.event.task.successful
+- dev.tekton.event.task.failed
 
 `cloudevent` resources are useful to notify a third party upon the completion
 and status of a `TaskRun`. In combinations with the
@@ -879,8 +883,8 @@ metadata:
 spec:
   type: cloudEvent
   params:
-  - name: targetURI
-    value: http://sink:8080
+    - name: targetURI
+      value: http://sink:8080
 ```
 
 The content of an event is for example:

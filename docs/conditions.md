@@ -2,7 +2,8 @@
 
 This document defines `Conditions` and their capabilities.
 
-*NOTE*: This feature is currently a WIP being tracked in [#1137](https://github.com/tektoncd/pipeline/issues/1137)
+_NOTE_: This feature is currently a WIP being tracked in
+[#1137](https://github.com/tektoncd/pipeline/issues/1137)
 
 ---
 
@@ -26,23 +27,26 @@ following fields:
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `Condition` resource object. In order for a `Condition` to do anything,
     the spec must include:
-    - [`check`](#check) - Specifies a container that you want to run for evaluating the condition 
+    - [`check`](#check) - Specifies a container that you want to run for
+      evaluating the condition
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ### Check
 
-The `check` field is required. You define a single check to define the body of a `Condition`. The 
-check must specify a container image that adheres to the [container contract](./container-contract.md). 
-The container image runs till completion. The container must exit successfully i.e. with an exit code 0 
-for the condition evaluation to be successful. All other exit codes are considered to be a condition check
-failure.
+The `check` field is required. You define a single check to define the body of a
+`Condition`. The check must specify a container image that adheres to the
+[container contract](./container-contract.md). The container image runs till
+completion. The container must exit successfully i.e. with an exit code 0 for
+the condition evaluation to be successful. All other exit codes are considered
+to be a condition check failure.
 
 ### Parameters
 
-A Condition can declare parameters that must be supplied to it during a PipelineRun. Sub-fields
-within the check field can access the parameter values using the templating syntax:
+A Condition can declare parameters that must be supplied to it during a
+PipelineRun. Sub-fields within the check field can access the parameter values
+using the templating syntax:
 
 ```yaml
 spec:
@@ -56,20 +60,24 @@ spec:
 Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
- 
-Each declared parameter has a type field, assumed to be string if not provided by the user. 
-The other possible type is array — useful, for instance, checking that a pushed branch name doesn't match any of 
-multiple protected branch names. When the actual parameter value is supplied, its parsed type 
-is validated against the type field.
+
+Each declared parameter has a type field, assumed to be string if not provided
+by the user. The other possible type is array — useful, for instance, checking
+that a pushed branch name doesn't match any of multiple protected branch names.
+When the actual parameter value is supplied, its parsed type is validated
+against the type field.
 
 ### Resources
 
-Conditions can declare input [`PipelineResources`](resources.md)  via the `resources` field to 
-provide the Condition container step with data or context that is needed to perform the check.
+Conditions can declare input [`PipelineResources`](resources.md) via the
+`resources` field to provide the Condition container step with data or context
+that is needed to perform the check.
 
-Resources in Conditions work similar to the way they work in `Tasks` i.e. they can be accessed using
-[variable substitution](./resources.md#variable-substitution) and the `targetPath` field can be used
-to [control where the resource is mounted](./resources.md#controlling-where-resources-are-mounted)
+Resources in Conditions work similar to the way they work in `Tasks` i.e. they
+can be accessed using
+[variable substitution](./resources.md#variable-substitution) and the
+`targetPath` field can be used to
+[control where the resource is mounted](./resources.md#controlling-where-resources-are-mounted)
 
 ## Examples
 

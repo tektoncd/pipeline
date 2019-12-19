@@ -39,15 +39,16 @@ following fields:
     - `resources.inputs` / `resource.outputs`
       - [`from`](#from) - Used when the content of the
         [`PipelineResource`](resources.md) should come from the
-        [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
+        [output](tasks.md#outputs) of a previous
+        [Pipeline Task](#pipeline-tasks)
       - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
       - [`retries`](#retries) - Used when the task is wanted to be executed if
         it fails. Could be a network error or a missing dependency. It does not
         apply to cancellations.
-      - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
-        conditions are evaluated to be true.
+      - [`conditions`](#conditions) - Used when a task is to be executed only if
+        the specified conditions are evaluated to be true.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -55,8 +56,8 @@ following fields:
 ### Declared resources
 
 In order for a `Pipeline` to interact with the outside world, it will probably
-need [`PipelineResources`](resources.md) which will be given to
-`Tasks` as inputs and outputs.
+need [`PipelineResources`](resources.md) which will be given to `Tasks` as
+inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
 section in the `spec`, giving each a name which will be used to refer to these
@@ -75,9 +76,10 @@ spec:
 
 ### Declared Workspaces
 
-It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
-or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used with them until
-[#1438](https://github.com/tektoncd/pipeline/issues/1438) is completed.
+It is not yet possible to specify [workspaces](tasks.md#workspaces) via
+`Pipelines` or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used
+with them until [#1438](https://github.com/tektoncd/pipeline/issues/1438) is
+completed.
 
 ### Parameters
 
@@ -89,7 +91,11 @@ Parameter names are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
 
-Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of string arguments need to be supplied to a task. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+Each declared parameter has a `type` field, assumed to be `string` if not
+provided by the user. The other possible type is `array` — useful, for instance,
+when a dynamic number of string arguments need to be supplied to a task. When
+the actual parameter value is supplied, its parsed type is validated against the
+`type` field.
 
 #### Usage
 
@@ -146,7 +152,7 @@ spec:
 ### Pipeline Tasks
 
 A `Pipeline` will execute a graph of [`Tasks`](tasks.md) (see
-[ordering](#ordering) for how to express this graph). A valid `Pipeline` 
+[ordering](#ordering) for how to express this graph). A valid `Pipeline`
 declaration must include a reference to at least one [`Task`](tasks.md). Each
 `Task` within a `Pipeline` must have a
 [valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
@@ -207,8 +213,8 @@ that your `Tasks` need.
   resource that is from the defined list of tasks is used
 - `from` can support fan in and fan out
 - The `from` clause [expresses ordering](#ordering), i.e. the
-  [Pipeline Task](#pipeline-tasks) which provides the `PipelineResource` must run
-  _before_ the Pipeline Task which needs that `PipelineResource` as an input
+  [Pipeline Task](#pipeline-tasks) which provides the `PipelineResource` must
+  run _before_ the Pipeline Task which needs that `PipelineResource` as an input
   - The name of the `PipelineResource` must correspond to a `PipelineResource`
     from the `Task` that the referenced `PipelineTask` gives as an output
 
@@ -277,8 +283,8 @@ spec.
 #### retries
 
 Sometimes you need a policy for retrying tasks which have problems such as
-network errors, missing dependencies or upload problems. Any of those issues must
-be reflected as False (corev1.ConditionFalse) within the TaskRun Status
+network errors, missing dependencies or upload problems. Any of those issues
+must be reflected as False (corev1.ConditionFalse) within the TaskRun Status
 Succeeded Condition. For that reason there is an optional attribute called
 `retries` which declares how many times that task should be retried in case of
 failure.
@@ -297,15 +303,17 @@ In this example, the task "build-the-image" will be executed and if the first
 run fails a second one would triggered. But, if that fails no more would
 triggered: a max of two executions.
 
-
 #### conditions
 
-Sometimes you will need to run tasks only when some conditions are true. The `conditions` field 
-allows you to list a series of references to [`Conditions`](./conditions.md) that are run before the task
-is run. If all of the conditions evaluate to true, the task is run. If any of the conditions are false,
-the Task is not run. Its status.ConditionSucceeded is set to False with the reason set to  `ConditionCheckFailed`.
-However, unlike regular task failures, condition failures do not automatically fail the entire pipeline 
-run -- other tasks that are not dependent on the task (via `from` or `runAfter`) are still run.
+Sometimes you will need to run tasks only when some conditions are true. The
+`conditions` field allows you to list a series of references to
+[`Conditions`](./conditions.md) that are run before the task is run. If all of
+the conditions evaluate to true, the task is run. If any of the conditions are
+false, the Task is not run. Its status.ConditionSucceeded is set to False with
+the reason set to `ConditionCheckFailed`. However, unlike regular task failures,
+condition failures do not automatically fail the entire pipeline run -- other
+tasks that are not dependent on the task (via `from` or `runAfter`) are still
+run.
 
 ```yaml
 tasks:
@@ -322,16 +330,17 @@ tasks:
             resource: source-repo
 ```
 
-In this example, `my-condition` refers to a [Condition](#conditions) custom resource. The `build-push` 
-task will only be executed if the condition evaluates to true. 
+In this example, `my-condition` refers to a [Condition](#conditions) custom
+resource. The `build-push` task will only be executed if the condition evaluates
+to true.
 
 ## Ordering
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run
 in a graph, specifically a _Directed Acyclic Graph_ or DAG. Each of the Pipeline
-Tasks is a node, which can be connected with an edge (i.e. a _Graph_) such that one will run
-before another (i.e. _Directed_), and the execution will eventually complete
-(i.e. _Acyclic_, it will not get caught in infinite loops).
+Tasks is a node, which can be connected with an edge (i.e. a _Graph_) such that
+one will run before another (i.e. _Directed_), and the execution will eventually
+complete (i.e. _Acyclic_, it will not get caught in infinite loops).
 
 This is done using:
 

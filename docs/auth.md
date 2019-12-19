@@ -250,10 +250,9 @@ credentials are then used to authenticate when retrieving any
 
 ## Kubernetes's Docker registry's secret
 
-Kubernetes defines two types of secrets for Docker registries : 
-the old format `kubernetes.io/dockercfg` and the new
-`kubernetes.io/dockerconfigjson`. Tekton supports those secrets in
-addition to the one described above.
+Kubernetes defines two types of secrets for Docker registries : the old format
+`kubernetes.io/dockercfg` and the new `kubernetes.io/dockerconfigjson`. Tekton
+supports those secrets in addition to the one described above.
 
 1. Define a `Secret` from a Docker client configuration file, as documented in
    [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/)
@@ -295,9 +294,9 @@ addition to the one described above.
    ```
 
 When this TaskRun executes, before the steps are getting executed, a
-`~/.docker/config.json` will be generated containing the credentials
-configured in the `Secret`, and these credentials are then used to
-authenticate with the Docker registry.
+`~/.docker/config.json` will be generated containing the credentials configured
+in the `Secret`, and these credentials are then used to authenticate with the
+Docker registry.
 
 If both `kubernetes.io/*` and tekton flavored basic authentication secret are
 provided, tekton will merge the credentials from those two ; tekton flavored

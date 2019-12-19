@@ -45,20 +45,21 @@ following fields:
       the [`Task`](tasks.md) you want to run
 - Optional:
 
-  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
-    object that enables your build to run with the defined authentication
-    information. When a `ServiceAccount` isn't specified, the `default-service-account`
-    specified in the configmap - config-defaults will be applied.
+  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount`
+    resource object that enables your build to run with the defined
+    authentication information. When a `ServiceAccount` isn't specified, the
+    `default-service-account` specified in the configmap - config-defaults will
+    be applied.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
-  - [`timeout`] - Specifies timeout after which the `TaskRun` will fail. If the value of
-    `timeout` is empty, the default timeout will be applied. If the value is set to 0,
-    there is no timeout. You can also follow the instruction [here](#Configuring-default-timeout)
-    to configure the default timeout.
+  - [`timeout`] - Specifies timeout after which the `TaskRun` will fail. If the
+    value of `timeout` is empty, the default timeout will be applied. If the
+    value is set to 0, there is no timeout. You can also follow the instruction
+    [here](#Configuring-default-timeout) to configure the default timeout.
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
-	  configuration that will be used as the basis for the `Task` pod.
+    configuration that will be used as the basis for the `Task` pod.
   - [`workspaces`](#workspaces) - Specify the actual volumes to use for the
     [workspaces](tasks.md#workspaces) declared by a `Task`
 
@@ -147,24 +148,27 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
-The `paths` field can be used to [override the paths to a resource](./resources.md#overriding-where-resources-are-copied-from)
+The `paths` field can be used to
+[override the paths to a resource](./resources.md#overriding-where-resources-are-copied-from)
 
 ### Configuring Default Timeout
 
-You can configure the default timeout by changing the value of `default-timeout-minutes`
-in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). The default timeout
-is 60 minutes, if `default-timeout-minutes` is not available. There is no timeout by
-default, if `default-timeout-minutes` is set to 0.
+You can configure the default timeout by changing the value of
+`default-timeout-minutes` in
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml). The default
+timeout is 60 minutes, if `default-timeout-minutes` is not available. There is
+no timeout by default, if `default-timeout-minutes` is set to 0.
 
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccountName` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccountName` field is specified, your `Task` runs
-using the service account specified in the ConfigMap `configmap-defaults`
-which if absent will default to
+`serviceAccountName` field to run your `Task` with the privileges of the
+specified service account. If no `serviceAccountName` field is specified, your
+`Task` runs using the service account specified in the ConfigMap
+`configmap-defaults` which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
-that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+that is in the
+[namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
@@ -174,28 +178,29 @@ For examples and more information about specifying service accounts, see the
 
 Specifies a subset of
 [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
-configuration that will be used as the basis for the `Task` pod. This
-allows to customize some Pod specific field per `Task` execution, aka
-`TaskRun`. The current field supported are:
+configuration that will be used as the basis for the `Task` pod. This allows to
+customize some Pod specific field per `Task` execution, aka `TaskRun`. The
+current field supported are:
 
-- `nodeSelector`: a selector which must be true for the pod to fit on
-  a node, see [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/).
-- `tolerations`: allow (but do not require) the pods to schedule onto
-  nodes with matching taints.
-- `affinity`: allow to constrain which nodes your pod is eligible to
-  be scheduled on, based on labels on the node.
-- `securityContext`: pod-level security attributes and common
-  container settings, like `runAsUser` or `selinux`.
-- `volumes`: list of volumes that can be mounted by containers
-  belonging to the pod. This lets the user of a Task define which type
-  of volume to use for a Task `volumeMount`
+- `nodeSelector`: a selector which must be true for the pod to fit on a node,
+  see
+  [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/).
+- `tolerations`: allow (but do not require) the pods to schedule onto nodes with
+  matching taints.
+- `affinity`: allow to constrain which nodes your pod is eligible to be
+  scheduled on, based on labels on the node.
+- `securityContext`: pod-level security attributes and common container
+  settings, like `runAsUser` or `selinux`.
+- `volumes`: list of volumes that can be mounted by containers belonging to the
+  pod. This lets the user of a Task define which type of volume to use for a
+  Task `volumeMount`
 - `runtimeClassName`: the name of a
   [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
   to use to run the pod.
 
-In the following example, the Task is defined with a `volumeMount`
-(`my-cache`), that is provided by the TaskRun, using a
-PersistenceVolumeClaim. The Pod will also run as a non-root user.
+In the following example, the Task is defined with a `volumeMount` (`my-cache`),
+that is provided by the TaskRun, using a PersistenceVolumeClaim. The Pod will
+also run as a non-root user.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -225,89 +230,96 @@ spec:
     securityContext:
       runAsNonRoot: true
     volumes:
-    - name: my-cache
-      persistentVolumeClaim:
-        claimName: my-volume-claim
+      - name: my-cache
+        persistentVolumeClaim:
+          claimName: my-volume-claim
 ```
 
 ## Workspaces
 
-For a `TaskRun` to execute [a `Task` that declares `workspaces`](tasks.md#workspaces),
-at runtime you need to map the `workspaces` to actual physical volumes with
-`workspaces`. Values in `workspaces` are
-[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/), however currently we only support a subset of `VolumeSources`:
+For a `TaskRun` to execute
+[a `Task` that declares `workspaces`](tasks.md#workspaces), at runtime you need
+to map the `workspaces` to actual physical volumes with `workspaces`. Values in
+`workspaces` are
+[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/),
+however currently we only support a subset of `VolumeSources`:
 
-* [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
-* [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
+- [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+- [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
 
 _If you need support for a `VolumeSource` not listed here
-[please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
+[please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free
+to
 [contribute a PR](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)._
 
-
-If the declared `workspaces` are not provided at runtime, the `TaskRun` will fail
-with an error.
+If the declared `workspaces` are not provided at runtime, the `TaskRun` will
+fail with an error.
 
 For example to provide an existing PVC called `mypvc` for a `workspace` called
-`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which already exists
-on the PVC (there will be an error if it does not exist):
+`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which
+already exists on the PVC (there will be an error if it does not exist):
 
 ```yaml
 workspaces:
-- name: myworkspace
-  persistentVolumeClaim:
-    claimName: mypvc
-  subPath: my-subdir
+  - name: myworkspace
+    persistentVolumeClaim:
+      claimName: mypvc
+    subPath: my-subdir
 ```
 
-Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for the same `workspace`:
+Or to use
+[`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for
+the same `workspace`:
 
 ```yaml
 workspaces:
-- name: myworkspace
-  emptyDir: {}
+  - name: myworkspace
+    emptyDir: {}
 ```
 
-_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
+_For a complete example see
+[workspace.yaml](../examples/taskruns/workspace.yaml)._
 
 ## Status
 
-As a TaskRun completes, its `status` field is filled in with relevant information for
-the overall run, as well as each step.
+As a TaskRun completes, its `status` field is filled in with relevant
+information for the overall run, as well as each step.
 
 The following example shows a completed TaskRun and its `status` field:
 
 ```yaml
 completionTime: "2019-08-12T18:22:57Z"
 conditions:
-- lastTransitionTime: "2019-08-12T18:22:57Z"
-  message: All Steps have completed executing
-  reason: Succeeded
-  status: "True"
-  type: Succeeded
+  - lastTransitionTime: "2019-08-12T18:22:57Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
 podName: status-taskrun-pod-6488ef
 startTime: "2019-08-12T18:22:51Z"
 steps:
-- container: step-hello
-  imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
-  name: hello
-  terminated:
-    containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
-    exitCode: 0
-    finishedAt: "2019-08-12T18:22:56Z"
-    reason: Completed
-    startedAt: "2019-08-12T18:22:54Z"
-  ```
+  - container: step-hello
+    imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
+    name: hello
+    terminated:
+      containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
+      exitCode: 0
+      finishedAt: "2019-08-12T18:22:56Z"
+      reason: Completed
+      startedAt: "2019-08-12T18:22:54Z"
+```
 
-Fields include start and stop times for the `TaskRun` and each `Step` and exit codes.
-For each step we also include the fully-qualified image used, with the digest.
+Fields include start and stop times for the `TaskRun` and each `Step` and exit
+codes. For each step we also include the fully-qualified image used, with the
+digest.
 
 ### Steps
 
-If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will see the
-`status.steps` of the `TaskRun` displayed in the same order as they are defined in
-`spec.steps` of the `Task`, when the `TaskRun` is accessed by the `get` command, e.g.
-`kubectl get taskrun <name> -o yaml`. Replace \<name\> with the name of the `TaskRun`.
+If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will
+see the `status.steps` of the `TaskRun` displayed in the same order as they are
+defined in `spec.steps` of the `Task`, when the `TaskRun` is accessed by the
+`get` command, e.g. `kubectl get taskrun <name> -o yaml`. Replace \<name\> with
+the name of the `TaskRun`.
 
 ## Cancelling a TaskRun
 
@@ -605,9 +617,9 @@ data:
 ```
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccountName` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccountName` field is specified, your `Task` runs
-using the
+`serviceAccountName` field to run your `Task` with the privileges of the
+specified service account. If no `serviceAccountName` field is specified, your
+`Task` runs using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the
 [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
@@ -618,33 +630,33 @@ For examples and more information about specifying service accounts, see the
 
 ## Sidecars
 
-A well-established pattern in Kubernetes is that of the "sidecar" - a
-container which runs alongside your workloads to provide ancillary support.
-Typical examples of the sidecar pattern are logging daemons, services to
-update files on a shared volume, and network proxies.
+A well-established pattern in Kubernetes is that of the "sidecar" - a container
+which runs alongside your workloads to provide ancillary support. Typical
+examples of the sidecar pattern are logging daemons, services to update files on
+a shared volume, and network proxies.
 
-Tekton will happily work with sidecars injected into a TaskRun's
-pods but the behaviour is a bit nuanced: When TaskRun's steps are complete
-any sidecar containers running inside the Pod will be terminated. In
-order to terminate the sidecars they will be restarted with a new
-"nop" image that quickly exits. The result will be that your TaskRun's
-Pod will include the sidecar container with a Retry Count of 1 and
-with a different container image than you might be expecting.
+Tekton will happily work with sidecars injected into a TaskRun's pods but the
+behaviour is a bit nuanced: When TaskRun's steps are complete any sidecar
+containers running inside the Pod will be terminated. In order to terminate the
+sidecars they will be restarted with a new "nop" image that quickly exits. The
+result will be that your TaskRun's Pod will include the sidecar container with a
+Retry Count of 1 and with a different container image than you might be
+expecting.
 
 Note: There are some known issues with the existing implementation of sidecars:
 
-- The configured "nop" image must not provide the command that the
-sidecar is expected to run. If it does provide the command then it will
-not exit. This will result in the sidecar running forever and the Task
-eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
-is the issue where this bug is being tracked.
+- The configured "nop" image must not provide the command that the sidecar is
+  expected to run. If it does provide the command then it will not exit. This
+  will result in the sidecar running forever and the Task eventually timing out.
+  https://github.com/tektoncd/pipeline/issues/1347 is the issue where this bug
+  is being tracked.
 
-- `kubectl get pods` will show a TaskRun's Pod as "Completed" if a sidecar
-exits successfully and "Error" if the sidecar exits with an error, regardless
-of how the step containers inside that pod exited. This issue only manifests
-with the `get pods` command. The Pod description will instead show a Status of
-Failed and the individual container statuses will correctly reflect how and why
-they exited.
+- `kubectl get pods` will show a TaskRun's Pod as "Completed" if a sidecar exits
+  successfully and "Error" if the sidecar exits with an error, regardless of how
+  the step containers inside that pod exited. This issue only manifests with the
+  `get pods` command. The Pod description will instead show a Status of Failed
+  and the individual container statuses will correctly reflect how and why they
+  exited.
 
 ---
 

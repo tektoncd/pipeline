@@ -205,9 +205,11 @@ To run the YAML e2e tests, run the following command:
 
 ### Running upgrade tests
 
-There are two scenarios in upgrade tests. One is to install the previous release, upgrade to the current release, and
-validate whether the Tekton pipeline works. The other is to install the previous release, create the pipelines and tasks,
-upgrade to the current release, and validate whether the Tekton pipeline works.
+There are two scenarios in upgrade tests. One is to install the previous
+release, upgrade to the current release, and validate whether the Tekton
+pipeline works. The other is to install the previous release, create the
+pipelines and tasks, upgrade to the current release, and validate whether the
+Tekton pipeline works.
 
 To run the upgrade tests, run the following command:
 

@@ -16,10 +16,12 @@ on path `/pvc` by PipelineRun.
   adds a step to copy from PVC directory path:
   `/pvc/previous_task/resource_name`.
 
-Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
-This can be configured using a ConfigMap with the name `config-artifact-bucket`.
+Another alternatives is to use a GCS storage or S3 bucket to share the
+artifacts. This can be configured using a ConfigMap with the name
+`config-artifact-bucket`.
 
-See [here](../install.md#how-are-resources-shared-between-tasks) for configuration details.
+See [here](../install.md#how-are-resources-shared-between-tasks) for
+configuration details.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
@@ -158,10 +160,11 @@ lifetime of a Pod but in Tekton's case it's desirable for the sidecars to run
 only as long as Steps take to complete. There's also a need for Tekton to
 schedule the sidecars to start before a Task's Steps begin, just in case the
 Steps rely on a sidecars behaviour, for example to join an Istio service mesh.
-To handle all of this, Tekton Pipelines implements the following lifecycle
-for sidecar containers:
+To handle all of this, Tekton Pipelines implements the following lifecycle for
+sidecar containers:
 
-First, the [Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api)
+First, the
+[Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api)
 is used to project an annotation on the TaskRun's Pod into the `entrypoint`
 container as a file. The annotation starts as an empty string, so the file
 projected by the downward API has zero length. The entrypointer spins, waiting
@@ -169,29 +172,28 @@ for that file to have non-zero size.
 
 The sidecar containers start up. Once they're all in a ready state, the
 annotation is populated with string "READY", which in turn populates the
-Downward API projected file. The entrypoint binary recognizes
-that the projected file has a non-zero size and allows the Task's steps to
-begin.
+Downward API projected file. The entrypoint binary recognizes that the projected
+file has a non-zero size and allows the Task's steps to begin.
 
-On completion of all steps in a Task the TaskRun reconciler stops any
-sidecar containers. The `Image` field of any sidecar containers is swapped
-to the nop image. Kubernetes observes the change and relaunches the container
-with updated container image. The nop container image exits immediately
-*because it does not provide the command that the sidecar is configured to run*.
-The container is considered `Terminated` by Kubernetes and the TaskRun's Pod
-stops.
+On completion of all steps in a Task the TaskRun reconciler stops any sidecar
+containers. The `Image` field of any sidecar containers is swapped to the nop
+image. Kubernetes observes the change and relaunches the container with updated
+container image. The nop container image exits immediately _because it does not
+provide the command that the sidecar is configured to run_. The container is
+considered `Terminated` by Kubernetes and the TaskRun's Pod stops.
 
 There are known issues with the existing implementation of sidecars:
 
-- When the `nop` image does provide the sidecar's command, the sidecar will continue to
-run even after `nop` has been swapped into the sidecar container's image
-field. See https://github.com/tektoncd/pipeline/issues/1347 for the issue
-tracking this bug. Until this issue is resolved the best way to avoid it is to
-avoid overriding the `nop` image when deploying the tekton controller, or
-ensuring that the overridden `nop` image contains as few commands as possible.
+- When the `nop` image does provide the sidecar's command, the sidecar will
+  continue to run even after `nop` has been swapped into the sidecar container's
+  image field. See https://github.com/tektoncd/pipeline/issues/1347 for the
+  issue tracking this bug. Until this issue is resolved the best way to avoid it
+  is to avoid overriding the `nop` image when deploying the tekton controller,
+  or ensuring that the overridden `nop` image contains as few commands as
+  possible.
 
 - `kubectl get pods` will show a Completed pod when a sidecar exits successfully
-but an Error when the sidecar exits with an error. This is only apparent when
-using `kubectl` to get the pods of a TaskRun, not when describing the Pod
-using `kubectl describe pod ...` nor when looking at the TaskRun, but can be quite
-confusing.
+  but an Error when the sidecar exits with an error. This is only apparent when
+  using `kubectl` to get the pods of a TaskRun, not when describing the Pod
+  using `kubectl describe pod ...` nor when looking at the TaskRun, but can be
+  quite confusing.

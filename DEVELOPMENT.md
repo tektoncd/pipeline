@@ -22,29 +22,29 @@ Welcome to the project!! You may find these resources helpful to ramp up on some
 of the technology this project is built on. This project extends Kubernetes (aka
 `k8s`) with Custom Resource Definitions (CRDSs). To find out more:
 
--   [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
-    These will orient you on what words like "Resource" and "Controller"
-    concretely mean
--   [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/) -
-    This will further solidify k8s nomenclature
--   [API conventions - Types(kinds)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds) -
-    Another useful set of words describing words. "Objects" and "Lists" in k8s
-    land
--   [Extend the Kubernetes API with CustomResourceDefinitions](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)-
-    A tutorial demonstrating how a Custom Resource Definition can be added to
-    Kubernetes without anything actually "happening" beyond being able to list
-    Objects of that kind
+- [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
+  These will orient you on what words like "Resource" and "Controller"
+  concretely mean
+- [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/) -
+  This will further solidify k8s nomenclature
+- [API conventions - Types(kinds)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds) -
+  Another useful set of words describing words. "Objects" and "Lists" in k8s
+  land
+- [Extend the Kubernetes API with CustomResourceDefinitions](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)-
+  A tutorial demonstrating how a Custom Resource Definition can be added to
+  Kubernetes without anything actually "happening" beyond being able to list
+  Objects of that kind
 
 At this point, you may find it useful to return to these `Tekton Pipeline` docs:
 
--   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) -
-    Some of the terms here may make more sense!
--   Install via
-    [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-    or continue though [getting started for development](#getting-started)
--   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
-    Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
-    they are run
+- [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) -
+  Some of the terms here may make more sense!
+- Install via
+  [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+  or continue though [getting started for development](#getting-started)
+- [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
+  Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
+  they are run
 
 ### Checkout your fork
 
@@ -91,10 +91,10 @@ configuring Kubernetes resources.
 Docker for Desktop using an edge version has been proven to work for both
 developing and running Pipelines. The recommended configuration is:
 
--   Kubernetes version 1.11 or later
--   4 vCPU nodes (`n1-standard-4`)
--   Node autoscaling, up to 3 nodes
--   API scopes for cloud-platform
+- Kubernetes version 1.11 or later
+- 4 vCPU nodes (`n1-standard-4`)
+- Node autoscaling, up to 3 nodes
+- API scopes for cloud-platform
 
 To setup a cluster with Docker on Desktop:
 
@@ -104,9 +104,9 @@ To use the Kubernetes that comes with Docker for Desktop: 1. First go into the
 Docker For Desktop preferences. Under the resource tabs ensure that you have at
 least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap. 1. Under the Kubernetes tab,
 enable Kubernetes. 1. Click the Apply and Restart button to save the
-preferences. 1. Switch the proper `kubectl` config context: `bash kubectl config
-get-contexts # You should see docker-for-desktop in the previous command output
-kubectl config use-context docker-for-desktop` To setup a cluster with GKE:
+preferences. 1. Switch the proper `kubectl` config context:
+`bash kubectl config get-contexts # You should see docker-for-desktop in the previous command output kubectl config use-context docker-for-desktop`
+To setup a cluster with GKE:
 
 1.  [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/docs/install/Knative-with-GKE.md#before-you-begin)
     (You may find it useful to save the ID of the project in an environment
@@ -153,8 +153,8 @@ kubectl config use-context docker-for-desktop` To setup a cluster with GKE:
 To [run your controllers with `ko`](#install-pipeline) you'll need to set these
 environment variables (we recommend adding them to your `.bashrc`):
 
-1.  `GOPATH`: If you don't have one, simply pick a directory and add `export
-    GOPATH=...`
+1.  `GOPATH`: If you don't have one, simply pick a directory and add
+    `export GOPATH=...`
 1.  `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
     work properly.
 1.  `KO_DOCKER_REPO`: The docker repository to which developer images should be
@@ -222,16 +222,16 @@ While iterating on the project, you may need to:
 
 To make changes to these CRDs, you will probably interact with:
 
--   The CRD type definitions in
-    [./pkg/apis/pipeline/alpha1](./pkg/apis/pipeline/v1alpha1)
--   The reconcilers in [./pkg/reconciler](./pkg/reconciler)
--   The clients are in [./pkg/client](./pkg/client) (these are generated by
-    `./hack/update-codegen.sh`)
+- The CRD type definitions in
+  [./pkg/apis/pipeline/alpha1](./pkg/apis/pipeline/v1alpha1)
+- The reconcilers in [./pkg/reconciler](./pkg/reconciler)
+- The clients are in [./pkg/client](./pkg/client) (these are generated by
+  `./hack/update-codegen.sh`)
 
 ## Install Pipeline
 
-You can stand up a version of this controller on-cluster (to your `kubectl
-config current-context`):
+You can stand up a version of this controller on-cluster (to your
+`kubectl config current-context`):
 
 ```shell
 ko apply -f config/
@@ -276,9 +276,9 @@ If you need to add a new CRD type, you will need to add:
 
 1.  A yaml definition in [config/](./config)
 1.  Add the type to the cluster roles in:
-    -   [200-clusterrole.yaml](./config/200-clusterrole.yaml)
-    -   [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
-    -   [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
+    - [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+    - [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
+    - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
 1.  Add go structs for the types in
     [pkg/apis/pipeline/v1alpha1](./pkg/apis/pipeline/v1alpha1) e.g
     [condition_types.go](./pkg/apis/pipeline/v1alpha1/condition_types.go) This

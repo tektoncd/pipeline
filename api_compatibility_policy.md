@@ -43,35 +43,37 @@ The API is considered to consist of:
 ### Getting to beta
 
 [This document](https://docs.google.com/document/d/1H8I2Rk4kLdQaR4mV0A71Qbk-1FxXFrmvisEAjLKT6H0/edit#)
-(visible to members of [the mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list))
+(visible to members of
+[the mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list))
 describes our plan to get to beta.
 
 #### Backwards compatible changes first
 
-At this point, any backwards incompatible changes must
-be introduced in a backwards compatible manner first, with a deprecation warning
-in the release notes, for at least one full release before the backward
-incompatible change is made.
+At this point, any backwards incompatible changes must be introduced in a
+backwards compatible manner first, with a deprecation warning in the release
+notes, for at least one full release before the backward incompatible change is
+made.
 
 ## Approving API changes
 
-API changes must be approved by [OWNERS](OWNERS). The policy is slightly different
-for [additive changes](#additive-changes) vs.
+API changes must be approved by [OWNERS](OWNERS). The policy is slightly
+different for [additive changes](#additive-changes) vs.
 [backwards incompatible changes](#backwards-incompatible-changes).
 
 ### Additive changes
 
-Additive changes are changes that add to the API and do not cause problems for users
-of previous versions of the API.
+Additive changes are changes that add to the API and do not cause problems for
+users of previous versions of the API.
 
 These changes must be approved by at least 2 [OWNERS](OWNERS).
 
 ### Backwards incompatible changes
 
-Backwards incompatible changes change the API, e.g. by removing fields from a CRD
-spec. These changes will mean that folks using a previous version of the API will need
-to adjust their usage in order to use the new version.
+Backwards incompatible changes change the API, e.g. by removing fields from a
+CRD spec. These changes will mean that folks using a previous version of the API
+will need to adjust their usage in order to use the new version.
 
-These changes must be made [in a backwards compatible manner first](#backwards-compatible-changes-first),
-and the changes must be approved by [more than half of the project OWNERS](OWNERS)
-(i.e. 50% + 1).
+These changes must be made
+[in a backwards compatible manner first](#backwards-compatible-changes-first),
+and the changes must be approved by
+[more than half of the project OWNERS](OWNERS) (i.e. 50% + 1).
