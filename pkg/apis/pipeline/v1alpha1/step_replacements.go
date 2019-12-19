@@ -21,52 +21,6 @@ import (
 )
 
 func ApplyStepReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
-	step.Name = substitution.ApplyReplacements(step.Name, stringReplacements)
-	step.Image = substitution.ApplyReplacements(step.Image, stringReplacements)
 	step.Script = substitution.ApplyReplacements(step.Script, stringReplacements)
-
-	// Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
-	var newArgs []string
-	for _, a := range step.Args {
-		newArgs = append(newArgs, substitution.ApplyArrayReplacements(a, stringReplacements, arrayReplacements)...)
-	}
-	step.Args = newArgs
-
-	for ie, e := range step.Env {
-		step.Env[ie].Value = substitution.ApplyReplacements(e.Value, stringReplacements)
-		if step.Env[ie].ValueFrom != nil {
-			if e.ValueFrom.SecretKeyRef != nil {
-				step.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, stringReplacements)
-				step.Env[ie].ValueFrom.SecretKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, stringReplacements)
-			}
-			if e.ValueFrom.ConfigMapKeyRef != nil {
-				step.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, stringReplacements)
-				step.Env[ie].ValueFrom.ConfigMapKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, stringReplacements)
-			}
-		}
-	}
-
-	for ie, e := range step.EnvFrom {
-		step.EnvFrom[ie].Prefix = substitution.ApplyReplacements(e.Prefix, stringReplacements)
-		if e.ConfigMapRef != nil {
-			step.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, stringReplacements)
-		}
-		if e.SecretRef != nil {
-			step.EnvFrom[ie].SecretRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, stringReplacements)
-		}
-	}
-	step.WorkingDir = substitution.ApplyReplacements(step.WorkingDir, stringReplacements)
-
-	// Use ApplyArrayReplacements here, as additional commands may be added via an array parameter.
-	var newCommand []string
-	for _, c := range step.Command {
-		newCommand = append(newCommand, substitution.ApplyArrayReplacements(c, stringReplacements, arrayReplacements)...)
-	}
-	step.Command = newCommand
-
-	for iv, v := range step.VolumeMounts {
-		step.VolumeMounts[iv].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
-		step.VolumeMounts[iv].MountPath = substitution.ApplyReplacements(v.MountPath, stringReplacements)
-		step.VolumeMounts[iv].SubPath = substitution.ApplyReplacements(v.SubPath, stringReplacements)
-	}
+	ApplyContainerReplacements(&step.Container, stringReplacements, arrayReplacements)
 }
