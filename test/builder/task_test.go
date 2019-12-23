@@ -162,11 +162,13 @@ func TestClusterTask(t *testing.T) {
 
 func TestTaskRunWithTaskRef(t *testing.T) {
 	var trueB = true
+
 	taskRun := tb.TaskRun("test-taskrun", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test",
 			tb.OwnerReferenceAPIVersion("a1"),
 			tb.Controller, tb.BlockOwnerDeletion,
 		),
+		tb.TaskRunLabels(map[string]string{"label-2": "label-value-2", "label-3": "label-value-3"}),
 		tb.TaskRunLabel("label", "label-value"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task-output",
@@ -211,7 +213,11 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Controller:         &trueB,
 				BlockOwnerDeletion: &trueB,
 			}},
-			Labels:      map[string]string{"label": "label-value"},
+			Labels: map[string]string{
+				"label":   "label-value",
+				"label-2": "label-value-2",
+				"label-3": "label-value-3",
+			},
 			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.TaskRunSpec{

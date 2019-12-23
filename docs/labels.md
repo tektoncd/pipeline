@@ -27,6 +27,9 @@ propagated from the referenced `Task` (if one exists, see the
 [Specifying a `Task`](taskruns.md#specifying-a-task) section of the `TaskRun`
 documentation) to the corresponding `TaskRun` and then to the `Pod`.
 
+For `Conditions`, labels are propagated automatically to the corresponding `TaskRuns`
+and then to `Pods`.
+
 ## Automatically Added Labels
 
 The following labels are added to resources automatically:

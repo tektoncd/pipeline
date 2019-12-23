@@ -1290,12 +1290,24 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	conditions := []*v1alpha1.Condition{
-		tb.Condition("cond-1", "foo", tb.ConditionSpec(
-			tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
-		)),
-		tb.Condition("cond-2", "foo", tb.ConditionSpec(
-			tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
-		)),
+		tb.Condition("cond-1", "foo",
+			tb.ConditionLabels(
+				map[string]string{
+					"label-1": "value-1",
+					"label-2": "value-2",
+				}),
+			tb.ConditionSpec(
+				tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
+			)),
+		tb.Condition("cond-2", "foo",
+			tb.ConditionLabels(
+				map[string]string{
+					"label-3": "value-3",
+					"label-4": "value-4",
+				}),
+			tb.ConditionSpec(
+				tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
+			)),
 	}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world",
@@ -1333,9 +1345,13 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
 	ccNameBase := prName + "-hello-world-1-9l9zj"
-	expectedConditionChecks := []*v1alpha1.TaskRun{
-		makeExpectedTr("cond-1", ccNameBase+"-cond-1-mz4c7"),
-		makeExpectedTr("cond-2", ccNameBase+"-cond-2-mssqb"),
+	ccNames := map[string]string{
+		"cond-1": ccNameBase + "-cond-1-mz4c7",
+		"cond-2": ccNameBase + "-cond-2-mssqb",
+	}
+	expectedConditionChecks := make([]*v1alpha1.TaskRun, len(conditions))
+	for index, condition := range conditions {
+		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels)
 	}
 
 	// Check that the expected TaskRun was created
@@ -1467,7 +1483,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	}
 }
 
-func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
+func makeExpectedTr(condName, ccName string, labels map[string]string) *v1alpha1.TaskRun {
 	return tb.TaskRun(ccName, "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run",
 			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
@@ -1477,6 +1493,7 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run"),
 		tb.TaskRunLabel("tekton.dev/conditionCheck", ccName),
+		tb.TaskRunLabels(labels),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
