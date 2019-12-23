@@ -13,15 +13,15 @@ Before starting this tutorial, please install the [Tekton CLI](https://github.co
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
-**Note:** [This tutorial can be run on a local workstation](#local-development)
+**Note:** [This tutorial can run on a local workstation](#local-development)
 
 ## Task
 
 The main objective of Tekton Pipelines is to run your Task individually or as a
 part of a Pipeline. Every `Task` runs as a Pod on your Kubernetes cluster with
-each step as its own container.
+each step as a container.
 
-A [`Task`](tasks.md) defines the work that needs to be executed, for example the
+A [`Task`](tasks.md) defines the work to run, for example, the
 following is a simple `Task` that will echo hello world:
 
 ```yaml
@@ -54,7 +54,7 @@ spec:
     name: echo-hello-world
 ```
 
-To apply the yaml files, use the following command:
+To apply the YAML files, use the following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -106,8 +106,8 @@ You will get an output similar to this:
 
 ### Task Inputs and Outputs
 
-In more common scenarios, a `Task` needs multiple steps with input and output
-resources to process. For example a `Task` could fetch source code from a GitHub
+In more typical scenarios, a `Task` needs multiple steps with input and output
+resources to process. For example, a `Task` could fetch source code from a GitHub
 repository and build a Docker image from it.
 
 [`PipelineResources`](resources.md) are used to define the artifacts that can be
@@ -149,7 +149,7 @@ spec:
 The following is a `Task` with inputs and outputs. The input resource is a
 GitHub repository and the output is the image produced from that source. The
 args of the `Task` command support variable substitution so that the definition of `Task` is
-constant and the value of parameters can change in runtime.
+constant, and the value of parameters can change at runtime.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -204,7 +204,7 @@ kubectl create secret docker-registry regcred \
                     --docker-email=<your-email>
 ```
 
-To be able to use this `secret` the `TaskRun` needs to use a `ServiceAccount`.
+To be able to use this `secret`, the `TaskRun` needs to use a `ServiceAccount`.
 
 The `ServiceAccount` should look similar to this:
 
@@ -255,8 +255,8 @@ spec:
           name: skaffold-image-leeroy-web
 ```
 
-To apply the yaml files use the following command, you need to apply the two
-`PipelineResources`, the `Task` and `TaskRun`.
+To apply the YAML files use the following command, you need to apply the two
+`PipelineResources`, the `Task`, and `TaskRun`.
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -408,7 +408,7 @@ spec:
       - name: yamlPathToImage
         type: string
         description:
-          The path to the image to replace in the yaml manifest (arg to yq)
+          The path to the image to replace in the YAML manifest (arg to yq)
   steps:
     - name: replace-image
       image: mikefarah/yq
@@ -431,7 +431,7 @@ spec:
 With the new `Task` inside of your `Pipeline`,
 you need to give your `ServiceAccount` additional permissions to be able to execute the `run-kubectl` step.
 
-First you have to create a new role, which you have to assign to your `ServiceAccount`,
+First, you have to create a new role, which you have to assign to your `ServiceAccount`,
 to do so, use the following command:
 ```bash
 kubectl create clusterrole tutorial-role \
@@ -472,7 +472,7 @@ spec:
 The `PipelineRun` will create the `TaskRuns` corresponding to each `Task` and
 collect the results.
 
-To apply the yaml files use the following command, you will need to apply the
+To apply the YAML files use the following command, you will need to apply the
 `deploy-task` if you want to run the Pipeline.
 
 ```bash
@@ -516,8 +516,7 @@ tutorial-pipeline-run-1-deploy-web-jjf2l           deploy-web           4 hours 
 tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours ago   1 minute     Succeeded
 ```
 
-The status of type `Succeeded` shows the `Pipeline` ran successfully, also
-the status of individual Task runs are shown.
+The above output shows the status of `Pipeline` is `Succeeded`.  It also represents the status of each Task.
 
 ## Local development
 
@@ -525,8 +524,7 @@ the status of individual Task runs are shown.
 
 Tekton Pipelines is known to work with:
 
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop). A known good
-  configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space. 
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop). A known good configuration specifies six CPUs, 10 GB of memory, and 2 GB of swap space. 
 - These [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Setting `host.docker.local:5000` as an insecure registry with Docker for
   Desktop (set via preferences or configuration, see the
@@ -534,7 +532,7 @@ Tekton Pipelines is known to work with:
   for details)
 - Passing `--insecure` as an argument to Kaniko tasks lets us push to an
   insecure registry.
-- Running a local (insecure) Docker registry: this can be run with
+- Running a local (insecure) Docker registry: this can run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
 
@@ -560,8 +558,8 @@ Tekton Pipelines is known to work with:
   [Stackdriver](https://cloud.google.com/logging/).
 - See [docs on getting logs from Runs](logs.md)
 
-Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
-an example is provided at
+We can deploy ElasticSearch, Beats, and Kibana locally for logging.  For
+an example, please check
 <https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
 
 ## Experimentation
@@ -584,7 +582,7 @@ The `TaskRuns` have been created in the following
 
 ---
 
-Except as otherwise noted, the content of this page is licensed under the
+Except as otherwise noted, the content of this page is under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
