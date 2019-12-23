@@ -44,6 +44,17 @@ func Condition(name, namespace string, ops ...ConditionOp) *v1alpha1.Condition {
 	return condition
 }
 
+func ConditionLabels(labels map[string]string) ConditionOp {
+	return func(Condition *v1alpha1.Condition) {
+		if Condition.ObjectMeta.Labels == nil {
+			Condition.ObjectMeta.Labels = map[string]string{}
+		}
+		for key, value := range labels {
+			Condition.ObjectMeta.Labels[key] = value
+		}
+	}
+}
+
 // ConditionSpec creates a ConditionSpec with default values.
 // Any number of ConditionSpec modifiers can be passed to transform it.
 func ConditionSpec(ops ...ConditionSpecOp) ConditionOp {

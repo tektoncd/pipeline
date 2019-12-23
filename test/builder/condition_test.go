@@ -29,6 +29,11 @@ import (
 
 func TestCondition(t *testing.T) {
 	condition := tb.Condition("cond-name", "foo",
+		tb.ConditionLabels(
+			map[string]string{
+				"label-1": "label-value-1",
+				"label-2": "label-value-2",
+			}),
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
 				tb.ParamSpecDefault("default"),
@@ -42,6 +47,10 @@ func TestCondition(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cond-name",
 			Namespace: "foo",
+			Labels: map[string]string{
+				"label-1": "label-value-1",
+				"label-2": "label-value-2",
+			},
 		},
 		Spec: v1alpha1.ConditionSpec{
 			Check: corev1.Container{

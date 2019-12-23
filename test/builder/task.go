@@ -480,6 +480,17 @@ func BlockOwnerDeletion(o *metav1.OwnerReference) {
 	o.BlockOwnerDeletion = &trueB
 }
 
+func TaskRunLabels(labels map[string]string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		if tr.ObjectMeta.Labels == nil {
+			tr.ObjectMeta.Labels = map[string]string{}
+		}
+		for key, value := range labels {
+			tr.ObjectMeta.Labels[key] = value
+		}
+	}
+}
+
 func TaskRunLabel(key, value string) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		if tr.ObjectMeta.Labels == nil {

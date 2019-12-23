@@ -653,6 +653,10 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
 
+	for key, value := range rcc.Condition.ObjectMeta.Labels {
+		labels[key] = value
+	}
+
 	taskSpec, err := rcc.ConditionToTaskSpec()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)

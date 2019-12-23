@@ -10,6 +10,7 @@ This document defines `Conditions` and their capabilities.
   - [Check](#check)
   - [Parameters](#parameters)
   - [Resources](#resources)
+- [Labels](#labels)
 - [Examples](#examples)
 
 ## Syntax
@@ -70,6 +71,10 @@ provide the Condition container step with data or context that is needed to perf
 Resources in Conditions work similar to the way they work in `Tasks` i.e. they can be accessed using
 [variable substitution](./resources.md#variable-substitution) and the `targetPath` field can be used
 to [control where the resource is mounted](./resources.md#controlling-where-resources-are-mounted)
+
+## Labels
+
+[Labels](labels.md) defined as part of the `Condition` metadata will be automatically propagated to the `Pod`.
 
 ## Examples
 
