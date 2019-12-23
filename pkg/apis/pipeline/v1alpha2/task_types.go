@@ -87,7 +87,7 @@ type TaskSpec struct {
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
 type Step struct {
-	corev1.Container
+	corev1.Container `json:"-"`
 
 	// Script is the contents of an executable file to execute.
 	//

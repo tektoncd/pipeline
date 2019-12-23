@@ -54,7 +54,6 @@ require (
 	google.golang.org/api v0.10.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
-	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
@@ -67,6 +66,7 @@ require (
 	knative.dev/caching v0.0.0-20190719140829-2032732871ff
 	knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b
 	knative.dev/pkg v0.0.0-20191111150521-6d806b998379
+	sigs.k8s.io/controller-tools v0.2.4
 )
 
 // Knative deps

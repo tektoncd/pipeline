@@ -42,5 +42,7 @@ bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
   "pipeline:v1alpha1,v1alpha2" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
+bash ${REPO_ROOT_DIR}/hack/generate-openapi.sh ./config github.com/tektoncd/pipeline/pkg/apis "pipeline:v1alpha1"
+
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh

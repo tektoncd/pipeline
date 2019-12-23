@@ -63,7 +63,7 @@ type TaskSpec struct {
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 
 	// Workspaces are the volumes that this Task requires.
-	Workspaces []WorkspaceDeclaration
+	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
 }
 
 // Step embeds the Container type, which allows it to include fields not

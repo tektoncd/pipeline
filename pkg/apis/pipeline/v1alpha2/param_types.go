@@ -39,6 +39,7 @@ type ParamSpec struct {
 	// Default is the value a parameter takes if no input value is supplied. If
 	// default is set, a Task may be executed without a supplied value for the
 	// parameter.
+	// +kubebuilder:validation:Type=string
 	// +optional
 	Default *ArrayOrString `json:"default,omitempty"`
 }
@@ -64,7 +65,8 @@ type ResourceParam struct {
 
 // Param declares an ArrayOrString to use for the parameter called name.
 type Param struct {
-	Name  string        `json:"name"`
+	Name string `json:"name"`
+	// +kubebuilder:validation:Type=string
 	Value ArrayOrString `json:"value"`
 }
 
@@ -87,7 +89,7 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray}
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
 type ArrayOrString struct {
-	Type      ParamType // Represents the stored type of ArrayOrString.
+	Type      ParamType `json:"type"` // Represents the stored type of ArrayOrString.
 	StringVal string
 	ArrayVal  []string
 }
