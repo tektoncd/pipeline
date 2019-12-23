@@ -62,13 +62,11 @@ var (
 type Recorder struct {
 	initialized bool
 
-	task        tag.Key
-	taskRun     tag.Key
-	namespace   tag.Key
-	status      tag.Key
-	pipeline    tag.Key
-	pipelineRun tag.Key
-	pod         tag.Key
+	task      tag.Key
+	namespace tag.Key
+	status    tag.Key
+	pipeline  tag.Key
+	pod       tag.Key
 }
 
 // NewRecorder creates a new metrics recorder instance
@@ -83,12 +81,6 @@ func NewRecorder() (*Recorder, error) {
 		return nil, err
 	}
 	r.task = task
-
-	taskRun, err := tag.NewKey("taskrun")
-	if err != nil {
-		return nil, err
-	}
-	r.taskRun = taskRun
 
 	namespace, err := tag.NewKey("namespace")
 	if err != nil {
@@ -108,12 +100,6 @@ func NewRecorder() (*Recorder, error) {
 	}
 	r.pipeline = pipeline
 
-	pipelineRun, err := tag.NewKey("pipelinerun")
-	if err != nil {
-		return nil, err
-	}
-	r.pipelineRun = pipelineRun
-
 	pod, err := tag.NewKey("pod")
 	if err != nil {
 		return nil, err
@@ -125,13 +111,13 @@ func NewRecorder() (*Recorder, error) {
 			Description: trDuration.Description(),
 			Measure:     trDuration,
 			Aggregation: trDistribution,
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status},
+			TagKeys:     []tag.Key{r.task, r.namespace, r.status},
 		},
 		&view.View{
 			Description: prTRDuration.Description(),
 			Measure:     prTRDuration,
 			Aggregation: prTRLatencyDistribution,
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
+			TagKeys:     []tag.Key{r.task, r.namespace, r.status, r.pipeline},
 		},
 		&view.View{
 			Description: trCount.Description(),
@@ -148,7 +134,7 @@ func NewRecorder() (*Recorder, error) {
 			Description: podLatency.Description(),
 			Measure:     podLatency,
 			Aggregation: view.LastValue(),
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
+			TagKeys:     []tag.Key{r.task, r.namespace, r.pod},
 		},
 	); err != nil {
 		r.initialized = false
@@ -181,15 +167,13 @@ func (r *Recorder) DurationAndCount(tr *v1alpha1.TaskRun) error {
 		status = "failed"
 	}
 
-	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
+	if ok, pipeline, _ := tr.IsPartOfPipeline(); ok {
 		ctx, err := tag.New(
 			context.Background(),
 			tag.Insert(r.task, taskName),
-			tag.Insert(r.taskRun, tr.Name),
 			tag.Insert(r.namespace, tr.Namespace),
 			tag.Insert(r.status, status),
 			tag.Insert(r.pipeline, pipeline),
-			tag.Insert(r.pipelineRun, pipelinerun),
 		)
 
 		if err != nil {
@@ -204,7 +188,6 @@ func (r *Recorder) DurationAndCount(tr *v1alpha1.TaskRun) error {
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Insert(r.task, taskName),
-		tag.Insert(r.taskRun, tr.Name),
 		tag.Insert(r.namespace, tr.Namespace),
 		tag.Insert(r.status, status),
 	)
@@ -275,7 +258,6 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1alpha1.TaskRun) error
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Insert(r.task, taskName),
-		tag.Insert(r.taskRun, tr.Name),
 		tag.Insert(r.namespace, tr.Namespace),
 		tag.Insert(r.pod, pod.Name),
 	)

@@ -51,10 +51,9 @@ var (
 type Recorder struct {
 	initialized bool
 
-	pipeline    tag.Key
-	pipelineRun tag.Key
-	namespace   tag.Key
-	status      tag.Key
+	pipeline  tag.Key
+	namespace tag.Key
+	status    tag.Key
 }
 
 // NewRecorder creates a new metrics recorder instance
@@ -69,12 +68,6 @@ func NewRecorder() (*Recorder, error) {
 		return nil, err
 	}
 	r.pipeline = pipeline
-
-	pipelineRun, err := tag.NewKey("pipelinerun")
-	if err != nil {
-		return nil, err
-	}
-	r.pipelineRun = pipelineRun
 
 	namespace, err := tag.NewKey("namespace")
 	if err != nil {
@@ -93,7 +86,7 @@ func NewRecorder() (*Recorder, error) {
 			Description: prDuration.Description(),
 			Measure:     prDuration,
 			Aggregation: prDistributions,
-			TagKeys:     []tag.Key{r.pipeline, r.pipelineRun, r.namespace, r.status},
+			TagKeys:     []tag.Key{r.pipeline, r.namespace, r.status},
 		},
 		&view.View{
 			Description: prCount.Description(),
@@ -141,7 +134,6 @@ func (r *Recorder) DurationAndCount(pr *v1alpha1.PipelineRun) error {
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Insert(r.pipeline, pipelineName),
-		tag.Insert(r.pipelineRun, pr.Name),
 		tag.Insert(r.namespace, pr.Namespace),
 		tag.Insert(r.status, status),
 	)
