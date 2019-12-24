@@ -20,6 +20,9 @@ set -o pipefail
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
+OLDGOFLAGS="${GOFLAGS:-}"
+GOFLAGS="-mod=vendor"
+
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
@@ -41,6 +44,8 @@ bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
   github.com/tektoncd/pipeline/pkg/client github.com/tektoncd/pipeline/pkg/apis \
   "pipeline:v1alpha1,v1alpha2" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+
+GOFLAGS="${OLDGOFLAGS}"
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh
