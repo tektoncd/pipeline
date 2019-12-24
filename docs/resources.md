@@ -448,8 +448,8 @@ spec:
       args:
         - "-c"
         - kubectl --kubeconfig
-          /workspace/$(inputs.resources.testCluster.Name)/kubeconfig --context
-          $(inputs.resources.testCluster.Name) apply -f /workspace/service.yaml'
+          /workspace/$(inputs.resources.testcluster.Name)/kubeconfig --context
+          $(inputs.resources.testcluster.Name) apply -f /workspace/service.yaml
 ```
 
 ### Storage Resource
