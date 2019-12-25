@@ -90,6 +90,9 @@ type Template struct {
 	// default.
 	// +optional
 	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,7,opt,name=priorityClassName"`
+	// SchedulerName specifies the scheduler to be used to dispatch the Pod
+	// +optional
+	SchedulerName string `json:"schedulerName"`
 }
 
 func (tpl *Template) Equals(other *Template) bool {
