@@ -26,8 +26,7 @@
 export DISABLE_MD_LINTING=1
 export DISABLE_MD_LINK_CHECK=1
 
-go get -d github.com/tektoncd/plumbing
-source $(go list -m -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/presubmit-tests.sh
+source $(go list -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/presubmit-tests.sh
 
 function post_build_tests() {
   header "running golangci-lint"

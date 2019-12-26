@@ -18,12 +18,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
+source $(go list -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/library.sh
 
 cd ${REPO_ROOT_DIR}
-
-# Prune modules.
-go mod tidy
-go mod vendor
 
 update_licenses third_party/
