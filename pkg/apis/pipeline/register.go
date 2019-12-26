@@ -32,9 +32,9 @@ const (
 	// PipelineRunLabelKey is used as the label identifier for a PipelineRun
 	PipelineRunLabelKey = "/pipelineRun"
 
-	// PipelineRunLabelKey is used as the label identifier for a PipelineTask
+	// PipelineTaskLabelKey is used as the label identifier for a PipelineTask
 	PipelineTaskLabelKey = "/pipelineTask"
 
-	// ConditionCheck is used as the label identifier for a ConditionCheck
+	// ConditionCheckKey is used as the label identifier for a ConditionCheck
 	ConditionCheckKey = "/conditionCheck"
 )

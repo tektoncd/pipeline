@@ -11,33 +11,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/component: controller
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-pipelines-controller
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-pipelines-controller
+        app.kubernetes.io/name: tekton-pipelines
+        app.kubernetes.io/component: controller
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
         image: github.com/tektoncd/pipeline/cmd/controller
         args: [
-          "-logtostderr",
-          "-stderrthreshold", "INFO",
           "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
-          "-nop-image", "github.com/tektoncd/pipeline/cmd/nop",
-          "-bash-noop-image", "github.com/tektoncd/pipeline/cmd/bash",
-          "-gsutil-image","github.com/tektoncd/pipeline/cmd/gsutil",
+          "-nop-image", "tianon/true",
+          "-shell-image", "busybox",
+          "-gsutil-image", "google/cloud-sdk",
           "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
           "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
@@ -55,6 +61,10 @@ spec:
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
+        - name: CONFIG_ARTIFACT_BUCKET_NAME
+          value: config-artifact-bucket
+        - name: CONFIG_ARTIFACT_PVC_NAME
+          value: config-artifact-pvc
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
       volumes:

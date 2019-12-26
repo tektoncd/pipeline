@@ -87,7 +87,7 @@ func TestSendCloudEvent(t *testing.T) {
 		eventSourceURI:   invalidEventSourceURI,
 		cloudEventClient: defaultCloudEventClient,
 		wantErr:          true,
-		errRegexp:        fmt.Sprintf("Invalid eventSourceURI: %s", invalidEventSourceURI),
+		errRegexp:        fmt.Sprintf("invalid eventSourceURI: %s", invalidEventSourceURI),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
@@ -191,7 +191,7 @@ func TestSendTaskRunCloudEventErrors(t *testing.T) {
 		desc:          "send a cloud event with invalid status taskrun",
 		taskRun:       getTaskRunByCondition(invalidConditionSuccessStatus),
 		wantEventType: nilEventType,
-		errRegexp:     fmt.Sprintf("Unknown condition for in TaskRun.Status %s", invalidConditionSuccessStatus),
+		errRegexp:     fmt.Sprintf("unknown condition for in TaskRun.Status %s", invalidConditionSuccessStatus),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")

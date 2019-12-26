@@ -6,6 +6,7 @@ This document defines `Pipelines` and their capabilities.
 
 - [Syntax](#syntax)
   - [Declared resources](#declared-resources)
+  - [Workspaces](#declared-workspaces)
   - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
@@ -43,7 +44,7 @@ following fields:
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
       - [`retries`](#retries) - Used when the task is wanted to be executed if
-        it fails. Could a network error or a missing dependency. It does not
+        it fails. Could be a network error or a missing dependency. It does not
         apply to cancellations.
       - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
         conditions are evaluated to be true.
@@ -72,6 +73,12 @@ spec:
       type: image
 ```
 
+### Declared Workspaces
+
+It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
+or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used with them until
+[#1438](https://github.com/tektoncd/pipeline/issues/1438) is completed.
+
 ### Parameters
 
 `Pipeline`s can declare input parameters that must be supplied to the `Pipeline`
@@ -91,9 +98,7 @@ parameters can be passed to the `Pipeline` from a `PipelineRun`.
 
 Input parameters in the form of `$(params.foo)` are replaced inside of the
 [`PipelineTask` parameters' values](#pipeline-tasks) (see also
-[variable substitution](tasks.md#variable-substitution)). _As with
-[variable substitution](tasks.md#variable-substitution), the deprecated syntax
-`${params.foo}` will be supported until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
+[variable substitution](tasks.md#variable-substitution)).
 
 The following `Pipeline` declares an input parameter called 'context', and uses
 it in the `PipelineTask`'s parameter. The `description` and `default` fields for
@@ -141,8 +146,11 @@ spec:
 ### Pipeline Tasks
 
 A `Pipeline` will execute a graph of [`Tasks`](tasks.md) (see
-[ordering](#ordering) for how to express this graph). At a minimum, this
-declaration must include a reference to the [`Task`](tasks.md):
+[ordering](#ordering) for how to express this graph). A valid `Pipeline` 
+declaration must include a reference to at least one [`Task`](tasks.md). Each
+`Task` within a `Pipeline` must have a
+[valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
+name and task reference, for example:
 
 ```yaml
 tasks:

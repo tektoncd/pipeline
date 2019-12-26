@@ -17,29 +17,121 @@ package git
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 )
 
-func run(logger *zap.SugaredLogger, cmd string, args ...string) error {
-	c := exec.Command(cmd, args...)
+func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) {
+	c := exec.Command("git", args...)
 	var output bytes.Buffer
 	c.Stderr = &output
 	c.Stdout = &output
-	if err := c.Run(); err != nil {
-		logger.Errorf("Error running %v %v: %v\n%v", cmd, args, err, output.String())
-		return err
+	// This is the optional working directory. If not set, it defaults to the current
+	// working directory of the process.
+	if dir != "" {
+		c.Dir = dir
 	}
-	return nil
+	if err := c.Run(); err != nil {
+		logger.Errorf("Error running git %v: %v\n%v", args, err, output.String())
+		return "", err
+	}
+	return output.String(), nil
+}
+
+// FetchSpec describes how to initialize and fetch from a Git repository.
+type FetchSpec struct {
+	URL       string
+	Revision  string
+	Path      string
+	Depth     uint
+	SSLVerify bool
 }
 
 // Fetch fetches the specified git repository at the revision into path.
-func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
+func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
+	if err := ensureHomeEnv(logger); err != nil {
+		return err
+	}
+
+	if spec.Revision == "" {
+		spec.Revision = "master"
+	}
+	if spec.Path != "" {
+		if _, err := run(logger, "", "init", spec.Path); err != nil {
+			return err
+		}
+		if err := os.Chdir(spec.Path); err != nil {
+			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
+		}
+	} else if _, err := run(logger, "", "init"); err != nil {
+		return err
+	}
+	trimmedURL := strings.TrimSpace(spec.URL)
+	if _, err := run(logger, "", "remote", "add", "origin", trimmedURL); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "config", "--global", "http.sslVerify", strconv.FormatBool(spec.SSLVerify)); err != nil {
+		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
+		return err
+	}
+
+	fetchArgs := []string{"fetch", "--recurse-submodules=yes"}
+	if spec.Depth > 0 {
+		fetchArgs = append(fetchArgs, fmt.Sprintf("--depth=%d", spec.Depth))
+	}
+	fetchArgs = append(fetchArgs, "origin", spec.Revision)
+
+	if _, err := run(logger, "", fetchArgs...); err != nil {
+		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
+		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
+		if _, err := run(logger, "", "pull", "--recurse-submodules=yes", "origin"); err != nil {
+			logger.Warnf("Failed to pull origin : %s", err)
+		}
+		if _, err := run(logger, "", "checkout", spec.Revision); err != nil {
+			return err
+		}
+	} else if _, err := run(logger, "", "reset", "--hard", "FETCH_HEAD"); err != nil {
+		return err
+	}
+	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, spec.Revision, spec.Path)
+	return nil
+}
+
+func Commit(logger *zap.SugaredLogger, revision, path string) (string, error) {
+	output, err := run(logger, path, "rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(output, "\n"), nil
+}
+
+func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
+	if err := ensureHomeEnv(logger); err != nil {
+		return err
+	}
+
+	if path != "" {
+		if err := os.Chdir(path); err != nil {
+			return fmt.Errorf("failed to change directory with path %s; err: %w", path, err)
+		}
+	}
+	if _, err := run(logger, "", "submodule", "init"); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "submodule", "update", "--recursive"); err != nil {
+		return err
+	}
+	logger.Infof("Successfully initialized and updated submodules in path %s", path)
+	return nil
+}
+
+func ensureHomeEnv(logger *zap.SugaredLogger) error {
 	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
 	// env variable.
 	homepath, err := homedir.Dir()
@@ -65,40 +157,5 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 			}
 		}
 	}
-
-	if revision == "" {
-		revision = "master"
-	}
-	if path != "" {
-		if err := run(logger, "git", "init", path); err != nil {
-			return err
-		}
-		if err := os.Chdir(path); err != nil {
-			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
-		}
-	} else {
-		if err := run(logger, "git", "init"); err != nil {
-			return err
-		}
-	}
-	trimmedURL := strings.TrimSpace(url)
-	if err := run(logger, "git", "remote", "add", "origin", trimmedURL); err != nil {
-		return err
-	}
-	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
-		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
-		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
-		if err := run(logger, "git", "pull", "--recurse-submodules=yes", "origin"); err != nil {
-			logger.Warnf("Failed to pull origin : %s", err)
-		}
-		if err := run(logger, "git", "checkout", revision); err != nil {
-			return err
-		}
-	} else {
-		if err := run(logger, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
-			return err
-		}
-	}
-	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, revision, path)
 	return nil
 }

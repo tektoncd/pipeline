@@ -16,7 +16,13 @@ limitations under the License.
 
 package v1alpha1
 
-import "context"
+import (
+	"context"
+
+	"knative.dev/pkg/apis"
+)
+
+var _ apis.Defaultable = (*Condition)(nil)
 
 func (c *Condition) SetDefaults(ctx context.Context) {
 	c.Spec.SetDefaults(ctx)

@@ -44,19 +44,25 @@ func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
+			tb.InputsResource("optional_workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
 			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
 			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		),
-		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
+		tb.TaskOutputs(
+			tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage),
+			tb.OutputsResource("myoptionalimage", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
+		),
 		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
+		tb.Step("mycontainer2", "myimage2", tb.StepScript("echo foo")),
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
 		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "BANANA"),
 		),
+		tb.TaskWorkspace("bread", "kind of bread", "/bread/path", false),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -66,6 +72,9 @@ func TestTask(t *testing.T) {
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
 				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
+			}}, {Script: "echo foo", Container: corev1.Container{
+				Name:  "mycontainer2",
+				Image: "myimage2",
 			}}},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
@@ -73,6 +82,12 @@ func TestTask(t *testing.T) {
 						Name:       "workspace",
 						Type:       v1alpha1.PipelineResourceTypeGit,
 						TargetPath: "/foo/bar",
+					}}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "optional_workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "",
+						Optional:   true,
 					}}},
 				Params: []v1alpha1.ParamSpec{{
 					Name:        "param",
@@ -90,6 +105,12 @@ func TestTask(t *testing.T) {
 					ResourceDeclaration: v1alpha1.ResourceDeclaration{
 						Name: "myotherimage",
 						Type: v1alpha1.PipelineResourceTypeImage,
+					}}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "myoptionalimage",
+						Type:       v1alpha1.PipelineResourceTypeImage,
+						TargetPath: "",
+						Optional:   true,
 					}}},
 			},
 			Volumes: []corev1.Volume{{
@@ -104,6 +125,12 @@ func TestTask(t *testing.T) {
 					Value: "BANANA",
 				}},
 			},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:        "bread",
+				Description: "kind of bread",
+				MountPath:   "/bread/path",
+				ReadOnly:    false,
+			}},
 		},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {
@@ -161,9 +188,12 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
+					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
+			tb.TaskRunWorkspaceEmptyDir("bread", "path"),
+			tb.TaskRunWorkspacePVC("pizza", "", "pool-party"),
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
@@ -187,16 +217,20 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
-					Name: "git-resource",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name:       "my-git",
-						APIVersion: "a1",
+					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+						Name: "git-resource",
+						ResourceRef: &v1alpha1.PipelineResourceRef{
+							Name:       "my-git",
+							APIVersion: "a1",
+						},
 					},
 					Paths: []string{"source-folder"},
 				}, {
-					Name:         "another-git-resource",
-					ResourceSpec: &v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceType("cluster")},
-					Paths:        []string{"source-folder"},
+					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+						Name:         "another-git-resource",
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceType("cluster")},
+					},
+					Paths: []string{"source-folder"},
 				}},
 				Params: []v1alpha1.Param{{
 					Name:  "iparam",
@@ -208,9 +242,11 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
-					Name: "git-resource",
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 						Name: "git-resource",
+						ResourceRef: &v1alpha1.PipelineResourceRef{
+							Name: "git-resource",
+						},
 					},
 					Paths: []string{"output-folder"},
 				}},
@@ -221,15 +257,28 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Kind:       v1alpha1.ClusterTaskKind,
 				APIVersion: "a1",
 			},
+			Workspaces: []v1alpha1.WorkspaceBinding{{
+				Name:     "bread",
+				SubPath:  "path",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}, {
+				Name:    "pizza",
+				SubPath: "",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pool-party",
+				},
+			}},
 		},
 		Status: v1alpha1.TaskRunStatus{
-			PodName: "my-pod-name",
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-			}}},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				PodName: "my-pod-name",
+				Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+				}}},
+			},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
@@ -241,8 +290,9 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskSpec(
 			tb.Step("step", "image", tb.StepCommand("/mycmd")),
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
 		),
-		tb.TaskRunServiceAccount("sa"),
+		tb.TaskRunServiceAccountName("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
 		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
 	))
@@ -258,10 +308,19 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Image:   "image",
 					Command: []string{"/mycmd"},
 				}}},
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:     "workspace",
+							Type:     v1alpha1.PipelineResourceTypeGit,
+							Optional: true,
+						}}},
+					Params: nil,
+				},
 			},
-			ServiceAccount: "sa",
-			Status:         v1alpha1.TaskRunSpecStatusCancelled,
-			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
+			ServiceAccountName: "sa",
+			Status:             v1alpha1.TaskRunSpecStatusCancelled,
+			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

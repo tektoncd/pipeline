@@ -21,6 +21,7 @@ source $(dirname ${BASH_SOURCE})/library.sh
 
 # Custom configuration of presubmit tests
 readonly DISABLE_MD_LINTING=${DISABLE_MD_LINTING:-0}
+readonly DISABLE_YAML_LINTING=${DISABLE_YAML_LINTING:-0}
 readonly DISABLE_MD_LINK_CHECK=${DISABLE_MD_LINK_CHECK:-0}
 readonly PRESUBMIT_TEST_FAIL_FAST=${PRESUBMIT_TEST_FAIL_FAST:-0}
 
@@ -40,16 +41,23 @@ IS_PRESUBMIT_EXEMPT_PR=0
 # Flags that this PR contains only changes to documentation.
 IS_DOCUMENTATION_PR=0
 
+# Directory to use for temporary files.
+WORK_DIR=""
+
 # Returns true if PR only contains the given file regexes.
 # Parameters: $1 - file regexes, space separated.
 function pr_only_contains() {
-  [[ -z "$(echo "${CHANGED_FILES}" | grep -v "\(${1// /\\|}\)$")" ]]
+  [[ -z "$(cat "${CHANGED_FILES}" | grep -v "\(${1// /\\|}\)$")" ]]
 }
 
 # List changed files in the current PR.
 # This is implemented as a function so it can be mocked in unit tests.
 function list_changed_files() {
-  /workspace/githubhelper -list-changed-files
+  local file="${WORK_DIR}/changed_files"
+  if [[ ! -f ${file} ]]; then
+    githubhelper -list-changed-files > ${file}
+  fi
+  echo ${file}
 }
 
 # Initialize flags and context for presubmit tests:
@@ -59,9 +67,12 @@ function initialize_environment() {
   IS_PRESUBMIT_EXEMPT_PR=0
   IS_DOCUMENTATION_PR=0
   (( ! IS_PRESUBMIT )) && return
+  trap teardown_environment EXIT
+
+  WORK_DIR=$(mktemp -d)
   CHANGED_FILES="$(list_changed_files)"
-  if [[ -n "${CHANGED_FILES}" ]]; then
-    echo -e "Changed files in commit ${PULL_PULL_SHA}:\n${CHANGED_FILES}"
+  if [[ -n "$(cat ${CHANGED_FILES})" ]]; then
+    echo -e "Changed files in commit ${PULL_PULL_SHA}:\n$(cat ${CHANGED_FILES})"
     local no_presubmit_files="${NO_PRESUBMIT_FILES[*]}"
     pr_only_contains "${no_presubmit_files}" && IS_PRESUBMIT_EXEMPT_PR=1
     pr_only_contains "\.md ${no_presubmit_files}" && IS_DOCUMENTATION_PR=1
@@ -71,6 +82,10 @@ function initialize_environment() {
   readonly CHANGED_FILES
   readonly IS_DOCUMENTATION_PR
   readonly IS_PRESUBMIT_EXEMPT_PR
+}
+
+function teardown_environment() {
+  rm -rf ${WORK_DIR}
 }
 
 # Display a pass/fail banner for a test group.
@@ -113,7 +128,7 @@ function markdown_build_tests() {
   (( DISABLE_MD_LINTING && DISABLE_MD_LINK_CHECK )) && return 0
   # Get changed markdown files (ignore /vendor and deleted files)
   local mdfiles=""
-  for file in $(echo "${CHANGED_FILES}" | grep \.md$ | grep -v ^vendor/); do
+  for file in $(cat "${CHANGED_FILES}" | grep \.md$ | grep -v '^vendor/' | grep -v '^third_party/'); do
     [[ -f "${file}" ]] && mdfiles="${mdfiles} ${file}"
   done
   [[ -z "${mdfiles}" ]] && return 0
@@ -129,15 +144,42 @@ function markdown_build_tests() {
   return ${failed}
 }
 
+# Perform yaml build tests if necessary, unless disabled.
+function yaml_build_tests() {
+  (( DISABLE_YAML_LINTING )) && return 0
+  subheader "Linting the yaml files"
+  local yamlfiles=""
+   
+  for file in $(cat ${CHANGED_FILES}); do
+    [[ -z $(echo "${file}" | grep '\.yaml$\|\.yml$' | grep -v '^vendor/' | grep -v '^third_party/') ]] && continue
+
+    echo "found ${file}"
+    [[ -f "${file}" ]] && yamlfiles="${yamlfiles} ${file}"
+  done
+  [[ -z "${yamlfiles}" ]] && return 0
+  yamllint ${yamlfiles}
+}
+
 # Default build test runner that:
+# * check go code style with gofmt
 # * check markdown files
+# * check yaml files
 # * `go build` on the entire repo
 # * run `/hack/verify-codegen.sh` (if it exists)
 # * check licenses in all go packages
 function default_build_test_runner() {
   local failed=0
+  # Check go code style with gofmt; exclude vendor/ files
+  subheader "Checking go code style with gofmt"
+  gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
+  if [[ -n "$gofmt_out" ]]; then
+    failed=1
+  fi
+  echo "$gofmt_out"
   # Perform markdown build checks first
   markdown_build_tests || failed=1
+  # Check yaml using yamllint
+  yaml_build_tests || failed=1
   # For documentation PRs, just check the md files
   (( IS_DOCUMENTATION_PR )) && return ${failed}
   # Skip build test if there is no go code
@@ -146,9 +188,12 @@ function default_build_test_runner() {
   # Ensure all the code builds
   subheader "Checking that go code builds"
   go build -v ./... || failed=1
-  # Get all build tags in go code (ignore /vendor)
+  # Get all build tags in go code. Ignore tags in /vendor, /third_party, and
+  # tools for compatibility to allow for Go modules binary tool tracking. See
+  # https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
+  # for more details.
   local tags="$(grep -r '// +build' . \
-      | grep -v '^./vendor/' | cut -f3 -d' ' | sort | uniq | tr '\n' ' ')"
+      | grep -v '^./vendor/' | grep -v '^./third_party/' | grep -v "+build tools" | cut -f3 -d' ' | sort | uniq | tr '\n' ' ')"
   if [[ -n "${tags}" ]]; then
     go test -run=^$ -tags="${tags}" ./... || failed=1
   fi

@@ -50,7 +50,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -83,6 +83,24 @@ func WaitForTaskRunState(c *clients, name string, inState TaskRunStateFn, desc s
 			return true, err
 		}
 		return inState(r)
+	})
+}
+
+// WaitForDeploymentState polls the status of the Deployment called name
+// from client every interval until inState returns `true` indicating it is done,
+// returns an  error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took for name to get into the state checked by inState.
+func WaitForDeploymentState(c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
+	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return inState(d)
 	})
 }
 
@@ -149,7 +167,7 @@ func TaskRunSucceed(name string) TaskRunStateFn {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
 			} else if c.Status == corev1.ConditionFalse {
-				return true, xerrors.Errorf("task run %s failed!", name)
+				return true, fmt.Errorf("task run %q failed", name)
 			}
 		}
 		return false, nil
@@ -163,7 +181,7 @@ func TaskRunFailed(name string) TaskRunStateFn {
 		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
-				return true, xerrors.Errorf("task run %s succeeded!", name)
+				return true, fmt.Errorf("task run %q succeeded", name)
 			} else if c.Status == corev1.ConditionFalse {
 				return true, nil
 			}
@@ -181,7 +199,7 @@ func PipelineRunSucceed(name string) PipelineRunStateFn {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
 			} else if c.Status == corev1.ConditionFalse {
-				return true, xerrors.Errorf("pipeline run %s failed!", name)
+				return true, fmt.Errorf("pipeline run %q failed", name)
 			}
 		}
 		return false, nil
@@ -195,7 +213,7 @@ func PipelineRunFailed(name string) PipelineRunStateFn {
 		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
-				return true, xerrors.Errorf("task run %s succeeded!", name)
+				return true, fmt.Errorf("task run %q succeeded", name)
 			} else if c.Status == corev1.ConditionFalse {
 				return true, nil
 			}

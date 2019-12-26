@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/credentials"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -36,7 +35,7 @@ const sshKnownHosts = "known_hosts"
 // As the flag is read, this status is populated.
 // sshGitConfig implements flag.Value
 type sshGitConfig struct {
-	entries map[string]sshEntry
+	entries map[string][]sshEntry
 	// The order we see things, for iterating over the above.
 	order []string
 }
@@ -48,8 +47,9 @@ func (dc *sshGitConfig) String() string {
 	}
 	var urls []string
 	for _, k := range dc.order {
-		v := dc.entries[k]
-		urls = append(urls, fmt.Sprintf("%s=%s", v.secret, k))
+		for _, e := range dc.entries[k] {
+			urls = append(urls, fmt.Sprintf("%s=%s", e.secretName, k))
+		}
 	}
 	return strings.Join(urls, ",")
 }
@@ -57,21 +57,19 @@ func (dc *sshGitConfig) String() string {
 func (dc *sshGitConfig) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {
-		return xerrors.Errorf("Expect entries of the form secret=url, got: %v", value)
+		return fmt.Errorf("expect entries of the form secret=url, got: %v", value)
 	}
-	secret := parts[0]
+	secretName := parts[0]
 	url := parts[1]
 
-	if _, ok := dc.entries[url]; ok {
-		return xerrors.Errorf("Multiple entries for url: %v", url)
-	}
-
-	e, err := newSshEntry(url, secret)
+	e, err := newSSHEntry(url, secretName)
 	if err != nil {
 		return err
 	}
-	dc.entries[url] = *e
-	dc.order = append(dc.order, url)
+	if _, exists := dc.entries[url]; !exists {
+		dc.order = append(dc.order, url)
+	}
+	dc.entries[url] = append(dc.entries[url], *e)
 	return nil
 }
 
@@ -82,7 +80,7 @@ func (dc *sshGitConfig) Write() error {
 	}
 
 	// Walk each of the entries and for each do three things:
-	//  1. Write out: ~/.ssh/id_{secret} with the secret key
+	//  1. Write out: ~/.ssh/id_{secretName} with the secret key
 	//  2. Compute its part of "~/.ssh/config"
 	//  3. Compute its part of "~/.ssh/known_hosts"
 	var configEntries []string
@@ -95,17 +93,19 @@ func (dc *sshGitConfig) Write() error {
 			host = k
 			port = defaultPort
 		}
-		v := dc.entries[k]
-		if err := v.Write(sshDir); err != nil {
-			return err
-		}
-		configEntries = append(configEntries, fmt.Sprintf(`Host %s
+		configEntry := fmt.Sprintf(`Host %s
     HostName %s
-    IdentityFile %s
     Port %s
-`, host, host, v.path(sshDir), port))
-
-		knownHosts = append(knownHosts, v.knownHosts)
+`, host, host, port)
+		for _, e := range dc.entries[k] {
+			if err := e.Write(sshDir); err != nil {
+				return err
+			}
+			configEntry += fmt.Sprintf(`    IdentityFile %s
+`, e.path(sshDir))
+			knownHosts = append(knownHosts, e.knownHosts)
+		}
+		configEntries = append(configEntries, configEntry)
 	}
 	configPath := filepath.Join(sshDir, "config")
 	configContent := strings.Join(configEntries, "")
@@ -118,13 +118,13 @@ func (dc *sshGitConfig) Write() error {
 }
 
 type sshEntry struct {
-	secret     string
+	secretName string
 	privateKey string
 	knownHosts string
 }
 
 func (be *sshEntry) path(sshDir string) string {
-	return filepath.Join(sshDir, "id_"+be.secret)
+	return filepath.Join(sshDir, "id_"+be.secretName)
 }
 
 func sshKeyScan(domain string) ([]byte, error) {
@@ -142,8 +142,8 @@ func (be *sshEntry) Write(sshDir string) error {
 	return ioutil.WriteFile(be.path(sshDir), []byte(be.privateKey), 0600)
 }
 
-func newSshEntry(u, secret string) (*sshEntry, error) {
-	secretPath := credentials.VolumeName(secret)
+func newSSHEntry(u, secretName string) (*sshEntry, error) {
+	secretPath := credentials.VolumeName(secretName)
 
 	pk, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.SSHAuthPrivateKey))
 	if err != nil {
@@ -161,7 +161,7 @@ func newSshEntry(u, secret string) (*sshEntry, error) {
 	knownHosts := string(kh)
 
 	return &sshEntry{
-		secret:     secret,
+		secretName: secretName,
 		privateKey: privateKey,
 		knownHosts: knownHosts,
 	}, nil

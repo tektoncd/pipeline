@@ -1,3 +1,6 @@
+# MacOS file viewer garbage.
+.DS_Store
+
 # Compiled Object files
 *.slo
 *.lo
@@ -14,7 +17,6 @@
 *.dll
 
 # Fortran module files
-*.mod
 *.smod
 
 # Compiled Static libraries
@@ -39,3 +41,7 @@
 
 # Python
 *.pyc
+
+# Release-generated source archives, just in case they get committed
+# accidentally.
+cmd/*/kodata/source.tar.gz

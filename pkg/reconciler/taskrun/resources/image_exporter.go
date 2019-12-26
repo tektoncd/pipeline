@@ -18,22 +18,19 @@ package resources
 
 import (
 	"encoding/json"
-	"flag"
+	"fmt"
+	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
-const TerminationMessagePath = "/builder/home/image-outputs/termination-log"
-
-var (
-	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest", "The container image containing our image digest exporter binary.")
-)
+const imageDigestExporterContainerName = "image-digest-exporter"
 
 // AddOutputImageDigestExporter add a step to check the index.json for all output images
 func AddOutputImageDigestExporter(
+	imageDigestExporterImage string,
 	tr *v1alpha1.TaskRun,
 	taskSpec *v1alpha1.TaskSpec,
 	gr GetResource,
@@ -44,24 +41,26 @@ func AddOutputImageDigestExporter(
 		for _, trb := range tr.Spec.Outputs.Resources {
 			boundResource, err := getBoundResource(trb.Name, tr.Spec.Outputs.Resources)
 			if err != nil {
-				return xerrors.Errorf("Failed to get bound resource: %w while adding output image digest exporter", err)
+				return fmt.Errorf("failed to get bound resource: %w while adding output image digest exporter", err)
 			}
 
-			resource, err := getResource(boundResource, gr)
+			resource, err := GetResourceFromBinding(&boundResource.PipelineResourceBinding, gr)
 			if err != nil {
-				return xerrors.Errorf("Failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
+				return fmt.Errorf("failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
 			}
 			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
 				imageResource, err := v1alpha1.NewImageResource(resource)
 				if err != nil {
-					return xerrors.Errorf("Invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
+					return fmt.Errorf("invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
 				}
 				for _, o := range taskSpec.Outputs.Resources {
 					if o.Name == boundResource.Name {
-						if o.OutputImageDir != "" {
-							imageResource.OutputImageDir = o.OutputImageDir
-							break
+						if o.TargetPath == "" {
+							imageResource.OutputImageDir = filepath.Join(outputDir, boundResource.Name)
+						} else {
+							imageResource.OutputImageDir = o.TargetPath
 						}
+						break
 					}
 				}
 				output = append(output, imageResource)
@@ -72,11 +71,11 @@ func AddOutputImageDigestExporter(
 			augmentedSteps := []v1alpha1.Step{}
 			imagesJSON, err := json.Marshal(output)
 			if err != nil {
-				return xerrors.Errorf("Failed to format image resource data for output image exporter: %w", err)
+				return fmt.Errorf("failed to format image resource data for output image exporter: %w", err)
 			}
 
 			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)
-			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imagesJSON))
+			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imageDigestExporterImage, imagesJSON))
 
 			taskSpec.Steps = augmentedSteps
 		}
@@ -86,41 +85,14 @@ func AddOutputImageDigestExporter(
 	return nil
 }
 
-// UpdateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
-func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
-	err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
-	if err != nil {
-		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
-	}
-	return nil
-}
-
-func imageDigestExporterStep(imagesJSON []byte) v1alpha1.Step {
+func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte) v1alpha1.Step {
 	return v1alpha1.Step{Container: corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter"),
-		Image:   *imageDigestExporterImage,
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(imageDigestExporterContainerName),
+		Image:   imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
 			"-images", string(imagesJSON),
-			"-terminationMessagePath", TerminationMessagePath,
 		},
-		TerminationMessagePath:   TerminationMessagePath,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}}
-}
-
-// TaskRunHasOutputImageResource return true if the task has any output resources of type image
-func TaskRunHasOutputImageResource(gr GetResource, taskRun *v1alpha1.TaskRun) bool {
-	if len(taskRun.Spec.Outputs.Resources) > 0 {
-		for _, r := range taskRun.Spec.Outputs.Resources {
-			resource, err := gr(r.ResourceRef.Name)
-			if err != nil {
-				return false
-			}
-			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
-				return true
-			}
-		}
-	}
-	return false
 }

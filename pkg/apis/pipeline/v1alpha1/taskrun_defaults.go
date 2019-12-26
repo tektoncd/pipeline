@@ -21,8 +21,12 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
+
+var _ apis.Defaultable = (*TaskRun)(nil)
 
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	tr.Spec.SetDefaults(ctx)
@@ -36,7 +40,7 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 
 	if trs.Timeout == nil {
 		var timeout *metav1.Duration
-		if IsUpgradeViaDefaulting(ctx) {
+		if contexts.IsUpgradeViaDefaulting(ctx) {
 			// This case is for preexisting `TaskRun` before 0.5.0, so let's
 			// add the old default timeout.
 			// Most likely those TaskRun passing here are already done and/or already running
@@ -45,5 +49,15 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 			timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 		}
 		trs.Timeout = timeout
+	}
+
+	defaultSA := cfg.Defaults.DefaultServiceAccount
+	if trs.ServiceAccountName == "" && defaultSA != "" {
+		trs.ServiceAccountName = defaultSA
+	}
+
+	// If this taskrun has an embedded task, apply the usual task defaults
+	if trs.TaskSpec != nil {
+		trs.TaskSpec.SetDefaults(ctx)
 	}
 }

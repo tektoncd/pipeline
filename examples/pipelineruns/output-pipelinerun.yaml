@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-output-pipelinerun
 spec:
   type: git
   params:
@@ -29,11 +29,11 @@ spec:
   - name: read-docs-old
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md'] # tests that targetpath works
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md']  # tests that targetpath works
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']
-    args: ['-c', 'echo some stuff > /workspace/damnworkspace/stuff']
+    args: ['-c', 'ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff']
 ---
 # Reads a file from a predefined path in the workspace git PipelineResource
 apiVersion: tekton.dev/v1alpha1
@@ -53,9 +53,9 @@ spec:
   - name: read
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['$(inputs.params.args)'] # tests that new targetpath and previous task output is dumped
+    args: ['$(inputs.params.args)']  # tests that new targetpath and previous task output is dumped
 ---
-#The Output of the first Task (git resource) create-file is given as an `Input`
+# The Output of the first Task (git resource) create-file is given as an `Input`
 # to the next `Task` check-stuff-file-exists using`from` clause.
 
 apiVersion: tekton.dev/v1alpha1
@@ -98,8 +98,8 @@ metadata:
 spec:
   pipelineRef:
     name: output-pipeline
-  serviceAccount: 'default'
+  serviceAccountName: 'default'
   resources:
   - name: source-repo
     resourceRef:
-      name: skaffold-git
+      name: skaffold-git-output-pipelinerun

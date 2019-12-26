@@ -58,13 +58,14 @@ func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }
 
+var alphaNumericRE = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+
 func (simpleNameGenerator) RestrictLength(base string) string {
 	if len(base) > maxNameLength {
 		base = base[:maxNameLength]
 	}
-	var isAlphaNumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString
 
-	for !isAlphaNumeric(base[len(base)-1:]) {
+	for !alphaNumericRE.MatchString(base[len(base)-1:]) {
 		base = base[:len(base)-1]
 	}
 	return base

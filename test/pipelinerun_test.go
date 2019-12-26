@@ -70,7 +70,7 @@ func TestPipelineRun(t *testing.T) {
 
 			for _, res := range getFanInFanOutGitResources(namespace) {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
-					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
+					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 				}
 			}
 
@@ -100,8 +100,7 @@ func TestPipelineRun(t *testing.T) {
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
 					tb.StepCommand("skopeo"),
-					// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-					tb.StepArgs("copy", "${inputs.params.path}", "$(inputs.params.dest)"),
+					tb.StepArgs("copy", "$(inputs.params.path)", "$(inputs.params.dest)"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -214,7 +213,7 @@ func TestPipelineRun(t *testing.T) {
 				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
 				pvc, errWait := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
 				if errWait != nil && !errors.IsNotFound(errWait) {
-					return true, fmt.Errorf("Error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
+					return true, fmt.Errorf("error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
 				}
 				// If we are not found then we are okay since it got cleaned up
 				if errors.IsNotFound(errWait) {
@@ -234,9 +233,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 		tb.PipelineParamSpec("path", v1alpha1.ParamTypeString),
 		tb.PipelineParamSpec("dest", v1alpha1.ParamTypeString),
 		tb.PipelineTask(task1Name, getName(taskName, suffix),
-			tb.PipelineTaskParam("path", "${params.path}"),
-			// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-			// In the next release we will remove support for $() entirely.
+			tb.PipelineTaskParam("path", "$(params.path)"),
 			tb.PipelineTaskParam("dest", "$(params.dest)")),
 	))
 }
@@ -251,24 +248,20 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			)),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("write-data-task-0-step-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo stuff > $(inputs.resources.workspace.path)/stuff"),
+				tb.StepArgs("-c", "echo stuff > $(outputs.resources.workspace.path)/stuff"),
 			),
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "echo other > ${inputs.resources.workspace.path}/other"),
+				tb.StepArgs("-c", "echo other > $(outputs.resources.workspace.path)/other"),
 			),
 		)),
 		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
+				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo something > $(inputs.resources.workspace.path)/something"),
+				tb.StepArgs("-c", "echo something > $(outputs.resources.workspace.path)/something"),
 			),
 		)),
 		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
@@ -278,7 +271,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.StepArgs("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo else > $(inputs.resources.workspace.path)/else"),
+				tb.StepArgs("-c", "echo else > $(outputs.resources.workspace.path)/else"),
 			),
 		)),
 		tb.Task("read-files", namespace, tb.TaskSpec(
@@ -286,15 +279,10 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.ResourceTargetPath("readingspace"),
 			)),
 			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
-			),
-			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				tb.StepArgs("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
 			),
-			tb.Step("read-from-task-2", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
+			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]"),
 			),
 		)),
 	}
@@ -386,7 +374,7 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 		tb.PipelineRunSpec(getName(pipelineName, suffix),
 			tb.PipelineRunParam("path", "docker://gcr.io/build-crd-testing/secret-sauce"),
 			tb.PipelineRunParam("dest", "dir:///tmp/"),
-			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
+			tb.PipelineRunServiceAccountName(fmt.Sprintf("%s%d", saName, suffix)),
 		),
 	)
 }

@@ -1,0 +1,98 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-to-list-files
+spec:
+  inputs:
+    resources:
+      - name: pipeline-git
+        type: git
+  outputs:
+    resources:
+      - name: pipeline-git
+        type: git
+  steps:
+    - name: list
+      image: ubuntu
+      command:
+        - bash
+      args:
+        - -c
+        - |
+          ls -al $(inputs.resources.pipeline-git.path)
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: always-true-sample-condition
+spec:
+  resources:
+    - name: pipeline-git
+      type: git
+  check:
+    image: ubuntu
+    command:
+      - bash
+    args:
+      - -c
+      - |
+        echo "Hello from Tekton Pipeline!"
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: pipeline-to-list-files
+spec:
+  resources:
+    - name: pipeline-git
+      type: git
+  params:
+    - name: "path"
+      default: "README.md"
+  tasks:
+    - name: list-files
+      taskRef:
+        name: task-to-list-files
+      resources:
+        inputs:
+          - name: pipeline-git
+            resource: pipeline-git
+        outputs:
+          - name: pipeline-git
+            resource: pipeline-git
+    - name: conditional-list-files
+      taskRef:
+        name: task-to-list-files
+      conditions:
+        - conditionRef: always-true-sample-condition
+          resources:
+            - name: pipeline-git
+              resource: pipeline-git
+      resources:
+        inputs:
+          - name: pipeline-git
+            resource: pipeline-git
+        outputs:
+          - name: pipeline-git
+            resource: pipeline-git
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: demo-pipelinerun-with-resourcespec
+spec:
+  pipelineRef:
+    name: pipeline-to-list-files
+  serviceAccountName: 'default'
+  resources:
+    - name: pipeline-git
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/tektoncd/pipeline

@@ -45,34 +45,36 @@ func TestGitPipelineRun(t *testing.T) {
 
 	for _, revision := range revisions {
 
-		c, namespace := setup(t)
-		knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-		defer tearDown(t, c, namespace)
+		t.Run(revision, func(t *testing.T) {
+			c, namespace := setup(t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+			defer tearDown(t, c, namespace)
 
-		t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-		if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision)); err != nil {
-			t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
-		}
+			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision)); err != nil {
+				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
+			}
 
-		t.Logf("Creating Task %s", gitTestTaskName)
-		if _, err := c.TaskClient.Create(getGitCheckTask(namespace, t)); err != nil {
-			t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
-		}
+			t.Logf("Creating Task %s", gitTestTaskName)
+			if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
+			}
 
-		t.Logf("Creating Pipeline %s", gitTestPipelineName)
-		if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
-			t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
-		}
+			t.Logf("Creating Pipeline %s", gitTestPipelineName)
+			if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
+			}
 
-		t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-		if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
-			t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
-		}
+			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
+			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
+			}
 
-		if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
-			t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
-			t.Fatalf("PipelineRun execution failed")
-		}
+			if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+				t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
+				t.Fatalf("PipelineRun execution failed")
+			}
+		})
 	}
 }
 
@@ -91,7 +93,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", gitTestTaskName)
-	if _, err := c.TaskClient.Create(getGitCheckTask(namespace, t)); err != nil {
+	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 	}
 
@@ -126,8 +128,8 @@ func TestGitPipelineRunFail(t *testing.T) {
 								t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 							}
 							// Check for failure messages from fetch and pull in the log file
-							if strings.Contains(string(logContent), "Couldn't find remote ref Idontexistrabbitmonkeydonkey") &&
-								strings.Contains(string(logContent), "pathspec 'Idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
+							if strings.Contains(strings.ToLower(string(logContent)), "couldn't find remote ref idontexistrabbitmonkeydonkey") &&
+								strings.Contains(strings.ToLower(string(logContent)), "pathspec 'idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
 								t.Logf("Found exepected errors when retrieving non-existent git revision")
 							} else {
 								t.Logf("Container `%s` log File: %s", stat.Name, logContent)
@@ -152,7 +154,7 @@ func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResour
 	))
 }
 
-func getGitCheckTask(namespace string, t *testing.T) *v1alpha1.Task {
+func getGitCheckTask(namespace string) *v1alpha1.Task {
 	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("git", "alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),

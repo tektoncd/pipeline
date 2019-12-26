@@ -41,6 +41,7 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskParam("arrayparam", "array", "value"),
 			tb.PipelineTaskCondition("some-condition-ref",
 				tb.PipelineTaskConditionParam("param-name", "param-value"),
+				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource"),
 			),
 		),
 		tb.PipelineTask("bar", "chocolate",
@@ -92,6 +93,10 @@ func TestPipeline(t *testing.T) {
 							StringVal: "param-value",
 						},
 					}},
+					Resources: []v1alpha1.PipelineConditionResource{{
+						Name:     "some-resource",
+						Resource: "my-only-git-resource",
+					}},
 				}},
 			}, {
 				Name:    "bar",
@@ -124,12 +129,12 @@ func TestPipelineRun(t *testing.T) {
 	completedTime := startTime.Add(5 * time.Minute)
 
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
-		"tomatoes", tb.PipelineRunServiceAccount("sa"),
+		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
 		tb.PipelineRunTimeout(1*time.Hour),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
-		tb.PipelineRunServiceAccountTask("foo", "sa-2"),
+		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
@@ -147,9 +152,9 @@ func TestPipelineRun(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:     v1alpha1.PipelineRef{Name: "tomatoes"},
-			ServiceAccount:  "sa",
-			ServiceAccounts: []v1alpha1.PipelineRunSpecServiceAccount{{TaskName: "foo", ServiceAccount: "sa-2"}},
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
+			ServiceAccountName:  "sa",
+			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1alpha1.Param{{
 				Name:  "first-param-string",
 				Value: *tb.ArrayOrString("first-value"),
@@ -160,7 +165,7 @@ func TestPipelineRun(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				ResourceRef: &v1alpha1.PipelineResourceRef{
 					Name: "my-special-resource",
 				},
 			}},
@@ -169,10 +174,87 @@ func TestPipelineRun(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime:      &metav1.Time{Time: startTime},
-			CompletionTime: &metav1.Time{Time: completedTime},
-			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				"trname": {PipelineTaskName: "task-1"},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %v", d)
+	}
+}
+
+func TestPipelineRunWithResourceSpec(t *testing.T) {
+	startTime := time.Now()
+	completedTime := startTime.Add(5 * time.Minute)
+
+	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
+		tb.PipelineRunParam("first-param-string", "first-value"),
+		tb.PipelineRunParam("second-param-array", "some", "array"),
+		tb.PipelineRunTimeout(1*time.Hour),
+		tb.PipelineRunResourceBinding("some-resource",
+			tb.PipelineResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeGit,
+				Params: []v1alpha1.ResourceParam{{
+					Name:  "url",
+					Value: "git",
+				}}})),
+		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
+	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
+		apis.Condition{Type: apis.ConditionSucceeded}),
+		tb.PipelineRunStartTime(startTime),
+		tb.PipelineRunCompletionTime(completedTime),
+		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
+			PipelineTaskName: "task-1",
+		}),
+	), tb.PipelineRunLabel("label-key", "label-value"))
+	expectedPipelineRun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+			Labels: map[string]string{
+				"label-key": "label-value",
+			},
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
+			ServiceAccountName:  "sa",
+			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
+			Params: []v1alpha1.Param{{
+				Name:  "first-param-string",
+				Value: *tb.ArrayOrString("first-value"),
+			}, {
+				Name:  "second-param-array",
+				Value: *tb.ArrayOrString("some", "array"),
+			}},
+			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Resources: []v1alpha1.PipelineResourceBinding{{
+				Name: "some-resource",
+				ResourceSpec: &v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceType("git"),
+					Params: []v1alpha1.ResourceParam{{
+						Name:  "url",
+						Value: "git",
+					}},
+					SecretParams: nil,
+				},
+			}},
+		},
+		Status: v1alpha1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
 			},
 		},
 	}

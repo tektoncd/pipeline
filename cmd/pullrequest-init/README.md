@@ -13,18 +13,3 @@ Currently supported providers:
 ## Generic pull request payload
 
 For information about the payloads written to disk, see the [resource documentation](../../docs/resources.md#pull-request-resource).
-
-### Status code conversion
-
-Tekton Status Code | GitHub Status State
------------------- | -------------------
-success            | success
-neutral            | success
-queued             | pending
-in_progress        | pending
-failure            | failure
-unknown            | error
-error              | error
-timeout            | error
-canceled           | error
-action_required    | error

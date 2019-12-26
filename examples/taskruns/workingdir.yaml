@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: workingdir-
+spec:
+  taskSpec:
+    steps:
+    - name: default
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        [[ $PWD == /workspace ]]
+
+    - name: override
+      image: ubuntu
+      workingDir: '/a/path/too/far'
+      script: |
+        #!/usr/bin/env bash
+        [[ $PWD == /a/path/too/far ]]

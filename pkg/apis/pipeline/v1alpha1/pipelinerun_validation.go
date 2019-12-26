@@ -20,13 +20,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*PipelineRun)(nil)
+
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(pr.GetObjectMeta()).ViaField("metadata"); err != nil {
+	if err := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
 	}
 	return pr.Spec.Validate(ctx)
@@ -37,14 +40,20 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineRunSpec{}) {
 		return apis.ErrMissingField("spec")
 	}
-	// pipeline reference should be present for pipelinerun
-	if ps.PipelineRef.Name == "" {
-		return apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name")
+
+	// can't have both pipelineRef and pipelineSpec at the same time
+	if (ps.PipelineRef != nil && ps.PipelineRef.Name != "") && ps.PipelineSpec != nil {
+		return apis.ErrDisallowedFields("spec.pipelineref", "spec.pipelinespec")
 	}
 
-	// check for results
-	if ps.Results != nil {
-		if err := ps.Results.Validate(ctx, "spec.results"); err != nil {
+	// Check that one of PipelineRef and PipelineSpec is present
+	if (ps.PipelineRef == nil || (ps.PipelineRef != nil && ps.PipelineRef.Name == "")) && ps.PipelineSpec == nil {
+		return apis.ErrMissingField("spec.pipelineref.name", "spec.pipelinespec")
+	}
+
+	// Validate PipelineSpec if it's present
+	if ps.PipelineSpec != nil {
+		if err := ps.PipelineSpec.Validate(ctx); err != nil {
 			return err
 		}
 	}

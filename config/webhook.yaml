@@ -12,19 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
+  # Note: the Deployment name must be the same as the Service name specified in
+  # config/400-webhook-service.yaml. If you change this name, you must also
+  # change the value of WEBHOOK_SERVICE_NAME below.
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/component: webhook-controller
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-pipelines-webhook
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-pipelines-webhook
+        app.kubernetes.io/name: tekton-pipelines
+        app.kubernetes.io/component: webhook-controller
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
@@ -40,6 +51,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: WEBHOOK_SERVICE_NAME
+          value: tekton-pipelines-webhook
       volumes:
         - name: config-logging
           configMap:

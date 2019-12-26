@@ -17,22 +17,22 @@ limitations under the License.
 package reconciler
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -95,7 +95,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 			},
 		}},
 	}
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -146,7 +146,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 				}
 				// not expecting callback
 				if _, ok := gotCallback.Load(tc.taskRun.Name); ok {
-					return false, xerrors.Errorf("did not expect call back for %s why", tc.taskRun.Name)
+					return false, fmt.Errorf("did not expect call back for %s why", tc.taskRun.Name)
 				}
 				return true, nil
 			}); err != nil {
@@ -163,7 +163,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	))
 	prTimeout := tb.PipelineRun("test-pipeline-run-with-timeout", testNs,
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunTimeout(1*time.Second),
 		),
 		tb.PipelineRunStatus(
@@ -201,7 +201,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		),
 	)
 	prCancelled := tb.PipelineRun("test-pipeline-cancel", testNs,
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunCancelled,
 			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
 		),
@@ -221,7 +221,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		}},
 	}
 
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -271,7 +271,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 				}
 				// not expecting callback
 				if _, ok := gotCallback.Load(tc.pr.Name); ok {
-					return false, xerrors.Errorf("did not expect call back for %s why", tc.pr.Name)
+					return false, fmt.Errorf("did not expect call back for %s why", tc.pr.Name)
 				}
 				return true, nil
 			}); err != nil {
@@ -301,7 +301,7 @@ func TestWithNoFunc(t *testing.T) {
 			},
 		}},
 	}
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)

@@ -23,10 +23,6 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-// Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*Condition)(nil)
-var _ apis.Defaultable = (*Condition)(nil)
-
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -48,6 +44,14 @@ type Condition struct {
 type ConditionCheckStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// ConditionCheckStatusFields inlines the status fields.
+	ConditionCheckStatusFields `json:",inline"`
+}
+
+// ConditionCheckStatusFields holds the fields of ConfigurationCheck's status.
+// This is defined separately and inlined so that other types can readily
+// consume these fields via duck typing.
+type ConditionCheckStatusFields struct {
 	// PodName is the name of the pod responsible for executing this condition check.
 	PodName string `json:"podName"`
 

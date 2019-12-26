@@ -1,15 +1,25 @@
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: tekton-pipelines-git
-spec:
-  type: git
-  params:
-  - name: url
-    value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
-  - name: revision
-    value:  vX.Y.Z-invalid-tags-boouuhhh # REPLACE with your own commit
----
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: tekton-pipelines-git
+# spec:
+#   type: git
+#   params:
+#   - name: url
+#     value: https://github.com/tektoncd/pipeline
+#   - name: revision
+#     value: vX.Y.Z-invalid-tags-boouuhhh  # REPLACE with the commit you want to release
+# ---
+# apiVersion: tekton.dev/v1alpha1
+# kind: PipelineResource
+# metadata:
+#   name: post-release-trigger
+# spec:
+#   type: cloudEvent
+#   params:
+#   - name: targetURI
+#     value: http://post-release-trigger-sink  # This has to be changed to a valid URL
+# ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -17,12 +27,26 @@ metadata:
 spec:
   type: storage
   params:
-   - name: type
-     value: gcs
-   - name: location
-     value: gs://tekton-releases # REPLACE with your own bucket
-   - name: dir
-     value: "y"
+  - name: type
+    value: gcs
+  - name: location
+    value: gs://tekton-releases/pipeline
+  - name: dir
+    value: "y"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-bucket-nightly
+spec:
+  type: storage
+  params:
+  - name: type
+    value: gcs
+  - name: location
+    value: gs://tekton-releases-nightly
+  - name: dir
+    value: "y"
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -31,8 +55,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: build-base # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: build-base  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -41,8 +65,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/entrypoint # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/entrypoint  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -51,8 +75,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/kubeconfigwriter # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/kubeconfigwriter  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -61,8 +85,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/creds-init # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/creds-init  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -71,38 +95,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/git-init # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: nop-image
-spec:
-  type: image
-  params:
-   - name: url
-     value: cmd/nop # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: bash-image
-spec:
-  type: image
-  params:
-   - name: url
-     value: cmd/bash # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: gsutil-image
-spec:
-  type: image
-  params:
-   - name: url
-     value: cmd/gsutil # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/git-init  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -111,8 +105,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/controller # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/controller  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -121,8 +115,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/webhook # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/webhook  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -131,8 +125,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/imagedigestexporter # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/imagedigestexporter  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -141,8 +135,8 @@ metadata:
 spec:
   type: image
   params:
-   - name: url
-     value: cmd/pullrequest-init # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: cmd/pullrequest-init  # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -151,15 +145,5 @@ metadata:
 spec:
   type: image
   params:
-    - name: url
-      value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: gcs-uploader-image
-spec:
-  type: image
-  params:
-    - name: url
-      value:  vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader # Registry is provided via parameter, this is a hack see #569
+  - name: url
+    value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher  # Registry is provided via parameter, this is a hack see #569

@@ -232,7 +232,7 @@ func PipelineTaskCondition(conditionRef string, ops ...PipelineTaskConditionOp) 
 	}
 }
 
-// PipelineTaskCondition adds a parameter to a PipelineTaskCondition
+// PipelineTaskConditionParam adds a parameter to a PipelineTaskCondition
 func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 	return func(condition *v1alpha1.PipelineTaskCondition) {
 		if condition.Params == nil {
@@ -241,6 +241,19 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 		condition.Params = append(condition.Params, v1alpha1.Param{
 			Name:  name,
 			Value: *ArrayOrString(val),
+		})
+	}
+}
+
+// PipelineTaskConditionResource adds a resource to a PipelineTaskCondition
+func PipelineTaskConditionResource(name, resource string) PipelineTaskConditionOp {
+	return func(condition *v1alpha1.PipelineTaskCondition) {
+		if condition.Resources == nil {
+			condition.Resources = []v1alpha1.PipelineConditionResource{}
+		}
+		condition.Resources = append(condition.Resources, v1alpha1.PipelineConditionResource{
+			Name:     name,
+			Resource: resource,
 		})
 	}
 }
@@ -269,7 +282,9 @@ func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 	return func(pr *v1alpha1.PipelineRun) {
 		prs := &pr.Spec
 
-		prs.PipelineRef.Name = name
+		prs.PipelineRef = &v1alpha1.PipelineRef{
+			Name: name,
+		}
 		// Set a default timeout
 		prs.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 
@@ -306,9 +321,6 @@ func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) P
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		r := &v1alpha1.PipelineResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: name,
-			},
 		}
 		for _, op := range ops {
 			op(r)
@@ -320,23 +332,32 @@ func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) P
 // PipelineResourceBindingRef set the ResourceRef name to the Resource called Name.
 func PipelineResourceBindingRef(name string) PipelineResourceBindingOp {
 	return func(b *v1alpha1.PipelineResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
+	}
+}
+
+// PipelineResourceBindingResourceSpec set the PipelineResourceResourceSpec to the PipelineResourceBinding.
+func PipelineResourceBindingResourceSpec(spec *v1alpha1.PipelineResourceSpec) PipelineResourceBindingOp {
+	return func(b *v1alpha1.PipelineResourceBinding) {
+		b.ResourceSpec = spec
 	}
 }
 
 // PipelineRunServiceAccount sets the service account to the PipelineRunSpec.
-func PipelineRunServiceAccount(sa string) PipelineRunSpecOp {
+func PipelineRunServiceAccountName(sa string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.ServiceAccount = sa
+		prs.ServiceAccountName = sa
 	}
 }
 
 // PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
-func PipelineRunServiceAccountTask(taskName, sa string) PipelineRunSpecOp {
+func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.ServiceAccounts = append(prs.ServiceAccounts, v1alpha1.PipelineRunSpecServiceAccount{
-			TaskName:       taskName,
-			ServiceAccount: sa,
+		prs.ServiceAccountNames = append(prs.ServiceAccountNames, v1alpha1.PipelineRunSpecServiceAccountName{
+			TaskName:           taskName,
+			ServiceAccountName: sa,
 		})
 	}
 }
@@ -367,21 +388,21 @@ func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.NodeSelector = values
+		prs.PodTemplate.NodeSelector = values
 	}
 }
 
 // PipelineRunTolerations sets the Node selector to the PipelineSpec.
 func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Tolerations = values
+		prs.PodTemplate.Tolerations = values
 	}
 }
 
 // PipelineRunAffinity sets the affinity to the PipelineSpec.
 func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Affinity = affinity
+		prs.PodTemplate.Affinity = affinity
 	}
 }
 

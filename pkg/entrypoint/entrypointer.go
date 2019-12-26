@@ -27,9 +27,9 @@ type Entrypointer struct {
 	Entrypoint string
 	// Args are the original specified args, if any.
 	Args []string
-	// WaitFile is the file to wait for. If not specified, execution begins
-	// immediately.
-	WaitFile string
+	// WaitFiles is the set of files to wait for. If empty, execution
+	// begins immediately.
+	WaitFiles []string
 	// WaitFileContent indicates the WaitFile should have non-zero size
 	// before continuing with execution.
 	WaitFileContent bool
@@ -65,10 +65,10 @@ type PostWriter interface {
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
 func (e Entrypointer) Go() error {
-	if e.WaitFile != "" {
-		if err := e.Waiter.Wait(e.WaitFile, e.WaitFileContent); err != nil {
+	for _, f := range e.WaitFiles {
+		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
-			// *but* we write postfile to make next steps bail too
+			// *but* we write postfile to make next steps bail too.
 			e.WritePostFile(e.PostFile, err)
 			return err
 		}

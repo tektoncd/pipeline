@@ -21,26 +21,27 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
-	logtesting "knative.dev/pkg/logging/testing"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 )
 
 func TestStoreLoadWithContext(t *testing.T) {
-	store := NewStore(logtesting.TestLogger(t))
+	store := NewStore(pipeline.Images{}, ttesting.TestLogger(t))
 	bucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
 	store.OnConfigChanged(bucketConfig)
 
 	config := FromContext(store.ToContext(context.Background()))
 
-	expected, _ := artifacts.NewArtifactBucketConfigFromConfigMap(bucketConfig)
+	expected, _ := artifacts.NewArtifactBucketConfigFromConfigMap(pipeline.Images{})(bucketConfig)
 	if diff := cmp.Diff(expected, config.ArtifactBucket); diff != "" {
 		t.Errorf("Unexpected controller config (-want, +got): %v", diff)
 	}
 }
 func TestStoreImmutableConfig(t *testing.T) {
-	store := NewStore(logtesting.TestLogger(t))
+	store := NewStore(pipeline.Images{}, ttesting.TestLogger(t))
 	store.OnConfigChanged(test.ConfigMapFromTestFile(t, "config-artifact-bucket"))
 
 	config := store.Load()

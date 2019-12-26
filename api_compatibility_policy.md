@@ -72,6 +72,6 @@ Backwards incompatible changes change the API, e.g. by removing fields from a CR
 spec. These changes will mean that folks using a previous version of the API will need
 to adjust their usage in order to use the new version.
 
-These changes must be make [in a backwards compatible manner first](#backwards-compatible-changes-first),
-and they must be improved by [more than half of the project OWNERS](OWNERS)
+These changes must be made [in a backwards compatible manner first](#backwards-compatible-changes-first),
+and the changes must be approved by [more than half of the project OWNERS](OWNERS)
 (i.e. 50% + 1).

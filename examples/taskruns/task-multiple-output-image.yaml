@@ -6,7 +6,7 @@ spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
+    value: gcr.io/dlorenc-vmtest2/leeroy-web  # Replace this URL with $KO_DOCKER_REPO
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -16,7 +16,7 @@ spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
+    value: gcr.io/christiewilson-catfactory/leeroy-web  # Replace this URL with $KO_DOCKER_REPO
 ---
 # This demo modifies the cluster (deploys to it) you must use a service
 # account with permission to admin the cluster (or make your default user an admin
@@ -24,7 +24,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-cluster-admin
+  generateName: default-cluster-admin-
 subjects:
   - kind: ServiceAccount
     name: default
@@ -37,7 +37,7 @@ roleRef:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-multiple-output-image
 spec:
   type: git
   params:
@@ -46,7 +46,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-# This task is currently hardcoding a index.json file instead of 
+# This task is currently hardcoding a index.json file instead of
 # building an image since kaniko and other easy to use tools don't
 # support exporting this file yet
 apiVersion: tekton.dev/v1alpha1
@@ -67,13 +67,10 @@ spec:
   steps:
   - name: build-and-push-1
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -ex
-      cat <<EOF > /builder/home/image-outputs/builtImage1/index.json
+      mkdir -p /tekton/home/image-outputs/builtImage1
+      cat <<EOF > /tekton/home/image-outputs/builtImage1/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -84,16 +81,12 @@ spec:
           }
         ]
       }
-      EOF
   - name: build-and-push-2
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -e
-      cat <<EOF > /builder/home/image-outputs/builtImage2/index.json
+      mkdir -p /tekton/home/image-outputs/builtImage2
+      cat <<EOF > /tekton/home/image-outputs/builtImage2/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -104,7 +97,6 @@ spec:
           }
         ]
       }
-      EOF         
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -117,7 +109,7 @@ spec:
     resources:
     - name: sourcerepo
       resourceRef:
-        name: skaffold-git
+        name: skaffold-git-multiple-output-image
   outputs:
     resources:
     - name: builtImage1

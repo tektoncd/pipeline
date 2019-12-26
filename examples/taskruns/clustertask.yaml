@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1alpha1
+kind: ClusterTask
+metadata:
+  name: clustertask
+spec:
+  steps:
+  - image: ubuntu
+    script: echo hello
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: clustertask-
+spec:
+  taskRef:
+    name: clustertask
+    kind: ClusterTask

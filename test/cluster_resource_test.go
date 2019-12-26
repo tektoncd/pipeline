@@ -57,7 +57,7 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", taskName)
-	if _, err := c.TaskClient.Create(getClusterResourceTask(namespace, taskName, resourceName, configName)); err != nil {
+	if _, err := c.TaskClient.Create(getClusterResourceTask(namespace, taskName, configName)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
 
@@ -97,7 +97,7 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 	}
 }
 
-func getClusterResourceTask(namespace, name, resName, configName string) *v1alpha1.Task {
+func getClusterResourceTask(namespace, name, configName string) *v1alpha1.Task {
 	return tb.Task(name, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("target-cluster", v1alpha1.PipelineResourceTypeCluster)),
 		tb.TaskVolume("config-vol", tb.VolumeSource(corev1.VolumeSource{
@@ -121,25 +121,10 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 }
 
 func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: taskName,
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskResourceBinding{{
-					Name: "target-cluster",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: resName,
-					},
-				}},
-			},
-		},
-	}
+	return tb.TaskRun(name, namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskName),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("target-cluster", tb.TaskResourceBindingRef(resName))),
+	))
 }
 
 func getClusterConfigMap(namespace, name string) *corev1.ConfigMap {

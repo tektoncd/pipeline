@@ -9,7 +9,7 @@ spec:
     description: package to release
     default: github.com/tektoncd/pipeline
   - name: imageRegistry
-    default: gcr.io/tekton-releases # REPLACE with your own registry
+    default: gcr.io/tekton-releases
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   resources:
@@ -27,12 +27,6 @@ spec:
     type: image
   - name: builtGitInitImage
     type: image
-  - name: builtNopImage
-    type: image
-  - name: builtBashImage
-    type: image
-  - name: builtGsutilImage
-    type: image
   - name: builtControllerImage
     type: image
   - name: builtWebhookImage
@@ -43,15 +37,34 @@ spec:
     type: image
   - name: builtGcsFetcherImage
     type: image
+  - name: notification
+    type: cloudEvent
   tasks:
+    - name: precheck
+      taskRef:
+        name: prerelease-checks
+      params:
+        - name: package
+          value: $(params.package)
+        - name: versionTag
+          value: $(params.versionTag)
+      resources:
+        inputs:
+          - name: release-bucket
+            resource: bucket
+          - name: source-to-release
+            resource: source-repo
     - name: lint
+      runAfter: [precheck]
       taskRef:
         name: golangci-lint
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: flags
           value: -v
+        - name: version
+          value: v1.21
       resources:
         inputs:
           - name: source
@@ -62,7 +75,7 @@ spec:
         name: golang-test
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -73,7 +86,9 @@ spec:
         name: golang-build
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
+        - name: flags
+          value: -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
       resources:
         inputs:
           - name: source
@@ -84,11 +99,11 @@ spec:
         name: publish-tekton-pipelines
       params:
         - name: pathToProject
-          value: ${params.package}
+          value: $(params.package)
         - name: versionTag
-          value: ${params.versionTag}
+          value: $(params.versionTag)
         - name: imageRegistry
-          value: ${params.imageRegistry}
+          value: $(params.imageRegistry)
       resources:
         inputs:
           - name: source
@@ -108,12 +123,6 @@ spec:
             resource: builtCredsInitImage
           - name: builtGitInitImage
             resource: builtGitInitImage
-          - name: builtNopImage
-            resource: builtNopImage
-          - name: builtBashImage
-            resource: builtBashImage
-          - name: builtGsutilImage
-            resource: builtGsutilImage
           - name: builtControllerImage
             resource: builtControllerImage
           - name: builtWebhookImage
@@ -124,3 +133,5 @@ spec:
             resource: builtPullRequestInitImage
           - name: builtGcsFetcherImage
             resource: builtGcsFetcherImage
+          - name: notification
+            resource: notification

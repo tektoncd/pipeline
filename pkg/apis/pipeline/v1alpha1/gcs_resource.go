@@ -17,19 +17,23 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
-var (
-	gsutilImage              = flag.String("gsutil-image", "override-with-gsutil-image:latest", "The container image containing gsutil")
-	gcsSecretVolumeMountPath = "/var/secret"
+const (
+	gcsSecretVolumeMountPath     = "/var/secret"
+	activateServiceAccountScript = `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+`
 )
 
 // GCSResource is a GCS endpoint from which to get artifacts which is required
@@ -41,12 +45,15 @@ type GCSResource struct {
 	TypeDir  bool                 `json:"typeDir"`
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+
+	ShellImage  string `json:"-"`
+	GsutilImage string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
-func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
+func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, xerrors.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	var location string
 	var locationSpecified, dir bool
@@ -64,14 +71,16 @@ func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
 	}
 
 	if !locationSpecified {
-		return nil, xerrors.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
+		return nil, fmt.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
-		Name:     r.Name,
-		Type:     r.Spec.Type,
-		Location: location,
-		TypeDir:  dir,
-		Secrets:  r.Spec.SecretParams,
+		Name:        r.Name,
+		Type:        r.Spec.Type,
+		Location:    location,
+		TypeDir:     dir,
+		Secrets:     r.Spec.SecretParams,
+		ShellImage:  images.ShellImage,
+		GsutilImage: images.GsutilImage,
 	}, nil
 }
 
@@ -97,57 +106,64 @@ func (s *GCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetUploadSteps gets container spec for gcs resource to be uploaded like
-// set environment variable from secret params and set volume mounts for those secrets
-func (s *GCSResource) GetUploadSteps(sourcePath string) ([]Step, error) {
+// GetOutputTaskModifier returns the TaskModifier to be used when this resource is an output.
+func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", sourcePath, s.Location)}
+		args = []string{"rsync", "-d", "-r", path, s.Location}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(sourcePath, "*"), s.Location)}
+		args = []string{"cp", filepath.Join(path, "*"), s.Location}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	return []Step{{Container: corev1.Container{
+	step := Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
-		Image:        *gsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
+		Image:        s.GsutilImage,
+		Command:      []string{"gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
-		Env:          envVars,
-	}}}, nil
+		Env:          envVars},
+	}
+
+	volumes := getStorageVolumeSpec(s, *ts)
+
+	return &InternalTaskModifier{
+		StepsToAppend: []Step{step},
+		Volumes:       volumes,
+	}, nil
 }
 
-// GetDownloadSteps returns an array of container specs to download gcs storage object
-func (s *GCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	if sourcePath == "" {
-		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
+func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
+	if path == "" {
+		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
-	var args []string
+	script := activateServiceAccountScript
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, sourcePath)}
+		script += fmt.Sprintf("gsutil rsync -d -r %s %s\n", s.Location, path)
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, sourcePath)}
+		script += fmt.Sprintf("gsutil cp %s %s\n", s.Location, path)
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	return []Step{
-		CreateDirStep(s.Name, sourcePath),
-		{Container: corev1.Container{
-			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
-			Image:        *gsutilImage,
-			Command:      []string{"/ko-app/gsutil"},
-			Args:         args,
-			Env:          envVars,
-			VolumeMounts: secretVolumeMount,
-		}}}, nil
-}
+	steps := []Step{
+		CreateDirStep(s.ShellImage, s.Name, path),
+		{
+			Script: script,
+			Container: corev1.Container{
+				Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
+				Image:        s.GsutilImage,
+				Env:          envVars,
+				VolumeMounts: secretVolumeMount,
+			},
+		},
+	}
 
-func (s *GCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
-}
+	volumes := getStorageVolumeSpec(s, *ts)
 
-func (s *GCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
+	return &InternalTaskModifier{
+		StepsToPrepend: steps,
+		Volumes:        volumes,
+	}, nil
 }

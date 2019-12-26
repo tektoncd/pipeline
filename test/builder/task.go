@@ -167,6 +167,18 @@ func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
+// TaskWorkspace adds a workspace declaration.
+func TaskWorkspace(name, desc, mountPath string, readOnly bool) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceDeclaration{
+			Name:        name,
+			Description: desc,
+			MountPath:   mountPath,
+			ReadOnly:    readOnly,
+		})
+	}
+}
+
 // TaskStepTemplate adds a base container for all steps in the task.
 func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
@@ -239,6 +251,12 @@ func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops
 	}
 }
 
+func ResourceOptional(optional bool) TaskResourceOp {
+	return func(r *v1alpha1.TaskResource) {
+		r.Optional = optional
+	}
+}
+
 func ResourceTargetPath(path string) TaskResourceOp {
 	return func(r *v1alpha1.TaskResource) {
 		r.TargetPath = path
@@ -246,13 +264,17 @@ func ResourceTargetPath(path string) TaskResourceOp {
 }
 
 // OutputsResource adds a resource, with specified name and type, to the Outputs.
-func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
+func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) OutputsOp {
 	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{
+		r := &v1alpha1.TaskResource{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: name,
 				Type: resourceType,
-			}})
+			}}
+		for _, op := range ops {
+			op(r)
+		}
+		o.Resources = append(o.Resources, *r)
 	}
 }
 
@@ -335,6 +357,13 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCompletionTime sets the start time to the TaskRunStatus.
+func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: completionTime}
+	}
+}
+
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -365,32 +394,66 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 	spec.Timeout = nil
 }
 
-// TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
+// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.NodeSelector = values
+		spec.PodTemplate.NodeSelector = values
 	}
 }
 
-// TaskRunTolerations sets the Tolerations to the PipelineSpec.
+// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Tolerations = values
+		spec.PodTemplate.Tolerations = values
 	}
 }
 
-// TaskRunAffinity sets the Affinity to the PipelineSpec.
+// TaskRunAffinity sets the Affinity to the TaskRunSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Affinity = affinity
+		spec.PodTemplate.Affinity = affinity
 	}
 }
 
-// StateTerminated set Terminated to the StepState.
+// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
+func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.PodTemplate.SecurityContext = context
+	}
+}
+
+// StateTerminated sets Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {
 		s.ContainerState = corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(exitcode)},
+		}
+	}
+}
+
+// SetStepStateTerminated sets Terminated state of a step.
+func SetStepStateTerminated(terminated corev1.ContainerStateTerminated) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Terminated: &terminated,
+		}
+	}
+}
+
+// SetStepStateRunning sets Running state of a step.
+func SetStepStateRunning(running corev1.ContainerStateRunning) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Running: &running,
+		}
+	}
+}
+
+// SetStepStateWaiting sets Waiting state of a step.
+func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Waiting: &waiting,
 		}
 	}
 }
@@ -508,9 +571,9 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 }
 
 // TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunServiceAccount(sa string) TaskRunSpecOp {
+func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccount = sa
+		trs.ServiceAccountName = sa
 	}
 }
 
@@ -542,7 +605,9 @@ func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunI
 func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInputsOp {
 	return func(i *v1alpha1.TaskRunInputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		for _, op := range ops {
 			op(binding)
@@ -554,7 +619,9 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 // TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
 func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
 	}
 }
 
@@ -596,8 +663,7 @@ func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
 func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOutputsOp {
 	return func(i *v1alpha1.TaskRunOutputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 				Name: name,
 			},
 		}
@@ -605,6 +671,30 @@ func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOu
 			op(binding)
 		}
 		i.Resources = append(i.Resources, *binding)
+	}
+}
+
+// TaskRunWorkspaceEmptyDir adds a workspace binding to an empty dir volume source.
+func TaskRunWorkspaceEmptyDir(name, subPath string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:     name,
+			SubPath:  subPath,
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		})
+	}
+}
+
+// TaskRunWorkspacePVC adds a workspace binding to a PVC volume source.
+func TaskRunWorkspacePVC(name, subPath, claimName string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:    name,
+			SubPath: subPath,
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claimName,
+			},
+		})
 	}
 }
 

@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: build-gcs-targz
+  generateName: build-gcs-targz-
 spec:
   taskSpec:
     inputs:
@@ -10,7 +10,7 @@ spec:
         type: storage
     steps:
     - image: ubuntu
-      command: ['cat', 'source/file.txt']  # tests build-gcs resource
+      script: cat source/file.txt
   inputs:
     resources:
     - name: source

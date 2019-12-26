@@ -17,8 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 // PipelineSpec defines the desired state of Pipeline.
@@ -33,16 +33,7 @@ type PipelineSpec struct {
 	Params []ParamSpec `json:"params,omitempty"`
 }
 
-// PipelineStatus does not contain anything because Pipelines on their own
-// do not have a status, they just hold data which is later used by a
-// PipelineRun.
-type PipelineStatus struct {
-}
-
 // Check that Pipeline may be validated and defaulted.
-var _ apis.Validatable = (*Pipeline)(nil)
-var _ apis.Defaultable = (*Pipeline)(nil)
-
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
 
@@ -55,6 +46,7 @@ const (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient:noStatus
 
 // Pipeline describes a list of Tasks to execute. It expresses how outputs
 // of tasks feed into inputs of subsequent tasks.
@@ -67,10 +59,31 @@ type Pipeline struct {
 	// Spec holds the desired state of the Pipeline from the client
 	// +optional
 	Spec PipelineSpec `json:"spec"`
-	// Status communicates the observed state of the Pipeline from the
-	// controller.
+
+	// Status is deprecated.
+	// It usually is used to communicate the observed state of the Pipeline from
+	// the controller, but was unused as there is no controller for Pipeline.
 	// +optional
-	Status PipelineStatus `json:"status"`
+	Status *PipelineStatus `json:"status,omitempty"`
+}
+
+// PipelineStatus does not contain anything because Pipelines on their own
+// do not have a status, they just hold data which is later used by a
+// PipelineRun.
+// Deprecated
+type PipelineStatus struct {
+}
+
+func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
+	return p.ObjectMeta
+}
+
+func (p *Pipeline) PipelineSpec() PipelineSpec {
+	return p.Spec
+}
+
+func (p *Pipeline) Copy() PipelineInterface {
+	return p.DeepCopy()
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -103,6 +116,31 @@ type PipelineTask struct {
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
+}
+
+func (pt PipelineTask) HashKey() string {
+	return pt.Name
+}
+
+func (pt PipelineTask) Deps() []string {
+	deps := []string{}
+	deps = append(deps, pt.RunAfter...)
+	if pt.Resources != nil {
+		for _, rd := range pt.Resources.Inputs {
+			deps = append(deps, rd.From...)
+		}
+	}
+	return deps
+}
+
+type PipelineTaskList []PipelineTask
+
+func (l PipelineTaskList) Items() []dag.Task {
+	tasks := []dag.Task{}
+	for _, t := range l {
+		tasks = append(tasks, dag.Task(t))
+	}
+	return tasks
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
@@ -178,7 +216,7 @@ type PipelineTaskInputResource struct {
 type PipelineTaskOutputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelienResource to use.
+	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
 }
 

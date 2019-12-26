@@ -26,14 +26,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-type logger interface {
-	Warn(args ...interface{})
-	Warnf(template string, args ...interface{})
-}
-
-// cancelTaskRun marks the TaskRun as cancelled and delete pods linked to it.
-func cancelTaskRun(tr *v1alpha1.TaskRun, clientSet kubernetes.Interface, logger logger) error {
-	logger.Warn("task run %q has been cancelled", tr.Name)
+// cancelTaskRun marks the TaskRun as cancelled and deletes pods linked to it.
+func cancelTaskRun(tr *v1alpha1.TaskRun, clientset kubernetes.Interface) error {
 	tr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
@@ -41,13 +35,10 @@ func cancelTaskRun(tr *v1alpha1.TaskRun, clientSet kubernetes.Interface, logger 
 		Message: fmt.Sprintf("TaskRun %q was cancelled", tr.Name),
 	})
 
-	if tr.Status.PodName == "" {
-		logger.Warnf("task run %q has no pod running yet", tr.Name)
-		return nil
-	}
-
-	if err := clientSet.CoreV1().Pods(tr.Namespace).Delete(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil {
+	pod, err := getPod(tr, clientset)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	return clientset.CoreV1().Pods(tr.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 }

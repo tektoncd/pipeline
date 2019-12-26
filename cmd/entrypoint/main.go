@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,7 +30,7 @@ import (
 
 var (
 	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFile        = flag.String("wait_file", "", "If specified, file to wait for")
+	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
 	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
 	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
 
@@ -41,18 +42,19 @@ func main() {
 
 	e := entrypoint.Entrypointer{
 		Entrypoint:      *ep,
-		WaitFile:        *waitFile,
+		WaitFiles:       strings.Split(*waitFiles, ","),
 		WaitFileContent: *waitFileContent,
 		PostFile:        *postFile,
 		Args:            flag.Args(),
-		Waiter:          &RealWaiter{},
-		Runner:          &RealRunner{},
-		PostWriter:      &RealPostWriter{},
+		Waiter:          &realWaiter{},
+		Runner:          &realRunner{},
+		PostWriter:      &realPostWriter{},
 	}
 	if err := e.Go(); err != nil {
-		switch err.(type) {
+		switch t := err.(type) {
 		case skipError:
-			os.Exit(0)
+			log.Print("Skipping step because a previous step failed")
+			os.Exit(1)
 		case *exec.ExitError:
 			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
 			// This works on both Unix and Windows. Although
@@ -60,7 +62,7 @@ func main() {
 			// WaitStatus is defined for both Unix and Windows and
 			// in both cases has an ExitStatus() method with the
 			// same signature.
-			if status, ok := err.(*exec.ExitError).Sys().(syscall.WaitStatus); ok {
+			if status, ok := t.Sys().(syscall.WaitStatus); ok {
 				os.Exit(status.ExitStatus())
 			}
 			log.Fatalf("Error executing command (ExitError): %v", err)

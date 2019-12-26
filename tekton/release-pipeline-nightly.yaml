@@ -1,0 +1,119 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: pipeline-release-nightly
+spec:
+  params:
+  - name: package
+    description: package to release
+    default: github.com/tektoncd/pipeline
+  - name: imageRegistry
+    default: gcr.io/tekton-nightly
+  - name: versionTag
+    description: The X.Y.Z version that the artifacts should be tagged with
+  resources:
+  - name: source-repo
+    type: git
+  - name: bucket
+    type: storage
+  - name: builtBaseImage
+    type: image
+  - name: builtEntrypointImage
+    type: image
+  - name: builtKubeconfigWriterImage
+    type: image
+  - name: builtCredsInitImage
+    type: image
+  - name: builtGitInitImage
+    type: image
+  - name: builtControllerImage
+    type: image
+  - name: builtWebhookImage
+    type: image
+  - name: builtDigestExporterImage
+    type: image
+  - name: builtPullRequestInitImage
+    type: image
+  - name: builtGcsFetcherImage
+    type: image
+  - name: notification
+    type: cloudEvent
+  tasks:
+    - name: lint
+      taskRef:
+        name: golangci-lint
+      params:
+        - name: package
+          value: $(params.package)
+        - name: version
+          value: v1.21
+        - name: flags
+          value: -v
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: unit-tests
+      runAfter: [lint]
+      taskRef:
+        name: golang-test
+      params:
+        - name: package
+          value: $(params.package)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: build
+      runAfter: [lint]
+      taskRef:
+        name: golang-build
+      params:
+        - name: package
+          value: $(params.package)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: publish-images
+      runAfter: [build, unit-tests]
+      taskRef:
+        name: publish-tekton-pipelines
+      params:
+        - name: pathToProject
+          value: $(params.package)
+        - name: versionTag
+          value: $(params.versionTag)
+        - name: imageRegistry
+          value: $(params.imageRegistry)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+          - name: bucket
+            resource: bucket
+        outputs:
+          - name: bucket
+            resource: bucket
+          - name: builtBaseImage
+            resource: builtBaseImage
+          - name: builtEntrypointImage
+            resource: builtEntrypointImage
+          - name: builtKubeconfigWriterImage
+            resource: builtKubeconfigWriterImage
+          - name: builtCredsInitImage
+            resource: builtCredsInitImage
+          - name: builtGitInitImage
+            resource: builtGitInitImage
+          - name: builtControllerImage
+            resource: builtControllerImage
+          - name: builtWebhookImage
+            resource: builtWebhookImage
+          - name: builtDigestExporterImage
+            resource: builtDigestExporterImage
+          - name: builtPullRequestInitImage
+            resource: builtPullRequestInitImage
+          - name: builtGcsFetcherImage
+            resource: builtGcsFetcherImage
+          - name: notification
+            resource: notification

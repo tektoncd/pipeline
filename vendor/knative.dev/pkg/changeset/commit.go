@@ -30,9 +30,7 @@ const (
 	koDataPathEnvName = "KO_DATA_PATH"
 )
 
-var (
-	commitIDRE = regexp.MustCompile(`^[a-f0-9]{40}$`)
-)
+var commitIDRE = regexp.MustCompile(`^[a-f0-9]{40}$`)
 
 // Get tries to fetch the first 7 digitals of GitHub commit ID from HEAD file in
 // KO_DATA_PATH. If it fails, it returns the error it gets.
@@ -42,11 +40,17 @@ func Get() (string, error) {
 		return "", err
 	}
 	commitID := strings.TrimSpace(string(data))
-	if !commitIDRE.MatchString(commitID) {
-		err := fmt.Errorf("%q is not a valid GitHub commit ID", commitID)
-		return "", err
+	if rID := strings.TrimPrefix(commitID, "ref: "); rID != commitID {
+		data, err := readFileFromKoData(rID)
+		if err != nil {
+			return "", err
+		}
+		commitID = strings.TrimSpace(string(data))
 	}
-	return string(commitID[0:7]), nil
+	if commitIDRE.MatchString(commitID) {
+		return commitID[:7], nil
+	}
+	return "", fmt.Errorf("%q is not a valid GitHub commit ID", commitID)
 }
 
 // readFileFromKoData tries to read data as string from the file with given name
@@ -56,9 +60,7 @@ func Get() (string, error) {
 func readFileFromKoData(filename string) ([]byte, error) {
 	koDataPath := os.Getenv(koDataPathEnvName)
 	if koDataPath == "" {
-		err := fmt.Errorf("%q does not exist or is empty", koDataPathEnvName)
-		return nil, err
+		return nil, fmt.Errorf("%q does not exist or is empty", koDataPathEnvName)
 	}
-	fullFilename := filepath.Join(koDataPath, filename)
-	return ioutil.ReadFile(fullFilename)
+	return ioutil.ReadFile(filepath.Join(koDataPath, filename))
 }

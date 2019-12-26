@@ -19,16 +19,21 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*Task)(nil)
+
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return t.Spec.Validate(ctx)
@@ -43,6 +48,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("steps")
 	}
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
+		return err
+	}
+	if err := ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
@@ -104,12 +112,54 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
+// ValidateDeclaredWorkspaces will make sure that the declared workspaces do not try to use
+// a mount path which conflicts with any other declared workspaces, with the explicitly
+// declared volume mounts, or with the stepTemplate. The names must also be unique.
+func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+	mountPaths := map[string]struct{}{}
+	for _, step := range steps {
+		for _, vm := range step.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+	if stepTemplate != nil {
+		for _, vm := range stepTemplate.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+
+	wsNames := map[string]struct{}{}
+	for _, w := range workspaces {
+		// Workspace names must be unique
+		if _, ok := wsNames[w.Name]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace name %q must be unique", w.Name),
+				Paths:   []string{"workspaces.name"},
+			}
+		}
+		wsNames[w.Name] = struct{}{}
+		// Workspaces must not try to use mount paths that are already used
+		mountPath := filepath.Clean(w.GetMountPath())
+		if _, ok := mountPaths[mountPath]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace mount path %q must be unique", mountPath),
+				Paths:   []string{"workspaces.mountpath"},
+			}
+		}
+		mountPaths[mountPath] = struct{}{}
+	}
+	return nil
+}
+
 func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Task must not have duplicate volume names.
 	vols := map[string]struct{}{}
 	for _, v := range volumes {
 		if _, ok := vols[v.Name]; ok {
-			return apis.ErrMultipleOneOf("name")
+			return &apis.FieldError{
+				Message: fmt.Sprintf("multiple volumes with same name %q", v.Name),
+				Paths:   []string{"name"},
+			}
 		}
 		vols[v.Name] = struct{}{}
 	}
@@ -119,18 +169,42 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
 	names := map[string]struct{}{}
-	for _, s := range steps {
+	for idx, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
 		}
 
-		if s.Name == "" {
-			continue
+		if s.Script != "" {
+			if len(s.Command) > 0 {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("step %d script cannot be used with command", idx),
+					Paths:   []string{"script"},
+				}
+			}
 		}
-		if _, ok := names[s.Name]; ok {
-			return apis.ErrInvalidValue(s.Name, "name")
+
+		if s.Name != "" {
+			if _, ok := names[s.Name]; ok {
+				return apis.ErrInvalidValue(s.Name, "name")
+			}
+			names[s.Name] = struct{}{}
 		}
-		names[s.Name] = struct{}{}
+
+		for _, vm := range s.VolumeMounts {
+			if strings.HasPrefix(vm.MountPath, "/tekton/") &&
+				!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("step %d volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", idx, vm.Name, vm.MountPath),
+					Paths:   []string{"volumeMounts.mountPath"},
+				}
+			}
+			if strings.HasPrefix(vm.Name, "tekton-internal-") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf(`step %d volumeMount name %q cannot start with "tekton-internal-"`, idx, vm.Name),
+					Paths:   []string{"volumeMounts.name"},
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -192,11 +266,6 @@ func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs) *
 	if outputs != nil {
 		for _, r := range outputs.Resources {
 			resourceNames[r.Name] = struct{}{}
-			if r.Type == PipelineResourceTypeImage {
-				if r.OutputImageDir == "" {
-					return apis.ErrMissingField("OutputImageDir")
-				}
-			}
 		}
 	}
 	return validateVariables(steps, "resources", resourceNames)
@@ -285,15 +354,15 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 }
 
 func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
+	return substitution.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

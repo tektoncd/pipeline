@@ -20,9 +20,11 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -50,7 +52,9 @@ func main() {
 		log.Fatalf("Error parsing logging configuration: %v", err)
 	}
 	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
 
 	logger.Info("Starting the Configuration Webhook")
@@ -78,33 +82,43 @@ func main() {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}
 
-	options := webhook.ControllerOptions{
-		ServiceName:    "tekton-pipelines-webhook",
-		DeploymentName: "tekton-pipelines-webhook",
-		Namespace:      system.GetNamespace(),
-		Port:           8443,
-		SecretName:     "webhook-certs",
-		WebhookName:    "webhook.tekton.dev",
+	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
+	if serviceName == "" {
+		serviceName = "tekton-pipelines-webhook"
 	}
-	//TODO add validations here
-	controller := webhook.AdmissionController{
-		Client:  kubeClient,
-		Options: options,
-		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
-			v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},
-			v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
-			v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
-			v1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha1.ClusterTask{},
-			v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
-			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
-			v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
-		},
-		Logger:                logger,
-		DisallowUnknownFields: true,
-		// Decorate contexts with the current state of the config.
-		WithContext: func(ctx context.Context) context.Context {
-			return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
-		},
+
+	options := webhook.ControllerOptions{
+		ServiceName:                     serviceName,
+		DeploymentName:                  serviceName,
+		Namespace:                       system.GetNamespace(),
+		Port:                            8443,
+		SecretName:                      "webhook-certs",
+		WebhookName:                     "webhook.tekton.dev",
+		ResourceAdmissionControllerPath: "/",
+	}
+	resourceHandlers := map[schema.GroupVersionKind]webhook.GenericCRD{
+		v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},
+		v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
+		v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
+		v1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha1.ClusterTask{},
+		v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
+		v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
+		v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
+	}
+
+	resourceAdmissionController := webhook.NewResourceAdmissionController(resourceHandlers, options, true)
+	admissionControllers := map[string]webhook.AdmissionController{
+		options.ResourceAdmissionControllerPath: resourceAdmissionController,
+	}
+
+	// Decorate contexts with the current state of the config.
+	ctxFunc := func(ctx context.Context) context.Context {
+		return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
+	}
+
+	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)
+	if err != nil {
+		logger.Fatal("Error creating admission controller", zap.Error(err))
 	}
 
 	if err := controller.Run(stopCh); err != nil {

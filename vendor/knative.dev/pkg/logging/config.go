@@ -66,7 +66,7 @@ func enrichLoggerWithCommitID(logger *zap.SugaredLogger) *zap.SugaredLogger {
 		return logger.With(zap.String(logkey.GitHubCommitID, commmitID))
 	}
 
-	logger.Warnf("Fetch GitHub commit ID from kodata failed: %v", err)
+	logger.Infof("Fetch GitHub commit ID from kodata failed: %v", err)
 	return logger
 }
 

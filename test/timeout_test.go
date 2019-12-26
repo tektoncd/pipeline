@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -69,7 +68,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-				return true, xerrors.Errorf("pipelineRun %s already finished!", pipelineRun.Name)
+				return true, fmt.Errorf("pipelineRun %q already finished", pipelineRun.Name)
 			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 				return true, nil
 			}
@@ -94,7 +93,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 				c := tr.Status.GetCondition(apis.ConditionSucceeded)
 				if c != nil {
 					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-						return true, xerrors.Errorf("taskRun %s already finished!", name)
+						return true, fmt.Errorf("taskRun %q already finished", name)
 					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 						return true, nil
 					}
@@ -123,9 +122,9 @@ func TestPipelineRunTimeout(t *testing.T) {
 				if c.Reason == resources.ReasonTimedOut {
 					return true, nil
 				}
-				return true, xerrors.Errorf("pipelineRun %s completed with the wrong reason: %s", pipelineRun.Name, c.Reason)
+				return true, fmt.Errorf("pipelineRun %q completed with the wrong reason: %s", pipelineRun.Name, c.Reason)
 			} else if c.Status == corev1.ConditionTrue {
-				return true, xerrors.Errorf("pipelineRun %s completed successfully, should have been timed out", pipelineRun.Name)
+				return true, fmt.Errorf("pipelineRun %q completed successfully, should have been timed out", pipelineRun.Name)
 			}
 		}
 		return false, nil
@@ -146,9 +145,9 @@ func TestPipelineRunTimeout(t *testing.T) {
 						if cond.Reason == "TaskRunTimeout" {
 							return true, nil
 						}
-						return true, xerrors.Errorf("taskRun %s completed with the wrong reason: %s", task.Name, cond.Reason)
+						return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", task.Name, cond.Reason)
 					} else if cond.Status == corev1.ConditionTrue {
-						return true, xerrors.Errorf("taskRun %s completed successfully, should have been timed out", name)
+						return true, fmt.Errorf("taskRun %q completed successfully, should have been timed out", name)
 					}
 				}
 				return false, nil
@@ -262,9 +261,9 @@ func TestTaskRunTimeout(t *testing.T) {
 				if cond.Reason == "TaskRunTimeout" {
 					return true, nil
 				}
-				return true, xerrors.Errorf("taskRun %s completed with the wrong reason: %s", "run-giraffe", cond.Reason)
+				return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", "run-giraffe", cond.Reason)
 			} else if cond.Status == corev1.ConditionTrue {
-				return true, xerrors.Errorf("taskRun %s completed successfully, should have been timed out", "run-giraffe")
+				return true, fmt.Errorf("taskRun %q completed successfully, should have been timed out", "run-giraffe")
 			}
 		}
 

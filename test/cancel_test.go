@@ -19,12 +19,13 @@ limitations under the License.
 package test
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -94,7 +95,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				c := pr.Status.GetCondition(apis.ConditionSucceeded)
 				if c != nil {
 					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-						return true, xerrors.Errorf("pipelineRun %s already finished", "pear")
+						return true, errors.New(`pipelineRun "pear" already finished`)
 					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 						return true, nil
 					}
@@ -110,15 +111,17 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 
 			var wg sync.WaitGroup
+			var trName []string
 			t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
 			for _, taskrunItem := range taskrunList.Items {
+				trName = append(trName, taskrunItem.Name)
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
 					err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 						if c := tr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 							if c.IsTrue() || c.IsFalse() {
-								return true, xerrors.Errorf("taskRun %s already finished!", name)
+								return true, fmt.Errorf("taskRun %q already finished", name)
 							} else if c.IsUnknown() && (c.Reason == "Running" || c.Reason == "Pending") {
 								return true, nil
 							}
@@ -149,9 +152,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 						if c.Reason == "PipelineRunCancelled" {
 							return true, nil
 						}
-						return true, xerrors.Errorf("pipelineRun %s completed with the wrong reason: %s", "pear", c.Reason)
+						return true, fmt.Errorf(`pipelineRun "pear" completed with the wrong reason: %s`, c.Reason)
 					} else if c.IsTrue() {
-						return true, xerrors.Errorf("pipelineRun %s completed successfully, should have been cancelled", "pear")
+						return true, errors.New(`pipelineRun "pear" completed successfully, should have been cancelled`)
 					}
 				}
 				return false, nil
@@ -170,9 +173,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 								if c.Reason == "TaskRunCancelled" {
 									return true, nil
 								}
-								return true, xerrors.Errorf("taskRun %s completed with the wrong reason: %s", name, c.Reason)
+								return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", name, c.Reason)
 							} else if c.IsTrue() {
-								return true, xerrors.Errorf("taskRun %s completed successfully, should have been cancelled", name)
+								return true, fmt.Errorf("taskRun %q completed successfully, should have been cancelled", name)
 							}
 						}
 						return false, nil
@@ -183,6 +186,17 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				}(taskrunItem.Name)
 			}
 			wg.Wait()
+
+			matchKinds := map[string][]string{"PipelineRun": {"pear"}, "TaskRun": trName}
+			expectedNumberOfEvents := 1 + len(trName)
+			t.Logf("Making sure %d events were created from pipelinerun with kinds %v", expectedNumberOfEvents, matchKinds)
+			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Failed")
+			if err != nil {
+				t.Fatalf("Failed to collect matching events: %q", err)
+			}
+			if len(events) != expectedNumberOfEvents {
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", expectedNumberOfEvents, len(events), events)
+			}
 		})
 	}
 }

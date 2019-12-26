@@ -16,7 +16,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-cluster-admin
+  generateName: default-cluster-admin-
 subjects:
   - kind: ServiceAccount
     name: default
@@ -29,7 +29,7 @@ roleRef:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-pipelinerun
 spec:
   type: image
   params:
@@ -39,7 +39,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-pipelinerun
 spec:
   type: git
   params:
@@ -96,7 +96,7 @@ spec:
     # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
     env:
     - name: "DOCKER_CONFIG"
-      value: "/builder/home/.docker/"
+      value: "/tekton/home/.docker/"
     command:
     - /kaniko/executor
     args:
@@ -104,7 +104,7 @@ spec:
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
 ---
-#This task deploys with kubectl apply -f <filename>
+# This task deploys with kubectl apply -f <filename>
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
@@ -246,14 +246,14 @@ metadata:
 spec:
   pipelineRef:
     name: demo-pipeline
-  serviceAccount: 'default'
+  serviceAccountName: 'default'
   resources:
   - name: source-repo
     resourceRef:
-      name: skaffold-git
+      name: skaffold-git-pipelinerun
   - name: web-image
     resourceRef:
-      name: skaffold-image-leeroy-web
+      name: skaffold-image-leeroy-web-pipelinerun
   - name: app-image
     resourceRef:
       name: skaffold-image-leeroy-app

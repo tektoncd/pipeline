@@ -56,6 +56,7 @@ func TestDAGPipelineRun(t *testing.T) {
 		),
 		tb.TaskOutputs(tb.OutputsResource("repo", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("echo-text", "busybox", tb.StepCommand("echo"), tb.StepArgs("$(inputs.params.text)")),
+		tb.Step("ln", "busybox", tb.StepCommand("ln"), tb.StepArgs("-s", "$(inputs.resources.repo.path)", "$(outputs.resources.repo.path)")),
 	))
 	if _, err := c.TaskClient.Create(echoTask); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
@@ -73,7 +74,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	// Intentionally declaring Tasks in a mixed up order to ensure the order
 	// of execution isn't at all dependent on the order they are declared in
 	pipeline := tb.Pipeline("dag-pipeline", namespace, tb.PipelineSpec(
-		tb.PipelineDeclaredResource("repo", "repo"),
+		tb.PipelineDeclaredResource("repo", "git"),
 		tb.PipelineTask("pipeline-task-3", "echo-task",
 			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-2-parallel-1", "pipeline-task-2-parallel-2")),
 			tb.PipelineTaskOutputResource("repo", "repo"),

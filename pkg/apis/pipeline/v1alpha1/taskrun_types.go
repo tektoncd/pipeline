@@ -20,15 +20,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
-
-// Check that TaskRun may be validated and defaulted.
-var _ apis.Validatable = (*TaskRun)(nil)
-var _ apis.Defaultable = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
@@ -37,9 +34,7 @@ type TaskRunSpec struct {
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
 	// +optional
-	Results *Results `json:"results,omitempty"`
-	// +optional
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
@@ -55,20 +50,12 @@ type TaskRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
+	// +optional
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
 
-	// FIXME(vdemeester) Deprecated
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// If specified, the pod's scheduling constraints
-	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -89,16 +76,12 @@ type TaskRunInputs struct {
 }
 
 // TaskResourceBinding points to the PipelineResource that
-// will be used for the Task input or output called Name. The optional Path field
-// corresponds to a path on disk at which the Resource can be found (used when providing
-// the resource via mounted volume, overriding the default logic to fetch the Resource).
+// will be used for the Task input or output called Name.
 type TaskResourceBinding struct {
-	Name string `json:"name"`
-	// no more than one of the ResourceRef and ResourceSpec may be specified.
-	// +optional
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
-	// +optional
-	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
+	PipelineResourceBinding
+	// Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
+	// The optional Path field corresponds to a path on disk at which the Resource can be found
+	// (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
 	// +optional
 	Paths []string `json:"paths,omitempty"`
 }
@@ -115,10 +98,14 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// In #107 should be updated to hold the location logs have been uploaded to
-	// +optional
-	Results *Results `json:"results,omitempty"`
+	// TaskRunStatusFields inlines the status fields.
+	TaskRunStatusFields `json:",inline"`
+}
 
+// TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
+// separately and inlined so that other types can readily consume these fields
+// via duck typing.
+type TaskRunStatusFields struct {
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
 
@@ -147,6 +134,10 @@ type TaskRunStatus struct {
 	// the digest of build container images
 	// optional
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
+
+	// The list has one entry per sidecar in the manifest. Each entry is
+	// represents the imageid of the corresponding sidecar.
+	Sidecars []SidecarState `json:"sidecars,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
@@ -177,6 +168,12 @@ type StepState struct {
 	Name          string `json:"name,omitempty"`
 	ContainerName string `json:"container,omitempty"`
 	ImageID       string `json:"imageID,omitempty"`
+}
+
+// SidecarState reports the results of sidecar in the Task.
+type SidecarState struct {
+	Name    string `json:"name,omitempty"`
+	ImageID string `json:"imageID,omitempty"`
 }
 
 // CloudEventDelivery is the target of a cloud event along with the state of
@@ -259,7 +256,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 		return ""
 	}
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return fmt.Sprintf("%s-pvc", ref.Name)
 		}
 	}
@@ -270,7 +267,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	for _, ref := range tr.GetOwnerReferences() {
-		if ref.Kind == pipelineRunControllerName {
+		if ref.Kind == pipeline.PipelineRunControllerName {
 			return true
 		}
 	}
@@ -299,5 +296,20 @@ func (tr *TaskRun) IsCancelled() bool {
 
 // GetRunKey return the taskrun key for timeout handler map
 func (tr *TaskRun) GetRunKey() string {
-	return fmt.Sprintf("%s/%s/%s", "TaskRun", tr.Namespace, tr.Name)
+	// The address of the pointer is a threadsafe unique identifier for the taskrun
+	return fmt.Sprintf("%s/%p", "TaskRun", tr)
+}
+
+// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
+// It also return the name of Pipeline and PipelineRun
+func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
+	if tr == nil || len(tr.Labels) == 0 {
+		return false, "", ""
+	}
+
+	if pl, ok := tr.Labels[pipeline.GroupName+pipeline.PipelineLabelKey]; ok {
+		return true, pl, tr.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
+	}
+
+	return false, "", ""
 }

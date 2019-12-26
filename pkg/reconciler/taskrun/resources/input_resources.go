@@ -17,15 +17,14 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -35,7 +34,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 			return &br, nil
 		}
 	}
-	return nil, xerrors.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
 }
 
 // AddInputResource reads the inputs resources and adds the corresponding container steps
@@ -46,6 +45,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
 	kubeclient kubernetes.Interface,
+	images pipeline.Images,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -60,40 +60,46 @@ func AddInputResource(
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
+	mountSecrets := false
 
 	prNameFromLabel := taskRun.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient, logger)
+	as, err := artifacts.GetArtifactStorage(images, prNameFromLabel, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	var allResourceSteps []v1alpha1.Step
-	for _, input := range taskSpec.Inputs.Resources {
+	// Iterate in reverse through the list, each element prepends but we want the first one to remain first.
+	for i := len(taskSpec.Inputs.Resources) - 1; i >= 0; i-- {
+		input := taskSpec.Inputs.Resources[i]
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get bound resource: %w", err)
+		// Continue if the declared resource is optional and not specified in TaskRun
+		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
+		if input.Optional && boundResource == nil {
+			continue
+		} else if err != nil {
+			// throw an error for required resources, if not specified in the TaskRun
+			return nil, fmt.Errorf("failed to get bound resource: %w", err)
 		}
 		resource, ok := inputResources[boundResource.Name]
 		if !ok || resource == nil {
-			return nil, xerrors.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
+			return nil, fmt.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
-		var resourceVolumes []corev1.Volume
 		var copyStepsFromPrevTasks []v1alpha1.Step
 		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
-				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+				if as.GetType() == pipeline.ArtifactStoragePVCType {
 					mountPVC = true
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {
@@ -105,48 +111,29 @@ func AddInputResource(
 		// source is copied from previous task so skip fetching download container definition
 		if len(copyStepsFromPrevTasks) > 0 {
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
-			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+			mountSecrets = true
 		} else {
-			resourceSteps, err := resource.GetDownloadSteps(dPath)
+			// Allow the resource to mutate the task.
+			modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
 			if err != nil {
-				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
+				return nil, err
 			}
-			resourceVolumes, err = resource.GetDownloadVolumeSpec(taskSpec)
-			if err != nil {
-				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
+			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+				return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
 			}
-
-			allResourceSteps = append(allResourceSteps, resourceSteps...)
-			taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 		}
 	}
-	taskSpec.Steps = append(allResourceSteps, taskSpec.Steps...)
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
+	if mountSecrets {
+		taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+	}
 	return taskSpec, nil
 }
 
-func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
-	// Check both resource ref or resource Spec are not present. Taskrun webhook should catch this in validation error.
-	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
-		return nil, xerrors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
-	}
-
-	if r.ResourceRef.Name != "" {
-		return getter(r.ResourceRef.Name)
-	}
-	if r.ResourceSpec != nil {
-		return &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: r.Name,
-			},
-			Spec: *r.ResourceSpec,
-		}, nil
-	}
-	return nil, xerrors.New("Neither ResourseRef not ResourceSpec is defined")
-}
+const workspaceDir = "/workspace"
 
 func destinationPath(name, path string) string {
 	if path == "" {

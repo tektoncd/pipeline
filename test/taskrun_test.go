@@ -93,8 +93,8 @@ func TestTaskRunFailure(t *testing.T) {
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
-				ExitCode: 0,
-				Reason:   "Completed",
+				ExitCode: 1,
+				Reason:   "Error",
 			},
 		},
 		Name:          "world",

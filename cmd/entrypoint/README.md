@@ -11,7 +11,7 @@ The following flags are available :
   finished. If the sub-process failed, it will write to
   `{{post_file}}.err` instead of `{{post_file}}`.
 - `-wait_file`: file path to watch before starting the sub-process. It
-  watches for `{{wait_file}}` and `{{wait_file}}.err` precense and
+  watches for `{{wait_file}}` and `{{wait_file}}.err` presence and
   will either execute the sub-process (in case of `{{wait_file}}`) or
   skip the execution, write to `{{post_file}}.err` and return an error
   (`exitCode` >= 0)
@@ -20,15 +20,15 @@ The following flags are available :
   content.
 
 The following example of usage for `entrypoint`, wait's for
-`/builder/downward/ready` file to exists and have some content before
+`/tekton/downward/ready` file to exists and have some content before
 executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/builder/tools/0` in casse of succes, or
-`/builder/tools/0.err` in case of failure.
+and will write to `/tekton/tools/0` in casse of succes, or
+`/tekton/tools/0.err` in case of failure.
 
 ```
 entrypoint \
-	-wait_file /builder/downward/ready \
-	-post_file /builder/tools/0" \
+	-wait_file /tekton/downward/ready \
+	-post_file /tekton/tools/0" \
 	-wait_file_content  \
 	-entrypoint /ko-app/bash -- -args mkdir -p /workspace/git-resource
 ```

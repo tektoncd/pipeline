@@ -14,10 +14,10 @@ git credential [`.git-credentials`]() file (with `-basic-git` flag).
 
 ### `-ssh-git`
 
-This uses the `ssh-privatekey` and `know_hosts` keys of the secret to generate:
+This uses the `ssh-privatekey` and `known_hosts` keys of the secret to generate:
 - a `~/.ssh/id_{secret}` private key
 - a `~/.ssh/config` file
-- a `~/.ssh/known hosts`
+- a `~/.ssh/known_hosts`
 
 With a `Secret` that looks like:
 
@@ -36,17 +36,17 @@ data:
 ```
 
 The flag `-ssh-git=ssh-key=github.com` (with the environment variable
-`HOME=/builder/home`) would result with the following files:
+`HOME=/tekton/home`) would result with the following files:
 
 - `~/.ssh/config`
 
 	```
 	HostName github.com
-	IdentityFile /builder/home/.ssh/id_foo
+	IdentityFile /tekton/home/.ssh/id_foo
 	Port 22
 	```
 - `~/.ssh/id_rsa` with the content of `ssh-privatekey` decoded
-- `~/.ssh/known_hosts` with the content of `ssh-privatekey` decoded
+- `~/.ssh/known_hosts` with the content of `known_hosts` decoded
 
 
 ### `-basic-git`
@@ -71,9 +71,9 @@ stringData:
 ```
 
 The flag `-basic-git=foo=github.com` (with the environment variable
-`HOME=/builder/home`) would result of the following files:
+`HOME=/tekton/home`) would result of the following files:
 
-- `/builder/home/.gitconfig`
+- `/tekton/home/.gitconfig`
 
   ```
   [credential]
@@ -82,7 +82,7 @@ The flag `-basic-git=foo=github.com` (with the environment variable
 	  username = <username>
   ```
 
-- `/builder/home/.git-credentials`
+- `/tekton/home/.git-credentials`
 
   ```
   https://<username>:<password>@github.com
@@ -143,7 +143,7 @@ This uses the `config.json` key from a secret of type
 `kubernetes.io/dockerconfigjson` to populate the generated docker's
 `config.json` file.
 
-### `-dokcer-cfg`
+### `-docker-cfg`
 
 This uses the `.dockercfg` key from a secret of type
 `kubernetes.io/dockercfg` to populate the generated docker's

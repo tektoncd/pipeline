@@ -17,23 +17,19 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	prSource       = "pr-source"
-	githubTokenEnv = "githubToken"
-)
-
-var (
-	// The container that we use to implement the PR source step.
-	prImage = flag.String("pr-image", "override-with-pr:latest",
-		"The container image containing our PR binary.")
+	authTokenField = "authToken"
+	// nolint: gosec
+	authTokenEnv = "AUTH_TOKEN"
 )
 
 // PullRequestResource is an endpoint from which to get data which is required
@@ -42,15 +38,19 @@ type PullRequestResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 
-	// GitHub URL pointing to the pull request.
+	// URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
 	URL string `json:"url"`
+	// SCM provider (github or gitlab today). This will be guessed from URL if not set.
+	Provider string `json:"provider"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
+
+	PRImage string `json:"-"`
 }
 
 // NewPullRequestResource create a new git resource to pass to a Task
-func NewPullRequestResource(r *PipelineResource) (*PullRequestResource, error) {
+func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestResource, error) {
 	if r.Spec.Type != PipelineResourceTypePullRequest {
 		return nil, fmt.Errorf("PipelineResource: Cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -58,11 +58,13 @@ func NewPullRequestResource(r *PipelineResource) (*PullRequestResource, error) {
 		Name:    r.Name,
 		Type:    r.Spec.Type,
 		Secrets: r.Spec.SecretParams,
+		PRImage: prImage,
 	}
 	for _, param := range r.Spec.Params {
-		switch {
-		case strings.EqualFold(param.Name, "URL"):
+		if strings.EqualFold(param.Name, "URL") {
 			prResource.URL = param.Value
+		} else if strings.EqualFold(param.Name, "Provider") {
+			prResource.Provider = param.Value
 		}
 	}
 
@@ -87,28 +89,38 @@ func (s *PullRequestResource) GetURL() string {
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
 func (s *PullRequestResource) Replacements() map[string]string {
 	return map[string]string{
-		"name": s.Name,
-		"type": string(s.Type),
-		"url":  s.URL,
+		"name":     s.Name,
+		"type":     string(s.Type),
+		"url":      s.URL,
+		"provider": s.Provider,
 	}
 }
 
-func (s *PullRequestResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	return s.getSteps("download", sourcePath)
-}
-func (s *PullRequestResource) GetUploadSteps(sourcePath string) ([]Step, error) {
-	return s.getSteps("upload", sourcePath)
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
+func (s *PullRequestResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{
+		StepsToPrepend: s.getSteps("download", sourcePath),
+	}, nil
 }
 
-func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, error) {
+// GetOutputTaskModifier returns a No-op TaskModifier.
+func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{
+		StepsToAppend: s.getSteps("upload", sourcePath),
+	}, nil
+}
+
+func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
+	if s.Provider != "" {
+		args = append(args, []string{"-provider", s.Provider}...)
+	}
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
-		switch {
-		case strings.EqualFold(sec.FieldName, githubTokenEnv):
+		if strings.EqualFold(sec.FieldName, authTokenField) {
 			ev := corev1.EnvVar{
-				Name: strings.ToUpper(sec.FieldName),
+				Name: authTokenEnv,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
@@ -124,18 +136,10 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, 
 
 	return []Step{{Container: corev1.Container{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
-		Image:      *prImage,
+		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
-		WorkingDir: WorkspaceDir,
+		WorkingDir: pipeline.WorkspaceDir,
 		Env:        evs,
-	}}}, nil
-}
-
-func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
+	}}}
 }

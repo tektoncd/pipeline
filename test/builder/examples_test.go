@@ -120,7 +120,7 @@ func ExamplePipeline() {
 
 func ExamplePipelineRun() {
 	pipelineRun := tb.PipelineRun("pear", "namespace",
-		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
+		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccountName("inexistent")),
 	)
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		// […]

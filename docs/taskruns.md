@@ -18,6 +18,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
   - [Pod Template](#pod-template)
+  - [Workspaces](#workspaces)
 - [Status](#status)
   - [Steps](#steps)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
@@ -44,9 +45,10 @@ following fields:
       the [`Task`](tasks.md) you want to run
 - Optional:
 
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
-    information.
+    information. When a `ServiceAccount` isn't specified, the `default-service-account`
+    specified in the configmap - config-defaults will be applied.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
@@ -56,7 +58,9 @@ following fields:
     to configure the default timeout.
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
-	configuration that will be used as the basis for the `Task` pod.
+	  configuration that will be used as the basis for the `Task` pod.
+  - [`workspaces`](#workspaces) - Specify the actual volumes to use for the
+    [workspaces](tasks.md#workspaces) declared by a `Task`
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -89,7 +93,7 @@ spec:
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
           - name: "DOCKER_CONFIG"
-            value: "/builder/home/.docker/"
+            value: "/tekton/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -143,6 +147,8 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
+The `paths` field can be used to [override the paths to a resource](./resources.md#overriding-where-resources-are-copied-from)
+
 ### Configuring Default Timeout
 
 You can configure the default timeout by changing the value of `default-timeout-minutes`
@@ -153,12 +159,12 @@ default, if `default-timeout-minutes` is set to 0.
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
-using the
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
+using the service account specified in the ConfigMap `configmap-defaults`
+which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
-that is in the
-[namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
@@ -183,7 +189,28 @@ allows to customize some Pod specific field per `Task` execution, aka
 - `volumes`: list of volumes that can be mounted by containers
   belonging to the pod. This lets the user of a Task define which type
   of volume to use for a Task `volumeMount`
-  
+- `runtimeClassName`: the name of a
+  [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
+  to use to run the pod.
+- `automountServiceAccountToken`: whether the token for the service account
+  being used by the pod should be automatically provided inside containers at a
+  predefined path. Defaults to `true`.
+- `dnsPolicy`: the
+  [DNS policy](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy)
+  for the pod, one of `ClusterFirst`, `Default`, or `None`. Defaults to
+  `ClusterFirst`. Note that `ClusterFirstWithHostNet` is not supported by Tekton
+  as Tekton pods cannot run with host networking.
+- `dnsConfig`:
+  [additional DNS configuration](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-config)
+  for the pod, such as nameservers and search domains.
+- `enableServiceLinks`: whether services in the same namespace as the pod will
+  be exposed as environment variables to the pod, similar to Docker service
+  links. Defaults to `true`.
+- `priorityClassName`: the name of the
+  [priority class](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/)
+  to use when running the pod. Use this, for example, to selectively enable
+  preemption on lower priority workloads.
+
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the TaskRun, using a
 PersistenceVolumeClaim. The Pod will also run as a non-root user.
@@ -192,7 +219,7 @@ PersistenceVolumeClaim. The Pod will also run as a non-root user.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: myTask
+  name: mytask
   namespace: default
 spec:
   steps:
@@ -207,11 +234,11 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: myTaskRun
+  name: mytaskRun
   namespace: default
 spec:
   taskRef:
-    name: myTask
+    name: mytask
   podTemplate:
     securityContext:
       runAsNonRoot: true
@@ -221,77 +248,45 @@ spec:
         claimName: my-volume-claim
 ```
 
-### Overriding where resources are copied from
+## Workspaces
 
-When specifying input and output `PipelineResources`, you can optionally specify
-`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
-new source paths i.e., copy the resource from specified list of paths. `TaskRun`
-expects the folder and contents to be already present in specified paths.
-`paths` feature could be used to provide extra files or altered version of
-existing resource before execution of steps.
+For a `TaskRun` to execute [a `Task` that declares `workspaces`](tasks.md#workspaces),
+at runtime you need to map the `workspaces` to actual physical volumes with
+`workspaces`. Values in `workspaces` are
+[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/), however currently we only support a subset of `VolumeSources`:
 
-Output resource includes name and reference to pipeline resource and optionally
-`paths`. `paths` will be used by `TaskRun` as the resource's new destination
-paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. `paths`
-feature could be used to inspect the results of taskrun after execution of
-steps.
+* [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+* [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
 
-`paths` feature for input and output resource is heavily used to pass same
-version of resources across tasks in context of pipelinerun.
+_If you need support for a `VolumeSource` not listed here
+[please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
+[contribute a PR](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)._
 
-In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of
-taskrun(`volume-taskrun`), `custom` volume will have entire resource
-`java-git-resource` (including the war artifact) copied to the destination path
-`/custom/workspace/`.
+
+If the declared `workspaces` are not provided at runtime, the `TaskRun` will fail
+with an error.
+
+For example to provide an existing PVC called `mypvc` for a `workspace` called
+`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which already exists
+on the PVC (there will be an error if it does not exist):
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: Task
-metadata:
-  name: volume-task
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-  steps:
-    - name: build-war
-      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-      command: jar
-      args: ["-cvf", "projectname.war", "*"]
-      volumeMounts:
-        - name: custom-volume
-          mountPath: /custom
+workspaces:
+- name: myworkspace
+  persistentVolumeClaim:
+    claimName: mypvc
+  subPath: my-subdir
 ```
 
+Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for the same `workspace`:
+
 ```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: volume-taskrun
-  namespace: default
-spec:
-  taskRef:
-    name: volume-task
-  inputs:
-    resources:
-      - name: workspace
-        resourceRef:
-          name: java-git-resource
-  outputs:
-    resources:
-      - name: workspace
-        paths:
-          - /custom/workspace/
-        resourceRef:
-          name: java-git-resource
-  volumes:
-    - name: custom-volume
-      emptyDir: {}
+workspaces:
+- name: myworkspace
+  emptyDir: {}
 ```
+
+_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
 
 ## Status
 
@@ -441,7 +436,7 @@ spec:
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
           - name: "DOCKER_CONFIG"
-            value: "/builder/home/.docker/"
+            value: "/tekton/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -584,7 +579,7 @@ kind: TaskRun
 metadata:
   name: test-task-with-serviceaccount-git-ssh
 spec:
-  serviceAccount: test-task-robot-git-ssh
+  serviceAccountName: test-task-robot-git-ssh
   inputs:
     resources:
       - name: workspace
@@ -596,7 +591,7 @@ spec:
       args: ["-c", "cat README.md"]
 ```
 
-Where `serviceAccount: test-build-robot-git-ssh` references the following
+Where `serviceAccountName: test-build-robot-git-ssh` references the following
 `ServiceAccount`:
 
 ```yaml
@@ -628,8 +623,8 @@ data:
 ```
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
 using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the
@@ -653,6 +648,21 @@ order to terminate the sidecars they will be restarted with a new
 "nop" image that quickly exits. The result will be that your TaskRun's
 Pod will include the sidecar container with a Retry Count of 1 and
 with a different container image than you might be expecting.
+
+Note: There are some known issues with the existing implementation of sidecars:
+
+- The configured "nop" image must not provide the command that the
+sidecar is expected to run. If it does provide the command then it will
+not exit. This will result in the sidecar running forever and the Task
+eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
+is the issue where this bug is being tracked.
+
+- `kubectl get pods` will show a TaskRun's Pod as "Completed" if a sidecar
+exits successfully and "Error" if the sidecar exits with an error, regardless
+of how the step containers inside that pod exited. This issue only manifests
+with the `get pods` command. The Pod description will instead show a Status of
+Failed and the individual container statuses will correctly reflect how and why
+they exited.
 
 ---
 

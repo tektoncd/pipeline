@@ -29,6 +29,13 @@ func StepCommand(args ...string) StepOp {
 	}
 }
 
+// StepSecurityContext sets the SecurityContext to the Step.
+func StepSecurityContext(context *corev1.SecurityContext) StepOp {
+	return func(step *v1alpha1.Step) {
+		step.SecurityContext = context
+	}
+}
+
 // StepArgs sets the command arguments to the Container (step in this case).
 func StepArgs(args ...string) StepOp {
 	return func(step *v1alpha1.Step) {
@@ -64,6 +71,12 @@ func StepVolumeMount(name, mountPath string, ops ...VolumeMountOp) StepOp {
 			op(mount)
 		}
 		step.VolumeMounts = append(step.VolumeMounts, *mount)
+	}
+}
+
+func StepScript(script string) StepOp {
+	return func(step *v1alpha1.Step) {
+		step.Script = script
 	}
 }
 

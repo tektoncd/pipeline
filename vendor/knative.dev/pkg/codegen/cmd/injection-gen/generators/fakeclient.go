@@ -101,8 +101,8 @@ func With(ctx context.Context, objects ...runtime.Object) (context.Context, *{{.
 func Get(ctx context.Context) *{{.fakeClient|raw}} {
 	untyped := ctx.Value({{.clientKey|raw}}{})
 	if untyped == nil {
-		{{.loggingFromContext|raw}}(ctx).Fatalf(
-			"Unable to fetch %T from context.", (*{{.fakeClient|raw}})(nil))
+		{{.loggingFromContext|raw}}(ctx).Panic(
+			"Unable to fetch {{.fakeClient}} from context.")
 	}
 	return untyped.(*fake.Clientset)
 }

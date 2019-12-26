@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: dind-sidecar-
+spec:
+  taskSpec:
+    steps:
+      - image: docker
+        name: client
+        workingDir: /workspace
+        script: |
+            #!/usr/bin/env sh
+            cat > Dockerfile << EOF
+            FROM ubuntu
+            RUN apt-get update
+            ENTRYPOINT ["echo", "hello"]
+            EOF
+            docker build -t hello . && docker run hello
+            docker images
+        volumeMounts:
+          - mountPath: /var/run/
+            name: dind-socket
+    sidecars:
+      - image: docker:18.05-dind
+        name: server
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /var/lib/docker
+            name: dind-storage
+          - mountPath: /var/run/
+            name: dind-socket
+
+    volumes:
+      - name: dind-storage
+        emptyDir: {}
+      - name: dind-socket
+        emptyDir: {}

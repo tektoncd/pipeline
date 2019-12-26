@@ -1,12 +1,12 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-output-image
 spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
+    value: gcr.io/christiewilson-catfactory/leeroy-web  # Replace this URL with $KO_DOCKER_REPO
 ---
 # This demo modifies the cluster (deploys to it) you must use a service
 # account with permission to admin the cluster (or make your default user an admin
@@ -14,7 +14,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-cluster-admin
+  generateName: default-cluster-admin-
 subjects:
   - kind: ServiceAccount
     name: default
@@ -27,7 +27,7 @@ roleRef:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-output-image
 spec:
   type: git
   params:
@@ -36,7 +36,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-# This task is currently hardcoding a index.json file instead of 
+# This task is currently hardcoding a index.json file instead of
 # building an image since kaniko and other easy to use tools don't
 # support exporting this file yet
 apiVersion: tekton.dev/v1alpha1
@@ -52,15 +52,11 @@ spec:
     resources:
     - name: builtImage
       type: image
-      outputImageDir: /workspace/sourcerepo
+      targetPath: /workspace/sourcerepo
   steps:
   - name: build-and-push
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
+    script: |
       set -e
       cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
       {
@@ -73,16 +69,9 @@ spec:
           }
         ]
       }
-      EOF
   - name: echo
     image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      cat $(inputs.resources.sourcerepo.path)/index.json
+    script: cat $(inputs.resources.sourcerepo.path)/index.json
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -95,9 +84,9 @@ spec:
     resources:
     - name: sourcerepo
       resourceRef:
-        name: skaffold-git
+        name: skaffold-git-output-image
   outputs:
     resources:
     - name: builtImage
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: skaffold-image-leeroy-web-output-image

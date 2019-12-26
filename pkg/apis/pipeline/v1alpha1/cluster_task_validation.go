@@ -19,11 +19,14 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*ClusterTask)(nil)
+
 func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return t.Spec.Validate(ctx)

@@ -18,14 +18,16 @@ entire Kubernetes cluster.
 - [ClusterTasks](#clustertask)
 - [Syntax](#syntax)
   - [Steps](#steps)
+    - [Step script](#step-script)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
   - [Volumes](#volumes)
-  - [Container Template **deprecated**](#step-template)
+  - [Workspaces](#workspaces)
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
+- [Debugging Tips](#debugging)
 
 ## ClusterTask
 
@@ -75,6 +77,8 @@ following fields:
     created by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
+  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
+    be mounted and available
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
   - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
@@ -129,8 +133,7 @@ The `steps` field is required. You define one or more `steps` fields to define
 the body of a `Task`.
 
 If multiple `steps` are defined, they will be executed in the same order as they
-are defined, if the `Task` is invoked by a [TaskRun](taskruns.md).
-
+are defined, if the `Task` is invoked by a [`TaskRun`](taskruns.md).
 Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
 or container images that you define:
@@ -145,6 +148,75 @@ or container images that you define:
   will only request the resources necessary to execute any single container
   image in the Task, rather than requesting the sum of all of the container
   image's resource requests.
+
+#### Step Script
+
+To simplify executing scripts inside a container, a step can specify a `script`.
+If this field is present, the step cannot specify `command`.
+
+When specified, a `script` gets invoked as if it were the contents of a file in
+the container. Any `args` are passed to the script file.
+
+Scripts that do not start with a [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))
+line will use the following default preamble:
+
+```bash
+#!/bin/sh
+set -xe
+```
+Users can override this by starting their script with a shebang to declare what
+tool should be used to interpret the script. That tool must then also be
+available within the step's container.
+
+This allows you to execute a Bash script, if the image includes `bash`:
+
+```yaml
+steps:
+- image: ubuntu  # contains bash
+  script: |
+    #!/usr/bin/env bash
+    echo "Hello from Bash!"
+```
+
+...or to execute a Python script, if the image includes `python`:
+
+```yaml
+steps:
+- image: python  # contains python
+  script: |
+    #!/usr/bin/env python3
+    print("Hello from Python!")
+```
+
+...or to execute a Node script, if the image includes `node`:
+
+```yaml
+steps:
+- image: node  # contains node
+  script: |
+    #!/usr/bin/env node
+    console.log("Hello from Node!")
+```
+
+This also simplifies executing script files in the workspace:
+
+```yaml
+steps:
+- image: ubuntu
+  script: |
+    #!/usr/bin/env bash
+    /workspace/my-script.sh  # provided by an input resource
+```
+
+...or in the container image:
+
+```yaml
+steps:
+- image: my-image  # contains /bin/my-binary
+  script: |
+    #!/usr/bin/env bash
+    /bin/my-binary
+```
 
 ### Inputs
 
@@ -210,7 +282,7 @@ spec:
   inputs:
     params:
       - name: flags
-        value: 
+        value:
           - "--set"
           - "arg1=foo"
           - "--randomflag"
@@ -222,14 +294,8 @@ spec:
 #### Input resources
 
 Use input [`PipelineResources`](resources.md) field to provide your `Task` with
-data or context that is needed by your `Task`.
+data or context that is needed by your `Task`. See the [using resources docs](./resources.md#using-resources).
 
-Input resources, like source code (git) or artifacts, are dumped at path
-`/workspace/task_resource_name` within a mounted
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
-to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
-at can be overridden with the `targetPath` value. Steps can use the `path`
-[variable substitution](#variable-substitution) key to refer to the local path to the mounted resource.
 
 ### Outputs
 
@@ -240,8 +306,8 @@ next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
 
 ```yaml
-resources:
-  outputs:
+outputs:
+  resources:
     name: storage-gcs
     type: gcs
 steps:
@@ -268,11 +334,12 @@ directory. After execution of the Task steps, (new) tar file in directory
 `tar-artifact` resource definition.
 
 ```yaml
-resources:
-  inputs:
+inputs:
+  resources:
     name: tar-artifact
     targetPath: customworkspace
-  outputs:
+outputs:
+  resources:
     name: tar-artifact
 steps:
  - name: untar
@@ -289,38 +356,6 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
-### Controlling where resources are mounted
-
-Tasks can opitionally provide `targetPath` to initialize resource in specific
-directory. If `targetPath` is set then resource will be initialized under
-`/workspace/targetPath`. If `targetPath` is not specified then resource will be
-initialized under `/workspace`. Following example demonstrates how git input
-repository could be initialized in `$GOPATH` to run tests:
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: Task
-metadata:
-  name: task-with-input
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-        targetPath: go/src/github.com/tektoncd/pipeline
-  steps:
-    - name: unit-tests
-      image: golang
-      command: ["go"]
-      args:
-        - "test"
-        - "./..."
-      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
-      env:
-        - name: GOPATH
-          value: /workspace/go
-```
 
 ### Volumes
 
@@ -342,6 +377,48 @@ For example, use volumes to accomplish one of the following common tasks:
   **Note:** Building a container image using `docker build` on-cluster is _very
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
   This is used only for the purposes of demonstration.
+
+### Workspaces
+
+`workspaces` are a way of declaring volumes you expect to be made available to your
+executing `Task` and the path to make them available at. They are similar to
+[`volumes`](#volumes) but allow you to enforce at runtime that the volumes have
+been attached and [allow you to specify subpaths](taskruns.md#workspaces) in the volumes
+to attach.
+
+The volume will be made available at `/workspace/myworkspace`, or you can override
+this with `mountPath`. The value at `mountPath` can be anywhere on your pod's filesystem.
+The path will be available via [variable substitution](#variable-substitution) with
+`$(workspaces.myworkspace.path)`.
+
+A task can declare that it will not write to the volume by adding `readOnly: true`
+to the workspace declaration. This will in turn mark the volumeMount as `readOnly`
+on the Task's underlying pod.
+
+The actual volumes must be provided at runtime
+[in the `TaskRun`](taskruns.md#workspaces).
+In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))
+it [will be possible to specify these in the `PipelineRun`](pipelineruns.md#workspaces)
+as well.
+
+For example:
+
+```yaml
+spec:
+  steps:
+  - name: write-message
+    image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      set -xe
+      echo hello! > $(workspaces.messages.path)/message
+  workspaces:
+  - name: messages
+    description: The folder where we write the message to
+    mountPath: /custom/path/relative/to/root
+```
+
+_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
 
 ### Step Template
 
@@ -390,11 +467,8 @@ use it to build a docker image:
 steps:
   - image: docker
     name: client
-    workingDir: /workspace
-    command:
-      - /bin/sh
-      - -c
-      - |
+    script: |
+        #!/usr/bin/env bash
         cat > Dockerfile << EOF
         FROM ubuntu
         RUN apt-get update
@@ -422,43 +496,39 @@ volumes:
     emptyDir: {}
 ```
 
+Note: There is a known bug with Tekton's existing sidecar implementation.
+Tekton uses a specific image, called "nop", to stop sidecars. The "nop" image
+is configurable using a flag of the Tekton controller. If the configured "nop"
+image contains the command that the sidecar was running before the sidecar
+was stopped then the sidecar will actually keep running, causing the TaskRun's
+Pod to remain running, and eventually causing the TaskRun to timeout rather
+then exit successfully. Issue https://github.com/tektoncd/pipeline/issues/1347
+has been created to track this bug.
 
 ### Variable Substitution
 
-`Tasks` support string replacement using values from all [`inputs`](#inputs) and
-[`outputs`](#outputs).
+`Tasks` support string replacement using values from:
 
-[`PipelineResources`](resources.md) can be referenced in a `Task` spec like
-this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
-`params`:
+* [Inputs and Outputs](#input-and-output-substitution)
+  * [Array params](#variable-substitution-with-parameters-of-type-array)
+* [`workspaces`](#variable-substitution-with-workspaces)
+* [`volumes`](#variable-substitution-with-volumes)
 
-```shell
-$(inputs.resources.<name>.<key>)
-```
+#### Input and Output substitution
 
-Or for an output resource:
+[`inputs`](#inputs) and [`outputs`](#outputs) attributes can be used in replacements,
+including [`params`](#params) and [`resources`](./resources.md#variable-substitution).
 
-```shell
-$(outputs.resources.<name>.<key>)
-```
-
-The local path to a resource on the mounted volume can be accessed using the
-`path` key:
-
-```shell
-$(inputs.resouces.<name>.path)
-```
-
-To access an input parameter, replace `resources` with `params`.
+Input parameters can be referenced in the `Task` spec using the variable substitution syntax below,
+where `<name>` is the name of the parameter:
 
 ```shell
 $(inputs.params.<name>)
 ```
 
-_The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
-until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
+Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
 
-#### Variable Substitution with Parameters of Type `Array`
+##### Variable Substitution with Parameters of Type `Array`
 
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
 
@@ -467,19 +537,19 @@ So, with the following parameter:
 inputs:
     params:
       - name: array-param
-        value: 
+        value:
           - "some"
           - "array"
           - "elements"
 ```
-then `command: ["first", "$(inputs.params.array-param)", "last"]` will become 
+then `command: ["first", "$(inputs.params.array-param)", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
 
 
-Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array. 
-Any other attempt to reference an array is invalid and will throw an error. 
+Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
+Any other attempt to reference an array is invalid and will throw an error.
 
-For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because 
+For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because
 the string isn't isolated:
 ```
  - name: build-step
@@ -499,6 +569,21 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
  - name: build-step
       image: gcr.io/cloud-builders/some-image
       args: ["build", "$(inputs.params.build-args)", "additonalArg"]
+```
+
+#### Variable Substitution with Workspaces
+
+Paths to a `Task's` declared [workspaces](#workspaces) can be substituted with:
+
+```
+$(workspaces.myworkspace.path)
+```
+
+Since the name of the `Volume` is not known until runtime and is randomized, you can also
+substitute the volume name with:
+
+```
+$(workspaces.myworkspace.volume)
 ```
 
 #### Variable Substitution within Volumes
@@ -594,14 +679,17 @@ Mounting multiple volumes:
 spec:
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "curl https://foo.com > /var/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        curl https://foo.com > /var/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /var/my-volume
 
     - image: ubuntu
-      args: ["cat", "/etc/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        cat /etc/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /etc/my-volume
@@ -625,8 +713,9 @@ spec:
         description: Name of volume
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "cat /var/configmap/test"]
+      script: |
+        #!/usr/bin/env bash
+        cat /var/configmap/test
       volumeMounts:
         - name: "$(inputs.params.volumeName)"
           mountPath: /var/configmap
@@ -661,7 +750,7 @@ spec:
   steps:
   - name: release
     image: goreleaser/goreleaser
-    workingdir: /workspace/src/$(inputs.params.package)
+    workingDir: /workspace/src/$(inputs.params.package)
     command:
     - goreleaser
     args:
@@ -680,3 +769,57 @@ Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+## Debugging
+
+In software, we do things not because they are easy, but because we think they will be.
+Lots of things can go wrong when writing a Task.
+This section contains some tips on how to debug one.
+
+### Inspecting the Filesystem
+
+One common problem when writing Tasks is not understanding where files are on disk.
+For the most part, these all live somewhere under `/workspace`, but the exact layout can
+be tricky.
+To see where things are before your task runs, you can add a step like this:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace
+```
+
+This step will output the name of every file under /workspace to your build logs.
+
+To see the contents of every file, you can use a similar step:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace | xargs cat
+```
+
+These steps are useful both before and after your Task steps!
+
+### Inspecting the pod
+
+One `task` will map to one `Pod`, to check arbitrary thing in `Pod`, the best way is to login the `pod`, add a step at the position you want to `pause` the task, then checking.
+
+```yaml
+- name: pause
+  image: docker
+  args: ["sleep", "6000"]
+
+```
