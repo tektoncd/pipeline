@@ -55,7 +55,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	for _, tdd := range tds {
 		t.Run(tdd.name, func(t *testing.T) {
-
+			tdd := tdd
 			var pipelineTask = tb.PipelineTask("foo", "banana")
 			if tdd.retries {
 				pipelineTask = tb.PipelineTask("foo", "banana", tb.Retries(1))
