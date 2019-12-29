@@ -289,9 +289,12 @@ Params that can be added are the following:
 1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
     commit(s) will be fetched. If set to `'0'`, all commits will be fetched.
     _If not specified, the default depth is 1._
+1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set to `true` or `false`
+    in the global git config. _Defaults to `true` if omitted._
 
 [git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
 [git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
+[git-http.sslVerify]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify
 
 When used as an input, the Git resource includes the exact commit fetched in the
 `resourceResults` section of the `taskRun`'s status object:

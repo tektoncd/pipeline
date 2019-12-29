@@ -147,6 +147,24 @@ func setUp() {
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      "the-git-with-sslVerify-false",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Url",
+				Value: "https://github.com/grafeas/kritis",
+			}, {
+				Name:  "Revision",
+				Value: "branch",
+			}, {
+				Name:  "SSLVerify",
+				Value: "false",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cluster2",
 			Namespace: "marshmallow",
 		},
@@ -555,6 +573,42 @@ func TestAddResourceToTask(t *testing.T) {
 			}},
 		},
 	}, {
+		desc: "simple with sslVerify false",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "simpleTask",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "the-git-with-sslVerify-false",
+							},
+							Name: "gitspace",
+						},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:       "git-source-the-git-with-sslVerify-false-9l9zj",
+				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace", "-sslVerify=false"},
+				WorkingDir: "/workspace",
+				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-sslVerify-false"}},
+			}}},
+		},
+	}, {
 		desc: "storage resource as input with target path",
 		task: taskWithTargetPath,
 		taskRun: &v1alpha1.TaskRun{
@@ -582,12 +636,19 @@ func TestAddResourceToTask(t *testing.T) {
 				Name:    "create-dir-storage1-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {Container: corev1.Container{
-				Name:    "fetch-storage1-mz4c7",
-				Image:   "google/cloud-sdk",
-				Command: []string{"gsutil"},
-				Args:    []string{"cp", "gs://fake-bucket/rules.zip", "/workspace/gcs-dir"},
-			}}},
+			}}, {
+				Script: `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
+`,
+				Container: corev1.Container{
+					Name:  "fetch-storage1-mz4c7",
+					Image: "google/cloud-sdk",
+				},
+			}},
 		},
 	}, {
 		desc: "storage resource as input from previous task",
@@ -942,12 +1003,19 @@ func TestStorageInputResource(t *testing.T) {
 				Name:    "create-dir-gcs-input-resource-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}}, {Container: corev1.Container{
-				Name:    "fetch-gcs-input-resource-mz4c7",
-				Image:   "google/cloud-sdk",
-				Command: []string{"gsutil"},
-				Args:    []string{"cp", "gs://fake-bucket/rules.zip", "/workspace/gcs-input-resource"},
-			}}},
+			}}, {
+				Script: `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
+`,
+				Container: corev1.Container{
+					Name:  "fetch-gcs-input-resource-mz4c7",
+					Image: "google/cloud-sdk",
+				},
+			}},
 		},
 	}, {
 		desc: "no inputs",
@@ -1001,18 +1069,25 @@ func TestStorageInputResource(t *testing.T) {
 				Name:    "create-dir-storage-gcs-keys-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}}, {Container: corev1.Container{
-				Name:    "fetch-storage-gcs-keys-mz4c7",
-				Image:   "google/cloud-sdk",
-				Command: []string{"gsutil"},
-				Args:    []string{"rsync", "-d", "-r", "gs://fake-bucket/rules.zip", "/workspace/gcs-input-resource"},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
+			}}, {
+				Script: `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
+`,
+				Container: corev1.Container{
+					Name:  "fetch-storage-gcs-keys-mz4c7",
+					Image: "google/cloud-sdk",
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
+					},
+					Env: []corev1.EnvVar{
+						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
+					},
 				},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-				},
-			}}},
+			}},
 			Volumes: []corev1.Volume{{
 				Name:         "volume-storage-gcs-keys-secret-name",
 				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},

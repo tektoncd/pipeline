@@ -255,9 +255,10 @@ github.com/shurcooL/graphql/internal/jsonutil
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/plumbing v0.0.0-20191223144933-a403a048e00c => github.com/wlynch/plumbing v0.0.0-20191206183032-e43af7f0d688
+# github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
 github.com/tektoncd/plumbing
-# go.opencensus.io v0.22.2
+github.com/tektoncd/plumbing/scripts
+# go.opencensus.io v0.22.1
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -548,7 +549,7 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible => k8s.io/client-go v0.0.0-20191004102537-eb5b9a8cfde7
+# k8s.io/client-go v0.0.0 => k8s.io/client-go v0.0.0-20191004102537-eb5b9a8cfde7
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/dynamic

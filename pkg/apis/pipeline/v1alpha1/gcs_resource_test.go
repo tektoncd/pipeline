@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_Invalid_NewStorageResource(t *testing.T) {
+func TestInvalidNewStorageResource(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		pipelineResource *v1alpha1.PipelineResource
@@ -76,7 +76,7 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 	}
 }
 
-func Test_Valid_NewGCSResource(t *testing.T) {
+func TestValidNewGCSResource(t *testing.T) {
 	pr := tb.PipelineResource("gcs-resource", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
@@ -107,7 +107,7 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 	}
 }
 
-func Test_GCSGetReplacements(t *testing.T) {
+func TestGCSGetReplacements(t *testing.T) {
 	gcsResource := &v1alpha1.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
@@ -123,7 +123,7 @@ func Test_GCSGetReplacements(t *testing.T) {
 	}
 }
 
-func Test_GetParams(t *testing.T) {
+func TestGetParams(t *testing.T) {
 	pr := tb.PipelineResource("gcs-resource", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "gcs://some-bucket.zip"),
@@ -144,7 +144,7 @@ func Test_GetParams(t *testing.T) {
 	}
 }
 
-func Test_GetInputSteps(t *testing.T) {
+func TestGetInputSteps(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range []struct {
@@ -170,20 +170,27 @@ func Test_GetInputSteps(t *testing.T) {
 			Name:    "create-dir-gcs-valid-9l9zj",
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace"},
-		}}, {Container: corev1.Container{
-			Name:    "fetch-gcs-valid-mz4c7",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
-			Args:    []string{"rsync", "-d", "-r", "gs://some-bucket", "/workspace"},
-			Env: []corev1.EnvVar{{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: "/var/secret/secretName/key.json",
-			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
-		}}},
+		}}, {
+			Script: `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+gsutil rsync -d -r gs://some-bucket /workspace
+`,
+			Container: corev1.Container{
+				Name:  "fetch-gcs-valid-mz4c7",
+				Image: "google/cloud-sdk",
+				Env: []corev1.EnvVar{{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secret/secretName/key.json",
+				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-gcs-valid-secretName",
+					MountPath: "/var/secret/secretName",
+				}},
+			},
+		}},
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &v1alpha1.GCSResource{
@@ -205,20 +212,27 @@ func Test_GetInputSteps(t *testing.T) {
 			Name:    "create-dir-gcs-valid-mssqb",
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace"},
-		}}, {Container: corev1.Container{
-			Name:    "fetch-gcs-valid-78c5n",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
-			Args:    []string{"cp", "gs://some-bucket", "/workspace"},
-			Env: []corev1.EnvVar{{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: "/var/secret/secretName/key.json",
-			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
-		}}},
+		}}, {
+			Script: `#!/usr/bin/env bash
+if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+fi
+gsutil cp gs://some-bucket /workspace
+`,
+			Container: corev1.Container{
+				Name:  "fetch-gcs-valid-78c5n",
+				Image: "google/cloud-sdk",
+				Env: []corev1.EnvVar{{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secret/secretName/key.json",
+				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-gcs-valid-secretName",
+					MountPath: "/var/secret/secretName",
+				}},
+			},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := v1alpha1.TaskSpec{}
@@ -226,14 +240,14 @@ func Test_GetInputSteps(t *testing.T) {
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
-			if d := cmp.Diff(gotSpec.GetStepsToPrepend(), tc.wantSteps); d != "" {
-				t.Errorf("Error mismatch between download containers spec: %s", d)
+			if d := cmp.Diff(tc.wantSteps, gotSpec.GetStepsToPrepend()); d != "" {
+				t.Errorf("Diff(-want, +got): %s", d)
 			}
 		})
 	}
 }
 
-func Test_GetOutputTaskModifier(t *testing.T) {
+func TestGetOutputTaskModifier(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range []struct {

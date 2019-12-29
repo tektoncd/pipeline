@@ -176,6 +176,16 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		mergedPodContainers = append(mergedPodContainers, sc)
 	}
 
+	var dnsPolicy corev1.DNSPolicy
+	if taskRun.Spec.PodTemplate.DNSPolicy != nil {
+		dnsPolicy = *taskRun.Spec.PodTemplate.DNSPolicy
+	}
+
+	var priorityClassName string
+	if taskRun.Spec.PodTemplate.PriorityClassName != nil {
+		priorityClassName = *taskRun.Spec.PodTemplate.PriorityClassName
+	}
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -194,16 +204,21 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     initContainers,
-			Containers:         mergedPodContainers,
-			ServiceAccountName: taskRun.Spec.ServiceAccountName,
-			Volumes:            volumes,
-			NodeSelector:       taskRun.Spec.PodTemplate.NodeSelector,
-			Tolerations:        taskRun.Spec.PodTemplate.Tolerations,
-			Affinity:           taskRun.Spec.PodTemplate.Affinity,
-			SecurityContext:    taskRun.Spec.PodTemplate.SecurityContext,
-			RuntimeClassName:   taskRun.Spec.PodTemplate.RuntimeClassName,
+			RestartPolicy:                corev1.RestartPolicyNever,
+			InitContainers:               initContainers,
+			Containers:                   mergedPodContainers,
+			ServiceAccountName:           taskRun.Spec.ServiceAccountName,
+			Volumes:                      volumes,
+			NodeSelector:                 taskRun.Spec.PodTemplate.NodeSelector,
+			Tolerations:                  taskRun.Spec.PodTemplate.Tolerations,
+			Affinity:                     taskRun.Spec.PodTemplate.Affinity,
+			SecurityContext:              taskRun.Spec.PodTemplate.SecurityContext,
+			RuntimeClassName:             taskRun.Spec.PodTemplate.RuntimeClassName,
+			AutomountServiceAccountToken: taskRun.Spec.PodTemplate.AutomountServiceAccountToken,
+			DNSPolicy:                    dnsPolicy,
+			DNSConfig:                    taskRun.Spec.PodTemplate.DNSConfig,
+			EnableServiceLinks:           taskRun.Spec.PodTemplate.EnableServiceLinks,
+			PriorityClassName:            priorityClassName,
 		},
 	}, nil
 }

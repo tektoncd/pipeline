@@ -86,6 +86,7 @@ func Apply(ts v1alpha1.TaskSpec, wb []v1alpha1.WorkspaceBinding) (*v1alpha1.Task
 			Name:      vv.Name,
 			MountPath: w.GetMountPath(),
 			SubPath:   wb[i].SubPath,
+			ReadOnly:  w.ReadOnly,
 		})
 
 		// Only add this volume if it hasn't already been added

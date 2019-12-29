@@ -391,6 +391,10 @@ this with `mountPath`. The value at `mountPath` can be anywhere on your pod's fi
 The path will be available via [variable substitution](#variable-substitution) with
 `$(workspaces.myworkspace.path)`.
 
+A task can declare that it will not write to the volume by adding `readOnly: true`
+to the workspace declaration. This will in turn mark the volumeMount as `readOnly`
+on the Task's underlying pod.
+
 The actual volumes must be provided at runtime
 [in the `TaskRun`](taskruns.md#workspaces).
 In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))

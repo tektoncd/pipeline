@@ -34,6 +34,7 @@ func init() {
 	flag.StringVar(&fetchSpec.URL, "url", "", "Git origin URL to fetch")
 	flag.StringVar(&fetchSpec.Revision, "revision", "", "The Git revision to make the repository HEAD")
 	flag.StringVar(&fetchSpec.Path, "path", "", "Path of directory under which Git repository will be copied")
+	flag.BoolVar(&fetchSpec.SSLVerify, "sslVerify", true, "Enable/Disable SSL verification in the git config")
 	flag.BoolVar(&submodules, "submodules", true, "Initialize and fetch Git submodules")
 	flag.UintVar(&fetchSpec.Depth, "depth", 1, "Perform a shallow clone to this depth")
 	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
@@ -52,7 +53,7 @@ func main() {
 	}
 	if submodules {
 		if err := git.SubmoduleFetch(logger, fetchSpec.Path); err != nil {
-			logger.Fatalf("Error initalizing or fetching the git submodules")
+			logger.Fatalf("Error initializing or fetching the git submodules")
 		}
 	}
 

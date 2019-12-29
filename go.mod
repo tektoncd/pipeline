@@ -42,13 +42,14 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tektoncd/plumbing v0.0.0-20191223144933-a403a048e00c
-	go.opencensus.io v0.22.2
+	github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
+	go.opencensus.io v0.22.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.9.2-0.20180814183419-67bc79d13d15
 	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f // indirect
 	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20191119060738-e882bf8e40c2 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20191118222007-07fc4c7f2b98 // indirect
@@ -59,7 +60,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
-	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
+	k8s.io/client-go v0.0.0
 	k8s.io/code-generator v0.0.0
 	k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c // indirect
 	k8s.io/klog v1.0.0 // indirect
@@ -98,6 +99,3 @@ replace (
 	k8s.io/kubernetes => k8s.io/kubernetes v1.13.12
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191004105814-56635b1b5a0c
 )
-
-// Local overrides for testing. Remove before submitting.
-replace github.com/tektoncd/plumbing => github.com/wlynch/plumbing v0.0.0-20191206183032-e43af7f0d688

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -45,10 +46,11 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 
 // FetchSpec describes how to initialize and fetch from a Git repository.
 type FetchSpec struct {
-	URL      string
-	Revision string
-	Path     string
-	Depth    uint
+	URL       string
+	Revision  string
+	Path      string
+	Depth     uint
+	SSLVerify bool
 }
 
 // Fetch fetches the specified git repository at the revision into path.
@@ -72,6 +74,10 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	}
 	trimmedURL := strings.TrimSpace(spec.URL)
 	if _, err := run(logger, "", "remote", "add", "origin", trimmedURL); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "config", "--global", "http.sslVerify", strconv.FormatBool(spec.SSLVerify)); err != nil {
+		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
 		return err
 	}
 

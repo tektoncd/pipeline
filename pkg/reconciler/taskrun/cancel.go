@@ -26,7 +26,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// cancelTaskRun marks the TaskRun as cancelled and delete pods linked to it.
+// cancelTaskRun marks the TaskRun as cancelled and deletes pods linked to it.
 func cancelTaskRun(tr *v1alpha1.TaskRun, clientset kubernetes.Interface) error {
 	tr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
