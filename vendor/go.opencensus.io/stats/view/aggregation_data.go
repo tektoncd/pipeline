@@ -128,12 +128,12 @@ type DistributionData struct {
 	bounds             []float64 // histogram distribution of the values
 }
 
-func newDistributionData(agg *Aggregation) *DistributionData {
-	bucketCount := len(agg.Buckets) + 1
+func newDistributionData(bounds []float64) *DistributionData {
+	bucketCount := len(bounds) + 1
 	return &DistributionData{
 		CountPerBucket:     make([]int64, bucketCount),
 		ExemplarsPerBucket: make([]*metricdata.Exemplar, bucketCount),
-		bounds:             agg.Buckets,
+		bounds:             bounds,
 		Min:                math.MaxFloat64,
 		Max:                math.SmallestNonzeroFloat64,
 	}

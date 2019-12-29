@@ -22,5 +22,4 @@ const (
 	UnitDimensionless = "1"
 	UnitBytes         = "By"
 	UnitMilliseconds  = "ms"
-	UnitSeconds       = "s"
 )
