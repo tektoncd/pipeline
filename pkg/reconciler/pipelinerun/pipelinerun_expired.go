@@ -5,7 +5,7 @@ import (
 	"time"
 
 	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -126,7 +126,7 @@ func (tc *Reconciler) prTimeLeft(pr *apispipeline.PipelineRun, since *time.Time)
 // PipelineRunFinishTime takes an already succeeded PipelineRun and returns the time it finishes.
 func pipelineRunFinishTime(pr *apispipeline.PipelineRun) (apis.VolatileTime, error) {
 	for _, con := range pr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status != v1.ConditionUnknown {
+		if con.Type == apis.ConditionSucceeded && con.Status != corev1.ConditionUnknown {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
 				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the PipelineRun %s/%s succeeded", pr.Namespace, pr.Name)

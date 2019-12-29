@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -68,7 +69,7 @@ func workingDirInit(shellImage string, stepContainers []corev1.Container) *corev
 		Image:        shellImage,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", "mkdir -p " + strings.Join(relativeDirs, " ")},
-		WorkingDir:   workspaceDir,
+		WorkingDir:   pipeline.WorkspaceDir,
 		VolumeMounts: implicitVolumeMounts,
 	}
 }

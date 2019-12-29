@@ -111,13 +111,6 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		})
 
 		c.clock = clock.RealClock{}
-		// FIXME(vdemeester) it was never set
-		//entrypoint cache will be initialized by controller if not provided
-		c.Logger.Info("Setting up Entrypoint cache")
-		c.cache = nil
-		if c.cache == nil {
-			c.cache, _ = entrypoint.NewCache()
-		}
 
 		return impl
 	}

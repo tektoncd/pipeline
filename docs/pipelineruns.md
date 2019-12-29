@@ -16,6 +16,7 @@ Creation of a `PipelineRun` will trigger the creation of
   - [Service account](#service-account)
   - [Service accounts](#service-accounts)
   - [Pod Template](#pod-template)
+  - [Workspaces](#workspaces)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
@@ -27,7 +28,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`
   - [`kind`][kubernetes-overview] - Specify the `PipelineRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineRun` resource object, for example a `name`.
@@ -264,6 +265,12 @@ spec:
       persistentVolumeClaim:
         claimName: my-volume-claim
 ```
+
+## Workspaces
+
+It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
+or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used with them until
+[#1438](https://github.com/tektoncd/pipeline/issues/1438) is completed.
 
 ## Cancelling a PipelineRun
 

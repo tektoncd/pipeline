@@ -17,7 +17,7 @@ spec:
       image: ubuntu
       script: |
         #!/usr/bin/env bash
-        cat /short/and/stout/file
+        cat /short/and/stout/file | grep stuff
       volumeMounts:
       - name: custom
         mountPath: /short/and/stout

@@ -81,6 +81,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		Outputs      *v1alpha1.Outputs
 		Steps        []v1alpha1.Step
 		StepTemplate *corev1.Container
+		Workspaces   []v1alpha1.WorkspaceDeclaration
 	}
 	tests := []struct {
 		name   string
@@ -276,6 +277,21 @@ func TestTaskSpecValidate(t *testing.T) {
 				}},
 			}}},
 		},
+	}, {
+		name: "valid workspace",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+			}},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:        "foo-workspace",
+				Description: "my great workspace",
+				MountPath:   "some/path",
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -284,6 +300,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Outputs:      tt.fields.Outputs,
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
+				Workspaces:   tt.fields.Workspaces,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
@@ -296,10 +313,12 @@ func TestTaskSpecValidate(t *testing.T) {
 
 func TestTaskSpecValidateError(t *testing.T) {
 	type fields struct {
-		Inputs  *v1alpha1.Inputs
-		Outputs *v1alpha1.Outputs
-		Steps   []v1alpha1.Step
-		Volumes []corev1.Volume
+		Inputs       *v1alpha1.Inputs
+		Outputs      *v1alpha1.Outputs
+		Steps        []v1alpha1.Step
+		Volumes      []corev1.Volume
+		StepTemplate *corev1.Container
+		Workspaces   []v1alpha1.WorkspaceDeclaration
 	}
 	tests := []struct {
 		name          string
@@ -735,14 +754,126 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `step 0 volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
 			Paths:   []string{"steps.volumeMounts.name"},
 		},
+	}, {
+		name: "declared workspaces names are not unique",
+		fields: fields{
+			Steps: validSteps,
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name: "same-workspace",
+			}, {
+				Name: "same-workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace name \"same-workspace\" must be unique",
+			Paths:   []string{"workspaces.name"},
+		},
+	}, {
+		name: "declared workspaces clash with each other",
+		fields: fields{
+			Steps: validSteps,
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}, {
+				Name:      "another-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces.mountpath"},
+		},
+	}, {
+		name: "workspace mount path already in volumeMounts",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image:   "myimage",
+					Command: []string{"command"},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "my-mount",
+						MountPath: "/foo",
+					}},
+				},
+			}},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces.mountpath"},
+		},
+	}, {
+		name: "workspace default mount path already in volumeMounts",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image:   "myimage",
+					Command: []string{"command"},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "my-mount",
+						MountPath: "/workspace/some-workspace/",
+					}},
+				},
+			}},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name: "some-workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
+			Paths:   []string{"workspaces.mountpath"},
+		},
+	}, {
+		name: "workspace mount path already in stepTemplate",
+		fields: fields{
+			StepTemplate: &corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/foo",
+				}},
+			},
+			Steps: validSteps,
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces.mountpath"},
+		},
+	}, {
+		name: "workspace default mount path already in stepTemplate",
+		fields: fields{
+			StepTemplate: &corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/workspace/some-workspace",
+				}},
+			},
+			Steps: validSteps,
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name: "some-workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
+			Paths:   []string{"workspaces.mountpath"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				Inputs:  tt.fields.Inputs,
-				Outputs: tt.fields.Outputs,
-				Steps:   tt.fields.Steps,
-				Volumes: tt.fields.Volumes,
+				Inputs:       tt.fields.Inputs,
+				Outputs:      tt.fields.Outputs,
+				Steps:        tt.fields.Steps,
+				Volumes:      tt.fields.Volumes,
+				StepTemplate: tt.fields.StepTemplate,
+				Workspaces:   tt.fields.Workspaces,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)

@@ -50,6 +50,7 @@ type TaskRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
+	// +optional
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
 
 	// ExpirationSecondsTTL limits the lifetime of a TaskRun that has finished
@@ -59,12 +60,12 @@ type TaskRunSpec struct {
 	// be honored. If this field is unset, the TaskRun won't be automatically
 	// deleted. If this field is set to zero, the TaskRun becomes eligible to
 	// be deleted immediately after it finishes.
-	// And if taskRun is produced by PipelineRun(checked via ownerReference),
-	// this ExpirationSecondsTTL will be ignored, then tekton will check PipelineRun's
-	// ExpirationSecondsTTL to determine if PipelineRun should be deleted.
-	// This field is alpha-level.
 	// +optional
 	ExpirationSecondsTTL *metav1.Duration `json:"expirationSecondsTTL,omitempty"`
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	// +optional
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

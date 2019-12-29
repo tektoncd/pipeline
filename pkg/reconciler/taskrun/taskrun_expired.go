@@ -2,14 +2,14 @@ package taskrun
 
 import (
 	"fmt"
-	"knative.dev/pkg/controller"
 	"time"
 
 	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
 )
 
 const ControllerName = "TTLExpiredControoler"
@@ -134,7 +134,7 @@ func (tc *Reconciler) trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*t
 // taskRunFinishTime takes an already succeeded taskRun and returns the time it finishes.
 func taskRunFinishTime(tr *apispipeline.TaskRun) (apis.VolatileTime, error) {
 	for _, con := range tr.Status.Conditions {
-		if con.Type == apis.ConditionSucceeded && con.Status != v1.ConditionUnknown {
+		if con.Type == apis.ConditionSucceeded && con.Status != corev1.ConditionUnknown {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
 				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the taskRun %s/%s succeeded", tr.Namespace, tr.Name)

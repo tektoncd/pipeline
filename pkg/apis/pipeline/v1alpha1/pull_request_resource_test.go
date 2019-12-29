@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
@@ -76,7 +77,7 @@ func containerTestCases(mode string) []testcase {
 		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-nocreds-9l9zj",
 			Image:      "override-with-pr:latest",
-			WorkingDir: v1alpha1.WorkspaceDir,
+			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
 			Env:        []corev1.EnvVar{},
@@ -96,7 +97,7 @@ func containerTestCases(mode string) []testcase {
 		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-creds-mz4c7",
 			Image:      "override-with-pr:latest",
-			WorkingDir: v1alpha1.WorkspaceDir,
+			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode, "-provider", "github"},
 			Env: []corev1.EnvVar{{

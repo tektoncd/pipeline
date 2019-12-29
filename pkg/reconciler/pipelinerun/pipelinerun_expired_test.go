@@ -1,17 +1,17 @@
 package pipelinerun
 
 import (
-	"github.com/tektoncd/pipeline/test"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	"testing"
 )
 
 func newPipelineRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.PipelineRun {

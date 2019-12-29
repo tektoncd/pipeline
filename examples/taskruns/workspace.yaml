@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: custom-volume-
+spec:
+  workspaces:
+    - name: custom
+      persistentVolumeClaim:
+        claimName: my-pvc
+      subPath: my-subdir
+    - name: custom2
+      persistentVolumeClaim:
+        claimName: my-pvc
+    - name: custom3
+      emptyDir: {}
+      subPath: testing
+  taskSpec:
+    steps:
+    - name: write
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        echo $(workspaces.custom.volume) > $(workspaces.custom.path)/foo
+    - name: read
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        cat $(workspaces.custom.path)/foo | grep $(workspaces.custom.volume)
+    - name: write2
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        echo $(workspaces.custom2.path) > $(workspaces.custom2.path)/foo
+    - name: read2
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat $(workspaces.custom2.path)/foo | grep $(workspaces.custom2.path)
+    - name: write3
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        echo $(workspaces.custom3.path) > $(workspaces.custom3.path)/foo
+    - name: read3
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat $(workspaces.custom3.path)/foo | grep $(workspaces.custom3.path)
+    workspaces:
+    - name: custom
+    - name: custom2
+      mountPath: /foo/bar/baz
+    - name: custom3
