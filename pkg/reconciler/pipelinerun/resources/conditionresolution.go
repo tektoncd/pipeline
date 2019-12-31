@@ -96,7 +96,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	}
 
 	t := &v1alpha1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: rcc.Condition.Spec.Check}},
+		Steps: []v1alpha1.Step{rcc.Condition.Spec.Check},
 	}
 
 	t.Inputs = &v1alpha1.Inputs{

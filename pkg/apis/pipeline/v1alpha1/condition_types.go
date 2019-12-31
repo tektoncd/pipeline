@@ -71,7 +71,7 @@ type ConditionCheckStatusFields struct {
 // ConditionSpec defines the desired state of the Condition
 type ConditionSpec struct {
 	// Check declares container whose exit code determines where a condition is true or false
-	Check corev1.Container `json:"check,omitempty"`
+	Check Step `json:"check,omitempty"`
 
 	// Params is an optional set of parameters which must be supplied by the user when a Condition
 	// is evaluated

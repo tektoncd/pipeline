@@ -61,6 +61,17 @@ func TestCondition_Invalidate(t *testing.T) {
 			Message: "missing field(s)",
 			Paths:   []string{"Spec.Check.Image"},
 		},
+	}, {
+		name: "condition with script and command",
+		cond: tb.Condition("cond", "foo",
+			tb.ConditionSpec(
+				tb.ConditionSpecCheck("cname", "image", tb.Command("exit 0")),
+				tb.ConditionSpecCheckScript("echo foo"),
+			)),
+		expectedError: apis.FieldError{
+			Message: "step 0 script cannot be used with command",
+			Paths:   []string{"Spec.Check.script"},
+		},
 	}}
 
 	for _, tc := range tcs {
