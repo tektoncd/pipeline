@@ -38,8 +38,8 @@ func (cs *ConditionSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 
-	if cs.Check.Image == "" {
-		return apis.ErrMissingField("Check.Image")
+	if err := validateSteps([]Step{cs.Check}).ViaField("Check"); err != nil {
+		return err
 	}
 	return nil
 }

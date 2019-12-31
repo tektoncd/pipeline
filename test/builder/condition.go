@@ -78,7 +78,13 @@ func ConditionSpecCheck(name, image string, ops ...ContainerOp) ConditionSpecOp 
 		for _, op := range ops {
 			op(c)
 		}
-		spec.Check = *c
+		spec.Check.Container = *c
+	}
+}
+
+func ConditionSpecCheckScript(script string) ConditionSpecOp {
+	return func(spec *v1alpha1.ConditionSpec) {
+		spec.Check.Script = script
 	}
 }
 

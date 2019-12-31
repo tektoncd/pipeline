@@ -11,8 +11,7 @@ spec:
       optional: true
   check:
     image: alpine
-    command: ["/bin/sh"]
-    args: ['-c', 'test ! -f $(resources.optional-workspace.path)/$(params.path)']
+    script: 'test ! -f $(resources.optional-workspace.path)/$(params.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -39,9 +38,7 @@ spec:
   steps:
     - name: run-ls
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        ls -al $(inputs.resources.optional-workspace.path)
+      script: 'ls -al $(inputs.resources.optional-workspace.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline

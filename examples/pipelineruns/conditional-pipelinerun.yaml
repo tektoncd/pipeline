@@ -10,8 +10,7 @@ spec:
       type: git
   check:
     image: alpine
-    command: ["/bin/sh"]
-    args: ['-c', 'test -f $(resources.workspace.path)/$(params.path)']
+    script: 'test -f $(resources.workspace.path)/$(params.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -37,8 +36,7 @@ spec:
   steps:
     - name: run-ls
       image: ubuntu
-      command: ["/bin/bash"]
-      args: ['-c', 'ls -al $(inputs.resources.workspace.path)']
+      script: 'ls -al $(inputs.resources.workspace.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline

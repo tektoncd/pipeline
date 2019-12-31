@@ -35,10 +35,9 @@ following fields:
 ### Check
 
 The `check` field is required. You define a single check to define the body of a `Condition`. The 
-check must specify a container image that adheres to the [container contract](./container-contract.md). 
-The container image runs till completion. The container must exit successfully i.e. with an exit code 0 
-for the condition evaluation to be successful. All other exit codes are considered to be a condition check
-failure.
+check must specify a [`Step`](./tasks.md#steps). The container image runs till completion. The container 
+must exit successfully i.e. with an exit code 0 for the condition evaluation to be successful. All other 
+exit codes are considered to be a condition check failure.
 
 ### Parameters
 
