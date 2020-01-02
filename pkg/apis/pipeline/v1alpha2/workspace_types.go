@@ -65,4 +65,7 @@ type WorkspaceBinding struct {
 	// Either this OR PersistentVolumeClaim can be used.
 	// +optional
 	EmptyDir *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
+	// ConfigMap represents a configMap that should populate this workspace.
+	// +optional
+	ConfigMap *corev1.ConfigMapVolumeSource `json:"configMap,omitempty"`
 }
