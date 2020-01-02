@@ -313,6 +313,11 @@ func (in *WorkspaceBinding) DeepCopyInto(out *WorkspaceBinding) {
 		*out = new(v1.EmptyDirVolumeSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ConfigMap != nil {
+		in, out := &in.ConfigMap, &out.ConfigMap
+		*out = new(v1.ConfigMapVolumeSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

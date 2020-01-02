@@ -10,6 +10,13 @@ spec:
   accessModes:
     - ReadWriteOnce
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+data:
+  message: hello world
+---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
@@ -26,43 +33,39 @@ spec:
     - name: custom3
       emptyDir: {}
       subPath: testing
+    - name: custom4
+      configMap:
+        name: my-configmap
+        items:
+          - key: message
+            path: my-message.txt
   taskSpec:
     steps:
     - name: write
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        set -xe
-        echo $(workspaces.custom.volume) > $(workspaces.custom.path)/foo
+      script: echo $(workspaces.custom.volume) > $(workspaces.custom.path)/foo
     - name: read
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        set -xe
-        cat $(workspaces.custom.path)/foo | grep $(workspaces.custom.volume)
+      script: cat $(workspaces.custom.path)/foo | grep $(workspaces.custom.volume)
     - name: write2
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        set -xe
-        echo $(workspaces.custom2.path) > $(workspaces.custom2.path)/foo
+      script: echo $(workspaces.custom2.path) > $(workspaces.custom2.path)/foo
     - name: read2
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        cat $(workspaces.custom2.path)/foo | grep $(workspaces.custom2.path)
+      script: cat $(workspaces.custom2.path)/foo | grep $(workspaces.custom2.path)
     - name: write3
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        echo $(workspaces.custom3.path) > $(workspaces.custom3.path)/foo
+      script: echo $(workspaces.custom3.path) > $(workspaces.custom3.path)/foo
     - name: read3
       image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        cat $(workspaces.custom3.path)/foo | grep $(workspaces.custom3.path)
+      script: cat $(workspaces.custom3.path)/foo | grep $(workspaces.custom3.path)
+    - name: readconfigmap
+      image: ubuntu
+      script: cat $(workspaces.custom4.path)/my-message.txt | grep "hello world"
     workspaces:
     - name: custom
     - name: custom2
       mountPath: /foo/bar/baz
     - name: custom3
+    - name: custom4
+      mountPath: /baz/bar/quux

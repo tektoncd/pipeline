@@ -20,7 +20,8 @@ func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
 	v := map[string]corev1.Volume{}
 	for _, w := range wb {
 		name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(volumeNameBase)
-		if w.PersistentVolumeClaim != nil {
+		switch {
+		case w.PersistentVolumeClaim != nil:
 			// If it's a PVC, we need to check if we've encountered it before so we avoid mounting it twice
 			if vv, ok := pvcs[w.PersistentVolumeClaim.ClaimName]; ok {
 				v[w.Name] = vv
@@ -34,12 +35,20 @@ func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
 				}
 				pvcs[pvc.ClaimName] = v[w.Name]
 			}
-		} else if w.EmptyDir != nil {
+		case w.EmptyDir != nil:
 			ed := *w.EmptyDir
 			v[w.Name] = corev1.Volume{
 				Name: name,
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &ed,
+				},
+			}
+		case w.ConfigMap != nil:
+			cm := *w.ConfigMap
+			v[w.Name] = corev1.Volume{
+				Name: name,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &cm,
 				},
 			}
 		}

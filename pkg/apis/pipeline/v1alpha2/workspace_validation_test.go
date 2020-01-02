@@ -41,6 +41,16 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 			Name:     "beth",
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
+	}, {
+		name: "Valid configMap",
+		binding: &WorkspaceBinding{
+			Name: "beth",
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "a-configmap-name",
+				},
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := tc.binding.Validate(context.Background()); err != nil {
@@ -77,6 +87,12 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 		binding: &WorkspaceBinding{
 			Name:                  "beth",
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{},
+		},
+	}, {
+		name: "Provide configmap without a name",
+		binding: &WorkspaceBinding{
+			Name:      "beth",
+			ConfigMap: &corev1.ConfigMapVolumeSource{},
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
