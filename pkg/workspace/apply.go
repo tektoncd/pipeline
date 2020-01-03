@@ -12,12 +12,23 @@ const (
 	volumeNameBase = "ws"
 )
 
-// GetVolumes will return a dictionary where the keys are the names fo the workspaces bound in
+// nameVolumeMap is a map from a workspace's name to its Volume.
+type nameVolumeMap map[string]corev1.Volume
+
+// setVolumeSource assigns a volume to a workspace's name.
+func (nvm nameVolumeMap) setVolumeSource(workspaceName string, volumeName string, source corev1.VolumeSource) {
+	nvm[workspaceName] = corev1.Volume{
+		Name:         volumeName,
+		VolumeSource: source,
+	}
+}
+
+// GetVolumes will return a dictionary where the keys are the names of the workspaces bound in
 // wb and the value is the Volume to use. If the same Volume is bound twice, the resulting volumes
-// will both have the same name to prevent the same Volume from being attached to pod twice.
+// will both have the same name to prevent the same Volume from being attached to a pod twice.
 func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
 	pvcs := map[string]corev1.Volume{}
-	v := map[string]corev1.Volume{}
+	v := make(nameVolumeMap)
 	for _, w := range wb {
 		name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(volumeNameBase)
 		switch {
@@ -27,30 +38,18 @@ func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
 				v[w.Name] = vv
 			} else {
 				pvc := *w.PersistentVolumeClaim
-				v[w.Name] = corev1.Volume{
-					Name: name,
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &pvc,
-					},
-				}
+				v.setVolumeSource(w.Name, name, corev1.VolumeSource{PersistentVolumeClaim: &pvc})
 				pvcs[pvc.ClaimName] = v[w.Name]
 			}
 		case w.EmptyDir != nil:
 			ed := *w.EmptyDir
-			v[w.Name] = corev1.Volume{
-				Name: name,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &ed,
-				},
-			}
+			v.setVolumeSource(w.Name, name, corev1.VolumeSource{EmptyDir: &ed})
 		case w.ConfigMap != nil:
 			cm := *w.ConfigMap
-			v[w.Name] = corev1.Volume{
-				Name: name,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &cm,
-				},
-			}
+			v.setVolumeSource(w.Name, name, corev1.VolumeSource{ConfigMap: &cm})
+		case w.Secret != nil:
+			s := *w.Secret
+			v.setVolumeSource(w.Name, name, corev1.VolumeSource{Secret: &s})
 		}
 	}
 	return v
