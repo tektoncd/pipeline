@@ -29,6 +29,7 @@ var allVolumeSourceFields []string = []string{
 	"workspace.persistentvolumeclaim",
 	"workspace.emptydir",
 	"workspace.configmap",
+	"workspace.secret",
 }
 
 // Validate looks at the Volume provided in wb and makes sure that it is valid.
@@ -59,6 +60,11 @@ func (b *WorkspaceBinding) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("workspace.configmap.name")
 	}
 
+	// For a Secret to work, you must provide the name of the Secret to use.
+	if b.Secret != nil && b.Secret.SecretName == "" {
+		return apis.ErrMissingField("workspace.secret.secretName")
+	}
+
 	return nil
 }
 
@@ -73,6 +79,9 @@ func (b *WorkspaceBinding) numSources() int {
 		n++
 	}
 	if b.ConfigMap != nil {
+		n++
+	}
+	if b.Secret != nil {
 		n++
 	}
 	return n

@@ -318,6 +318,11 @@ func (in *WorkspaceBinding) DeepCopyInto(out *WorkspaceBinding) {
 		*out = new(v1.ConfigMapVolumeSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Secret != nil {
+		in, out := &in.Secret, &out.Secret
+		*out = new(v1.SecretVolumeSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

@@ -24,5 +24,4 @@ import (
 type WorkspaceDeclaration = v1alpha2.WorkspaceDeclaration
 
 // WorkspaceBinding maps a Task's declared workspace to a Volume.
-// Currently we only support PersistentVolumeClaims, EmptyDir and ConfigMap.
 type WorkspaceBinding = v1alpha2.WorkspaceBinding

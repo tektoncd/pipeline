@@ -279,6 +279,24 @@ workspaces:
     name: my-configmap
 ```
 
+A Secret can also be used as a workspace with the following caveats:
+
+1. Secret volume sources are always mounted as read-only inside a task's
+containers - tasks cannot write content to them and a step may error out
+and fail the task if a write is attempted.
+2. The Secret you want to use as a workspace must already exist prior
+to the TaskRun being submitted.
+
+To use a [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
+as a `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  secret:
+    secretName: my-secret
+```
+
 _For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
 
 ## Status
