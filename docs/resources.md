@@ -644,8 +644,8 @@ spec:
       args:
         - "-c"
         - kubectl --kubeconfig
-          /workspace/$(inputs.resources.testCluster.name)/kubeconfig --context
-          $(inputs.resources.testCluster.name) apply -f /workspace/service.yaml'
+          /workspace/$(inputs.resources.testcluster.name)/kubeconfig --context
+          $(inputs.resources.testcluster.name) apply -f /workspace/service.yaml'
 ```
 
 To use the `cluster` resource with Google Kubernetes Engine, you should use the
