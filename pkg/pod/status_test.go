@@ -254,6 +254,46 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
+		desc: "failed with OOM",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-step-push",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Reason:   "OOMKilled",
+						ExitCode: 0,
+					},
+				},
+				ImageID: "image-id",
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  ReasonFailed,
+					Message: "OOMKilled",
+				}},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:   "OOMKilled",
+							ExitCode: 0,
+						}},
+					Name:          "step-push",
+					ContainerName: "step-step-push",
+					ImageID:       "image-id",
+				}},
+				Sidecars: []v1alpha1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
 		desc:      "failure-unspecified",
 		podStatus: corev1.PodStatus{Phase: corev1.PodFailed},
 		want: v1alpha1.TaskRunStatus{

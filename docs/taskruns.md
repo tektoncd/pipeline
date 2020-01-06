@@ -320,6 +320,9 @@ steps:
 Fields include start and stop times for the `TaskRun` and each `Step` and exit codes.
 For each step we also include the fully-qualified image used, with the digest.
 
+If any pods have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
+by Kubernetes, the `Taskrun` will be marked as failed even if the exitcode is 0.
+
 ### Steps
 
 If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will see the
