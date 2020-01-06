@@ -673,6 +673,45 @@ script-heredoc-randomly-generated-78c5n
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume),
 		},
+	}, {
+		desc: "using another scheduler",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "schedule-me",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			PodTemplate: v1alpha1.PodTemplate{
+				SchedulerName: "there-scheduler",
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			SchedulerName:  "there-scheduler",
+			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
+			Containers: []corev1.Container{{
+				Name:    "step-schedule-me",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:   pipeline.WorkspaceDir,
+				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
+			}},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
