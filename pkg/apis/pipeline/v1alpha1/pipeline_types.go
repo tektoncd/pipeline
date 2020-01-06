@@ -32,6 +32,10 @@ type PipelineSpec struct {
 	// Params declares a list of input parameters that must be supplied when
 	// this Pipeline is run.
 	Params []ParamSpec `json:"params,omitempty"`
+	// Workspaces declares a set of named workspaces that are expected to be
+	// provided by a PipelineRun.
+	// +optional
+	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.
@@ -123,6 +127,11 @@ type PipelineTask struct {
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
+
+	// Workspaces maps workspaces from the pipeline spec to the workspaces
+	// declared in the Task.
+	// +optional
+	Workspaces []WorkspacePipelineTaskBinding `json:"workspaces,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {

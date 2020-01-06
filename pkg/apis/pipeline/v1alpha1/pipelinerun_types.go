@@ -60,9 +60,12 @@ type PipelineRunSpec struct {
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
 	// PodTemplate holds pod specific configuration
 	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	// Workspaces holds a set of workspace bindings that must match names
+	// with those declared in the pipeline.
+	// +optional
+	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

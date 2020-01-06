@@ -44,6 +44,7 @@ func TestPipeline(t *testing.T) {
 				tb.PipelineTaskConditionParam("param-name", "param-value"),
 				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource", "bar", "never-gonna"),
 			),
+			tb.PipelineTaskWorkspaceBinding("task-workspace1", "workspace1"),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
@@ -59,6 +60,7 @@ func TestPipeline(t *testing.T) {
 				Image: "myimage",
 			}}}},
 		)),
+		tb.PipelineWorkspaceDeclaration("workspace1"),
 	),
 		tb.PipelineCreationTimestamp(creationTime),
 	)
@@ -106,6 +108,10 @@ func TestPipeline(t *testing.T) {
 						From:     []string{"bar", "never-gonna"},
 					}},
 				}},
+				Workspaces: []v1alpha1.WorkspacePipelineTaskBinding{{
+					Name:      "task-workspace1",
+					Workspace: "workspace1",
+				}},
 			}, {
 				Name:    "bar",
 				TaskRef: &v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
@@ -133,6 +139,9 @@ func TestPipeline(t *testing.T) {
 					}},
 					},
 				},
+			}},
+			Workspaces: []v1alpha1.WorkspacePipelineDeclaration{{
+				Name: "workspace1",
 			}},
 		},
 	}

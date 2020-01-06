@@ -75,9 +75,61 @@ spec:
 
 ### Declared Workspaces
 
-It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
-or `PipelineRuns`, so `Tasks` requiring `workspaces` cannot be used with them until
-[#1438](https://github.com/tektoncd/pipeline/issues/1438) is completed.
+`workspaces` are a way of declaring volumes you expect to be made available to your
+executing `Pipeline` and its `Task`s. They are similar to [`volumes`](#volumes) but
+allow you to enforce at runtime that the volumes have been attached and
+[allow you to specify subpaths](taskruns.md#workspaces) in the volumes to attach.
+
+Any `Pipeline` using a `Task` that declares a workspace will need to provide one at
+runtime. Doing so requires two additions in a Pipeline:
+
+1. The `Pipeline` will need to declare a list of `workspaces` that `PipelineRun`s will be
+expected to provide. This is done with the `workspaces` field in the `Pipeline`'s spec.
+Each entry in that list must have a unique name.
+2. When a `Pipeline` refers to a `Task` requiring workspaces, one of the named workspaces
+from (1) will need to be provided. The workspace name needs to be mapped from the name
+given to it by the pipeline to the name expected by the task.
+
+In total this looks as follows:
+
+```yaml
+spec:
+  workspaces:
+    - name: pipeline-ws1 # The name of a workspace provided by PipelineRuns
+  tasks:
+    - name: use-ws-from-pipeline
+      taskRef:
+        name: gen-code # gen-code task expects a workspace be provided with name "output"
+      workspaces:
+        - name: output
+          workspace: pipeline-ws1
+    - name: use-ws-again
+      taskRef:
+        name: commit # commit task expects a workspace be provided with name "src"
+      workspaces:
+        - name: src
+          workspace: pipeline-ws1
+```
+
+This will tell Tekton to take whatever workspace is provided by the PipelineRun
+with name "pipeline-ws1" and wire it into the "output" workspace expected by
+the gen-code task. The same workspace will then also be wired into the "src" workspace
+expected by the commit task. If the workspace provided by the PipelineRun is a
+persitent volume claim then we have successfully shared files between the two tasks!
+
+#### Workspaces Don't Imply Task Ordering (Yet)
+
+One usecase for workspaces in `Pipeline`s is to provide a PVC to multiple `Task`s
+and have one or some write to it before the others read from it. This kind of behaviour
+relies on the order of the `Task`s - one writes, the next reads, and so on - but this
+ordering is not currently enforced by Tekton. This means that `Task`s which write to a
+PVC may be run at the same time as `Task`s expecting to read that data. In the worst case
+this can result in deadlock behaviour where multiple `Task`'s pods are all attempting
+to mount a PVC for writing at the same time.
+
+To avoid this situation `Pipeline` authors can explicitly declare the ordering of `Task`s
+sharing a PVC-backed workspace by using the `runAfter` field. See [the section on
+`runAfter`](#runAfter) for more information about using this field.
 
 ### Parameters
 

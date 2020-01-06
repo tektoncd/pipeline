@@ -1811,3 +1811,15 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 		t.Fatalf("Expected error indicating `image-resource` was extra but got no error")
 	}
 }
+
+func TestValidateWorkspaceBindings(t *testing.T) {
+	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		tb.PipelineWorkspaceDeclaration("foo"),
+	))
+	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunWorkspaceBindingEmptyDir("bar"),
+	))
+	if err := ValidateWorkspaceBindings(&p.Spec, pr); err == nil {
+		t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
+	}
+}

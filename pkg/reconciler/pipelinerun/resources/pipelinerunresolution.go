@@ -197,6 +197,21 @@ func ValidateResourceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun
 	return nil
 }
 
+// ValidateWorkspaceBindings validates that the Workspaces expected by a Pipeline are provided by a PipelineRun.
+func ValidateWorkspaceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) error {
+	pipelineRunWorkspaces := make(map[string]v1alpha1.WorkspaceBinding)
+	for _, binding := range pr.Spec.Workspaces {
+		pipelineRunWorkspaces[binding.Name] = binding
+	}
+
+	for _, ws := range p.Workspaces {
+		if _, ok := pipelineRunWorkspaces[ws.Name]; !ok {
+			return fmt.Errorf("pipeline expects workspace with name %q be provided by pipelinerun", ws.Name)
+		}
+	}
+	return nil
+}
+
 // TaskNotFoundError indicates that the resolution failed because a referenced Task couldn't be retrieved
 type TaskNotFoundError struct {
 	Name string
