@@ -136,7 +136,7 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 	}
 
 	if !s.Submodules {
-		args = append(args, "-submodules", "false")
+		args = append(args, "-submodules=false")
 	}
 	if s.Depth != 1 {
 		args = append(args, "-depth", strconv.FormatUint(uint64(s.Depth), 10))
