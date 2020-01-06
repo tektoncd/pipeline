@@ -24,7 +24,7 @@
 # Scenario 2: install the previous release, create the pipelines and tasks, upgrade
 # to the current release, and validate whether the Tekton pipeline works.
 
-source $(dirname $0)/e2e-common.sh
+source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 PREVIOUS_PIPELINE_VERSION=v0.5.2
 
 # Script entry point.

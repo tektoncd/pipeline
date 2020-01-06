@@ -17,7 +17,7 @@
 # This script calls out to scripts in tektoncd/plumbing to setup a cluster
 # and deploy Tekton Pipelines to it for running integration tests.
 
-source $(dirname $0)/e2e-common.sh
+source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 
 # Script entry point.
 
