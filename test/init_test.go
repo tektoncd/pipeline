@@ -97,9 +97,11 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 		}
 	}
 
-	t.Logf("Deleting namespace %s", namespace)
-	if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete namespace %s: %s", namespace, err)
+	if os.Getenv("TEST_KEEP_NAMESPACES") != "" {
+		t.Logf("Deleting namespace %s", namespace)
+		if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
+		}
 	}
 }
 
