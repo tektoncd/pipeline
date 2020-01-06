@@ -185,6 +185,10 @@ Tests importing [`github.com/tektoncd/pipeline/test`](#adding-integration-tests)
 recognize the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
+Tests are run in a new random namespace prefixed with the word `arendelle-`.
+Unless you set the `TEST_KEEP_NAMESPACES` environment variable they will get
+automatically cleaned up after running the test.
+
 ### Running specific test cases
 
 To run all the test cases with their names starting with the same letters, e.g.
