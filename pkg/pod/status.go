@@ -64,6 +64,8 @@ const (
 	ReasonFailed = "Failed"
 )
 
+const oomKilled = "OOMKilled"
+
 // SidecarsReady returns true if all of the Pod's sidecars are Ready or
 // Terminated.
 func SidecarsReady(podStatus corev1.PodStatus) bool {
@@ -190,7 +192,7 @@ func didTaskRunFail(pod *corev1.Pod) bool {
 	for _, s := range pod.Status.ContainerStatuses {
 		if isContainerStep(s.Name) {
 			if s.State.Terminated != nil {
-				f = f || s.State.Terminated.ExitCode != 0
+				f = f || s.State.Terminated.ExitCode != 0 || isOOMKilled(s)
 			}
 		}
 	}
@@ -223,6 +225,17 @@ func getFailureMessage(pod *corev1.Pod) string {
 	if pod.Status.Message != "" {
 		return pod.Status.Message
 	}
+
+	for _, s := range pod.Status.ContainerStatuses {
+		if isContainerStep(s.Name) {
+			if s.State.Terminated != nil {
+				if isOOMKilled(s) {
+					return oomKilled
+				}
+			}
+		}
+	}
+
 	// Lastly fall back on a generic error message.
 	return "build failed for unspecified reasons."
 }
@@ -321,4 +334,8 @@ func (trt *stepStateSorter) Less(i, j int) bool {
 	// and how to change the index. We set it to true here in order to iterate all the
 	// elements of the array in the Swap function.
 	return true
+}
+
+func isOOMKilled(s corev1.ContainerStatus) bool {
+	return s.State.Terminated.Reason == oomKilled
 }
