@@ -297,6 +297,29 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineTask("bar", "bar", tb.RunAfter("foo")),
 		)),
 		failureExpected: true,
+	}, {
+		name: "unused pipeline spec workspaces do not cause an error",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineWorkspaceDeclaration("bar"),
+			tb.PipelineTask("foo", "foo"),
+		)),
+		failureExpected: false,
+	}, {
+		name: "workspace bindings relying on a non-existent pipeline workspace cause an error",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineTask("taskname", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", "pipelineWorkspaceName")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "multiple workspaces sharing the same name are not allowed",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineWorkspaceDeclaration("foo"),
+		)),
+		failureExpected: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

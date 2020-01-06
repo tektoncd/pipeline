@@ -71,3 +71,19 @@ type WorkspaceBinding struct {
 	// +optional
 	Secret *corev1.SecretVolumeSource `json:"secret,omitempty"`
 }
+
+// WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+// is expected to populate with a workspace binding.
+type WorkspacePipelineDeclaration struct {
+	// Name is the name of a workspace to be provided by a PipelineRun.
+	Name string `json:"name"`
+}
+
+// WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
+// mapped to a task's declared workspace.
+type WorkspacePipelineTaskBinding struct {
+	// Name is the name of the workspace as declared by the task
+	Name string `json:"name"`
+	// Workspace is the name of the workspace declared by the pipeline
+	Workspace string `json:"workspace"`
+}

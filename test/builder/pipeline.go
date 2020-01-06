@@ -267,6 +267,15 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 	}
 }
 
+func PipelineTaskWorkspaceBinding(name, workspace string) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Workspaces = append(pt.Workspaces, v1alpha1.WorkspacePipelineTaskBinding{
+			Name:      name,
+			Workspace: workspace,
+		})
+	}
+}
+
 // PipelineRun creates a PipelineRun with default values.
 // Any number of PipelineRun modifier can be passed to transform it.
 func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
@@ -525,6 +534,25 @@ func PipelineResourceSpecSecretParam(fieldname, secretName, secretKey string) Pi
 			FieldName:  fieldname,
 			SecretKey:  secretKey,
 			SecretName: secretName,
+		})
+	}
+}
+
+// PipelineWorkspaceDeclaration adds a Workspace to the workspaces listed in the pipeline spec.
+func PipelineWorkspaceDeclaration(names ...string) PipelineSpecOp {
+	return func(spec *v1alpha1.PipelineSpec) {
+		for _, name := range names {
+			spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspacePipelineDeclaration{Name: name})
+		}
+	}
+}
+
+// PipelineRunWorkspaceBindingEmptyDir adds an EmptyDir Workspace to the workspaces of a pipelinerun spec.
+func PipelineRunWorkspaceBindingEmptyDir(name string) PipelineRunSpecOp {
+	return func(spec *v1alpha1.PipelineRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:     name,
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		})
 	}
 }

@@ -765,6 +765,13 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		*out = new(pod.Template)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]v1alpha2.WorkspaceBinding, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -909,6 +916,11 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]v1alpha2.WorkspacePipelineDeclaration, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -974,6 +986,11 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]v1alpha2.WorkspacePipelineTaskBinding, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

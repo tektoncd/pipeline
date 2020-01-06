@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -163,6 +164,24 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				}}},
 		},
 		wantErr: apis.ErrDisallowedFields("spec.pipelinespec", "spec.pipelineref"),
+	}, {
+		name: "workspaces may only appear once",
+		spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: &v1alpha1.PipelineRef{
+				Name: "pipelinerefname",
+			},
+			Workspaces: []v1alpha1.WorkspaceBinding{{
+				Name:     "ws",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}, {
+				Name:     "ws",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}},
+		},
+		wantErr: &apis.FieldError{
+			Message: `workspace "ws" provided by pipelinerun more than once, at index 0 and 1`,
+			Paths:   []string{"spec.workspaces"},
+		},
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {

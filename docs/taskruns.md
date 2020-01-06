@@ -232,17 +232,17 @@ at runtime you need to map the `workspaces` to actual physical volumes with
 * [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
 * [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
 * [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
+* [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
 
 _If you need support for a `VolumeSource` not listed here
 [please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
 [contribute a PR](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)._
 
-
 If the declared `workspaces` are not provided at runtime, the `TaskRun` will fail
 with an error.
 
 For example to provide an existing PVC called `mypvc` for a `workspace` called
-`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which already exists
+`myworkspace` declared by the `Task`, using the `my-subdir` folder which already exists
 on the PVC (there will be an error if it does not exist):
 
 ```yaml
@@ -268,6 +268,7 @@ containers - tasks cannot write content to them and a step may error out
 and fail the task if a write is attempted.
 2. The ConfigMap you want to use as a workspace must already exist prior
 to the TaskRun being submitted.
+3. ConfigMaps have a [size limit of 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L5042)
 
 To use a [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
 as a `workspace`:
@@ -286,6 +287,7 @@ containers - tasks cannot write content to them and a step may error out
 and fail the task if a write is attempted.
 2. The Secret you want to use as a workspace must already exist prior
 to the TaskRun being submitted.
+3. Secrets have a [size limit of 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L4933)
 
 To use a [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
 as a `workspace`:
