@@ -236,8 +236,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		c.Logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Fail(ReasonCouldntGetPipeline,
-			fmt.Sprintf("Error retrieving pipeline for pipelinerun %s: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err))
+			fmt.Sprintf("Error retrieving pipeline for pipelinerun %s/%s: %s", pr.Namespace, pr.Name, err))
 		return nil
 	}
 
@@ -262,32 +261,32 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Fail(ReasonInvalidGraph,
-			fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err))
+			fmt.Sprintf("PipelineRun %s/%s's Pipeline DAG is invalid: %s",
+				pr.Namespace, pr.Name, err))
 		return nil
 	}
 
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Fail(ReasonFailedValidation,
-			fmt.Sprintf("Pipeline %s can't be Run; it has an invalid spec: %s",
-				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
+			fmt.Sprintf("Pipeline %s/%s can't be Run; it has an invalid spec: %s",
+				pipelineMeta.Namespace, pr.Name, err))
 		return nil
 	}
 
 	if err := resources.ValidateResourceBindings(pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Fail(ReasonInvalidBindings,
-			fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err))
+			fmt.Sprintf("PipelineRun %s/%s doesn't bind Pipeline %s/%s's PipelineResources correctly: %s",
+				pr.Namespace, pr.Name, pr.Namespace, pr.Spec.PipelineRef.Name, err))
 		return nil
 	}
 	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Fail(ReasonCouldntGetResource,
-			fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
-				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
+			fmt.Sprintf("PipelineRun %s/%s can't be Run; it tries to bind Resources that don't exist: %s",
+				pipelineMeta.Namespace, pr.Name, err))
 		return nil
 	}
 
@@ -297,8 +296,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Fail(ReasonParameterTypeMismatch,
-			fmt.Sprintf("PipelineRun %s parameters have mismatching types with Pipeline %s's parameters: %s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err))
+			fmt.Sprintf("PipelineRun %s/%s parameters have mismatching types with Pipeline %s/%s's parameters: %s",
+				pr.Namespace, pr.Name, pr.Namespace, pr.Spec.PipelineRef.Name, err))
 		return nil
 	}
 
@@ -327,16 +326,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		switch err := err.(type) {
 		case *resources.TaskNotFoundError:
 			pr.Fail(ReasonCouldntGetTask,
-				fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pipelineMeta.Name), err))
+				fmt.Sprintf("Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
+					pipelineMeta.Namespace, pipelineMeta.Name, err))
 		case *resources.ConditionNotFoundError:
 			pr.Fail(ReasonCouldntGetCondition,
-				fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
+				fmt.Sprintf("PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
+					pipelineMeta.Namespace, pr.Name, err))
 		default:
 			pr.Fail(ReasonFailedValidation,
-				fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
-					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err))
+				fmt.Sprintf("PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
+					pipelineMeta.Namespace, pr.Name, err))
 		}
 		return nil
 	}
