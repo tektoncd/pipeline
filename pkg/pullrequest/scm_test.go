@@ -26,39 +26,44 @@ import (
 
 func TestNewSCMHandler(t *testing.T) {
 	tests := []struct {
-		name     string
-		raw      string
-		wantRepo string
-		wantNum  int
-		wantErr  bool
+		name        string
+		raw         string
+		wantBaseURL string
+		wantRepo    string
+		wantNum     int
+		wantErr     bool
 	}{
 		{
-			name:     "github",
-			raw:      "https://github.com/foo/bar/pull/1",
-			wantRepo: "foo/bar",
-			wantNum:  1,
-			wantErr:  false,
+			name:        "github",
+			raw:         "https://github.com/foo/bar/pull/1",
+			wantBaseURL: "https://api.github.com/",
+			wantRepo:    "foo/bar",
+			wantNum:     1,
+			wantErr:     false,
 		},
 		{
-			name:     "custom github",
-			raw:      "https://github.tekton.dev/foo/baz/pull/2",
-			wantRepo: "foo/baz",
-			wantNum:  2,
-			wantErr:  false,
+			name:        "custom github",
+			raw:         "https://github.tekton.dev/foo/baz/pull/2",
+			wantBaseURL: "https://github.tekton.dev/api/v3/",
+			wantRepo:    "foo/baz",
+			wantNum:     2,
+			wantErr:     false,
 		},
 		{
-			name:     "gitlab",
-			raw:      "https://gitlab.com/foo/bar/merge_requests/3",
-			wantRepo: "foo/bar",
-			wantNum:  3,
-			wantErr:  false,
+			name:        "gitlab",
+			raw:         "https://gitlab.com/foo/bar/merge_requests/3",
+			wantBaseURL: "https://gitlab.com/",
+			wantRepo:    "foo/bar",
+			wantNum:     3,
+			wantErr:     false,
 		},
 		{
-			name:     "gitlab multi-level",
-			raw:      "https://gitlab.com/foo/bar/baz/merge_requests/3",
-			wantRepo: "foo/bar/baz",
-			wantNum:  3,
-			wantErr:  false,
+			name:        "gitlab multi-level",
+			raw:         "https://gitlab.com/foo/bar/baz/merge_requests/3",
+			wantBaseURL: "https://gitlab.com/",
+			wantRepo:    "foo/bar/baz",
+			wantNum:     3,
+			wantErr:     false,
 		},
 		{
 			name:    "unsupported",
@@ -77,11 +82,14 @@ func TestNewSCMHandler(t *testing.T) {
 				}
 				return
 			}
-			if !(got.prNum == tt.wantNum) {
-				t.Errorf("NewSCMHandler() = %v, want %v", got, tt.wantNum)
+			if got.prNum != tt.wantNum {
+				t.Errorf("NewSCMHandler() [pr num] = %v, want %v", got, tt.wantNum)
 			}
-			if !(got.repo == tt.wantRepo) {
-				t.Errorf("NewSCMHandler() = %v, want %v", got, tt.wantRepo)
+			if got.repo != tt.wantRepo {
+				t.Errorf("NewSCMHandler() [repo] = %v, want %v", got, tt.wantRepo)
+			}
+			if baseURL := got.client.BaseURL.String(); baseURL != tt.wantBaseURL {
+				t.Errorf("NewSCMHandler() [base url] = %v, want %v", baseURL, tt.wantBaseURL)
 			}
 		})
 	}

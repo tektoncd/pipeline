@@ -75,6 +75,13 @@ func githubHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (
 	)
 
 	client := github.NewDefault()
+	if u.Host != "github.com" {
+		var err error
+		client, err = github.New(fmt.Sprintf("%s://%s/api/v3", u.Scheme, u.Host))
+		if err != nil {
+			return nil, fmt.Errorf("error creating client: %w", err)
+		}
+	}
 	ownerRepo := fmt.Sprintf("%s/%s", owner, repo)
 	h := NewHandler(logger, client, ownerRepo, prNumber)
 	if token != "" {
@@ -110,6 +117,13 @@ func gitlabHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (
 		zap.String("pr", prNum),
 	)
 	client := gitlab.NewDefault()
+	if u.Host != "gitlab.com" {
+		var err error
+		client, err = gitlab.New(fmt.Sprintf("%s://%s", u.Scheme, u.Host))
+		if err != nil {
+			return nil, fmt.Errorf("error creating client: %w", err)
+		}
+	}
 	if token != "" {
 		client.Client = &http.Client{
 			Transport: &gitlabClient{

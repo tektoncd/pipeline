@@ -17,11 +17,11 @@ For example:
 
 -   [Syntax](#syntax)
 -   [Using Resources](#using-resources)
-    - [Variable substitution](#variable-substitution)
-    - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
-    - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
-    - [Resource Status](#resource-status)
-    - [Optional Resources](#optional-resources)
+    -   [Variable substitution](#variable-substitution)
+    -   [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
+    -   [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
+    -   [Resource Status](#resource-status)
+    -   [Optional Resources](#optional-resources)
 -   [Resource types](#resource-types)
     -   [Git Resource](#git-resource)
     -   [Pull Request Resource](#pull-request-resource)
@@ -51,8 +51,9 @@ following fields:
 -   Optional:
     -   [`params`](#resource-types) - Parameters which are specific to each type
         of `PipelineResource`
-    -   [`optional`](#optional-resources) - Boolean flag to mark a resource optional
-        (by default, `optional` is set to `false` making resources mandatory).
+    -   [`optional`](#optional-resources) - Boolean flag to mark a resource
+        optional (by default, `optional` is set to `false` making resources
+        mandatory).
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -227,8 +228,9 @@ resourcesResult:
 
 ### Optional Resources
 
-By default, a resource is declared as mandatory unless `optional` is set `true` for that resource.
-Resources declared as `optional` in a `Task` does not have be specified in `TaskRun`.
+By default, a resource is declared as mandatory unless `optional` is set `true`
+for that resource. Resources declared as `optional` in a `Task` does not have be
+specified in `TaskRun`.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -243,11 +245,12 @@ spec:
         optional: true
 ```
 
-You can refer to different examples demonstrating usage of optional resources in `Task` and `Condition`:
+You can refer to different examples demonstrating usage of optional resources in
+`Task` and `Condition`:
 
-- [Task](../examples/taskruns/optional-resources.yaml)
-- [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
-- [Condition](../examples/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
+-   [Task](../examples/taskruns/optional-resources.yaml)
+-   [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
+-   [Condition](../examples/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
 
 ## Resource Types
 
@@ -283,14 +286,15 @@ Params that can be added are the following:
     clone. You can use this to control what commit [or branch](#using-a-branch)
     is used. _If no revision is specified, the resource will default to `latest`
     from `master`._
-1.  `submodules`: defines if the resource should initialize and
-    fetch the submodules, value is either `true` or `false`. _If not
-    specified, this will default to true_
+1.  `submodules`: defines if the resource should initialize and fetch the
+    submodules, value is either `true` or `false`. _If not specified, this will
+    default to true_
 1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
-    commit(s) will be fetched. If set to `'0'`, all commits will be fetched.
-    _If not specified, the default depth is 1._
-1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set to `true` or `false`
-    in the global git config. _Defaults to `true` if omitted._
+    commit(s) will be fetched. If set to `'0'`, all commits will be fetched. _If
+    not specified, the default depth is 1._
+1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set
+    to `true` or `false` in the global git config. _Defaults to `true` if
+    omitted._
 
 [git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
 [git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
@@ -396,10 +400,11 @@ Comments describe a pull request comment. They are represented as a set of json
 files.
 
 Other pull request information can be found in `pr.json`. This is a read-only
-resource. Users should use other subresources (labels, comments, etc)
-to interact with the PR.
+resource. Users should use other subresources (labels, comments, etc) to
+interact with the PR.
 
-For an example of the output this resource provides, see [`example`](../cmd/pullrequest-init/example).
+For an example of the output this resource provides, see
+[`example`](../cmd/pullrequest-init/example).
 
 To create a pull request resource using the `PipelineResource` CRD:
 
@@ -426,14 +431,13 @@ metadata:
 type: Opaque
 data:
   token: github_personal_access_token_secret # in base64 encoded form
-
 ```
 
 Params that can be added are the following:
 
 1.  `url`: represents the location of the pull request to fetch.
-1.  `provider`: represents the SCM provider to use. This will be "guessed" based on the url if not set.
-    Valid values are `github` or `gitlab` today.
+1.  `provider`: represents the SCM provider to use. This will be "guessed" based
+    on the url if not set. Valid values are `github` or `gitlab` today.
 
 #### Statuses
 
@@ -442,10 +446,30 @@ https://godoc.org/github.com/jenkins-x/go-scm/scm#State
 
 #### Pull Request
 
-The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication tokens in
-spec secrets with a field name called `authToken`.
+The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication
+tokens in spec secrets with a field name called `authToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
+
+#### Self hosted / Enterprise instances
+
+The PullRequest resource works with self hosted or enterprise GitHub/GitLab
+instances. Simply provide the pull request URL and set the `provider` parameter.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: wizzbang-pr
+  namespace: default
+spec:
+  type: pullRequest
+  params:
+    - name: url
+      value: https://github.example.com/wizzbangcorp/wizzbang/pulls/1
+    - name: provider
+      value: github
+```
 
 ### Image Resource
 
