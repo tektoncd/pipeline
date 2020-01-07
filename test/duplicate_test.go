@@ -29,7 +29,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-// TestDuplicatePodTaskRun creates 10 builds and checks that each of them has only one build pod.
+// TestDuplicatePodTaskRun creates 5 builds and checks that each of them has only one build pod.
 func TestDuplicatePodTaskRun(t *testing.T) {
 	c, namespace := setup(t)
 	t.Parallel()
@@ -38,7 +38,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		taskrunName := fmt.Sprintf("duplicate-pod-taskrun-%d", i)
 		t.Logf("Creating taskrun %q.", taskrunName)
