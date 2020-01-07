@@ -27,21 +27,31 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: list-files
+  name: create-readme-file
 spec:
-  inputs:
+  outputs:
     resources:
       - name: workspace
         type: git
   steps:
-    - name: run-ls
+    - name: write-new-stuff
       image: ubuntu
-      script: 'ls -al $(inputs.resources.workspace.path)'
+      script: 'touch $(outputs.resources.workspace.path)/README.md'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: echo-hello
+spec:
+  steps:
+    - name: echo
+      image: ubuntu
+      script: 'echo hello'
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: list-files-pipeline
+  name: conditional-pipeline
 spec:
   resources:
     - name: source-repo
@@ -50,9 +60,14 @@ spec:
     - name: "path"
       default: "README.md"
   tasks:
-    - name: list-files-1
+    - name: first-create-file
       taskRef:
-        name: list-files
+        name: create-readme-file
+      resources:
+        outputs:
+          - name: workspace
+            resource: source-repo
+    - name: then-check
       conditions:
         - conditionRef: "file-exists"
           params:
@@ -61,18 +76,17 @@ spec:
           resources:
             - name: workspace
               resource: source-repo
-      resources:
-        inputs:
-          - name: workspace
-            resource: source-repo
+              from: [first-create-file]
+      taskRef:
+        name: echo-hello
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
-  name: demo-condtional-pr
+  name: condtional-pr
 spec:
   pipelineRef:
-    name: list-files-pipeline
+    name: conditional-pipeline
   serviceAccountName: 'default'
   resources:
     - name: source-repo

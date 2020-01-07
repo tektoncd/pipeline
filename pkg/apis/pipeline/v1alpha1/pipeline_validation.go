@@ -66,7 +66,7 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	}
 	missing := list.DiffLeft(required, provided)
 	if len(missing) > 0 {
-		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing)
+		return fmt.Errorf("pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing)
 	}
 	return nil
 }
@@ -93,16 +93,23 @@ func validateFrom(tasks []PipelineTask) error {
 		taskOutputs[task.Name] = to
 	}
 	for _, t := range tasks {
+		inputResources := []PipelineTaskInputResource{}
 		if t.Resources != nil {
-			for _, rd := range t.Resources.Inputs {
-				for _, pb := range rd.From {
-					outputs, found := taskOutputs[pb]
-					if !found {
-						return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
-					}
-					if !isOutput(outputs, rd.Resource) {
-						return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
-					}
+			inputResources = append(inputResources, t.Resources.Inputs...)
+		}
+
+		for _, c := range t.Conditions {
+			inputResources = append(inputResources, c.Resources...)
+		}
+
+		for _, rd := range inputResources {
+			for _, pt := range rd.From {
+				outputs, found := taskOutputs[pt]
+				if !found {
+					return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pt, pt)
+				}
+				if !isOutput(outputs, rd.Resource) {
+					return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pt)
 				}
 			}
 		}

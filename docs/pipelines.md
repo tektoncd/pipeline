@@ -325,6 +325,31 @@ tasks:
 In this example, `my-condition` refers to a [Condition](#conditions) custom resource. The `build-push` 
 task will only be executed if the condition evaluates to true. 
 
+Resources in conditions can also use the [`from`](#from) field to indicate that they 
+expect the output of a previous task as input. As with regular Pipeline Tasks, using `from`
+implies ordering --  if task has a condition that takes in an output resource from
+another task, the task producing the output resource will run first:
+
+```yaml
+tasks:
+  - name: first-create-file
+    taskRef:
+      name: create-file
+    resources:
+      outputs:
+        - name: workspace
+          resource: source-repo
+  - name: then-check
+    conditions:
+      - conditionRef: "file-exists"
+        resources:
+          - name: workspace
+            resource: source-repo
+            from: [first-create-file]
+    taskRef:
+      name: echo-hello
+```
+
 ## Ordering
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run

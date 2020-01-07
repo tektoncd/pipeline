@@ -130,6 +130,12 @@ func (pt PipelineTask) Deps() []string {
 			deps = append(deps, rd.From...)
 		}
 	}
+	// Add any dependents from conditional resources.
+	for _, cond := range pt.Conditions {
+		for _, rd := range cond.Resources {
+			deps = append(deps, rd.From...)
+		}
+	}
 	return deps
 }
 
@@ -160,7 +166,7 @@ type PipelineTaskCondition struct {
 	Params []Param `json:"params,omitempty"`
 
 	// Resources declare the resources provided to this Condition as input
-	Resources []PipelineConditionResource `json:"resources,omitempty"`
+	Resources []PipelineTaskInputResource `json:"resources,omitempty"`
 }
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
@@ -174,15 +180,6 @@ type PipelineDeclaredResource struct {
 	Name string `json:"name"`
 	// Type is the type of the PipelineResource.
 	Type PipelineResourceType `json:"type"`
-}
-
-// PipelineConditionResource allows a Pipeline to declare how its DeclaredPipelineResources
-// should be provided to a Condition as its inputs.
-type PipelineConditionResource struct {
-	// Name is the name of the PipelineResource as declared by the Condition.
-	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelineResource to use.
-	Resource string `json:"resource"`
 }
 
 // PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources

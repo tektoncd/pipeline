@@ -246,14 +246,15 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 }
 
 // PipelineTaskConditionResource adds a resource to a PipelineTaskCondition
-func PipelineTaskConditionResource(name, resource string) PipelineTaskConditionOp {
+func PipelineTaskConditionResource(name, resource string, from ...string) PipelineTaskConditionOp {
 	return func(condition *v1alpha1.PipelineTaskCondition) {
 		if condition.Resources == nil {
-			condition.Resources = []v1alpha1.PipelineConditionResource{}
+			condition.Resources = []v1alpha1.PipelineTaskInputResource{}
 		}
-		condition.Resources = append(condition.Resources, v1alpha1.PipelineConditionResource{
+		condition.Resources = append(condition.Resources, v1alpha1.PipelineTaskInputResource{
 			Name:     name,
 			Resource: resource,
+			From:     from,
 		})
 	}
 }

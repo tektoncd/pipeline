@@ -41,7 +41,7 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskParam("arrayparam", "array", "value"),
 			tb.PipelineTaskCondition("some-condition-ref",
 				tb.PipelineTaskConditionParam("param-name", "param-value"),
-				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource"),
+				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource", "bar", "never-gonna"),
 			),
 		),
 		tb.PipelineTask("bar", "chocolate",
@@ -93,9 +93,10 @@ func TestPipeline(t *testing.T) {
 							StringVal: "param-value",
 						},
 					}},
-					Resources: []v1alpha1.PipelineConditionResource{{
+					Resources: []v1alpha1.PipelineTaskInputResource{{
 						Name:     "some-resource",
 						Resource: "my-only-git-resource",
+						From:     []string{"bar", "never-gonna"},
 					}},
 				}},
 			}, {

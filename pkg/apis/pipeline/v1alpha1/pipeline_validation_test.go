@@ -132,7 +132,9 @@ func TestPipelineSpec_Validate(t *testing.T) {
 				tb.PipelineTaskCondition("some-condition",
 					tb.PipelineTaskConditionResource("some-workspace", "great-resource"))),
 			tb.PipelineTask("foo", "foo-task",
-				tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+				tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar")),
+				tb.PipelineTaskCondition("some-condition-2",
+					tb.PipelineTaskConditionResource("wow-image", "wonderful-resource", "bar"))),
 		)),
 		failureExpected: false,
 	}, {
@@ -218,6 +220,15 @@ func TestPipelineSpec_Validate(t *testing.T) {
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskCondition("some-condition",
 					tb.PipelineTaskConditionResource("some-workspace", "missing-resource"))),
+		)),
+		failureExpected: true,
+	}, {
+		name: "invalid from in condition",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("foo", "foo-task"),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskCondition("some-condition",
+					tb.PipelineTaskConditionResource("some-workspace", "missing-resource", "foo"))),
 		)),
 		failureExpected: true,
 	}, {
