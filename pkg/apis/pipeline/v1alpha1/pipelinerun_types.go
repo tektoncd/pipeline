@@ -247,6 +247,8 @@ func (pr *PipelineRun) IsFailed() bool {
 	return pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 }
 
+// Fail sets the PipelineRun's condition to failed and the CompletionTime to the
+// current time.
 func (pr *PipelineRun) Fail(reason, msg string) {
 	pr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
