@@ -377,8 +377,9 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 	}
 }
 
-// GetPipelineCompletionTime will return the CompletionTime that the PipelineRun pr should be
-// updated with, based on the status and CompletionTime of the TaskRuns in state.
+// GetPipelineCompletionTime will return the CompletionTime that the PipelineRun
+// pr should be updated with, based on the status and CompletionTime of the
+// TaskRuns in state. If the PipelineRun is not completed yet, nil is returned.
 func GetPipelineCompletionTime(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *dag.Graph) *metav1.Time {
 	if pr.IsTimedOut() {
 		return &metav1.Time{Time: pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)}
