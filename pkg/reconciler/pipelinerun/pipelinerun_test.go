@@ -717,7 +717,6 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 
 	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
-
 		PipelineTaskName: "hello-world-1",
 		Status: &v1alpha1.TaskRunStatus{
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
