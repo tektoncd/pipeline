@@ -182,6 +182,11 @@ func TestGetInputSteps(t *testing.T) {
 			}},
 			pipelineTask: &v1alpha1.PipelineTask{
 				Name: "sample-test-task",
+				Resources: &v1alpha1.PipelineTaskResources{
+					Inputs: []v1alpha1.PipelineTaskInputResource{{
+						Name: "test-input",
+					}},
+				},
 			},
 		}, {
 			name:   "task-with-multiple-constraints",
@@ -230,6 +235,11 @@ func TestGetInputSteps(t *testing.T) {
 			}},
 			pipelineTask: &v1alpha1.PipelineTask{
 				Name: "sample-test-task",
+				Resources: &v1alpha1.PipelineTaskResources{
+					Inputs: []v1alpha1.PipelineTaskInputResource{{
+						Name: "test-input",
+					}},
+				},
 			},
 		}, {
 			name:   "task-with-multiple-constraints-with-resource-spec",
@@ -253,7 +263,7 @@ func TestGetInputSteps(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask, pvcDir)
+			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask.Resources.Inputs, pvcDir)
 			sort.SliceStable(taskInputResources, func(i, j int) bool { return taskInputResources[i].Name < taskInputResources[j].Name })
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources); d != "" {
 				t.Errorf("error comparing task resource inputs: %s", d)

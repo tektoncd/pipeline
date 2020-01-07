@@ -54,7 +54,7 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 
 // GetInputSteps will add the correct `path` to the input resources for pt. If the resources are provided by
 // a previous task, the correct `path` will be used so that the resource provided by that task will be used.
-func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.PipelineTask, storageBasePath string) []v1alpha1.TaskResourceBinding {
+func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, inputResources []v1alpha1.PipelineTaskInputResource, storageBasePath string) []v1alpha1.TaskResourceBinding {
 	var taskInputResources []v1alpha1.TaskResourceBinding
 
 	for name, inputResource := range inputs {
@@ -81,12 +81,10 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 		// Determine if the value is meant to come `from` a previous Task - if so, add the path to the pvc
 		// that contains the data as the `path` the resulting TaskRun should get the data from.
 		var stepSourceNames []string
-		if pt.Resources != nil {
-			for _, pipelineTaskInput := range pt.Resources.Inputs {
-				if pipelineTaskInput.Name == name {
-					for _, constr := range pipelineTaskInput.From {
-						stepSourceNames = append(stepSourceNames, filepath.Join(storageBasePath, constr, name))
-					}
+		for _, pipelineTaskInput := range inputResources {
+			if pipelineTaskInput.Name == name {
+				for _, constr := range pipelineTaskInput.From {
+					stepSourceNames = append(stepSourceNames, filepath.Join(storageBasePath, constr, name))
 				}
 			}
 		}
@@ -103,8 +101,11 @@ func WrapSteps(tr *v1alpha1.TaskRunSpec, pt *v1alpha1.PipelineTask, inputs, outp
 	if pt == nil {
 		return
 	}
-	// Add presteps to setup updated input
-	tr.Inputs.Resources = append(tr.Inputs.Resources, GetInputSteps(inputs, pt, storageBasePath)...)
+	if pt.Resources != nil {
+		// Add presteps to setup updated input
+		tr.Inputs.Resources = append(tr.Inputs.Resources, GetInputSteps(inputs, pt.Resources.Inputs, storageBasePath)...)
+	}
+
 	// Add poststeps to setup outputs
 	tr.Outputs.Resources = append(tr.Outputs.Resources, GetOutputSteps(outputs, pt.Name, storageBasePath)...)
 }

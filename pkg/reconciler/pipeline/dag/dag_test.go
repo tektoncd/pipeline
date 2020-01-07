@@ -440,6 +440,14 @@ func TestBuild_Invalid(t *testing.T) {
 		RunAfter: []string{"none"},
 	}
 
+	invalidConditionalTask := v1alpha1.PipelineTask{
+		Name: "b",
+		Conditions: []v1alpha1.PipelineTaskCondition{{
+			ConditionRef: "some-condition",
+			Resources:    []v1alpha1.PipelineTaskInputResource{{From: []string{"none"}}},
+		}},
+	}
+
 	tcs := []struct {
 		name string
 		spec v1alpha1.PipelineSpec
@@ -467,6 +475,9 @@ func TestBuild_Invalid(t *testing.T) {
 	}, {
 		name: "invalid-task-name-after",
 		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTaskAfter}},
+	}, {
+		name: "invalid-task-name-from-conditional",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidConditionalTask}},
 	},
 	}
 	for _, tc := range tcs {
@@ -480,4 +491,83 @@ func TestBuild_Invalid(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuild_ConditionResources(t *testing.T) {
+	// a,b, c are regular tasks
+	a := v1alpha1.PipelineTask{Name: "a"}
+	b := v1alpha1.PipelineTask{Name: "b"}
+	c := v1alpha1.PipelineTask{Name: "c"}
+
+	// Condition that depends on Task a output
+	cond1DependsOnA := v1alpha1.PipelineTaskCondition{
+		Resources: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+	}
+	// Condition that depends on Task b output
+	cond2DependsOnB := v1alpha1.PipelineTaskCondition{
+		Resources: []v1alpha1.PipelineTaskInputResource{{From: []string{"b"}}},
+	}
+
+	// x indirectly depends on A,B via its conditions
+	xDependsOnAAndB := v1alpha1.PipelineTask{
+		Name:       "x",
+		Conditions: []v1alpha1.PipelineTaskCondition{cond1DependsOnA, cond2DependsOnB},
+	}
+
+	// y depends on a both directly + via its conditional
+	yDependsOnA := v1alpha1.PipelineTask{
+		Name: "y",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+		Conditions: []v1alpha1.PipelineTaskCondition{cond1DependsOnA},
+	}
+
+	// y depends on b both directly + via its conditional
+	zDependsOnBRunsAfterC := v1alpha1.PipelineTask{
+		Name:       "z",
+		RunAfter:   []string{"c"},
+		Conditions: []v1alpha1.PipelineTaskCondition{cond2DependsOnB},
+	}
+
+	//  a   b   c
+	// / \ / \ /
+	// y  x   z
+	nodeA := &dag.Node{Task: a}
+	nodeB := &dag.Node{Task: b}
+	nodeC := &dag.Node{Task: c}
+	nodeX := &dag.Node{Task: xDependsOnAAndB}
+	nodeY := &dag.Node{Task: yDependsOnA}
+	nodeZ := &dag.Node{Task: zDependsOnBRunsAfterC}
+
+	nodeA.Next = []*dag.Node{nodeX, nodeY}
+	nodeB.Next = []*dag.Node{nodeX, nodeZ}
+	nodeC.Next = []*dag.Node{nodeZ}
+	nodeX.Prev = []*dag.Node{nodeA, nodeB}
+	nodeY.Prev = []*dag.Node{nodeA}
+	nodeZ.Prev = []*dag.Node{nodeB, nodeC}
+
+	expectedDAG := &dag.Graph{
+		Nodes: map[string]*dag.Node{
+			"a": nodeA,
+			"b": nodeB,
+			"c": nodeC,
+			"x": nodeX,
+			"y": nodeY,
+			"z": nodeZ,
+		},
+	}
+
+	p := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{a, b, c, xDependsOnAAndB, yDependsOnA, zDependsOnBRunsAfterC},
+		},
+	}
+
+	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))
+	if err != nil {
+		t.Errorf("didn't expect error creating valid Pipeline %v but got %v", p, err)
+	}
+	assertSameDAG(t, expectedDAG, g)
 }
