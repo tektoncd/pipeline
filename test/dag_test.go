@@ -62,6 +62,12 @@ func TestDAGPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
+	// Make sure the Pipeline has been created (wait for it)
+	if err := WaitForTaskCreated(c, "echo-task", "TaskCreated"); err != nil {
+		t.Errorf("Error waiting for Task echo-task to be created: %s", err)
+		t.Fatal("Pipeline execution failed, Task echo-task has not been created")
+	}
+
 	// Create the repo PipelineResource (doesn't really matter which repo we use)
 	repoResource := tb.PipelineResource("repo", namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
@@ -105,6 +111,13 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
+
+	// Make sure the Pipeline has been created (wait for it)
+	if err := WaitForPipelineCreated(c, "dag-pipeline", "PipelineCreated"); err != nil {
+		t.Errorf("Error waiting for Pipeline dag-pipeline to be created: %s", err)
+		t.Fatal("Pipeline execution failed, Pipeline dag-pipeline has not been created")
+	}
+
 	pipelineRun := tb.PipelineRun("dag-pipeline-run", namespace, tb.PipelineRunSpec("dag-pipeline",
 		tb.PipelineRunResourceBinding("repo", tb.PipelineResourceBindingRef("repo")),
 	))

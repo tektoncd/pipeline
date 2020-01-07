@@ -65,6 +65,12 @@ func TestGitPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 			}
 
+			// Make sure the Pipeline has been created (wait for it)
+			if err := WaitForPipelineCreated(c, gitTestPipelineName, "PipelineCreated"); err != nil {
+				t.Errorf("Error waiting for Pipeline %s to be created: %s", gitTestPipelineName, err)
+				t.Fatalf("Pipeline execution failed, Pipeline %s has not been created", gitTestPipelineName)
+			}
+
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
 			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)

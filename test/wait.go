@@ -68,6 +68,36 @@ type TaskRunStateFn func(r *v1alpha1.TaskRun) (bool, error)
 // PipelineRunStateFn is a condition function on TaskRun used polling functions
 type PipelineRunStateFn func(pr *v1alpha1.PipelineRun) (bool, error)
 
+// WaitForPipelineCreated wait until a pipeline has been created
+func WaitForPipelineCreated(c *clients, name, desc string) error {
+	metricName := fmt.Sprintf("WaitForPipelineCreated/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		pc, err := c.PipelineClient.Get(name, metav1.GetOptions{})
+		if pc.GetName() == name {
+			return true, err
+		}
+		return false, nil
+	})
+}
+
+// WaitForTaskCreated wait until a task has been created
+func WaitForTaskCreated(c *clients, name, desc string) error {
+	metricName := fmt.Sprintf("WaitForTaskCreated/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		tc, err := c.TaskClient.Get(name, metav1.GetOptions{})
+		if tc.GetName() == name {
+			return true, err
+		}
+		return false, err
+	})
+}
+
 // WaitForTaskRunState polls the status of the TaskRun called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to

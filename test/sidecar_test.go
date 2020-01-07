@@ -86,6 +86,12 @@ func TestSidecarTaskSupport(t *testing.T) {
 				t.Errorf("Failed to create Task %q: %v", sidecarTaskName, err)
 			}
 
+			// Make sure the Task has been created (wait for it)
+			if err := WaitForTaskCreated(clients, sidecarTaskName, "TaskCreated"); err != nil {
+				t.Errorf("Error waiting for Task %s to be created: %s", sidecarTaskName, err)
+				t.Fatalf("Task execution failed, Task %s has not been created", sidecarTaskName)
+			}
+
 			t.Logf("Creating TaskRun %q", sidecarTaskRunName)
 			if _, err := clients.TaskRunClient.Create(taskRun); err != nil {
 				t.Errorf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
