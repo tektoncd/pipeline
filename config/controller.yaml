@@ -28,6 +28,8 @@ spec:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+        # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
+        tekton.dev/release: "devel"
       labels:
         app: tekton-pipelines-controller
         app.kubernetes.io/name: tekton-pipelines

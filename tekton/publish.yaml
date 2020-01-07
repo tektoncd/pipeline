@@ -139,6 +139,9 @@ spec:
         ln -s ${TMPDIR}/source.tar.gz ${d}/kodata/
       done
 
+      # Rewrite "devel" to inputs.params.versionTag
+      sed -i 's/devel/$(inputs.params.versionTag)/g' /workspace/go/src/github.com/tektoncd/pipeline/config/controller.yaml
+
       # Publish images and create release.yaml
       ko resolve --preserve-import-paths -t $(inputs.params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/output/bucket/latest/release.yaml
     volumeMounts:

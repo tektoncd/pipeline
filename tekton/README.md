@@ -250,7 +250,7 @@ kubectl patch serviceaccount $ACCOUNT \
 
 ## Supporting scripts and images
 
-Some supporting scripts have been written using Python 2.7:
+Some supporting scripts have been written using Python3:
 
 - [koparse](./koparse) - Contains logic for parsing `release.yaml` files created
   by `ko`
