@@ -109,13 +109,13 @@ func TestInitializeConditions(t *testing.T) {
 
 func TestPipelineRunIsDone(t *testing.T) {
 	params := []struct {
-		name          string
-		prStatus      v1alpha1.PipelineRunStatus
-		expectedValue bool
+		name     string
+		prStatus v1alpha1.PipelineRunStatus
+		expected bool
 	}{{
-		name:          "prWithNoCompletionTime",
-		prStatus:      v1alpha1.PipelineRunStatus{},
-		expectedValue: false,
+		name:     "prWithNoCompletionTime",
+		prStatus: v1alpha1.PipelineRunStatus{},
+		expected: false,
 	}, {
 		name: "prWithCompletionTime",
 		prStatus: v1alpha1.PipelineRunStatus{
@@ -123,7 +123,7 @@ func TestPipelineRunIsDone(t *testing.T) {
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
-		expectedValue: true,
+		expected: true,
 	}, {
 		name: "prWithZeroCompletionTime",
 		prStatus: v1alpha1.PipelineRunStatus{
@@ -131,7 +131,7 @@ func TestPipelineRunIsDone(t *testing.T) {
 				StartTime: &metav1.Time{},
 			},
 		},
-		expectedValue: false,
+		expected: false,
 	}}
 	for _, tc := range params {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,8 +142,8 @@ func TestPipelineRunIsDone(t *testing.T) {
 				},
 				Status: tc.prStatus,
 			}
-			if pr.IsDone() != tc.expectedValue {
-				t.Fatalf("Expected pipelinerun IsDone() to return %t but got %t", tc.expectedValue, pr.IsDone())
+			if pr.IsDone() != tc.expected {
+				t.Fatalf("Expected pipelinerun IsDone() to return %t but got %t", tc.expected, pr.IsDone())
 			}
 		})
 	}
@@ -162,38 +162,38 @@ func TestPipelineRunIsCancelled(t *testing.T) {
 
 func TestPipelineRunIsFailed(t *testing.T) {
 	params := []struct {
-		name          string
-		prStatus      v1alpha1.PipelineRunStatus
-		expectedValue bool
+		name     string
+		prStatus v1alpha1.PipelineRunStatus
+		expected bool
 	}{
 		{
-			"prWithNoStatus",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithNoStatus",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				return status
 			}(),
-			false,
+			expected: false,
 		},
 		{
-			"prWithStatusSucceededFalse",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithStatusSucceededFalse",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				status.SetCondition(&apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
 				})
 				return status
 			}(),
-			true,
+			expected: true,
 		},
 		{
-			"prWithStatusSucceededTrue",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithStatusSucceededTrue",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				status.SetCondition(&apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				})
 				return status
 			}(),
-			false,
+			expected: false,
 		},
 	}
 	for _, tc := range params {
@@ -205,8 +205,8 @@ func TestPipelineRunIsFailed(t *testing.T) {
 				},
 				Status: tc.prStatus,
 			}
-			if pr.IsFailed() != tc.expectedValue {
-				t.Fatalf("Expected pipelinerun IsFailed() to return %t but got %t", tc.expectedValue, pr.IsFailed())
+			if pr.IsFailed() != tc.expected {
+				t.Fatalf("Expected pipelinerun IsFailed() to return %t but got %t", tc.expected, pr.IsFailed())
 			}
 		})
 	}
@@ -214,38 +214,38 @@ func TestPipelineRunIsFailed(t *testing.T) {
 
 func TestPipelineRunIsSuccessful(t *testing.T) {
 	params := []struct {
-		name          string
-		prStatus      v1alpha1.PipelineRunStatus
-		expectedValue bool
+		name     string
+		prStatus v1alpha1.PipelineRunStatus
+		expected bool
 	}{
 		{
-			"prWithNoStatus",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithNoStatus",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				return status
 			}(),
-			false,
+			expected: false,
 		},
 		{
-			"prWithStatusSucceededFalse",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithStatusSucceededFalse",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				status.SetCondition(&apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
 				})
 				return status
 			}(),
-			false,
+			expected: false,
 		},
 		{
-			"prWithStatusSucceededTrue",
-			func() (status v1alpha1.PipelineRunStatus) {
+			name: "prWithStatusSucceededTrue",
+			prStatus: func() (status v1alpha1.PipelineRunStatus) {
 				status.SetCondition(&apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				})
 				return status
 			}(),
-			true,
+			expected: true,
 		},
 	}
 	for _, tc := range params {
@@ -257,8 +257,8 @@ func TestPipelineRunIsSuccessful(t *testing.T) {
 				},
 				Status: tc.prStatus,
 			}
-			if pr.IsSuccessful() != tc.expectedValue {
-				t.Fatalf("Expected pipelinerun IsSuccessful() to return %t but got %t", tc.expectedValue, pr.IsSuccessful())
+			if pr.IsSuccessful() != tc.expected {
+				t.Fatalf("Expected pipelinerun IsSuccessful() to return %t but got %t", tc.expected, pr.IsSuccessful())
 			}
 		})
 	}
@@ -274,13 +274,13 @@ func TestPipelineRunKey(t *testing.T) {
 
 func TestPipelineRunHasStarted(t *testing.T) {
 	params := []struct {
-		name          string
-		prStatus      v1alpha1.PipelineRunStatus
-		expectedValue bool
+		name     string
+		prStatus v1alpha1.PipelineRunStatus
+		expected bool
 	}{{
-		name:          "prWithNoStartTime",
-		prStatus:      v1alpha1.PipelineRunStatus{},
-		expectedValue: false,
+		name:     "prWithNoStartTime",
+		prStatus: v1alpha1.PipelineRunStatus{},
+		expected: false,
 	}, {
 		name: "prWithStartTime",
 		prStatus: v1alpha1.PipelineRunStatus{
@@ -288,7 +288,7 @@ func TestPipelineRunHasStarted(t *testing.T) {
 				StartTime: &metav1.Time{Time: time.Now()},
 			},
 		},
-		expectedValue: true,
+		expected: true,
 	}, {
 		name: "prWithZeroStartTime",
 		prStatus: v1alpha1.PipelineRunStatus{
@@ -296,7 +296,7 @@ func TestPipelineRunHasStarted(t *testing.T) {
 				StartTime: &metav1.Time{},
 			},
 		},
-		expectedValue: false,
+		expected: false,
 	}}
 	for _, tc := range params {
 		t.Run(tc.name, func(t *testing.T) {
@@ -307,8 +307,8 @@ func TestPipelineRunHasStarted(t *testing.T) {
 				},
 				Status: tc.prStatus,
 			}
-			if pr.HasStarted() != tc.expectedValue {
-				t.Fatalf("Expected pipelinerun HasStarted() to return %t but got %t", tc.expectedValue, pr.HasStarted())
+			if pr.HasStarted() != tc.expected {
+				t.Fatalf("Expected pipelinerun HasStarted() to return %t but got %t", tc.expected, pr.HasStarted())
 			}
 		})
 	}
