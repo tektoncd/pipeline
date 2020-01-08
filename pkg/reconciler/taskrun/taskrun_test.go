@@ -1515,42 +1515,22 @@ func TestReconcileCloudEvents(t *testing.T) {
 	}
 }
 
-func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
+func TestUpdateTaskRunResourceResult(t *testing.T) {
 	for _, c := range []struct {
-		desc    string
-		podLog  []byte
-		taskRun *v1alpha1.TaskRun
-		want    []v1alpha1.PipelineResourceResult
+		desc          string
+		podStatus     corev1.PodStatus
+		taskRunStatus *v1alpha1.TaskRunStatus
+		want          []v1alpha1.PipelineResourceResult
 	}{{
-		desc:   "image resource updated",
-		podLog: []byte("[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
-								Name: "source-image-1",
-							},
-						},
-					}},
+		desc: "image resource updated",
+		podStatus: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"name":"source-image","digest":"sha256:1234"}]`,
+					},
 				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
-								Name: "source-image-1",
-							},
-						},
-					}},
-				},
-			},
+			}},
 		},
 		want: []v1alpha1.PipelineResourceResult{{
 			Name:   "source-image",
@@ -1559,80 +1539,53 @@ func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			c.taskRun.Status.SetCondition(&apis.Condition{
+			tr := &v1alpha1.TaskRun{}
+			tr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			})
-			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err != nil {
-				t.Errorf("UpdateTaskRunStatusWithResourceResult failed with error: %s", err)
+			if err := updateTaskRunResourceResult(tr, c.podStatus); err != nil {
+				t.Errorf("updateTaskRunResourceResult: %s", err)
 			}
-			if d := cmp.Diff(c.want, c.taskRun.Status.ResourcesResult); d != "" {
-				t.Errorf("post build steps mismatch (-want, +got): %s", d)
+			if d := cmp.Diff(c.want, tr.Status.ResourcesResult); d != "" {
+				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
 			}
 		})
 	}
 }
 
-func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
+func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 	for _, c := range []struct {
-		desc    string
-		podLog  []byte
-		taskRun *v1alpha1.TaskRun
-		want    []v1alpha1.PipelineResourceResult
+		desc          string
+		podStatus     corev1.PodStatus
+		taskRunStatus *v1alpha1.TaskRunStatus
+		want          []v1alpha1.PipelineResourceResult
 	}{{
-		desc:   "image resource exporter with malformed json output",
-		podLog: []byte("extralogscamehere[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
-								Name: "source-image-1",
-							},
-						},
-					}},
+		desc: "image resource exporter with malformed json output",
+		podStatus: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `MALFORMED JSON{"digest":"sha256:1234"}`,
+					},
 				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
-								Name: "source-image-1",
-							},
-						},
-					}},
-				},
-			},
+			}},
 		},
-		want: nil,
-	}, {
-		desc:   "task with no image resource ",
-		podLog: []byte(""),
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
+		taskRunStatus: &v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}}},
 		},
 		want: nil,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			c.taskRun.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			})
-			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err == nil {
-				t.Error("UpdateTaskRunStatusWithResourceResult expected to fail with error")
+			if err := updateTaskRunResourceResult(&v1alpha1.TaskRun{Status: *c.taskRunStatus}, c.podStatus); err == nil {
+				t.Error("Expected error, got nil")
 			}
-			if d := cmp.Diff(c.want, c.taskRun.Status.ResourcesResult); d != "" {
-				t.Errorf("post build steps mismatch (-want, +got): %s", d)
+			if d := cmp.Diff(c.want, c.taskRunStatus.ResourcesResult); d != "" {
+				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
 			}
 		})
 	}

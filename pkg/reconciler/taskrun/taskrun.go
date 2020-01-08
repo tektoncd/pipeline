@@ -18,7 +18,6 @@ package taskrun
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -36,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -358,7 +358,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// Convert the Pod's status to the equivalent TaskRun Status.
 	tr.Status = podconvert.MakeTaskRunStatus(*tr, pod, *taskSpec)
 
-	updateTaskRunResourceResult(tr, pod, c.Logger)
+	if err := updateTaskRunResourceResult(tr, pod.Status); err != nil {
+		return err
+	}
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -398,28 +400,19 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
 }
 
-func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, logger *zap.SugaredLogger) {
+func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.PodStatus) error {
 	if taskRun.IsSuccessful() {
-		for _, cs := range pod.Status.ContainerStatuses {
+		for idx, cs := range podStatus.ContainerStatuses {
 			if cs.State.Terminated != nil {
 				msg := cs.State.Terminated.Message
-				if msg != "" {
-					if err := updateTaskRunStatusWithResourceResult(taskRun, []byte(msg)); err != nil {
-						logger.Infof("No resource result from %s for %s/%s: %s", cs.Name, taskRun.Name, taskRun.Namespace, err)
-					}
+				r, err := termination.ParseMessage(msg)
+				if err != nil {
+					return fmt.Errorf("parsing message for container status %d: %v", idx, err)
 				}
+				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, r...)
 			}
 		}
 	}
-}
-
-// updateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
-func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
-	results := []v1alpha1.PipelineResourceResult{}
-	if err := json.Unmarshal(logContent, &results); err != nil {
-		return fmt.Errorf("failed to unmarshal output image exporter JSON output: %w", err)
-	}
-	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
 	return nil
 }
 
