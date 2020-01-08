@@ -41,7 +41,7 @@ func resolveResourceRequests(containers []corev1.Container) []corev1.Container {
 		}
 	}
 
-	// Set resource requests for all steps but the theh last container to
+	// Set resource requests for all steps but the last container to
 	// zero.
 	for i := range containers[:len(containers)-1] {
 		containers[i].Resources.Requests = allZeroQty()
