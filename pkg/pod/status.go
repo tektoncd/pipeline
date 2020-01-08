@@ -25,6 +25,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/termination"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -119,8 +120,8 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 		if isContainerStep(s.Name) {
 			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
 				msg := s.State.Terminated.Message
-				var r []v1alpha1.PipelineResourceResult
-				if err := json.Unmarshal([]byte(msg), &r); err != nil {
+				r, err := termination.ParseMessage(msg)
+				if err != nil {
 					logger.Errorf("Could not parse json message %q because of %w", msg, err)
 					break
 				}

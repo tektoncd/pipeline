@@ -23,6 +23,7 @@ import (
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
+// WriteMessage writes the results to the termination message path.
 func WriteMessage(path string, pro []v1alpha1.PipelineResourceResult) error {
 	// if the file at path exists, concatenate the new values otherwise create it
 	// file at path already exists
