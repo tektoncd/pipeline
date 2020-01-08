@@ -37,6 +37,46 @@ var (
 	failure = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}
 )
 
+func TestWaitForTaskCreated(t *testing.T) {
+	tname := "bananas"
+	task := tb.Task(tname, waitNamespace,
+		tb.TaskSpec(
+			tb.Step("foo", "busybox",
+				tb.StepCommand("/bin/sh"),
+				tb.StepArgs("-c", "sleep 10"),
+			),
+		),
+	)
+
+	d := Data{
+		Tasks: []*v1alpha1.Task{task},
+	}
+	c, cancel := fakeClients(t, d)
+	defer cancel()
+	err := WaitForTaskCreated(c, tname, "TaskCreated")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWaitForPipelineCreated(t *testing.T) {
+	pname := "raspberries"
+	pipeline := tb.Pipeline(pname, waitNamespace,
+		tb.PipelineSpec(
+			tb.PipelineTask("foo", "banana"),
+		),
+	)
+	d := Data{
+		Pipelines: []*v1alpha1.Pipeline{pipeline},
+	}
+	c, cancel := fakeClients(t, d)
+	defer cancel()
+	err := WaitForPipelineCreated(c, pname, "PipelineCreated")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	d := Data{
 		TaskRuns: []*v1alpha1.TaskRun{
