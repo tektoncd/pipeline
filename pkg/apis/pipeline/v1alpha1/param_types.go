@@ -25,10 +25,6 @@ import (
 // or PipelineRun.
 type ParamSpec = v1alpha2.ParamSpec
 
-// ResourceParam declares a string value to use for the parameter called Name, and is used in
-// the specific context of PipelineResources.
-type ResourceParam = v1alpha2.ResourceParam
-
 // Param declares an ArrayOrString to use for the parameter called name.
 type Param = v1alpha2.Param
 

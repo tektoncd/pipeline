@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
@@ -57,10 +59,7 @@ func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 
 // ResourceParam declares a string value to use for the parameter called Name, and is used in
 // the specific context of PipelineResources.
-type ResourceParam struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
+type ResourceParam = resource.ResourceParam
 
 // Param declares an ArrayOrString to use for the parameter called name.
 type Param struct {

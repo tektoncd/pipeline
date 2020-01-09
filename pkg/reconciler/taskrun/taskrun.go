@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -61,7 +62,7 @@ type Reconciler struct {
 	taskRunLister     listers.TaskRunLister
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
-	resourceLister    listers.PipelineResourceLister
+	resourceLister    resourcelisters.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache

@@ -43,6 +43,8 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	resourceversioned "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/typed/resource/v1alpha1"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -54,7 +56,7 @@ type clients struct {
 	TaskClient             v1alpha1.TaskInterface
 	TaskRunClient          v1alpha1.TaskRunInterface
 	PipelineRunClient      v1alpha1.PipelineRunInterface
-	PipelineResourceClient v1alpha1.PipelineResourceInterface
+	PipelineResourceClient resourcev1alpha1.PipelineResourceInterface
 	ConditionClient        v1alpha1.ConditionInterface
 }
 
@@ -80,11 +82,15 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	if err != nil {
 		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
+	rcs, err := resourceversioned.NewForConfig(cfg)
+	if err != nil {
+		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
+	}
 	c.PipelineClient = cs.TektonV1alpha1().Pipelines(namespace)
 	c.TaskClient = cs.TektonV1alpha1().Tasks(namespace)
 	c.TaskRunClient = cs.TektonV1alpha1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.TektonV1alpha1().PipelineRuns(namespace)
-	c.PipelineResourceClient = cs.TektonV1alpha1().PipelineResources(namespace)
+	c.PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.ConditionClient = cs.TektonV1alpha1().Conditions(namespace)
 	return c
 }

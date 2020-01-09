@@ -22,40 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
-// controller will know this pipelineResource should be fetched and optionally what
-// additional metatdata should be provided for it.
-type PipelineResourceType = v1alpha2.PipelineResourceType
-
-var (
-	AllowedOutputResources = v1alpha2.AllowedOutputResources
-)
-
-const (
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	PipelineResourceTypeGit PipelineResourceType = v1alpha2.PipelineResourceTypeGit
-
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	PipelineResourceTypeStorage PipelineResourceType = v1alpha2.PipelineResourceTypeStorage
-
-	// PipelineResourceTypeImage indicates that this source is a docker Image.
-	PipelineResourceTypeImage PipelineResourceType = v1alpha2.PipelineResourceTypeImage
-
-	// PipelineResourceTypeCluster indicates that this source is a k8s cluster Image.
-	PipelineResourceTypeCluster PipelineResourceType = v1alpha2.PipelineResourceTypeCluster
-
-	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
-	PipelineResourceTypePullRequest PipelineResourceType = v1alpha2.PipelineResourceTypePullRequest
-
-	// PipelineResourceTypeCloudEvent indicates that this source is a cloud event URI
-	PipelineResourceTypeCloudEvent PipelineResourceType = v1alpha2.PipelineResourceTypeCloudEvent
-)
-
-// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = v1alpha2.AllResourceTypes
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
@@ -132,51 +99,6 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 	return nil
 }
 
-// SecretParam indicates which secret can be used to populate a field of the resource
-type SecretParam struct {
-	FieldName  string `json:"fieldName"`
-	SecretKey  string `json:"secretKey"`
-	SecretName string `json:"secretName"`
-}
-
-// PipelineResourceSpec defines  an individual resources used in the pipeline.
-type PipelineResourceSpec struct {
-	Type   PipelineResourceType `json:"type"`
-	Params []ResourceParam      `json:"params"`
-	// Secrets to fetch to populate some of resource fields
-	// +optional
-	SecretParams []SecretParam `json:"secrets,omitempty"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +genclient:noStatus
-
-// PipelineResource describes a resource that is an input to or output from a
-// Task.
-//
-// +k8s:openapi-gen=true
-type PipelineResource struct {
-	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// Spec holds the desired state of the PipelineResource from the client
-	Spec PipelineResourceSpec `json:"spec,omitempty"`
-
-	// Status is deprecated.
-	// It usually is used to communicate the observed state of the PipelineResource from
-	// the controller, but was unused as there is no controller for PipelineResource.
-	// +optional
-	Status *PipelineResourceStatus `json:"status,omitempty"`
-}
-
-// PipelineResourceStatus does not contain anything because PipelineResources on their own
-// do not have a status
-// Deprecated
-type PipelineResourceStatus struct {
-}
-
 // PipelineResourceBinding connects a reference to an instance of a PipelineResource
 // with a PipelineResource dependency that the Pipeline has declared
 type PipelineResourceBinding struct {
@@ -202,23 +124,6 @@ type PipelineResourceResult struct {
 	Value       string              `json:"value"`
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// PipelineResourceList contains a list of PipelineResources
-type PipelineResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineResource `json:"items"`
-}
-
-// ResourceDeclaration defines an input or output PipelineResource declared as a requirement
-// by another type such as a Task or Condition. The Name field will be used to refer to these
-// PipelineResources within the type's definition, and when provided as an Input, the Name will be the
-// path to the volume mounted containing this PipelineResource as an input (e.g.
-// an input Resource named `workspace` will be mounted at `/workspace`).
-type ResourceDeclaration = v1alpha2.ResourceDeclaration
 
 // ResourceFromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
