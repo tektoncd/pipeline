@@ -19,6 +19,7 @@ package v1alpha2
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
@@ -47,6 +48,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("steps")
 	}
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
+		return err
+	}
+	if err := ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
@@ -90,6 +94,44 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
+// a mount path which conflicts with any other declared workspaces, with the explicitly
+// declared volume mounts, or with the stepTemplate. The names must also be unique.
+func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+	mountPaths := map[string]struct{}{}
+	for _, step := range steps {
+		for _, vm := range step.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+	if stepTemplate != nil {
+		for _, vm := range stepTemplate.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+
+	wsNames := map[string]struct{}{}
+	for _, w := range workspaces {
+		// Workspace names must be unique
+		if _, ok := wsNames[w.Name]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace name %q must be unique", w.Name),
+				Paths:   []string{"workspaces.name"},
+			}
+		}
+		wsNames[w.Name] = struct{}{}
+		// Workspaces must not try to use mount paths that are already used
+		mountPath := filepath.Clean(w.GetMountPath())
+		if _, ok := mountPaths[mountPath]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace mount path %q must be unique", mountPath),
+				Paths:   []string{"workspaces.mountpath"},
+			}
+		}
+		mountPaths[mountPath] = struct{}{}
+	}
+	return nil
+}
+
 func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Task must not have duplicate volume names.
 	vols := map[string]struct{}{}
@@ -108,33 +150,42 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
 	names := map[string]struct{}{}
-	for _, s := range steps {
+	for idx, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
 		}
 
 		if s.Script != "" {
-			if len(s.Args) > 0 || len(s.Command) > 0 {
+			if len(s.Command) > 0 {
 				return &apis.FieldError{
-					Message: "script cannot be used with args or command",
-					Paths:   []string{"script"},
-				}
-			}
-			if !strings.HasPrefix(strings.TrimSpace(s.Script), "#!") {
-				return &apis.FieldError{
-					Message: "script must start with a shebang (#!)",
+					Message: fmt.Sprintf("step %d script cannot be used with command", idx),
 					Paths:   []string{"script"},
 				}
 			}
 		}
 
-		if s.Name == "" {
-			continue
+		if s.Name != "" {
+			if _, ok := names[s.Name]; ok {
+				return apis.ErrInvalidValue(s.Name, "name")
+			}
+			names[s.Name] = struct{}{}
 		}
-		if _, ok := names[s.Name]; ok {
-			return apis.ErrInvalidValue(s.Name, "name")
+
+		for _, vm := range s.VolumeMounts {
+			if strings.HasPrefix(vm.MountPath, "/tekton/") &&
+				!strings.HasPrefix(vm.MountPath, "/tekton/home") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("step %d volumeMount cannot be mounted under /tekton/ (volumeMount %q mounted at %q)", idx, vm.Name, vm.MountPath),
+					Paths:   []string{"volumeMounts.mountPath"},
+				}
+			}
+			if strings.HasPrefix(vm.Name, "tekton-internal-") {
+				return &apis.FieldError{
+					Message: fmt.Sprintf(`step %d volumeMount name %q cannot start with "tekton-internal-"`, idx, vm.Name),
+					Paths:   []string{"volumeMounts.name"},
+				}
+			}
 		}
-		names[s.Name] = struct{}{}
 	}
 	return nil
 }
