@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -28,11 +29,11 @@ type PipelineResourceStorageType string
 
 const (
 	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
-	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+	PipelineResourceTypeGCS PipelineResourceType = resource.PipelineResourceTypeGCS
 
 	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
 	// with additional functionality that was added to be compatible with knative build.
-	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
+	PipelineResourceTypeBuildGCS PipelineResourceType = resource.PipelineResourceTypeBuildGCS
 )
 
 // PipelineStorageResourceInterface is the interface for subtypes of the storage type.

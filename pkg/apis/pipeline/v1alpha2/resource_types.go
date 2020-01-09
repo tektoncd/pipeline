@@ -20,43 +20,41 @@ import (
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 )
 
 // PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
 // controller will know this pipelineResource should be fetched and optionally what
 // additional metatdata should be provided for it.
-type PipelineResourceType string
+type PipelineResourceType = resource.PipelineResourceType
 
 var (
-	AllowedOutputResources = map[PipelineResourceType]bool{
-		PipelineResourceTypeStorage: true,
-		PipelineResourceTypeGit:     true,
-	}
+	AllowedOutputResources = resource.AllowedOutputResources
 )
 
 const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	PipelineResourceTypeGit PipelineResourceType = "git"
+	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit
 
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	PipelineResourceTypeStorage PipelineResourceType = "storage"
+	PipelineResourceTypeStorage PipelineResourceType = resource.PipelineResourceTypeStorage
 
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
-	PipelineResourceTypeImage PipelineResourceType = "image"
+	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
 
 	// PipelineResourceTypeCluster indicates that this source is a k8s cluster Image.
-	PipelineResourceTypeCluster PipelineResourceType = "cluster"
+	PipelineResourceTypeCluster PipelineResourceType = resource.PipelineResourceTypeCluster
 
 	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
-	PipelineResourceTypePullRequest PipelineResourceType = "pullRequest"
+	PipelineResourceTypePullRequest PipelineResourceType = resource.PipelineResourceTypePullRequest
 
 	// PipelineResourceTypeCloudEvent indicates that this source is a cloud event URI
-	PipelineResourceTypeCloudEvent PipelineResourceType = "cloudEvent"
+	PipelineResourceTypeCloudEvent PipelineResourceType = resource.PipelineResourceTypeCloudEvent
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
+var AllResourceTypes = resource.AllResourceTypes
 
 // TaskResources allows a Pipeline to declare how its DeclaredPipelineResources
 // should be provided to a Task as its inputs and outputs.
@@ -83,23 +81,7 @@ type TaskResource struct {
 // PipelineResources within the type's definition, and when provided as an Input, the Name will be the
 // path to the volume mounted containing this PipelineResource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
-type ResourceDeclaration struct {
-	// Name declares the name by which a resource is referenced in the
-	// definition. Resources may be referenced by name in the definition of a
-	// Task's steps.
-	Name string `json:"name"`
-	// Type is the type of this resource;
-	Type PipelineResourceType `json:"type"`
-	// TargetPath is the path in workspace directory where the resource
-	// will be copied.
-	// +optional
-	TargetPath string `json:"targetPath,omitempty"`
-	// Optional declares the resource as optional.
-	// By default optional is set to false which makes a resource required.
-	// optional: true - the resource is considered optional
-	// optional: false - the resource is considered required (equivalent of not specifying it)
-	Optional bool `json:"optional,omitempty"`
-}
+type ResourceDeclaration = resource.ResourceDeclaration
 
 // TaskModifier is an interface to be implemented by different PipelineResources
 type TaskModifier interface {

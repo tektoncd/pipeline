@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -94,7 +95,7 @@ type Reconciler struct {
 	taskRunLister     listers.TaskRunLister
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
-	resourceLister    listers.PipelineResourceLister
+	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listers.ConditionLister
 	tracker           tracker.Interface
 	configStore       configStore

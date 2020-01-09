@@ -28,10 +28,13 @@ import (
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask/fake"
 	fakeconditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline/fake"
-	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource/fake"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake"
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task/fake"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun/fake"
+	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
+	resourceinformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/informers/externalversions/resource/v1alpha1"
+	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
+	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -57,6 +60,7 @@ type Data struct {
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
 	Pipeline *fakepipelineclientset.Clientset
+	Resource *fakeresourceclientset.Clientset
 	Kube     *fakekubeclientset.Clientset
 }
 
@@ -67,7 +71,7 @@ type Informers struct {
 	TaskRun          informersv1alpha1.TaskRunInformer
 	Task             informersv1alpha1.TaskInformer
 	ClusterTask      informersv1alpha1.ClusterTaskInformer
-	PipelineResource informersv1alpha1.PipelineResourceInformer
+	PipelineResource resourceinformersv1alpha1.PipelineResourceInformer
 	Condition        informersv1alpha1.ConditionInformer
 	Pod              coreinformers.PodInformer
 }
@@ -85,6 +89,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	c := Clients{
 		Kube:     fakekubeclient.Get(ctx),
 		Pipeline: fakepipelineclient.Get(ctx),
+		Resource: fakeresourceclient.Get(ctx),
 	}
 
 	i := Informers{
@@ -142,7 +147,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
+		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
 			t.Fatal(err)
 		}
 	}

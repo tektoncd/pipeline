@@ -40,10 +40,6 @@ func (c *FakeTektonV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterf
 	return &FakePipelines{c, namespace}
 }
 
-func (c *FakeTektonV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
-	return &FakePipelineResources{c, namespace}
-}
-
 func (c *FakeTektonV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
 	return &FakePipelineRuns{c, namespace}
 }

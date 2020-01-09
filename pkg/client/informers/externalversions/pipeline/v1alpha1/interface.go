@@ -30,8 +30,6 @@ type Interface interface {
 	Conditions() ConditionInformer
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
-	// PipelineResources returns a PipelineResourceInformer.
-	PipelineResources() PipelineResourceInformer
 	// PipelineRuns returns a PipelineRunInformer.
 	PipelineRuns() PipelineRunInformer
 	// Tasks returns a TaskInformer.
@@ -64,11 +62,6 @@ func (v *version) Conditions() ConditionInformer {
 // Pipelines returns a PipelineInformer.
 func (v *version) Pipelines() PipelineInformer {
 	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// PipelineResources returns a PipelineResourceInformer.
-func (v *version) PipelineResources() PipelineResourceInformer {
-	return &pipelineResourceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PipelineRuns returns a PipelineRunInformer.

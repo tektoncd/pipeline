@@ -107,7 +107,7 @@ func fakeClients(t *testing.T, d Data) (*clients, func()) {
 	// 	c.KubeClient = fakeClients.Kube
 	return &clients{
 		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),
-		PipelineResourceClient: fakeClients.Pipeline.TektonV1alpha1().PipelineResources(waitNamespace),
+		PipelineResourceClient: fakeClients.Resource.TektonV1alpha1().PipelineResources(waitNamespace),
 		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(waitNamespace),
 		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(waitNamespace),
 		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(waitNamespace),
