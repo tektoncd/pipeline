@@ -78,7 +78,7 @@ replace (
 	knative.dev/pkg/vendor/github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 )
 
-// Pin k8s deps to 1.12.9
+// Pin k8s deps to 1.13.4
 
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20191004102255-dacd7df5a50b
