@@ -21,7 +21,8 @@ metadata:
   namespace: tekton-pipelines
 spec:
   ports:
-    - port: 443
+    - name: https-webhook
+      port: 443
       targetPort: 8443
   selector:
     app: tekton-pipelines-webhook
