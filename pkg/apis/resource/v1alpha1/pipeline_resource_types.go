@@ -55,7 +55,7 @@ const (
 	PipelineResourceTypeGCS PipelineResourceType = "gcs"
 
 	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
-	// with additional funcitonality that was added to be compatible with knative build.
+	// with additional functionality that was added to be compatible with knative build.
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 
