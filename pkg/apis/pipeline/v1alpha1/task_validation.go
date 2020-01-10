@@ -50,7 +50,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
-	if err := ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
+	if err := validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
@@ -112,10 +112,10 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-// ValidateDeclaredWorkspaces will make sure that the declared workspaces do not try to use
+// validateDeclaredWorkspaces will make sure that the declared workspaces do not try to use
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
-func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
 	mountPaths := map[string]struct{}{}
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {
