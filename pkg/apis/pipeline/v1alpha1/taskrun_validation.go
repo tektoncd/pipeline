@@ -69,7 +69,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
-	if err := ValidateWorkspaceBindings(ctx, ts.Workspaces); err != nil {
+	if err := validateWorkspaceBindings(ctx, ts.Workspaces); err != nil {
 		return err
 	}
 
@@ -94,8 +94,8 @@ func (o TaskRunOutputs) Validate(ctx context.Context, path string) *apis.FieldEr
 	return validatePipelineResources(ctx, o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
 
-// ValidateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
-func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis.FieldError {
+// validateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
+func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis.FieldError {
 	seen := map[string]struct{}{}
 	for _, w := range wb {
 		if _, ok := seen[w.Name]; ok {
