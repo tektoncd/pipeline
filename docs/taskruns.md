@@ -151,10 +151,22 @@ The `paths` field can be used to [override the paths to a resource](./resources.
 
 ### Configuring Default Timeout
 
-You can configure the default timeout by changing the value of `default-timeout-minutes`
-in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). The default timeout
-is 60 minutes, if `default-timeout-minutes` is not available. There is no timeout by
-default, if `default-timeout-minutes` is set to 0.
+You can configure the default timeout by changing the value of
+`default-timeout-minutes` in
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
+
+The `timeout` format is a `duration` as validated by Go's
+[`ParseDuration`](https://golang.org/pkg/time/#ParseDuration), valid format for
+examples are :
+
+- `1h30m`
+- `1h`
+- `1m`
+- `60s`
+
+The default timeout is 60 minutes, if `default-timeout-minutes` is not
+available. There is no timeout by default, if `default-timeout-minutes` is set
+to 0.
 
 ### Service Account
 
