@@ -18,11 +18,15 @@ package termination
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // ParseMessage parses a termination message as results.
+//
+// If more than one item has the same key, only the latest is returned. Items
+// are sorted by their key.
 func ParseMessage(msg string) ([]v1alpha1.PipelineResourceResult, error) {
 	if msg == "" {
 		return nil, nil
@@ -31,5 +35,17 @@ func ParseMessage(msg string) ([]v1alpha1.PipelineResourceResult, error) {
 	if err := json.Unmarshal([]byte(msg), &r); err != nil {
 		return nil, fmt.Errorf("parsing message json: %v", err)
 	}
-	return r, nil
+
+	// Remove duplicates (last one wins) and sort by key.
+	m := map[string]v1alpha1.PipelineResourceResult{}
+	for _, rr := range r {
+		m[rr.Key] = rr
+	}
+	var r2 []v1alpha1.PipelineResourceResult
+	for _, v := range m {
+		r2 = append(r2, v)
+	}
+	sort.Slice(r2, func(i, j int) bool { return r2[i].Key < r2[j].Key })
+
+	return r2, nil
 }
