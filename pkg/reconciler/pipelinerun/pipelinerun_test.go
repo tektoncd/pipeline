@@ -291,6 +291,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeString)))),
 		tb.Task("a-task-that-needs-array-params", "foo", tb.TaskSpec(
 			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeArray)))),
+		tb.Task("a-task-that-needs-a-resource", "ns", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("workspace", "git")),
+		)),
 	}
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
@@ -320,6 +323,18 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.PipelineRun("pipeline-resources-not-declared", "foo", tb.PipelineRunSpec("a-pipeline-that-should-be-caught-by-admission-control")),
 		tb.PipelineRun("pipeline-mismatching-param-type", "foo", tb.PipelineRunSpec("a-pipeline-with-array-params", tb.PipelineRunParam("some-param", "stringval"))),
 		tb.PipelineRun("pipeline-conditions-missing", "foo", tb.PipelineRunSpec("a-pipeline-with-missing-conditions")),
+		tb.PipelineRun("embedded-pipeline-resources-not-bound", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-needs-a-resource"),
+			tb.PipelineDeclaredResource("workspace", "git"),
+		))),
+		tb.PipelineRun("embedded-pipeline-invalid", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("bad-t@$k", "b@d-t@$k"),
+		))),
+		tb.PipelineRun("embedded-pipeline-mismatching-param-type", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("some-task", "a-task-that-needs-array-params")),
+			tb.PipelineRunParam("some-param", "stringval"),
+		)),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -365,6 +380,18 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-missing-conditions-shd-stop-reconciling",
 			pipelineRun: prs[7],
 			reason:      ReasonCouldntGetCondition,
+		}, {
+			name:        "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
+			pipelineRun: prs[8],
+			reason:      ReasonInvalidBindings,
+		}, {
+			name:        "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
+			pipelineRun: prs[9],
+			reason:      ReasonFailedValidation,
+		}, {
+			name:        "invalid-embedded-pipeline-mismatching-parameter-types",
+			pipelineRun: prs[10],
+			reason:      ReasonParameterTypeMismatch,
 		},
 	}
 
@@ -394,7 +421,12 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 				t.Errorf("Expected failure to be because of reason %q but was %s", tc.reason, condition.Reason)
 			}
 			if !tc.hasNoDefaultLabels {
-				expectedLabels := map[string]string{pipeline.GroupName + pipeline.PipelineLabelKey: tc.pipelineRun.Spec.PipelineRef.Name}
+				expectedPipelineLabel := tc.pipelineRun.Name
+				// Embedded pipelines use the pipelinerun name
+				if tc.pipelineRun.Spec.PipelineRef != nil {
+					expectedPipelineLabel = tc.pipelineRun.Spec.PipelineRef.Name
+				}
+				expectedLabels := map[string]string{pipeline.GroupName + pipeline.PipelineLabelKey: expectedPipelineLabel}
 				if len(tc.pipelineRun.ObjectMeta.Labels) != len(expectedLabels) {
 					t.Errorf("Expected labels : %v, got %v", expectedLabels, tc.pipelineRun.ObjectMeta.Labels)
 				}

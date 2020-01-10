@@ -264,6 +264,35 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 	}
 }
 
+func TestPipelineRunWithPipelineSpec(t *testing.T) {
+	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+		tb.PipelineTask("a-task", "some-task")),
+		tb.PipelineRunServiceAccountName("sa"),
+	))
+
+	expectedPipelineRun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: nil,
+			PipelineSpec: &v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "a-task",
+					TaskRef: v1alpha1.TaskRef{Name: "some-task"},
+				}},
+			},
+			ServiceAccountName: "sa",
+			Timeout:            &metav1.Duration{Duration: 1 * time.Hour},
+		},
+	}
+
+	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
+	}
+}
+
 func TestPipelineResource(t *testing.T) {
 	pipelineResource := tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
