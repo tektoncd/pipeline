@@ -39,6 +39,32 @@ func TestParseMessage(t *testing.T) {
 		desc: "empty message",
 		msg:  "",
 		want: nil,
+	}, {
+		desc: "duplicate keys",
+		msg: `[
+		{"key":"foo","value":"first"},
+		{"key":"foo","value":"middle"},
+		{"key":"foo","value":"last"}]`,
+		want: []v1alpha1.PipelineResourceResult{{
+			Key:   "foo",
+			Value: "last",
+		}},
+	}, {
+		desc: "sorted by key",
+		msg: `[
+		{"key":"zzz","value":"last"},
+		{"key":"ddd","value":"middle"},
+		{"key":"aaa","value":"first"}]`,
+		want: []v1alpha1.PipelineResourceResult{{
+			Key:   "aaa",
+			Value: "first",
+		}, {
+			Key:   "ddd",
+			Value: "middle",
+		}, {
+			Key:   "zzz",
+			Value: "last",
+		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			got, err := ParseMessage(c.msg)
