@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,4 +31,15 @@ func (c Condition) Validate(ctx context.Context) *apis.FieldError {
 		return err.ViaField("metadata")
 	}
 	return c.Spec.Validate(ctx).ViaField("Spec")
+}
+
+func (cs *ConditionSpec) Validate(ctx context.Context) *apis.FieldError {
+	if equality.Semantic.DeepEqual(cs, ConditionSpec{}) {
+		return apis.ErrMissingField(apis.CurrentField)
+	}
+
+	if err := validateSteps([]Step{cs.Check}).ViaField("Check"); err != nil {
+		return err
+	}
+	return nil
 }

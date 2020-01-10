@@ -18,6 +18,8 @@ limitations under the License.
 
 package v1alpha2
 
+type ConditionExpansion interface{}
+
 type PipelineExpansion interface{}
 
 type TaskExpansion interface{}

@@ -27,6 +27,3 @@ var _ apis.Defaultable = (*Condition)(nil)
 func (c *Condition) SetDefaults(ctx context.Context) {
 	c.Spec.SetDefaults(ctx)
 }
-
-func (cs *ConditionSpec) SetDefaults(ctx context.Context) {
-}

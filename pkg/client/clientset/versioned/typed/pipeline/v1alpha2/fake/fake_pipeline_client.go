@@ -28,6 +28,10 @@ type FakeTektonV1alpha2 struct {
 	*testing.Fake
 }
 
+func (c *FakeTektonV1alpha2) Conditions(namespace string) v1alpha2.ConditionInterface {
+	return &FakeConditions{c, namespace}
+}
+
 func (c *FakeTektonV1alpha2) Pipelines(namespace string) v1alpha2.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }

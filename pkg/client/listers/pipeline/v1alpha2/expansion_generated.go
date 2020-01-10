@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha2
 
+// ConditionListerExpansion allows custom methods to be added to
+// ConditionLister.
+type ConditionListerExpansion interface{}
+
+// ConditionNamespaceListerExpansion allows custom methods to be added to
+// ConditionNamespaceLister.
+type ConditionNamespaceListerExpansion interface{}
+
 // PipelineListerExpansion allows custom methods to be added to
 // PipelineLister.
 type PipelineListerExpansion interface{}

@@ -50,9 +50,9 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TaskList{},
 		&Pipeline{},
 		&PipelineList{},
+		&Condition{},
+		&ConditionList{},
 	)
-	// &Condition{},
-	// &ConditionList{},
 	// &ClusterTask{},
 	// &ClusterTaskList{},
 	// &TaskRun{},

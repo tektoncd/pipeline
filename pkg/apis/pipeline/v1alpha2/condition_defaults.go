@@ -14,20 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
 
-var _ apis.Validatable = (*Condition)(nil)
+var _ apis.Defaultable = (*Condition)(nil)
 
-func (c Condition) Validate(ctx context.Context) *apis.FieldError {
-	if err := validate.ObjectMetadata(c.GetObjectMeta()); err != nil {
-		return err.ViaField("metadata")
-	}
-	return c.Spec.Validate(ctx).ViaField("Spec")
+func (c *Condition) SetDefaults(ctx context.Context) {
+	c.Spec.SetDefaults(ctx)
+}
+
+func (cs *ConditionSpec) SetDefaults(ctx context.Context) {
 }
