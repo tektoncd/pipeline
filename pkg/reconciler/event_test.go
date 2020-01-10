@@ -25,7 +25,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func Test_EmitEvent(t *testing.T) {
+func TestEmitEvent(t *testing.T) {
 	testcases := []struct {
 		name        string
 		before      *apis.Condition

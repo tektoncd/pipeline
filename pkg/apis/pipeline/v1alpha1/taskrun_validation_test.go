@@ -66,7 +66,7 @@ func TestTaskRun_Validate(t *testing.T) {
 	}
 }
 
-func Test_TaskRun_Workspaces_Invalid(t *testing.T) {
+func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
 		tr      *v1alpha1.TaskRun

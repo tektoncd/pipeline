@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func Test_GetNamespace(t *testing.T) {
+func TestGetNamespace(t *testing.T) {
 	testcases := []struct {
 		envVar       string
 		expectEnvVar string

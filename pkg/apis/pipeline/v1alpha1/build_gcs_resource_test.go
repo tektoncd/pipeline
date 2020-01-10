@@ -40,7 +40,7 @@ var images = pipeline.Images{
 	ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 }
 
-func Test_Invalid_BuildGCSResource(t *testing.T) {
+func TestBuildGCSResource_Invalid(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		pipelineResource *v1alpha1.PipelineResource
@@ -100,7 +100,7 @@ func Test_Invalid_BuildGCSResource(t *testing.T) {
 	}
 }
 
-func Test_Valid_NewBuildGCSResource(t *testing.T) {
+func TestNewBuildGCSResource_Valid(t *testing.T) {
 	pr := tb.PipelineResource("build-gcs-resource", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
@@ -125,7 +125,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 	}
 }
 
-func Test_BuildGCSGetReplacements(t *testing.T) {
+func TestBuildGCS_GetReplacements(t *testing.T) {
 	r := &v1alpha1.BuildGCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
@@ -141,7 +141,7 @@ func Test_BuildGCSGetReplacements(t *testing.T) {
 	}
 }
 
-func Test_BuildGCSGetInputSteps(t *testing.T) {
+func TestBuildGCS_GetInputSteps(t *testing.T) {
 	for _, at := range []v1alpha1.GCSArtifactType{
 		v1alpha1.GCSArchive,
 		v1alpha1.GCSZipArchive,

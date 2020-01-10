@@ -419,7 +419,7 @@ func readAndUnmarshal(t *testing.T, p string, v interface{}) {
 	}
 }
 
-func Test_labelsToDisk(t *testing.T) {
+func TestLabelsToDisk(t *testing.T) {
 	type args struct {
 		labels []*scm.Label
 	}
@@ -487,7 +487,7 @@ func Test_labelsToDisk(t *testing.T) {
 	}
 }
 
-func Test_statusToDisk(t *testing.T) {
+func TestStatusToDisk(t *testing.T) {
 	type args struct {
 		statuses []*scm.Status
 	}
@@ -566,7 +566,7 @@ func writeManifest(t *testing.T, items []string, path string) {
 	}
 }
 
-func Test_labelsFromDisk(t *testing.T) {
+func TestLabelsFromDisk(t *testing.T) {
 	type args struct {
 		fileNames []string
 	}
