@@ -24,7 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_PVC_Volume(t *testing.T) {
+func TestGetPVCVolume(t *testing.T) {
 	expectedVolume := corev1.Volume{
 		Name: "test-pvc",
 		VolumeSource: corev1.VolumeSource{

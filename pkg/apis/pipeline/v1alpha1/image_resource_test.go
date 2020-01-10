@@ -25,7 +25,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func Test_Invalid_NewImageResource(t *testing.T) {
+func TestNewImageResource_Invalid(t *testing.T) {
 	r := tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 
 	_, err := v1alpha1.NewImageResource(r)
@@ -34,7 +34,7 @@ func Test_Invalid_NewImageResource(t *testing.T) {
 	}
 }
 
-func Test_Valid_NewImageResource(t *testing.T) {
+func TestNewImageResource_Valid(t *testing.T) {
 	want := &v1alpha1.ImageResource{
 		Name:   "image-resource",
 		Type:   v1alpha1.PipelineResourceTypeImage,
@@ -62,7 +62,7 @@ func Test_Valid_NewImageResource(t *testing.T) {
 	}
 }
 
-func Test_ImageResource_Replacements(t *testing.T) {
+func TestImageResource_Replacements(t *testing.T) {
 	ir := &v1alpha1.ImageResource{
 		Name:   "image-resource",
 		Type:   v1alpha1.PipelineResourceTypeImage,

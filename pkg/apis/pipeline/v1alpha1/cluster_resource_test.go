@@ -134,7 +134,7 @@ func TestNewClusterResource(t *testing.T) {
 	}
 }
 
-func Test_ClusterResource_GetInputTaskModifier(t *testing.T) {
+func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 	names.TestingSeed()
 	clusterResource := &v1alpha1.ClusterResource{
 		Name: "test-cluster-resource",

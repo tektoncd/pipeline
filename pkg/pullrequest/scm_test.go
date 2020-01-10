@@ -95,7 +95,7 @@ func TestNewSCMHandler(t *testing.T) {
 	}
 }
 
-func Test_guessProvider(t *testing.T) {
+func TestGuessProvider(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string

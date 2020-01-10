@@ -25,7 +25,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func Test_NewCloudEventResource_Invalid(t *testing.T) {
+func TestNewCloudEventResource_Invalid(t *testing.T) {
 	testcases := []struct {
 		name             string
 		pipelineResource *v1alpha1.PipelineResource
@@ -52,7 +52,7 @@ func Test_NewCloudEventResource_Invalid(t *testing.T) {
 	}
 }
 
-func Test_NewCloudEventResource_Valid(t *testing.T) {
+func TestNewCloudEventResource_Valid(t *testing.T) {
 	pr := tb.PipelineResource("cloud-event-resource-uri", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCloudEvent,
 		tb.PipelineResourceSpecParam("TargetURI", "http://fake-sink"),
@@ -72,7 +72,7 @@ func Test_NewCloudEventResource_Valid(t *testing.T) {
 	}
 }
 
-func Test_CloudEventGetReplacements(t *testing.T) {
+func TestCloudEvent_GetReplacements(t *testing.T) {
 	r := &v1alpha1.CloudEventResource{
 		Name:      "cloud-event-resource",
 		TargetURI: "http://fake-uri",
@@ -88,7 +88,7 @@ func Test_CloudEventGetReplacements(t *testing.T) {
 	}
 }
 
-func Test_CloudEventInputContainerSpec(t *testing.T) {
+func TestCloudEvent_InputContainerSpec(t *testing.T) {
 	r := &v1alpha1.CloudEventResource{
 		Name:      "cloud-event-resource",
 		TargetURI: "http://fake-uri",
@@ -103,7 +103,7 @@ func Test_CloudEventInputContainerSpec(t *testing.T) {
 	}
 }
 
-func Test_CloudEventOutputContainerSpec(t *testing.T) {
+func TestCloudEvent_OutputContainerSpec(t *testing.T) {
 	r := &v1alpha1.CloudEventResource{
 		Name:      "cloud-event-resource",
 		TargetURI: "http://fake-uri",

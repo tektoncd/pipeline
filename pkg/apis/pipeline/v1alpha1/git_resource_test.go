@@ -26,13 +26,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_Invalid_NewGitResource(t *testing.T) {
+func TestNewGitResource_Invalid(t *testing.T) {
 	if _, err := v1alpha1.NewGitResource("override-with-git:latest", tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGCS))); err == nil {
 		t.Error("Expected error creating Git resource")
 	}
 }
 
-func Test_Valid_NewGitResource(t *testing.T) {
+func TestNewGitResource_Valid(t *testing.T) {
 	for _, tc := range []struct {
 		desc             string
 		pipelineResource *v1alpha1.PipelineResource
@@ -181,7 +181,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 	}
 }
 
-func Test_GitResource_Replacements(t *testing.T) {
+func TestGitResource_Replacements(t *testing.T) {
 	r := &v1alpha1.GitResource{
 		Name:      "git-resource",
 		Type:      v1alpha1.PipelineResourceTypeGit,
@@ -207,7 +207,7 @@ func Test_GitResource_Replacements(t *testing.T) {
 	}
 }
 
-func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
+func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range []struct {
