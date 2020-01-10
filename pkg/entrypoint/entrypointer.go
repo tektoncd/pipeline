@@ -92,7 +92,7 @@ func (e Entrypointer) Go() error {
 	}
 	output = append(output, v1alpha1.PipelineResourceResult{
 		Key:   "StartedAt",
-		Value: time.Now().Format(time.RFC3339),
+		Value: time.Now().Format(time.RFC3339Nano),
 	})
 
 	err := e.Runner.Run(e.Args...)

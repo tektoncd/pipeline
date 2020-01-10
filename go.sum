@@ -192,6 +192,8 @@ github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 h1:NPH
 github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0/go.mod h1:yZAFP63pRshzrEYLXLGPmUt0Ay+2zdjmMN1loCnRLUk=
 github.com/google/go-licenses v0.0.0-20191112164736-212ea350c932 h1:ZIb3nb+/mHAGRkyuxfPykmYdUi21mr8YTGpr/xGPJ8o=
 github.com/google/go-licenses v0.0.0-20191112164736-212ea350c932/go.mod h1:16wa6pRqNDUIhOtwF0GcROVqMeXHZJ7H6eGDFUh5Pfk=
+github.com/google/go-licenses v0.0.0-20191220124820-2ee7a02f6ae4 h1:kn7u+BkIkXuAGfzgheHfx01WfPP9H/H6Uo95g3bhmSQ=
+github.com/google/go-licenses v0.0.0-20191220124820-2ee7a02f6ae4/go.mod h1:JWeTIGPLQ9gF618ZOdlUitd1gRR/l99WOkHOlmR/UVA=
 github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 h1:ScAXWS+TR6MZKex+7Z8rneuSJH+FSDqd6ocQyl+ZHo4=
 github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367/go.mod h1:HP5RmnzzSNb993RKQDq4+1A4ia9nllfqcQFTQJedwGI=
 github.com/google/gofuzz v1.0.0 h1:A8PeW59pxE9IoFRqBp37U+mSNaQoZ46F1f0f863XSXw=

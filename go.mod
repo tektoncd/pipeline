@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
-	cloud.google.com/go/storage v1.0.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/Azure/azure-sdk-for-go v36.1.0+incompatible // indirect
@@ -23,6 +22,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/go-containerregistry v0.0.0-20191108172333-79629ba8e9a1
+	github.com/google/go-licenses v0.0.0-20191220124820-2ee7a02f6ae4 // indirect
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc // indirect
@@ -40,19 +40,14 @@ require (
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
 	go.opencensus.io v0.22.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.9.2-0.20180814183419-67bc79d13d15
-	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f // indirect
-	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191119060738-e882bf8e40c2 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	golang.org/x/tools v0.0.0-20191118222007-07fc4c7f2b98 // indirect
-	google.golang.org/api v0.10.0
+	google.golang.org/api v0.10.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

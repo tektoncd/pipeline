@@ -402,16 +402,11 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 
 func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.PodStatus) error {
 	if taskRun.IsSuccessful() {
-		for idx, cs := range podStatus.ContainerStatuses {
-			if cs.State.Terminated != nil {
-				msg := cs.State.Terminated.Message
-				r, err := termination.ParseMessage(msg)
-				if err != nil {
-					return fmt.Errorf("parsing message for container status %d: %v", idx, err)
-				}
-				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, r...)
-			}
+		r, err := termination.ParseMessages(podStatus)
+		if err != nil {
+			return fmt.Errorf("parsing termination messages: %v", err)
 		}
+		taskRun.Status.ResourcesResult = r.ResourceResults
 	}
 	return nil
 }

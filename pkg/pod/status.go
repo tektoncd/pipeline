@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -116,36 +115,18 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 		_ = logger.Sync()
 	}()
 
+	td, err := termination.ParseMessages(pod.Status)
+	if err != nil {
+		logger.Errorf("Error parsing termination messages, start times will be inaccurate: %v", err)
+	}
+	// Overwrite container start times with termination-message-reported start times.
+	for i := range td.StartTimes {
+		if pod.Status.ContainerStatuses[i].State.Terminated != nil {
+			pod.Status.ContainerStatuses[i].State.Terminated.StartedAt = td.StartTimes[i]
+		}
+	}
 	for _, s := range pod.Status.ContainerStatuses {
 		if isContainerStep(s.Name) {
-			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
-				msg := s.State.Terminated.Message
-				r, err := termination.ParseMessage(msg)
-				if err != nil {
-					logger.Errorf("Could not parse json message %q because of %w", msg, err)
-					break
-				}
-				for index, result := range r {
-					if result.Key == "StartedAt" {
-						t, err := time.Parse(time.RFC3339, result.Value)
-						if err != nil {
-							logger.Errorf("Could not parse time: %q: %w", result.Value, err)
-							break
-						}
-						s.State.Terminated.StartedAt = metav1.NewTime(t)
-						// remove the entry for the starting time
-						r = append(r[:index], r[index+1:]...)
-						if len(r) == 0 {
-							s.State.Terminated.Message = ""
-						} else if bytes, err := json.Marshal(r); err != nil {
-							logger.Errorf("Error marshalling remaining results: %w", err)
-						} else {
-							s.State.Terminated.Message = string(bytes)
-						}
-						break
-					}
-				}
-			}
 			trs.Steps = append(trs.Steps, v1alpha1.StepState{
 				ContainerState: *s.State.DeepCopy(),
 				Name:           trimStepPrefix(s.Name),

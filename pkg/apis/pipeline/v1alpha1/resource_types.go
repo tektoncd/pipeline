@@ -117,12 +117,12 @@ type PipelineResourceBinding struct {
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {
 	// Name and Digest are deprecated.
-	Name   string `json:"name"`
-	Digest string `json:"digest"`
+	Name   string `json:"name,omitempty"`
+	Digest string `json:"digest,omitempty"`
 	// These will replace Name and Digest (https://github.com/tektoncd/pipeline/issues/1392)
-	Key         string              `json:"key"`
-	Value       string              `json:"value"`
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	Key         string               `json:"key,omitempty"`
+	Value       string               `json:"value,omitempty"`
+	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
 // ResourceFromType returns an instance of the correct PipelineResource object type which can be

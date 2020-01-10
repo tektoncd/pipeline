@@ -20,11 +20,10 @@ import (
 	"encoding/json"
 	"flag"
 
-	"github.com/tektoncd/pipeline/pkg/termination"
-	"knative.dev/pkg/logging"
-
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/termination"
+	"knative.dev/pkg/logging"
 )
 
 var (
@@ -63,18 +62,20 @@ func main() {
 			logger.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
 		}
 		// We need to write both the old Name/Digest style and the new Key/Value styles.
-		output = append(output, v1alpha1.PipelineResourceResult{
-			Name:   imageResource.Name,
-			Digest: digest.String(),
-		})
-
-		output = append(output, v1alpha1.PipelineResourceResult{
-			Key:   "digest",
-			Value: digest.String(),
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: imageResource.Name,
-			},
-		})
+		output = append(output,
+			v1alpha1.PipelineResourceResult{
+				Key:   "digest",
+				Value: digest.String(),
+				ResourceRef: &v1alpha1.PipelineResourceRef{
+					Name: imageResource.Name,
+				},
+			}, v1alpha1.PipelineResourceResult{
+				Key:   "digest",
+				Value: digest.String(),
+				ResourceRef: &v1alpha1.PipelineResourceRef{
+					Name: imageResource.Name,
+				},
+			})
 
 	}
 
