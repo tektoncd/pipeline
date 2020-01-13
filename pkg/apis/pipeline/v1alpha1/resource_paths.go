@@ -31,6 +31,9 @@ func OutputResourcePath(r ResourceDeclaration) string {
 
 func path(root string, r ResourceDeclaration) string {
 	if r.TargetPath != "" {
+		if filepath.IsAbs(r.TargetPath) {
+			return r.TargetPath
+		}
 		return filepath.Join("/workspace", r.TargetPath)
 	}
 	return filepath.Join(root, r.Name)

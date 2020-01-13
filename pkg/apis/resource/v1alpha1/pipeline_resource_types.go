@@ -129,6 +129,10 @@ type ResourceDeclaration struct {
 	// TargetPath is the path in workspace directory where the resource
 	// will be copied.
 	// +optional
+	Description string `json:"description,omitempty"`
+	// TargetPath is the path in workspace directory where the resource
+	// will be copied.
+	// +optional
 	TargetPath string `json:"targetPath,omitempty"`
 	// Optional declares the resource as optional.
 	// By default optional is set to false which makes a resource required.
