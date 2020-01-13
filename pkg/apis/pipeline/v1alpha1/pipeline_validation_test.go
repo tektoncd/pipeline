@@ -36,18 +36,6 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: false,
 	}, {
-		name: "valid resource declarations and usage",
-		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
-			tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
-			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskInputResource("some-workspace", "great-resource"),
-				tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
-			tb.PipelineTask("foo", "foo-task",
-				tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
-		)),
-		failureExpected: false,
-	}, {
 		name: "period in name",
 		p: tb.Pipeline("pipe.line", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task"),
@@ -84,27 +72,7 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineTask("foo", "_foo-task"),
 		)),
 		failureExpected: true,
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate(context.Background())
-			if (!tt.failureExpected) && (err != nil) {
-				t.Errorf("Pipeline.Validate() returned error: %v", err)
-			}
-
-			if tt.failureExpected && (err == nil) {
-				t.Error("Pipeline.Validate() did not return error, wanted error")
-			}
-		})
-	}
-}
-
-func TestPipelineSpec_Validate(t *testing.T) {
-	tests := []struct {
-		name            string
-		p               *v1alpha1.Pipeline
-		failureExpected bool
-	}{{
+	}, {
 		name: "no duplicate tasks",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task"),
@@ -172,13 +140,6 @@ func TestPipelineSpec_Validate(t *testing.T) {
 				tb.PipelineTaskParam("a-param", "$(input.workspace.$(baz))")),
 		)),
 		failureExpected: false,
-	}, {
-		name: "duplicate tasks",
-		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-			tb.PipelineTask("foo", "foo-task"),
-		)),
-		failureExpected: true,
 	}, {
 		name: "from is on first task",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
@@ -260,24 +221,21 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", "invalidtype", tb.ParamSpecDefault("some", "default")),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
-			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskParam("a-param", "$(baz)", "and", "$(foo-is-baz)")),
+			tb.PipelineTask("bar", "bar-task"),
 		)),
 		failureExpected: true,
 	}, {
 		name: "array parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("astring")),
-			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskParam("a-param", "arrayelement", "$(baz)")),
+			tb.PipelineTask("bar", "bar-task"),
 		)),
 		failureExpected: true,
 	}, {
 		name: "string parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.ParamSpecDefault("anarray", "elements")),
-			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskParam("a-param", "arrayelement", "$(baz)")),
+			tb.PipelineTask("bar", "bar-task"),
 		)),
 		failureExpected: true,
 	}, {
@@ -306,13 +264,13 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Spec.Validate(context.Background())
+			err := tt.p.Validate(context.Background())
 			if (!tt.failureExpected) && (err != nil) {
-				t.Errorf("PipelineSpec.Validate() returned error: %v", err)
+				t.Errorf("Pipeline.Validate() returned error: %v", err)
 			}
 
 			if tt.failureExpected && (err == nil) {
-				t.Error("PipelineSpec.Validate() did not return error, wanted error")
+				t.Error("Pipeline.Validate() did not return error, wanted error")
 			}
 		})
 	}
