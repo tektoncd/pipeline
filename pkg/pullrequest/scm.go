@@ -75,15 +75,33 @@ func githubHandlerFromURL(u *url.URL, token string, skipTLSVerify bool, logger *
 		zap.String("pr", pr),
 	)
 
-	client := github.NewDefault()
-	if u.Host != "github.com" {
-		var err error
-		client, err = github.New(fmt.Sprintf("%s://%s/api/v3", u.Scheme, u.Host))
-		if err != nil {
-			return nil, fmt.Errorf("error creating client: %w", err)
-		}
+	// GitHub uses a different URL format than GHE.
+	// GHE is http(s)://[hostname]/api/v3
+	// (https://developer.github.com/enterprise/2.17/v3/#schema),
+	// GitHub uses https://api.github.com (http will be redirected to https).
+	//
+	// Here we allow the scheme to be set from the incoming URL instead of
+	// always defaulting to HTTPs to allow for easier proxy interception of
+	// requests in tests.
+	var prefix string
+	if u.Host == "github.com" {
+		prefix = fmt.Sprintf("%s://api.github.com", u.Scheme)
+	} else {
+		prefix = fmt.Sprintf("%s://%s/api/v3", u.Scheme, u.Host)
+	}
+	client, err := github.New(prefix)
+	if err != nil {
+		return nil, fmt.Errorf("error creating client: %w", err)
 	}
 	ownerRepo := fmt.Sprintf("%s/%s", owner, repo)
+
+	// Make sure to keep the default transport. This has builtin features like
+	// recognizing proxy settings that are useful to us.
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	// gosec complains that we're setting the InsecureSkipVerify option to bypass
+	// security checks. As long as this is generally set to false (which is the
+	// case by default), this should be fine.
+	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipTLSVerify} // nolint: gosec
 
 	if token != "" {
 		ts := oauth2.StaticTokenSource(
@@ -92,18 +110,12 @@ func githubHandlerFromURL(u *url.URL, token string, skipTLSVerify bool, logger *
 		client.Client = &http.Client{
 			Transport: &oauth2.Transport{
 				Source: ts,
-				Base: &http.Transport{
-					/* #nosec G402 */
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
-				},
+				Base:   t,
 			},
 		}
 	} else {
 		client.Client = &http.Client{
-			Transport: &http.Transport{
-				/* #nosec G402 */
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
-			},
+			Transport: t,
 		}
 	}
 
@@ -143,22 +155,19 @@ func gitlabHandlerFromURL(u *url.URL, token string, skipTLSVerify bool, logger *
 		}
 	}
 
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.TLSClientConfig = &tls.Config{InsecureSkipVerify: skipTLSVerify} // nolint: gosec
+
 	if token != "" {
 		client.Client = &http.Client{
 			Transport: &gitlabClient{
-				token: token,
-				transport: &http.Transport{
-					/* #nosec G402 */
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
-				},
+				token:     token,
+				transport: t,
 			},
 		}
 	} else {
 		client.Client = &http.Client{
-			Transport: &http.Transport{
-				/* #nosec G402 */
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
-			},
+			Transport: t,
 		}
 	}
 

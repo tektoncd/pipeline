@@ -11,13 +11,15 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.4 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/go-cmp v0.4.0
 	github.com/google/go-containerregistry v0.0.0-20200115214256-379933c9c22b
+	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/imdario/mergo v0.3.8 // indirect
-	github.com/jenkins-x/go-scm v1.5.65
+	github.com/jenkins-x/go-scm v1.5.73
 	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
@@ -33,23 +35,27 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
 	go.opencensus.io v0.22.1
-	go.uber.org/zap v1.10.0
-	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20191210023423-ac6580df4449 // indirect
+	go.uber.org/atomic v1.5.1 // indirect
+	go.uber.org/multierr v1.4.0 // indirect
+	go.uber.org/zap v1.13.0
+	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
+	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.2.5 // indirect
-	k8s.io/api v0.17.0
-	k8s.io/apimachinery v0.17.1
+	k8s.io/api v0.17.2
+	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v0.17.0
 	k8s.io/code-generator v0.17.1
 	k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c // indirect
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
 	knative.dev/eventing-contrib v0.11.2
-	knative.dev/pkg v0.0.0-20191217184203-cf220a867b3d
+	knative.dev/pkg v0.0.0-20200207155214-fef852970f43
 )
 
 // Knative deps (release-0.12)
