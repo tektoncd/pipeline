@@ -372,19 +372,6 @@ creating `read-repo-run`. Task `read-task` has git input resource and TaskRun
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: read-repo-run
-spec:
-  taskRef:
-    name: read-task
-  inputs:
-    resources:
-      - name: workspace
-        resourceRef:
-          name: go-example-git
----
-apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: go-example-git
@@ -406,10 +393,20 @@ spec:
   steps:
     - name: readme
       image: ubuntu
-      command:
-        - /bin/bash
-      args:
-        - "cat README.md"
+      script: cat workspace/README.md
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-repo-run
+spec:
+  taskRef:
+    name: read-task
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: go-example-git
 ```
 
 ### Example with embedded specs
