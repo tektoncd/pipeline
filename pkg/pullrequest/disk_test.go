@@ -642,3 +642,52 @@ func TestLabelsFromDisk(t *testing.T) {
 		})
 	}
 }
+
+func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(d)
+
+	expectedSha := "1a2s3d4f5g6g6h7j8k9l"
+	// Write some refs
+	base := scm.PullRequestBranch{
+		Repo: scm.Repository{},
+		Ref:  "",
+		Sha:  "",
+	}
+	head := scm.PullRequestBranch{
+		Repo: scm.Repository{},
+		Ref:  "",
+		Sha:  "",
+	}
+	pr := scm.PullRequest{
+		Sha:  expectedSha,
+		Base: base,
+		Head: head,
+	}
+
+	writeFile := func(p string, v interface{}) {
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ioutil.WriteFile(p, b, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeFile(filepath.Join(d, "base.json"), &base)
+	writeFile(filepath.Join(d, "head.json"), &head)
+	writeFile(filepath.Join(d, "pr.json"), &pr)
+
+	rsrc, err := FromDisk(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if rsrc.PR.Sha != expectedSha {
+		t.Errorf("FromDisk() returned sha `%s`, expected `%s`", rsrc.PR.Sha, expectedSha)
+	}
+
+}

@@ -169,6 +169,18 @@ func FromDisk(path string) (*Resource, error) {
 	var err error
 	var manifest Manifest
 
+	// If pr.json exists in output directory, preload r.PR
+	prPath := filepath.Join(path, "pr.json")
+	if _, err := os.Stat(prPath); err == nil {
+		b, err := ioutil.ReadFile(prPath)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(b, r.PR); err != nil {
+			return nil, err
+		}
+	}
+
 	commentsPath := filepath.Join(path, "comments")
 	r.Comments, manifest, err = commentsFromDisk(commentsPath)
 	if err != nil {
@@ -198,7 +210,9 @@ func FromDisk(path string) (*Resource, error) {
 		return nil, err
 	}
 
-	r.PR.Sha = r.PR.Head.Sha
+	if r.PR.Head.Sha != "" {
+		r.PR.Sha = r.PR.Head.Sha
+	}
 
 	return r, nil
 }
