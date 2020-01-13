@@ -54,7 +54,13 @@ var (
 		Outputs: &v1alpha1.Outputs{
 			Resources: []v1alpha1.TaskResource{{
 				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name: "imageToUse",
+					Name:       "imageToUse-ab",
+					TargetPath: "/foo/builtImage",
+				},
+			}, {
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name:       "imageToUse-re",
+					TargetPath: "foo/builtImage",
 				},
 			}},
 		},
@@ -138,6 +144,12 @@ var (
 					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
 				},
 			}},
+		}}, {Container: corev1.Container{
+			Name:  "outputs-resources-path-ab",
+			Image: "$(outputs.resources.imageToUse-ab.path)",
+		}}, {Container: corev1.Container{
+			Name:  "outputs-resources-path-re",
+			Image: "$(outputs.resources.imageToUse-re.path)",
 		}}},
 		Volumes: []corev1.Volume{{
 			Name: "$(inputs.params.FOO)",
@@ -507,6 +519,8 @@ func TestApplyParameters(t *testing.T) {
 		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
 		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
 		spec.Steps[7].Image = "busybox:world"
+		spec.Steps[8].Image = "$(outputs.resources.imageToUse-ab.path)"
+		spec.Steps[9].Image = "$(outputs.resources.imageToUse-re.path)"
 
 		spec.Volumes[0].Name = "world"
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
@@ -542,6 +556,8 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
+			spec.Steps[8].Image = "/foo/builtImage"
+			spec.Steps[9].Image = "/workspace/foo/builtImage"
 		}),
 	}, {
 		name: "input resource specified",
@@ -555,6 +571,8 @@ func TestApplyResources(t *testing.T) {
 			spec.Steps[1].Args = []string{"https://git-repo"}
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
 			spec.Steps[4].Args = []string{"https://git-repo"}
+			spec.Steps[8].Image = "/foo/builtImage"
+			spec.Steps[9].Image = "/workspace/foo/builtImage"
 		}),
 	}, {
 		name: "output resource specified",
@@ -568,6 +586,8 @@ func TestApplyResources(t *testing.T) {
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
 			spec.Steps[5].Args = []string{"gcr.io/hans/sandwiches"}
+			spec.Steps[8].Image = "/foo/builtImage"
+			spec.Steps[9].Image = "/workspace/foo/builtImage"
 		}),
 	}, {
 		name: "output resource specified with path replacement",
