@@ -5,7 +5,9 @@ metadata:
 spec:
   steps:
   - image: ubuntu
-    script: echo hello
+    script: |
+      #!/usr/bin/env bash
+      echo "Hello"
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
