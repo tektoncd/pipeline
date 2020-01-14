@@ -18,8 +18,12 @@ package entrypoint
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -51,6 +55,9 @@ type Entrypointer struct {
 	Runner Runner
 	// PostWriter encapsulates writing files when complete.
 	PostWriter PostWriter
+
+	// Results is the set of files that might contain task results
+	Results []string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -100,12 +107,48 @@ func (e Entrypointer) Go() error {
 	// Write the post file *no matter what*
 	e.WritePostFile(e.PostFile, err)
 
+	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
+	// This creates an error when trying to open the result folder as a file.
+	if len(e.Results) >= 1 && e.Results[0] != "" {
+		if err := e.readResultsFromDisk(); err != nil {
+			logger.Fatalf("Error while handling results: %s", err)
+		}
+	}
 	if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
 		logger.Fatalf("Error while writing message: %s", wErr)
 	}
 	return err
 }
 
+func (e Entrypointer) readResultsFromDisk() error {
+	output := []v1alpha1.PipelineResourceResult{}
+	for _, resultFile := range e.Results {
+		if resultFile == "" {
+			continue
+		}
+		fileContents, err := ioutil.ReadFile(filepath.Join(pipeline.DefaultResultPath, resultFile))
+		if os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		// if the file doesn't exist, ignore it
+		output = append(output, v1alpha1.PipelineResourceResult{
+			Key:        resultFile,
+			Value:      string(fileContents),
+			ResultType: v1alpha1.TaskRunResultType,
+		})
+	}
+	// push output to termination path
+	if len(output) != 0 {
+		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WritePostFile write the postfile
 func (e Entrypointer) WritePostFile(postFile string, err error) {
 	if err != nil && postFile != "" {
 		postFile = fmt.Sprintf("%s.err", postFile)

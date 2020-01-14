@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -85,7 +86,7 @@ func TestOrderContainers(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	gotInit, got, err := orderContainers(images.EntrypointImage, steps)
+	gotInit, got, err := orderContainers(images.EntrypointImage, steps, nil)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -104,6 +105,151 @@ func TestOrderContainers(t *testing.T) {
 	}
 }
 
+func TestEntryPointResults(t *testing.T) {
+	results := []v1alpha1.TaskResult{{
+		Name:        "sum",
+		Description: "This is the sum result of the task",
+	}, {
+		Name:        "sub",
+		Description: "This is the sub result of the task",
+	}}
+
+	steps := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}, {
+		Image:        "step-2",
+		Command:      []string{"cmd1", "cmd2", "cmd3"}, // multiple cmd elements
+		Args:         []string{"arg1", "arg2"},
+		VolumeMounts: []corev1.VolumeMount{volumeMount}, // pre-existing volumeMount
+	}, {
+		Image:   "step-3",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/tools/0",
+			"-termination_path", "/tekton/termination",
+			"-results", "sum,sub",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}, {
+		Image:   "step-2",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/tools/0",
+			"-post_file", "/tekton/tools/1",
+			"-termination_path", "/tekton/termination",
+			"-results", "sum,sub",
+			"-entrypoint", "cmd1", "--",
+			"cmd2", "cmd3",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{volumeMount, toolsMount},
+		TerminationMessagePath: "/tekton/termination",
+	}, {
+		Image:   "step-3",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/tools/1",
+			"-post_file", "/tekton/tools/2",
+			"-termination_path", "/tekton/termination",
+			"-results", "sum,sub",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	_, got, err := orderContainers(images.EntrypointImage, steps, results)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+}
+
+func TestEntryPointResultsSingleStep(t *testing.T) {
+	results := []v1alpha1.TaskResult{{
+		Name:        "sum",
+		Description: "This is the sum result of the task",
+	}, {
+		Name:        "sub",
+		Description: "This is the sub result of the task",
+	}}
+
+	steps := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/tools/0",
+			"-termination_path", "/tekton/termination",
+			"-results", "sum,sub",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	_, got, err := orderContainers(images.EntrypointImage, steps, results)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+}
+func TestEntryPointSingleResultsSingleStep(t *testing.T) {
+	results := []v1alpha1.TaskResult{{
+		Name:        "sum",
+		Description: "This is the sum result of the task",
+	}}
+
+	steps := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/tools/0",
+			"-termination_path", "/tekton/termination",
+			"-results", "sum",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	_, got, err := orderContainers(images.EntrypointImage, steps, results)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+}
 func TestUpdateReady(t *testing.T) {
 	for _, c := range []struct {
 		desc            string
