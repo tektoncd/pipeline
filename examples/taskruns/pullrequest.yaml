@@ -1,33 +1,63 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: github-token
+type: Opaque
+data:
+  # Access token of github, don't forget base64 it
+  token: MWY3ZDIxMWM2MzdiYWM1MjA5OWU0MDcyNjlhNGVmNjEzMZE2NDkwYQ==
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: pullrequest
+spec:
+  type: pullRequest
+  params:
+    - name: url
+      # I just picked a random PR.
+      value: https://github.com/tektoncd/pipeline/pull/100
+  secrets:
+    - fieldName: authToken
+      secretName: github-token
+      secretKey: token
+---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  generateName: pullrequest-
+  name: pullrequest
 spec:
   inputs:
     resources:
     - name: pr
-      resourceSpec:
-        type: pullRequest
-        params:
-        - name: url
-          # I just picked a random PR. The first couple didn't have any interesting comments or labels.
-          value: https://github.com/tektoncd/pipeline/pull/100
+      resourceRef:
+        name: pullrequest
+  outputs:
+    resources:
+    - name: pr
+      resourceRef:
+        name: pullrequest
   taskSpec:
     inputs:
       resources:
       - name: pr
         type: pullRequest
+    outputs:
+      resources:
+      - name: pr
+        type: pullRequest
+        targetPath: /workspace/pr
     steps:
     - name: dump-workspace
       image: ubuntu
       script: find $(inputs.resources.pr.path)/* -type f | xargs tail -n +1
 
-    - name: ensure-approved
+    - name: ensure-approved-label-question
       image: ubuntu
       script: |
         if [ -f "$(inputs.resources.pr.path)/labels/approved" ]; then
           echo "PR is approved!"
         else
           echo "PR is not approved!"
-          exit 1
+          touch  "$(inputs.resources.pr.path)/labels/question"
         fi
