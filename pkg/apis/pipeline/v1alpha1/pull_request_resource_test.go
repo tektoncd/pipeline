@@ -41,12 +41,13 @@ func TestPullRequest_NewResource(t *testing.T) {
 	}
 
 	want := &v1alpha1.PullRequestResource{
-		Name:     pr.Name,
-		Type:     v1alpha1.PipelineResourceTypePullRequest,
-		URL:      url,
-		Provider: "github",
-		Secrets:  pr.Spec.SecretParams,
-		PRImage:  "override-with-pr:latest",
+		Name:                  pr.Name,
+		Type:                  v1alpha1.PipelineResourceTypePullRequest,
+		URL:                   url,
+		Provider:              "github",
+		Secrets:               pr.Spec.SecretParams,
+		PRImage:               "override-with-pr:latest",
+		InsecureSkipTLSVerify: false,
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error(diff)
@@ -70,9 +71,10 @@ const workspace = "/workspace"
 func containerTestCases(mode string) []testcase {
 	return []testcase{{
 		in: &v1alpha1.PullRequestResource{
-			Name:    "nocreds",
-			URL:     "https://example.com",
-			PRImage: "override-with-pr:latest",
+			Name:                  "nocreds",
+			URL:                   "https://example.com",
+			PRImage:               "override-with-pr:latest",
+			InsecureSkipTLSVerify: false,
 		},
 		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-nocreds-9l9zj",
@@ -84,8 +86,9 @@ func containerTestCases(mode string) []testcase {
 		}}},
 	}, {
 		in: &v1alpha1.PullRequestResource{
-			Name: "creds",
-			URL:  "https://example.com",
+			Name:                  "creds",
+			URL:                   "https://example.com",
+			InsecureSkipTLSVerify: false,
 			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "authToken",
 				SecretName: "github-creds",
@@ -111,6 +114,21 @@ func containerTestCases(mode string) []testcase {
 					},
 				},
 			}},
+		}}},
+	}, {
+		in: &v1alpha1.PullRequestResource{
+			Name:                  "nocreds",
+			URL:                   "https://example.com",
+			PRImage:               "override-with-pr:latest",
+			InsecureSkipTLSVerify: true,
+		},
+		out: []v1alpha1.Step{{Container: corev1.Container{
+			Name:       "pr-source-nocreds-mssqb",
+			Image:      "override-with-pr:latest",
+			WorkingDir: pipeline.WorkspaceDir,
+			Command:    []string{"/ko-app/pullrequest-init"},
+			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-insecure-skip-tls-verify=true"},
+			Env:        []corev1.EnvVar{},
 		}}},
 	}}
 }

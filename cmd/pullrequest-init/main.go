@@ -19,18 +19,18 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/tektoncd/pipeline/pkg/pullrequest"
 	"go.uber.org/zap"
 	"knative.dev/pkg/logging"
+	"os"
 )
 
 var (
-	prURL    = flag.String("url", "", "The url of the pull request to initialize.")
-	path     = flag.String("path", "", "Path of directory under which PR will be copied")
-	mode     = flag.String("mode", "download", "Whether to operate in download or upload mode")
-	provider = flag.String("provider", "", "The SCM provider to use. Optional")
+	prURL         = flag.String("url", "", "The url of the pull request to initialize.")
+	path          = flag.String("path", "", "Path of directory under which PR will be copied")
+	mode          = flag.String("mode", "download", "Whether to operate in download or upload mode")
+	provider      = flag.String("provider", "", "The SCM provider to use. Optional")
+	skipTLSVerify = flag.Bool("insecure-skip-tls-verify", false, "Enable skipping TLS certificate verification in the git client. Defaults to false")
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 	ctx := context.Background()
 
 	token := os.Getenv("AUTH_TOKEN")
-	client, err := pullrequest.NewSCMHandler(logger, *prURL, *provider, token)
+	client, err := pullrequest.NewSCMHandler(logger, *prURL, *provider, token, *skipTLSVerify)
 	if err != nil {
 		logger.Fatalf("error creating GitHub client: %v", err)
 	}

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -46,25 +47,34 @@ type PullRequestResource struct {
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
 
-	PRImage string `json:"-"`
+	PRImage               string `json:"-"`
+	InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
 }
 
 // NewPullRequestResource create a new git resource to pass to a Task
 func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestResource, error) {
 	if r.Spec.Type != PipelineResourceTypePullRequest {
-		return nil, fmt.Errorf("PipelineResource: Cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, fmt.Errorf("cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	prResource := PullRequestResource{
-		Name:    r.Name,
-		Type:    r.Spec.Type,
-		Secrets: r.Spec.SecretParams,
-		PRImage: prImage,
+		Name:                  r.Name,
+		Type:                  r.Spec.Type,
+		Secrets:               r.Spec.SecretParams,
+		PRImage:               prImage,
+		InsecureSkipTLSVerify: false,
 	}
 	for _, param := range r.Spec.Params {
-		if strings.EqualFold(param.Name, "URL") {
+		switch {
+		case strings.EqualFold(param.Name, "URL"):
 			prResource.URL = param.Value
-		} else if strings.EqualFold(param.Name, "Provider") {
+		case strings.EqualFold(param.Name, "Provider"):
 			prResource.Provider = param.Value
+		case strings.EqualFold(param.Name, "insecure-skip-tls-verify"):
+			verify, err := strconv.ParseBool(param.Value)
+			if err != nil {
+				return nil, fmt.Errorf("error occurred converting %q to boolean in Pipeline Resource %s", param.Value, r.Name)
+			}
+			prResource.InsecureSkipTLSVerify = verify
 		}
 	}
 
@@ -89,10 +99,11 @@ func (s *PullRequestResource) GetURL() string {
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
 func (s *PullRequestResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":     s.Name,
-		"type":     string(s.Type),
-		"url":      s.URL,
-		"provider": s.Provider,
+		"name":                     s.Name,
+		"type":                     string(s.Type),
+		"url":                      s.URL,
+		"provider":                 s.Provider,
+		"insecure-skip-tls-verify": strconv.FormatBool(s.InsecureSkipTLSVerify),
 	}
 }
 
@@ -114,6 +125,9 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 	if s.Provider != "" {
 		args = append(args, []string{"-provider", s.Provider}...)
+	}
+	if s.InsecureSkipTLSVerify {
+		args = append(args, "-insecure-skip-tls-verify=true")
 	}
 
 	evs := []corev1.EnvVar{}

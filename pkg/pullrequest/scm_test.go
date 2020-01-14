@@ -17,7 +17,9 @@ limitations under the License.
 package pullrequest
 
 import (
+	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"go.uber.org/zap"
@@ -26,56 +28,62 @@ import (
 
 func TestNewSCMHandler(t *testing.T) {
 	tests := []struct {
-		name        string
-		raw         string
-		wantBaseURL string
-		wantRepo    string
-		wantNum     int
-		wantErr     bool
+		name          string
+		raw           string
+		skipTLSVerify bool
+		wantBaseURL   string
+		wantRepo      string
+		wantNum       int
+		wantErr       bool
 	}{
 		{
-			name:        "github",
-			raw:         "https://github.com/foo/bar/pull/1",
-			wantBaseURL: "https://api.github.com/",
-			wantRepo:    "foo/bar",
-			wantNum:     1,
-			wantErr:     false,
+			name:          "github",
+			raw:           "https://github.com/foo/bar/pull/1",
+			skipTLSVerify: false,
+			wantBaseURL:   "https://api.github.com/",
+			wantRepo:      "foo/bar",
+			wantNum:       1,
+			wantErr:       false,
 		},
 		{
-			name:        "custom github",
-			raw:         "https://github.tekton.dev/foo/baz/pull/2",
-			wantBaseURL: "https://github.tekton.dev/api/v3/",
-			wantRepo:    "foo/baz",
-			wantNum:     2,
-			wantErr:     false,
+			name:          "custom github",
+			raw:           "https://github.tekton.dev/foo/baz/pull/2",
+			skipTLSVerify: false,
+			wantBaseURL:   "https://github.tekton.dev/api/v3/",
+			wantRepo:      "foo/baz",
+			wantNum:       2,
+			wantErr:       false,
 		},
 		{
-			name:        "gitlab",
-			raw:         "https://gitlab.com/foo/bar/merge_requests/3",
-			wantBaseURL: "https://gitlab.com/",
-			wantRepo:    "foo/bar",
-			wantNum:     3,
-			wantErr:     false,
+			name:          "gitlab",
+			raw:           "https://gitlab.com/foo/bar/merge_requests/3",
+			skipTLSVerify: false,
+			wantBaseURL:   "https://gitlab.com/",
+			wantRepo:      "foo/bar",
+			wantNum:       3,
+			wantErr:       false,
 		},
 		{
-			name:        "gitlab multi-level",
-			raw:         "https://gitlab.com/foo/bar/baz/merge_requests/3",
-			wantBaseURL: "https://gitlab.com/",
-			wantRepo:    "foo/bar/baz",
-			wantNum:     3,
-			wantErr:     false,
+			name:          "gitlab multi-level",
+			raw:           "https://gitlab.com/foo/bar/baz/merge_requests/3",
+			skipTLSVerify: true,
+			wantBaseURL:   "https://gitlab.com/",
+			wantRepo:      "foo/bar/baz",
+			wantNum:       3,
+			wantErr:       false,
 		},
 		{
-			name:    "unsupported",
-			raw:     "https://unsupported.com/foo/baz/merge_requests/3",
-			wantErr: true,
+			name:          "unsupported",
+			raw:           "https://unsupported.com/foo/baz/merge_requests/3",
+			skipTLSVerify: true,
+			wantErr:       true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			observer, _ := observer.New(zap.InfoLevel)
 			logger := zap.New(observer).Sugar()
-			got, err := NewSCMHandler(logger, tt.raw, "", "")
+			got, err := NewSCMHandler(logger, tt.raw, "", "", tt.skipTLSVerify)
 			if err != nil {
 				if !tt.wantErr {
 					t.Errorf("NewSCMHandler() error = %v, wantErr %v", err, tt.wantErr)
@@ -90,6 +98,14 @@ func TestNewSCMHandler(t *testing.T) {
 			}
 			if baseURL := got.client.BaseURL.String(); baseURL != tt.wantBaseURL {
 				t.Errorf("NewSCMHandler() [base url] = %v, want %v", baseURL, tt.wantBaseURL)
+			}
+			switch transport := got.client.Client.Transport.(type) {
+			case *http.Transport:
+				if transport.TLSClientConfig.InsecureSkipVerify != tt.skipTLSVerify {
+					t.Errorf("NewSCMHandler() [InsecureSkipVerify] = %v, want %v", strconv.FormatBool(transport.TLSClientConfig.InsecureSkipVerify), tt.skipTLSVerify)
+				}
+			default:
+				t.Errorf("NewSCMHandler() client.Client.Transport was not of type http.Transport")
 			}
 		})
 	}
