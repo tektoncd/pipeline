@@ -185,8 +185,8 @@ There are known issues with the existing implementation of sidecars:
 
 - When the `nop` image does provide the sidecar's command, the sidecar will continue to
 run even after `nop` has been swapped into the sidecar container's image
-field. See https://github.com/tektoncd/pipeline/issues/1347 for the issue
-tracking this bug. Until this issue is resolved the best way to avoid it is to
+field. See [the issue tracking this bug](https://github.com/tektoncd/pipeline/issues/1347)
+for the issue tracking this bug. Until this issue is resolved the best way to avoid it is to
 avoid overriding the `nop` image when deploying the tekton controller, or
 ensuring that the overridden `nop` image contains as few commands as possible.
 
@@ -195,3 +195,34 @@ but an Error when the sidecar exits with an error. This is only apparent when
 using `kubectl` to get the pods of a TaskRun, not when describing the Pod
 using `kubectl describe pod ...` nor when looking at the TaskRun, but can be quite
 confusing.
+
+## How task results are defined and outputted by a task
+
+Tasks can define results by adding a result on the task spec.
+This is an example:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: print-date
+  annotations:
+    description: |
+      A simple task that prints the date to make sure your cluster / Tekton is working properly.
+spec:
+  results:
+    - name: "current-date"
+      description: "The current date"
+  steps:
+    - name: print-date
+      image: bash:latest
+      args:
+        - "-c"
+        - |
+          date > /tekton/results/current-date
+```
+
+The result is added to a file name with the specified result's name into the `/tekton/results` folder. This is then added to the
+task run status.
+Internally the results are a new argument `-results`to the entrypoint defined for the task. A user can defined more than one result for a
+single task.

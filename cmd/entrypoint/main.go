@@ -25,16 +25,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
 var (
-	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
-	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
-	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
-	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
-
+	ep                  = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	waitFiles           = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
+	waitFileContent     = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
+	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
+	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
+	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	waitPollingInterval = time.Second
 )
 
@@ -51,6 +52,14 @@ func main() {
 		Waiter:          &realWaiter{},
 		Runner:          &realRunner{},
 		PostWriter:      &realPostWriter{},
+		Results:         strings.Split(*results, ","),
+	}
+	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
+	// The result folder should only be created if there are actual results to defined for the entrypoint.
+	if len(e.Results) >= 1 && e.Results[0] != "" {
+		if err := os.MkdirAll(pipeline.DefaultResultPath, 0755); err != nil {
+			log.Fatalf("Error creating the results directory: %v", err)
+		}
 	}
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {

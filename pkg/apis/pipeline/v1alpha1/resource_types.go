@@ -123,7 +123,11 @@ type PipelineResourceResult struct {
 	Key         string              `json:"key"`
 	Value       string              `json:"value"`
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	ResultType  ResultType          `json:"type,omitempty"`
 }
+
+// ResultType used to find out whether a PipelineResourceResult is from a task result or not
+type ResultType string
 
 // ResourceFromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
