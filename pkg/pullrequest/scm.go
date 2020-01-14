@@ -17,7 +17,6 @@ limitations under the License.
 package pullrequest
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -26,12 +25,14 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"crypto/tls"
+
 	"github.com/jenkins-x/go-scm/scm/driver/github"
 	"github.com/jenkins-x/go-scm/scm/driver/gitlab"
 	"go.uber.org/zap"
 )
 
-func NewSCMHandler(logger *zap.SugaredLogger, raw, provider, token string) (*Handler, error) {
+func NewSCMHandler(logger *zap.SugaredLogger, raw, provider, token string, skipTLSVerify bool) (*Handler, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil, err
@@ -49,16 +50,16 @@ func NewSCMHandler(logger *zap.SugaredLogger, raw, provider, token string) (*Han
 	var handler *Handler
 	switch provider {
 	case "github":
-		handler, err = githubHandlerFromURL(u, token, logger)
+		handler, err = githubHandlerFromURL(u, token, skipTLSVerify, logger)
 	case "gitlab":
-		handler, err = gitlabHandlerFromURL(u, token, logger)
+		handler, err = gitlabHandlerFromURL(u, token, skipTLSVerify, logger)
 	default:
 		return nil, fmt.Errorf("unsupported pr url: %s", raw)
 	}
 	return handler, err
 }
 
-func githubHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (*Handler, error) {
+func githubHandlerFromURL(u *url.URL, token string, skipTLSVerify bool, logger *zap.SugaredLogger) (*Handler, error) {
 	split := strings.Split(u.Path, "/")
 	if len(split) < 5 {
 		return nil, fmt.Errorf("could not determine PR from URL: %v", u)
@@ -83,17 +84,34 @@ func githubHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (
 		}
 	}
 	ownerRepo := fmt.Sprintf("%s/%s", owner, repo)
-	h := NewHandler(logger, client, ownerRepo, prNumber)
+
 	if token != "" {
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: token},
 		)
-		h.client.Client = oauth2.NewClient(context.Background(), ts)
+		client.Client = &http.Client{
+			Transport: &oauth2.Transport{
+				Source: ts,
+				Base: &http.Transport{
+					/* #nosec G402 */
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
+				},
+			},
+		}
+	} else {
+		client.Client = &http.Client{
+			Transport: &http.Transport{
+				/* #nosec G402 */
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
+			},
+		}
 	}
+
+	h := NewHandler(logger, client, ownerRepo, prNumber)
 	return h, nil
 }
 
-func gitlabHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (*Handler, error) {
+func gitlabHandlerFromURL(u *url.URL, token string, skipTLSVerify bool, logger *zap.SugaredLogger) (*Handler, error) {
 	// The project name can be multiple /'s deep, so split on / and work from right to left.
 	split := strings.Split(u.Path, "/")
 
@@ -124,14 +142,26 @@ func gitlabHandlerFromURL(u *url.URL, token string, logger *zap.SugaredLogger) (
 			return nil, fmt.Errorf("error creating client: %w", err)
 		}
 	}
+
 	if token != "" {
 		client.Client = &http.Client{
 			Transport: &gitlabClient{
-				token:     token,
-				transport: http.DefaultTransport,
+				token: token,
+				transport: &http.Transport{
+					/* #nosec G402 */
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
+				},
+			},
+		}
+	} else {
+		client.Client = &http.Client{
+			Transport: &http.Transport{
+				/* #nosec G402 */
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: skipTLSVerify},
 			},
 		}
 	}
+
 	return NewHandler(logger, client, project, prInt), nil
 }
 

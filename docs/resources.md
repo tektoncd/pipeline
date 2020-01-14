@@ -439,6 +439,9 @@ Params that can be added are the following:
 1.  `url`: represents the location of the pull request to fetch.
 1.  `provider`: represents the SCM provider to use. This will be "guessed" based
     on the url if not set. Valid values are `github` or `gitlab` today.
+1.  `insecure-skip-tls-verify`: represents whether to skip verification of certificates
+    from the git server. Valid values are `"true"` or `"false"`, the default being
+    `"false"`.
 
 #### Statuses
 
@@ -456,6 +459,8 @@ URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 
 The PullRequest resource works with self hosted or enterprise GitHub/GitLab
 instances. Simply provide the pull request URL and set the `provider` parameter.
+If you need to skip certificate validation set the `insecure-skip-tls-verify` 
+parameter to `"true"`.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
