@@ -164,7 +164,6 @@ stringData:
     https_validate_certificates = True
 ---
 apiVersion: v1
-data: null
 kind: ConfigMap
 metadata:
   name: config-artifact-pvc
@@ -181,24 +180,33 @@ creation of a persistent volume could be slower than uploading/downloading files
 to a bucket, or if the the cluster is running in multiple zones, the access to
 the persistent volume can fail.
 
-### Overriding  default ServiceAccount used for TaskRun and PipelineRun
+### Overriding default ServiceAccount, Timeout or PodTemplate used for TaskRun and PipelineRun
 
-The ConfigMap `config-defaults` can be used to override default service account
-e.g. to override the default service account (`default`) to `tekton` apply the
-following
+The ConfigMap `config-defaults` can be used to override default values.
+You can override the default service account, the default timeout, and the
+default pod template applied to `TaskRun` and `PipelineRun`.
+
+The example below overrides the following :
+- the default service account (`default`) to `tekton`
+- the default timeout (60 minutes) to 20 minutes
+- the default pod template to include an annotation preventing clusterautoscaler to evict a running task pod
+(see [here](./taskruns.md#pod-template) or [here](./pipelineruns.md#pod-template) for more infos on pod templates)
 
 ```yaml
-
-### config-defaults.yaml
 apiVersion: v1
 kind: ConfigMap
+metadata:
+  name: config-defaults
 data:
   default-service-account: "tekton"
-
+  default-timeout-minutes: "20"
+  default-pod-template: |
+    annotations:
+      cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
 ```
 
-*NOTE:* The `_example` key contains of the keys that can be overriden and their
-default values.
+*NOTE:* The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
+file contains the keys that can be overriden and their default values.
 
 ## Custom Releases
 

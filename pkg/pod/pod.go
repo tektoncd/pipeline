@@ -165,9 +165,16 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		}
 	}
 
+	// By default, use an empty pod template and take the one defined in the task run spec if any
+	podTemplate := v1alpha1.PodTemplate{}
+
+	if taskRun.Spec.PodTemplate != nil {
+		podTemplate = *taskRun.Spec.PodTemplate
+	}
+
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes = append(volumes, taskSpec.Volumes...)
-	volumes = append(volumes, taskRun.Spec.PodTemplate.Volumes...)
+	volumes = append(volumes, podTemplate.Volumes...)
 
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
@@ -181,13 +188,13 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}
 
 	var dnsPolicy corev1.DNSPolicy
-	if taskRun.Spec.PodTemplate.DNSPolicy != nil {
-		dnsPolicy = *taskRun.Spec.PodTemplate.DNSPolicy
+	if podTemplate.DNSPolicy != nil {
+		dnsPolicy = *podTemplate.DNSPolicy
 	}
 
 	var priorityClassName string
-	if taskRun.Spec.PodTemplate.PriorityClassName != nil {
-		priorityClassName = *taskRun.Spec.PodTemplate.PriorityClassName
+	if podTemplate.PriorityClassName != nil {
+		priorityClassName = *podTemplate.PriorityClassName
 	}
 
 	podAnnotations := taskRun.Annotations
@@ -216,15 +223,15 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			Containers:                   mergedPodContainers,
 			ServiceAccountName:           taskRun.Spec.ServiceAccountName,
 			Volumes:                      volumes,
-			NodeSelector:                 taskRun.Spec.PodTemplate.NodeSelector,
-			Tolerations:                  taskRun.Spec.PodTemplate.Tolerations,
-			Affinity:                     taskRun.Spec.PodTemplate.Affinity,
-			SecurityContext:              taskRun.Spec.PodTemplate.SecurityContext,
-			RuntimeClassName:             taskRun.Spec.PodTemplate.RuntimeClassName,
-			AutomountServiceAccountToken: taskRun.Spec.PodTemplate.AutomountServiceAccountToken,
+			NodeSelector:                 podTemplate.NodeSelector,
+			Tolerations:                  podTemplate.Tolerations,
+			Affinity:                     podTemplate.Affinity,
+			SecurityContext:              podTemplate.SecurityContext,
+			RuntimeClassName:             podTemplate.RuntimeClassName,
+			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
 			DNSPolicy:                    dnsPolicy,
-			DNSConfig:                    taskRun.Spec.PodTemplate.DNSConfig,
-			EnableServiceLinks:           taskRun.Spec.PodTemplate.EnableServiceLinks,
+			DNSConfig:                    podTemplate.DNSConfig,
+			EnableServiceLinks:           podTemplate.EnableServiceLinks,
 			PriorityClassName:            priorityClassName,
 		},
 	}, nil

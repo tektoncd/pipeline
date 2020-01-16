@@ -171,7 +171,7 @@ func TestMakePod(t *testing.T) {
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
-			PodTemplate: v1alpha1.PodTemplate{
+			PodTemplate: &v1alpha1.PodTemplate{
 				SecurityContext: &corev1.PodSecurityContext{
 					Sysctls: []corev1.Sysctl{
 						{Name: "net.ipv4.tcp_syncookies", Value: "1"},

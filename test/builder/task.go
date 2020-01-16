@@ -397,6 +397,9 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 // TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
+		if spec.PodTemplate == nil {
+			spec.PodTemplate = &v1alpha1.PodTemplate{}
+		}
 		spec.PodTemplate.NodeSelector = values
 	}
 }
@@ -404,6 +407,9 @@ func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 // TaskRunTolerations sets the Tolerations to the TaskRunSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
+		if spec.PodTemplate == nil {
+			spec.PodTemplate = &v1alpha1.PodTemplate{}
+		}
 		spec.PodTemplate.Tolerations = values
 	}
 }
@@ -411,6 +417,9 @@ func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 // TaskRunAffinity sets the Affinity to the TaskRunSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
+		if spec.PodTemplate == nil {
+			spec.PodTemplate = &v1alpha1.PodTemplate{}
+		}
 		spec.PodTemplate.Affinity = affinity
 	}
 }
@@ -418,6 +427,9 @@ func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 // TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
 func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
+		if spec.PodTemplate == nil {
+			spec.PodTemplate = &v1alpha1.PodTemplate{}
+		}
 		spec.PodTemplate.SecurityContext = context
 	}
 }

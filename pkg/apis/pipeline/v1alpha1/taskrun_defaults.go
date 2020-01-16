@@ -56,6 +56,11 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 		trs.ServiceAccountName = defaultSA
 	}
 
+	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
+	if trs.PodTemplate == nil {
+		trs.PodTemplate = defaultPodTemplate
+	}
+
 	// If this taskrun has an embedded task, apply the usual task defaults
 	if trs.TaskSpec != nil {
 		trs.TaskSpec.SetDefaults(ctx)

@@ -41,3 +41,8 @@ data:
     # default-service-account contains the default service account name
     # to use for TaskRun and PipelineRun, if none is specified.
     default-service-account: "default"
+
+    # default-pod-template contains the default pod template to use
+    # TaskRun and PipelineRun, if none is specified. If a pod template
+    # is specified, the default pod template is ignored.
+    # default-pod-template:
