@@ -57,6 +57,14 @@ To add the Tekton Pipelines component to an existing cluster:
    _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
    https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.)_
 
+   If the container runtime your kubernetes system is does not support
+   `image-reference:tag@digest` (like `cri-o`, used in OpenShift 4.x),
+   you can use the `release.notags.yaml` instead.
+
+   ```bash
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
+   ```
+
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
    command to monitor the Tekton Pipelines components until all of the
