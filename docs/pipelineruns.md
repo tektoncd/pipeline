@@ -262,6 +262,12 @@ spec:
         claimName: my-volume-claim
 ```
 
+## PersistentVolumeClaims
+
+Any persistent volume claims within a `PipelineRun` are bound until the
+corresponding `PipelineRun` or pods are deleted. This also applies to any
+internally generated persistent volume claims.
+
 ## Workspaces
 
 It is not yet possible to specify [workspaces](tasks.md#workspaces) via `Pipelines`
