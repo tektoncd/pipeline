@@ -125,3 +125,7 @@ func (b *compressedBlob) Compressed() (io.ReadCloser, error) {
 func (b *compressedBlob) Size() (int64, error) {
 	return b.desc.Size, nil
 }
+
+func (b *compressedBlob) MediaType() (types.MediaType, error) {
+	return b.desc.MediaType, nil
+}
