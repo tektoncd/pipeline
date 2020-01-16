@@ -21,7 +21,7 @@ spec:
     kind: TaskRun
     plural: taskruns
     categories:
-    - all
+    - tekton
     - tekton-pipelines
     shortNames:
     - tr
