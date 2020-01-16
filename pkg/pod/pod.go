@@ -34,6 +34,9 @@ const (
 	homeDir = "/tekton/home"
 
 	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
+
+	gitHubAppAnnotationKey = "tekton.dev/githubapp-owner"
+	ownerLabelKey          = "owner"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -77,7 +80,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	volumes = append(volumes, implicitVolumes...)
 
 	// Inititalize any credentials found in annotated Secrets.
-	if credsInitContainer, secretsVolumes, err := credsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
+	if credsInitContainer, secretsVolumes, err := credsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, taskRun.Labels[ownerLabelKey], kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
 		return nil, err
 	} else if credsInitContainer != nil {
 		initContainers = append(initContainers, *credsInitContainer)

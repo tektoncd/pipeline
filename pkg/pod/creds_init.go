@@ -36,7 +36,7 @@ import (
 //
 // If it finds secrets, it also returns a set of Volumes to attach to the Pod
 // to provide those secrets to this initialization.
-func credsInit(credsImage string, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
+func credsInit(credsImage string, serviceAccountName, namespace, owner string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
@@ -55,7 +55,10 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 		if err != nil {
 			return nil, nil, err
 		}
-
+		// if there's a github app annotation on the secret let's match that to the github org this pipeline is for
+		if owner != "" && secret.Annotations[gitHubAppAnnotationKey] != "" && secret.Annotations[gitHubAppAnnotationKey] != owner {
+			continue
+		}
 		matched := false
 		for _, b := range builders {
 			if sa := b.MatchingAnnotations(secret); len(sa) > 0 {

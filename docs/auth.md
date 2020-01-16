@@ -175,6 +175,32 @@ generated containing the credentials configured in the `Secret`, and these
 credentials are then used to authenticate when retrieving any
 `PipelineResources`.
 
+## GitHub Apps
+
+[GitHub Apps](https://developer.github.com/apps/about-apps/) are the preferred way for automated operations say from
+within a pipeline to interact with GitHub, rather than managing a 'bot' user and personal access token.
+
+A GitHub App is installed into a GitHub Organisation or users account, an API is then called to retrieve a token that can
+then be used to authenticate Git requests.  This means we now have many tokens, one for each Organisation.  For Tekton
+to mount the correct Kubernetes secret for a given Organisation we need to annotate each secret with the owner that
+matches the Organisation, so we can filter out other secrets during the `creds-init` pipeline step.
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: basic-user-pass
+     annotations:
+       tekton.dev/git-0: https://github.com
+       tekton.dev/githubapp-owner: <github organisation>
+   type: kubernetes.io/basic-auth
+   stringData:
+     username: <username>
+     password: <password>
+   ```
+
+__NOTE__ GitHub Apps issue a short lived token which needs to be continually refreshed.
+
 ## Basic authentication (Docker)
 
 1. Define a `Secret` containing the username and password that the build should

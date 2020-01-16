@@ -118,7 +118,123 @@ func TestCredsInit(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, kubeclient, volumeMounts, envVars)
+			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, "", kubeclient, volumeMounts, envVars)
+			if err != nil {
+				t.Fatalf("credsInit: %v", err)
+			}
+			if got == nil && len(volumes) > 0 {
+				t.Errorf("Got nil creds-init container, with non-empty volumes: %v", volumes)
+			}
+			if d := cmp.Diff(c.want, got); d != "" {
+				t.Fatalf("Diff(-want, +got): %s", d)
+			}
+		})
+	}
+}
+
+func TestCredsInitGitHubApp(t *testing.T) {
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+		Secrets: []corev1.ObjectReference{{
+			Name: "my-creds1",
+		}, {
+			Name: "my-creds2",
+		}},
+	}
+
+	for _, c := range []struct {
+		desc  string
+		want  *corev1.Container
+		objs  []runtime.Object
+		owner string
+	}{{
+		desc: "github organisation is foo so my-creds1 should be mounted into the container",
+		objs: []runtime.Object{
+			sa,
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds1",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/githubapp-owner": "foo",
+						"tekton.dev/git-0":           "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds2",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/githubapp-owner": "bar",
+						"tekton.dev/git-0":           "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+			},
+		},
+		owner: "foo",
+		want: &corev1.Container{
+			Name:    "credential-initializer",
+			Image:   images.CredsImage,
+			Command: []string{"/ko-app/creds-init"},
+			Args: []string{
+				"-basic-git=my-creds1=github.com",
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "tekton-internal-secret-volume-my-creds1",
+					MountPath: "/tekton/creds-secrets/my-creds1"},
+			},
+		},
+	}, {
+		desc: "github organisation is bar so my-creds2 should be mounted into the container",
+		objs: []runtime.Object{
+			sa,
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds1",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/githubapp-owner": "foo",
+						"tekton.dev/git-0":           "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds2",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/githubapp-owner": "bar",
+						"tekton.dev/git-0":           "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+			},
+		},
+		owner: "bar",
+		want: &corev1.Container{
+			Name:    "credential-initializer",
+			Image:   images.CredsImage,
+			Command: []string{"/ko-app/creds-init"},
+			Args: []string{
+				"-basic-git=my-creds2=github.com",
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "tekton-internal-secret-volume-my-creds2",
+					MountPath: "/tekton/creds-secrets/my-creds2"},
+			},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
+			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, c.owner, kubeclient, nil, nil)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}
