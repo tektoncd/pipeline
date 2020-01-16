@@ -21,7 +21,7 @@ spec:
     kind: ClusterTask
     plural: clustertasks
     categories:
-    - all
+    - tekton
     - tekton-pipelines
   scope: Cluster
   # Opt into the status subresource so metadata.generation
