@@ -26,30 +26,35 @@ import (
 
 const (
 	// ConfigName is the name of the configmap
-	DefaultsConfigName       = "config-defaults"
-	DefaultTimeoutMinutes    = 60
-	NoTimeoutDuration        = 0 * time.Minute
-	defaultTimeoutMinutesKey = "default-timeout-minutes"
-	defaultServiceAccountKey = "default-service-account"
+	DefaultsConfigName            = "config-defaults"
+	DefaultTimeoutMinutes         = 60
+	NoTimeoutDuration             = 0 * time.Minute
+	defaultTimeoutMinutesKey      = "default-timeout-minutes"
+	defaultServiceAccountKey      = "default-service-account"
+	defaultManagedByLabelValueKey = "default-managed-by-label-value"
+	DefaultManagedByLabelValue    = "tekton-pipelines"
 )
 
 // Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
 type Defaults struct {
-	DefaultTimeoutMinutes int
-	DefaultServiceAccount string
+	DefaultTimeoutMinutes      int
+	DefaultServiceAccount      string
+	DefaultManagedByLabelValue string
 }
 
 // Equals returns true if two Configs are identical
 func (cfg *Defaults) Equals(other *Defaults) bool {
 	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes &&
-		other.DefaultServiceAccount == cfg.DefaultServiceAccount
+		other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
+		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	tc := Defaults{
-		DefaultTimeoutMinutes: DefaultTimeoutMinutes,
+		DefaultTimeoutMinutes:      DefaultTimeoutMinutes,
+		DefaultManagedByLabelValue: DefaultManagedByLabelValue,
 	}
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
 		timeout, err := strconv.ParseInt(defaultTimeoutMin, 10, 0)
@@ -61,6 +66,9 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
 		tc.DefaultServiceAccount = defaultServiceAccount
+	}
+	if defaultManagedByLabelValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
+		tc.DefaultManagedByLabelValue = defaultManagedByLabelValue
 	}
 
 	return &tc, nil

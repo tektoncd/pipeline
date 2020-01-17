@@ -25,8 +25,9 @@ import (
 
 func TestNewDefaultsFromConfigMap(t *testing.T) {
 	expectedConfig := &Defaults{
-		DefaultTimeoutMinutes: 50,
-		DefaultServiceAccount: "tekton",
+		DefaultTimeoutMinutes:      50,
+		DefaultServiceAccount:      "tekton",
+		DefaultManagedByLabelValue: "something-else",
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigName, expectedConfig)
 }
@@ -34,7 +35,8 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	DefaultsConfigEmptyName := "config-defaults-empty"
 	expectedConfig := &Defaults{
-		DefaultTimeoutMinutes: 60,
+		DefaultTimeoutMinutes:      60,
+		DefaultManagedByLabelValue: "tekton-pipelines",
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
