@@ -653,45 +653,21 @@ script-heredoc-randomly-generated-78c5n
 
 func TestMakeLabels(t *testing.T) {
 	taskRunName := "task-run-name"
-	for _, c := range []struct {
-		desc     string
-		trLabels map[string]string
-		want     map[string]string
-	}{{
-		desc: "taskrun labels pass through",
-		trLabels: map[string]string{
-			"foo":   "bar",
-			"hello": "world",
+	want := map[string]string{
+		taskRunLabelKey: taskRunName,
+		"foo":           "bar",
+		"hello":         "world",
+	}
+	got := makeLabels(&v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: taskRunName,
+			Labels: map[string]string{
+				"foo":   "bar",
+				"hello": "world",
+			},
 		},
-		want: map[string]string{
-			taskRunLabelKey:   taskRunName,
-			ManagedByLabelKey: ManagedByLabelValue,
-			"foo":             "bar",
-			"hello":           "world",
-		},
-	}, {
-		desc: "taskrun managed-by overrides; taskrun label key doesn't",
-		trLabels: map[string]string{
-			"foo":             "bar",
-			taskRunLabelKey:   "override-me",
-			ManagedByLabelKey: "managed-by-something-else",
-		},
-		want: map[string]string{
-			taskRunLabelKey:   taskRunName,
-			ManagedByLabelKey: "managed-by-something-else",
-			"foo":             "bar",
-		},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			got := makeLabels(&v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   taskRunName,
-					Labels: c.trLabels,
-				},
-			})
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff labels:\n%s", d)
-			}
-		})
+	})
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("Diff labels:\n%s", d)
 	}
 }

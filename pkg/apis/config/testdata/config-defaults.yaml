@@ -20,3 +20,4 @@ metadata:
 data:
   default-timeout-minutes: "50"
   default-service-account: "tekton"
+  default-managed-by-label-value: "something-else"
