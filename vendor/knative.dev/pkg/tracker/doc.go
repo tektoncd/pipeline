@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// +k8s:deepcopy-gen=package
+
 // Package tracker defines a utility to enable Reconcilers to trigger
 // reconciliations when objects that are cross-referenced change, so
 // that the level-based reconciliation can react to the change.  The

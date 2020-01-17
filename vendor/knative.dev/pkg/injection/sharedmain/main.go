@@ -25,13 +25,17 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"time"
 
+	"go.opencensus.io/stats/view"
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"go.uber.org/zap"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -41,6 +45,8 @@ import (
 	"knative.dev/pkg/profiling"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/system"
+	"knative.dev/pkg/version"
+	"knative.dev/pkg/webhook"
 )
 
 // GetConfig returns a rest.Config to be used for kubernetes client creation.
@@ -77,7 +83,11 @@ func GetConfig(masterURL, kubeconfig string) (*rest.Config, error) {
 func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
 	loggingConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(logging.ConfigMapName(), metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		if apierrors.IsNotFound(err) {
+			return logging.NewConfigFromMap(nil)
+		} else {
+			return nil, err
+		}
 	}
 
 	return logging.NewConfigFromConfigMap(loggingConfigMap)
@@ -90,14 +100,16 @@ func Main(component string, ctors ...injection.ControllerConstructor) {
 
 func MainWithContext(ctx context.Context, component string, ctors ...injection.ControllerConstructor) {
 	var (
-		masterURL  = flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-		kubeconfig = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+		masterURL = flag.String("master", "",
+			"The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+		kubeconfig = flag.String("kubeconfig", "",
+			"Path to a kubeconfig. Only required if out-of-cluster.")
 	)
 	flag.Parse()
 
 	cfg, err := GetConfig(*masterURL, *kubeconfig)
 	if err != nil {
-		log.Fatal("Error building kubeconfig", err)
+		log.Fatalf("Error building kubeconfig: %v", err)
 	}
 	MainWithConfig(ctx, component, cfg, ctors...)
 }
@@ -108,6 +120,14 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	log.Printf("Registering %d informers", len(injection.Default.GetInformers()))
 	log.Printf("Registering %d controllers", len(ctors))
 
+	// Report stats on Go memory usage every 30 seconds.
+	msp := metrics.NewMemStatsAll()
+	msp.Start(ctx, 30*time.Second)
+
+	if err := view.Register(msp.DefaultViews()...); err != nil {
+		log.Fatalf("Error exporting go memstats view: %v", err)
+	}
+
 	// Adjust our client's rate limits based on the number of controller's we are running.
 	cfg.QPS = float32(len(ctors)) * rest.DefaultQPS
 	cfg.Burst = len(ctors) * rest.DefaultBurst
@@ -117,39 +137,72 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	// Set up our logger.
 	loggingConfig, err := GetLoggingConfig(ctx)
 	if err != nil {
-		log.Fatal("Error reading/parsing logging configuration:", err)
+		log.Fatalf("Error reading/parsing logging configuration: %v", err)
 	}
 	logger, atomicLevel := logging.NewLoggerFromConfig(loggingConfig, component)
 	defer flush(logger)
 	ctx = logging.WithLogger(ctx, logger)
 
+	// Obtain K8s clientset.
+	kc := kubeclient.Get(ctx)
+	if err := version.CheckMinimumVersion(kc.Discovery()); err != nil {
+		logger.Fatalw("Version check failed", zap.Error(err))
+	}
+
+	// Create ConfigMaps watcher with optional label-based filter.
+	var cmLabelReqs []labels.Requirement
+	if cmLabel := system.ResourceLabel(); cmLabel != "" {
+		req, err := configmap.FilterConfigByLabelExists(cmLabel)
+		if err != nil {
+			logger.With(zap.Error(err)).Fatalf("Failed to generate requirement for label %q")
+		}
+		logger.Infof("Setting up ConfigMap watcher with label selector %q", req)
+		cmLabelReqs = append(cmLabelReqs, *req)
+	}
 	// TODO(mattmoor): This should itself take a context and be injection-based.
-	cmw := configmap.NewInformedWatcher(kubeclient.Get(ctx), system.Namespace())
+	cmw := configmap.NewInformedWatcher(kc, system.Namespace(), cmLabelReqs...)
 
 	// Based on the reconcilers we have linked, build up the set of controllers to run.
 	controllers := make([]*controller.Impl, 0, len(ctors))
+	webhooks := make([]webhook.AdmissionController, 0)
 	for _, cf := range ctors {
-		controllers = append(controllers, cf(ctx, cmw))
+		ctrl := cf(ctx, cmw)
+		controllers = append(controllers, ctrl)
+
+		// Build a list of any reconcilers that implement webhook.AdmissionController
+		if ac, ok := ctrl.Reconciler.(webhook.AdmissionController); ok {
+			webhooks = append(webhooks, ac)
+		}
 	}
 
 	profilingHandler := profiling.NewHandler(logger, false)
 
 	// Watch the logging config map and dynamically update logging levels.
-	cmw.Watch(logging.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, component))
+	if _, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(logging.ConfigMapName(),
+		metav1.GetOptions{}); err == nil {
+		cmw.Watch(logging.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, component))
+	} else if !apierrors.IsNotFound(err) {
+		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", logging.ConfigMapName())
+	}
 
 	// Watch the observability config map
-	cmw.Watch(metrics.ConfigMapName(),
-		metrics.UpdateExporterFromConfigMap(component, logger),
-		profilingHandler.UpdateFromConfigMap)
+	if _, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(metrics.ConfigMapName(),
+		metav1.GetOptions{}); err == nil {
+		cmw.Watch(metrics.ConfigMapName(),
+			metrics.UpdateExporterFromConfigMap(component, logger),
+			profilingHandler.UpdateFromConfigMap)
+	} else if !apierrors.IsNotFound(err) {
+		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", metrics.ConfigMapName())
+	}
 
 	if err := cmw.Start(ctx.Done()); err != nil {
-		logger.Fatalw("failed to start configuration manager", zap.Error(err))
+		logger.Fatalw("Failed to start configuration manager", zap.Error(err))
 	}
 
 	// Start all of the informers and wait for them to sync.
 	logger.Info("Starting informers.")
 	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
-		logger.Fatalw("Failed to start informers", err)
+		logger.Fatalw("Failed to start informers", zap.Error(err))
 	}
 
 	// Start all of the controllers.
@@ -160,6 +213,21 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.Go(profilingServer.ListenAndServe)
+
+	// If we have one or more admission controllers, then start the webhook
+	// and pass them in.
+	if len(webhooks) > 0 {
+		// Register webhook metrics
+		webhook.RegisterMetrics()
+
+		wh, err := webhook.New(ctx, webhooks)
+		if err != nil {
+			logger.Fatalw("Failed to create admission controller", zap.Error(err))
+		}
+		eg.Go(func() error {
+			return wh.Run(ctx.Done())
+		})
+	}
 
 	// This will block until either a signal arrives or one of the grouped functions
 	// returns an error.

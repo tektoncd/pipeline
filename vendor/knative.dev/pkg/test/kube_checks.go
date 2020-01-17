@@ -75,6 +75,52 @@ func WaitForPodListState(client *KubeClient, inState func(p *corev1.PodList) (bo
 	})
 }
 
+// WaitForPodState polls the status of the specified Pod
+// from client every interval until inState returns `true` indicating it
+// is done, returns an error or timeout. desc will be used to name the metric
+// that is emitted to track how long it took to get into the state checked by inState.
+func WaitForPodState(client *KubeClient, inState func(p *corev1.Pod) (bool, error), name string, namespace string) error {
+	p := client.Kube.CoreV1().Pods(namespace)
+	span := logging.GetEmitableSpan(context.Background(), "WaitForPodState/"+name)
+	defer span.End()
+
+	return wait.PollImmediate(interval, podTimeout, func() (bool, error) {
+		p, err := p.Get(name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		return inState(p)
+	})
+}
+
+// WaitForServiceHasAtLeastOneEndpoint polls the status of the specified Service
+// from client every interval until number of service endpoints = numOfEndpoints
+func WaitForServiceEndpoints(client *KubeClient, svcName string, svcNamespace string, numOfEndpoints int) error {
+	endpointsService := client.Kube.CoreV1().Endpoints(svcNamespace)
+	span := logging.GetEmitableSpan(context.Background(), "WaitForServiceHasAtLeastOneEndpoint/"+svcName)
+	defer span.End()
+
+	return wait.PollImmediate(interval, podTimeout, func() (bool, error) {
+		endpoint, err := endpointsService.Get(svcName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		return countEndpointsNum(endpoint) == numOfEndpoints, nil
+	})
+}
+
+func countEndpointsNum(e *corev1.Endpoints) int {
+	if e == nil || e.Subsets == nil {
+		return 0
+	}
+	num := 0
+	for _, sub := range e.Subsets {
+		num += len(sub.Addresses)
+	}
+	return num
+}
+
 // GetConfigMap gets the configmaps for a given namespace
 func GetConfigMap(client *KubeClient, namespace string) k8styped.ConfigMapInterface {
 	return client.Kube.CoreV1().ConfigMaps(namespace)

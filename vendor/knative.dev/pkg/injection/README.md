@@ -48,8 +48,8 @@ these below).
 import (
 	// These are how you access a client or informer off of the "ctx" passed
 	// to set up the controller.
-	"knative.dev/pkg/injection/clients/kubeclient"
-	svcinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/service"
+	"knative.dev/pkg/client/injection/kube/client"
+	svcinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/service"
 
 	// Other imports ...
 )
@@ -91,7 +91,7 @@ import (
 	"testing"
 
 	// Link the fakes for any informers our controller accesses.
-	_ "knative.dev/pkg/injection/informers/kubeinformers/corev1/service/fake"
+	_ "knative.dev/pkg/client/injection/kube/informers/core/v1/service/fake"
 
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
@@ -116,7 +116,7 @@ The fake clients also support manually setting up contexts seeded with objects:
 import (
 	"testing"
 
-	fakekubeclient "knative.dev/pkg/injection/clients/kubeclient/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"

@@ -56,6 +56,12 @@ func (i *impl) SetupInformers(ctx context.Context, cfg *rest.Config) (context.Co
 		ctx = ifi(ctx)
 	}
 
+	// Based on the reconcilers we have linked, build up a set of duck informer factories
+	// and inject them onto the context.
+	for _, duck := range i.GetDucks() {
+		ctx = duck(ctx)
+	}
+
 	// Based on the reconcilers we have linked, build up a set of informers
 	// and inject them onto the context.
 	var inf controller.Informer

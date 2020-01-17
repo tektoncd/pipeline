@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+
+	"k8s.io/apimachinery/pkg/api/equality"
 )
 
 // URL is an alias of url.URL.
@@ -39,6 +41,30 @@ func ParseURL(u string) (*URL, error) {
 		return nil, err
 	}
 	return (*URL)(pu), nil
+}
+
+// HTTP creates an http:// URL pointing to a known domain.
+func HTTP(domain string) *URL {
+	return &URL{
+		Scheme: "http",
+		Host:   domain,
+	}
+}
+
+// HTTPS creates an https:// URL pointing to a known domain.
+func HTTPS(domain string) *URL {
+	return &URL{
+		Scheme: "https",
+		Host:   domain,
+	}
+}
+
+// IsEmpty returns true if the URL is `nil` or represents an empty URL.
+func (u *URL) IsEmpty() bool {
+	if u == nil {
+		return true
+	}
+	return *u == URL{}
 }
 
 // MarshalJSON implements a custom json marshal method used when this type is
@@ -75,4 +101,40 @@ func (u *URL) String() string {
 	}
 	uu := url.URL(*u)
 	return uu.String()
+}
+
+// URL returns the URL as a url.URL.
+func (u *URL) URL() *url.URL {
+	if u == nil {
+		return &url.URL{}
+	}
+	url := url.URL(*u)
+	return &url
+}
+
+// ResolveReference calls the underlying ResolveReference method
+// and returns an apis.URL
+func (u *URL) ResolveReference(ref *URL) *URL {
+	if ref == nil {
+		return u
+	}
+	// Turn both u / ref to url.URL
+	uRef := url.URL(*ref)
+	uu := url.URL(*u)
+
+	newU := uu.ResolveReference(&uRef)
+
+	// Turn new back to apis.URL
+	ret := URL(*newU)
+	return &ret
+}
+
+func init() {
+	equality.Semantic.AddFunc(
+		// url.URL has an unexported type (UserInfo) which causes semantic
+		// equality to panic unless we add a custom equality function
+		func(a, b URL) bool {
+			return a.String() == b.String()
+		},
+	)
 }

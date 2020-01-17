@@ -49,6 +49,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		(&KResource{}).GetListType(),
 		&AddressableType{},
 		(&AddressableType{}).GetListType(),
+		&Source{},
+		(&Source{}).GetListType(),
+		&WithPod{},
+		(&WithPod{}).GetListType(),
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

@@ -17,16 +17,13 @@ limitations under the License.
 package cache
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
-	"net/url"
 	"reflect"
-	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -35,10 +32,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/naming"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/pager"
 	"k8s.io/klog"
+	"k8s.io/utils/trace"
 )
 
 // Reflector watches a specified resource and causes all changes to be reflected in the given store.
@@ -67,6 +67,9 @@ type Reflector struct {
 	lastSyncResourceVersion string
 	// lastSyncResourceVersionMutex guards read/write access to lastSyncResourceVersion
 	lastSyncResourceVersionMutex sync.RWMutex
+	// WatchListPageSize is the requested chunk size of initial and resync watch lists.
+	// Defaults to pager.PageSize.
+	WatchListPageSize int64
 }
 
 var (
@@ -78,7 +81,7 @@ var (
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
 // The indexer is configured to key on namespace
 func NewNamespaceKeyedIndexerAndReflector(lw ListerWatcher, expectedType interface{}, resyncPeriod time.Duration) (indexer Indexer, reflector *Reflector) {
-	indexer = NewIndexer(MetaNamespaceKeyFunc, Indexers{"namespace": MetaNamespaceIndexFunc})
+	indexer = NewIndexer(MetaNamespaceKeyFunc, Indexers{NamespaceIndex: MetaNamespaceIndexFunc})
 	reflector = NewReflector(lw, expectedType, indexer, resyncPeriod)
 	return indexer, reflector
 }
@@ -105,11 +108,6 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		clock:         &clock.RealClock{},
 	}
 	return r
-}
-
-func makeValidPrometheusMetricLabel(in string) string {
-	// this isn't perfect, but it removes our common characters
-	return strings.NewReplacer("/", "_", ".", "_", "-", "_", ":", "_").Replace(in)
 }
 
 // internalPackages are packages that ignored when creating a default reflector name. These packages are in the common
@@ -164,23 +162,64 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	options := metav1.ListOptions{ResourceVersion: "0"}
-	list, err := r.listerWatcher.List(options)
-	if err != nil {
-		return fmt.Errorf("%s: Failed to list %v: %v", r.name, r.expectedType, err)
+
+	if err := func() error {
+		initTrace := trace.New("Reflector ListAndWatch", trace.Field{"name", r.name})
+		defer initTrace.LogIfLong(10 * time.Second)
+		var list runtime.Object
+		var err error
+		listCh := make(chan struct{}, 1)
+		panicCh := make(chan interface{}, 1)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					panicCh <- r
+				}
+			}()
+			// Attempt to gather list in chunks, if supported by listerWatcher, if not, the first
+			// list request will return the full response.
+			pager := pager.New(pager.SimplePageFunc(func(opts metav1.ListOptions) (runtime.Object, error) {
+				return r.listerWatcher.List(opts)
+			}))
+			if r.WatchListPageSize != 0 {
+				pager.PageSize = r.WatchListPageSize
+			}
+			// Pager falls back to full list if paginated list calls fail due to an "Expired" error.
+			list, err = pager.List(context.Background(), options)
+			close(listCh)
+		}()
+		select {
+		case <-stopCh:
+			return nil
+		case r := <-panicCh:
+			panic(r)
+		case <-listCh:
+		}
+		if err != nil {
+			return fmt.Errorf("%s: Failed to list %v: %v", r.name, r.expectedType, err)
+		}
+		initTrace.Step("Objects listed")
+		listMetaInterface, err := meta.ListAccessor(list)
+		if err != nil {
+			return fmt.Errorf("%s: Unable to understand list result %#v: %v", r.name, list, err)
+		}
+		resourceVersion = listMetaInterface.GetResourceVersion()
+		initTrace.Step("Resource version extracted")
+		items, err := meta.ExtractList(list)
+		if err != nil {
+			return fmt.Errorf("%s: Unable to understand list result %#v (%v)", r.name, list, err)
+		}
+		initTrace.Step("Objects extracted")
+		if err := r.syncWith(items, resourceVersion); err != nil {
+			return fmt.Errorf("%s: Unable to sync list result: %v", r.name, err)
+		}
+		initTrace.Step("SyncWith done")
+		r.setLastSyncResourceVersion(resourceVersion)
+		initTrace.Step("Resource version updated")
+		return nil
+	}(); err != nil {
+		return err
 	}
-	listMetaInterface, err := meta.ListAccessor(list)
-	if err != nil {
-		return fmt.Errorf("%s: Unable to understand list result %#v: %v", r.name, list, err)
-	}
-	resourceVersion = listMetaInterface.GetResourceVersion()
-	items, err := meta.ExtractList(list)
-	if err != nil {
-		return fmt.Errorf("%s: Unable to understand list result %#v (%v)", r.name, list, err)
-	}
-	if err := r.syncWith(items, resourceVersion); err != nil {
-		return fmt.Errorf("%s: Unable to sync list result: %v", r.name, err)
-	}
-	r.setLastSyncResourceVersion(resourceVersion)
 
 	resyncerrc := make(chan error, 1)
 	cancelCh := make(chan struct{})
@@ -224,6 +263,10 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			// We want to avoid situations of hanging watchers. Stop any wachers that do not
 			// receive any events within the timeout window.
 			TimeoutSeconds: &timeoutSeconds,
+			// To reduce load on kube-apiserver on watch restarts, you may enable watch bookmarks.
+			// Reflector doesn't assume bookmarks are returned at all (if the server do not support
+			// watch bookmarks, it will ignore this field).
+			AllowWatchBookmarks: true,
 		}
 
 		w, err := r.listerWatcher.Watch(options)
@@ -240,20 +283,21 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			// It doesn't make sense to re-list all objects because most likely we will be able to restart
 			// watch where we ended.
 			// If that's the case wait and resend watch request.
-			if urlError, ok := err.(*url.Error); ok {
-				if opError, ok := urlError.Err.(*net.OpError); ok {
-					if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
-						time.Sleep(time.Second)
-						continue
-					}
-				}
+			if utilnet.IsConnectionRefused(err) {
+				time.Sleep(time.Second)
+				continue
 			}
 			return nil
 		}
 
 		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err != errorStopRequested {
-				klog.Warningf("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
+				switch {
+				case apierrs.IsResourceExpired(err):
+					klog.V(4).Infof("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
+				default:
+					klog.Warningf("%s: watch of %v ended with: %v", r.name, r.expectedType, err)
+				}
 			}
 			return nil
 		}
@@ -321,6 +365,8 @@ loop:
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("%s: unable to delete watch event object (%#v) from store: %v", r.name, event.Object, err))
 				}
+			case watch.Bookmark:
+				// A `Bookmark` means watch has synced here, just update the resourceVersion
 			default:
 				utilruntime.HandleError(fmt.Errorf("%s: unable to understand watch event %#v", r.name, event))
 			}
@@ -330,7 +376,7 @@ loop:
 		}
 	}
 
-	watchDuration := r.clock.Now().Sub(start)
+	watchDuration := r.clock.Since(start)
 	if watchDuration < 1*time.Second && eventCount == 0 {
 		return fmt.Errorf("very short watch: %s: Unexpected watch close - watch lasted less than a second and no items received", r.name)
 	}

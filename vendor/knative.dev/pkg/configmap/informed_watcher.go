@@ -18,12 +18,17 @@ package configmap
 
 import (
 	"errors"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	informers "k8s.io/client-go/informers"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/informers"
 	corev1informers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -35,7 +40,7 @@ func NewDefaultWatcher(kc kubernetes.Interface, namespace string) *InformedWatch
 	return NewInformedWatcher(kc, namespace)
 }
 
-// NewInformedWatcherFromFactory watches a Kubernetes namespace for configmap changes.
+// NewInformedWatcherFromFactory watches a Kubernetes namespace for ConfigMap changes.
 func NewInformedWatcherFromFactory(sif informers.SharedInformerFactory, namespace string) *InformedWatcher {
 	return &InformedWatcher{
 		sif:      sif,
@@ -47,15 +52,44 @@ func NewInformedWatcherFromFactory(sif informers.SharedInformerFactory, namespac
 	}
 }
 
-// NewInformedWatcher watches a Kubernetes namespace for configmap changes.
-func NewInformedWatcher(kc kubernetes.Interface, namespace string) *InformedWatcher {
+// NewInformedWatcher watches a Kubernetes namespace for ConfigMap changes.
+// Optional label requirements allow restricting the list of ConfigMap objects
+// that is tracked by the underlying Informer.
+func NewInformedWatcher(kc kubernetes.Interface, namespace string, lr ...labels.Requirement) *InformedWatcher {
 	return NewInformedWatcherFromFactory(informers.NewSharedInformerFactoryWithOptions(
 		kc,
 		// We noticed that we're getting updates all the time anyway, due to the
 		// watches being terminated and re-spawned.
 		0,
 		informers.WithNamespace(namespace),
+		informers.WithTweakListOptions(addLabelRequirementsToListOptions(lr)),
 	), namespace)
+}
+
+// addLabelRequirementsToListOptions returns a function which injects label
+// requirements to existing metav1.ListOptions.
+func addLabelRequirementsToListOptions(lr []labels.Requirement) internalinterfaces.TweakListOptionsFunc {
+	if len(lr) == 0 {
+		return nil
+	}
+
+	return func(lo *metav1.ListOptions) {
+		sel, err := labels.Parse(lo.LabelSelector)
+		if err != nil {
+			panic(fmt.Errorf("could not parse label selector %q: %w", lo.LabelSelector, err))
+		}
+		lo.LabelSelector = sel.Add(lr...).String()
+	}
+}
+
+// FilterConfigByLabelExists returns an "exists" label requirement for the
+// given label key.
+func FilterConfigByLabelExists(labelKey string) (*labels.Requirement, error) {
+	req, err := labels.NewRequirement(labelKey, selection.Exists, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not construct label requirement: %w", err)
+	}
+	return req, nil
 }
 
 // InformedWatcher provides an informer-based implementation of Watcher.

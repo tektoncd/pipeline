@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ limitations under the License.
 package versioned
 
 import (
+	"fmt"
+
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -28,8 +30,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	CachingV1alpha1() cachingv1alpha1.CachingV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Caching() cachingv1alpha1.CachingV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -44,12 +44,6 @@ func (c *Clientset) CachingV1alpha1() cachingv1alpha1.CachingV1alpha1Interface {
 	return c.cachingV1alpha1
 }
 
-// Deprecated: Caching retrieves the default version of CachingClient.
-// Please explicitly pick a version.
-func (c *Clientset) Caching() cachingv1alpha1.CachingV1alpha1Interface {
-	return c.cachingV1alpha1
-}
-
 // Discovery retrieves the DiscoveryClient
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
@@ -59,9 +53,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfig will generate a rate-limiter in configShallowCopy.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
+		if configShallowCopy.Burst <= 0 {
+			return nil, fmt.Errorf("Burst is required to be greater than 0 when RateLimiter is not set and QPS is set to greater than 0")
+		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
 	var cs Clientset

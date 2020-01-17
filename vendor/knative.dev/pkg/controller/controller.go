@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -97,6 +98,17 @@ func Filter(gvk schema.GroupVersionKind) func(obj interface{}) bool {
 	}
 }
 
+// FilterWithName makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on a name.
+func FilterWithName(name string) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		if object, ok := obj.(metav1.Object); ok {
+			return name == object.GetName()
+		}
+		return false
+	}
+}
+
 // FilterWithNameAndNamespace makes it simple to create FilterFunc's for use with
 // cache.FilteringResourceEventHandler that filter based on a namespace and a name.
 func FilterWithNameAndNamespace(namespace, name string) func(obj interface{}) bool {
@@ -155,23 +167,31 @@ func NewImplWithStats(r Reconciler, logger *zap.SugaredLogger, workQueueName str
 // EnqueueAfter takes a resource, converts it into a namespace/name string,
 // and passes it to EnqueueKey.
 func (c *Impl) EnqueueAfter(obj interface{}, after time.Duration) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	object, err := kmeta.DeletionHandlingAccessor(obj)
 	if err != nil {
 		c.logger.Errorw("Enqueue", zap.Error(err))
 		return
 	}
-	c.EnqueueKeyAfter(key, after)
+	c.EnqueueKeyAfter(types.NamespacedName{Namespace: object.GetNamespace(), Name: object.GetName()}, after)
 }
 
 // Enqueue takes a resource, converts it into a namespace/name string,
 // and passes it to EnqueueKey.
 func (c *Impl) Enqueue(obj interface{}) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	object, err := kmeta.DeletionHandlingAccessor(obj)
 	if err != nil {
 		c.logger.Errorw("Enqueue", zap.Error(err))
 		return
 	}
-	c.EnqueueKey(key)
+	c.EnqueueKey(types.NamespacedName{Namespace: object.GetNamespace(), Name: object.GetName()})
+}
+
+// EnqueueSentinel returns a Enqueue method which will always enqueue a
+// predefined key instead of the object key.
+func (c *Impl) EnqueueSentinel(k types.NamespacedName) func(interface{}) {
+	return func(interface{}) {
+		c.EnqueueKey(k)
+	}
 }
 
 // EnqueueControllerOf takes a resource, identifies its controller resource,
@@ -186,7 +206,7 @@ func (c *Impl) EnqueueControllerOf(obj interface{}) {
 	// If we can determine the controller ref of this object, then
 	// add that object to our workqueue.
 	if owner := metav1.GetControllerOf(object); owner != nil {
-		c.EnqueueKey(object.GetNamespace() + "/" + owner.Name)
+		c.EnqueueKey(types.NamespacedName{Namespace: object.GetNamespace(), Name: owner.Name})
 	}
 }
 
@@ -218,14 +238,14 @@ func (c *Impl) EnqueueLabelOfNamespaceScopedResource(namespaceLabel, nameLabel s
 				return
 			}
 
-			c.EnqueueKey(fmt.Sprintf("%s/%s", controllerNamespace, controllerKey))
+			c.EnqueueKey(types.NamespacedName{Namespace: controllerNamespace, Name: controllerKey})
 			return
 		}
 
 		// Pass through namespace of the object itself if no namespace label specified.
 		// This is for the scenario that object and the parent resource are of same namespace,
 		// e.g. to enqueue the revision of an endpoint.
-		c.EnqueueKey(fmt.Sprintf("%s/%s", object.GetNamespace(), controllerKey))
+		c.EnqueueKey(types.NamespacedName{Namespace: object.GetNamespace(), Name: controllerKey})
 	}
 }
 
@@ -249,21 +269,21 @@ func (c *Impl) EnqueueLabelOfClusterScopedResource(nameLabel string) func(obj in
 			return
 		}
 
-		c.EnqueueKey(controllerKey)
+		c.EnqueueKey(types.NamespacedName{Namespace: "", Name: controllerKey})
 	}
 }
 
 // EnqueueKey takes a namespace/name string and puts it onto the work queue.
-func (c *Impl) EnqueueKey(key string) {
+func (c *Impl) EnqueueKey(key types.NamespacedName) {
 	c.WorkQueue.Add(key)
-	c.logger.Debugf("Adding to queue %s (depth: %d)", key, c.WorkQueue.Len())
+	c.logger.Debugf("Adding to queue %s (depth: %d)", safeKey(key), c.WorkQueue.Len())
 }
 
 // EnqueueKeyAfter takes a namespace/name string and schedules its execution in
 // the work queue after given delay.
-func (c *Impl) EnqueueKeyAfter(key string, delay time.Duration) {
+func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
 	c.WorkQueue.AddAfter(key, delay)
-	c.logger.Debugf("Adding to queue %s (delay: %v, depth: %d)", key, delay, c.WorkQueue.Len())
+	c.logger.Debugf("Adding to queue %s (delay: %v, depth: %d)", safeKey(key), delay, c.WorkQueue.Len())
 }
 
 // Run starts the controller's worker threads, the number of which is threadiness.
@@ -273,7 +293,12 @@ func (c *Impl) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	sg := sync.WaitGroup{}
 	defer sg.Wait()
-	defer c.WorkQueue.ShutDown()
+	defer func() {
+		c.WorkQueue.ShutDown()
+		for c.WorkQueue.Len() > 0 {
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
 
 	// Launch workers to process resources that get enqueued to our workqueue.
 	logger := c.logger
@@ -301,9 +326,10 @@ func (c *Impl) processNextWorkItem() bool {
 	if shutdown {
 		return false
 	}
-	key := obj.(string)
+	key := obj.(types.NamespacedName)
+	keyStr := safeKey(key)
 
-	c.logger.Debugf("Processing from queue %s (depth: %d)", key, c.WorkQueue.Len())
+	c.logger.Debugf("Processing from queue %s (depth: %d)", safeKey(key), c.WorkQueue.Len())
 
 	startTime := time.Now()
 	// Send the metrics for the current queue depth
@@ -322,17 +348,17 @@ func (c *Impl) processNextWorkItem() bool {
 		if err != nil {
 			status = falseString
 		}
-		c.statsReporter.ReportReconcile(time.Since(startTime), key, status)
+		c.statsReporter.ReportReconcile(time.Since(startTime), keyStr, status)
 	}()
 
 	// Embed the key into the logger and attach that to the context we pass
 	// to the Reconciler.
-	logger := c.logger.With(zap.String(logkey.TraceId, uuid.New().String()), zap.String(logkey.Key, key))
+	logger := c.logger.With(zap.String(logkey.TraceId, uuid.New().String()), zap.String(logkey.Key, keyStr))
 	ctx := logging.WithLogger(context.TODO(), logger)
 
 	// Run Reconcile, passing it the namespace/name string of the
 	// resource to be synced.
-	if err = c.Reconciler.Reconcile(ctx, key); err != nil {
+	if err = c.Reconciler.Reconcile(ctx, keyStr); err != nil {
 		c.handleErr(err, key)
 		logger.Infof("Reconcile failed. Time taken: %v.", time.Since(startTime))
 		return true
@@ -346,13 +372,16 @@ func (c *Impl) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Impl) handleErr(err error, key string) {
+func (c *Impl) handleErr(err error, key types.NamespacedName) {
 	c.logger.Errorw("Reconcile error", zap.Error(err))
 
 	// Re-queue the key if it's an transient error.
-	if !IsPermanentError(err) {
+	// We want to check that the queue is shutting down here
+	// since controller Run might have exited by now (since while this item was
+	// being processed, queue.Len==0).
+	if !IsPermanentError(err) && !c.WorkQueue.ShuttingDown() {
 		c.WorkQueue.AddRateLimited(key)
-		c.logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", key, c.WorkQueue.Len())
+		c.logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", safeKey(key), c.WorkQueue.Len())
 		return
 	}
 
@@ -368,6 +397,9 @@ func (c *Impl) GlobalResync(si cache.SharedInformer) {
 // FilteredGlobalResync enqueues (with a delay) all objects from the
 // SharedInformer that pass the filter function
 func (c *Impl) FilteredGlobalResync(f func(interface{}) bool, si cache.SharedInformer) {
+	if c.WorkQueue.ShuttingDown() {
+		return
+	}
 	list := si.GetStore().List()
 	count := float64(len(list))
 	for _, obj := range list {
@@ -432,6 +464,27 @@ func StartInformers(stopCh <-chan struct{}, informers ...Informer) error {
 	return nil
 }
 
+// RunInformers kicks off all of the passed informers and then waits for all of
+// them to synchronize. Returned function will wait for all informers to finish.
+func RunInformers(stopCh <-chan struct{}, informers ...Informer) (func(), error) {
+	var wg sync.WaitGroup
+	wg.Add(len(informers))
+	for _, informer := range informers {
+		informer := informer
+		go func() {
+			defer wg.Done()
+			informer.Run(stopCh)
+		}()
+	}
+
+	for i, informer := range informers {
+		if ok := cache.WaitForCacheSync(stopCh, informer.HasSynced); !ok {
+			return wg.Wait, fmt.Errorf("failed to wait for cache at index %d to sync", i)
+		}
+	}
+	return wg.Wait, nil
+}
+
 // StartAll kicks off all of the passed controllers with DefaultThreadsPerController.
 func StartAll(stopCh <-chan struct{}, controllers ...*Impl) {
 	wg := sync.WaitGroup{}
@@ -488,4 +541,11 @@ func GetEventRecorder(ctx context.Context) record.EventRecorder {
 		return nil
 	}
 	return untyped.(record.EventRecorder)
+}
+
+func safeKey(key types.NamespacedName) string {
+	if key.Namespace == "" {
+		return key.Name
+	}
+	return key.String()
 }

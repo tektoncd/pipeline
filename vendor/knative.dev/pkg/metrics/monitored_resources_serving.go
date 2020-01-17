@@ -18,8 +18,7 @@ package metrics
 
 import (
 	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"go.opencensus.io/metric/metricdata"
 	"knative.dev/pkg/metrics/metricskey"
 )
 
@@ -49,27 +48,26 @@ func (kr *KnativeRevision) MonitoredResource() (resType string, labels map[strin
 }
 
 func GetKnativeRevisionMonitoredResource(
-	v *view.View, tags []tag.Tag, gm *gcpMetadata) ([]tag.Tag, monitoredresource.Interface) {
-	tagsMap := getTagsMap(tags)
+	des *metricdata.Descriptor, tags map[string]string, gm *gcpMetadata) (map[string]string, monitoredresource.Interface) {
 	kr := &KnativeRevision{
 		// The first three resource labels are from metadata.
 		Project:     gm.project,
 		Location:    gm.location,
 		ClusterName: gm.cluster,
 		// The rest resource labels are from metrics labels.
-		NamespaceName:     valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
-		ServiceName:       valueOrUnknown(metricskey.LabelServiceName, tagsMap),
-		ConfigurationName: valueOrUnknown(metricskey.LabelConfigurationName, tagsMap),
-		RevisionName:      valueOrUnknown(metricskey.LabelRevisionName, tagsMap),
+		NamespaceName:     valueOrUnknown(metricskey.LabelNamespaceName, tags),
+		ServiceName:       valueOrUnknown(metricskey.LabelServiceName, tags),
+		ConfigurationName: valueOrUnknown(metricskey.LabelConfigurationName, tags),
+		RevisionName:      valueOrUnknown(metricskey.LabelRevisionName, tags),
 	}
 
-	var newTags []tag.Tag
-	for _, t := range tags {
+	metricLabels := map[string]string{}
+	for k, v := range tags {
 		// Keep the metrics labels that are not resource labels
-		if !metricskey.KnativeRevisionLabels.Has(t.Key.Name()) {
-			newTags = append(newTags, t)
+		if !metricskey.KnativeRevisionLabels.Has(k) {
+			metricLabels[k] = v
 		}
 	}
 
-	return newTags, kr
+	return metricLabels, kr
 }

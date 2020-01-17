@@ -22,13 +22,6 @@ import (
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 )
 
-type resourceMap struct {
-	// Mapping from the input resource type to the monitored resource type in Stackdriver.
-	srcType, dstType string
-	// Mapping from Stackdriver monitored resource label to an OpenCensus resource label.
-	labels map[string]string
-}
-
 // Resource labels that are generally internal to the exporter.
 // Consider exposing these labels and a type identifier in the future to allow
 // for customization.
@@ -41,13 +34,28 @@ const (
 )
 
 // Mappings for the well-known OpenCensus resources to applicable Stackdriver resources.
-var k8sResourceMap = map[string]string{
+var k8sContainerMap = map[string]string{
 	"project_id":     stackdriverProjectID,
 	"location":       resourcekeys.CloudKeyZone,
 	"cluster_name":   resourcekeys.K8SKeyClusterName,
 	"namespace_name": resourcekeys.K8SKeyNamespaceName,
 	"pod_name":       resourcekeys.K8SKeyPodName,
 	"container_name": resourcekeys.ContainerKeyName,
+}
+
+var k8sPodMap = map[string]string{
+	"project_id":     stackdriverProjectID,
+	"location":       resourcekeys.CloudKeyZone,
+	"cluster_name":   resourcekeys.K8SKeyClusterName,
+	"namespace_name": resourcekeys.K8SKeyNamespaceName,
+	"pod_name":       resourcekeys.K8SKeyPodName,
+}
+
+var k8sNodeMap = map[string]string{
+	"project_id":   stackdriverProjectID,
+	"location":     resourcekeys.CloudKeyZone,
+	"cluster_name": resourcekeys.K8SKeyClusterName,
+	"node_name":    resourcekeys.HostKeyName,
 }
 
 var gcpResourceMap = map[string]string{
@@ -72,14 +80,20 @@ var genericResourceMap = map[string]string{
 	"task_id":    stackdriverGenericTaskID,
 }
 
-func transformResource(match, input map[string]string) map[string]string {
+// returns transformed label map and true if all labels in match are found
+// in input except optional project_id. It returns false if at least one label
+// other than project_id is missing.
+func transformResource(match, input map[string]string) (map[string]string, bool) {
 	output := make(map[string]string, len(input))
 	for dst, src := range match {
-		if v, ok := input[src]; ok {
+		v, ok := input[src]
+		if ok {
 			output[dst] = v
+		} else if dst != "project_id" {
+			return nil, true
 		}
 	}
-	return output
+	return output, false
 }
 
 func defaultMapResource(res *resource.Resource) *monitoredrespb.MonitoredResource {
@@ -94,10 +108,13 @@ func defaultMapResource(res *resource.Resource) *monitoredrespb.MonitoredResourc
 	switch {
 	case res.Type == resourcekeys.ContainerType:
 		result.Type = "k8s_container"
-		match = k8sResourceMap
+		match = k8sContainerMap
 	case res.Type == resourcekeys.K8SType:
 		result.Type = "k8s_pod"
-		match = k8sResourceMap
+		match = k8sPodMap
+	case res.Type == resourcekeys.HostType && res.Labels[resourcekeys.K8SKeyClusterName] != "":
+		result.Type = "k8s_node"
+		match = k8sNodeMap
 	case res.Labels[resourcekeys.CloudKeyProvider] == resourcekeys.CloudProviderGCP:
 		result.Type = "gce_instance"
 		match = gcpResourceMap
@@ -106,7 +123,17 @@ func defaultMapResource(res *resource.Resource) *monitoredrespb.MonitoredResourc
 		match = awsResourceMap
 	}
 
-	result.Labels = transformResource(match, res.Labels)
+	var missing bool
+	result.Labels, missing = transformResource(match, res.Labels)
+	if missing {
+		result.Type = "global"
+		// if project id specified then transform it.
+		if v, ok := res.Labels[stackdriverProjectID]; ok {
+			result.Labels = make(map[string]string, 1)
+			result.Labels["project_id"] = v
+		}
+		return result
+	}
 	if result.Type == "aws_ec2_instance" {
 		if v, ok := result.Labels["region"]; ok {
 			result.Labels["region"] = fmt.Sprintf("aws:%s", v)

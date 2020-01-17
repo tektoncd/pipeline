@@ -22,13 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// NewFixedWatcher returns a StaticWatcher that exposes a collection of ConfigMaps.
-//
-// Deprecated: Use NewStaticWatcher
-func NewFixedWatcher(cms ...*corev1.ConfigMap) *StaticWatcher {
-	return NewStaticWatcher(cms...)
-}
-
 // NewStaticWatcher returns an StaticWatcher that exposes a collection of ConfigMaps.
 func NewStaticWatcher(cms ...*corev1.ConfigMap) *StaticWatcher {
 	cmm := make(map[string]*corev1.ConfigMap)
