@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -52,6 +53,12 @@ func TestPipeline(t *testing.T) {
 		tb.PipelineTask("never-gonna", "give-you-up",
 			tb.RunAfter("foo"),
 		),
+		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "step",
+				Image: "myimage",
+			}}}},
+		)),
 	),
 		tb.PipelineCreationTimestamp(creationTime),
 	)
@@ -76,7 +83,7 @@ func TestPipeline(t *testing.T) {
 			}},
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: v1alpha1.TaskRef{Name: "banana"},
+				TaskRef: &v1alpha1.TaskRef{Name: "banana"},
 				Params: []v1alpha1.Param{{
 					Name:  "stringparam",
 					Value: *tb.ArrayOrString("value"),
@@ -101,7 +108,7 @@ func TestPipeline(t *testing.T) {
 				}},
 			}, {
 				Name:    "bar",
-				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
+				TaskRef: &v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
 				Resources: &v1alpha1.PipelineTaskResources{
 					Inputs: []v1alpha1.PipelineTaskInputResource{{
 						Name:     "some-repo",
@@ -115,8 +122,17 @@ func TestPipeline(t *testing.T) {
 				},
 			}, {
 				Name:     "never-gonna",
-				TaskRef:  v1alpha1.TaskRef{Name: "give-you-up"},
+				TaskRef:  &v1alpha1.TaskRef{Name: "give-you-up"},
 				RunAfter: []string{"foo"},
+			}, {
+				Name: "foo",
+				TaskSpec: &v1alpha1.TaskSpec{
+					Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Name:  "step",
+						Image: "myimage",
+					}},
+					},
+				},
 			}},
 		},
 	}
@@ -352,7 +368,7 @@ func TestPipelineRunWithPipelineSpec(t *testing.T) {
 			PipelineSpec: &v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name:    "a-task",
-					TaskRef: v1alpha1.TaskRef{Name: "some-task"},
+					TaskRef: &v1alpha1.TaskRef{Name: "some-task"},
 				}},
 			},
 			ServiceAccountName: "sa",

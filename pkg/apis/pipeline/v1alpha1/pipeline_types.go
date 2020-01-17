@@ -93,8 +93,14 @@ type PipelineTask struct {
 	// used as a coordinate with the `from` and `runAfter` fields to establish
 	// the execution order of tasks relative to one another.
 	Name string `json:"name,omitempty"`
+
 	// TaskRef is a reference to a task definition.
-	TaskRef TaskRef `json:"taskRef"`
+	// +optional
+	TaskRef *TaskRef `json:"taskRef,omitempty"`
+
+	// TaskSpec is specification of a task
+	// +optional
+	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Conditions is a list of conditions that need to be true for the task to run
 	// +optional

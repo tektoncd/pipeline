@@ -231,6 +231,7 @@ at runtime you need to map the `workspaces` to actual physical volumes with
 
 * [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
 * [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
+* [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
 
 _If you need support for a `VolumeSource` not listed here
 [please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
@@ -258,6 +259,42 @@ Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#empt
 workspaces:
 - name: myworkspace
   emptyDir: {}
+```
+
+A ConfigMap can also be used as a workspace with the following caveats:
+
+1. ConfigMap volume sources are always mounted as read-only inside a task's
+containers - tasks cannot write content to them and a step may error out
+and fail the task if a write is attempted.
+2. The ConfigMap you want to use as a workspace must already exist prior
+to the TaskRun being submitted.
+
+To use a [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
+as a `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  configmap:
+    name: my-configmap
+```
+
+A Secret can also be used as a workspace with the following caveats:
+
+1. Secret volume sources are always mounted as read-only inside a task's
+containers - tasks cannot write content to them and a step may error out
+and fail the task if a write is attempted.
+2. The Secret you want to use as a workspace must already exist prior
+to the TaskRun being submitted.
+
+To use a [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
+as a `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  secret:
+    secretName: my-secret
 ```
 
 _For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._

@@ -48,7 +48,6 @@ func (w *WorkspaceDeclaration) GetMountPath() string {
 }
 
 // WorkspaceBinding maps a Task's declared workspace to a Volume.
-// Currently we only support PersistentVolumeClaims and EmptyDir.
 type WorkspaceBinding struct {
 	// Name is the name of the workspace populated by the volume.
 	Name string `json:"name"`
@@ -65,4 +64,10 @@ type WorkspaceBinding struct {
 	// Either this OR PersistentVolumeClaim can be used.
 	// +optional
 	EmptyDir *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
+	// ConfigMap represents a configMap that should populate this workspace.
+	// +optional
+	ConfigMap *corev1.ConfigMapVolumeSource `json:"configMap,omitempty"`
+	// Secret represents a secret that should populate this workspace.
+	// +optional
+	Secret *corev1.SecretVolumeSource `json:"secret,omitempty"`
 }

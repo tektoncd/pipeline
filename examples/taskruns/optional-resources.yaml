@@ -7,6 +7,7 @@ spec:
     resources:
       - name: git-repo
         type: git
+        description: "The input is code from a git repository"
         optional: true
     params:
       - name: filename
@@ -16,6 +17,7 @@ spec:
     resources:
       - name: optionalimage
         type: image
+        description: "The output is a Docker image"
         optional: true
   steps:
     - name: check-git-repo

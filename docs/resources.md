@@ -204,9 +204,10 @@ spec:
           - /custom/workspace/
         resourceRef:
           name: java-git-resource
-  volumes:
-    - name: custom-volume
-      emptyDir: {}
+  podTemplate:
+    volumes:
+      - name: custom-volume
+        emptyDir: {}
 ```
 
 ### Resource Status

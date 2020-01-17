@@ -29,6 +29,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 		expectedConfig *Defaults
 		expectedError  bool
 		fileName       string
+		DefaultManagedByLabelValue: "something-else",
 	}
 
 	testCases := []testCase{
@@ -75,7 +76,8 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	DefaultsConfigEmptyName := "config-defaults-empty"
 	expectedConfig := &Defaults{
-		DefaultTimeoutMinutes: 60,
+		DefaultTimeoutMinutes:      60,
+		DefaultManagedByLabelValue: "tekton-pipelines",
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }

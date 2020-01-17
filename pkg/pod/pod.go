@@ -33,9 +33,7 @@ import (
 const (
 	homeDir = "/tekton/home"
 
-	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
-	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
-	ManagedByLabelValue = "tekton-pipelines"
+	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -244,7 +242,6 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	// has a managed-by label, it should override this default.
 
 	// Copy through the TaskRun's labels to the underlying Pod's.
-	labels[ManagedByLabelKey] = ManagedByLabelValue
 	for k, v := range s.ObjectMeta.Labels {
 		labels[k] = v
 	}

@@ -126,6 +126,10 @@ type ResourceDeclaration struct {
 	Name string `json:"name"`
 	// Type is the type of this resource;
 	Type PipelineResourceType `json:"type"`
+	// Description is a user-facing description of the parameter that may be
+	// used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
 	// TargetPath is the path in workspace directory where the resource
 	// will be copied.
 	// +optional

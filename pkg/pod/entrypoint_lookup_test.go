@@ -116,7 +116,7 @@ func (f fakeCache) Get(ref name.Reference, _, _ string) (v1.Image, error) {
 		}
 	}
 
-	d, found := f[ref.String()]
+	d, found := f[ref.Name()]
 	if !found {
 		return nil, fmt.Errorf("image %q not found", ref)
 	}

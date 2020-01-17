@@ -23,6 +23,15 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// allVolumeSourceFields is a list of all the volume source field paths that a
+// WorkspaceBinding may include.
+var allVolumeSourceFields []string = []string{
+	"workspace.persistentvolumeclaim",
+	"workspace.emptydir",
+	"workspace.configmap",
+	"workspace.secret",
+}
+
 // Validate looks at the Volume provided in wb and makes sure that it is valid.
 // This means that only one VolumeSource can be specified, and also that the
 // supported VolumeSource is itself valid.
@@ -31,19 +40,49 @@ func (b *WorkspaceBinding) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 
-	// Users should only provide one supported VolumeSource.
-	if b.PersistentVolumeClaim != nil && b.EmptyDir != nil {
-		return apis.ErrMultipleOneOf("workspace.persistentvolumeclaim", "workspace.emptydir")
+	numSources := b.numSources()
+
+	if numSources > 1 {
+		return apis.ErrMultipleOneOf(allVolumeSourceFields...)
 	}
 
-	// Users must provide at least one supported VolumeSource.
-	if b.PersistentVolumeClaim == nil && b.EmptyDir == nil {
-		return apis.ErrMissingOneOf("workspace.persistentvolumeclaim", "workspace.emptydir")
+	if numSources == 0 {
+		return apis.ErrMissingOneOf(allVolumeSourceFields...)
 	}
 
 	// For a PersistentVolumeClaim to work, you must at least provide the name of the PVC to use.
 	if b.PersistentVolumeClaim != nil && b.PersistentVolumeClaim.ClaimName == "" {
 		return apis.ErrMissingField("workspace.persistentvolumeclaim.claimname")
 	}
+
+	// For a ConfigMap to work, you must provide the name of the ConfigMap to use.
+	if b.ConfigMap != nil && b.ConfigMap.LocalObjectReference.Name == "" {
+		return apis.ErrMissingField("workspace.configmap.name")
+	}
+
+	// For a Secret to work, you must provide the name of the Secret to use.
+	if b.Secret != nil && b.Secret.SecretName == "" {
+		return apis.ErrMissingField("workspace.secret.secretName")
+	}
+
 	return nil
+}
+
+// numSources returns the total number of volume sources that this WorkspaceBinding
+// has been configured with.
+func (b *WorkspaceBinding) numSources() int {
+	n := 0
+	if b.PersistentVolumeClaim != nil {
+		n++
+	}
+	if b.EmptyDir != nil {
+		n++
+	}
+	if b.ConfigMap != nil {
+		n++
+	}
+	if b.Secret != nil {
+		n++
+	}
+	return n
 }

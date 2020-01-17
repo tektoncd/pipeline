@@ -55,6 +55,64 @@ func TestGetVolumes(t *testing.T) {
 			},
 		},
 	}, {
+		name: "binding a single workspace with configMap",
+		workspaces: []v1alpha1.WorkspaceBinding{{
+			Name: "custom",
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "foobarconfigmap",
+				},
+				Items: []corev1.KeyToPath{{
+					Key:  "foobar",
+					Path: "foobar.txt",
+				}},
+			},
+			SubPath: "/foo/bar/baz",
+		}},
+		expectedVolumes: map[string]corev1.Volume{
+			"custom": {
+				Name: "ws-mssqb",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "foobarconfigmap",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				},
+			},
+		},
+	}, {
+		name: "binding a single workspace with secret",
+		workspaces: []v1alpha1.WorkspaceBinding{{
+			Name: "custom",
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "foobarsecret",
+				Items: []corev1.KeyToPath{{
+					Key:  "foobar",
+					Path: "foobar.txt",
+				}},
+			},
+			SubPath: "/foo/bar/baz",
+		}},
+		expectedVolumes: map[string]corev1.Volume{
+			"custom": {
+				Name: "ws-78c5n",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "foobarsecret",
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				},
+			},
+		},
+	}, {
 		name:            "0 workspace bindings",
 		workspaces:      []v1alpha1.WorkspaceBinding{},
 		expectedVolumes: map[string]corev1.Volume{},
@@ -74,7 +132,7 @@ func TestGetVolumes(t *testing.T) {
 		}},
 		expectedVolumes: map[string]corev1.Volume{
 			"custom": {
-				Name: "ws-mssqb",
+				Name: "ws-6nl7g",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -82,7 +140,7 @@ func TestGetVolumes(t *testing.T) {
 				},
 			},
 			"even-more-custom": {
-				Name: "ws-78c5n",
+				Name: "ws-j2tds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "myotherpvc",
@@ -107,7 +165,7 @@ func TestGetVolumes(t *testing.T) {
 		}},
 		expectedVolumes: map[string]corev1.Volume{
 			"custom": {
-				Name: "ws-6nl7g",
+				Name: "ws-vr6ds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -116,7 +174,7 @@ func TestGetVolumes(t *testing.T) {
 			},
 			"custom2": {
 				// Since it is the same PVC source, it can't be added twice with two different names
-				Name: "ws-6nl7g",
+				Name: "ws-vr6ds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",

@@ -21,7 +21,7 @@ spec:
     kind: Task
     plural: tasks
     categories:
-    - all
+    - tekton
     - tekton-pipelines
   scope: Namespaced
   # Opt into the status subresource so metadata.generation

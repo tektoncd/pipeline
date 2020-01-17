@@ -41,6 +41,24 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 			Name:     "beth",
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
+	}, {
+		name: "Valid configMap",
+		binding: &WorkspaceBinding{
+			Name: "beth",
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "a-configmap-name",
+				},
+			},
+		},
+	}, {
+		name: "Valid secret",
+		binding: &WorkspaceBinding{
+			Name: "beth",
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "my-secret",
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := tc.binding.Validate(context.Background()); err != nil {
@@ -68,6 +86,30 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Provided both emptydir and configmap",
+		binding: &WorkspaceBinding{
+			Name:     "beth",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "foo-configmap",
+				},
+			},
+		},
+	}, {
+		name: "Provided both configmap and secret",
+		binding: &WorkspaceBinding{
+			Name: "beth",
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "my-configmap",
+				},
+			},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "my-secret",
+			},
+		},
+	}, {
 		name: "Provided neither pvc nor emptydir",
 		binding: &WorkspaceBinding{
 			Name: "beth",
@@ -77,6 +119,18 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 		binding: &WorkspaceBinding{
 			Name:                  "beth",
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{},
+		},
+	}, {
+		name: "Provide configmap without a name",
+		binding: &WorkspaceBinding{
+			Name:      "beth",
+			ConfigMap: &corev1.ConfigMapVolumeSource{},
+		},
+	}, {
+		name: "Provide secret without a secretName",
+		binding: &WorkspaceBinding{
+			Name:   "beth",
+			Secret: &corev1.SecretVolumeSource{},
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

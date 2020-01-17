@@ -258,8 +258,9 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	defaultSAName := "pipelines"
 	defaultCfg := &config.Config{
 		Defaults: &config.Defaults{
-			DefaultServiceAccount: defaultSAName,
-			DefaultTimeoutMinutes: 60,
+			DefaultServiceAccount:      defaultSAName,
+			DefaultTimeoutMinutes:      60,
+			DefaultManagedByLabelValue: "tekton-pipelines",
 		},
 	}
 
@@ -274,7 +275,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -312,7 +313,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -533,7 +534,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -570,7 +571,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -608,7 +609,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -685,7 +686,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-abcde", "foo",
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -740,7 +741,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -776,7 +777,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-abcde", "foo",
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
@@ -830,7 +831,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
-			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
