@@ -33,17 +33,21 @@ func retrieveGCPMetadata() *gcpMetadata {
 		location: metricskey.ValueUnknown,
 		cluster:  metricskey.ValueUnknown,
 	}
-	project, err := metadata.NumericProjectID()
-	if err == nil && project != "" {
-		gm.project = project
+
+	if metadata.OnGCE() {
+		project, err := metadata.NumericProjectID()
+		if err == nil && project != "" {
+			gm.project = project
+		}
+		location, err := metadata.InstanceAttributeValue("cluster-location")
+		if err == nil && location != "" {
+			gm.location = location
+		}
+		cluster, err := metadata.InstanceAttributeValue("cluster-name")
+		if err == nil && cluster != "" {
+			gm.cluster = cluster
+		}
 	}
-	location, err := metadata.InstanceAttributeValue("cluster-location")
-	if err == nil && location != "" {
-		gm.location = location
-	}
-	cluster, err := metadata.InstanceAttributeValue("cluster-name")
-	if err == nil && cluster != "" {
-		gm.cluster = cluster
-	}
+
 	return &gm
 }

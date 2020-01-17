@@ -197,7 +197,7 @@ func (in *ClusterTask) DeepCopyObject() runtime.Object {
 func (in *ClusterTaskList) DeepCopyInto(out *ClusterTaskList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ClusterTask, len(*in))
@@ -320,7 +320,7 @@ func (in *ConditionCheckStatusFields) DeepCopy() *ConditionCheckStatusFields {
 func (in *ConditionList) DeepCopyInto(out *ConditionList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Condition, len(*in))
@@ -521,7 +521,7 @@ func (in *Pipeline) DeepCopyObject() runtime.Object {
 func (in *PipelineList) DeepCopyInto(out *PipelineList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Pipeline, len(*in))
@@ -678,7 +678,7 @@ func (in *PipelineRunConditionCheckStatus) DeepCopy() *PipelineRunConditionCheck
 func (in *PipelineRunList) DeepCopyInto(out *PipelineRunList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]PipelineRun, len(*in))
@@ -1112,7 +1112,7 @@ func (in *Task) DeepCopyObject() runtime.Object {
 func (in *TaskList) DeepCopyInto(out *TaskList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Task, len(*in))
@@ -1242,7 +1242,7 @@ func (in *TaskRunInputs) DeepCopy() *TaskRunInputs {
 func (in *TaskRunList) DeepCopyInto(out *TaskRunList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]TaskRun, len(*in))

@@ -21,13 +21,11 @@ package logging
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/golang/glog"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
@@ -35,9 +33,6 @@ import (
 )
 
 const (
-	// VerboseLogLevel defines verbose log level as 10
-	VerboseLogLevel glog.Level = 10
-
 	// 1 second was chosen arbitrarily
 	metricViewReportingPeriod = 1 * time.Second
 
@@ -134,11 +129,6 @@ func InitializeMetricExporter(context string) {
 func InitializeLogger(logVerbose bool) {
 	logLevel := "info"
 	if logVerbose {
-		// Both gLog and "go test" use -v flag. The code below is a work around so that we can still set v value for gLog
-		flag.StringVar(&logLevel, "logLevel", fmt.Sprint(VerboseLogLevel), "verbose log level")
-		flag.Lookup("v").Value.Set(logLevel)
-		glog.Infof("Logging set to verbose mode with logLevel %d", VerboseLogLevel)
-
 		logLevel = "debug"
 	}
 

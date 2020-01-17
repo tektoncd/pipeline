@@ -22,7 +22,6 @@ You can use the test library in this dir to:
 
 - [Use common test flags](#use-common-test-flags)
 - [Output logs](#output-logs)
-- [Emit metrics](#emit-metrics)
 - [Ensure test cleanup](#ensure-test-cleanup)
 
 ### Use common test flags
@@ -62,57 +61,6 @@ _, err = pkgTest.WaitForEndpointState(
 
 _See [logging.go](./logging/logging.go)._
 
-### Emit metrics
-
-You can emit metrics from your tests using
-[the opencensus library](https://github.com/census-instrumentation/opencensus-go),
-which
-[is being used inside Knative as well](https://github.com/knative/serving/blob/master/docs/telemetry.md).
-These metrics will be emitted by the test if the test is run with
-[the `--emitmetrics` option](#metrics-flag).
-
-You can record arbitrary metrics with
-[`stats.Record`](https://github.com/census-instrumentation/opencensus-go#stats)
-or measure latency by creating a instance of
-[`trace.Span`](https://github.com/census-instrumentation/opencensus-go#traces)
-by using the helper method [`logging.GetEmitableSpan()`](../logging/logger.go)
-
-```go
-span := logging.GetEmitableSpan(context.Background(), "MyMetric")
-```
-
-- These traces will be emitted automatically by
-  [the generic crd polling functions](#check-knative-serving-resources).
-- The traces are emitted by [a custom metric exporter](./logging/logging.go)
-  that uses the global logger instance.
-
-#### Metric format
-
-When a `trace` metric is emitted, the format is
-`metric <name> <startTime> <endTime> <duration>`. The name of the metric is
-arbitrary and can be any string. The values are:
-
-- `metric` - Indicates this log is a metric
-- `<name>` - Arbitrary string identifying the metric
-- `<startTime>` - Unix time in nanoseconds when measurement started
-- `<endTime>` - Unix time in nanoseconds when measurement ended
-- `<duration>` - The difference in ms between the startTime and endTime
-
-For example:
-
-```bash
-metric WaitForConfigurationState/prodxiparjxt/ConfigurationUpdatedWithRevision 1529980772357637397 1529980772431586609 73.949212ms
-```
-
-_The [`Wait` methods](#check-knative-serving-resources) (which poll resources)
-will prefix the metric names with the name of the function, and if applicable,
-the name of the resource, separated by `/`. In the example above,
-`WaitForConfigurationState` is the name of the function, and `prodxiparjxt` is
-the name of the configuration resource being polled.
-`ConfigurationUpdatedWithRevision` is the string passed to
-`WaitForConfigurationState` by the caller to identify what state is being polled
-for._
-
 ### Check Knative Serving resources
 
 _WARNING: this code also exists in
@@ -147,9 +95,6 @@ err := test.WaitForConfigurationState(
     }, "ConfigurationUpdatedWithRevision")
 ```
 
-_[Metrics will be emitted](#emit-metrics) for these `Wait` method tracking how
-long test poll for._
-
 _See [kube_checks.go](./kube_checks.go)._
 
 ### Ensure test cleanup
@@ -176,7 +121,10 @@ Tests importing [`knative.dev/pkg/test`](#test-library) recognize these flags:
 - [`--cluster`](#specifying-cluster)
 - [`--namespace`](#specifying-namespace)
 - [`--logverbose`](#output-verbose-logs)
-- [`--emitmetrics`](#metrics-flag)
+- [`--ingressendpoint`](#specifying-ingress-endpoint)
+- [`--dockerrepo`](#specifying-docker-repo)
+- [`--tag`](#specifying-tag)
+- [`--imagetemplate`](#specifying-image-template)
 
 ### Specifying kubeconfig
 
@@ -234,21 +182,33 @@ The `--logverbose` argument lets you see verbose test logs and k8s logs.
 go test ./test --logverbose
 ```
 
-### Metrics flag
+### Specifying docker repo
 
-Running tests with the `--emitmetrics` argument will cause latency metrics to be
-emitted by the tests.
+The `--dockerrepo` argument lets you specify a uri of the docker repo where you
+have uploaded the test image to using `uploadtestimage.sh`. Defaults to
+`$KO_DOCKER_REPO`
 
 ```bash
-go test ./test --emitmetrics
+go test ./test --dockerrepo myspecialdockerrepo
 ```
 
-- To add additional metrics to a test, see
-  [emitting metrics](https://github.com/knative/pkg/tree/master/test#emit-metrics).
-- For more info on the format of the metrics, see
-  [metric format](https://github.com/knative/pkg/tree/master/test#emit-metrics).
+### Specifying tag
 
-[minikube]: https://kubernetes.io/docs/setup/minikube/
+The `--tag` argument lets you specify the version tag for the test images.
+
+```bash
+go test ./test --tag v1.0
+```
+
+### Specifying image template
+
+The `--imagetemplate` argument lets you specify a template to generate the
+reference to an image from the test. Defaults to
+`{{.Repository}}/{{.Name}}:{{.Tag}}`
+
+```bash
+go test ./test --imagetemplate {{.Repository}}/{{.Name}}:{{.Tag}}
+```
 
 ---
 

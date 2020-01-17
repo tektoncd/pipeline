@@ -54,6 +54,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	metadataapi "cloud.google.com/go/compute/metadata"
@@ -61,7 +62,6 @@ import (
 	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
 	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -186,11 +186,9 @@ type Options struct {
 	// conversions from auto-detected resources to well-known Stackdriver monitored resources.
 	MapResource func(*resource.Resource) *monitoredrespb.MonitoredResource
 
-	// MetricPrefix overrides the prefix of a Stackdriver metric display names.
-	// Optional. If unset defaults to "OpenCensus/".
-	// Deprecated: Provide GetMetricDisplayName to change the display name of
-	// the metric.
-	// If GetMetricDisplayName is non-nil, this option is ignored.
+	// MetricPrefix overrides the prefix of a Stackdriver metric names.
+	// Optional. If unset defaults to "custom.googleapis.com/opencensus/".
+	// If GetMetricPrefix is non-nil, this option is ignored.
 	MetricPrefix string
 
 	// GetMetricDisplayName allows customizing the display name for the metric
@@ -203,7 +201,15 @@ type Options struct {
 	//   "custom.googleapis.com/opencensus/" + view.Name
 	//
 	// See: https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor
+	// Depreacted. Use GetMetricPrefix instead.
 	GetMetricType func(view *view.View) string
+
+	// GetMetricPrefix allows customizing the metric prefix for the given metric name.
+	// If it is not set, MetricPrefix is used. If MetricPrefix is not set, it defaults to:
+	//   "custom.googleapis.com/opencensus/"
+	//
+	// See: https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor
+	GetMetricPrefix func(name string) string
 
 	// DefaultTraceAttributes will be appended to every span that is exported to
 	// Stackdriver Trace.
@@ -238,30 +244,46 @@ type Options struct {
 	// If unset, context.Background() will be used.
 	Context context.Context
 
+	// SkipCMD enforces to skip all the CreateMetricDescriptor calls.
+	// These calls are important in order to configure the unit of the metrics,
+	// but in some cases all the exported metrics are builtin (unit is configured)
+	// or the unit is not important.
+	SkipCMD bool
+
 	// Timeout for all API calls. If not set, defaults to 5 seconds.
 	Timeout time.Duration
-
-	// GetMonitoredResource may be provided to supply the details of the
-	// monitored resource dynamically based on the tags associated with each
-	// data point. Most users will not need to set this, but should instead
-	// set the MonitoredResource field.
-	//
-	// GetMonitoredResource may add or remove tags by returning a new set of
-	// tags. It is safe for the function to mutate its argument and return it.
-	//
-	// See the documentation on the MonitoredResource field for guidance on the
-	// interaction between monitored resources and labels.
-	//
-	// The MonitoredResource field is ignored if this field is set to a non-nil
-	// value.
-	GetMonitoredResource func(*view.View, []tag.Tag) ([]tag.Tag, monitoredresource.Interface)
 
 	// ReportingInterval sets the interval between reporting metrics.
 	// If it is set to zero then default value is used.
 	ReportingInterval time.Duration
+
+	// NumberOfWorkers sets the number of go rountines that send requests
+	// to Stackdriver Monitoring. This is only used for Proto metrics export
+	// for now. The minimum number of workers is 1.
+	NumberOfWorkers int
+
+	// ResourceByDescriptor may be provided to supply monitored resource dynamically
+	// based on the metric Descriptor. Most users will not need to set this,
+	// but should instead set ResourceDetector.
+	//
+	// The MonitoredResource and ResourceDetector fields are ignored if this
+	// field is set to a non-nil value.
+	//
+	// The ResourceByDescriptor is called to derive monitored resources from
+	// metric.Descriptor and the label map associated with the time-series.
+	// If any label is used for the derived resource then it will be removed
+	// from the label map. The remaining labels in the map are returned to
+	// be used with the time-series.
+	//
+	// If the func set to this field does not return valid resource even for one
+	// time-series then it will result into an error for the entire CreateTimeSeries request
+	// which may contain more than one time-series.
+	ResourceByDescriptor func(*metricdata.Descriptor, map[string]string) (map[string]string, monitoredresource.Interface)
 }
 
 const defaultTimeout = 5 * time.Second
+
+var defaultDomain = path.Join("custom.googleapis.com", "opencensus")
 
 // Exporter is a stats and trace exporter that uploads data to Stackdriver.
 //
@@ -292,10 +314,6 @@ func NewExporter(o Options) (*Exporter, error) {
 	}
 	if o.Location == "" {
 		if metadataapi.OnGCE() {
-			ctx := o.Context
-			if ctx == nil {
-				ctx = context.Background()
-			}
 			zone, err := metadataapi.Zone()
 			if err != nil {
 				// This error should be logged with a warning level.
@@ -336,6 +354,9 @@ func NewExporter(o Options) (*Exporter, error) {
 
 		o.Resource = o.MapResource(res)
 	}
+	if o.MetricPrefix != "" && !strings.HasSuffix(o.MetricPrefix, "/") {
+		o.MetricPrefix = o.MetricPrefix + "/"
+	}
 
 	se, err := newStatsExporter(o)
 	if err != nil {
@@ -353,13 +374,21 @@ func NewExporter(o Options) (*Exporter, error) {
 
 // ExportView exports to the Stackdriver Monitoring if view data
 // has one or more rows.
+// Deprecated: use ExportMetrics and StartMetricsExporter instead.
 func (e *Exporter) ExportView(vd *view.Data) {
 	e.statsExporter.ExportView(vd)
 }
 
-// ExportMetricsProto exports OpenCensus Metrics Proto to Stackdriver Monitoring.
+// ExportMetricsProto exports OpenCensus Metrics Proto to Stackdriver Monitoring synchronously,
+// without de-duping or adding proto metrics to the bundler.
 func (e *Exporter) ExportMetricsProto(ctx context.Context, node *commonpb.Node, rsc *resourcepb.Resource, metrics []*metricspb.Metric) error {
-	return e.statsExporter.ExportMetricsProto(ctx, node, rsc, metrics)
+	_, err := e.statsExporter.PushMetricsProto(ctx, node, rsc, metrics)
+	return err
+}
+
+// PushMetricsProto simliar with ExportMetricsProto but returns the number of dropped timeseries.
+func (e *Exporter) PushMetricsProto(ctx context.Context, node *commonpb.Node, rsc *resourcepb.Resource, metrics []*metricspb.Metric) (int, error) {
+	return e.statsExporter.PushMetricsProto(ctx, node, rsc, metrics)
 }
 
 // ExportMetrics exports OpenCensus Metrics to Stackdriver Monitoring
@@ -427,12 +456,10 @@ func (o Options) handleError(err error) {
 	log.Printf("Failed to export to Stackdriver: %v", err)
 }
 
-func (o Options) newContextWithTimeout() (context.Context, func()) {
-	ctx := o.Context
+func newContextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, func()) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	timeout := o.Timeout
 	if timeout <= 0 {
 		timeout = defaultTimeout
 	}

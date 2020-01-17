@@ -29,6 +29,12 @@ const (
 	// LabelNamespaceName is the label for immutable name of the namespace that the service is deployed
 	LabelNamespaceName = "namespace_name"
 
+	// LabelResponseCode is the label for the HTTP response status code.
+	LabelResponseCode = "response_code"
+
+	// LabelResponseCodeClass is the label for the HTTP response status code class. For example, "2xx", "3xx", etc.
+	LabelResponseCodeClass = "response_code_class"
+
 	// ValueUnknown is the default value if the field is unknown, e.g. project will be unknown if Knative
 	// is not running on GKE.
 	ValueUnknown = "unknown"

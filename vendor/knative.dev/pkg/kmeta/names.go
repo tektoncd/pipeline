@@ -19,6 +19,7 @@ package kmeta
 import (
 	"crypto/md5"
 	"fmt"
+	"strings"
 )
 
 // The longest name supported by the K8s is 63.
@@ -53,7 +54,9 @@ func ChildName(parent, suffix string) string {
 			if d := longest - len(ret); d > 0 {
 				ret += suffix[:d]
 			}
-			return ret
+			// If due to trimming above we're terminating the string with a `-`,
+			// remove it.
+			return strings.TrimRight(ret, "-")
 		}
 		n = fmt.Sprintf("%s%x", parent[:head-len(suffix)], md5.Sum([]byte(parent)))
 	}
