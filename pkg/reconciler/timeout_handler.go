@@ -114,8 +114,8 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 	key := runObj.GetRunKey()
 	t.doneMut.Lock()
 	defer t.doneMut.Unlock()
-	if existingfinishedChan, ok := t.done[key]; ok {
-		finished = existingfinishedChan
+	if existingFinishedChan, ok := t.done[key]; ok {
+		finished = existingFinishedChan
 	} else {
 		finished = make(chan bool)
 	}
