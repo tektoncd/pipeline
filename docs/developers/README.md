@@ -19,7 +19,7 @@ on path `/pvc` by PipelineRun.
 Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
 This can be configured using a ConfigMap with the name `config-artifact-bucket`.
 
-See [here](../install.md#how-are-resources-shared-between-tasks) for configuration details.
+See the [installation docs](../install.md#how-are-resources-shared-between-tasks) for configuration details.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
