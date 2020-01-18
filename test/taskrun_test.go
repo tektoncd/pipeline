@@ -42,13 +42,13 @@ func TestTaskRunFailure(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task("failing-task", namespace, tb.TaskSpec(
-		tb.Step("hello", "busybox",
+		tb.Step("busybox",
 			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "echo hello"),
 		),
-		tb.Step("exit", "busybox",
+		tb.Step("busybox",
 			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1"),
 		),
-		tb.Step("world", "busybox",
+		tb.Step("busybox",
 			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 30s"),
 		),
 	))
@@ -79,8 +79,8 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Completed",
 			},
 		},
-		Name:          "hello",
-		ContainerName: "step-hello",
+		Name:          "unnamed-0",
+		ContainerName: "step-unnamed-0",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -88,8 +88,8 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Error",
 			},
 		},
-		Name:          "exit",
-		ContainerName: "step-exit",
+		Name:          "unnamed-1",
+		ContainerName: "step-unnamed-1",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -97,8 +97,8 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Error",
 			},
 		},
-		Name:          "world",
-		ContainerName: "step-world",
+		Name:          "unnamed-2",
+		ContainerName: "step-unnamed-2",
 	}}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
 	ignoreStepFields := cmpopts.IgnoreFields(v1alpha1.StepState{}, "ImageID")
@@ -120,7 +120,7 @@ func TestTaskRunStatus(t *testing.T) {
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task("status-task", namespace, tb.TaskSpec(
 		// This was the digest of the latest tag as of 8/12/2019
-		tb.Step("hello", "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+		tb.Step("busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
 			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "echo hello"),
 		),
 	))
@@ -151,8 +151,8 @@ func TestTaskRunStatus(t *testing.T) {
 				Reason:   "Completed",
 			},
 		},
-		Name:          "hello",
-		ContainerName: "step-hello",
+		Name:          "unnamed-0",
+		ContainerName: "step-unnamed-0",
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")

@@ -37,7 +37,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("foo", "busybox", tb.StepCommand("ls", "-la")),
+		tb.Step("busybox", tb.StepCommand("ls", "-la")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)

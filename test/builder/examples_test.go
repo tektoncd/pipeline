@@ -29,10 +29,10 @@ var t *testing.T
 
 func ExampleTask() {
 	// You can declare re-usable modifiers
-	myStep := tb.Step("my-step", "myimage")
+	myStep := tb.Step("myimage")
 	// … and use them in a Task definition
 	myTask := tb.Task("my-task", "namespace", tb.TaskSpec(
-		tb.Step("simple-step", "myotherimage", tb.StepCommand("/mycmd")),
+		tb.Step("myotherimage", tb.StepCommand("/mycmd")),
 		myStep,
 	))
 	// … and another one.
@@ -58,7 +58,7 @@ func ExampleTask() {
 
 func ExampleClusterTask() {
 	myClusterTask := tb.ClusterTask("my-task", tb.ClusterTaskSpec(
-		tb.Step("simple-step", "myotherimage", tb.StepCommand("/mycmd")),
+		tb.Step("myotherimage", tb.StepCommand("/mycmd")),
 	))
 	expectedClusterTask := &v1alpha1.Task{
 		// […]
@@ -85,7 +85,7 @@ func ExampleTaskRun() {
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
-			tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"),
+			tb.Step("myimage", tb.StepCommand("/mycmd"),
 				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
 			),
 		),

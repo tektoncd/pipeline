@@ -28,7 +28,7 @@ import (
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(
 		tb.ResolvedTaskResourcesTaskSpec(
-			tb.Step("mystep", "myimage", tb.StepCommand("mycmd")),
+			tb.Step("myimage", tb.StepCommand("mycmd")),
 			tb.TaskInputs(
 				tb.InputsResource("resource-to-build", v1alpha1.PipelineResourceTypeGit),
 				tb.InputsResource("optional-resource-to-build", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
@@ -59,7 +59,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 
 func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-		tb.Step("mystep", "myimage", tb.StepCommand("mycmd")),
+		tb.Step("myimage", tb.StepCommand("mycmd")),
 		tb.TaskInputs(tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString)),
 	))
 	p := []v1alpha1.Param{{
@@ -82,7 +82,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}{{
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-			tb.Step("mystep", "myimage", tb.StepCommand("mycmd")),
+			tb.Step("myimage", tb.StepCommand("mycmd")),
 			tb.TaskInputs(tb.InputsParamSpec("foo", v1alpha1.ParamTypeString)),
 		)),
 		params: []v1alpha1.Param{{
@@ -92,7 +92,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}, {
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-			tb.Step("mystep", "myimage", tb.StepCommand("mycmd")),
+			tb.Step("myimage", tb.StepCommand("mycmd")),
 			tb.TaskInputs(tb.InputsParamSpec("foo", v1alpha1.ParamTypeString)),
 		)),
 		params: []v1alpha1.Param{{

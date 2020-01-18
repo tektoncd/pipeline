@@ -144,6 +144,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
 	}
 	stepOps := []tb.StepOp{
+		tb.StepName("kaniko"),
 		tb.StepArgs(
 			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 			fmt.Sprintf("--destination=%s", repo),
@@ -155,7 +156,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 		),
 		tb.StepSecurityContext(&corev1.SecurityContext{RunAsUser: &root}),
 	}
-	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.15.0", stepOps...)
+	step := tb.Step("gcr.io/kaniko-project/executor:v0.15.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
 	sidecar := tb.Sidecar("registry", "registry")
 	taskSpecOps = append(taskSpecOps, sidecar)

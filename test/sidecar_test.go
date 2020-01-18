@@ -63,8 +63,8 @@ func TestSidecarTaskSupport(t *testing.T) {
 			task := tb.Task(sidecarTaskName, namespace,
 				tb.TaskSpec(
 					tb.Step(
-						primaryContainerName,
 						"busybox:1.31.0-musl",
+						tb.StepName(primaryContainerName),
 						tb.StepCommand(test.stepCommand...),
 					),
 					tb.Sidecar(

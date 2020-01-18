@@ -52,10 +52,10 @@ func TestTask(t *testing.T) {
 			tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage),
 			tb.OutputsResource("myoptionalimage", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
 		),
-		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
+		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
-		tb.Step("mycontainer2", "myimage2", tb.StepScript("echo foo")),
+		tb.Step("myimage2", tb.StepScript("echo foo")),
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
@@ -73,7 +73,6 @@ func TestTask(t *testing.T) {
 				Command: []string{"/mycmd"},
 				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
 			}}, {Script: "echo foo", Container: corev1.Container{
-				Name:  "mycontainer2",
 				Image: "myimage2",
 			}}},
 			Inputs: &v1alpha1.Inputs{
@@ -140,7 +139,7 @@ func TestTask(t *testing.T) {
 
 func TestClusterTask(t *testing.T) {
 	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskSpec(
-		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
+		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 	))
@@ -148,7 +147,6 @@ func TestClusterTask(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
 		Spec: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "mycontainer",
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
 				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
@@ -295,7 +293,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 func TestTaskRunWithTaskSpec(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskSpec(
-			tb.Step("step", "image", tb.StepCommand("/mycmd")),
+			tb.Step("image", tb.StepCommand("/mycmd")),
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
 		),
 		tb.TaskRunServiceAccountName("sa"),
@@ -310,7 +308,6 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
-					Name:    "step",
 					Image:   "image",
 					Command: []string{"/mycmd"},
 				}}},
@@ -337,7 +334,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 func TestResolvedTaskResources(t *testing.T) {
 	resolvedTaskResources := tb.ResolvedTaskResources(
 		tb.ResolvedTaskResourcesTaskSpec(
-			tb.Step("step", "image", tb.StepCommand("/mycmd")),
+			tb.Step("image", tb.StepCommand("/mycmd")),
 		),
 		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", "baz")),
 		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", "quuz")),
@@ -345,7 +342,6 @@ func TestResolvedTaskResources(t *testing.T) {
 	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "step",
 				Image:   "image",
 				Command: []string{"/mycmd"},
 			}}},

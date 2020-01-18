@@ -37,7 +37,7 @@ import (
 
 var (
 	testNs     = "foo"
-	simpleStep = tb.Step("simple-step", testNs, tb.StepCommand("/mycmd"))
+	simpleStep = tb.Step(testNs, tb.StepCommand("/mycmd"))
 	simpleTask = tb.Task("test-task", testNs, tb.TaskSpec(simpleStep))
 )
 

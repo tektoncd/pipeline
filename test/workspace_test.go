@@ -38,7 +38,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	task := tb.Task(taskName, namespace, tb.TaskSpec(
-		tb.Step("attempt-write", "alpine", tb.StepScript("echo foo > /workspace/test/file")),
+		tb.Step("alpine", tb.StepScript("echo foo > /workspace/test/file")),
 		tb.TaskWorkspace("test", "test workspace", "/workspace/test", true),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
