@@ -60,7 +60,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
 			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
-			task := tb.Task(sidecarTaskName, namespace,
+			task := tb.Task(sidecarTaskName, tb.TaskNamespace(namespace),
 				tb.TaskSpec(
 					tb.Step(
 						primaryContainerName,
@@ -75,7 +75,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 				),
 			)
 
-			taskRun := tb.TaskRun(sidecarTaskRunName, namespace,
+			taskRun := tb.TaskRun(sidecarTaskRunName, tb.TaskRunNamespace(namespace),
 				tb.TaskRunSpec(tb.TaskRunTaskRef(sidecarTaskName),
 					tb.TaskRunTimeout(1*time.Minute),
 				),

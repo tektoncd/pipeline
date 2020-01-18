@@ -147,7 +147,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 }
 
 func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(gitSourceResourceName, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),
@@ -155,14 +155,14 @@ func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResour
 }
 
 func getGitCheckTask(namespace string) *v1alpha1.Task {
-	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
+	return tb.Task(gitTestTaskName, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("git", "alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),
 	))
 }
 
 func getGitCheckPipeline(namespace string) *v1alpha1.Pipeline {
-	return tb.Pipeline(gitTestPipelineName, namespace, tb.PipelineSpec(
+	return tb.Pipeline(gitTestPipelineName, tb.PipelineNamespace(namespace), tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
 		tb.PipelineTask("git-check", gitTestTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
@@ -171,7 +171,7 @@ func getGitCheckPipeline(namespace string) *v1alpha1.Pipeline {
 }
 
 func getGitCheckPipelineRun(namespace string) *v1alpha1.PipelineRun {
-	return tb.PipelineRun(gitTestPipelineRunName, namespace, tb.PipelineRunSpec(
+	return tb.PipelineRun(gitTestPipelineRunName, tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec(
 		gitTestPipelineName,
 		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(gitSourceResourceName)),
 	))

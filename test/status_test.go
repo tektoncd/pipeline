@@ -36,13 +36,13 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := tb.Task("banana", namespace, tb.TaskSpec(
+	task := tb.Task("banana", tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.Step("foo", "busybox", tb.StepCommand("ls", "-la")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := tb.TaskRun("apple", namespace, tb.TaskRunSpec(
+	taskRun := tb.TaskRun("apple", tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccountName("inexistent"),
 	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
@@ -54,10 +54,10 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	pipeline := tb.Pipeline("tomatoes", namespace,
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace(namespace),
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("inexistent"),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {

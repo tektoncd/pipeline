@@ -35,19 +35,19 @@ func TestCheckTimeout(t *testing.T) {
 		expectedStatus bool
 	}{{
 		name: "TaskRun not started",
-		taskRun: tb.TaskRun("test-taskrun-not-started", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-not-started", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(zeroTime))),
 		expectedStatus: false,
 	}, {
 		name: "TaskRun no timeout",
-		taskRun: tb.TaskRun("test-taskrun-no-timeout", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-no-timeout", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name), tb.TaskRunTimeout(0),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Hour)))),
 		expectedStatus: false,
 	}, {
 		name: "TaskRun timed out",
-		taskRun: tb.TaskRun("test-taskrun-timeout", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-timeout", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name), tb.TaskRunTimeout(10*time.Second),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Second)))),
 		expectedStatus: true,

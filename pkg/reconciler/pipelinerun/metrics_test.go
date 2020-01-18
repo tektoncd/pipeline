@@ -51,7 +51,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedCount    int64
 	}{{
 		name: "for_succeeded_pipeline",
-		taskRun: tb.PipelineRun("pipelinerun-1", "ns",
+		taskRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
 			tb.PipelineRunSpec("pipeline-1"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStartTime(startTime),
@@ -71,7 +71,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedCount:    1,
 	}, {
 		name: "for_failed_pipeline",
-		taskRun: tb.PipelineRun("pipelinerun-1", "ns",
+		taskRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
 			tb.PipelineRunSpec("pipeline-1"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStartTime(startTime),
@@ -128,7 +128,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 func addPipelineRun(informer alpha1.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
 	t.Helper()
 
-	err := informer.Informer().GetIndexer().Add(tb.PipelineRun(run, ns,
+	err := informer.Informer().GetIndexer().Add(tb.PipelineRun(run, tb.PipelineRunNamespace(ns),
 		tb.PipelineRunSpec(pipeline),
 		tb.PipelineRunStatus(
 			tb.PipelineRunStatusCondition(apis.Condition{

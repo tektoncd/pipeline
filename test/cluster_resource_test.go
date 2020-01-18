@@ -73,7 +73,7 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(name, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(name, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCluster,
 		tb.PipelineResourceSpecParam("Name", "helloworld-cluster"),
 		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
@@ -98,7 +98,7 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(namespace, name, configName string) *v1alpha1.Task {
-	return tb.Task(name, namespace, tb.TaskSpec(
+	return tb.Task(name, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("target-cluster", v1alpha1.PipelineResourceTypeCluster)),
 		tb.TaskVolume("config-vol", tb.VolumeSource(corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -121,7 +121,7 @@ func getClusterResourceTask(namespace, name, configName string) *v1alpha1.Task {
 }
 
 func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alpha1.TaskRun {
-	return tb.TaskRun(name, namespace, tb.TaskRunSpec(
+	return tb.TaskRun(name, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(taskName),
 		tb.TaskRunInputs(tb.TaskRunInputsResource("target-cluster", tb.TaskResourceBindingRef(resName))),
 	))

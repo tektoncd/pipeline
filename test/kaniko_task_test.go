@@ -123,7 +123,7 @@ func TestKanikoTaskRun(t *testing.T) {
 }
 
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(kanikoGitResourceName, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
 		tb.PipelineResourceSpecParam("Revision", revision),
@@ -131,7 +131,7 @@ func getGitResource(namespace string) *v1alpha1.PipelineResource {
 }
 
 func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoImageResourceName, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(kanikoImageResourceName, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage,
 		tb.PipelineResourceSpecParam("url", repo),
 	))
@@ -160,11 +160,11 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 	sidecar := tb.Sidecar("registry", "registry")
 	taskSpecOps = append(taskSpecOps, sidecar)
 
-	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
+	return tb.Task(kanikoTaskName, tb.TaskNamespace(namespace), tb.TaskSpec(taskSpecOps...))
 }
 
 func getTaskRun(namespace string) *v1alpha1.TaskRun {
-	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
+	return tb.TaskRun(kanikoTaskRunName, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(kanikoTaskName),
 		tb.TaskRunTimeout(2*time.Minute),
 		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoGitResourceName))),

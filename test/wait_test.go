@@ -40,7 +40,7 @@ var (
 func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	d := Data{
 		TaskRuns: []*v1alpha1.TaskRun{
-			tb.TaskRun("foo", waitNamespace, tb.TaskRunStatus(
+			tb.TaskRun("foo", tb.TaskRunNamespace(waitNamespace), tb.TaskRunStatus(
 				tb.StatusCondition(success),
 			)),
 		},
@@ -55,7 +55,7 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 func TestWaitForTaskRunStateFailed(t *testing.T) {
 	d := Data{
 		TaskRuns: []*v1alpha1.TaskRun{
-			tb.TaskRun("foo", waitNamespace, tb.TaskRunStatus(
+			tb.TaskRun("foo", tb.TaskRunNamespace(waitNamespace), tb.TaskRunStatus(
 				tb.StatusCondition(failure),
 			)),
 		},
@@ -71,7 +71,7 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 	d := Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
-			tb.PipelineRun("bar", waitNamespace, tb.PipelineRunStatus(
+			tb.PipelineRun("bar", tb.PipelineRunNamespace(waitNamespace), tb.PipelineRunStatus(
 				tb.PipelineRunStatusCondition(success),
 			)),
 		},
@@ -87,7 +87,7 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	d := Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
-			tb.PipelineRun("bar", waitNamespace, tb.PipelineRunStatus(
+			tb.PipelineRun("bar", tb.PipelineRunNamespace(waitNamespace), tb.PipelineRunStatus(
 				tb.PipelineRunStatusCondition(failure),
 			)),
 		},

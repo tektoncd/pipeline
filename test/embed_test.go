@@ -62,7 +62,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 }
 
 func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
-	return tb.Task(embedTaskName, namespace,
+	return tb.Task(embedTaskName, tb.TaskNamespace(namespace),
 		tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("read", "ubuntu",
@@ -81,7 +81,7 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 			Value: "https://github.com/knative/docs",
 		}},
 	}
-	return tb.TaskRun(embedTaskRunName, namespace,
+	return tb.TaskRun(embedTaskRunName, tb.TaskRunNamespace(namespace),
 		tb.TaskRunSpec(
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource("docs", tb.TaskResourceBindingResourceSpec(testSpec)),

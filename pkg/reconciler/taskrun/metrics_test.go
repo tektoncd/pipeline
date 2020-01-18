@@ -59,7 +59,7 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 		expectedCount    int64
 	}{{
 		desc: "for_succeeded_task",
-		taskRun: tb.TaskRun("taskrun-1", "ns",
+		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),
@@ -81,7 +81,7 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 		expectedCount:    1,
 	}, {
 		desc: "for_failed_task",
-		taskRun: tb.TaskRun("taskrun-1", "ns",
+		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),
@@ -130,7 +130,7 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 		expectedCount    int64
 	}{{
 		desc: "for_succeeded_task",
-		taskRun: tb.TaskRun("taskrun-1", "ns",
+		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
 			tb.TaskRunSpec(
@@ -156,7 +156,7 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 		expectedCount:    1,
 	}, {
 		desc: "for_failed_task",
-		taskRun: tb.TaskRun("taskrun-1", "ns",
+		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
 			tb.TaskRunSpec(
@@ -237,7 +237,7 @@ func TestRecordPodLatency(t *testing.T) {
 					LastTransitionTime: metav1.Time{Time: creationTime.Add(4 * time.Second)},
 				}),
 			)),
-		taskRun: tb.TaskRun("test-taskrun", "foo",
+		taskRun: tb.TaskRun("test-taskrun",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),
@@ -254,7 +254,7 @@ func TestRecordPodLatency(t *testing.T) {
 		pod: tb.Pod("test-taskrun-pod-123456", "foo",
 			tb.PodCreationTimestamp(creationTime),
 		),
-		taskRun: tb.TaskRun("test-taskrun", "foo",
+		taskRun: tb.TaskRun("test-taskrun",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),
@@ -284,7 +284,7 @@ func TestRecordPodLatency(t *testing.T) {
 }
 
 func addTaskruns(informer alpha1.TaskRunInformer, taskrun, task, ns string, status corev1.ConditionStatus, t *testing.T) {
-	if err := informer.Informer().GetIndexer().Add(tb.TaskRun(taskrun, ns,
+	if err := informer.Informer().GetIndexer().Add(tb.TaskRun(taskrun,
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(task),
 		),

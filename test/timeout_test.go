@@ -44,16 +44,16 @@ func TestPipelineRunTimeout(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
-	task := tb.Task("banana", namespace, tb.TaskSpec(
+	task := tb.Task("banana", tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.Step("foo", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 10"))))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
 
-	pipeline := tb.Pipeline("tomatoes", namespace,
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace(namespace),
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name,
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec(pipeline.Name,
 		tb.PipelineRunTimeout(5*time.Second),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
@@ -165,9 +165,9 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	// Verify that we can create a second Pipeline using the same Task without a Pipeline-level timeout that will not
 	// time out
-	secondPipeline := tb.Pipeline("peppers", namespace,
+	secondPipeline := tb.Pipeline("peppers", tb.PipelineNamespace(namespace),
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")))
-	secondPipelineRun := tb.PipelineRun("kiwi", namespace, tb.PipelineRunSpec("peppers"))
+	secondPipelineRun := tb.PipelineRun("kiwi", tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec("peppers"))
 	if _, err := c.PipelineClient.Create(secondPipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", secondPipeline.Name, err)
 	}
@@ -190,17 +190,17 @@ func TestPipelineRunFailedAndRetry(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
-	task := tb.Task("banana", namespace, tb.TaskSpec(
+	task := tb.Task("banana", tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.Step("foo", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
 
-	pipeline := tb.Pipeline("tomatoes", namespace,
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace(namespace),
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana", tb.Retries(numberOfRetries))),
 	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec(pipeline.Name))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
@@ -242,11 +242,11 @@ func TestTaskRunTimeout(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
+	if _, err := c.TaskClient.Create(tb.Task("giraffe", tb.TaskNamespace(namespace),
 		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 3000"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
-	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
+	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", tb.TaskRunNamespace(namespace), tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
 		// Do not reduce this timeout. Taskrun e2e test is also verifying
 		// if reconcile is triggered from timeout handler and not by pod informers
 		tb.TaskRunTimeout(30*time.Second)))); err != nil {

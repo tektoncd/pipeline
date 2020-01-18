@@ -37,7 +37,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	task := tb.Task(taskName, namespace, tb.TaskSpec(
+	task := tb.Task(taskName, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.Step("attempt-write", "alpine", tb.StepScript("echo foo > /workspace/test/file")),
 		tb.TaskWorkspace("test", "test workspace", "/workspace/test", true),
 	))
@@ -45,7 +45,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	taskRun := tb.TaskRun(taskRunName, namespace, tb.TaskRunSpec(
+	taskRun := tb.TaskRun(taskRunName, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(taskName), tb.TaskRunServiceAccountName("default"),
 		tb.TaskRunWorkspaceEmptyDir("test", ""),
 	))

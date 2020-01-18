@@ -43,7 +43,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		taskrunName := fmt.Sprintf("duplicate-pod-taskrun-%d", i)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
-		taskrun := tb.TaskRun(taskrunName, namespace, tb.TaskRunSpec(
+		taskrun := tb.TaskRun(taskrunName, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(tb.Step("echo", "busybox",
 				tb.StepCommand("/bin/echo"),
 				tb.StepArgs("simple"),

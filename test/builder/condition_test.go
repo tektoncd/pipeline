@@ -28,7 +28,7 @@ import (
 )
 
 func TestCondition(t *testing.T) {
-	condition := tb.Condition("cond-name", "foo",
+	condition := tb.Condition("cond-name", tb.ConditionNamespace("foo"),
 		tb.ConditionLabels(
 			map[string]string{
 				"label-1": "label-value-1",
@@ -83,7 +83,7 @@ func TestCondition(t *testing.T) {
 }
 
 func TestConditionWithScript(t *testing.T) {
-	condition := tb.Condition("cond-name", "foo",
+	condition := tb.Condition("cond-name",
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu"),
 			tb.ConditionSpecCheckScript("ls /tmp"),
 		),
@@ -91,8 +91,7 @@ func TestConditionWithScript(t *testing.T) {
 
 	expected := &v1alpha1.Condition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cond-name",
-			Namespace: "foo",
+			Name: "cond-name",
 		},
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{

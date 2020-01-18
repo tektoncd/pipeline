@@ -33,7 +33,7 @@ import (
 func TestPipeline(t *testing.T) {
 	creationTime := time.Now()
 
-	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
 		tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value"), tb.ParamSpecDescription("default description")),
@@ -145,7 +145,7 @@ func TestPipelineRun(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)
 
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
@@ -162,8 +162,7 @@ func TestPipelineRun(t *testing.T) {
 	), tb.PipelineRunLabel("label-key", "label-value"))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pear",
-			Namespace: "foo",
+			Name: "pear",
 			Labels: map[string]string{
 				"label-key": "label-value",
 			},
@@ -209,7 +208,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)
 
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
@@ -281,15 +280,14 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 }
 
 func TestPipelineRunWithPipelineSpec(t *testing.T) {
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
 		tb.PipelineTask("a-task", "some-task")),
 		tb.PipelineRunServiceAccountName("sa"),
 	))
 
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pear",
-			Namespace: "foo",
+			Name: "pear",
 		},
 		Spec: v1alpha1.PipelineRunSpec{
 			PipelineRef: nil,
@@ -310,7 +308,7 @@ func TestPipelineRunWithPipelineSpec(t *testing.T) {
 }
 
 func TestPipelineResource(t *testing.T) {
-	pipelineResource := tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
+	pipelineResource := tb.PipelineResource("git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
 	expectedPipelineResource := &v1alpha1.PipelineResource{

@@ -42,14 +42,14 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := tb.Task(epTaskName, namespace, tb.TaskSpec(
+	task := tb.Task(epTaskName, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.Step("step1", "ubuntu", tb.StepArgs("-c", "sleep 3 && touch foo")),
 		tb.Step("step2", "ubuntu", tb.StepArgs("-c", "ls", "foo")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := tb.TaskRun(epTaskRunName, namespace, tb.TaskRunSpec(
+	taskRun := tb.TaskRun(epTaskRunName, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(epTaskName), tb.TaskRunServiceAccountName("default"),
 	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {

@@ -38,18 +38,18 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 				tb.OutputsResource("optional-resource-to-provide", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
 			),
 		),
-		tb.ResolvedTaskResourcesInputs("resource-to-build", tb.PipelineResource("example-resource", "foo",
+		tb.ResolvedTaskResourcesInputs("resource-to-build", tb.PipelineResource("example-resource", tb.PipelineResourceNamespace("foo"),
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("foo", "bar"),
 			))),
-		tb.ResolvedTaskResourcesInputs("optional-resource-to-build", tb.PipelineResource("example-resource", "foo",
+		tb.ResolvedTaskResourcesInputs("optional-resource-to-build", tb.PipelineResource("example-resource", tb.PipelineResourceNamespace("foo"),
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("foo", "bar"),
 			))),
-		tb.ResolvedTaskResourcesOutputs("resource-to-provide", tb.PipelineResource("example-image", "bar",
+		tb.ResolvedTaskResourcesOutputs("resource-to-provide", tb.PipelineResource("example-image", tb.PipelineResourceNamespace("bar"),
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
 		),
-		tb.ResolvedTaskResourcesOutputs("optional-resource-to-provide", tb.PipelineResource("example-image", "bar",
+		tb.ResolvedTaskResourcesOutputs("optional-resource-to-provide", tb.PipelineResource("example-image", tb.PipelineResourceNamespace("bar"),
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
 		))
 	if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, rtr); err != nil {
@@ -113,7 +113,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 }
 
 func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
-	r := tb.PipelineResource("git-test-resource", "foo", tb.PipelineResourceSpec(
+	r := tb.PipelineResource("git-test-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("foo", "bar"),
 	))

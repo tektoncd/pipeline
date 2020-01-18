@@ -61,11 +61,10 @@ type PipelineTaskConditionOp func(condition *v1alpha1.PipelineTaskCondition)
 
 // Pipeline creates a Pipeline with default values.
 // Any number of Pipeline modifier can be passed to transform it.
-func Pipeline(name, namespace string, ops ...PipelineOp) *v1alpha1.Pipeline {
+func Pipeline(name string, ops ...PipelineOp) *v1alpha1.Pipeline {
 	p := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 		},
 	}
 
@@ -74,6 +73,13 @@ func Pipeline(name, namespace string, ops ...PipelineOp) *v1alpha1.Pipeline {
 	}
 
 	return p
+}
+
+// PipelineNamespace sets the namespace of the pipeline
+func PipelineNamespace(namespace string) PipelineOp {
+	return func(p *v1alpha1.Pipeline) {
+		p.Namespace = namespace
+	}
 }
 
 // PipelineSpec sets the PipelineSpec to the Pipeline.
@@ -269,11 +275,10 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 
 // PipelineRun creates a PipelineRun with default values.
 // Any number of PipelineRun modifier can be passed to transform it.
-func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
+func PipelineRun(name string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
 	pr := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 		},
 		Spec: v1alpha1.PipelineRunSpec{},
 	}
@@ -283,6 +288,13 @@ func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.Pipelin
 	}
 
 	return pr
+}
+
+// PipelineRunNamespace sets the namespace of  the PipelineRun.
+func PipelineRunNamespace(namespace string) PipelineRunOp {
+	return func(pr *v1alpha1.PipelineRun) {
+		pr.Namespace = namespace
+	}
 }
 
 // PipelineRunSpec sets the PipelineRunSpec, references Pipeline with specified name, to the PipelineRun.
@@ -473,17 +485,23 @@ func PipelineRunTaskRunsStatus(taskRunName string, status *v1alpha1.PipelineRunT
 
 // PipelineResource creates a PipelineResource with default values.
 // Any number of PipelineResource modifier can be passed to transform it.
-func PipelineResource(name, namespace string, ops ...PipelineResourceOp) *v1alpha1.PipelineResource {
+func PipelineResource(name string, ops ...PipelineResourceOp) *v1alpha1.PipelineResource {
 	resource := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name: name,
 		},
 	}
 	for _, op := range ops {
 		op(resource)
 	}
 	return resource
+}
+
+// PipelineResourceNamespace sets the namespace of the PipelineResource.
+func PipelineResourceNamespace(namespace string) PipelineResourceOp {
+	return func(pr *v1alpha1.PipelineResource) {
+		pr.Namespace = namespace
+	}
 }
 
 // PipelineResourceSpec set the PipelineResourceSpec, with specified type, to the PipelineResource.

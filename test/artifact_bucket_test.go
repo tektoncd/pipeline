@@ -66,7 +66,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer deleteBucketSecret(c, t, namespace)
 
 	t.Logf("Creating GCS bucket %s", bucketName)
-	createbuckettask := tb.Task("createbuckettask", namespace, tb.TaskSpec(
+	createbuckettask := tb.Task("createbuckettask", tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: bucketSecretName,
@@ -86,7 +86,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create Task `%s`: %s", "createbuckettask", err)
 	}
 
-	createbuckettaskrun := tb.TaskRun("createbuckettaskrun", namespace,
+	createbuckettaskrun := tb.TaskRun("createbuckettaskrun", tb.TaskRunNamespace(namespace),
 		tb.TaskRunSpec(tb.TaskRunTaskRef("createbuckettask")))
 
 	t.Logf("Creating TaskRun %s", "createbuckettaskrun")
@@ -118,7 +118,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer resetConfigMap(t, c, systemNamespace, artifacts.GetBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
-	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(
+	helloworldResource := tb.PipelineResource(helloworldResourceName, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
 		tb.PipelineResourceSpecParam("Revision", "master"),
@@ -129,7 +129,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", addFileTaskName)
-	addFileTask := tb.Task(addFileTaskName, namespace, tb.TaskSpec(
+	addFileTask := tb.Task(addFileTaskName, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("addfile", "ubuntu", tb.StepCommand("/bin/bash"),
@@ -143,7 +143,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", runFileTaskName)
-	readFileTask := tb.Task(runFileTaskName, namespace, tb.TaskSpec(
+	readFileTask := tb.Task(runFileTaskName, tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("runfile", "ubuntu", tb.StepCommand("/workspace/helloworld/newfile")),
 	))
@@ -152,7 +152,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Pipeline %s", bucketTestPipelineName)
-	bucketTestPipeline := tb.Pipeline(bucketTestPipelineName, namespace, tb.PipelineSpec(
+	bucketTestPipeline := tb.Pipeline(bucketTestPipelineName, tb.PipelineNamespace(namespace), tb.PipelineSpec(
 		tb.PipelineDeclaredResource("source-repo", "git"),
 		tb.PipelineTask("addfile", addFileTaskName,
 			tb.PipelineTaskInputResource("helloworldgit", "source-repo"),
@@ -167,7 +167,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating PipelineRun %s", bucketTestPipelineRunName)
-	bucketTestPipelineRun := tb.PipelineRun(bucketTestPipelineRunName, namespace, tb.PipelineRunSpec(
+	bucketTestPipelineRun := tb.PipelineRun(bucketTestPipelineRunName, tb.PipelineRunNamespace(namespace), tb.PipelineRunSpec(
 		bucketTestPipelineName,
 		tb.PipelineRunResourceBinding("source-repo", tb.PipelineResourceBindingRef(helloworldResourceName)),
 	))
@@ -232,7 +232,7 @@ func resetConfigMap(t *testing.T, c *clients, namespace, configName string, valu
 }
 
 func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
-	deletelbuckettask := tb.Task("deletelbuckettask", namespace, tb.TaskSpec(
+	deletelbuckettask := tb.Task("deletelbuckettask", tb.TaskNamespace(namespace), tb.TaskSpec(
 		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: bucketSecretName,
@@ -252,7 +252,7 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, buck
 		t.Fatalf("Failed to create Task `%s`: %s", "deletelbuckettask", err)
 	}
 
-	deletelbuckettaskrun := tb.TaskRun("deletelbuckettaskrun", namespace,
+	deletelbuckettaskrun := tb.TaskRun("deletelbuckettaskrun", tb.TaskRunNamespace(namespace),
 		tb.TaskRunSpec(tb.TaskRunTaskRef("deletelbuckettask")))
 
 	t.Logf("Creating TaskRun %s", "deletelbuckettaskrun")

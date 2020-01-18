@@ -31,12 +31,12 @@ func TestNewCloudEventResource_Invalid(t *testing.T) {
 		pipelineResource *v1alpha1.PipelineResource
 	}{{
 		name: "create resource with no parameter",
-		pipelineResource: tb.PipelineResource("cloud-event-resource-no-uri", "default", tb.PipelineResourceSpec(
+		pipelineResource: tb.PipelineResource("cloud-event-resource-no-uri", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeCloudEvent,
 		)),
 	}, {
 		name: "create resource with invalid type",
-		pipelineResource: tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(
+		pipelineResource: tb.PipelineResource("git-resource", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeGit,
 			tb.PipelineResourceSpecParam("URL", "git://fake/repo"),
 			tb.PipelineResourceSpecParam("Revision", "fake_rev"),
@@ -53,7 +53,7 @@ func TestNewCloudEventResource_Invalid(t *testing.T) {
 }
 
 func TestNewCloudEventResource_Valid(t *testing.T) {
-	pr := tb.PipelineResource("cloud-event-resource-uri", "default", tb.PipelineResourceSpec(
+	pr := tb.PipelineResource("cloud-event-resource-uri", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCloudEvent,
 		tb.PipelineResourceSpecParam("TargetURI", "http://fake-sink"),
 	))

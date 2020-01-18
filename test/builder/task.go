@@ -81,11 +81,10 @@ var (
 
 // Task creates a Task with default values.
 // Any number of Task modifier can be passed to transform it.
-func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
+func Task(name string, ops ...TaskOp) *v1alpha1.Task {
 	t := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 		},
 	}
 
@@ -94,6 +93,13 @@ func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
 	}
 
 	return t
+}
+
+// TaskNamespace sets the Namespace of the Task
+func TaskNamespace(namespace string) TaskOp {
+	return func(t *v1alpha1.Task) {
+		t.Namespace = namespace
+	}
 }
 
 // ClusterTask creates a ClusterTask with default values.
@@ -292,10 +298,9 @@ func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) Inp
 
 // TaskRun creates a TaskRun with default values.
 // Any number of TaskRun modifier can be passed to transform it.
-func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
+func TaskRun(name string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   namespace,
 			Name:        name,
 			Annotations: map[string]string{},
 		},
@@ -308,7 +313,14 @@ func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	return tr
 }
 
-// TaskRunStatus sets the TaskRunStatus to tshe TaskRun
+// TaskRunNamespace sets the Namespace of the TaskRun
+func TaskRunNamespace(namespace string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		tr.Namespace = namespace
+	}
+}
+
+// TaskRunStatus sets the TaskRunStatus to the TaskRun
 func TaskRunStatus(ops ...TaskRunStatusOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		status := &tr.Status

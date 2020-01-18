@@ -29,7 +29,7 @@ import (
 
 func TestPullRequest_NewResource(t *testing.T) {
 	url := "https://github.com/tektoncd/pipeline/pulls/1"
-	pr := tb.PipelineResource("foo", "default", tb.PipelineResourceSpec(
+	pr := tb.PipelineResource("foo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypePullRequest,
 		tb.PipelineResourceSpecParam("url", url),
 		tb.PipelineResourceSpecParam("provider", "github"),
@@ -54,7 +54,7 @@ func TestPullRequest_NewResource(t *testing.T) {
 }
 
 func TestPullRequest_NewResource_error(t *testing.T) {
-	pr := tb.PipelineResource("foo", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
+	pr := tb.PipelineResource("foo", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 	if _, err := v1alpha1.NewPullRequestResource("override-with-pr:latest", pr); err == nil {
 		t.Error("NewPullRequestResource() want error, got nil")
 	}
