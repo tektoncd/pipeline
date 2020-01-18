@@ -138,13 +138,12 @@ func TaskSpec(ops ...TaskSpecOp) TaskOp {
 
 // Step adds a step with the specified name and image to the TaskSpec.
 // Any number of Container modifier can be passed to transform it.
-func Step(name, image string, ops ...StepOp) TaskSpecOp {
+func Step(image string, ops ...StepOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		if spec.Steps == nil {
 			spec.Steps = []v1alpha1.Step{}
 		}
 		step := v1alpha1.Step{Container: corev1.Container{
-			Name:  name,
 			Image: image,
 		}}
 		for _, op := range ops {

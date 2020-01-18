@@ -22,6 +22,13 @@ import (
 // StepOp is an operation which modifies a Container struct.
 type StepOp func(*v1alpha1.Step)
 
+// StepName sets the name of the step.
+func StepName(name string) StepOp {
+	return func(step *v1alpha1.Step) {
+		step.Name = name
+	}
+}
+
 // StepCommand sets the command to the Container (step in this case).
 func StepCommand(args ...string) StepOp {
 	return func(step *v1alpha1.Step) {

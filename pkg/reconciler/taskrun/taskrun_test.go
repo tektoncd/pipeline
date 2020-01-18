@@ -85,7 +85,7 @@ var (
 	cloudEventTarget1 = "https://foo"
 	cloudEventTarget2 = "https://bar"
 
-	simpleStep  = tb.Step("simple-step", "foo", tb.StepCommand("/mycmd"))
+	simpleStep  = tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
@@ -97,7 +97,7 @@ var (
 		tb.TaskOutputs(tb.OutputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit)),
 	))
 
-	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.StepCommand("/mycmd"))))
+	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("foo", tb.StepName("sa-step"), tb.StepCommand("/mycmd"))))
 
 	templatedTask = tb.Task("test-task-with-substitution", "foo", tb.TaskSpec(
 		tb.TaskInputs(
@@ -107,13 +107,13 @@ var (
 			tb.InputsParamSpec("configmapname", v1alpha1.ParamTypeString),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
-		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
+		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-arg=$(inputs.params.myarg)",
 			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
 			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
 			"--my-additional-arg=$(outputs.resources.myimage.url)",
 		)),
-		tb.Step("myothercontainer", "myotherimage", tb.StepCommand("/mycmd"), tb.StepArgs(
+		tb.Step("myotherimage", tb.StepName("myothercontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
@@ -461,7 +461,7 @@ func TestReconcile(t *testing.T) {
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
-			tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"),
+			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"),
 				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
 			),
 		),
@@ -483,7 +483,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
-			tb.Step("mystep", "ubuntu", tb.StepCommand("/mycmd")),
+			tb.Step("ubuntu", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
 		),
 	))
 

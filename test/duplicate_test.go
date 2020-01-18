@@ -44,7 +44,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		t.Logf("Creating taskrun %q.", taskrunName)
 
 		taskrun := tb.TaskRun(taskrunName, namespace, tb.TaskRunSpec(
-			tb.TaskRunTaskSpec(tb.Step("echo", "busybox",
+			tb.TaskRunTaskSpec(tb.Step("busybox",
 				tb.StepCommand("/bin/echo"),
 				tb.StepArgs("simple"),
 			)),

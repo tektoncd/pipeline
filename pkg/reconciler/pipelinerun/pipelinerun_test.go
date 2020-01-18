@@ -343,7 +343,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("mystep", "myimage"))),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep")))),
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
@@ -1610,7 +1610,7 @@ func makeExpectedTr(condName, ccName string, labels map[string]string) *v1alpha1
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
-				tb.Step("condition-check-"+condName, "foo", tb.StepArgs("bar")),
+				tb.Step("foo", tb.StepName("condition-check-"+condName), tb.StepArgs("bar")),
 				tb.TaskInputs(),
 			),
 			tb.TaskRunServiceAccountName("test-sa"),
