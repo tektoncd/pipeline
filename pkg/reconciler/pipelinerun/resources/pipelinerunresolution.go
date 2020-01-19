@@ -90,10 +90,7 @@ func (t ResolvedPipelineRunTask) IsSuccessful() bool {
 		return false
 	}
 
-	if c.Status == corev1.ConditionTrue {
-		return true
-	}
-	return false
+	return c.Status == corev1.ConditionTrue
 }
 
 // IsFailure returns true only if the taskrun itself has failed
