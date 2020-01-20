@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ghodss/yaml"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -33,6 +35,7 @@ const (
 	defaultServiceAccountKey      = "default-service-account"
 	defaultManagedByLabelValueKey = "default-managed-by-label-value"
 	DefaultManagedByLabelValue    = "tekton-pipelines"
+	defaultPodTemplateKey         = "default-pod-template"
 )
 
 // Defaults holds the default configurations
@@ -41,13 +44,23 @@ type Defaults struct {
 	DefaultTimeoutMinutes      int
 	DefaultServiceAccount      string
 	DefaultManagedByLabelValue string
+	DefaultPodTemplate         *pod.Template
 }
 
 // Equals returns true if two Configs are identical
 func (cfg *Defaults) Equals(other *Defaults) bool {
+	if cfg == nil && other == nil {
+		return true
+	}
+
+	if cfg == nil || other == nil {
+		return false
+	}
+
 	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes &&
 		other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
-		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue
+		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue &&
+		other.DefaultPodTemplate.Equals(cfg.DefaultPodTemplate)
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
@@ -56,6 +69,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultTimeoutMinutes:      DefaultTimeoutMinutes,
 		DefaultManagedByLabelValue: DefaultManagedByLabelValue,
 	}
+
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
 		timeout, err := strconv.ParseInt(defaultTimeoutMin, 10, 0)
 		if err != nil {
@@ -67,8 +81,17 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
 		tc.DefaultServiceAccount = defaultServiceAccount
 	}
+
 	if defaultManagedByLabelValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
 		tc.DefaultManagedByLabelValue = defaultManagedByLabelValue
+	}
+
+	if defaultPodTemplate, ok := cfgMap[defaultPodTemplateKey]; ok {
+		var podTemplate pod.Template
+		if err := yaml.Unmarshal([]byte(defaultPodTemplate), &podTemplate); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplate)
+		}
+		tc.DefaultPodTemplate = &podTemplate
 	}
 
 	return &tc, nil

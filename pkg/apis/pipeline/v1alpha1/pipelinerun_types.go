@@ -62,7 +62,7 @@ type PipelineRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
-	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

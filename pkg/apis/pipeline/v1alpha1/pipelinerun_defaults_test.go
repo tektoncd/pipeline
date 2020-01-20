@@ -57,6 +57,31 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 				Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
 			},
 		},
+		{
+			desc: "pod template is nil",
+			prs:  &v1alpha1.PipelineRunSpec{},
+			want: &v1alpha1.PipelineRunSpec{
+				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			},
+		},
+		{
+			desc: "pod template is not nil",
+			prs: &v1alpha1.PipelineRunSpec{
+				PodTemplate: &v1alpha1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+			want: &v1alpha1.PipelineRunSpec{
+				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				PodTemplate: &v1alpha1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -147,6 +172,77 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
 					"default-service-account": "tekton",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "PipelineRef pod template is coming from default config pod template",
+		in: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
+			},
+		},
+		want: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef:        &v1alpha1.PipelineRef{Name: "foo"},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &v1alpha1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.DefaultsConfigName,
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "PipelineRef pod template takes precedence over default config pod template",
+		in: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
+				PodTemplate: &v1alpha1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+				},
+			},
+		},
+		want: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef:        &v1alpha1.PipelineRef{Name: "foo"},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &v1alpha1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.DefaultsConfigName,
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 				},
 			})
 			return s.ToContext(ctx)

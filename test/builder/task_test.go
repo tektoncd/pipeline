@@ -331,6 +331,55 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 	}
 }
 
+func TestTaskRunWithPodTemplate(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(
+			tb.Step("image", tb.StepCommand("/mycmd")),
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
+		),
+		tb.TaskRunServiceAccountName("sa"),
+		tb.TaskRunTimeout(2*time.Minute),
+		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
+		tb.TaskRunNodeSelector(map[string]string{
+			"label": "value",
+		}),
+	))
+	expectedTaskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-taskrun", Namespace: "foo",
+			Annotations: map[string]string{},
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
+					Image:   "image",
+					Command: []string{"/mycmd"},
+				}}},
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:     "workspace",
+							Type:     v1alpha1.PipelineResourceTypeGit,
+							Optional: true,
+						}}},
+					Params: nil,
+				},
+			},
+			PodTemplate: &v1alpha1.PodTemplate{
+				NodeSelector: map[string]string{
+					"label": "value",
+				},
+			},
+			ServiceAccountName: "sa",
+			Status:             v1alpha1.TaskRunSpecStatusCancelled,
+			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
+		},
+	}
+	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
+		t.Fatalf("TaskRun diff -want, +got: %v", d)
+	}
+}
+
 func TestResolvedTaskResources(t *testing.T) {
 	resolvedTaskResources := tb.ResolvedTaskResources(
 		tb.ResolvedTaskResourcesTaskSpec(

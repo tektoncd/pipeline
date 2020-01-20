@@ -51,4 +51,9 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	if prs.ServiceAccountName == "" && defaultSA != "" {
 		prs.ServiceAccountName = defaultSA
 	}
+
+	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
+	if prs.PodTemplate == nil {
+		prs.PodTemplate = defaultPodTemplate
+	}
 }

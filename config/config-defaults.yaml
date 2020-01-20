@@ -47,3 +47,8 @@ data:
     # TaskRuns. If a user's requested TaskRun specifies another value for this
     # label, the user's request supercedes.
     default-managed-by-label-value: "tekton-pipelines"
+
+    # default-pod-template contains the default pod template to use
+    # TaskRun and PipelineRun, if none is specified. If a pod template
+    # is specified, the default pod template is ignored.
+    # default-pod-template:
