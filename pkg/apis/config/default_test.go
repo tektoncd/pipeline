@@ -29,21 +29,22 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 		expectedConfig *Defaults
 		expectedError  bool
 		fileName       string
-		DefaultManagedByLabelValue: "something-else",
 	}
 
 	testCases := []testCase{
 		{
 			expectedConfig: &Defaults{
-				DefaultTimeoutMinutes: 50,
-				DefaultServiceAccount: "tekton",
+				DefaultTimeoutMinutes:      50,
+				DefaultServiceAccount:      "tekton",
+				DefaultManagedByLabelValue: "something-else",
 			},
 			fileName: DefaultsConfigName,
 		},
 		{
 			expectedConfig: &Defaults{
-				DefaultTimeoutMinutes: 50,
-				DefaultServiceAccount: "tekton",
+				DefaultTimeoutMinutes:      50,
+				DefaultServiceAccount:      "tekton",
+				DefaultManagedByLabelValue: DefaultManagedByLabelValue,
 				DefaultPodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",

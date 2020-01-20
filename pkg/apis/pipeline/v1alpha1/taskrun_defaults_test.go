@@ -299,6 +299,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
@@ -337,6 +340,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},

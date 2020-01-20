@@ -35,7 +35,7 @@ const (
 	defaultServiceAccountKey      = "default-service-account"
 	defaultManagedByLabelValueKey = "default-managed-by-label-value"
 	DefaultManagedByLabelValue    = "tekton-pipelines"
-	defaultPodTemplateKey    = "default-pod-template"
+	defaultPodTemplateKey         = "default-pod-template"
 )
 
 // Defaults holds the default configurations
@@ -44,7 +44,7 @@ type Defaults struct {
 	DefaultTimeoutMinutes      int
 	DefaultServiceAccount      string
 	DefaultManagedByLabelValue string
-	DefaultPodTemplate    *pod.Template
+	DefaultPodTemplate         *pod.Template
 }
 
 // Equals returns true if two Configs are identical
@@ -59,7 +59,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 
 	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes &&
 		other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
-		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue
+		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue &&
 		other.DefaultPodTemplate.Equals(cfg.DefaultPodTemplate)
 }
 
@@ -69,6 +69,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultTimeoutMinutes:      DefaultTimeoutMinutes,
 		DefaultManagedByLabelValue: DefaultManagedByLabelValue,
 	}
+
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
 		timeout, err := strconv.ParseInt(defaultTimeoutMin, 10, 0)
 		if err != nil {
@@ -80,6 +81,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
 		tc.DefaultServiceAccount = defaultServiceAccount
 	}
+
 	if defaultManagedByLabelValue, ok := cfgMap[defaultManagedByLabelValueKey]; ok {
 		tc.DefaultManagedByLabelValue = defaultManagedByLabelValue
 	}
