@@ -16,6 +16,9 @@ mounted on path `/pvc` by PipelineRun.
   adds a step to copy from PVC directory path:
   `/pvc/previous_task/resource_name`.
 
+If neither of these conditions are met, the PVC will not be created nor will
+the GCS storage / S3 buckets be used.
+
 Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
 This can be configured using a ConfigMap with the name `config-artifact-bucket`.
 
