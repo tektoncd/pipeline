@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/pullrequest"
 	"go.uber.org/zap"
-	"knative.dev/pkg/logging"
 )
 
 var (
@@ -36,7 +35,8 @@ var (
 
 func main() {
 	flag.Parse()
-	logger, _ := logging.NewLogger("", "pullrequest-init")
+	prod, _ := zap.NewProduction()
+	logger := prod.Sugar()
 	logger = logger.With(
 		zap.String("resource_type", "pullrequest"),
 		zap.String("mode", *mode))
