@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// Tasks returns a TaskInformer.
 	Tasks() TaskInformer
+	// TaskRuns returns a TaskRunInformer.
+	TaskRuns() TaskRunInformer
 }
 
 type version struct {
@@ -42,4 +44,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Tasks returns a TaskInformer.
 func (v *version) Tasks() TaskInformer {
 	return &taskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TaskRuns returns a TaskRunInformer.
+func (v *version) TaskRuns() TaskRunInformer {
+	return &taskRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

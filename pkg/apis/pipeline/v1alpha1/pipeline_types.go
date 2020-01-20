@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -35,13 +36,13 @@ type PipelineSpec struct {
 
 // Check that Pipeline may be validated and defaulted.
 // TaskKind defines the type of Task used by the pipeline.
-type TaskKind string
+type TaskKind = v1alpha2.TaskKind
 
 const (
 	// NamespacedTaskKind indicates that the task type has a namepace scope.
-	NamespacedTaskKind TaskKind = "Task"
+	NamespacedTaskKind TaskKind = v1alpha2.NamespacedTaskKind
 	// ClusterTaskKind indicates that task type has a cluster scope.
-	ClusterTaskKind TaskKind = "ClusterTask"
+	ClusterTaskKind TaskKind = v1alpha2.ClusterTaskKind
 )
 
 // +genclient
@@ -225,15 +226,7 @@ type PipelineTaskOutputResource struct {
 
 // TaskRef can be used to refer to a specific instance of a task.
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type TaskRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name,omitempty"`
-	// TaskKind inficates the kind of the task, namespaced or cluster scoped.
-	Kind TaskKind `json:"kind,omitempty"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
-}
+type TaskRef = v1alpha2.TaskRef
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
