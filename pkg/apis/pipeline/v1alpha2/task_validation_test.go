@@ -267,7 +267,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.inputs.source.Type"},
+			Paths:   []string{"taskspec.resources.inputs.source.type"},
 		},
 	}, {
 		name: "one invalid input resource",
@@ -279,7 +279,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.inputs.source.Type"},
+			Paths:   []string{"taskspec.resources.inputs.source.type"},
 		},
 	}, {
 		name: "duplicated inputs resources",
@@ -304,7 +304,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.outputs.source.Type"},
+			Paths:   []string{"taskspec.resources.outputs.source.type"},
 		},
 	}, {
 		name: "one invalid output resource",
@@ -316,7 +316,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.outputs.source.Type"},
+			Paths:   []string{"taskspec.resources.outputs.source.type"},
 		},
 	}, {
 		name: "duplicated outputs resources",

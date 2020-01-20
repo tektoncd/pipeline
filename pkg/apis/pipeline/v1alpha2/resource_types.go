@@ -76,12 +76,52 @@ type TaskResource struct {
 	ResourceDeclaration `json:",inline"`
 }
 
+// TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding
+type TaskRunResources struct {
+	// Inputs holds the inputs resources this task was invoked with
+	Inputs []TaskResourceBinding `json:"inputs,omitempty"`
+	// Outputs holds the inputs resources this task was invoked with
+	Outputs []TaskResourceBinding `json:"outputs,omitempty"`
+}
+
 // ResourceDeclaration defines an input or output PipelineResource declared as a requirement
 // by another type such as a Task or Condition. The Name field will be used to refer to these
 // PipelineResources within the type's definition, and when provided as an Input, the Name will be the
 // path to the volume mounted containing this PipelineResource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type ResourceDeclaration = resource.ResourceDeclaration
+
+// PipelineResourceBinding connects a reference to an instance of a PipelineResource
+// with a PipelineResource dependency that the Pipeline has declared
+type PipelineResourceBinding struct {
+	// Name is the name of the PipelineResource in the Pipeline's declaration
+	Name string `json:"name,omitempty"`
+	// ResourceRef is a reference to the instance of the actual PipelineResource
+	// that should be used
+	// +optional
+	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
+
+	// ResourceSpec is specification of a resource that should be created and
+	// consumed by the task
+	// +optional
+	ResourceSpec *resource.PipelineResourceSpec `json:"resourceSpec,omitempty"`
+}
+
+// PipelineResourceResult used to export the image name and digest as json
+type PipelineResourceResult struct {
+	Key         string              `json:"key"`
+	Value       string              `json:"value"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+}
+
+// PipelineResourceRef can be used to refer to a specific instance of a Resource
+type PipelineResourceRef struct {
+	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name,omitempty"`
+	// API version of the referent
+	// +optional
+	APIVersion string `json:"apiVersion,omitempty"`
+}
 
 // TaskModifier is an interface to be implemented by different PipelineResources
 type TaskModifier interface {

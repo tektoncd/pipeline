@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -31,9 +30,9 @@ import (
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	// +optional
-	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	Params []Param `json:"params,omitempty"`
 	// +optional
-	Outputs TaskRunOutputs `json:"outputs,omitempty"`
+	Resources *TaskRunResources `json:"resources,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
@@ -51,8 +50,7 @@ type TaskRunSpec struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 
 	// PodTemplate holds pod specific configuration
-	// +optional
-	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
 
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
@@ -60,12 +58,12 @@ type TaskRunSpec struct {
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
-type TaskRunSpecStatus = v1alpha2.TaskRunSpecStatus
+type TaskRunSpecStatus string
 
 const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
-	TaskRunSpecStatusCancelled = v1alpha2.TaskRunSpecStatusCancelled
+	TaskRunSpecStatusCancelled = "TaskRunCancelled"
 )
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -99,14 +97,6 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// TaskRunStatusFields inlines the status fields.
-	TaskRunStatusFields `json:",inline"`
-}
-
-// TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
-// separately and inlined so that other types can readily consume these fields
-// via duck typing.
-type TaskRunStatusFields struct {
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
 
