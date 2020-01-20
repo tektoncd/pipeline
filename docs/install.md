@@ -117,7 +117,7 @@ for more information_
 
 ### How are resources shared between tasks
 
-Pipelines need a way to share resources between tasks. The alternatives are a
+Pipelines need a way to share `PipelineResources` between tasks. The alternatives are a
 [Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/),
 an [S3 Bucket](https://aws.amazon.com/s3/)
 or a [GCS storage bucket](https://cloud.google.com/storage/)
