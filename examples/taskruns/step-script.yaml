@@ -10,9 +10,6 @@ spec:
         default: param-value
 
     steps:
-    - name: noshebang
-      image: ubuntu
-      script: echo "no shebang"
     - name: bash
       image: ubuntu
       env:
@@ -77,13 +74,3 @@ spec:
           print('Param values not applied')
           print('Got: ', v)
           quit()
-
-    # Test that args are allowed and passed to the script as expected.
-    - name: args-allowed
-      image: ubuntu
-      args: ['hello', 'world']
-      script: |
-        #!/usr/bin/env bash
-        [[ $# == 2 ]]
-        [[ $1 == "hello" ]]
-        [[ $2 == "world" ]]
