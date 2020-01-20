@@ -229,7 +229,7 @@ resourcesResult:
 
 ### Optional Resources
 
-By default, a resource is declared as mandatory unless `optional` is set `true`
+By default, a resource is declared as mandatory unless `optional` is set to `true`
 for that resource. Resources declared as `optional` in a `Task` does not have be
 specified in `TaskRun`.
 
@@ -246,12 +246,31 @@ spec:
         optional: true
 ```
 
+Similarly, resources declared as `optional` in a `Pipeline` does not have to be
+specified in `PipelineRun`.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: pipeline-build-image
+spec:
+  resources:
+    - name: workspace
+      type: git
+      optional: true
+  tasks:
+    - name: check-workspace
+...
+```
+
 You can refer to different examples demonstrating usage of optional resources in
-`Task` and `Condition`:
+`Task`, `Condition`, and `Pipeline`:
 
 -   [Task](../examples/taskruns/optional-resources.yaml)
 -   [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
 -   [Condition](../examples/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
+-   [Pipeline](../examples/pipelineruns/demo-optional-resources.yaml)
 
 ## Resource Types
 
