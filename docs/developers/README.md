@@ -19,7 +19,7 @@ mounted on path `/pvc` by PipelineRun.
 If neither of these conditions are met, the PVC will not be created nor will
 the GCS storage / S3 buckets be used.
 
-Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
+Another alternative is to use a GCS storage or S3 bucket to share the artifacts.
 This can be configured using a ConfigMap with the name `config-artifact-bucket`.
 
 See the [installation docs](../install.md#how-are-resources-shared-between-tasks) for configuration details.
