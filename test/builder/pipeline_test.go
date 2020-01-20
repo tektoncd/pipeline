@@ -205,6 +205,78 @@ func TestPipelineRun(t *testing.T) {
 	}
 }
 
+func TestPipelineRunWithPodTemplate(t *testing.T) {
+	startTime := time.Now()
+	completedTime := startTime.Add(5 * time.Minute)
+
+	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
+		tb.PipelineRunParam("first-param-string", "first-value"),
+		tb.PipelineRunParam("second-param-array", "some", "array"),
+		tb.PipelineRunTimeout(1*time.Hour),
+		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
+		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
+		tb.PipelineRunNodeSelector(map[string]string{
+			"label": "value",
+		}),
+	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
+		apis.Condition{Type: apis.ConditionSucceeded}),
+		tb.PipelineRunStartTime(startTime),
+		tb.PipelineRunCompletionTime(completedTime),
+		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
+			PipelineTaskName: "task-1",
+		}),
+	), tb.PipelineRunLabel("label-key", "label-value"))
+	expectedPipelineRun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+			Labels: map[string]string{
+				"label-key": "label-value",
+			},
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
+			ServiceAccountName:  "sa",
+			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
+			Params: []v1alpha1.Param{{
+				Name:  "first-param-string",
+				Value: *tb.ArrayOrString("first-value"),
+			}, {
+				Name:  "second-param-array",
+				Value: *tb.ArrayOrString("some", "array"),
+			}},
+			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Resources: []v1alpha1.PipelineResourceBinding{{
+				Name: "some-resource",
+				ResourceRef: &v1alpha1.PipelineResourceRef{
+					Name: "my-special-resource",
+				},
+			}},
+			PodTemplate: &v1alpha1.PodTemplate{
+				NodeSelector: map[string]string{
+					"label": "value",
+				},
+			},
+		},
+		Status: v1alpha1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %v", d)
+	}
+}
+
 func TestPipelineRunWithResourceSpec(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)

@@ -51,7 +51,7 @@ type TaskRunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	// +optional
-	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional

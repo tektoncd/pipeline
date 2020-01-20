@@ -171,7 +171,7 @@ func TestMakePod(t *testing.T) {
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
-			PodTemplate: v1alpha1.PodTemplate{
+			PodTemplate: &v1alpha1.PodTemplate{
 				SecurityContext: &corev1.PodSecurityContext{
 					Sysctls: []corev1.Sysctl{
 						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
@@ -645,7 +645,7 @@ script-heredoc-randomly-generated-78c5n
 			}
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff(-want,+got): %s", d)
+				t.Errorf("Diff(-want, +got):\n%s", d)
 			}
 		})
 	}
@@ -667,7 +667,7 @@ func TestMakeLabels(t *testing.T) {
 			},
 		},
 	})
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff(-want,+got): %s", d)
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("Diff labels:\n%s", d)
 	}
 }
