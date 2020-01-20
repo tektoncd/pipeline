@@ -17,18 +17,20 @@ package main
 
 import (
 	"flag"
+	"go.uber.org/zap"
 
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
-	"knative.dev/pkg/logging"
 )
 
 func main() {
 	flag.Parse()
 
+	prod, _ := zap.NewProduction()
+	logger := prod.Sugar()
+
 	// ignore atomic level because we are not watching this config for any updates
-	logger, _ := logging.NewLogger("", "creds-init")
 	defer func() {
 		_ = logger.Sync()
 	}()
