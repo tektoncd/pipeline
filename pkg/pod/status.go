@@ -255,7 +255,15 @@ func areStepsComplete(pod *corev1.Pod) bool {
 	return stepsComplete
 }
 
+func sortContainerStatuses(podInstance *corev1.Pod) {
+	sort.Slice(podInstance.Status.ContainerStatuses[:], func(i, j int) bool {
+		return podInstance.Status.ContainerStatuses[i].State.Terminated.FinishedAt.Time.Before(podInstance.Status.ContainerStatuses[j].State.Terminated.FinishedAt.Time)
+	})
+
+}
+
 func getFailureMessage(pod *corev1.Pod) string {
+	sortContainerStatuses(pod)
 	// First, try to surface an error about the actual build step that failed.
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
