@@ -59,6 +59,10 @@ const (
 	// to resource constraints on the node
 	ReasonExceededNodeResources = "ExceededNodeResources"
 
+	// ReasonCreateContainerConfigError indicates that the TaskRun failed to create a pod due to
+	// config error of container
+	ReasonCreateContainerConfigError = "CreateContainerConfigError"
+
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the steps
 	// completed successfully
 	ReasonSucceeded = "Succeeded"
@@ -207,10 +211,14 @@ func updateIncompleteTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {
 		})
 	case corev1.PodPending:
 		var reason, msg string
-		if IsPodExceedingNodeResources(pod) {
+		switch {
+		case IsPodExceedingNodeResources(pod):
 			reason = ReasonExceededNodeResources
 			msg = "TaskRun Pod exceeded available resources"
-		} else {
+		case IsPodHitConfigError(pod):
+			reason = ReasonCreateContainerConfigError
+			msg = getWaitingMessage(pod)
+		default:
 			reason = "Pending"
 			msg = getWaitingMessage(pod)
 		}
@@ -281,6 +289,16 @@ func getFailureMessage(pod *corev1.Pod) string {
 func IsPodExceedingNodeResources(pod *corev1.Pod) bool {
 	for _, podStatus := range pod.Status.Conditions {
 		if podStatus.Reason == corev1.PodReasonUnschedulable && strings.Contains(podStatus.Message, "Insufficient") {
+			return true
+		}
+	}
+	return false
+}
+
+// IsPodHitConfigError returns true if the Pod's status undicates there are config error raised
+func IsPodHitConfigError(pod *corev1.Pod) bool {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == "CreateContainerConfigError" {
 			return true
 		}
 	}
