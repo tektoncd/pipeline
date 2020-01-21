@@ -25,6 +25,7 @@ spec:
     - name: ensure-approved
       image: ubuntu
       script: |
+        #!/usr/bin/env bash
         if [ -f "$(inputs.resources.pr.path)/labels/approved" ]; then
           echo "PR is approved!"
         else

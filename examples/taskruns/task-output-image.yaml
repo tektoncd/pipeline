@@ -57,6 +57,7 @@ spec:
   - name: build-and-push
     image: busybox
     script: |
+      #!/usr/bin/env bash
       set -e
       cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
       {

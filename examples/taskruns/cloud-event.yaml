@@ -97,6 +97,7 @@ spec:
     - name: build-index-json
       image: busybox
       script: |
+        #!/usr/bin/env bash
         set -e
         cat <<EOF > $(outputs.resources.myimage.path)/index.json
         {
