@@ -660,3 +660,45 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 		t.Errorf("Unexpected step order (-want, +got): %s", d)
 	}
 }
+
+func TestSortContainerStatuses(t *testing.T) {
+	samplePod := corev1.Pod{
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "hello",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							FinishedAt: metav1.Time{Time: time.Now()},
+						},
+					},
+				}, {
+					Name: "my",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							FinishedAt: metav1.Time{Time: time.Now().Add(time.Second * 5)},
+						},
+					},
+				}, {
+					Name: "world",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							FinishedAt: metav1.Time{Time: time.Now().Add(time.Second * -5)},
+						},
+					},
+				},
+			},
+		},
+	}
+	sortContainerStatuses(&samplePod)
+	var gotNames []string
+	for _, status := range samplePod.Status.ContainerStatuses {
+		gotNames = append(gotNames, status.Name)
+	}
+
+	want := []string{"world", "hello", "my"}
+	if d := cmp.Diff(want, gotNames); d != "" {
+		t.Errorf("Unexpected step order (-want, +got): %s", d)
+	}
+
+}
