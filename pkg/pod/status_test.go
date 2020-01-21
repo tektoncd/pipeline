@@ -435,6 +435,32 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
+		desc: "pending-CreateContainerConfigError",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason: "CreateContainerConfigError",
+					},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  ReasonCreateContainerConfigError,
+					Message: "Pending",
+				}},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps:    []v1alpha1.StepState{},
+				Sidecars: []v1alpha1.SidecarState{},
+			},
+		},
+	}, {
 		desc: "with-sidecar-running",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodRunning,
