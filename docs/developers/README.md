@@ -229,3 +229,49 @@ The result is added to a file name with the specified result's name into the `/t
 task run status.
 Internally the results are a new argument `-results`to the entrypoint defined for the task. A user can defined more than one result for a
 single task.
+
+For this task definition,
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: print-date
+  annotations:
+    description: |
+      A simple task that prints the date to make sure your cluster / Tekton is working properly.
+spec:
+  results:
+    - name: current-date-unix-timestamp
+      description: The current date in unix timestamp format
+    - name: current-date-human-readable
+      description: The current date in humand readable format
+  steps:
+    - name: print-date-unix-timestamp
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        date +%s | tee /tekton/results/current-date-unix-timestamp
+    - name: print-date-humman-readable
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        date | tee /tekton/results/current-date-human-readable
+```
+
+you end up with this task run status:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+...
+status:
+...
+  taskResults:
+  - name: current-date-human-readable
+    value: |
+      Wed Jan 22 19:47:26 UTC 2020
+  - name: current-date-unix-timestamp
+    value: |
+      1579722445
+```

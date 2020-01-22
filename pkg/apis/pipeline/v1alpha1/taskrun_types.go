@@ -131,14 +131,28 @@ type TaskRunStatusFields struct {
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
 	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+
 	// Results from Resources built during the taskRun. currently includes
 	// the digest of build container images
-	// optional
+	// +optional
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
+
+	// TaskRunResults are the list of results written out by the task's containers
+	// +optional
+	TaskRunResults []TaskRunResult `json:"taskResults,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
+}
+
+// TaskRunResult used to describe the results of a task
+type TaskRunResult struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// Value the given value of the result
+	Value string `json:"value"`
 }
 
 // GetCondition returns the Condition matching the given type.
