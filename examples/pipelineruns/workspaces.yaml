@@ -6,7 +6,8 @@
 #
 # The end result is a pipeline that first checks if the password is correct and, if so,
 # copies data out of a recipe store onto a shared volume. The recipe data is then read
-# by a subsequent task and printed to screen.
+# by a subsequent task and printed to screen. Finally, the data is emitted as a task
+# result so that it appears in the taskrun and pipelinerun status fields.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -82,6 +83,25 @@ spec:
     script: cat $(workspaces.storage.path)/$(inputs.params.filename)
 ---
 apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: write-result
+spec:
+  workspaces:
+  - name: storage
+    readOnly: true
+  inputs:
+    params:
+    - name: filename
+  results:
+  - name: recipe
+    description: The recipe data read from storage.
+  steps:
+  - name: emit-recipe-as-result
+    image: ubuntu
+    script: cat $(workspaces.storage.path)/$(inputs.params.filename) > /tekton/results/recipe
+---
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: fetch-and-print-recipe
@@ -104,15 +124,25 @@ spec:
   - name: print-the-recipe
     taskRef:
       name: print-data
-    # Note: this is currently required to ensure order of write / read on PVC is correct.
-    runAfter:
-      - fetch-the-recipe
     params:
     - name: filename
       value: recipe.txt
     workspaces:
     - name: storage
-      workspace: shared-data
+      from:
+        task: fetch-the-recipe
+        name: filedrop
+  - name: write-recipe-as-result
+    taskRef:
+      name: write-result
+    params:
+    - name: filename
+      value: recipe.txt
+    workspaces:
+    - name: storage
+      from:
+        task: print-the-recipe
+        name: storage
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun

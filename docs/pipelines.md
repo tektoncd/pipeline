@@ -118,19 +118,47 @@ the gen-code task. The same workspace will then also be wired into the "src" wor
 expected by the commit task. If the workspace provided by the PipelineRun is a
 persitent volume claim then we have successfully shared files between the two tasks!
 
-#### Workspaces Don't Imply Task Ordering (Yet)
+#### Task Ordering With Workspaces
 
 One usecase for workspaces in `Pipeline`s is to provide a PVC to multiple `Task`s
-and have one or some write to it before the others read from it. This kind of behaviour
+and have one or some write to it before others read from it. This kind of behaviour
 relies on the order of the `Task`s - one writes, the next reads, and so on - but this
-ordering is not currently enforced by Tekton. This means that `Task`s which write to a
-PVC may be run at the same time as `Task`s expecting to read that data. In the worst case
-this can result in deadlock behaviour where multiple `Task`'s pods are all attempting
-to mount a PVC for writing at the same time.
+ordering is not enforced unless you explicitly declare it.
 
-To avoid this situation `Pipeline` authors can explicitly declare the ordering of `Task`s
-sharing a PVC-backed workspace by using the `runAfter` field. See [the section on
-`runAfter`](#runAfter) for more information about using this field.
+To declare the order in which tasks should utilize workspaces you can use from clauses
+in place of concrete workspace names. Consider the following example:
+
+```yaml
+spec:
+  workspaces:
+    - name: pipeline-ws1
+  tasks:
+    - name: task1
+      taskRef:
+        name: write-to-workspace
+      workspaces:
+        - name: output
+          workspace: pipeline-ws1
+    - name: task2
+      taskRef:
+        name: read-from-workspace
+      workspaces:
+        - name: src
+          from:
+            task: task1
+            name: output
+```
+
+In this example, the `pipeline` has a single `workspace` that it expects to be provided
+by a `PipelineRun`. `task1` writes to that workspace and `task2` reads from that workspace.
+To ensure that `task2` is executed after `task1`, `task2`'s src workspace is declared as
+coming from `task1`'s `output` workspace. By explicitly defining the relationship between
+the two tasks' workspaces Tekton knows that it needs to order them to execute one after
+another.
+
+Workspace `From` clauses can be chained such that `Task` C's `workspace` can depend on
+`Task` B's `workspace` which can depend on `Task` A's `workspace`, and Tekton will enforce
+the ordering A then B then C.
 
 ### Parameters
 

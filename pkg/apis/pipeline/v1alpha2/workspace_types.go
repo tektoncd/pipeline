@@ -27,7 +27,7 @@ import (
 type WorkspaceDeclaration struct {
 	// Name is the name by which you can bind the volume at runtime.
 	Name string `json:"name"`
-	// Description is an optional human readable description of this volume.
+	// Description is an optional human-readable description of this volume.
 	// +optional
 	Description string `json:"description,omitempty"`
 	// MountPath overrides the directory that the volume will be made available at.
@@ -72,18 +72,34 @@ type WorkspaceBinding struct {
 	Secret *corev1.SecretVolumeSource `json:"secret,omitempty"`
 }
 
-// WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+// PipelineWorkspaceDeclaration creates a named slot in a Pipeline that a PipelineRun
 // is expected to populate with a workspace binding.
-type WorkspacePipelineDeclaration struct {
+type PipelineWorkspaceDeclaration struct {
 	// Name is the name of a workspace to be provided by a PipelineRun.
 	Name string `json:"name"`
+	// Description is an optional human-readable description of this workspace's purpose.
+	Description string `json:"description"`
 }
 
-// WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
+// PipelineTaskWorkspaceBinding describes how a workspace passed into the pipeline should be
 // mapped to a task's declared workspace.
-type WorkspacePipelineTaskBinding struct {
+type PipelineTaskWorkspaceBinding struct {
 	// Name is the name of the workspace as declared by the task
 	Name string `json:"name"`
-	// Workspace is the name of the workspace declared by the pipeline
+	// Workspace is the name of a workspace declared by the pipeline
+	// +optional
 	Workspace string `json:"workspace"`
+	// From is a declaration of a task and its workspace that this task
+	// depends on
+	// +optional
+	From WorkspaceFromClause `json:"from"`
+}
+
+// WorkspaceFromClause describes a previous task and its workspace name from which to reuse
+// volume configuration.
+type WorkspaceFromClause struct {
+	// Task is the name of a pipeline task from which to take the workspace
+	Task string `json:"task"`
+	// Name is the name of the task's workspace
+	Name string `json:"name"`
 }

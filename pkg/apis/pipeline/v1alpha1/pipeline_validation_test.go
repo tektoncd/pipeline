@@ -310,7 +310,7 @@ func TestPipeline_Validate(t *testing.T) {
 		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
 			tb.PipelineWorkspaceDeclaration("foo"),
 			tb.PipelineTask("taskname", "taskref",
-				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", "pipelineWorkspaceName")),
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", tb.PipelineTaskWorkspaceBindingWorkspace("pipelineWorkspaceName"))),
 		)),
 		failureExpected: true,
 	}, {
@@ -318,6 +318,47 @@ func TestPipeline_Validate(t *testing.T) {
 		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
 			tb.PipelineWorkspaceDeclaration("foo"),
 			tb.PipelineWorkspaceDeclaration("foo"),
+		)),
+		failureExpected: true,
+	}, {
+		name: "workspaces with empty from clause and empty workspace are invalid",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineTask("taskname", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "workspaces with from clause that references a nonexistent prior task are invalid",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineTask("taskname", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName",
+					tb.PipelineTaskWorkspaceBindingFrom("not-taskname", "ws"))),
+		)),
+		failureExpected: true,
+	}, {
+		name: "workspaces with from clause that references a prior task's workspace are valid",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("ws"),
+			tb.PipelineTask("taskname1", "taskref",
+				tb.PipelineTaskWorkspaceBinding("ws-binding",
+					tb.PipelineTaskWorkspaceBindingWorkspace("ws"))),
+			tb.PipelineTask("taskname2", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName",
+					tb.PipelineTaskWorkspaceBindingFrom("taskname1", "ws-binding"))),
+		)),
+		failureExpected: false,
+	}, {
+		name: "workspaces with from clause that references a non-existent prior task's workspace are invalid",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("foo"),
+			tb.PipelineTask("taskname1", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName",
+					tb.PipelineTaskWorkspaceBindingWorkspace("ws"))),
+			tb.PipelineTask("taskname2", "taskref",
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName",
+					tb.PipelineTaskWorkspaceBindingFrom("taskname1", "non-existent-ws"))),
 		)),
 		failureExpected: true,
 	}}

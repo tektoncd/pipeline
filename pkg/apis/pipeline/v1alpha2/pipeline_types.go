@@ -76,7 +76,7 @@ type PipelineSpec struct {
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
-	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
+	Workspaces []PipelineWorkspaceDeclaration `json:"workspaces,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -119,7 +119,7 @@ type PipelineTask struct {
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
 	// +optional
-	Workspaces []WorkspacePipelineTaskBinding `json:"workspaces,omitempty"`
+	Workspaces []PipelineTaskWorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {

@@ -1,0 +1,195 @@
+# This example ensures that Tekton can properly order tasks in a pipeline
+# when they rely on multiple workspaces "from" previous tasks.
+#
+# The pipeline computes the 5th fibonacci number using workspaces to
+# store intermediary results.
+#
+# Note: when using a regional cluster (such as that we use for testing
+# on GKE) the example must run with a regional persistent disk.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: regional-disk
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+  replication-type: regional-pd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage1
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: regional-disk
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage2
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: regional-disk
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage3
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: regional-disk
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: generate-number
+spec:
+  inputs:
+    params:
+    - name: num
+      default: "0"
+  workspaces:
+  - name: out
+  steps:
+  - name: write-num
+    image: ubuntu
+    script: echo "$(inputs.params.num)" > "$(workspaces.out.path)/number"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: add-numbers
+spec:
+  workspaces:
+  - name: ws1
+    readOnly: true
+  - name: ws2
+    readOnly: true
+  - name: result
+  steps:
+  - name: calculate-sum
+    image: ubuntu
+    script: |
+      num1=$(cat $(workspaces.ws1.path)/number)
+      num2=$(cat $(workspaces.ws2.path)/number)
+      result=$(expr $num1 + $num2)
+      echo $result > $(workspaces.result.path)/number
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: check-number
+spec:
+  inputs:
+    params:
+    - name: expected
+  workspaces:
+  - name: in
+    readOnly: true
+  steps:
+  - name: check
+    image: ubuntu
+    script: |
+      input=$(cat $(workspaces.in.path)/number)
+      test "$input" -eq "$(inputs.params.expected)"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: worlds-slowest-but-greatest-fibonacci
+spec:
+  workspaces:
+  - name: A
+    description: "A storage location to write numbers to"
+  - name: B
+    description: "Separate storage for numbers, for writing in parallel"
+  - name: C
+    description: "One more number storage location for parallel writes"
+  tasks:
+  - name: init-1
+    taskRef:
+      name: generate-number
+    params:
+    - name: num
+      value: "1"
+    workspaces:
+    - name: out
+      workspace: A
+  - name: init-2
+    taskRef:
+      name: generate-number
+    params:
+    - name: num
+      value: "1"
+    workspaces:
+    - name: out
+      workspace: B
+  - name: first-add
+    taskRef:
+      name: add-numbers
+    workspaces:
+    - name: ws1
+      from:
+        task: init-1
+        name: out
+    - name: ws2
+      from:
+        task: init-2
+        name: out
+    - name: result
+      workspace: C
+  - name: second-add
+    taskRef:
+      name: add-numbers
+    workspaces:
+    - name: ws1
+      from:
+        task: init-2
+        name: out
+    - name: ws2
+      from:
+        task: first-add
+        name: result
+    - name: result
+      workspace: A
+  - name: check-result
+    taskRef:
+      name: check-number
+    params:
+    - name: expected
+      value: "3"
+    workspaces:
+    - name: in
+      from:
+        task: second-add
+        name: result
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  generateName: fib-
+spec:
+  pipelineRef:
+    name: worlds-slowest-but-greatest-fibonacci
+  workspaces:
+  - name: A
+    persistentVolumeClaim:
+      claimName: storage1
+  - name: B
+    persistentVolumeClaim:
+      claimName: storage2
+  - name: C
+    persistentVolumeClaim:
+      claimName: storage3

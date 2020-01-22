@@ -198,7 +198,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []PipelineTask) *apis.FieldError {
+func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
 	wsTable := make(map[string]struct{})
 	for i, ws := range wss {
@@ -211,15 +211,49 @@ func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []Pipeli
 		wsTable[ws.Name] = struct{}{}
 	}
 
-	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's
-	// Workspaces list.
+	ptTable := make(map[string]PipelineTask)
+	for _, pt := range pts {
+		ptTable[pt.Name] = pt
+	}
+
 	for ptIdx, pt := range pts {
 		for wsIdx, ws := range pt.Workspaces {
-			if _, ok := wsTable[ws.Workspace]; !ok {
+			if ws.From.Task == "" && ws.Workspace == "" {
+				// PipelineTask with both empty "from" clause and workspace is invalid
 				return apis.ErrInvalidValue(
-					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
+					fmt.Sprintf("pipeline task %q has no from clause or workspace name for task workspace %q", pt.Name, ws.Name),
 					fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
 				)
+			}
+			if ws.From.Task == "" {
+				// PipelineTask with workspace name that doesnt exist in pipeline is invalid
+				if _, ok := wsTable[ws.Workspace]; !ok {
+					return apis.ErrInvalidValue(
+						fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
+						fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
+					)
+				}
+			} else if _, ok := ptTable[ws.From.Task]; !ok {
+				// PipelineTask with workspace "from" clause that references a nonexistent prior task is invalid
+				return apis.ErrInvalidValue(
+					fmt.Sprintf("references workspace from pipeline task %q but no pipeline task exists with that name", ws.From.Task),
+					fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
+				)
+			} else if _, ok := ptTable[ws.From.Task]; ok {
+				// PipelineTask with workspace "from" clause that references a nonexistent prior task's workspace is invalid
+				task := ptTable[ws.From.Task]
+				foundTaskWorkspace := false
+				for _, tw := range task.Workspaces {
+					if tw.Name == ws.From.Name {
+						foundTaskWorkspace = true
+					}
+				}
+				if !foundTaskWorkspace {
+					return apis.ErrInvalidValue(
+						fmt.Sprintf("references workspace %q from pipeline task %q but that workspace does not exist on the task", ws.From.Name, ws.From.Task),
+						fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
+					)
+				}
 			}
 		}
 	}

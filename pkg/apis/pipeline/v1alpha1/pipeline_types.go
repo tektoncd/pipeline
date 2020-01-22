@@ -35,7 +35,7 @@ type PipelineSpec struct {
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
-	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
+	Workspaces []PipelineWorkspaceDeclaration `json:"workspaces,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.
@@ -131,13 +131,15 @@ type PipelineTask struct {
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
 	// +optional
-	Workspaces []WorkspacePipelineTaskBinding `json:"workspaces,omitempty"`
+	Workspaces []PipelineTaskWorkspaceBinding `json:"workspaces,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {
 	return pt.Name
 }
 
+// Deps returns a list of task names that this PipelineTask requires be completed
+// before it can run.
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
 	deps = append(deps, pt.RunAfter...)
@@ -150,6 +152,12 @@ func (pt PipelineTask) Deps() []string {
 	for _, cond := range pt.Conditions {
 		for _, rd := range cond.Resources {
 			deps = append(deps, rd.From...)
+		}
+	}
+	// Add any dependents declared via workspace from clauses
+	for _, ws := range pt.Workspaces {
+		if ws.From.Task != "" {
+			deps = append(deps, ws.From.Task)
 		}
 	}
 	return deps

@@ -806,7 +806,7 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspacePipelineDeclaration, len(*in))
+		*out = make([]v1alpha2.PipelineWorkspaceDeclaration, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -877,7 +877,7 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspacePipelineTaskBinding, len(*in))
+		*out = make([]v1alpha2.PipelineTaskWorkspaceBinding, len(*in))
 		copy(*out, *in)
 	}
 	return

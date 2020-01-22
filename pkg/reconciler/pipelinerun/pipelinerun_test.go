@@ -99,6 +99,7 @@ func TestReconcile(t *testing.T) {
 					},
 				)),
 				tb.PipelineRunParam("bar", "somethingmorefun"),
+				tb.PipelineRunWorkspaceBindingEmptyDir("pws"),
 			),
 		),
 	}
@@ -113,6 +114,7 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineParamSpec("bar", v1alpha1.ParamTypeString),
+				tb.PipelineWorkspaceDeclaration("pws"),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
@@ -120,6 +122,7 @@ func TestReconcile(t *testing.T) {
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+					tb.PipelineTaskWorkspaceBinding("ws", tb.PipelineTaskWorkspaceBindingWorkspace("pws")),
 				),
 				// unit-test-1 can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-1", "unit-test-task",
@@ -127,6 +130,7 @@ func TestReconcile(t *testing.T) {
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+					tb.PipelineTaskWorkspaceBinding("ws", tb.PipelineTaskWorkspaceBindingWorkspace("pws")),
 				),
 				// unit-test-2 uses `from` to indicate it should run after `unit-test-1`
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
@@ -153,6 +157,7 @@ func TestReconcile(t *testing.T) {
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
 				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 			),
+			tb.TaskWorkspace("ws", "ws workspace", "", false),
 		)),
 		tb.Task("unit-test-followup-task", "foo", tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
@@ -249,6 +254,7 @@ func TestReconcile(t *testing.T) {
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
+			tb.TaskRunWorkspaceEmptyDir("ws", ""),
 		),
 	)
 
@@ -375,6 +381,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.Task("a-task-that-needs-a-resource", "ns", tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", "git")),
 		)),
+		tb.Task("a-task-with-a-workspace", "foo", tb.TaskSpec(
+			tb.TaskWorkspace("foo", "foo workspace", "", false),
+		)),
 	}
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
@@ -393,6 +402,12 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params"))),
 		tb.Pipeline("a-pipeline-with-missing-conditions", "foo", tb.PipelineSpec(tb.PipelineTask("some-task", "a-task-that-exists", tb.PipelineTaskCondition("condition-does-not-exist")))),
+		tb.Pipeline("a-pipeline-with-declared-workspace", "foo", tb.PipelineSpec(
+			tb.PipelineWorkspaceDeclaration("ws"),
+			tb.PipelineTask("pipeline-task", "a-task-with-a-workspace",
+				tb.PipelineTaskWorkspaceBinding("ws", tb.PipelineTaskWorkspaceBindingWorkspace("pr-ws")),
+			),
+		)),
 	}
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
@@ -416,6 +431,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params")),
 			tb.PipelineRunParam("some-param", "stringval"),
 		)),
+		tb.PipelineRun("pipeline-run-missing-workspace", "foo", tb.PipelineRunSpec("a-pipeline-with-declared-workspace")),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -473,6 +489,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-embedded-pipeline-mismatching-parameter-types",
 			pipelineRun: prs[10],
 			reason:      ReasonParameterTypeMismatch,
+		}, {
+			name:        "invalid-pipeline-run-missing-workspace",
+			pipelineRun: prs[11],
+			reason:      ReasonFailedValidation,
 		},
 	}
 

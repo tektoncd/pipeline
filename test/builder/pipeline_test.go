@@ -44,7 +44,8 @@ func TestPipeline(t *testing.T) {
 				tb.PipelineTaskConditionParam("param-name", "param-value"),
 				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource", "bar", "never-gonna"),
 			),
-			tb.PipelineTaskWorkspaceBinding("task-workspace1", "workspace1"),
+			tb.PipelineTaskWorkspaceBinding("task-workspace1", tb.PipelineTaskWorkspaceBindingWorkspace("workspace1")),
+			tb.PipelineTaskWorkspaceBinding("task-workspace2", tb.PipelineTaskWorkspaceBindingFrom("prior-task", "workspace-name")),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
@@ -108,9 +109,15 @@ func TestPipeline(t *testing.T) {
 						From:     []string{"bar", "never-gonna"},
 					}},
 				}},
-				Workspaces: []v1alpha1.WorkspacePipelineTaskBinding{{
+				Workspaces: []v1alpha1.PipelineTaskWorkspaceBinding{{
 					Name:      "task-workspace1",
 					Workspace: "workspace1",
+				}, {
+					Name: "task-workspace2",
+					From: v1alpha1.WorkspaceFromClause{
+						Task: "prior-task",
+						Name: "workspace-name",
+					},
 				}},
 			}, {
 				Name:    "bar",
@@ -140,7 +147,7 @@ func TestPipeline(t *testing.T) {
 					},
 				},
 			}},
-			Workspaces: []v1alpha1.WorkspacePipelineDeclaration{{
+			Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{
 				Name: "workspace1",
 			}},
 		},

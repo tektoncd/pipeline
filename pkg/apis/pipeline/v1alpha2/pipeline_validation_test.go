@@ -570,7 +570,7 @@ func TestPipeline_Validate(t *testing.T) {
 				Tasks: []v1alpha2.PipelineTask{{
 					Name: "foo", TaskRef: &v1alpha2.TaskRef{Name: "foo"},
 				}},
-				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+				Workspaces: []v1alpha2.PipelineWorkspaceDeclaration{{
 					Name: "foo",
 				}, {
 					Name: "bar",
@@ -585,12 +585,12 @@ func TestPipeline_Validate(t *testing.T) {
 			Spec: v1alpha2.PipelineSpec{
 				Tasks: []v1alpha2.PipelineTask{{
 					Name: "foo", TaskRef: &v1alpha2.TaskRef{Name: "foo"},
-					Workspaces: []v1alpha2.WorkspacePipelineTaskBinding{{
+					Workspaces: []v1alpha2.PipelineTaskWorkspaceBinding{{
 						Name:      "taskWorkspaceName",
 						Workspace: "pipelineWorkspaceName",
 					}},
 				}},
-				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+				Workspaces: []v1alpha2.PipelineWorkspaceDeclaration{{
 					Name: "foo",
 				}},
 			},
@@ -600,7 +600,7 @@ func TestPipeline_Validate(t *testing.T) {
 		name: "multiple workspaces sharing the same name are not allowed",
 		p: &v1alpha2.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"}, Spec: v1alpha2.PipelineSpec{
-				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+				Workspaces: []v1alpha2.PipelineWorkspaceDeclaration{{
 					Name: "foo",
 				}, {
 					Name: "foo",

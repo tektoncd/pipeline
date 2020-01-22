@@ -330,6 +330,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
+	// Resolve workspaces declared via "from" clauses
+	pipelineSpec, err = resources.ResolveWorkspaces(pipelineSpec)
+	if err != nil {
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonInvalidWorkspaceBinding,
+			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's Workspaces correctly: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pipelineMeta.Name), err),
+		})
+		return nil
+	}
+
 	// Ensure that the workspaces expected by the Pipeline are provided by the PipelineRun.
 	if err := resources.ValidateWorkspaceBindings(pipelineSpec, pr); err != nil {
 		pr.Status.SetCondition(&apis.Condition{
@@ -581,9 +594,9 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineWorkspaceName := ws.Name, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			binding := *b.DeepCopy()
+			binding := b.DeepCopy()
 			binding.Name = taskWorkspaceName
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, binding)
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, *binding)
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
