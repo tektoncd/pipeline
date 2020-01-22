@@ -106,6 +106,12 @@ github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+Ce
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
+github.com/bigkevmcd/go-scm v0.0.0-20200122140456-4effdca1d2f5 h1:YoBjz3+xOBcvwleAqLKgGYvFNzwoN78X+glEAvX/3Aw=
+github.com/bigkevmcd/go-scm v0.0.0-20200122140456-4effdca1d2f5/go.mod h1:PCT338UhP/pQ0IeEeMEf/hoLTYKcH7qjGEKd7jPkeYg=
+github.com/bigkevmcd/go-scm v0.0.0-20200122142159-0df85a345017 h1:Cx7UyMS512h2GVlE6Ioh3GJaRxizHZLxOUJO9/sGNmI=
+github.com/bigkevmcd/go-scm v0.0.0-20200122142159-0df85a345017/go.mod h1:PCT338UhP/pQ0IeEeMEf/hoLTYKcH7qjGEKd7jPkeYg=
+github.com/bigkevmcd/go-scm v0.0.0-20200122142912-a6fb9d6535c5 h1:X2cRKhzs/lRwo7kHh9y9Hp+q4v/JLaQU+DlmPmRhtOs=
+github.com/bigkevmcd/go-scm v0.0.0-20200122142912-a6fb9d6535c5/go.mod h1:PCT338UhP/pQ0IeEeMEf/hoLTYKcH7qjGEKd7jPkeYg=
 github.com/blang/semver v3.5.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/census-instrumentation/opencensus-proto v0.2.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.2.1 h1:glEXhBS5PSLLv4IXzLA5yPRVX4bilULVyxxbrfOtDAk=
@@ -301,6 +307,10 @@ github.com/jcmturner/gofork v0.0.0-20190328161633-dc7c13fece03/go.mod h1:MK8+TM0
 github.com/jcmturner/gofork v1.0.0/go.mod h1:MK8+TM0La+2rjBD4jE12Kj1pCCxK7d2LK/UM3ncEo0o=
 github.com/jenkins-x/go-scm v1.5.65 h1:ieH+0JSWENObn1SDWFj2K40iV5Eia4aTl6W6bDdLwI0=
 github.com/jenkins-x/go-scm v1.5.65/go.mod h1:MgGRkJScE/rJ30J/bXYqduN5sDPZqZFITJopsnZmTOw=
+github.com/jenkins-x/go-scm v1.5.71 h1:NWbwd9s5vrxnn0vCJIYhRsUYHY1OZa9WsMx+nTHyfP0=
+github.com/jenkins-x/go-scm v1.5.71/go.mod h1:PCT338UhP/pQ0IeEeMEf/hoLTYKcH7qjGEKd7jPkeYg=
+github.com/jenkins-x/go-scm v1.5.72 h1:QA6VGYBzX9dSxKchHzZGIiwU6VL4xkfkhuWItCc4/g0=
+github.com/jenkins-x/go-scm v1.5.72/go.mod h1:PCT338UhP/pQ0IeEeMEf/hoLTYKcH7qjGEKd7jPkeYg=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5imkbgOkpRUYLnmbU7UEFbjtDA2hxJ1ichM=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=

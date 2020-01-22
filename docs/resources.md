@@ -477,6 +477,22 @@ spec:
       value: github
 ```
 
+### Creating a new PullRequest
+
+This resource can also create new PRs, you'll need to populate the following
+fields in the resource `pr.json` file:
+
+```json
+{
+  "title": "Shiny PR",
+  "head": "my-fork:new-feature-branch",
+  "base": "master",
+  "body:" "My Shiny new PR"
+}
+```
+
+Comments and labels will also be added to the newly created PR.
+
 ### Image Resource
 
 An `image` resource represents an image that lives in a remote repository. It is
