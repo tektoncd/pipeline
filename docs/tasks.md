@@ -25,6 +25,7 @@ entire Kubernetes cluster.
   - [Volumes](#volumes)
   - [Workspaces](#workspaces)
   - [Step Template](#step-template)
+  - [Results] (#results)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
 - [Debugging Tips](#debugging)
@@ -75,6 +76,7 @@ following fields:
     [`PipelineResources`](resources.md) needed by your `Task`
   - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md)
     created by your `Task`
+  - [`results`](#results) - Specifies the result file name where the task can write its result
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
   - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
@@ -164,6 +166,7 @@ line will use the following default preamble:
 #!/bin/sh
 set -xe
 ```
+
 Users can override this by starting their script with a shebang to declare what
 tool should be used to interpret the script. That tool must then also be
 available within the step's container.
@@ -296,7 +299,6 @@ spec:
 Use input [`PipelineResources`](resources.md) field to provide your `Task` with
 data or context that is needed by your `Task`. See the [using resources docs](./resources.md#using-resources).
 
-
 ### Outputs
 
 `Task` definitions can include inputs and outputs
@@ -356,6 +358,41 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
+### Results
+
+Specifies one or more result files in which you want the task's [`steps`](#steps) to write a result. All result files are written
+into the `/tekton/results` folder. This folder is created automatically if the task defines one or more results.
+
+For example, this task:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: print-date
+  annotations:
+    description: |
+      A simple task that prints the date
+spec:
+  results:
+    - name: current-date-unix-timestamp
+      description: The current date in unix timestamp format
+    - name: current-date-human-readable
+      description: The current date in human readable format
+  steps:
+    - name: print-date-unix-timestamp
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        date +%s | tee /tekton/results/current-date-unix-timestamp
+    - name: print-date-humman-readable
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        date | tee /tekton/results/current-date-human-readable
+```
+
+defines two results `current-date-unix-timestamp` and `current-date-human-readable`. To define a result, you specify a `name` that will correspond to the file name in the `/tekton/results` folder and a `description` where you can explain the purpose of the result.
 
 ### Volumes
 
@@ -502,17 +539,17 @@ is configurable using a flag of the Tekton controller. If the configured "nop"
 image contains the command that the sidecar was running before the sidecar
 was stopped then the sidecar will actually keep running, causing the TaskRun's
 Pod to remain running, and eventually causing the TaskRun to timeout rather
-then exit successfully. Issue https://github.com/tektoncd/pipeline/issues/1347
+then exit successfully. [Issue 1347](https://github.com/tektoncd/pipeline/issues/1347)
 has been created to track this bug.
 
 ### Variable Substitution
 
 `Tasks` support string replacement using values from:
 
-* [Inputs and Outputs](#input-and-output-substitution)
-  * [Array params](#variable-substitution-with-parameters-of-type-array)
-* [`workspaces`](#variable-substitution-with-workspaces)
-* [`volumes`](#variable-substitution-with-volumes)
+- [Inputs and Outputs](#input-and-output-substitution)
+  - [Array params](#variable-substitution-with-parameters-of-type-array)
+- [`workspaces`](#variable-substitution-with-workspaces)
+- [`volumes`](#variable-substitution-with-volumes)
 
 #### Input and Output substitution
 
@@ -533,7 +570,8 @@ Param values from resources can also be accessed using [variable substitution](.
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
 
 So, with the following parameter:
-```
+
+```yaml
 inputs:
     params:
       - name: array-param
@@ -542,30 +580,33 @@ inputs:
           - "array"
           - "elements"
 ```
+
 then `command: ["first", "$(inputs.params.array-param)", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
-
 
 Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
 Any other attempt to reference an array is invalid and will throw an error.
 
 For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because
 the string isn't isolated:
-```
+
+```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
       args: ["build", "additionalArg $(inputs.params.build-args)"]
 ```
 
 Similarly, referencing `build-args` in a non-array field is also invalid:
-```
+
+```yaml
  - name: build-step
       image: "$(inputs.params.build-args)"
       args: ["build", "args"]
 ```
 
 A valid reference to the `build-args` parameter is isolated and in an eligible field (`args`, in this case):
-```
+
+```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
       args: ["build", "$(inputs.params.build-args)", "additonalArg"]
@@ -575,14 +616,14 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 
 Paths to a `Task's` declared [workspaces](#workspaces) can be substituted with:
 
-```
+```yaml
 $(workspaces.myworkspace.path)
 ```
 
 Since the name of the `Volume` is not known until runtime and is randomized, you can also
 substitute the volume name with:
 
-```
+```yaml
 $(workspaces.myworkspace.volume)
 ```
 

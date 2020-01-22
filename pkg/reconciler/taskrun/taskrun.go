@@ -409,11 +409,33 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.Pod
 				if err != nil {
 					return fmt.Errorf("parsing message for container status %d: %v", idx, err)
 				}
-				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, r...)
+				taskResults, pipelineResults := getResults(r)
+				taskRun.Status.TaskRunResults = append(taskRun.Status.TaskRunResults, taskResults...)
+				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, pipelineResults...)
 			}
 		}
 	}
 	return nil
+}
+
+func getResults(results []v1alpha1.PipelineResourceResult) ([]v1alpha1.TaskRunResult, []v1alpha1.PipelineResourceResult) {
+	var taskResults []v1alpha1.TaskRunResult
+	var pipelineResourceResults []v1alpha1.PipelineResourceResult
+	for _, r := range results {
+		switch r.ResultType {
+		case v1alpha1.TaskRunResultType:
+			taskRunResult := v1alpha1.TaskRunResult{
+				Name:  r.Key,
+				Value: r.Value,
+			}
+			taskResults = append(taskResults, taskRunResult)
+		case v1alpha1.PipelineResourceResultType:
+			fallthrough
+		default:
+			pipelineResourceResults = append(pipelineResourceResults, r)
+		}
+	}
+	return taskResults, pipelineResourceResults
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {

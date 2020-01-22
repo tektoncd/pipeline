@@ -21,6 +21,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Workspaces](#workspaces)
 - [Status](#status)
   - [Steps](#steps)
+  - [Task Results] (#results)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
 - [Sidecars](#sidecars)
@@ -229,10 +230,10 @@ at runtime you need to map the `workspaces` to actual physical volumes with
 `workspaces`. Values in `workspaces` are
 [`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/), however currently we only support a subset of `VolumeSources`:
 
-* [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
-* [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
-* [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
-* [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
+- [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+- [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
+- [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
+- [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
 
 _If you need support for a `VolumeSource` not listed here
 [please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
@@ -342,6 +343,28 @@ If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will 
 `status.steps` of the `TaskRun` displayed in the same order as they are defined in
 `spec.steps` of the `Task`, when the `TaskRun` is accessed by the `get` command, e.g.
 `kubectl get taskrun <name> -o yaml`. Replace \<name\> with the name of the `TaskRun`.
+
+### Results
+
+If one or more `results` are defined in the `Task` invoked by the `TaskRun`, we will get a new entry
+`Task Results` added to the status.
+Here is an example:
+
+```yaml
+Status:
+  # […]
+  Steps:
+  # […]
+  Task Results:
+    Name:   current-date-human-readable
+    Value:  Thu Jan 23 16:29:06 UTC 2020
+
+    Name:   current-date-unix-timestamp
+    Value:  1579796946
+
+```
+
+Results will be printed verbatim; any new lines or other whitespace returned as part of the result will be included in the output.
 
 ## Cancelling a TaskRun
 
@@ -667,7 +690,7 @@ Note: There are some known issues with the existing implementation of sidecars:
 - The configured "nop" image must not provide the command that the
 sidecar is expected to run. If it does provide the command then it will
 not exit. This will result in the sidecar running forever and the Task
-eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
+eventually timing out. [This bug is being tracked in issue 1347](https://github.com/tektoncd/pipeline/issues/1347)
 is the issue where this bug is being tracked.
 
 - `kubectl get pods` will show a TaskRun's Pod as "Completed" if a sidecar
