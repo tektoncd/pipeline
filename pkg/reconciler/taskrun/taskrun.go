@@ -511,17 +511,14 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun) error {
 	//
 	// If there's no such Pod, there's nothing to delete.
 	pod, err := getPod(tr, c.KubeClientSet)
-	switch {
-	case err == nil:
-		// Nothing to delete.
-	case err != nil:
+	if err != nil {
 		return err
-	default:
-		c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
-		if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
-			c.Logger.Errorf("Failed to terminate pod: %v", err)
-			return err
-		}
+	}
+
+	c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
+	if err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(pod.Name, &metav1.DeleteOptions{}); err != nil && !kerrors.IsNotFound(err) {
+		c.Logger.Errorf("Failed to terminate pod: %v", err)
+		return err
 	}
 
 	timeout := tr.Spec.Timeout.Duration
