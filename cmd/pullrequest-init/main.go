@@ -19,10 +19,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/tektoncd/pipeline/pkg/pullrequest"
 	"go.uber.org/zap"
 	"knative.dev/pkg/logging"
-	"os"
 )
 
 var (
