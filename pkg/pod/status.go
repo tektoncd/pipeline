@@ -256,7 +256,7 @@ func areStepsComplete(pod *corev1.Pod) bool {
 }
 
 func sortContainerStatuses(podInstance *corev1.Pod) {
-	sort.Slice(podInstance.Status.ContainerStatuses[:], func(i, j int) bool {
+	sort.Slice(podInstance.Status.ContainerStatuses, func(i, j int) bool {
 		return podInstance.Status.ContainerStatuses[i].State.Terminated.FinishedAt.Time.Before(podInstance.Status.ContainerStatuses[j].State.Terminated.FinishedAt.Time)
 	})
 
