@@ -18,6 +18,7 @@ package pullrequest
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -32,12 +33,12 @@ import (
 
 const (
 	repo  = "foo/bar"
-	prNum = 1
+	prNum = 123
 )
 
 func defaultResource() *Resource {
 	pr := &scm.PullRequest{
-		Number: 123,
+		Number: prNum,
 		Sha:    "sha1",
 		Head: scm.PullRequestBranch{
 			Ref:  "refs/heads/branch1",
@@ -76,22 +77,23 @@ func defaultResource() *Resource {
 	return r
 }
 
-func newHandler(t *testing.T) (*Handler, *fake.Data) {
+func newHandler(t *testing.T, r *Resource) (*Handler, *fake.Data) {
 	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar()
 	client, data := fake.NewDefault()
 
-	r := defaultResource()
-	data.PullRequests[prNum] = r.PR
-	data.IssueComments[prNum] = r.Comments
-	data.PullRequestComments[prNum] = r.Comments
-	data.Statuses[r.PR.Sha] = r.Statuses
+	if r.PR.Number > 0 {
+		data.PullRequests[r.PR.Number] = r.PR
+		data.IssueComments[r.PR.Number] = r.Comments
+		data.PullRequestComments[r.PR.Number] = r.Comments
+		data.Statuses[r.PR.Sha] = r.Statuses
+	}
 
-	return NewHandler(logger, client, repo, prNum), data
+	return NewHandler(logger, client, repo, r.PR.Number), data
 }
 
 func TestDownload(t *testing.T) {
 	ctx := context.Background()
-	h, data := newHandler(t)
+	h, data := newHandler(t, defaultResource())
 
 	dir, err := ioutil.TempDir("", t.Name())
 	if err != nil {
@@ -118,7 +120,7 @@ func TestDownload(t *testing.T) {
 
 func TestUploadFromDisk(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	dir, err := ioutil.TempDir("", t.Name())
 	if err != nil {
@@ -144,7 +146,7 @@ func TestUploadFromDisk(t *testing.T) {
 
 func TestUpload_NewComment(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	c := &scm.Comment{Body: "hello world!"}
@@ -169,7 +171,7 @@ func TestUpload_NewComment(t *testing.T) {
 
 func TestUpload_DeleteComment(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	r.Comments = r.Comments[1:]
@@ -190,7 +192,7 @@ func TestUpload_DeleteComment(t *testing.T) {
 
 func TestUpload_ManifestComment(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 
@@ -224,7 +226,7 @@ func TestUpload_ManifestComment(t *testing.T) {
 
 func TestUpload_NewStatus(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	s := &scm.Status{
@@ -249,7 +251,7 @@ func TestUpload_NewStatus(t *testing.T) {
 
 func TestUpload_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	r.Statuses[0].State = scm.StateCanceled
@@ -270,7 +272,7 @@ func TestUpload_UpdateStatus(t *testing.T) {
 
 func TestUpload_NewLabel(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	r.PR.Labels = append(r.PR.Labels, &scm.Label{Name: "z"})
@@ -291,7 +293,7 @@ func TestUpload_NewLabel(t *testing.T) {
 
 func TestUpload_DeleteLabel(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 	r.PR.Labels = []*scm.Label{}
@@ -312,7 +314,7 @@ func TestUpload_DeleteLabel(t *testing.T) {
 
 func TestUpload_ManifestLabel(t *testing.T) {
 	ctx := context.Background()
-	h, _ := newHandler(t)
+	h, _ := newHandler(t, defaultResource())
 
 	r := defaultResource()
 
@@ -335,4 +337,157 @@ func TestUpload_ManifestLabel(t *testing.T) {
 	if diff := cmp.Diff(r.PR, got.PR); diff != "" {
 		t.Errorf("-want +got: %s", diff)
 	}
+}
+
+func TestUpload_NewPR(t *testing.T) {
+	pr := &scm.PullRequest{
+		Title: "this is a test",
+		Body:  "this is the body",
+		Sha:   "sha1",
+		Head: scm.PullRequestBranch{
+			Ref:  "refs/heads/branch1",
+			Sha:  "sha1",
+			Repo: scm.Repository{Name: "repo1"},
+		},
+		Base: scm.PullRequestBranch{
+			Ref:  "refs/heads/branch1",
+			Sha:  "sha2",
+			Repo: scm.Repository{Name: "repo1"},
+		},
+	}
+	r := &Resource{
+		PR: pr,
+	}
+	ctx := context.Background()
+
+	h, _ := newHandler(t, r)
+
+	if err := h.Upload(ctx, r); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := h.Download(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(r.PR, got.PR); diff != "" {
+		t.Errorf("-want +got: %s", diff)
+	}
+}
+
+func TestUpload_NewPRHandlesErrorCreating(t *testing.T) {
+	pr := &scm.PullRequest{
+		Title: "this is a test",
+		Body:  "this is the body",
+		Sha:   "sha1",
+		Head: scm.PullRequestBranch{
+			Ref:  "refs/heads/branch1",
+			Sha:  "sha1",
+			Repo: scm.Repository{Name: "repo1"},
+		},
+		Base: scm.PullRequestBranch{
+			Ref:  "refs/heads/branch1",
+			Sha:  "sha2",
+			Repo: scm.Repository{Name: "repo1"},
+		},
+	}
+	r := &Resource{
+		PR: pr,
+		Comments: []*scm.Comment{
+			{
+				ID:   1,
+				Body: "testing",
+			},
+			{
+				Body: "test",
+			},
+		},
+	}
+	ctx := context.Background()
+
+	failed := errors.New("failed request")
+	h, _ := newHandler(t, r)
+	svc := &errPullService{err: failed}
+	h.client.PullRequests = svc
+	if err := h.Upload(ctx, r); !errors.Is(err, failed) {
+		t.Fatal(err)
+	}
+
+	if _, err := h.Download(ctx); !errors.Is(err, failed) {
+		t.Fatal(err)
+	}
+	if svc.calls > 1 {
+		t.Errorf("pull service calls: got %d, wanted 1", svc.calls)
+	}
+
+}
+
+type errPullService struct {
+	err   error
+	calls int
+}
+
+func (s *errPullService) Find(ctx context.Context, repo string, number int) (*scm.PullRequest, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) FindComment(context.Context, string, int, int) (*scm.Comment, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) List(context.Context, string, scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) ListComments(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func (s *errPullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func (s *errPullService) Merge(context.Context, string, int) (*scm.Response, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func (s *errPullService) Close(context.Context, string, int) (*scm.Response, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func (s *errPullService) CreateComment(ctx context.Context, repo string, number int, comment *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+	s.calls++
+	return nil, nil, s.err
+}
+
+func (s *errPullService) DeleteComment(ctx context.Context, repo string, number int, id int) (*scm.Response, error) {
+	s.calls++
+	return nil, s.err
+}
+
+func (s *errPullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	return nil, nil, s.err
 }

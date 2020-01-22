@@ -115,6 +115,15 @@ func (h *Handler) Upload(ctx context.Context, r *Resource) error {
 
 	var merr error
 
+	if r.PR.Number == 0 {
+		newPR, err := h.makeNewPR(ctx, r.PR)
+		if err != nil {
+			return fmt.Errorf("failed to create new pr: %w", err)
+		} else {
+			r.PR = newPR
+		}
+	}
+
 	if err := h.uploadLabels(ctx, r.Manifests["labels"], r.PR.Labels); err != nil {
 		merr = multierror.Append(merr, err)
 	}
@@ -299,4 +308,20 @@ func (h *Handler) uploadStatuses(ctx context.Context, statuses []*scm.Status, sh
 	}
 
 	return merr
+}
+
+func (h *Handler) makeNewPR(ctx context.Context, pr *scm.PullRequest) (*scm.PullRequest, error) {
+	input := &scm.PullRequestInput{
+		Title: pr.Title,
+		Head:  pr.Head.Ref,
+		Base:  pr.Base.Ref,
+		Body:  pr.Body,
+	}
+
+	newPR, _, err := h.client.PullRequests.Create(ctx, h.repo, input)
+	if err != nil {
+		return nil, fmt.Errorf("creating pull request: %w", err)
+	}
+	h.prNum = newPR.Number
+	return newPR, nil
 }

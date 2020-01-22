@@ -21,7 +21,7 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/imdario/mergo v0.3.8 // indirect
-	github.com/jenkins-x/go-scm v1.5.65
+	github.com/jenkins-x/go-scm v1.5.71
 	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
@@ -58,6 +58,10 @@ require (
 	knative.dev/eventing-contrib v0.6.1-0.20190723221543-5ce18048c08b
 	knative.dev/pkg v0.0.0-20191111150521-6d806b998379
 )
+
+// TODO: remove this before merging!
+
+replace github.com/jenkins-x/go-scm => github.com/bigkevmcd/go-scm v0.0.0-20200122142912-a6fb9d6535c5
 
 // Knative deps
 
