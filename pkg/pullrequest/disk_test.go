@@ -219,17 +219,8 @@ func TestFromDiskWithoutComments(t *testing.T) {
 		Sha:  "sha2",
 	}
 
-	writeFile := func(p string, v interface{}) {
-		b, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	writeFile(filepath.Join(d, "base.json"), &base)
-	writeFile(filepath.Join(d, "head.json"), &head)
+	writeFile(t, filepath.Join(d, "base.json"), &base)
+	writeFile(t, filepath.Join(d, "head.json"), &head)
 
 	rsrc, err := FromDisk(d)
 	if err != nil {
@@ -265,17 +256,8 @@ func TestFromDisk(t *testing.T) {
 		Sha:  "sha2",
 	}
 
-	writeFile := func(p string, v interface{}) {
-		b, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	writeFile(filepath.Join(d, "base.json"), &base)
-	writeFile(filepath.Join(d, "head.json"), &head)
+	writeFile(t, filepath.Join(d, "base.json"), &base)
+	writeFile(t, filepath.Join(d, "head.json"), &head)
 
 	// Write some statuses
 	statuses := []scm.Status{
@@ -295,7 +277,7 @@ func TestFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, s := range statuses {
-		writeFile(filepath.Join(d, "status", s.Label+".json"), &s)
+		writeFile(t, filepath.Join(d, "status", s.Label+".json"), &s)
 	}
 
 	// Write some labels
@@ -330,7 +312,7 @@ func TestFromDisk(t *testing.T) {
 	manifest := make([]string, 0, len(comments))
 	for _, c := range comments {
 		id := strconv.Itoa(c.ID)
-		writeFile(filepath.Join(d, "comments", id+".json"), &c)
+		writeFile(t, filepath.Join(d, "comments", id+".json"), &c)
 		manifest = append(manifest, id)
 	}
 	writeManifest(t, manifest, filepath.Join(d, "comments", manifestPath))
@@ -668,18 +650,9 @@ func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
 		Head: head,
 	}
 
-	writeFile := func(p string, v interface{}) {
-		b, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	writeFile(filepath.Join(d, "base.json"), &base)
-	writeFile(filepath.Join(d, "head.json"), &head)
-	writeFile(filepath.Join(d, "pr.json"), &pr)
+	writeFile(t, filepath.Join(d, "base.json"), &base)
+	writeFile(t, filepath.Join(d, "head.json"), &head)
+	writeFile(t, filepath.Join(d, "pr.json"), &pr)
 
 	rsrc, err := FromDisk(d)
 	if err != nil {
@@ -690,4 +663,14 @@ func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
 		t.Errorf("FromDisk() returned sha `%s`, expected `%s`", rsrc.PR.Sha, expectedSha)
 	}
 
+}
+
+func writeFile(t *testing.T, p string, v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(p, b, 0700); err != nil {
+		t.Fatal(err)
+	}
 }
