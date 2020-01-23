@@ -72,7 +72,7 @@ spec:
       image: python
       script: |
         #!/usr/bin/env python3
-        v = '$(input.params.PARAM)'
+        v = '$(inputs.params.PARAM)'
         if v != 'param-value':
           print('Param values not applied')
           print('Got: ', v)
