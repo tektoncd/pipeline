@@ -7,6 +7,10 @@ spec:
     steps:
     - image: docker
       name: client
+      env:
+      # Connect to the sidecar over TCP without TLS.
+      - name: DOCKER_HOST
+        value: tcp://localhost:2375
       script: |
           #!/usr/bin/env sh
           # Run a Docker container.
@@ -28,12 +32,14 @@ spec:
         name: dind-socket
 
     sidecars:
-    # 18.09-dind seems to be the latest version of the image that works with
-    # this example. The next released image, 19.03-dind doesn't work.
-    - image: docker:18.09-dind
+    - image: docker:dind
       name: server
       securityContext:
         privileged: true
+      env:
+      # This disables TLS for TCP connections between the sidecar and client step.
+      - name: DOCKER_TLS_CERTDIR
+        value: ''
       volumeMounts:
       - mountPath: /var/run/
         name: dind-socket
