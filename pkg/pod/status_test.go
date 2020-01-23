@@ -699,11 +699,9 @@ func TestSortContainerStatuses(t *testing.T) {
 						},
 					},
 				}, {
-					Name: "my",
+					Name:  "my",
 					State: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{
-							FinishedAt: metav1.Time{Time: time.Now().Add(time.Second * 5)},
-						},
+						// No Terminated status, terminated == 0 (and no panic)
 					},
 				}, {
 					Name: "world",
@@ -722,7 +720,7 @@ func TestSortContainerStatuses(t *testing.T) {
 		gotNames = append(gotNames, status.Name)
 	}
 
-	want := []string{"world", "hello", "my"}
+	want := []string{"my", "world", "hello"}
 	if d := cmp.Diff(want, gotNames); d != "" {
 		t.Errorf("Unexpected step order (-want, +got): %s", d)
 	}
