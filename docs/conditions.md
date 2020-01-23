@@ -2,8 +2,6 @@
 
 This document defines `Conditions` and their capabilities.
 
-*NOTE*: This feature is currently a WIP being tracked in [#1137](https://github.com/tektoncd/pipeline/issues/1137)
-
 ---
 
 - [Syntax](#syntax)
