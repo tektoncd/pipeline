@@ -12,6 +12,7 @@ This document defines `Pipelines` and their capabilities.
     - [From](#from)
     - [RunAfter](#runAfter)
     - [Retries](#retries)
+    - [Conditions](#conditions)
 - [Ordering](#ordering)
 - [Examples](#examples)
 
