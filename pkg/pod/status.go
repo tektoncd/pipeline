@@ -257,7 +257,14 @@ func areStepsComplete(pod *corev1.Pod) bool {
 
 func sortContainerStatuses(podInstance *corev1.Pod) {
 	sort.Slice(podInstance.Status.ContainerStatuses, func(i, j int) bool {
-		return podInstance.Status.ContainerStatuses[i].State.Terminated.FinishedAt.Time.Before(podInstance.Status.ContainerStatuses[j].State.Terminated.FinishedAt.Time)
+		var ifinish, jfinish time.Time
+		if term := podInstance.Status.ContainerStatuses[i].State.Terminated; term != nil {
+			ifinish = term.FinishedAt.Time
+		}
+		if term := podInstance.Status.ContainerStatuses[j].State.Terminated; term != nil {
+			jfinish = term.FinishedAt.Time
+		}
+		return ifinish.Before(jfinish)
 	})
 
 }
