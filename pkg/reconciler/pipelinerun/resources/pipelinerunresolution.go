@@ -40,6 +40,9 @@ const (
 	// ReasonFailed indicates that the reason for the failure status is that one of the TaskRuns failed
 	ReasonFailed = "Failed"
 
+	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cencelled
+	ReasonCancelled = "Cancelled"
+
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
 	// completed successfully
 	ReasonSucceeded = "Succeeded"
@@ -102,6 +105,20 @@ func (t ResolvedPipelineRunTask) IsFailure() bool {
 	retriesDone := len(t.TaskRun.Status.RetriesStatus)
 	retries := t.PipelineTask.Retries
 	return c.IsFalse() && retriesDone >= retries
+}
+
+// IsCancelled returns true only if the taskrun itself has cancelled
+func (t ResolvedPipelineRunTask) IsCancelled() bool {
+	if t.TaskRun == nil {
+		return false
+	}
+
+	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	if c == nil {
+		return false
+	}
+
+	return c.IsFalse() && c.Reason == v1alpha1.TaskRunSpecStatusCancelled
 }
 
 func (state PipelineRunState) toMap() map[string]*ResolvedPipelineRunTask {
@@ -357,6 +374,16 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 
 	// A single failed task mean we fail the pipeline
 	for _, rprt := range state {
+		if rprt.IsCancelled() {
+			logger.Infof("TaskRun %s is cancelled, so PipelineRun %s is cancelled", rprt.TaskRunName, pr.Name)
+			return &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonCancelled,
+				Message: fmt.Sprintf("TaskRun %s has cencelled", rprt.TaskRun.Name),
+			}
+		}
+
 		if rprt.IsFailure() { //IsDone ensures we have crossed the retry limit
 			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed, retries done: %b", rprt.TaskRunName, pr.Name, len(rprt.TaskRun.Status.RetriesStatus))
 			return &apis.Condition{
