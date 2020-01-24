@@ -70,18 +70,61 @@ func TestResolveResourceRequests(t *testing.T) {
 			},
 		}},
 		want: []corev1.Container{{
-			// All zeroed out.
-			Resources: corev1.ResourceRequirements{Requests: allZeroQty()},
-		}, {
-			// Requests zeroed out, limits remain.
+			// ResourceCPU max request
 			Resources: corev1.ResourceRequirements{
-				Requests: allZeroQty(),
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("10"),
+					corev1.ResourceMemory:           zeroQty,
+					corev1.ResourceEphemeralStorage: zeroQty,
+				},
+			},
+		}, {
+			// ResourceMemory max request
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              zeroQty,
+					corev1.ResourceMemory:           resource.MustParse("10Gi"),
+					corev1.ResourceEphemeralStorage: zeroQty,
+				},
 				Limits: corev1.ResourceList{
 					corev1.ResourceMemory: resource.MustParse("11Gi"),
 				},
 			},
 		}, {
-			// Requests to the max, limits remain.
+			// ResourceEphemeralStorage max request
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              zeroQty,
+					corev1.ResourceMemory:           zeroQty,
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+	}, {
+		desc: "Max requests all with step2",
+		in: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("10"),
+					corev1.ResourceMemory:           resource.MustParse("10Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("11"),
+					corev1.ResourceMemory:           resource.MustParse("11Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("101Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("11Gi"),
+				},
+			},
+		}, {
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceCPU:              resource.MustParse("10"),
@@ -93,7 +136,75 @@ func TestResolveResourceRequests(t *testing.T) {
 				},
 			},
 		}},
-	}} {
+		want: []corev1.Container{{
+			// All zeroed out since step 2 has max requests
+			Resources: corev1.ResourceRequirements{
+				Requests: allZeroQty(),
+			},
+		}, {
+			// All max requests
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("11"),
+					corev1.ResourceMemory:           resource.MustParse("11Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("101Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("11Gi"),
+				},
+			},
+		}, {
+			// All zeroed out since step 2 has max requests
+			Resources: corev1.ResourceRequirements{
+				Requests: allZeroQty(),
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+	},
+		{
+			desc: "Only one step container with only memory request value filled out",
+			in: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("10Gi"),
+					},
+				},
+			}},
+			want: []corev1.Container{{
+				// ResourceMemory max request set. zeroQty for non set resources.
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              zeroQty,
+						corev1.ResourceMemory:           resource.MustParse("10Gi"),
+						corev1.ResourceEphemeralStorage: zeroQty,
+					},
+				},
+			}},
+		}, {
+			desc: "Only one step container with all request values filled out",
+			in: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("10"),
+						corev1.ResourceMemory:           resource.MustParse("10Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+					},
+				},
+			}},
+			want: []corev1.Container{{
+				// All max values set
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("10"),
+						corev1.ResourceMemory:           resource.MustParse("10Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+					},
+				},
+			}},
+		},
+	} {
 		t.Run(c.desc, func(t *testing.T) {
 			got := resolveResourceRequests(c.in)
 			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
