@@ -76,7 +76,7 @@ spec:
         if v != 'param-value':
           print('Param values not applied')
           print('Got: ', v)
-          quit()
+          exit(1)
 
     # Test that args are allowed and passed to the script as expected.
     - name: args-allowed
