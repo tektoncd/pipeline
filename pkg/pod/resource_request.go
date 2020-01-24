@@ -33,20 +33,36 @@ func allZeroQty() corev1.ResourceList {
 
 func resolveResourceRequests(containers []corev1.Container) []corev1.Container {
 	max := allZeroQty()
-	for _, c := range containers {
+	resourceNames := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage}
+	maxIndicesByResource := make(map[corev1.ResourceName]int, len(resourceNames))
+	for _, resourceName := range resourceNames {
+		maxIndicesByResource[resourceName] = -1
+	}
+
+	// Find max resource requests and associated list indices for
+	// containers for CPU, memory, and ephemeral storage resources
+	for i, c := range containers {
 		for k, v := range c.Resources.Requests {
 			if v.Cmp(max[k]) > 0 {
+				maxIndicesByResource[k] = i
 				max[k] = v
 			}
 		}
 	}
 
-	// Set resource requests for all steps but the last container to
-	// zero.
-	for i := range containers[:len(containers)-1] {
-		containers[i].Resources.Requests = allZeroQty()
+	// Set all non max resource requests to 0. Leave max request at index
+	// originally defined to account for limit of step.
+	for i := range containers {
+		if containers[i].Resources.Requests == nil {
+			containers[i].Resources.Requests = allZeroQty()
+			continue
+		}
+		for _, resourceName := range resourceNames {
+			if maxIndicesByResource[resourceName] != i {
+				containers[i].Resources.Requests[resourceName] = zeroQty
+			}
+		}
 	}
-	// Set the last container's request to the max of all resources.
-	containers[len(containers)-1].Resources.Requests = max
+
 	return containers
 }

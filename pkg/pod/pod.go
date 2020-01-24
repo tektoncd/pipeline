@@ -119,7 +119,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
-	// Zero out non-max resource requests, move max resource requests to the last step.
+	// Zero out non-max resource requests.
 	stepContainers = resolveResourceRequests(stepContainers)
 
 	// Add implicit env vars.
