@@ -79,14 +79,7 @@ type TaskSpec struct {
 }
 
 // TaskResult used to describe the results of a task
-type TaskResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Description is a human-readable description of the result
-	// +optional
-	Description string `json:"description"`
-}
+type TaskResult = v1alpha2.TaskResult
 
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
