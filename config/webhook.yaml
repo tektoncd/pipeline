@@ -23,6 +23,7 @@ metadata:
   labels:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: webhook-controller
+    tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
@@ -32,6 +33,7 @@ spec:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+        tekton.dev/release: "devel"
       labels:
         app: tekton-pipelines-webhook
         app.kubernetes.io/name: tekton-pipelines
