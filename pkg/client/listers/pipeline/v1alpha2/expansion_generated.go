@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha2
 
+// ClusterTaskListerExpansion allows custom methods to be added to
+// ClusterTaskLister.
+type ClusterTaskListerExpansion interface{}
+
 // PipelineListerExpansion allows custom methods to be added to
 // PipelineLister.
 type PipelineListerExpansion interface{}

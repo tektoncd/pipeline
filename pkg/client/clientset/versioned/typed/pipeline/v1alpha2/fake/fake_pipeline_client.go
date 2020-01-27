@@ -28,6 +28,10 @@ type FakeTektonV1alpha2 struct {
 	*testing.Fake
 }
 
+func (c *FakeTektonV1alpha2) ClusterTasks() v1alpha2.ClusterTaskInterface {
+	return &FakeClusterTasks{c}
+}
+
 func (c *FakeTektonV1alpha2) Pipelines(namespace string) v1alpha2.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }
