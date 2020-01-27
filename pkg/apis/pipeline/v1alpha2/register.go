@@ -50,17 +50,15 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TaskList{},
 		&Pipeline{},
 		&PipelineList{},
+		&TaskRun{},
+		&TaskRunList{},
 	)
 	// &Condition{},
 	// &ConditionList{},
 	// &ClusterTask{},
 	// &ClusterTaskList{},
-	// &TaskRun{},
-	// &TaskRunList{},
 	// &PipelineRun{},
 	// &PipelineRunList{},
-	// &PipelineResource{},
-	// &PipelineResourceList{},
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
