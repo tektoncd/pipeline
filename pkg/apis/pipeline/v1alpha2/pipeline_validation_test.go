@@ -562,6 +562,52 @@ func TestPipeline_Validate(t *testing.T) {
 			},
 		},
 		failureExpected: true,
+	}, {
+		name: "unused pipeline spec workspaces do not cause an error",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha2.PipelineSpec{
+				Tasks: []v1alpha2.PipelineTask{{
+					Name: "foo", TaskRef: &v1alpha2.TaskRef{Name: "foo"},
+				}},
+				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+					Name: "foo",
+				}, {
+					Name: "bar",
+				}},
+			},
+		},
+		failureExpected: false,
+	}, {
+		name: "workspace bindings relying on a non-existent pipeline workspace cause an error",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha2.PipelineSpec{
+				Tasks: []v1alpha2.PipelineTask{{
+					Name: "foo", TaskRef: &v1alpha2.TaskRef{Name: "foo"},
+					Workspaces: []v1alpha2.WorkspacePipelineTaskBinding{{
+						Name:      "taskWorkspaceName",
+						Workspace: "pipelineWorkspaceName",
+					}},
+				}},
+				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+					Name: "foo",
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "multiple workspaces sharing the same name are not allowed",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"}, Spec: v1alpha2.PipelineSpec{
+				Workspaces: []v1alpha2.WorkspacePipelineDeclaration{{
+					Name: "foo",
+				}, {
+					Name: "foo",
+				}},
+			},
+		},
+		failureExpected: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

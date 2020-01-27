@@ -382,6 +382,11 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]WorkspacePipelineDeclaration, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -447,6 +452,11 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]WorkspacePipelineTaskBinding, len(*in))
+		copy(*out, *in)
 	}
 	return
 }
