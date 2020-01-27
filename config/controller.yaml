@@ -19,6 +19,7 @@ metadata:
   labels:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: controller
+    tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
