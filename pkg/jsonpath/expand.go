@@ -26,14 +26,11 @@ import (
 
 var (
 	// expandRE captures the strings $$ (e.g. escaped dollar-sign) and those enclosed in $() (e.g. Tekton expression)
-	expandRE = regexp.MustCompile(`\$\$|\$\((?:[^)]+)\)`)
+	// This regex currently will only accept one-level of filter-expression e.g. nested (...) expressions but not (...(...))
+	expandRE = regexp.MustCompile(`\$\$|\$\((?:[^()]|\([^()]*\))+\)`)
 	// the list of valid Tekton JSONPath prefixes
 	expressionPrefix = regexp.MustCompile(`^[$.[@'"]`)
 )
-
-func debugError(err error) {
-	// TODO: need a sensible way to log/support these recverable bad or not found expression errors if in debug mode
-}
 
 // createExpression takes a Tekton expression of the form $(...) and turns it into a hopefully valid Kubernets JSONPath expression
 func createExpression(variable string) string {
@@ -88,20 +85,21 @@ func expandStringAsList(input string, context interface{}) ([]interface{}, error
 		expanded, err := expandVariable(match, context)
 		// if there is a problem we return the original string (consistent with Kubernetes containter env expansion)
 		if err != nil {
-			debugError(err)
-			return []interface{}{match}, nil
+			return []interface{}{}, err
 		}
 		return expanded, nil
 	}
+	var expandError error = nil
 	expandedTemplate := expandRE.ReplaceAllStringFunc(input, func(match string) string {
 		// escape double-dollars as a single dollar
 		if match == "$$" {
 			return "$"
 		}
 		expanded, err := expandVariable(match, context)
-		// if there is a problem we return the original string (consistent with Kubernetes containter env expansion)
 		if err != nil {
-			debugError(err)
+			if expandError == nil {
+				expandError = err
+			}
 			return match
 		}
 		// unless expanded in the context of an array we only want the first list item
@@ -116,13 +114,17 @@ func expandStringAsList(input string, context interface{}) ([]interface{}, error
 
 		// all other types are json marshalled
 		b, err := json.Marshal(result)
-		// if there is a problem we return the original string (consistent with Kubernetes containter env expansion)
 		if err != nil {
-			debugError(err)
+			if expandError == nil {
+				expandError = err
+			}
 			return match
 		}
 		return string(b)
 	})
+	if expandError != nil {
+		return nil, expandError
+	}
 	return []interface{}{expandedTemplate}, nil
 }
 
