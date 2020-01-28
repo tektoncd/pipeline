@@ -157,7 +157,10 @@ func TestExpand(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s", test.input), func(t *testing.T) {
-			result, _ := Expand(test.input, context)
+			result, err := Expand(test.input, context)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if !reflect.DeepEqual(result, test.expected) {
 				t.Errorf("expandVariable() for %v - expected %v (%T) but was %v (%T).", test.input, test.expected, test.expected, result, result)
 			}
@@ -175,10 +178,12 @@ func TestContainerEnvMapping(t *testing.T) {
 		"VAR_EMPTY": "",
 	}
 
+	var expectedError error
+
 	cases := []struct {
 		name     string
 		input    string
-		expected string
+		expected interface{}
 	}{
 		{
 			name:     "whole string",
@@ -243,12 +248,12 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "nested var references",
 			input:    "$(VAR_A$(VAR_B))",
-			expected: "$(VAR_A$(VAR_B))",
+			expected: expectedError, //"$(VAR_A$(VAR_B))" -- in Tekton this is a bad JSONPath expression
 		},
 		{
 			name:     "nested var references second type",
 			input:    "$(VAR_A$(VAR_B)",
-			expected: "$(VAR_A$(VAR_B)",
+			expected: "$(VAR_AB", //"$(VAR_A$(VAR_B)"
 		},
 		{
 			name:     "value is a reference",
@@ -288,7 +293,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "undefined vars are passed through",
 			input:    "$(VAR_DNE)",
-			expected: "$(VAR_DNE)",
+			expected: expectedError, //"$(VAR_DNE)" -- in Tekton a missing key is an error
 		},
 		{
 			name:     "multiple (even) operators, var undefined",
@@ -303,7 +308,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "multiple (odd) operators, var undefined",
 			input:    "$$$$$$$(GOOD_ODDS)",
-			expected: "$$$$(GOOD_ODDS)",
+			expected: expectedError, //"$$$$(GOOD_ODDS)" -- in Tekton a missing key is an error
 		},
 		{
 			name:     "multiple (odd) operators, var defined",
@@ -357,8 +362,8 @@ func TestContainerEnvMapping(t *testing.T) {
 		},
 		{
 			name:     "escaped operators in variable names are not escaped",
-			input:    "$(foo$$var)",
-			expected: "$(foo$$var)",
+			input:    "$('foo$$var')",
+			expected: "foo$$var", //"$(foo$$var)" -- (reworked to test case) in Tekton a missing key is an error
 		},
 		{
 			name:     "newline not expanded",
@@ -366,14 +371,18 @@ func TestContainerEnvMapping(t *testing.T) {
 			expected: "\n",
 		},
 	}
-
 	for _, tc := range cases {
-		expanded, err := Expand(tc.input, context)
-		if err != nil {
-			t.Error(err)
-		}
-		if e, a := tc.expected, expanded; e != a {
-			t.Errorf("%v: expected %q, got %q", tc.name, e, a)
-		}
+		t.Run(fmt.Sprintf("%s", tc.name), func(t *testing.T) {
+			result, err := Expand(tc.input, context)
+			if err != nil {
+				if tc.expected == expectedError {
+					return
+				}
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("expandVariable() for %v - expected %v (%T) but was %v (%T).", tc.input, tc.expected, tc.expected, result, result)
+			}
+		})
 	}
 }
