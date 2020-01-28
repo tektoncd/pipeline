@@ -363,7 +363,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "escaped operators in variable names are not escaped",
 			input:    "$('foo$$var')",
-			expected: "foo$$var", //"$(foo$$var)" -- (reworked to test case) in Tekton a missing key is an error
+			expected: "foo$$var", //"$(foo$$var)" -- (reworked valid testcase) in Tekton a missing key is an error
 		},
 		{
 			name:     "newline not expanded",
