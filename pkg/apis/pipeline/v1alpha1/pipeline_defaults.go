@@ -30,8 +30,10 @@ func (p *Pipeline) SetDefaults(ctx context.Context) {
 
 func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	for _, pt := range ps.Tasks {
-		if pt.TaskRef.Kind == "" {
-			pt.TaskRef.Kind = NamespacedTaskKind
+		if pt.TaskRef != nil {
+			if pt.TaskRef.Kind == "" {
+				pt.TaskRef.Kind = NamespacedTaskKind
+			}
 		}
 	}
 	for i := range ps.Params {
