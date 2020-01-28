@@ -54,7 +54,6 @@ func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 		expectedPVCName string
 	}{{
 		name: "invalid owner reference",
-		// tr: tb.TaskRun(tb.WithOwnerReference(tb.OwnerKind("SomeOtherOwner")))
 		tr: &v1alpha2.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				OwnerReferences: []metav1.OwnerReference{{
