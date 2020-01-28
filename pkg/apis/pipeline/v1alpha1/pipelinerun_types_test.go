@@ -229,25 +229,25 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 		saNames map[string]string
 	}{
 		{
-			"default SA",
-			tb.PipelineRun("pr", "ns",
+			name: "default SA",
+			pr: tb.PipelineRun("pr", "ns",
 				tb.PipelineRunSpec("prs",
 					tb.PipelineRunServiceAccountName("defaultSA"),
 					tb.PipelineRunServiceAccountNameTask("taskName", "taskSA"))),
-			map[string]string{
+			saNames: map[string]string{
 				"unknown":  "defaultSA",
 				"taskName": "taskSA",
 			},
 		},
 		{
-			"mixed default SA",
-			tb.PipelineRun("defaultSA", "defaultSA",
+			name: "mixed default SA",
+			pr: tb.PipelineRun("defaultSA", "defaultSA",
 				tb.PipelineRunSpec("defaultSA",
 					tb.PipelineRunServiceAccountName("defaultSA"),
 					tb.PipelineRunServiceAccountNameTask("task1", "task1SA"),
 					tb.PipelineRunServiceAccountNameTask("task2", "task2SA"),
 				)),
-			map[string]string{
+			saNames: map[string]string{
 				"unknown": "defaultSA",
 				"task1":   "task1SA",
 				"task2":   "task2SA",
