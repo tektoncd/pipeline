@@ -120,7 +120,7 @@ func NewRecorder() (*Recorder, error) {
 	}
 	r.pod = pod
 
-	if err := view.Register(
+	err = view.Register(
 		&view.View{
 			Description: trDuration.Description(),
 			Measure:     trDuration,
@@ -150,7 +150,9 @@ func NewRecorder() (*Recorder, error) {
 			Aggregation: view.LastValue(),
 			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
 		},
-	); err != nil {
+	)
+
+	if err != nil {
 		r.initialized = false
 		return r, err
 	}
@@ -255,15 +257,9 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1alpha1.TaskRun) error
 		return errors.New("ignoring the metrics recording for pod , failed to initialize the metrics recorder")
 	}
 
-	var scheduledTime metav1.Time
-	for _, c := range pod.Status.Conditions {
-		if c.Type == corev1.PodScheduled {
-			scheduledTime = c.LastTransitionTime
-			break
-		}
-	}
+	scheduledTime := getScheduledTime(pod)
 	if scheduledTime.IsZero() {
-		return errors.New("pod was never scheduled")
+		return errors.New("pod has never got scheduled")
 	}
 
 	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
@@ -286,4 +282,14 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1alpha1.TaskRun) error
 	metrics.Record(ctx, podLatency.M(float64(latency)))
 
 	return nil
+}
+
+func getScheduledTime(pod *corev1.Pod) metav1.Time {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.LastTransitionTime
+		}
+	}
+
+	return metav1.Time{}
 }
