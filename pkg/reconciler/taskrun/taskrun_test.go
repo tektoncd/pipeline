@@ -1267,7 +1267,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 	if d := cmp.Diff(taskSt, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Did not get expected conditon (-want, +got): %v", d)
+		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
 	}
 }
 
