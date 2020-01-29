@@ -61,7 +61,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	t.Logf("Creating Secret %s", bucketSecretName)
 	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getBucketSecret(t, configFilePath, namespace)); err != nil {
-		t.Fatalf("Failed to create Secret `%s`: %s", bucketSecretName, err)
+		t.Fatalf("Failed to create Secret %q: %v", bucketSecretName, err)
 	}
 	defer deleteBucketSecret(c, t, namespace)
 
