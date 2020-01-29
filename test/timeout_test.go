@@ -181,58 +181,6 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 }
 
-func TestPipelineRunFailedAndRetry(t *testing.T) {
-	numberOfRetries := 2
-	c, namespace := setup(t)
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
-
-	t.Logf("Creating Task in namespace %s", namespace)
-	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1")),
-	))
-	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
-	}
-
-	pipeline := tb.Pipeline("tomatoes", namespace,
-		tb.PipelineSpec(tb.PipelineTask("foo", "banana", tb.Retries(numberOfRetries))),
-	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
-	if _, err := c.PipelineClient.Create(pipeline); err != nil {
-		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
-	}
-	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
-	}
-
-	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunRunning"); err != nil {
-		t.Fatalf("Error waiting for PipelineRun %s to be failed: %s", pipelineRun.Name, err)
-	}
-
-	r, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Error getting pipeline %s", pipelineRun.Name)
-	}
-
-	if len(r.Status.TaskRuns) != 1 {
-		t.Fatalf("Only one TaskRun is expected, but got %d", len(r.Status.TaskRuns))
-	}
-
-	for taskRunName := range r.Status.TaskRuns {
-		taskrun, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Error getting task run %s", taskRunName)
-		}
-		if len(taskrun.Status.RetriesStatus) != numberOfRetries {
-			t.Fatalf("expected %d retry, but got %d", numberOfRetries, len(r.Status.TaskRuns))
-		}
-	}
-}
-
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
 	c, namespace := setup(t)
