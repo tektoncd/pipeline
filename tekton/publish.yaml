@@ -98,8 +98,8 @@ spec:
     command: ["mkdir"]
     args:
     - "-p"
-    - "/workspace/output/bucket/latest/"
-    - "/workspace/output/bucket/previous/"
+    - "/workspace/output/bucket/pipeline/latest/"
+    - "/workspace/output/bucket/pipeline/previous/"
 
   - name: run-ko
     # FIXME(vdemeester) use a tagged version once 0.2 is released
@@ -160,9 +160,9 @@ spec:
       #!/bin/sh
       set -ex
 
-      mkdir -p /workspace/output/bucket/previous/$(inputs.params.versionTag)/
-      cp /workspace/output/bucket/latest/release.yaml /workspace/output/bucket/previous/$(inputs.params.versionTag)/release.yaml
-      cp /workspace/output/bucket/latest/release.notags.yaml /workspace/output/bucket/previous/$(inputs.params.versionTag)/release.notags.yaml
+      mkdir -p /workspace/output/bucket/pipeline/previous/$(inputs.params.versionTag)/
+      cp /workspace/output/bucket/latest/release.yaml /workspace/output/bucket/pipeline/previous/$(inputs.params.versionTag)/release.yaml
+      cp /workspace/output/bucket/latest/release.notags.yaml /workspace/output/bucket/pipeline/previous/$(inputs.params.versionTag)/release.notags.yaml
 
   - name: tag-images
     image: google/cloud-sdk
