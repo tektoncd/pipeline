@@ -163,7 +163,7 @@ func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
 		for _, op := range ops {
 			op(&c)
 		}
-		spec.Sidecars = append(spec.Sidecars, c)
+		spec.Sidecars = append(spec.Sidecars, v1alpha1.Sidecar{Container: c})
 	}
 }
 

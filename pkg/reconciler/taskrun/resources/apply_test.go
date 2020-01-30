@@ -64,13 +64,15 @@ var (
 				},
 			}},
 		},
-		Sidecars: []corev1.Container{{
-			Name:  "foo",
-			Image: "$(inputs.params.myimage)",
-			Env: []corev1.EnvVar{{
+		Sidecars: []v1alpha1.Sidecar{{
+			Container: corev1.Container{
 				Name:  "foo",
-				Value: "$(inputs.params.FOO)",
-			}},
+				Image: "$(inputs.params.myimage)",
+				Env: []corev1.EnvVar{{
+					Name:  "foo",
+					Value: "$(inputs.params.FOO)",
+				}},
+			},
 		}},
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
@@ -527,8 +529,8 @@ func TestApplyParameters(t *testing.T) {
 		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
 		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
 
-		spec.Sidecars[0].Image = "bar"
-		spec.Sidecars[0].Env[0].Value = "world"
+		spec.Sidecars[0].Container.Image = "bar"
+		spec.Sidecars[0].Container.Env[0].Value = "world"
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(got, want); d != "" {

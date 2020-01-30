@@ -277,7 +277,7 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 	}
 	if in.Sidecars != nil {
 		in, out := &in.Sidecars, &out.Sidecars
-		*out = make([]v1.Container, len(*in))
+		*out = make([]Step, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
