@@ -533,6 +533,16 @@ volumes:
     emptyDir: {}
 ```
 
+Sidecars can also run a script, like a Step:
+
+```yaml
+sidecars:
+  image: busybox
+  name: hello-sidecar
+  script: |
+    echo 'Hello from sidecar!'
+```
+
 Note: There is a known bug with Tekton's existing sidecar implementation.
 Tekton uses a specific image, called "nop", to stop sidecars. The "nop" image
 is configurable using a flag of the Tekton controller. If the configured "nop"
