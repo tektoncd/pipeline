@@ -62,7 +62,7 @@ func TestTaskRunRetry(t *testing.T) {
 	}
 
 	// Wait for the PipelineRun to fail, when retries are exhausted.
-	if err := WaitForPipelineRunState(c, pipelineRunName, time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Waiting for PipelineRun to fail: %v", err)
 	}
 
