@@ -23,7 +23,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: tekton-bucket
+  name: pipeline-tekton-bucket
 spec:
   type: storage
   params:
@@ -37,7 +37,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: tekton-bucket-nightly
+  name: pipeline-tekton-bucket-nightly
 spec:
   type: storage
   params:

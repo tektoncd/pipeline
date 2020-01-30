@@ -126,7 +126,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
 		--resource=source-repo=${GIT_RESOURCE_NAME} \
-		--resource=bucket=tekton-bucket \
+		--resource=bucket=pipeline-tekton-bucket \
 		--resource=builtBaseImage=base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
 		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
