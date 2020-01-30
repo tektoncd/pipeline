@@ -33,32 +33,28 @@ import (
 )
 
 func TestUninitializedMetrics(t *testing.T) {
-	metrics := Recorder{
-		initialized: false,
-	}
+	metrics := Recorder{}
 
-	if err := metrics.DurationAndCount(&v1alpha1.TaskRun{}); err == nil {
-		t.Error("DurationAndCount wanted error, got nil")
-	}
-	if err := metrics.RunningTaskRuns(nil); err == nil {
-		t.Error("DurationAndCount wanted error, got nil")
-	}
-	if err := metrics.RecordPodLatency(nil, nil); err == nil {
-		t.Error("DurationAndCount wanted error, got nil")
-	}
+	durationCountError := metrics.DurationAndCount(&v1alpha1.TaskRun{})
+	taskrunsCountError := metrics.RunningTaskRuns(nil)
+	podLatencyError := metrics.RecordPodLatency(nil, nil)
+
+	assertErrNotNil(durationCountError, "DurationCount recording expected to return error but got nil", t)
+	assertErrNotNil(taskrunsCountError, "Current TaskrunsCount recording expected to return error but got nil", t)
+	assertErrNotNil(podLatencyError, "Pod Latency recording expected to return error but got nil", t)
 }
 
 func TestRecordTaskrunDurationCount(t *testing.T) {
 	startTime := time.Now()
 
-	for _, c := range []struct {
-		desc             string
+	testData := []struct {
+		name             string
 		taskRun          *v1alpha1.TaskRun
 		expectedTags     map[string]string
 		expectedDuration float64
 		expectedCount    int64
 	}{{
-		desc: "for_succeeded_task",
+		name: "for_succeeded_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
@@ -80,7 +76,7 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 	}, {
-		desc: "for_failed_task",
+		name: "for_failed_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
@@ -101,20 +97,20 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
+	}}
+
+	for _, test := range testData {
+		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()
 
 			metrics, err := NewRecorder()
-			if err != nil {
-				t.Fatalf("NewRecorder: %v", err)
-			}
+			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			if err := metrics.DurationAndCount(c.taskRun); err != nil {
-				t.Fatalf("DurationAndCount: %v", err)
-			}
-			metricstest.CheckDistributionData(t, "taskrun_duration_seconds", c.expectedTags, 1, c.expectedDuration, c.expectedDuration)
-			metricstest.CheckCountData(t, "taskrun_count", c.expectedTags, c.expectedCount)
+			err = metrics.DurationAndCount(test.taskRun)
+			assertErrIsNil(err, "DurationAndCount recording got an error", t)
+			metricstest.CheckDistributionData(t, "taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
+			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
+
 		})
 	}
 }
@@ -122,14 +118,14 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 	startTime := time.Now()
 
-	for _, c := range []struct {
-		desc             string
+	testData := []struct {
+		name             string
 		taskRun          *v1alpha1.TaskRun
 		expectedTags     map[string]string
 		expectedDuration float64
 		expectedCount    int64
 	}{{
-		desc: "for_succeeded_task",
+		name: "for_succeeded_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
@@ -155,7 +151,7 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 	}, {
-		desc: "for_failed_task",
+		name: "for_failed_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
@@ -180,20 +176,19 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
+	}}
+
+	for _, test := range testData {
+		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()
-
 			metrics, err := NewRecorder()
-			if err != nil {
-				t.Fatalf("NewRecorder: %v", err)
-			}
+			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			if err := metrics.DurationAndCount(c.taskRun); err != nil {
-				t.Fatalf("DurationAndCount: %v", err)
-			}
-			metricstest.CheckDistributionData(t, "pipelinerun_taskrun_duration_seconds", c.expectedTags, 1, c.expectedDuration, c.expectedDuration)
-			metricstest.CheckCountData(t, "taskrun_count", c.expectedTags, c.expectedCount)
+			err = metrics.DurationAndCount(test.taskRun)
+			assertErrIsNil(err, "DurationAndCount recording got an error", t)
+			metricstest.CheckDistributionData(t, "pipelinerun_taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
+			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
+
 		})
 	}
 }
@@ -208,27 +203,24 @@ func TestRecordRunningTaskrunsCount(t *testing.T) {
 	addTaskruns(informer, "taskrun-3", "task-3", "ns", corev1.ConditionFalse, t)
 
 	metrics, err := NewRecorder()
-	if err != nil {
-		t.Fatalf("NewRecorder: %v", err)
-	}
+	assertErrIsNil(err, "Recorder initialization failed", t)
 
-	if err := metrics.RunningTaskRuns(informer.Lister()); err != nil {
-		t.Fatalf("RunningTaskRuns: %v", err)
-	}
+	err = metrics.RunningTaskRuns(informer.Lister())
+	assertErrIsNil(err, "RunningTaskRuns recording expected to return nil but got error", t)
 	metricstest.CheckLastValueData(t, "running_taskruns_count", map[string]string{}, 1)
 }
 
 func TestRecordPodLatency(t *testing.T) {
 	creationTime := time.Now()
-	for _, c := range []struct {
-		desc           string
+	testData := []struct {
+		name           string
 		pod            *corev1.Pod
 		taskRun        *v1alpha1.TaskRun
 		expectedTags   map[string]string
 		expectedValue  float64
 		expectingError bool
 	}{{
-		desc: "for_scheduled_pod",
+		name: "for_scheduled_pod",
 		pod: tb.Pod("test-taskrun-pod-123456", "foo",
 			tb.PodCreationTimestamp(creationTime),
 			tb.PodStatus(
@@ -250,7 +242,7 @@ func TestRecordPodLatency(t *testing.T) {
 		},
 		expectedValue: 4e+09,
 	}, {
-		desc: "for_non_scheduled_pod",
+		name: "for_non_scheduled_pod",
 		pod: tb.Pod("test-taskrun-pod-123456", "foo",
 			tb.PodCreationTimestamp(creationTime),
 		),
@@ -260,31 +252,30 @@ func TestRecordPodLatency(t *testing.T) {
 			),
 		),
 		expectingError: true,
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
+	}}
+
+	for _, td := range testData {
+		t.Run(td.name, func(t *testing.T) {
 			unregisterMetrics()
 
 			metrics, err := NewRecorder()
-			if err != nil {
-				t.Fatalf("Recorder initialization failed: %v", err)
-			}
+			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			if err := metrics.RecordPodLatency(c.pod, c.taskRun); c.expectingError {
-				if err == nil {
-					t.Fatal("RecordPodLatency wanted error, got nil")
-				}
+			err = metrics.RecordPodLatency(td.pod, td.taskRun)
+			if td.expectingError {
+				assertErrNotNil(err, "Pod Latency recording expected to return error but got nil", t)
 				return
-			} else if err != nil {
-				t.Fatalf("RecordPodLatency: %v", err)
 			}
-			metricstest.CheckLastValueData(t, "taskruns_pod_latency", c.expectedTags, c.expectedValue)
+			assertErrIsNil(err, "RecordPodLatency recording expected to return nil but got error", t)
+			metricstest.CheckLastValueData(t, "taskruns_pod_latency", td.expectedTags, td.expectedValue)
+
 		})
 	}
 
 }
 
 func addTaskruns(informer alpha1.TaskRunInformer, taskrun, task, ns string, status corev1.ConditionStatus, t *testing.T) {
-	if err := informer.Informer().GetIndexer().Add(tb.TaskRun(taskrun, ns,
+	err := informer.Informer().GetIndexer().Add(tb.TaskRun(taskrun, ns,
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(task),
 		),
@@ -293,8 +284,24 @@ func addTaskruns(informer alpha1.TaskRunInformer, taskrun, task, ns string, stat
 				Type:   apis.ConditionSucceeded,
 				Status: status,
 			}),
-		))); err != nil {
+		)))
+
+	if err != nil {
 		t.Error("Failed to add the taskrun")
+	}
+}
+
+func assertErrIsNil(err error, message string, t *testing.T) {
+	t.Helper()
+	if err != nil {
+		t.Errorf(message)
+	}
+}
+
+func assertErrNotNil(err error, message string, t *testing.T) {
+	t.Helper()
+	if err == nil {
+		t.Errorf(message)
 	}
 }
 

@@ -25,7 +25,7 @@ entire Kubernetes cluster.
   - [Volumes](#volumes)
   - [Workspaces](#workspaces)
   - [Step Template](#step-template)
-  - [Results] (#results)
+  - [Results](#results)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
 - [Debugging Tips](#debugging)

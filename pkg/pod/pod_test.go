@@ -436,10 +436,16 @@ func TestMakePod(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env:                    implicitEnvVars,
-				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:   pipeline.WorkspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("8"),
+						corev1.ResourceMemory:           zeroQty,
+						corev1.ResourceEphemeralStorage: zeroQty,
+					},
+				},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
 				Name:    "step-unnamed-1",
@@ -461,7 +467,7 @@ func TestMakePod(t *testing.T) {
 				WorkingDir:   pipeline.WorkspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("8"),
+						corev1.ResourceCPU:              zeroQty,
 						corev1.ResourceMemory:           resource.MustParse("100Gi"),
 						corev1.ResourceEphemeralStorage: zeroQty,
 					},

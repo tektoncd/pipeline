@@ -1,0 +1,139 @@
+// +build e2e
+
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	knativetest "knative.dev/pkg/test"
+)
+
+// TestTaskRunRetry tests that retries behave as expected, by creating multiple
+// Pods for the same TaskRun each time it fails, up to the configured max.
+func TestTaskRunRetry(t *testing.T) {
+	c, namespace := setup(t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	// Create a PipelineRun with a single TaskRun that can only fail,
+	// configured to retry 5 times.
+	pipelineRunName := "retry-pipeline"
+	numRetries := 5
+	if _, err := c.PipelineRunClient.Create(&v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineSpec: &v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "retry-me",
+					TaskSpec: &v1alpha1.TaskSpec{
+						Steps: []v1alpha1.Step{{
+							Container: corev1.Container{Image: "busybox"},
+							Script:    "exit 1",
+						}},
+					},
+					Retries: numRetries,
+				}},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
+	}
+
+	// Wait for the PipelineRun to fail, when retries are exhausted.
+	if err := WaitForPipelineRunState(c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
+		t.Fatalf("Waiting for PipelineRun to fail: %v", err)
+	}
+
+	// Get the status of the PipelineRun.
+	pr, err := c.PipelineRunClient.Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
+	}
+
+	// PipelineRunStatus should have 1 TaskRun status, and it should be failed.
+	if len(pr.Status.TaskRuns) != 1 {
+		t.Errorf("Got %d TaskRun statuses, wanted %d", len(pr.Status.TaskRuns), numRetries)
+	}
+	for taskRunName, trs := range pr.Status.TaskRuns {
+		if !isFailed(t, taskRunName, trs.Status.Conditions) {
+			t.Errorf("TaskRun status %q is not failed", taskRunName)
+		}
+	}
+
+	// There should only be one TaskRun created.
+	trs, err := c.TaskRunClient.List(metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("Failed to list TaskRuns: %v", err)
+	} else if len(trs.Items) != 1 {
+		t.Errorf("Found %d TaskRuns, want 1", len(trs.Items))
+	}
+
+	// The TaskRun status should have N retriesStatuses, all failures.
+	tr := trs.Items[0]
+	podNames := map[string]struct{}{}
+	for idx, r := range tr.Status.RetriesStatus {
+		if !isFailed(t, tr.Name, r.Conditions) {
+			t.Errorf("TaskRun %q retry status %d is not failed", tr.Name, idx)
+		}
+		podNames[r.PodName] = struct{}{}
+	}
+	if len(tr.Status.RetriesStatus) != numRetries {
+		t.Errorf("TaskRun %q had %d retriesStatuses, want %d", tr.Name, len(tr.Status.RetriesStatus), numRetries)
+	}
+
+	// There should be N Pods created, all failed, all owned by the TaskRun.
+	pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failed to list Pods: %v", err)
+	} else if len(pods.Items) != numRetries {
+		// TODO: Make this an error.
+		t.Logf("BUG: Found %d Pods, want %d", len(pods.Items), numRetries)
+	}
+	for _, p := range pods.Items {
+		if _, found := podNames[p.Name]; !found {
+			// TODO: Make this an error.
+			t.Logf("BUG: TaskRunStatus.RetriesStatus did not report pod name %q", p.Name)
+		}
+		if p.Status.Phase != corev1.PodFailed {
+			// TODO: Make this an error.
+			t.Logf("BUG: Pod %q is not failed: %v", p.Name, p.Status.Phase)
+		}
+	}
+}
+
+// This method is necessary because PipelineRunTaskRunStatus and TaskRunStatus
+// don't have an IsFailed method.
+func isFailed(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+	for _, c := range conds {
+		if c.Type == apis.ConditionSucceeded {
+			if c.Status != corev1.ConditionFalse {
+				t.Errorf("TaskRun status %q is not failed, got %q", taskRunName, c.Status)
+			}
+			return true
+		}
+	}
+	t.Errorf("TaskRun status %q had no Succeeded condition", taskRunName)
+	return false
+}

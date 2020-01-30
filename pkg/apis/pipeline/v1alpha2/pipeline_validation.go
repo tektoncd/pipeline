@@ -189,6 +189,39 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	// Validate the pipeline's workspaces.
+	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []PipelineTask) *apis.FieldError {
+	// Workspace names must be non-empty and unique.
+	wsTable := make(map[string]struct{})
+	for i, ws := range wss {
+		if ws.Name == "" {
+			return apis.ErrInvalidValue(fmt.Sprintf("workspace %d has empty name", i), "spec.workspaces")
+		}
+		if _, ok := wsTable[ws.Name]; ok {
+			return apis.ErrInvalidValue(fmt.Sprintf("workspace with name %q appears more than once", ws.Name), "spec.workspaces")
+		}
+		wsTable[ws.Name] = struct{}{}
+	}
+
+	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's
+	// Workspaces list.
+	for ptIdx, pt := range pts {
+		for wsIdx, ws := range pt.Workspaces {
+			if _, ok := wsTable[ws.Workspace]; !ok {
+				return apis.ErrInvalidValue(
+					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
+					fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
+				)
+			}
+		}
+	}
 	return nil
 }
 

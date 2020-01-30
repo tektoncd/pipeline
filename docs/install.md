@@ -107,7 +107,7 @@ for more information_
    ```bash
    oc new-project tekton-pipelines
    oc adm policy add-scc-to-user anyuid -z tekton-pipelines-controller
-   oc apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+   oc apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
 
    _See
@@ -199,6 +199,8 @@ The example below overrides the following :
 - the default timeout (60 minutes) to 20 minutes
 - the default pod template to include an annotation preventing clusterautoscaler to evict a running task pod
 (see [here](./taskruns.md#pod-template) or [here](./pipelineruns.md#pod-template) for more infos on pod templates)
+- the default `app.kuberrnetes.io/managed-by` label applied to all Pods created
+  to execute `TaskRun`s.
 
 ```yaml
 apiVersion: v1
@@ -211,6 +213,7 @@ data:
   default-pod-template: |
     annotations:
       cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+  default-managed-by-label-value: "my-tekton-installation"
 ```
 
 *NOTE:* The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
