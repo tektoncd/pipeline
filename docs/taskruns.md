@@ -21,7 +21,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Workspaces](#workspaces)
 - [Status](#status)
   - [Steps](#steps)
-  - [Task Results] (#results)
+  - [Task Results](#results)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
 - [Sidecars](#sidecars)
