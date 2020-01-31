@@ -23,21 +23,23 @@ metadata:
   labels:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: webhook-controller
-    tekton.dev/release: "devel"
+    pipeline.tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: tekton-pipelines-webhook
+      role: webhook
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
-        tekton.dev/release: "devel"
       labels:
         app: tekton-pipelines-webhook
+        role: webhook
         app.kubernetes.io/name: tekton-pipelines
         app.kubernetes.io/component: webhook-controller
+        pipeline.tekton.dev/release: "devel"
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
@@ -45,17 +47,51 @@ spec:
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: github.com/tektoncd/pipeline/cmd/webhook
-        volumeMounts:
-        - name: config-logging
-          mountPath: /etc/config-logging
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: config-observability
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-pipelines-webhook
-      volumes:
-        - name: config-logging
-          configMap:
-            name: config-logging
+        - name: METRICS_DOMAIN
+          value: tekton.dev/pipeline
+        securityContext:
+          allowPrivilegeEscalation: false
+
+        ports:
+        - name: metrics
+          containerPort: 9090
+        - name: profiling
+          containerPort: 8008
+        - name: https-webhook
+          containerPort: 8443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tekton-pipelines-webhook
+    role: webhook
+    pipeline.tekton.dev/release: devel
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
+spec:
+  ports:
+  # Define metrics and profiling for them to be accessible within service meshes.
+  - name: http-metrics
+    port: 9090
+    targetPort: 9090
+  - name: http-profiling
+    port: 8008
+    targetPort: 8008
+  - name: https-webhook
+    port: 443
+    targetPort: 8443
+  selector:
+    app: tekton-pipelines-webhook
+    role: webhook

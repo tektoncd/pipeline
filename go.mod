@@ -20,6 +20,7 @@ require (
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jenkins-x/go-scm v1.5.65
 	github.com/json-iterator/go v1.1.8 // indirect
+	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
