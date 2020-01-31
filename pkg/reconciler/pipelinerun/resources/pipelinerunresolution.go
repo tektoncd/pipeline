@@ -40,7 +40,7 @@ const (
 	// ReasonFailed indicates that the reason for the failure status is that one of the TaskRuns failed
 	ReasonFailed = "Failed"
 
-	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cencelled
+	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cancelled
 	ReasonCancelled = "Cancelled"
 
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
@@ -380,7 +380,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonCancelled,
-				Message: fmt.Sprintf("TaskRun %s has cencelled", rprt.TaskRun.Name),
+				Message: fmt.Sprintf("TaskRun %s has cancelled", rprt.TaskRun.Name),
 			}
 		}
 
