@@ -19,7 +19,7 @@ metadata:
   labels:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: controller
-    tekton.dev/release: "devel"
+    pipeline.tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
@@ -29,12 +29,12 @@ spec:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
-        # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-        tekton.dev/release: "devel"
       labels:
         app: tekton-pipelines-controller
         app.kubernetes.io/name: tekton-pipelines
         app.kubernetes.io/component: controller
+        # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
+        pipeline.tekton.dev/release: "devel"
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
@@ -74,3 +74,20 @@ spec:
         - name: config-logging
           configMap:
             name: config-logging
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tekton-pipelines-controller
+    pipeline.tekton.dev/release: "devel"
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+spec:
+  ports:
+  - name: http-metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app: tekton-pipelines-controller

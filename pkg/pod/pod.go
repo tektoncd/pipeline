@@ -38,7 +38,7 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation      = "tekton.dev/release"
+	ReleaseAnnotation      = "pipeline.tekton.dev/release"
 	ReleaseAnnotationValue = version.PipelineVersion
 
 	groupVersionKind = schema.GroupVersionKind{

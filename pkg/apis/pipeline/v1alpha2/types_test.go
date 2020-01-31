@@ -20,15 +20,14 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
-	"knative.dev/pkg/webhook"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 func TestTypes(t *testing.T) {
 	// Assert that types satisfy webhook interface.
-	// var _ webhook.GenericCRD = (*v1alpha2.ClusterTask)(nil)
-	// var _ webhook.GenericCRD = (*v1alpha2.TaskRun)(nil)
-	// var _ webhook.GenericCRD = (*v1alpha2.PipelineResource)(nil)
-	var _ webhook.GenericCRD = (*v1alpha2.Task)(nil)
-	// var _ webhook.GenericCRD = (*v1alpha2.TaskRun)(nil)
-	// var _ webhook.GenericCRD = (*v1alpha2.Condition)(nil)
+	// var _ resourcesemantics.GenericCRD = (*v1alpha2.ClusterTask)(nil)
+	var _ resourcesemantics.GenericCRD = (*v1alpha2.TaskRun)(nil)
+	var _ resourcesemantics.GenericCRD = (*v1alpha2.Task)(nil)
+	var _ resourcesemantics.GenericCRD = (*v1alpha2.Pipeline)(nil)
+	// var _ resourcesemantics.GenericCRD = (*v1alpha2.Condition)(nil)
 }

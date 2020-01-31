@@ -13,7 +13,7 @@ rules:
     resources: ["deployments/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["admissionregistration.k8s.io"]
-    resources: ["mutatingwebhookconfigurations"]
+    resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "conditions"]

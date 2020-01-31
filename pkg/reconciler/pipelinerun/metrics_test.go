@@ -27,6 +27,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/metrics/metricstest"
+
+	// Required to setup metrics env for testing
+	_ "knative.dev/pkg/metrics/testing"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -44,11 +47,12 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 	startTime := time.Now()
 
 	testData := []struct {
-		name             string
-		taskRun          *v1alpha1.PipelineRun
-		expectedTags     map[string]string
-		expectedDuration float64
-		expectedCount    int64
+		name              string
+		taskRun           *v1alpha1.PipelineRun
+		expectedTags      map[string]string
+		expectedCountTags map[string]string
+		expectedDuration  float64
+		expectedCount     int64
 	}{{
 		name: "for_succeeded_pipeline",
 		taskRun: tb.PipelineRun("pipelinerun-1", "ns",
@@ -66,6 +70,9 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"pipelinerun": "pipelinerun-1",
 			"namespace":   "ns",
 			"status":      "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
@@ -87,6 +94,9 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			"namespace":   "ns",
 			"status":      "failed",
 		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
 		expectedDuration: 60,
 		expectedCount:    1,
 	}}
@@ -101,7 +111,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			err = metrics.DurationAndCount(test.taskRun)
 			assertErrIsNil(err, "DurationAndCount recording recording got an error", t)
 			metricstest.CheckDistributionData(t, "pipelinerun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
-			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedTags, test.expectedCount)
+			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedCountTags, test.expectedCount)
 
 		})
 	}

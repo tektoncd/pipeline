@@ -116,7 +116,7 @@ func (in *ClusterTask) DeepCopyObject() runtime.Object {
 func (in *ClusterTaskList) DeepCopyInto(out *ClusterTaskList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ClusterTask, len(*in))
