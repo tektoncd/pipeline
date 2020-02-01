@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: sidecar-ready-
+spec:
+  taskSpec:
+    sidecars:
+    - name: slow-sidecar
+      image: ubuntu
+      script: |
+        echo "hello from sidecar" > /shared/message
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    steps:
+    - name: check-ready
+      image: ubuntu
+      # The step will only succeed if the sidecar has written this file, which
+      # it does 5s after it starts, before it reports Ready.
+      script: cat /shared/message
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    # Sidecars don't have /workspace mounted by default, so we have to define
+    # our own shared volume.
+    volumes:
+    - name: shared
+      emptyDir: {}
