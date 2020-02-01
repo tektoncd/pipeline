@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+var emptyResourceQuantity = resource.Quantity{}
 var zeroQty = resource.MustParse("0")
 
 func allZeroQty() corev1.ResourceList {
@@ -31,7 +32,7 @@ func allZeroQty() corev1.ResourceList {
 	}
 }
 
-func resolveResourceRequests(containers []corev1.Container) []corev1.Container {
+func resolveResourceRequests(containers []corev1.Container, limitRange *corev1.LimitRange) []corev1.Container {
 	max := allZeroQty()
 	resourceNames := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage}
 	maxIndicesByResource := make(map[corev1.ResourceName]int, len(resourceNames))
@@ -50,16 +51,43 @@ func resolveResourceRequests(containers []corev1.Container) []corev1.Container {
 		}
 	}
 
+	// Get limitrange minimum for container requests so they won't
+	// be zeroed out if minimum is specified in namespace
+	var limitRangeItems []corev1.LimitRangeItem
+	if limitRange != nil {
+		limitRangeItems = limitRange.Spec.Limits
+	}
+	min := allZeroQty()
+	for _, limitRangeItem := range limitRangeItems {
+		if limitRangeItem.Type == corev1.LimitTypeContainer {
+			if limitRangeItem.Min != nil {
+				min = limitRangeItem.Min
+			}
+			break
+		}
+	}
+
+	// Use zeroQty if request value is not set for min
+	if min[corev1.ResourceCPU] == emptyResourceQuantity {
+		min[corev1.ResourceCPU] = zeroQty
+	}
+	if min[corev1.ResourceMemory] == emptyResourceQuantity {
+		min[corev1.ResourceMemory] = zeroQty
+	}
+	if min[corev1.ResourceEphemeralStorage] == emptyResourceQuantity {
+		min[corev1.ResourceEphemeralStorage] = zeroQty
+	}
+
 	// Set all non max resource requests to 0. Leave max request at index
 	// originally defined to account for limit of step.
 	for i := range containers {
 		if containers[i].Resources.Requests == nil {
-			containers[i].Resources.Requests = allZeroQty()
+			containers[i].Resources.Requests = min
 			continue
 		}
 		for _, resourceName := range resourceNames {
 			if maxIndicesByResource[resourceName] != i {
-				containers[i].Resources.Requests[resourceName] = zeroQty
+				containers[i].Resources.Requests[resourceName] = min[resourceName]
 			}
 		}
 	}

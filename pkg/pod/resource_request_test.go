@@ -28,7 +28,7 @@ var resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 	return x.Cmp(y) == 0
 })
 
-func TestResolveResourceRequests(t *testing.T) {
+func TestResolveResourceRequests_No_LimitRange(t *testing.T) {
 	for _, c := range []struct {
 		desc     string
 		in, want []corev1.Container
@@ -206,7 +206,146 @@ func TestResolveResourceRequests(t *testing.T) {
 		},
 	} {
 		t.Run(c.desc, func(t *testing.T) {
-			got := resolveResourceRequests(c.in)
+			got := resolveResourceRequests(c.in, nil)
+			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
+				t.Errorf("Diff(-want, +got): %s", d)
+			}
+		})
+	}
+}
+
+func TestResolveResourceRequests_LimitRange(t *testing.T) {
+	for _, c := range []struct {
+		desc     string
+		in, want []corev1.Container
+	}{{
+		desc: "three steps, no requests, apply minimum to all",
+		in:   []corev1.Container{{}, {}, {}},
+		want: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("99Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+				},
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("99Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+				},
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("99Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+				},
+			},
+		}},
+	}, {
+		desc: "three steps, no requests, apply minimum values when not max values",
+		in: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("10"),
+				},
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("10Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("11Gi"),
+				},
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+		want: []corev1.Container{{
+			// ResourceCPU max request
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("10"),
+					corev1.ResourceMemory:           resource.MustParse("99Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+				},
+			},
+		}, {
+			// ResourceMemory max request
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("10Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("11Gi"),
+				},
+			},
+		}, {
+			// ResourceEphemeralStorage max request
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("100m"),
+					corev1.ResourceMemory:           resource.MustParse("99Mi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+	}, {
+		desc: "Only one step container with all request values filled out, no min values",
+		in: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("10"),
+					corev1.ResourceMemory:           resource.MustParse("10Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+		want: []corev1.Container{{
+			// All max values set
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("10"),
+					corev1.ResourceMemory:           resource.MustParse("10Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("100Gi"),
+				},
+			},
+		}},
+	},
+	} {
+		t.Run(c.desc, func(t *testing.T) {
+			got := resolveResourceRequests(c.in,
+				&corev1.LimitRange{
+					Spec: corev1.LimitRangeSpec{
+						Limits: []corev1.LimitRangeItem{
+							{
+								Type: "Container",
+								Min: corev1.ResourceList{
+									corev1.ResourceCPU:              resource.MustParse("100m"),
+									corev1.ResourceMemory:           resource.MustParse("99Mi"),
+									corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
+								},
+							},
+						},
+					},
+				})
 			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff(-want, +got): %s", d)
 			}
