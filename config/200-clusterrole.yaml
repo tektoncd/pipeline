@@ -4,7 +4,7 @@ metadata:
   name: tekton-pipelines-admin
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "namespaces", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims"]
+    resources: ["pods", "pods/log", "namespaces", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims", "limitranges"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments"]

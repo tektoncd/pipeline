@@ -562,6 +562,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Timeout:            getTaskRunTimeout(pr),
 			PodTemplate:        pr.Spec.PodTemplate,
+			LimitRangeName:     pr.Spec.LimitRangeName,
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
