@@ -36,6 +36,10 @@ func (c *FakeTektonV1alpha2) Pipelines(namespace string) v1alpha2.PipelineInterf
 	return &FakePipelines{c, namespace}
 }
 
+func (c *FakeTektonV1alpha2) PipelineRuns(namespace string) v1alpha2.PipelineRunInterface {
+	return &FakePipelineRuns{c, namespace}
+}
+
 func (c *FakeTektonV1alpha2) Tasks(namespace string) v1alpha2.TaskInterface {
 	return &FakeTasks{c, namespace}
 }
