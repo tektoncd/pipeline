@@ -406,34 +406,32 @@ func TestMakePod(t *testing.T) {
 				Image:   "primary-image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
-			Sidecars: []v1alpha1.Sidecar{
-				{
-					Container: corev1.Container{
-						Name:  "sc-name",
-						Image: "sidecar-image",
-					},
-					Script: "#!/bin/sh\necho hello from sidecar",
+			Sidecars: []v1alpha1.Sidecar{{
+				Container: corev1.Container{
+					Name:  "sc-name",
+					Image: "sidecar-image",
 				},
+				Script: "#!/bin/sh\necho hello from sidecar",
+			},
 			},
 		},
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{
-				{
-					Name:         "place-scripts",
-					Image:        "busybox",
-					Command:      []string{"sh"},
-					TTY:          true,
-					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
-					Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
+			InitContainers: []corev1.Container{{
+				Name:         "place-scripts",
+				Image:        "busybox",
+				Command:      []string{"sh"},
+				TTY:          true,
+				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+				Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'sidecar-script-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
 echo hello from sidecar
 sidecar-script-heredoc-randomly-generated-mz4c7
 `},
-				},
+			},
 				placeToolsInit,
 			},
 			Containers: []corev1.Container{{

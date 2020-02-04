@@ -16,8 +16,6 @@ spec:
     steps:
     - name: check-ready
       image: ubuntu
-      # The step will only succeed if the sidecar has written this file, which
-      # it does 5s after it starts, before it reports Ready.
       script: cat /shared/message
       volumeMounts:
       - name: shared
