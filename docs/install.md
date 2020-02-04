@@ -197,7 +197,7 @@ default pod template applied to `TaskRun` and `PipelineRun`.
 The example below overrides the following :
 - the default service account (`default`) to `tekton`
 - the default timeout (60 minutes) to 20 minutes
-- the default pod template to include an annotation preventing clusterautoscaler to evict a running task pod
+- the default pod template to include a node selector to control the node where the pod will be scheduled by default
 (see [here](./taskruns.md#pod-template) or [here](./pipelineruns.md#pod-template) for more infos on pod templates)
 - the default `app.kuberrnetes.io/managed-by` label applied to all Pods created
   to execute `TaskRun`s.
@@ -211,8 +211,8 @@ data:
   default-service-account: "tekton"
   default-timeout-minutes: "20"
   default-pod-template: |
-    annotations:
-      cluster-autoscaler.kubernetes.io/safe-to-evict: 'false'
+    nodeSelector:
+      kops.k8s.io/instancegroup: build-instance-group
   default-managed-by-label-value: "my-tekton-installation"
 ```
 
