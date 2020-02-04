@@ -99,17 +99,21 @@ func TestTaskRunRetry(t *testing.T) {
 		}
 		podNames[r.PodName] = struct{}{}
 	}
+	podNames[tr.Status.PodName] = struct{}{}
 	if len(tr.Status.RetriesStatus) != numRetries {
 		t.Errorf("TaskRun %q had %d retriesStatuses, want %d", tr.Name, len(tr.Status.RetriesStatus), numRetries)
 	}
 
 	// There should be N Pods created, all failed, all owned by the TaskRun.
 	pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	// We expect N+1 Pods total, one for each failed and retried attempt, and one for the final attempt.
+	wantPods := numRetries + 1
+
 	if err != nil {
 		t.Fatalf("Failed to list Pods: %v", err)
-	} else if len(pods.Items) != numRetries {
+	} else if len(pods.Items) != wantPods {
 		// TODO: Make this an error.
-		t.Logf("BUG: Found %d Pods, want %d", len(pods.Items), numRetries)
+		t.Logf("BUG: Found %d Pods, want %d", len(pods.Items), wantPods)
 	}
 	for _, p := range pods.Items {
 		if _, found := podNames[p.Name]; !found {
