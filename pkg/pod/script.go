@@ -74,7 +74,7 @@ func convertScripts(shellImage string, steps []v1alpha1.Step, sidecars []v1alpha
 //
 // It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, placeScripts *bool, format string) []corev1.Container {
+func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, placeScripts *bool, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		if s.Script == "" {
@@ -99,7 +99,7 @@ func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, 
 
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.
-		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", format, i)))
+		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
 		// heredoc is the "here document" placeholder string
 		// used to cat script contents into the file. Typically
 		// this is the string "EOF" but if this value were
@@ -107,7 +107,7 @@ func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, 
 		// string "EOF" in their own scripts. Instead we
 		// randomly generate a string to (hopefully) prevent
 		// collisions.
-		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-heredoc-randomly-generated", format))
+		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-heredoc-randomly-generated", namePrefix))
 		initContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << '%s'
