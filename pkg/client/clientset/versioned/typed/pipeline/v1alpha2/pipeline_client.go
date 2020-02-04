@@ -28,6 +28,7 @@ type TektonV1alpha2Interface interface {
 	RESTClient() rest.Interface
 	ClusterTasksGetter
 	PipelinesGetter
+	PipelineRunsGetter
 	TasksGetter
 	TaskRunsGetter
 }
@@ -43,6 +44,10 @@ func (c *TektonV1alpha2Client) ClusterTasks() ClusterTaskInterface {
 
 func (c *TektonV1alpha2Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
+}
+
+func (c *TektonV1alpha2Client) PipelineRuns(namespace string) PipelineRunInterface {
+	return newPipelineRuns(c, namespace)
 }
 
 func (c *TektonV1alpha2Client) Tasks(namespace string) TaskInterface {
