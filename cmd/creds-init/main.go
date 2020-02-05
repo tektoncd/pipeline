@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+
 	"go.uber.org/zap"
 
 	"github.com/tektoncd/pipeline/pkg/credentials"

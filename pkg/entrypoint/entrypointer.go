@@ -18,11 +18,12 @@ package entrypoint
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
