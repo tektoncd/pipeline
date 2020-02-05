@@ -738,6 +738,8 @@ spec:
   limitRangeName: "limit-mem-cpu-per-container"
 ```
 
+An example `TaskRun` using `limitRangeName` is available [here](../examples/taskruns/no-ci/limitrange.yaml).
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
