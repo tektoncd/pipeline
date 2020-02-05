@@ -408,6 +408,8 @@ spec:
 status: {}
 ```
 
+An example `PipelineRun` using `limitRangeName` is available [here](../examples/pipelineruns/no-ci/limitrange.yaml).
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
