@@ -372,11 +372,12 @@ func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
 func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *dag.Graph) *apis.Condition {
-	// We have 4 different states here:
+	// We have 5 different states here:
 	// 1. Timed out -> Failed
-	// 2. Any one TaskRun has failed - >Failed. This should change with #1020 and #1023
-	// 3. All tasks are done or are skipped (i.e. condition check failed).-> Success
-	// 4. A Task or Condition is running right now  or there are things left to run -> Running
+	// 2. Any one TaskRun has cancelled - > Cancelled.
+	// 3. Any one TaskRun has failed - > Failed. This should change with #1020 and #1023
+	// 4. All tasks are done or are skipped (i.e. condition check failed).-> Success
+	// 5. A Task or Condition is running right now or there are things left to run -> Running
 	if pr.IsTimedOut() {
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
