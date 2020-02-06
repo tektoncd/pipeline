@@ -18,11 +18,10 @@ package main
 import (
 	"flag"
 
-	"go.uber.org/zap"
-
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/git"
 	"github.com/tektoncd/pipeline/pkg/termination"
+	"go.uber.org/zap"
 )
 
 var (

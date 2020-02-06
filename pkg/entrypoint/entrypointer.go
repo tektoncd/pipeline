@@ -23,11 +23,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/termination"
+	"go.uber.org/zap"
 )
 
 // Entrypointer holds fields for running commands with redirected

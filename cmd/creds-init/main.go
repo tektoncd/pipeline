@@ -18,11 +18,10 @@ package main
 import (
 	"flag"
 
-	"go.uber.org/zap"
-
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
+	"go.uber.org/zap"
 )
 
 func main() {
