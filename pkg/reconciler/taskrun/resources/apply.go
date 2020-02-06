@@ -18,9 +18,11 @@ package resources
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/workspace"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
@@ -92,6 +94,17 @@ func ApplyWorkspaces(spec *v1alpha1.TaskSpec, w []v1alpha1.WorkspaceDeclaration,
 	v := workspace.GetVolumes(wb)
 	for name, vv := range v {
 		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vv.Name
+	}
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+}
+
+// ApplyTaskResults applies the substitution from values in results which are referenced in spec as subitems
+// of the replacementStr.
+func ApplyTaskResults(spec *v1alpha1.TaskSpec) *v1alpha1.TaskSpec {
+	stringReplacements := map[string]string{}
+
+	for _, result := range spec.Results {
+		stringReplacements[fmt.Sprintf("results.%s.path", result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }
