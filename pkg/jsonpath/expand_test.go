@@ -108,6 +108,10 @@ func TestExpandVariable(t *testing.T) {
 	}
 }
 
+func arrayLookup(arr interface{}, i int) interface{} {
+	return arr.([]interface{})[i]
+}
+
 func TestExpand(t *testing.T) {
 	context := map[string]interface{}{
 		"bool":   true,
@@ -148,7 +152,7 @@ func TestExpand(t *testing.T) {
 		{"$(array[*])", context["array"].([]interface{})[0]},
 		{"$(array[1:3])", context["array"].([]interface{})[1]},
 		{[]interface{}{"$(array[*])"}, context["array"]},
-		{[]interface{}{"$(array[1:3])"}, []interface{}{context["array"].([]interface{})[1], context["array"].([]interface{})[2]}},
+		{[]interface{}{"$(array[1:3])"}, []interface{}{arrayLookup(context["array"], 1), arrayLookup(context["array"], 2)}},
 		{[]interface{}{float64(1), "$(array[1:3])", "a", "b", "c"}, context["array"]},
 		{"$('')$(null)", "null"},
 		{"$('')$(obj)", `{"a":1,"b":"abcd"}`},

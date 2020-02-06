@@ -20,23 +20,24 @@ package jsonpath
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/client-go/util/jsonpath"
 	"regexp"
 	"strings"
+
+	"k8s.io/client-go/util/jsonpath"
 )
 
 var (
 	// expandRE captures the strings $$ (e.g. escaped dollar-sign) and those enclosed in $() (e.g. Tekton expression)
 	// This regex currently will only accept one-level of filter-expression e.g. nested (...) expressions but not (...(...))
 	expandRE = regexp.MustCompile(`\$\$|\$\((?:[^()]|\([^()]*\))+\)`)
-	// the list of valid Tekton JSONPath prefixes
+	// the list of valid Tekton JSONPath prefixes from the Kube library. Any other prefixes are treated as literals
 	expressionPrefix = regexp.MustCompile(`^[$.[@'"]`)
 )
 
 // createExpression takes a Tekton expression of the form $(...) and turns it into a hopefully valid Kubernets JSONPath expression
 func createExpression(variable string) string {
 	expression := strings.TrimSuffix(strings.TrimPrefix(variable, "$("), ")")
-	// we will dollar dot-prefix all expressions that don't already have a valid prefix
+	// we will dollar dot-prefix all expressions that don't already have a valid prefix so they are resolved relative to the root
 	if len(expression) != 0 && !expressionPrefix.MatchString(expression) {
 		expression = "$." + expression
 	}
@@ -84,7 +85,7 @@ func expandStringAsList(input string, context interface{}) ([]interface{}, error
 	// if the input consists of a single JSONPath expression, return the JSONPath result list
 	if input == match && match != "$$" {
 		expanded, err := expandVariable(match, context)
-		// if there is a problem we return the original string (consistent with Kubernetes containter env expansion)
+		// if there is a problem we return the original string (consistent with Kubernetes container env expansion)
 		if err != nil {
 			return []interface{}{}, err
 		}
