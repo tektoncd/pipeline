@@ -87,7 +87,7 @@ func SendCloudEvent(sinkURI, eventID, eventSourceURI string, data []byte, eventT
 		Data: data,
 	}
 	ctxt := cecontext.WithTarget(context.TODO(), sinkURI)
-	_, err := cloudEventClient.Send(ctxt, event)
+	_, _, err := cloudEventClient.Send(ctxt, event)
 	if err != nil {
 		logger.Errorf("Error sending the cloud-event: %s", err)
 		return event, err

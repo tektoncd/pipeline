@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
 // TransportContext allows a Receiver to understand the context of a request.
 type TransportContext struct {
-	URI    string
-	Host   string
-	Method string
-	Header http.Header
+	URI        string
+	Host       string
+	Method     string
+	Header     http.Header
+	StatusCode int
 
 	// IgnoreHeaderPrefixes controls what comes back from AttendToHeaders.
 	// AttendToHeaders controls what is output for .String()
@@ -31,6 +34,22 @@ func NewTransportContext(req *http.Request) TransportContext {
 		}
 	} else {
 		tx = &TransportContext{}
+	}
+	tx.AddIgnoreHeaderPrefix("accept-encoding", "user-agent", "connection", "content-type")
+	return *tx
+}
+
+// NewTransportContextFromResponse creates a new TransportContext from a http.Response.
+// If `res` is nil, it returns a context with a http.StatusInternalServerError status code.
+func NewTransportContextFromResponse(res *http.Response) TransportContext {
+	var tx *TransportContext
+	if res != nil {
+		tx = &TransportContext{
+			Header:     res.Header,
+			StatusCode: res.StatusCode,
+		}
+	} else {
+		tx = &TransportContext{StatusCode: http.StatusInternalServerError}
 	}
 	tx.AddIgnoreHeaderPrefix("accept-encoding", "user-agent", "connection", "content-type")
 	return *tx
@@ -83,6 +102,10 @@ func (tx TransportContext) String() string {
 
 	if tx.Method != "" {
 		b.WriteString("  Method: " + tx.Method + "\n")
+	}
+
+	if tx.StatusCode != 0 {
+		b.WriteString("  StatusCode: " + strconv.Itoa(tx.StatusCode) + "\n")
 	}
 
 	if tx.Header != nil && len(tx.Header) > 0 {
@@ -145,7 +168,7 @@ func ContextWithHeader(ctx context.Context, key, value string) context.Context {
 	return context.WithValue(ctx, headerKey, header)
 }
 
-// HeaderFrom extracts the header oject in the given context. Always returns a non-nil Header.
+// HeaderFrom extracts the header object in the given context. Always returns a non-nil Header.
 func HeaderFrom(ctx context.Context) http.Header {
 	ch := http.Header{}
 	header := ctx.Value(headerKey)
@@ -155,4 +178,30 @@ func HeaderFrom(ctx context.Context) http.Header {
 		}
 	}
 	return ch
+}
+
+// Opaque key type used to store long poll target.
+type longPollTargetKeyType struct{}
+
+var longPollTargetKey = longPollTargetKeyType{}
+
+// WithLongPollTarget returns a new context with the given long poll target.
+// `target` should be a full URL and will be injected into the long polling
+// http request within StartReceiver.
+func ContextWithLongPollTarget(ctx context.Context, target string) context.Context {
+	return context.WithValue(ctx, longPollTargetKey, target)
+}
+
+// LongPollTargetFrom looks in the given context and returns `target` as a
+// parsed url if found and valid, otherwise nil.
+func LongPollTargetFrom(ctx context.Context) *url.URL {
+	c := ctx.Value(longPollTargetKey)
+	if c != nil {
+		if s, ok := c.(string); ok && s != "" {
+			if target, err := url.Parse(s); err == nil {
+				return target
+			}
+		}
+	}
+	return nil
 }

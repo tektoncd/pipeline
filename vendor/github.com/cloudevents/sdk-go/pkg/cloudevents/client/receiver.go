@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents"
 	"reflect"
+
+	"github.com/cloudevents/sdk-go/pkg/cloudevents"
+	"github.com/cloudevents/sdk-go/pkg/cloudevents/transport"
 )
 
 // Receive is the signature of a fn to be invoked for incoming cloudevents.
@@ -24,6 +26,10 @@ type receiverFn struct {
 
 	hasErrorOut bool
 }
+
+// ConvertFn defines the signature the client expects to enable conversion
+// delegation.
+type ConvertFn func(context.Context, transport.Message, error) (*cloudevents.Event, error)
 
 const (
 	inParamUsage  = "expected a function taking either no parameters, one or more of (context.Context, cloudevents.Event, *cloudevents.EventResponse) ordered"

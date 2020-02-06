@@ -27,12 +27,11 @@ type Reporter interface {
 }
 
 type reporter struct {
-	ctx     context.Context
-	span    *trace.Span
-	on      Observable
-	start   time.Time
-	measure stats.Measure
-	once    sync.Once
+	ctx   context.Context
+	span  *trace.Span
+	on    Observable
+	start time.Time
+	once  sync.Once
 }
 
 // All tags used for Latency measurements.
@@ -40,10 +39,26 @@ func LatencyTags() []tag.Key {
 	return []tag.Key{KeyMethod, KeyResult}
 }
 
+var (
+	// Tracing is disabled by default. It is very useful for profiling an
+	// application.
+	tracingEnabled = false
+)
+
+// EnableTracing allows control over if tracing is enabled for the sdk.
+// Default is false. This applies to all of the
+// `github.com/cloudevents/sdk-go/...` package.
+func EnableTracing(enabled bool) {
+	tracingEnabled = enabled
+}
+
 // NewReporter creates and returns a reporter wrapping the provided Observable,
 // and injects a trace span into the context.
 func NewReporter(ctx context.Context, on Observable) (context.Context, Reporter) {
-	ctx, span := trace.StartSpan(ctx, on.TraceName())
+	var span *trace.Span
+	if tracingEnabled {
+		ctx, span = trace.StartSpan(ctx, on.TraceName())
+	}
 	r := &reporter{
 		ctx:   ctx,
 		on:    on,
@@ -65,7 +80,9 @@ func (r *reporter) tagMethod() {
 func (r *reporter) record() {
 	ms := float64(time.Since(r.start) / time.Millisecond)
 	stats.Record(r.ctx, r.on.LatencyMs().M(ms))
-	r.span.End()
+	if r.span != nil {
+		r.span.End()
+	}
 }
 
 // Error records the result as an error.

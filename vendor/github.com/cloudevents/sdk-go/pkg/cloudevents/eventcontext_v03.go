@@ -3,12 +3,11 @@ package cloudevents
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"sort"
 	"strings"
-)
 
-// WIP: AS OF FEB 19, 2019
+	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
+)
 
 const (
 	// CloudEventsVersionV03 represents the version 0.3 of the CloudEvents spec.
@@ -31,12 +30,12 @@ type EventContextV03 struct {
 	ID string `json:"id"`
 	// Time - A Timestamp when the event happened.
 	Time *types.Timestamp `json:"time,omitempty"`
-	// SchemaURL - A link to the schema that the `data` attribute adheres to.
+	// DataSchema - A link to the schema that the `data` attribute adheres to.
 	SchemaURL *types.URLRef `json:"schemaurl,omitempty"`
 	// GetDataMediaType - A MIME (RFC2046) string describing the media type of `data`.
 	// TODO: Should an empty string assume `application/json`, `application/octet-stream`, or auto-detect the content?
 	DataContentType *string `json:"datacontenttype,omitempty"`
-	// DataContentEncoding describes the content encoding for the `data` attribute. Valid: nil, `Base64`.
+	// DeprecatedDataContentEncoding describes the content encoding for the `data` attribute. Valid: nil, `Base64`.
 	DataContentEncoding *string `json:"datacontentencoding,omitempty"`
 	// Extensions - Additional extension metadata beyond the base spec.
 	Extensions map[string]interface{} `json:"-"`
@@ -72,7 +71,7 @@ func (ec EventContextV03) ExtensionAs(name string, obj interface{}) error {
 			return fmt.Errorf("invalid type for extension %q", name)
 		}
 	default:
-		return fmt.Errorf("unkown extension type %T", obj)
+		return fmt.Errorf("unknown extension type %T", obj)
 	}
 }
 
@@ -84,7 +83,11 @@ func (ec *EventContextV03) SetExtension(name string, value interface{}) error {
 	if value == nil {
 		delete(ec.Extensions, name)
 	} else {
-		ec.Extensions[name] = value
+		v, err := types.Validate(value)
+		if err == nil {
+			ec.Extensions[name] = v
+		}
+		return err
 	}
 	return nil
 }
@@ -114,11 +117,11 @@ func (ec EventContextV03) AsV02() *EventContextV02 {
 	}
 	// Subject was introduced in 0.3, so put it in an extension for 0.2.
 	if ec.Subject != nil {
-		ret.SetExtension(SubjectKey, *ec.Subject)
+		_ = ret.SetExtension(SubjectKey, *ec.Subject)
 	}
-	// DataContentEncoding was introduced in 0.3, so put it in an extension for 0.2.
+	// DeprecatedDataContentEncoding was introduced in 0.3, so put it in an extension for 0.2.
 	if ec.DataContentEncoding != nil {
-		ret.SetExtension(DataContentEncodingKey, *ec.DataContentEncoding)
+		_ = ret.SetExtension(DataContentEncodingKey, *ec.DataContentEncoding)
 	}
 	if ec.Extensions != nil {
 		for k, v := range ec.Extensions {
@@ -135,6 +138,39 @@ func (ec EventContextV03) AsV02() *EventContextV02 {
 func (ec EventContextV03) AsV03() *EventContextV03 {
 	ec.SpecVersion = CloudEventsVersionV03
 	return &ec
+}
+
+// AsV04 implements EventContextConverter.AsV04
+func (ec EventContextV03) AsV1() *EventContextV1 {
+	ret := EventContextV1{
+		SpecVersion:     CloudEventsVersionV1,
+		ID:              ec.ID,
+		Time:            ec.Time,
+		Type:            ec.Type,
+		DataContentType: ec.DataContentType,
+		Source:          types.URIRef{URL: ec.Source.URL},
+		Subject:         ec.Subject,
+		Extensions:      make(map[string]interface{}),
+	}
+	if ec.SchemaURL != nil {
+		ret.DataSchema = &types.URI{URL: ec.SchemaURL.URL}
+	}
+
+	// DataContentEncoding was removed in 1.0, so put it in an extension for 1.0.
+	if ec.DataContentEncoding != nil {
+		_ = ret.SetExtension(DataContentEncodingKey, *ec.DataContentEncoding)
+	}
+
+	if ec.Extensions != nil {
+		for k, v := range ec.Extensions {
+			k = strings.ToLower(k)
+			ret.Extensions[k] = v
+		}
+	}
+	if len(ret.Extensions) == 0 {
+		ret.Extensions = nil
+	}
+	return &ret
 }
 
 // Validate returns errors based on requirements from the CloudEvents spec.

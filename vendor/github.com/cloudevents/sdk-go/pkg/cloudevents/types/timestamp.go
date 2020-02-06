@@ -16,15 +16,12 @@ type Timestamp struct {
 }
 
 // ParseTimestamp attempts to parse the given time assuming RFC3339 layout
-func ParseTimestamp(t string) *Timestamp {
-	if t == "" {
-		return nil
+func ParseTimestamp(s string) (*Timestamp, error) {
+	if s == "" {
+		return nil, nil
 	}
-	timestamp, err := time.Parse(time.RFC3339Nano, t)
-	if err != nil {
-		return nil
-	}
-	return &Timestamp{Time: timestamp}
+	tt, err := ParseTime(s)
+	return &Timestamp{Time: tt}, err
 }
 
 // MarshalJSON implements a custom json marshal method used when this type is
@@ -33,21 +30,19 @@ func (t *Timestamp) MarshalJSON() ([]byte, error) {
 	if t == nil || t.IsZero() {
 		return []byte(`""`), nil
 	}
-	rfc3339 := fmt.Sprintf("%q", t.UTC().Format(time.RFC3339Nano))
-	return []byte(rfc3339), nil
+	return []byte(fmt.Sprintf("%q", t)), nil
 }
 
 // UnmarshalJSON implements the json unmarshal method used when this type is
-// unmarshed using json.Unmarshal.
+// unmarshaled using json.Unmarshal.
 func (t *Timestamp) UnmarshalJSON(b []byte) error {
 	var timestamp string
 	if err := json.Unmarshal(b, &timestamp); err != nil {
 		return err
 	}
-	if pt := ParseTimestamp(timestamp); pt != nil {
-		*t = *pt
-	}
-	return nil
+	var err error
+	t.Time, err = ParseTime(timestamp)
+	return err
 }
 
 // MarshalXML implements a custom xml marshal method used when this type is
@@ -56,28 +51,20 @@ func (t *Timestamp) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	if t == nil || t.IsZero() {
 		return e.EncodeElement(nil, start)
 	}
-	v := t.UTC().Format(time.RFC3339Nano)
-	return e.EncodeElement(v, start)
+	return e.EncodeElement(t.String(), start)
 }
 
 // UnmarshalXML implements the xml unmarshal method used when this type is
-// unmarshed using xml.Unmarshal.
+// unmarshaled using xml.Unmarshal.
 func (t *Timestamp) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var timestamp string
 	if err := d.DecodeElement(&timestamp, &start); err != nil {
 		return err
 	}
-	if pt := ParseTimestamp(timestamp); pt != nil {
-		*t = *pt
-	}
-	return nil
+	var err error
+	t.Time, err = ParseTime(timestamp)
+	return err
 }
 
-// String outputs the time using layout RFC3339.
-func (t *Timestamp) String() string {
-	if t == nil {
-		return time.Time{}.UTC().Format(time.RFC3339Nano)
-	}
-
-	return t.UTC().Format(time.RFC3339Nano)
-}
+// String outputs the time using RFC3339 format.
+func (t Timestamp) String() string { return FormatTime(t.Time) }

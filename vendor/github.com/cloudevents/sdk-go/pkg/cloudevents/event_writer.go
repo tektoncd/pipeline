@@ -17,76 +17,100 @@ func (e *Event) SetSpecVersion(v string) {
 			e.Context = EventContextV02{}.AsV02()
 		case CloudEventsVersionV03:
 			e.Context = EventContextV03{}.AsV03()
+		case CloudEventsVersionV1:
+			e.Context = EventContextV1{}.AsV1()
 		default:
-			panic(fmt.Errorf("a valid spec version is required: [%s, %s, %s]",
-				CloudEventsVersionV01, CloudEventsVersionV02, CloudEventsVersionV03))
+			e.fieldError("specversion", fmt.Errorf("a valid spec version is required: [%s, %s, %s, %s]",
+				CloudEventsVersionV01, CloudEventsVersionV02, CloudEventsVersionV03, CloudEventsVersionV1))
+			return
 		}
+		e.fieldOK("specversion")
 		return
 	}
 	if err := e.Context.SetSpecVersion(v); err != nil {
-		panic(err)
+		e.fieldError("specversion", err)
+	} else {
+		e.fieldOK("specversion")
 	}
 }
 
 // SetType implements EventWriter.SetType
 func (e *Event) SetType(t string) {
 	if err := e.Context.SetType(t); err != nil {
-		panic(err)
+		e.fieldError("type", err)
+	} else {
+		e.fieldOK("type")
 	}
 }
 
 // SetSource implements EventWriter.SetSource
 func (e *Event) SetSource(s string) {
 	if err := e.Context.SetSource(s); err != nil {
-		panic(err)
+		e.fieldError("source", err)
+	} else {
+		e.fieldOK("source")
 	}
 }
 
 // SetSubject implements EventWriter.SetSubject
 func (e *Event) SetSubject(s string) {
 	if err := e.Context.SetSubject(s); err != nil {
-		panic(err)
+		e.fieldError("subject", err)
+	} else {
+		e.fieldOK("subject")
 	}
 }
 
 // SetID implements EventWriter.SetID
 func (e *Event) SetID(id string) {
 	if err := e.Context.SetID(id); err != nil {
-		panic(err)
+		e.fieldError("id", err)
+	} else {
+		e.fieldOK("id")
 	}
 }
 
 // SetTime implements EventWriter.SetTime
 func (e *Event) SetTime(t time.Time) {
 	if err := e.Context.SetTime(t); err != nil {
-		panic(err)
+		e.fieldError("time", err)
+	} else {
+		e.fieldOK("time")
 	}
 }
 
-// SetSchemaURL implements EventWriter.SetSchemaURL
-func (e *Event) SetSchemaURL(s string) {
-	if err := e.Context.SetSchemaURL(s); err != nil {
-		panic(err)
+// SetDataSchema implements EventWriter.SetDataSchema
+func (e *Event) SetDataSchema(s string) {
+	if err := e.Context.SetDataSchema(s); err != nil {
+		e.fieldError("dataschema", err)
+	} else {
+		e.fieldOK("dataschema")
 	}
 }
 
 // SetDataContentType implements EventWriter.SetDataContentType
 func (e *Event) SetDataContentType(ct string) {
 	if err := e.Context.SetDataContentType(ct); err != nil {
-		panic(err)
+		e.fieldError("datacontenttype", err)
+	} else {
+		e.fieldOK("datacontenttype")
 	}
 }
 
-// SetDataContentEncoding implements EventWriter.SetDataContentEncoding
+// DeprecatedSetDataContentEncoding implements EventWriter.DeprecatedSetDataContentEncoding
 func (e *Event) SetDataContentEncoding(enc string) {
-	if err := e.Context.SetDataContentEncoding(enc); err != nil {
-		panic(err)
+	if err := e.Context.DeprecatedSetDataContentEncoding(enc); err != nil {
+		e.fieldError("datacontentencoding", err)
+	} else {
+		e.fieldOK("datacontentencoding")
 	}
 }
 
-// SetDataContentEncoding implements EventWriter.SetDataContentEncoding
+// SetExtension implements EventWriter.SetExtension
 func (e *Event) SetExtension(name string, obj interface{}) {
 	if err := e.Context.SetExtension(name, obj); err != nil {
-		panic(err)
+		e.fieldError("extension:"+name, err)
+	} else {
+		e.fieldOK("extension:" + name)
 	}
 }

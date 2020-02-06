@@ -12,11 +12,26 @@ type Event struct {
 	Context     EventContext
 	Data        interface{}
 	DataEncoded bool
+	DataBinary  bool
+	FieldErrors map[string]error
 }
 
 const (
-	defaultEventVersion = CloudEventsVersionV02
+	defaultEventVersion = CloudEventsVersionV1
 )
+
+func (e *Event) fieldError(field string, err error) {
+	if e.FieldErrors == nil {
+		e.FieldErrors = make(map[string]error, 0)
+	}
+	e.FieldErrors[field] = err
+}
+
+func (e *Event) fieldOK(field string) {
+	if e.FieldErrors != nil {
+		delete(e.FieldErrors, field)
+	}
+}
 
 // New returns a new Event, an optional version can be passed to change the
 // default spec version from 0.2 to the provided version.
@@ -30,7 +45,17 @@ func New(version ...string) Event {
 	return *e
 }
 
-// ExtensionAs returns Context.ExtensionAs(name, obj)
+// DEPRECATED: Access extensions directly via the e.Extensions() map.
+// Use functions in the types package to convert extension values.
+// For example replace this:
+//
+//     var i int
+//     err := e.ExtensionAs("foo", &i)
+//
+// With this:
+//
+//     i, err := types.ToInteger(e.Extensions["foo"])
+//
 func (e Event) ExtensionAs(name string, obj interface{}) error {
 	return e.Context.ExtensionAs(name, obj)
 }
@@ -40,6 +65,16 @@ func (e Event) ExtensionAs(name string, obj interface{}) error {
 func (e Event) Validate() error {
 	if e.Context == nil {
 		return fmt.Errorf("every event conforming to the CloudEvents specification MUST include a context")
+	}
+
+	if e.FieldErrors != nil {
+		errs := make([]string, 0)
+		for f, e := range e.FieldErrors {
+			errs = append(errs, fmt.Sprintf("%q: %s,", f, e))
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("previous field errors: [%s]", strings.Join(errs, "\n"))
+		}
 	}
 
 	if err := e.Context.Validate(); err != nil {

@@ -3,7 +3,9 @@ package datacodec
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/json"
+	"github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/text"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/xml"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/observability"
 )
@@ -11,11 +13,11 @@ import (
 // Decoder is the expected function signature for decoding `in` to `out`. What
 // `in` is could be decoder dependent. For example, `in` could be bytes, or a
 // base64 string.
-type Decoder func(in, out interface{}) error
+type Decoder func(ctx context.Context, in, out interface{}) error
 
 // Encoder is the expected function signature for encoding `in` to bytes.
 // Returns an error if the encoder has an issue encoding `in`.
-type Encoder func(in interface{}) ([]byte, error)
+type Encoder func(ctx context.Context, in interface{}) ([]byte, error)
 
 var decoder map[string]Decoder
 var encoder map[string]Encoder
@@ -29,12 +31,14 @@ func init() {
 	AddDecoder("text/json", json.Decode)
 	AddDecoder("application/xml", xml.Decode)
 	AddDecoder("text/xml", xml.Decode)
+	AddDecoder("text/plain", text.Decode)
 
 	AddEncoder("", json.Encode)
 	AddEncoder("application/json", json.Encode)
 	AddEncoder("text/json", json.Encode)
 	AddEncoder("application/xml", xml.Encode)
 	AddEncoder("text/xml", xml.Encode)
+	AddEncoder("text/plain", text.Encode)
 }
 
 // AddDecoder registers a decoder for a given content type. The codecs will use
@@ -52,10 +56,9 @@ func AddEncoder(contentType string, fn Encoder) {
 // Decode looks up and invokes the decoder registered for the given content
 // type. An error is returned if no decoder is registered for the given
 // content type.
-func Decode(contentType string, in, out interface{}) error {
-	// TODO: wire in context.
-	_, r := observability.NewReporter(context.Background(), reportDecode)
-	err := obsDecode(contentType, in, out)
+func Decode(ctx context.Context, contentType string, in, out interface{}) error {
+	_, r := observability.NewReporter(ctx, reportDecode)
+	err := obsDecode(ctx, contentType, in, out)
 	if err != nil {
 		r.Error()
 	} else {
@@ -64,9 +67,9 @@ func Decode(contentType string, in, out interface{}) error {
 	return err
 }
 
-func obsDecode(contentType string, in, out interface{}) error {
+func obsDecode(ctx context.Context, contentType string, in, out interface{}) error {
 	if fn, ok := decoder[contentType]; ok {
-		return fn(in, out)
+		return fn(ctx, in, out)
 	}
 	return fmt.Errorf("[decode] unsupported content type: %q", contentType)
 }
@@ -74,10 +77,9 @@ func obsDecode(contentType string, in, out interface{}) error {
 // Encode looks up and invokes the encoder registered for the given content
 // type. An error is returned if no encoder is registered for the given
 // content type.
-func Encode(contentType string, in interface{}) ([]byte, error) {
-	// TODO: wire in context.
-	_, r := observability.NewReporter(context.Background(), reportEncode)
-	b, err := obsEncode(contentType, in)
+func Encode(ctx context.Context, contentType string, in interface{}) ([]byte, error) {
+	_, r := observability.NewReporter(ctx, reportEncode)
+	b, err := obsEncode(ctx, contentType, in)
 	if err != nil {
 		r.Error()
 	} else {
@@ -86,9 +88,9 @@ func Encode(contentType string, in interface{}) ([]byte, error) {
 	return b, err
 }
 
-func obsEncode(contentType string, in interface{}) ([]byte, error) {
+func obsEncode(ctx context.Context, contentType string, in interface{}) ([]byte, error) {
 	if fn, ok := encoder[contentType]; ok {
-		return fn(in)
+		return fn(ctx, in)
 	}
 	return nil, fmt.Errorf("[encode] unsupported content type: %q", contentType)
 }

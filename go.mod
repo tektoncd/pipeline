@@ -4,15 +4,14 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
-	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/cloudevents/sdk-go v0.0.0-20190509003705-56931988abe3
+	github.com/cloudevents/sdk-go v1.0.0
 	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.4 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/google/go-cmp v0.3.1
+	github.com/google/go-cmp v0.4.0
 	github.com/google/go-containerregistry v0.0.0-20200115214256-379933c9c22b
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/hashicorp/go-multierror v1.0.0
@@ -34,7 +33,6 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
 	go.opencensus.io v0.22.1
-	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45

@@ -18,31 +18,35 @@ type EventReader interface {
 	ID() string
 	// Time returns event.Context.GetTime().
 	Time() time.Time
-	// SchemaURL returns event.Context.GetSchemaURL().
-	SchemaURL() string
+	// DataSchema returns event.Context.GetDataSchema().
+	DataSchema() string
 	// DataContentType returns event.Context.GetDataContentType().
 	DataContentType() string
 	// DataMediaType returns event.Context.GetDataMediaType().
 	DataMediaType() string
-	// DataContentEncoding returns event.Context.GetDataContentEncoding().
-	DataContentEncoding() string
+	// DeprecatedDataContentEncoding returns event.Context.DeprecatedGetDataContentEncoding().
+	DeprecatedDataContentEncoding() string
 
 	// Extension Attributes
 
 	// Extensions returns the event.Context.GetExtensions().
+	// Extensions use the CloudEvents type system, details in package cloudevents/types.
 	Extensions() map[string]interface{}
 
+	// DEPRECATED: see event.Context.ExtensionAs
 	// ExtensionAs returns event.Context.ExtensionAs(name, obj).
 	ExtensionAs(string, interface{}) error
 
 	// Data Attribute
 
-	// ExtensionAs returns event.Context.ExtensionAs(name, obj).
+	// DataAs attempts to populate the provided data object with the event payload.
+	// data should be a pointer type.
 	DataAs(interface{}) error
 }
 
 // EventWriter is the interface for writing through an event onto attributes.
-// If an error is thrown by a sub-component, EventWriter panics.
+// If an error is thrown by a sub-component, EventWriter caches the error
+// internally and exposes errors with a call to event.Validate().
 type EventWriter interface {
 	// Context Attributes
 
@@ -58,11 +62,11 @@ type EventWriter interface {
 	SetID(string)
 	// SetTime performs event.Context.SetTime.
 	SetTime(time.Time)
-	// SetSchemaURL performs event.Context.SetSchemaURL.
-	SetSchemaURL(string)
+	// SetDataSchema performs event.Context.SetDataSchema.
+	SetDataSchema(string)
 	// SetDataContentType performs event.Context.SetDataContentType.
 	SetDataContentType(string)
-	// SetDataContentEncoding performs event.Context.SetDataContentEncoding.
+	// DeprecatedSetDataContentEncoding performs event.Context.DeprecatedSetDataContentEncoding.
 	SetDataContentEncoding(string)
 
 	// Extension Attributes
