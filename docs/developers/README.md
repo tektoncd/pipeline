@@ -275,3 +275,5 @@ status:
     value: |
       1579722445
 ```
+
+Instead of hardcoding the path to the result file, the user can also use a variable. So `/tekton/results/current-date-unix-timestamp` can be replaced with: `$(results.current-date-unix-timestamp.path)`. This is more flexible if the path to result files ever changes.

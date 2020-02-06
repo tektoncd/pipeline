@@ -720,6 +720,42 @@ func TestApplyWorkspaces(t *testing.T) {
 	}}
 	got := resources.ApplyWorkspaces(ts, w, wb)
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("ApplyParameters() got diff %s", d)
+		t.Errorf("TestApplyWorkspaces() got diff %s", d)
+	}
+}
+
+func TestTaskResults(t *testing.T) {
+	names.TestingSeed()
+	ts := &v1alpha1.TaskSpec{
+		Results: []v1alpha1.TaskResult{{
+			Name:        "current-date-unix-timestamp",
+			Description: "The current date in unix timestamp format",
+		}, {
+			Name:        "current-date-human-readable",
+			Description: "The current date in humand readable format"},
+		},
+		Steps: []v1alpha1.Step{{
+			Container: corev1.Container{
+				Name:  "print-date-unix-timestamp",
+				Image: "bash:latest",
+				Args:  []string{"$(results.current-date-unix-timestamp.path)"},
+			},
+			Script: "#!/usr/bin/env bash\ndate +%s | tee $(results.current-date-unix-timestamp.path)",
+		}, {
+			Container: corev1.Container{
+				Name:  "print-date-humman-readable",
+				Image: "bash:latest",
+			},
+			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",
+		}},
+	}
+	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
+		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current-date-unix-timestamp"
+		spec.Steps[0].Args[0] = "/tekton/results/current-date-unix-timestamp"
+		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
+	})
+	got := resources.ApplyTaskResults(ts)
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("ApplyTaskResults() got diff %s", d)
 	}
 }
