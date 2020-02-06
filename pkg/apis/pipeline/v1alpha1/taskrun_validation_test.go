@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/test/builder"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -122,12 +123,12 @@ func TestTaskRunSpec_Invalid(t *testing.T) {
 			TaskRef: &v1alpha1.TaskRef{
 				Name: "taskrefname",
 			},
-			TaskSpec: &v1alpha1.TaskSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
 				}}},
-			},
+			}},
 		},
 		wantErr: apis.ErrDisallowedFields("spec.taskspec", "spec.taskref"),
 	}, {
@@ -142,12 +143,12 @@ func TestTaskRunSpec_Invalid(t *testing.T) {
 	}, {
 		name: "invalid taskspec",
 		spec: v1alpha1.TaskRunSpec{
-			TaskSpec: &v1alpha1.TaskSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "invalid-name-with-$weird-char*/%",
 					Image: "myimage",
 				}}},
-			},
+			}},
 		},
 		wantErr: &apis.FieldError{
 			Message: `invalid value "invalid-name-with-$weird-char*/%"`,
@@ -172,23 +173,23 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 	}{{
 		name: "taskspec without a taskRef",
 		spec: v1alpha1.TaskRunSpec{
-			TaskSpec: &v1alpha1.TaskSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
 				}}},
-			},
+			}},
 		},
 	}, {
 		name: "no timeout",
 		spec: v1alpha1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
-			TaskSpec: &v1alpha1.TaskSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
 				}}},
-			},
+			}},
 		},
 	}}
 	for _, ts := range tests {

@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -67,14 +68,34 @@ func TestTask(t *testing.T) {
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
 		Spec: v1alpha1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "mycontainer",
-				Image:   "myimage",
-				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
-			}}, {Script: "echo foo", Container: corev1.Container{
-				Image: "myimage2",
-			}}},
+			TaskSpec: v1alpha2.TaskSpec{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
+				}}, {Script: "echo foo", Container: corev1.Container{
+					Image: "myimage2",
+				}}},
+				Volumes: []corev1.Volume{{
+					Name: "foo",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
+					},
+				}},
+				StepTemplate: &corev1.Container{
+					Env: []corev1.EnvVar{{
+						Name:  "FRUIT",
+						Value: "BANANA",
+					}},
+				},
+				Workspaces: []v1alpha1.WorkspaceDeclaration{{
+					Name:        "bread",
+					Description: "kind of bread",
+					MountPath:   "/bread/path",
+					ReadOnly:    false,
+				}},
+			},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
 					ResourceDeclaration: v1alpha1.ResourceDeclaration{
@@ -112,24 +133,6 @@ func TestTask(t *testing.T) {
 						Optional:   true,
 					}}},
 			},
-			Volumes: []corev1.Volume{{
-				Name: "foo",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
-				},
-			}},
-			StepTemplate: &corev1.Container{
-				Env: []corev1.EnvVar{{
-					Name:  "FRUIT",
-					Value: "BANANA",
-				}},
-			},
-			Workspaces: []v1alpha1.WorkspaceDeclaration{{
-				Name:        "bread",
-				Description: "kind of bread",
-				MountPath:   "/bread/path",
-				ReadOnly:    false,
-			}},
 		},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {
@@ -145,13 +148,13 @@ func TestClusterTask(t *testing.T) {
 	))
 	expectedTask := &v1alpha1.ClusterTask{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
-		Spec: v1alpha1.TaskSpec{
+		Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
 				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
 			}}},
-		},
+		}},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {
 		t.Fatalf("Task diff -want, +got: %v", d)
@@ -307,10 +310,12 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []v1alpha1.Step{{Container: corev1.Container{
-					Image:   "image",
-					Command: []string{"/mycmd"},
-				}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Image:   "image",
+						Command: []string{"/mycmd"},
+					}}},
+				},
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
 						ResourceDeclaration: v1alpha1.ResourceDeclaration{
@@ -351,10 +356,12 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []v1alpha1.Step{{Container: corev1.Container{
-					Image:   "image",
-					Command: []string{"/mycmd"},
-				}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Image:   "image",
+						Command: []string{"/mycmd"},
+					}}},
+				},
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
 						ResourceDeclaration: v1alpha1.ResourceDeclaration{
@@ -389,12 +396,12 @@ func TestResolvedTaskResources(t *testing.T) {
 		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", "quuz")),
 	)
 	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
-		TaskSpec: &v1alpha1.TaskSpec{
+		TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Image:   "image",
 				Command: []string{"/mycmd"},
 			}}},
-		},
+		}},
 		Inputs: map[string]*v1alpha1.PipelineResource{
 			"foo": {
 				ObjectMeta: metav1.ObjectMeta{

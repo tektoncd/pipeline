@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -47,12 +48,12 @@ func TestTaskRunRetry(t *testing.T) {
 			PipelineSpec: &v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name: "retry-me",
-					TaskSpec: &v1alpha1.TaskSpec{
+					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 						Steps: []v1alpha1.Step{{
 							Container: corev1.Container{Image: "busybox"},
 							Script:    "exit 1",
 						}},
-					},
+					}},
 					Retries: numRetries,
 				}},
 			},
