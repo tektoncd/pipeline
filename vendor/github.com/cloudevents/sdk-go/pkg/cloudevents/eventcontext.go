@@ -18,27 +18,40 @@ type EventContextReader interface {
 	GetID() string
 	// GetTime returns the CloudEvents creation time from the context.
 	GetTime() time.Time
-	// GetSchemaURL returns the CloudEvents schema URL (if any) from the
+	// GetDataSchema returns the CloudEvents schema URL (if any) from the
 	// context.
-	GetSchemaURL() string
+	GetDataSchema() string
 	// GetDataContentType returns content type on the context.
 	GetDataContentType() string
-	// GetDataContentEncoding returns content encoding on the context.
-	GetDataContentEncoding() string
+	// DeprecatedGetDataContentEncoding returns content encoding on the context.
+	DeprecatedGetDataContentEncoding() string
 
 	// GetDataMediaType returns the MIME media type for encoded data, which is
 	// needed by both encoding and decoding. This is a processed form of
 	// GetDataContentType and it may return an error.
 	GetDataMediaType() (string, error)
 
-	// ExtensionAs populates the given interface with the CloudEvents extension
-	// of the given name from the extension attributes. It returns an error if
-	// the extension does not exist, the extension's type does not match the
-	// provided type, or if the type is not a supported.
+	// DEPRECATED: Access extensions directly via the GetExtensions()
+	// For example replace this:
+	//
+	//     var i int
+	//     err := ec.ExtensionAs("foo", &i)
+	//
+	// With this:
+	//
+	//     i, err := types.ToInteger(ec.GetExtensions["foo"])
+	//
 	ExtensionAs(string, interface{}) error
 
 	// GetExtensions returns the full extensions map.
+	//
+	// Extensions use the CloudEvents type system, details in package cloudevents/types.
 	GetExtensions() map[string]interface{}
+
+	// GetExtension returns the extension associated with with the given key.
+	// The given key is case insensitive. If the extension can not be found,
+	// an error will be returned.
+	GetExtension(string) (interface{}, error)
 }
 
 // EventContextWriter are the methods required to be a writer of context
@@ -56,18 +69,24 @@ type EventContextWriter interface {
 	SetID(string) error
 	// SetTime sets the time of the context.
 	SetTime(time time.Time) error
-	// SetSchemaURL sets the schema url of the context.
-	SetSchemaURL(string) error
+	// SetDataSchema sets the schema url of the context.
+	SetDataSchema(string) error
 	// SetDataContentType sets the data content type of the context.
 	SetDataContentType(string) error
-	// SetDataContentEncoding sets the data context encoding of the context.
-	SetDataContentEncoding(string) error
+	// DeprecatedSetDataContentEncoding sets the data context encoding of the context.
+	DeprecatedSetDataContentEncoding(string) error
 
 	// SetExtension sets the given interface onto the extension attributes
 	// determined by the provided name.
+	//
+	// This function fails in V1 if the name doesn't respect the regex ^[a-zA-Z0-9]+$
+	//
+	// Package ./types documents the types that are allowed as extension values.
 	SetExtension(string, interface{}) error
 }
 
+// EventContextConverter are the methods that allow for event version
+// conversion.
 type EventContextConverter interface {
 	// AsV01 provides a translation from whatever the "native" encoding of the
 	// CloudEvent was to the equivalent in v0.1 field names, moving fields to or
@@ -83,6 +102,11 @@ type EventContextConverter interface {
 	// CloudEvent was to the equivalent in v0.3 field names, moving fields to or
 	// from extensions as necessary.
 	AsV03() *EventContextV03
+
+	// AsV1 provides a translation from whatever the "native" encoding of the
+	// CloudEvent was to the equivalent in v1.0 field names, moving fields to or
+	// from extensions as necessary.
+	AsV1() *EventContextV1
 }
 
 // EventContext is conical interface for a CloudEvents Context.

@@ -3,10 +3,11 @@ package cloudevents
 import (
 	"errors"
 	"fmt"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 )
 
 // Adhere to EventContextWriter
@@ -78,8 +79,8 @@ func (ec *EventContextV01) SetTime(t time.Time) error {
 	return nil
 }
 
-// SetSchemaURL implements EventContextWriter.SetSchemaURL
-func (ec *EventContextV01) SetSchemaURL(u string) error {
+// SetDataSchema implements EventContextWriter.SetDataSchema
+func (ec *EventContextV01) SetDataSchema(u string) error {
 	u = strings.TrimSpace(u)
 	if u == "" {
 		ec.SchemaURL = nil
@@ -93,8 +94,8 @@ func (ec *EventContextV01) SetSchemaURL(u string) error {
 	return nil
 }
 
-// SetDataContentEncoding implements EventContextWriter.SetDataContentEncoding
-func (ec *EventContextV01) SetDataContentEncoding(e string) error {
+// DeprecatedSetDataContentEncoding implements EventContextWriter.DeprecatedSetDataContentEncoding
+func (ec *EventContextV01) DeprecatedSetDataContentEncoding(e string) error {
 	e = strings.ToLower(strings.TrimSpace(e))
 	if e == "" {
 		return ec.SetExtension(DataContentEncodingKey, nil)

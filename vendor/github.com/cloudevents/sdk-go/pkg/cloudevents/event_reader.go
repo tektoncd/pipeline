@@ -8,58 +8,91 @@ var _ EventReader = (*Event)(nil)
 
 // SpecVersion implements EventReader.SpecVersion
 func (e Event) SpecVersion() string {
-	return e.Context.GetSpecVersion()
+	if e.Context != nil {
+		return e.Context.GetSpecVersion()
+	}
+	return ""
 }
 
 // Type implements EventReader.Type
 func (e Event) Type() string {
-	return e.Context.GetType()
+	if e.Context != nil {
+		return e.Context.GetType()
+	}
+	return ""
 }
 
 // Source implements EventReader.Source
 func (e Event) Source() string {
-	return e.Context.GetSource()
+	if e.Context != nil {
+		return e.Context.GetSource()
+	}
+	return ""
 }
 
 // Subject implements EventReader.Subject
 func (e Event) Subject() string {
-	return e.Context.GetSubject()
+	if e.Context != nil {
+		return e.Context.GetSubject()
+	}
+	return ""
 }
 
 // ID implements EventReader.ID
 func (e Event) ID() string {
-	return e.Context.GetID()
+	if e.Context != nil {
+		return e.Context.GetID()
+	}
+	return ""
 }
 
 // Time implements EventReader.Time
 func (e Event) Time() time.Time {
-	return e.Context.GetTime()
+	if e.Context != nil {
+		return e.Context.GetTime()
+	}
+	return time.Time{}
 }
 
-// SchemaURL implements EventReader.SchemaURL
-func (e Event) SchemaURL() string {
-	return e.Context.GetSchemaURL()
+// DataSchema implements EventReader.DataSchema
+func (e Event) DataSchema() string {
+	if e.Context != nil {
+		return e.Context.GetDataSchema()
+	}
+	return ""
 }
 
 // DataContentType implements EventReader.DataContentType
 func (e Event) DataContentType() string {
-	return e.Context.GetDataContentType()
+	if e.Context != nil {
+		return e.Context.GetDataContentType()
+	}
+	return ""
 }
 
 // DataMediaType returns the parsed DataMediaType of the event. If parsing
 // fails, the empty string is returned. To retrieve the parsing error, use
 // `Context.GetDataMediaType` instead.
 func (e Event) DataMediaType() string {
-	mediaType, _ := e.Context.GetDataMediaType()
-	return mediaType
+	if e.Context != nil {
+		mediaType, _ := e.Context.GetDataMediaType()
+		return mediaType
+	}
+	return ""
 }
 
-// DataContentEncoding implements EventReader.DataContentEncoding
-func (e Event) DataContentEncoding() string {
-	return e.Context.GetDataContentEncoding()
+// DeprecatedDataContentEncoding implements EventReader.DeprecatedDataContentEncoding
+func (e Event) DeprecatedDataContentEncoding() string {
+	if e.Context != nil {
+		return e.Context.DeprecatedGetDataContentEncoding()
+	}
+	return ""
 }
 
-// DataContentEncoding implements EventReader.DataContentEncoding
+// Extensions implements EventReader.Extensions
 func (e Event) Extensions() map[string]interface{} {
-	return e.Context.GetExtensions()
+	if e.Context != nil {
+		return e.Context.GetExtensions()
+	}
+	return map[string]interface{}(nil)
 }

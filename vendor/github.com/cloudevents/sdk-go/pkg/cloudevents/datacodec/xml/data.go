@@ -5,17 +5,17 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/observability"
 	"strconv"
+
+	"github.com/cloudevents/sdk-go/pkg/cloudevents/observability"
 )
 
 // Decode takes `in` as []byte, or base64 string, normalizes in to unquoted and
 // base64 decoded []byte if required, and then attempts to use xml.Unmarshal
 // to convert those bytes to `out`. Returns and error if this process fails.
-func Decode(in, out interface{}) error {
-	// TODO: wire in context.
-	_, r := observability.NewReporter(context.Background(), reportDecode)
-	err := obsDecode(in, out)
+func Decode(ctx context.Context, in, out interface{}) error {
+	_, r := observability.NewReporter(ctx, reportDecode)
+	err := obsDecode(ctx, in, out)
 	if err != nil {
 		r.Error()
 	} else {
@@ -24,7 +24,7 @@ func Decode(in, out interface{}) error {
 	return err
 }
 
-func obsDecode(in, out interface{}) error {
+func obsDecode(ctx context.Context, in, out interface{}) error {
 	if in == nil {
 		return nil
 	}
@@ -67,10 +67,9 @@ func obsDecode(in, out interface{}) error {
 // Encode attempts to xml.Marshal `in` into bytes. Encode will inspect `in`
 // and returns `in` unmodified if it is detected that `in` is already a []byte;
 // Or xml.Marshal errors.
-func Encode(in interface{}) ([]byte, error) {
-	// TODO: wire in context.
-	_, r := observability.NewReporter(context.Background(), reportEncode)
-	b, err := obsEncode(in)
+func Encode(ctx context.Context, in interface{}) ([]byte, error) {
+	_, r := observability.NewReporter(ctx, reportEncode)
+	b, err := obsEncode(ctx, in)
 	if err != nil {
 		r.Error()
 	} else {
@@ -79,7 +78,7 @@ func Encode(in interface{}) ([]byte, error) {
 	return b, err
 }
 
-func obsEncode(in interface{}) ([]byte, error) {
+func obsEncode(ctx context.Context, in interface{}) ([]byte, error) {
 	if b, ok := in.([]byte); ok {
 		// check to see if it is a pre-encoded byte string.
 		if len(b) > 0 && b[0] == byte('"') {

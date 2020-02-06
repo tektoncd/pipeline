@@ -1,18 +1,20 @@
 package client
 
 import (
+	"context"
+	"time"
+
 	"github.com/cloudevents/sdk-go/pkg/cloudevents"
 	"github.com/google/uuid"
-	"time"
 )
 
 // EventDefaulter is the function signature for extensions that are able
 // to perform event defaulting.
-type EventDefaulter func(event cloudevents.Event) cloudevents.Event
+type EventDefaulter func(ctx context.Context, event cloudevents.Event) cloudevents.Event
 
 // DefaultIDToUUIDIfNotSet will inspect the provided event and assign a UUID to
 // context.ID if it is found to be empty.
-func DefaultIDToUUIDIfNotSet(event cloudevents.Event) cloudevents.Event {
+func DefaultIDToUUIDIfNotSet(ctx context.Context, event cloudevents.Event) cloudevents.Event {
 	if event.Context != nil {
 		if event.ID() == "" {
 			event.Context = event.Context.Clone()
@@ -24,7 +26,7 @@ func DefaultIDToUUIDIfNotSet(event cloudevents.Event) cloudevents.Event {
 
 // DefaultTimeToNowIfNotSet will inspect the provided event and assign a new
 // Timestamp to context.Time if it is found to be nil or zero.
-func DefaultTimeToNowIfNotSet(event cloudevents.Event) cloudevents.Event {
+func DefaultTimeToNowIfNotSet(ctx context.Context, event cloudevents.Event) cloudevents.Event {
 	if event.Context != nil {
 		if event.Time().IsZero() {
 			event.Context = event.Context.Clone()
@@ -32,4 +34,18 @@ func DefaultTimeToNowIfNotSet(event cloudevents.Event) cloudevents.Event {
 		}
 	}
 	return event
+}
+
+// NewDefaultDataContentTypeIfNotSet returns a defaulter that will inspect the
+// provided event and set the provided content type if content type is found
+// to be empty.
+func NewDefaultDataContentTypeIfNotSet(contentType string) EventDefaulter {
+	return func(ctx context.Context, event cloudevents.Event) cloudevents.Event {
+		if event.Context != nil {
+			if event.DataContentType() == "" {
+				event.SetDataContentType(contentType)
+			}
+		}
+		return event
+	}
 }

@@ -1,6 +1,7 @@
 package cloudevents
 
 import (
+	"fmt"
 	"mime"
 	"time"
 )
@@ -64,22 +65,32 @@ func (ec EventContextV03) GetID() string {
 	return ec.ID
 }
 
-// GetSchemaURL implements EventContextReader.GetSchemaURL
-func (ec EventContextV03) GetSchemaURL() string {
+// GetDataSchema implements EventContextReader.GetDataSchema
+func (ec EventContextV03) GetDataSchema() string {
 	if ec.SchemaURL != nil {
 		return ec.SchemaURL.String()
 	}
 	return ""
 }
 
-// GetDataContentEncoding implements EventContextReader.GetDataContentEncoding
-func (ec EventContextV03) GetDataContentEncoding() string {
+// DeprecatedGetDataContentEncoding implements EventContextReader.DeprecatedGetDataContentEncoding
+func (ec EventContextV03) DeprecatedGetDataContentEncoding() string {
 	if ec.DataContentEncoding != nil {
 		return *ec.DataContentEncoding
 	}
 	return ""
 }
 
+// GetExtensions implements EventContextReader.GetExtensions
 func (ec EventContextV03) GetExtensions() map[string]interface{} {
 	return ec.Extensions
+}
+
+// GetExtension implements EventContextReader.GetExtension
+func (ec EventContextV03) GetExtension(key string) (interface{}, error) {
+	v, ok := caseInsensitiveSearch(key, ec.Extensions)
+	if !ok {
+		return "", fmt.Errorf("%q not found", key)
+	}
+	return v, nil
 }

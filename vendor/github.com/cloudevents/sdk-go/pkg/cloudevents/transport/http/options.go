@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"net"
 	nethttp "net/http"
 	"net/url"
 	"strings"
@@ -117,6 +118,21 @@ func WithDefaultEncodingSelector(fn EncodingSelector) Option {
 	}
 }
 
+// WithContextBasedEncoding sets the encoding selection strategy for
+// default encoding selections based context and then on Event, the encoded
+// event will be the given version in the encoding specified by the given
+// context, or Binary if not set.
+func WithContextBasedEncoding() Option {
+	return func(t *Transport) error {
+		if t == nil {
+			return fmt.Errorf("http context based encoding option can not set nil transport")
+		}
+
+		t.DefaultEncodingSelectionFn = ContextBasedEncodingSelectionStrategy
+		return nil
+	}
+}
+
 // WithBinaryEncoding sets the encoding selection strategy for
 // default encoding selections based on Event, the encoded event will be the
 // given version in Binary form.
@@ -145,17 +161,47 @@ func WithStructuredEncoding() Option {
 	}
 }
 
-// WithPort sets the port for for clients with HTTP transports.
+func checkListen(t *Transport, prefix string) error {
+	switch {
+	case t.Port != nil:
+		return fmt.Errorf("%v port already set", prefix)
+	case t.listener != nil:
+		return fmt.Errorf("%v listener already set", prefix)
+	}
+	return nil
+}
+
+// WithPort sets the listening port for StartReceiver.
+// Only one of WithListener  or WithPort is allowed.
 func WithPort(port int) Option {
 	return func(t *Transport) error {
 		if t == nil {
 			return fmt.Errorf("http port option can not set nil transport")
 		}
-		if port < 0 {
+		if port < 0 || port > 65535 {
 			return fmt.Errorf("http port option was given an invalid port: %d", port)
 		}
-		t.Port = &port
+		if err := checkListen(t, "http port option"); err != nil {
+			return err
+		}
+		t.setPort(port)
 		return nil
+	}
+}
+
+// WithListener sets the listener for StartReceiver.
+// Only one of WithListener or WithPort is allowed.
+func WithListener(l net.Listener) Option {
+	return func(t *Transport) error {
+		if t == nil {
+			return fmt.Errorf("http listener option can not set nil transport")
+		}
+		if err := checkListen(t, "http port option"); err != nil {
+			return err
+		}
+		t.listener = l
+		_, err := t.listen()
+		return err
 	}
 }
 
@@ -182,11 +228,39 @@ type Middleware func(next nethttp.Handler) nethttp.Handler
 // Middleware is applied to everything before it. For example
 // `NewClient(WithMiddleware(foo), WithMiddleware(bar))` would result in `bar(foo(original))`.
 func WithMiddleware(middleware Middleware) Option {
-	return func (t *Transport) error {
+	return func(t *Transport) error {
 		if t == nil {
 			return fmt.Errorf("http middleware option can not set nil transport")
 		}
 		t.middleware = append(t.middleware, middleware)
 		return nil
+	}
+}
+
+// WithLongPollTarget sets the receivers URL to perform long polling after
+// StartReceiver is called.
+func WithLongPollTarget(targetUrl string) Option {
+	return func(t *Transport) error {
+		if t == nil {
+			return fmt.Errorf("http long poll target option can not set nil transport")
+		}
+		targetUrl = strings.TrimSpace(targetUrl)
+		if targetUrl != "" {
+			var err error
+			var target *url.URL
+			target, err = url.Parse(targetUrl)
+			if err != nil {
+				return fmt.Errorf("http long poll target option failed to parse target url: %s", err.Error())
+			}
+
+			if t.LongPollReq == nil {
+				t.LongPollReq = &nethttp.Request{
+					Method: nethttp.MethodGet,
+				}
+			}
+			t.LongPollReq.URL = target
+			return nil
+		}
+		return fmt.Errorf("http long poll target option was empty string")
 	}
 }
