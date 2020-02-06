@@ -23,6 +23,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
@@ -296,11 +298,13 @@ func TestTaskSpecValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				Inputs:       tt.fields.Inputs,
-				Outputs:      tt.fields.Outputs,
-				Steps:        tt.fields.Steps,
-				StepTemplate: tt.fields.StepTemplate,
-				Workspaces:   tt.fields.Workspaces,
+				TaskSpec: v1alpha2.TaskSpec{
+					Steps:        tt.fields.Steps,
+					StepTemplate: tt.fields.StepTemplate,
+					Workspaces:   tt.fields.Workspaces,
+				},
+				Inputs:  tt.fields.Inputs,
+				Outputs: tt.fields.Outputs,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
@@ -319,6 +323,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Volumes      []corev1.Volume
 		StepTemplate *corev1.Container
 		Workspaces   []v1alpha1.WorkspaceDeclaration
+		// v1alpha2
+		Params    []v1alpha2.ParamSpec
+		Resources *v1alpha2.TaskResources
 	}
 	tests := []struct {
 		name          string
@@ -864,16 +871,81 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
 			Paths:   []string{"workspaces.mountpath"},
 		},
+	}, {
+		name: "v1alpha2: params and deprecated inputs.params",
+		fields: fields{
+			Steps: validSteps,
+			Params: []v1alpha2.ParamSpec{{
+				Name: "param1",
+				Type: v1alpha2.ParamTypeString,
+			}},
+			Inputs: &v1alpha1.Inputs{
+				Params: []v1alpha1.ParamSpec{{
+					Name: "param1",
+					Type: v1alpha2.ParamTypeString,
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"inputs.params", "params"},
+		},
+	}, {
+		name: "v1alpha2: resources.inputs and deprecated inputs.resource",
+		fields: fields{
+			Steps: validSteps,
+			Resources: &v1alpha2.TaskResources{
+				Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+					Name: "input-1",
+					Type: resource.PipelineResourceTypeGit,
+				}}},
+			},
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "input-1",
+					Type: resource.PipelineResourceTypeGit,
+				}}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"inputs.resources", "resources.inputs"},
+		},
+	}, {
+		name: "v1alpha2: resources.outputs and deprecated outputs.resource",
+		fields: fields{
+			Steps: validSteps,
+			Resources: &v1alpha2.TaskResources{
+				Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+					Name: "output-1",
+					Type: resource.PipelineResourceTypeGit,
+				}}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "output-1",
+					Type: resource.PipelineResourceTypeGit,
+				}}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"outputs.resources", "resources.outputs"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				Inputs:       tt.fields.Inputs,
-				Outputs:      tt.fields.Outputs,
-				Steps:        tt.fields.Steps,
-				Volumes:      tt.fields.Volumes,
-				StepTemplate: tt.fields.StepTemplate,
-				Workspaces:   tt.fields.Workspaces,
+				TaskSpec: v1alpha2.TaskSpec{
+					Steps:        tt.fields.Steps,
+					Volumes:      tt.fields.Volumes,
+					StepTemplate: tt.fields.StepTemplate,
+					Workspaces:   tt.fields.Workspaces,
+					Params:       tt.fields.Params,
+					Resources:    tt.fields.Resources,
+				},
+				Inputs:  tt.fields.Inputs,
+				Outputs: tt.fields.Outputs,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)

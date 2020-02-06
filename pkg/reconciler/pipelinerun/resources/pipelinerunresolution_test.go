@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -91,22 +92,22 @@ var task = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "task",
 	},
-	Spec: v1alpha1.TaskSpec{
+	Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}},
-	},
+	}},
 }
 
 var clustertask = &v1alpha1.ClusterTask{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "clustertask",
 	},
-	Spec: v1alpha1.TaskSpec{
+	Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}},
-	},
+	}},
 }
 
 var trs = []v1alpha1.TaskRun{{
@@ -457,6 +458,11 @@ var taskWithOptionalResources = &v1alpha1.Task{
 		Name: "task",
 	},
 	Spec: v1alpha1.TaskSpec{
+		TaskSpec: v1alpha2.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name: "step1",
+			}}},
+		},
 		Inputs: &v1alpha1.Inputs{
 			Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name:     "optional-input",
@@ -478,9 +484,6 @@ var taskWithOptionalResources = &v1alpha1.Task{
 				Optional: false,
 			}}},
 		},
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
-			Name: "step1",
-		}}},
 	},
 }
 
@@ -1151,11 +1154,11 @@ func TestResolvePipelineRun(t *testing.T) {
 			tb.PipelineTaskOutputResource("output1", "git-resource"),
 		),
 		tb.PipelineTask("mytask4", "",
-			tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+			tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
 				}}},
-			})),
+			}})),
 	))
 
 	r := &v1alpha1.PipelineResource{

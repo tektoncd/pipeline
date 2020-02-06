@@ -65,6 +65,20 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if ts.Inputs != nil {
+		if len(ts.Inputs.Params) > 0 && len(ts.Params) > 0 {
+			return apis.ErrMultipleOneOf("inputs.params", "params")
+		}
+		if ts.Resources != nil && len(ts.Resources.Inputs) > 0 && len(ts.Inputs.Resources) > 0 {
+			return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
+		}
+	}
+	if ts.Outputs != nil {
+		if ts.Resources != nil && len(ts.Resources.Outputs) > 0 && len(ts.Outputs.Resources) > 0 {
+			return apis.ErrMultipleOneOf("outputs.resources", "resources.outputs")
+		}
+	}
+
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.
 	// A task can't duplicate input or output names.
 

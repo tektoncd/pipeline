@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -295,11 +296,11 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "mystep",
 						Image: "myimage"}}},
-				})),
+				}})),
 			),
 		),
 	}
