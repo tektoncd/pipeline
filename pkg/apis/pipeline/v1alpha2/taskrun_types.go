@@ -49,7 +49,7 @@ type TaskRunSpec struct {
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
-	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
