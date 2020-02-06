@@ -47,12 +47,13 @@ func TestUninitializedMetrics(t *testing.T) {
 func TestRecordTaskrunDurationCount(t *testing.T) {
 	startTime := time.Now()
 
-	testData := []struct {
-		name             string
-		taskRun          *v1alpha1.TaskRun
-		expectedTags     map[string]string
-		expectedDuration float64
-		expectedCount    int64
+	for _, c := range []struct {
+		name              string
+		taskRun           *v1alpha1.TaskRun
+		expectedTags      map[string]string
+		expectedCountTags map[string]string
+		expectedDuration  float64
+		expectedCount     int64
 	}{{
 		name: "for_succeeded_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
@@ -72,6 +73,9 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 			"taskrun":   "taskrun-1",
 			"namespace": "ns",
 			"status":    "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
@@ -95,22 +99,23 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 			"namespace": "ns",
 			"status":    "failed",
 		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
 		expectedDuration: 60,
 		expectedCount:    1,
-	}}
-
-	for _, test := range testData {
-		t.Run(test.name, func(t *testing.T) {
+	}} {
+		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
 
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			err = metrics.DurationAndCount(test.taskRun)
-			assertErrIsNil(err, "DurationAndCount recording got an error", t)
-			metricstest.CheckDistributionData(t, "taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
-			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
-
+			if err := metrics.DurationAndCount(c.taskRun); err != nil {
+				t.Fatalf("DurationAndCount: %v", err)
+			}
+			metricstest.CheckDistributionData(t, "taskrun_duration_seconds", c.expectedTags, 1, c.expectedDuration, c.expectedDuration)
+			metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
 		})
 	}
 }
@@ -118,12 +123,13 @@ func TestRecordTaskrunDurationCount(t *testing.T) {
 func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 	startTime := time.Now()
 
-	testData := []struct {
-		name             string
-		taskRun          *v1alpha1.TaskRun
-		expectedTags     map[string]string
-		expectedDuration float64
-		expectedCount    int64
+	for _, c := range []struct {
+		name              string
+		taskRun           *v1alpha1.TaskRun
+		expectedTags      map[string]string
+		expectedCountTags map[string]string
+		expectedDuration  float64
+		expectedCount     int64
 	}{{
 		name: "for_succeeded_task",
 		taskRun: tb.TaskRun("taskrun-1", "ns",
@@ -147,6 +153,9 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 			"taskrun":     "taskrun-1",
 			"namespace":   "ns",
 			"status":      "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
@@ -174,21 +183,22 @@ func TestRecordPipelinerunTaskrunDurationCount(t *testing.T) {
 			"namespace":   "ns",
 			"status":      "failed",
 		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
 		expectedDuration: 60,
 		expectedCount:    1,
-	}}
-
-	for _, test := range testData {
-		t.Run(test.name, func(t *testing.T) {
+	}} {
+		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			err = metrics.DurationAndCount(test.taskRun)
-			assertErrIsNil(err, "DurationAndCount recording got an error", t)
-			metricstest.CheckDistributionData(t, "pipelinerun_taskrun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
-			metricstest.CheckCountData(t, "taskrun_count", test.expectedTags, test.expectedCount)
-
+			if err := metrics.DurationAndCount(c.taskRun); err != nil {
+				t.Fatalf("DurationAndCount: %v", err)
+			}
+			metricstest.CheckDistributionData(t, "pipelinerun_taskrun_duration_seconds", c.expectedTags, 1, c.expectedDuration, c.expectedDuration)
+			metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
 		})
 	}
 }

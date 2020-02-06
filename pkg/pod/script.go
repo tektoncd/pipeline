@@ -45,12 +45,12 @@ var (
 	}
 )
 
-// convertScripts converts any steps that specify a Script field into a normal Container.
+// convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
 //
 // It does this by prepending a container that writes specified Script bodies
 // to executable files in a shared volumeMount, then produces Containers that
 // simply run those executable files.
-func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container, []corev1.Container) {
+func convertScripts(shellImage string, steps []v1alpha1.Step, sidecars []v1alpha1.Sidecar) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	placeScripts := false
 	placeScriptsInit := corev1.Container{
 		Name:         "place-scripts",
@@ -61,7 +61,21 @@ func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}
 
-	var containers []corev1.Container
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, "script")
+	sidecarContainers := convertListOfSteps(sidecars, &placeScriptsInit, &placeScripts, "sidecar-script")
+
+	if placeScripts {
+		return &placeScriptsInit, convertedStepContainers, sidecarContainers
+	}
+	return nil, convertedStepContainers, sidecarContainers
+}
+
+// convertListOfSteps does the heavy lifting for convertScripts.
+//
+// It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
+// adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
+func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, placeScripts *bool, namePrefix string) []corev1.Container {
+	containers := []corev1.Container{}
 	for i, s := range steps {
 		if s.Script == "" {
 			// Nothing to convert.
@@ -81,11 +95,11 @@ func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 
 		// At least one step uses a script, so we should return a
 		// non-nil init container.
-		placeScripts = true
+		*placeScripts = true
 
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.
-		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("script-%d", i)))
+		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
 		// heredoc is the "here document" placeholder string
 		// used to cat script contents into the file. Typically
 		// this is the string "EOF" but if this value were
@@ -93,8 +107,8 @@ func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 		// string "EOF" in their own scripts. Instead we
 		// randomly generate a string to (hopefully) prevent
 		// collisions.
-		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("script-heredoc-randomly-generated")
-		placeScriptsInit.Args[1] += fmt.Sprintf(`tmpfile="%s"
+		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-heredoc-randomly-generated", namePrefix))
+		initContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << '%s'
 %s
@@ -110,9 +124,5 @@ cat > ${tmpfile} << '%s'
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 		containers = append(containers, steps[i].Container)
 	}
-
-	if placeScripts {
-		return &placeScriptsInit, containers
-	}
-	return nil, containers
+	return containers
 }

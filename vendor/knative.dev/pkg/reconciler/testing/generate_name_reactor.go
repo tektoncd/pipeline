@@ -46,13 +46,11 @@ type GenerateNameReactor struct {
 // mocking
 func (r *GenerateNameReactor) Handles(action clientgotesting.Action) bool {
 	create, ok := action.(clientgotesting.CreateAction)
-
 	if !ok {
 		return false
 	}
 
 	objMeta, err := meta.Accessor(create.GetObject())
-
 	if err != nil {
 		return false
 	}

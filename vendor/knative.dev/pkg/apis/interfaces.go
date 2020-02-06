@@ -44,15 +44,6 @@ type Convertible interface {
 	ConvertDown(ctx context.Context, from Convertible) error
 }
 
-// Immutable indicates that a particular type has fields that should
-// not change after creation.
-// DEPRECATED: Use WithinUpdate / GetBaseline from within Validatable instead.
-type Immutable interface {
-	// CheckImmutableFields checks that the current instance's immutable
-	// fields haven't changed from the provided original.
-	CheckImmutableFields(ctx context.Context, original Immutable) *FieldError
-}
-
 // Listable indicates that a particular type can be returned via the returned
 // list type by the API server.
 type Listable interface {

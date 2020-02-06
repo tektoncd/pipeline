@@ -43,6 +43,12 @@ type Interface interface {
 	// GetInformerFactories fetches all of the registered informer factory injectors.
 	GetInformerFactories() []InformerFactoryInjector
 
+	// RegisterDuck registers a new duck.InformerFactory for a particular type.
+	RegisterDuck(ii DuckFactoryInjector)
+
+	// GetDucks accesses the set of registered ducks.
+	GetDucks() []DuckFactoryInjector
+
 	// RegisterInformer registers a new injector callback for associating
 	// a new informer with a context.
 	RegisterInformer(InformerInjector)
@@ -81,4 +87,5 @@ type impl struct {
 	clients   []ClientInjector
 	factories []InformerFactoryInjector
 	informers []InformerInjector
+	ducks     []DuckFactoryInjector
 }

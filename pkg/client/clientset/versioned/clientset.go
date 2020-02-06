@@ -19,6 +19,8 @@ limitations under the License.
 package versioned
 
 import (
+	"fmt"
+
 	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	tektonv1alpha2 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha2"
 	discovery "k8s.io/client-go/discovery"
@@ -29,8 +31,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Tekton() tektonv1alpha1.TektonV1alpha1Interface
 	TektonV1alpha2() tektonv1alpha2.TektonV1alpha2Interface
 }
 
@@ -44,12 +44,6 @@ type Clientset struct {
 
 // TektonV1alpha1 retrieves the TektonV1alpha1Client
 func (c *Clientset) TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface {
-	return c.tektonV1alpha1
-}
-
-// Deprecated: Tekton retrieves the default version of TektonClient.
-// Please explicitly pick a version.
-func (c *Clientset) Tekton() tektonv1alpha1.TektonV1alpha1Interface {
 	return c.tektonV1alpha1
 }
 
@@ -67,9 +61,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfig will generate a rate-limiter in configShallowCopy.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
+		if configShallowCopy.Burst <= 0 {
+			return nil, fmt.Errorf("Burst is required to be greater than 0 when RateLimiter is not set and QPS is set to greater than 0")
+		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
 	var cs Clientset

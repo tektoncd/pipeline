@@ -40,7 +40,7 @@ const (
 	// ReasonFailed indicates that the reason for the failure status is that one of the TaskRuns failed
 	ReasonFailed = "Failed"
 
-	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cencelled
+	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cancelled
 	ReasonCancelled = "Cancelled"
 
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
@@ -201,15 +201,29 @@ func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.Ge
 // ValidateResourceBindings validate that the PipelineResources declared in Pipeline p are bound in PipelineRun.
 func ValidateResourceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) error {
 	required := make([]string, 0, len(p.Resources))
+	optional := make([]string, 0, len(p.Resources))
 	for _, resource := range p.Resources {
-		required = append(required, resource.Name)
+		if resource.Optional {
+			// create a list of optional resources
+			optional = append(optional, resource.Name)
+		} else {
+			// create a list of required resources
+			required = append(required, resource.Name)
+		}
 	}
 	provided := make([]string, 0, len(pr.Spec.Resources))
 	for _, resource := range pr.Spec.Resources {
 		provided = append(provided, resource.Name)
 	}
-	if err := list.IsSame(required, provided); err != nil {
-		return fmt.Errorf("pipelineRun bound resources didn't match Pipeline: %w", err)
+	// verify that the list of required resources exists in the provided resources
+	missing := list.DiffLeft(required, provided)
+	if len(missing) > 0 {
+		return fmt.Errorf("Pipeline's declared required resources are missing from the PipelineRun: %s", missing)
+	}
+	// verify that the list of provided resources does not have any extra resources (outside of required and optional resources combined)
+	extra := list.DiffLeft(provided, append(required, optional...))
+	if len(extra) > 0 {
+		return fmt.Errorf("PipelineRun's declared resources didn't match usage in Pipeline: %s", extra)
 	}
 	return nil
 }
@@ -380,7 +394,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonCancelled,
-				Message: fmt.Sprintf("TaskRun %s has cencelled", rprt.TaskRun.Name),
+				Message: fmt.Sprintf("TaskRun %s has cancelled", rprt.TaskRun.Name),
 			}
 		}
 
@@ -476,11 +490,15 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask, taskRunStatus map[string]
 		}
 		conditionResources := map[string]*v1alpha1.PipelineResource{}
 		for _, declared := range ptc.Resources {
-			r, ok := providedResources[declared.Resource]
-			if !ok {
-				return nil, fmt.Errorf("resources %s missing for condition %s in pipeline task %s", declared.Resource, cName, pt.Name)
+			if r, ok := providedResources[declared.Resource]; ok {
+				conditionResources[declared.Name] = r
+			} else {
+				for _, resource := range c.Spec.Resources {
+					if declared.Name == resource.Name && !resource.Optional {
+						return nil, fmt.Errorf("resources %s missing for condition %s in pipeline task %s", declared.Resource, cName, pt.Name)
+					}
+				}
 			}
-			conditionResources[declared.Name] = r
 		}
 
 		rcc := ResolvedConditionCheck{
@@ -508,18 +526,32 @@ func ResolvePipelineTaskResources(pt v1alpha1.PipelineTask, ts *v1alpha1.TaskSpe
 	}
 	if pt.Resources != nil {
 		for _, taskInput := range pt.Resources.Inputs {
-			resource, ok := providedResources[taskInput.Resource]
-			if !ok {
-				return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
+			if resource, ok := providedResources[taskInput.Resource]; ok {
+				rtr.Inputs[taskInput.Name] = resource
+			} else {
+				if ts.Inputs == nil {
+					return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
+				}
+				for _, r := range ts.Inputs.Resources {
+					if r.Name == taskInput.Name && !r.Optional {
+						return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
+					}
+				}
 			}
-			rtr.Inputs[taskInput.Name] = resource
 		}
 		for _, taskOutput := range pt.Resources.Outputs {
-			resource, ok := providedResources[taskOutput.Resource]
-			if !ok {
-				return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
+			if resource, ok := providedResources[taskOutput.Resource]; ok {
+				rtr.Outputs[taskOutput.Name] = resource
+			} else {
+				if ts.Outputs == nil {
+					return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
+				}
+				for _, r := range ts.Outputs.Resources {
+					if r.Name == taskOutput.Name && !r.Optional {
+						return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
+					}
+				}
 			}
-			rtr.Outputs[taskOutput.Name] = resource
 		}
 	}
 	return &rtr, nil

@@ -70,6 +70,29 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 		},
 	}, {
+		desc: "pod template is nil",
+		trs:  &v1alpha2.TaskRunSpec{},
+		want: &v1alpha2.TaskRunSpec{
+			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+		},
+	}, {
+		desc: "pod template is not nil",
+		trs: &v1alpha2.TaskRunSpec{
+			PodTemplate: &v1alpha2.PodTemplate{
+				NodeSelector: map[string]string{
+					"label": "value",
+				},
+			},
+		},
+		want: &v1alpha2.TaskRunSpec{
+			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			PodTemplate: &v1alpha2.PodTemplate{
+				NodeSelector: map[string]string{
+					"label": "value",
+				},
+			},
+		},
+	}, {
 		desc: "embedded taskSpec",
 		trs: &v1alpha2.TaskRunSpec{
 			TaskSpec: &v1alpha2.TaskSpec{

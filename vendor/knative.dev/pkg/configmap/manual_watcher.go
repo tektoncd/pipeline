@@ -40,15 +40,17 @@ func (w *ManualWatcher) Watch(name string, o ...Observer) {
 	defer w.m.Unlock()
 
 	if w.observers == nil {
-		w.observers = make(map[string][]Observer, 1)
+		w.observers = make(map[string][]Observer, len(o))
 	}
 	w.observers[name] = append(w.observers[name], o...)
 }
 
+// Start implements Watcher
 func (w *ManualWatcher) Start(<-chan struct{}) error {
 	return nil
 }
 
+// OnChange invokes the callbacks of all observers of the given ConfigMap.
 func (w *ManualWatcher) OnChange(configMap *corev1.ConfigMap) {
 	if configMap.Namespace != w.Namespace {
 		return

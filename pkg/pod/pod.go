@@ -38,7 +38,7 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation      = "tekton.dev/release"
+	ReleaseAnnotation      = "pipeline.tekton.dev/release"
 	ReleaseAnnotationValue = version.PipelineVersion
 
 	groupVersionKind = schema.GroupVersionKind{
@@ -93,7 +93,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
-	scriptsInit, stepContainers := convertScripts(images.ShellImage, steps)
+	scriptsInit, stepContainers, sidecarContainers := convertScripts(images.ShellImage, steps, taskSpec.Sidecars)
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
@@ -119,8 +119,18 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
+	// If present on TaskRunSpec, use LimitRangeName to get LimitRange
+	// so it can be used in resolveResourceRequests
+	var limitRange *corev1.LimitRange
+	if taskRun.Spec.LimitRangeName != "" {
+		limitRange, err = kubeclient.CoreV1().LimitRanges(taskRun.Namespace).Get(taskRun.Spec.LimitRangeName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Zero out non-max resource requests.
-	stepContainers = resolveResourceRequests(stepContainers)
+	stepContainers = resolveResourceRequests(stepContainers, limitRange)
 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
@@ -178,9 +188,10 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		return nil, err
 	}
 
-	// Merge sidecar containers with step containers.
 	mergedPodContainers := stepContainers
-	for _, sc := range taskSpec.Sidecars {
+
+	// Merge sidecar containers with step containers.
+	for _, sc := range sidecarContainers {
 		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
 		mergedPodContainers = append(mergedPodContainers, sc)
 	}

@@ -137,12 +137,12 @@ func MatchesAllOf(checkers ...spoof.ResponseChecker) spoof.ResponseChecker {
 func WaitForEndpointState(
 	kubeClient *KubeClient,
 	logf logging.FormatLogger,
-	theURL string,
+	url *url.URL,
 	inState spoof.ResponseChecker,
 	desc string,
 	resolvable bool,
 	opts ...interface{}) (*spoof.Response, error) {
-	return WaitForEndpointStateWithTimeout(kubeClient, logf, theURL, inState, desc, resolvable, spoof.RequestTimeout, opts...)
+	return WaitForEndpointStateWithTimeout(kubeClient, logf, url, inState, desc, resolvable, spoof.RequestTimeout, opts...)
 }
 
 // WaitForEndpointStateWithTimeout will poll an endpoint until inState indicates the state is achieved
@@ -154,7 +154,7 @@ func WaitForEndpointState(
 func WaitForEndpointStateWithTimeout(
 	kubeClient *KubeClient,
 	logf logging.FormatLogger,
-	theURL string,
+	url *url.URL,
 	inState spoof.ResponseChecker,
 	desc string,
 	resolvable bool,
@@ -162,16 +162,11 @@ func WaitForEndpointStateWithTimeout(
 	opts ...interface{}) (*spoof.Response, error) {
 	defer logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForEndpointState/%s", desc)).End()
 
-	// Try parsing the "theURL" with and without a scheme.
-	asURL, err := url.Parse(theURL)
-	if err != nil {
-		return nil, err
-	}
-	if asURL.Scheme == "" {
-		asURL.Scheme = "http"
+	if url.Scheme == "" || url.Host == "" {
+		return nil, fmt.Errorf("invalid URL: %q", url.String())
 	}
 
-	req, err := http.NewRequest(http.MethodGet, asURL.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +181,7 @@ func WaitForEndpointStateWithTimeout(
 		}
 	}
 
-	client, err := NewSpoofingClient(kubeClient, logf, asURL.Hostname(), resolvable, tOpts...)
+	client, err := NewSpoofingClient(kubeClient, logf, url.Hostname(), resolvable, tOpts...)
 	if err != nil {
 		return nil, err
 	}

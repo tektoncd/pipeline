@@ -32,7 +32,6 @@ type fakeInformerGenerator struct {
 	generator.DefaultGen
 	outputPackage string
 	imports       namer.ImportTracker
-	filtered      bool
 
 	typeToGenerate          *types.Type
 	groupVersion            clientgentypes.GroupVersion

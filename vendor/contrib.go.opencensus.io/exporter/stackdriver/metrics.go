@@ -21,8 +21,9 @@ directly to Stackdriver Metrics.
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -34,13 +35,9 @@ import (
 	monitoredrespb "google.golang.org/genproto/googleapis/api/monitoredres"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 
+	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
 	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/resource"
-)
-
-var (
-	errLableExtraction       = errors.New("error extracting labels")
-	errUnspecifiedMetricKind = errors.New("metric kind is unpsecified")
 )
 
 const (
@@ -73,8 +70,10 @@ func (se *statsExporter) handleMetricsUpload(metrics []*metricdata.Metric) {
 }
 
 func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
-	ctx, cancel := se.o.newContextWithTimeout()
+	ctx, cancel := newContextWithTimeout(se.o.Context, se.o.Timeout)
 	defer cancel()
+
+	var errors []error
 
 	ctx, span := trace.StartSpan(
 		ctx,
@@ -87,7 +86,7 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 		// Now create the metric descriptor remotely.
 		if err := se.createMetricDescriptorFromMetric(ctx, metric); err != nil {
 			span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
-			//TODO: [rghetia] record error metrics.
+			errors = append(errors, err)
 			continue
 		}
 	}
@@ -97,7 +96,7 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 		tsl, err := se.metricToMpbTs(ctx, metric)
 		if err != nil {
 			span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
-			//TODO: [rghetia] record error metrics.
+			errors = append(errors, err)
 			continue
 		}
 		if tsl != nil {
@@ -116,26 +115,35 @@ func (se *statsExporter) uploadMetrics(metrics []*metricdata.Metric) error {
 		for _, ctsreq := range ctsreql {
 			if err := createTimeSeries(ctx, se.c, ctsreq); err != nil {
 				span.SetStatus(trace.Status{Code: trace.StatusCodeUnknown, Message: err.Error()})
-				// TODO(@rghetia): record error metrics
-				// return err
+				errors = append(errors, err)
 			}
 		}
 	}
 
-	return nil
+	numErrors := len(errors)
+	if numErrors == 0 {
+		return nil
+	} else if numErrors == 1 {
+		return errors[0]
+	}
+	errMsgs := make([]string, 0, numErrors)
+	for _, err := range errors {
+		errMsgs = append(errMsgs, err.Error())
+	}
+	return fmt.Errorf("[%s]", strings.Join(errMsgs, "; "))
 }
 
 // metricToMpbTs converts a metric into a list of Stackdriver Monitoring v3 API TimeSeries
 // but it doesn't invoke any remote API.
 func (se *statsExporter) metricToMpbTs(ctx context.Context, metric *metricdata.Metric) ([]*monitoringpb.TimeSeries, error) {
 	if metric == nil {
-		return nil, errNilMetric
+		return nil, errNilMetricOrMetricDescriptor
 	}
 
 	resource := se.metricRscToMpbRsc(metric.Resource)
 
 	metricName := metric.Descriptor.Name
-	metricType, _ := se.metricTypeFromProto(metricName)
+	metricType := se.metricTypeFromProto(metricName)
 	metricLabelKeys := metric.Descriptor.LabelKeys
 	metricKind, _ := metricDescriptorTypeToMetricKind(metric)
 
@@ -159,12 +167,26 @@ func (se *statsExporter) metricToMpbTs(ctx context.Context, metric *metricdata.M
 			// TODO: (@rghetia) perhaps log this error from labels extraction, if non-nil.
 			continue
 		}
+
+		var rsc *monitoredrespb.MonitoredResource
+		var mr monitoredresource.Interface
+		if se.o.ResourceByDescriptor != nil {
+			labels, mr = se.o.ResourceByDescriptor(&metric.Descriptor, labels)
+			// TODO(rghetia): optimize this. It is inefficient to convert this for all metrics.
+			rsc = convertMonitoredResourceToPB(mr)
+			if rsc.Type == "" {
+				rsc.Type = "global"
+				rsc.Labels = nil
+			}
+		} else {
+			rsc = resource
+		}
 		timeSeries = append(timeSeries, &monitoringpb.TimeSeries{
 			Metric: &googlemetricpb.Metric{
 				Type:   metricType,
 				Labels: labels,
 			},
-			Resource: resource,
+			Resource: rsc,
 			Points:   sdPoints,
 		})
 	}
@@ -173,15 +195,19 @@ func (se *statsExporter) metricToMpbTs(ctx context.Context, metric *metricdata.M
 }
 
 func metricLabelsToTsLabels(defaults map[string]labelValue, labelKeys []metricdata.LabelKey, labelValues []metricdata.LabelValue) (map[string]string, error) {
+	// Perform this sanity check now.
+	if len(labelKeys) != len(labelValues) {
+		return nil, fmt.Errorf("length mismatch: len(labelKeys)=%d len(labelValues)=%d", len(labelKeys), len(labelValues))
+	}
+
+	if len(defaults)+len(labelKeys) == 0 {
+		return nil, nil
+	}
+
 	labels := make(map[string]string)
 	// Fill in the defaults firstly, irrespective of if the labelKeys and labelValues are mismatched.
 	for key, label := range defaults {
 		labels[sanitize(key)] = label.val
-	}
-
-	// Perform this sanity check now.
-	if len(labelKeys) != len(labelValues) {
-		return labels, fmt.Errorf("Length mismatch: len(labelKeys)=%d len(labelValues)=%d", len(labelKeys), len(labelValues))
 	}
 
 	for i, labelKey := range labelKeys {
@@ -195,11 +221,21 @@ func metricLabelsToTsLabels(defaults map[string]labelValue, labelKeys []metricda
 // createMetricDescriptorFromMetric creates a metric descriptor from the OpenCensus metric
 // and then creates it remotely using Stackdriver's API.
 func (se *statsExporter) createMetricDescriptorFromMetric(ctx context.Context, metric *metricdata.Metric) error {
+	// Skip create metric descriptor if configured
+	if se.o.SkipCMD {
+		return nil
+	}
+
 	se.metricMu.Lock()
 	defer se.metricMu.Unlock()
 
 	name := metric.Descriptor.Name
 	if _, created := se.metricDescriptors[name]; created {
+		return nil
+	}
+
+	if builtinMetric(se.metricTypeFromProto(name)) {
+		se.metricDescriptors[name] = true
 		return nil
 	}
 
@@ -210,35 +246,21 @@ func (se *statsExporter) createMetricDescriptorFromMetric(ctx context.Context, m
 		return err
 	}
 
-	var md *googlemetricpb.MetricDescriptor
-	if builtinMetric(inMD.Type) {
-		gmrdesc := &monitoringpb.GetMetricDescriptorRequest{
-			Name: inMD.Name,
-		}
-		md, err = getMetricDescriptor(ctx, se.c, gmrdesc)
-	} else {
-
-		cmrdesc := &monitoringpb.CreateMetricDescriptorRequest{
-			Name:             fmt.Sprintf("projects/%s", se.o.ProjectID),
-			MetricDescriptor: inMD,
-		}
-		md, err = createMetricDescriptor(ctx, se.c, cmrdesc)
+	if err = se.createMetricDescriptor(ctx, inMD); err != nil {
+		return err
 	}
 
-	if err == nil {
-		// Now record the metric as having been created.
-		se.metricDescriptors[name] = md
-	}
-
-	return err
+	// Now record the metric as having been created.
+	se.metricDescriptors[name] = true
+	return nil
 }
 
 func (se *statsExporter) metricToMpbMetricDescriptor(metric *metricdata.Metric) (*googlemetricpb.MetricDescriptor, error) {
 	if metric == nil {
-		return nil, errNilMetric
+		return nil, errNilMetricOrMetricDescriptor
 	}
 
-	metricType, _ := se.metricTypeFromProto(metric.Descriptor.Name)
+	metricType := se.metricTypeFromProto(metric.Descriptor.Name)
 	displayName := se.displayName(metric.Descriptor.Name)
 	metricKind, valueType := metricDescriptorTypeToMetricKind(metric)
 
@@ -466,11 +488,9 @@ func metricExemplarToPbExemplar(exemplar *metricdata.Exemplar, projectID string)
 func attachmentsToPbAttachments(attachments metricdata.Attachments, projectID string) []*any.Any {
 	var pbAttachments []*any.Any
 	for _, v := range attachments {
-		switch v.(type) {
-		case trace.SpanContext:
-			spanCtx, _ := v.(trace.SpanContext)
+		if spanCtx, succ := v.(trace.SpanContext); succ {
 			pbAttachments = append(pbAttachments, toPbSpanCtxAttachment(spanCtx, projectID))
-		default:
+		} else {
 			// Treat everything else as plain string for now.
 			// TODO(songy23): add support for dropped label attachments.
 			pbAttachments = append(pbAttachments, toPbStringAttachment(v))

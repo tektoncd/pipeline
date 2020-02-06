@@ -25,6 +25,9 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
+	"k8s.io/client-go/tools/cache"
+	kubemetrics "k8s.io/client-go/tools/metrics"
+	"k8s.io/client-go/util/workqueue"
 	"knative.dev/pkg/metrics"
 )
 
@@ -42,36 +45,143 @@ var (
 	// go.opencensus.io/tag/validate.go. Currently those restrictions are:
 	// - length between 1 and 255 inclusive
 	// - characters are printable US-ASCII
-	reconcilerTagKey = mustNewTagKey("reconciler")
-	keyTagKey        = mustNewTagKey("key")
-	successTagKey    = mustNewTagKey("success")
+	reconcilerTagKey = tag.MustNewKey("reconciler")
+	keyTagKey        = tag.MustNewKey("key")
+	successTagKey    = tag.MustNewKey("success")
 )
 
 func init() {
+	// Register to receive metrics from kubernetes workqueues.
+	wp := &metrics.WorkqueueProvider{
+		Adds: stats.Int64(
+			"workqueue_adds_total",
+			"Total number of adds handled by workqueue",
+			stats.UnitNone,
+		),
+		Depth: stats.Int64(
+			"workqueue_depth",
+			"Current depth of workqueue",
+			stats.UnitNone,
+		),
+		Latency: stats.Float64(
+			"workqueue_queue_latency_seconds",
+			"How long in seconds an item stays in workqueue before being requested.",
+			"s",
+		),
+		Retries: stats.Int64(
+			"workqueue_retries_total",
+			"Total number of retries handled by workqueue",
+			"s",
+		),
+		WorkDuration: stats.Float64(
+			"workqueue_work_duration_seconds",
+			"How long in seconds processing an item from workqueue takes.",
+			"s",
+		),
+		UnfinishedWorkSeconds: stats.Float64(
+			"workqueue_unfinished_work_seconds",
+			"How long in seconds the outstanding workqueue items have been in flight (total).",
+			"s",
+		),
+		LongestRunningProcessorSeconds: stats.Float64(
+			"workqueue_longest_running_processor_seconds",
+			"How long in seconds the longest outstanding workqueue item has been in flight.",
+			"s",
+		),
+	}
+	workqueue.SetProvider(wp)
+
+	// Register to receive metrics from kubernetes reflectors (what powers informers)
+	// NOTE: today these don't actually seem to wire up to anything in Kubernetes.
+	rp := &metrics.ReflectorProvider{
+		ItemsInList: stats.Float64(
+			"reflector_items_in_list",
+			"How many items an API list returns to the reflectors",
+			stats.UnitNone,
+		),
+		// TODO(mattmoor): This is not in the latest version, so it will
+		// be removed in a future version.
+		ItemsInMatch: stats.Float64(
+			"reflector_items_in_match",
+			"",
+			stats.UnitNone,
+		),
+		ItemsInWatch: stats.Float64(
+			"reflector_items_in_watch",
+			"How many items an API watch returns to the reflectors",
+			stats.UnitNone,
+		),
+		LastResourceVersion: stats.Float64(
+			"reflector_last_resource_version",
+			"Last resource version seen for the reflectors",
+			stats.UnitNone,
+		),
+		ListDuration: stats.Float64(
+			"reflector_list_duration_seconds",
+			"How long an API list takes to return and decode for the reflectors",
+			stats.UnitNone,
+		),
+		Lists: stats.Int64(
+			"reflector_lists_total",
+			"Total number of API lists done by the reflectors",
+			stats.UnitNone,
+		),
+		ShortWatches: stats.Int64(
+			"reflector_short_watches_total",
+			"Total number of short API watches done by the reflectors",
+			stats.UnitNone,
+		),
+		WatchDuration: stats.Float64(
+			"reflector_watch_duration_seconds",
+			"How long an API watch takes to return and decode for the reflectors",
+			stats.UnitNone,
+		),
+		Watches: stats.Int64(
+			"reflector_watches_total",
+			"Total number of API watches done by the reflectors",
+			stats.UnitNone,
+		),
+	}
+	cache.SetReflectorMetricsProvider(rp)
+
+	cp := &metrics.ClientProvider{
+		Latency: stats.Float64(
+			"client_latency",
+			"How long Kubernetes API requests take",
+			"s",
+		),
+		Result: stats.Int64(
+			"client_results",
+			"Total number of API requests (broken down by status code)",
+			stats.UnitNone,
+		),
+	}
+	kubemetrics.Register(cp.NewLatencyMetric(), cp.NewResultMetric())
+
+	views := []*view.View{{
+		Description: "Depth of the work queue",
+		Measure:     workQueueDepthStat,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{reconcilerTagKey},
+	}, {
+		Description: "Number of reconcile operations",
+		Measure:     reconcileCountStat,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
+	}, {
+		Description: "Latency of reconcile operations",
+		Measure:     reconcileLatencyStat,
+		Aggregation: reconcileDistribution,
+		TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
+	}}
+	views = append(views, wp.DefaultViews()...)
+	views = append(views, rp.DefaultViews()...)
+	views = append(views, cp.DefaultViews()...)
+
 	// Create views to see our measurements. This can return an error if
 	// a previously-registered view has the same name with a different value.
 	// View name defaults to the measure name if unspecified.
-	err := view.Register(
-		&view.View{
-			Description: "Depth of the work queue",
-			Measure:     workQueueDepthStat,
-			Aggregation: view.LastValue(),
-			TagKeys:     []tag.Key{reconcilerTagKey},
-		},
-		&view.View{
-			Description: "Number of reconcile operations",
-			Measure:     reconcileCountStat,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
-		},
-		&view.View{
-			Description: "Latency of reconcile operations",
-			Measure:     reconcileLatencyStat,
-			Aggregation: reconcileDistribution,
-			TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
-		},
-	)
-	if err != nil {
+	if err := view.Register(views...); err != nil {
 		panic(err)
 	}
 }
@@ -137,12 +247,4 @@ func (r *reporter) ReportReconcile(duration time.Duration, key, success string) 
 	metrics.Record(ctx, reconcileCountStat.M(1))
 	metrics.Record(ctx, reconcileLatencyStat.M(int64(duration/time.Millisecond)))
 	return nil
-}
-
-func mustNewTagKey(s string) tag.Key {
-	tagKey, err := tag.NewKey(s)
-	if err != nil {
-		panic(err)
-	}
-	return tagKey
 }

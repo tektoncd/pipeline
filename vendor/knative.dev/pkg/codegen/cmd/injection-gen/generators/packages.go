@@ -48,21 +48,11 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 	versionPackagePath := filepath.Join(arguments.OutputPackagePath)
 
 	var packageList generator.Packages
-	typesForGroupVersion := make(map[clientgentypes.GroupVersion][]*types.Type)
 
 	groupVersions := make(map[string]clientgentypes.GroupVersions)
 	groupGoNames := make(map[string]string)
 	for _, inputDir := range arguments.InputDirs {
 		p := context.Universe.Package(vendorless(inputDir))
-
-		objectMeta, _, err := objectMetaForPackage(p) // TODO: ignoring internal.
-		if err != nil {
-			klog.Fatal(err)
-		}
-		if objectMeta == nil {
-			// no types in this package had genclient
-			continue
-		}
 
 		var gv clientgentypes.GroupVersion
 		var targetGroupVersions map[string]clientgentypes.GroupVersions
@@ -95,22 +85,16 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 		// Generate the informer factory and fake.
 		packageList = append(packageList, versionFactoryPackages(versionPackagePath, boilerplate, customArgs)...)
 
-		var typesToGenerate []*types.Type
+		var typesWithInformers []*types.Type
+		var duckTypes []*types.Type
 		for _, t := range p.Types {
-			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			if !tags.GenerateClient || tags.NoVerbs || !tags.HasVerb("list") || !tags.HasVerb("watch") {
-				continue
+			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+			if tags.NeedsInformerInjection() {
+				typesWithInformers = append(typesWithInformers, t)
 			}
-
-			typesToGenerate = append(typesToGenerate, t)
-
-			if _, ok := typesForGroupVersion[gv]; !ok {
-				typesForGroupVersion[gv] = []*types.Type{}
+			if tags.NeedsDuckInjection() {
+				duckTypes = append(duckTypes, t)
 			}
-			typesForGroupVersion[gv] = append(typesForGroupVersion[gv], t)
-		}
-		if len(typesToGenerate) == 0 {
-			continue
 		}
 
 		groupVersionsEntry, ok := targetGroupVersions[groupPackageName]
@@ -123,34 +107,52 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 		groupVersionsEntry.Versions = append(groupVersionsEntry.Versions, clientgentypes.PackageVersion{Version: gv.Version, Package: gvPackage})
 		targetGroupVersions[groupPackageName] = groupVersionsEntry
 
-		orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
-		typesToGenerate = orderer.OrderTypes(typesToGenerate)
+		if len(typesWithInformers) != 0 {
+			orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
+			typesWithInformers = orderer.OrderTypes(typesWithInformers)
 
-		// Generate the informer and fake, for each type.
-		packageList = append(packageList, versionInformerPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, typesToGenerate, customArgs)...)
+			// Generate the informer and fake, for each type.
+			packageList = append(packageList, versionInformerPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, typesWithInformers, customArgs)...)
+		}
+
+		if len(duckTypes) != 0 {
+			orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
+			duckTypes = orderer.OrderTypes(duckTypes)
+
+			// Generate a duck-typed informer for each type.
+			packageList = append(packageList, versionDuckPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, duckTypes, customArgs)...)
+		}
 	}
 
 	return packageList
 }
 
-// objectMetaForPackage returns the type of ObjectMeta used by package p.
-func objectMetaForPackage(p *types.Package) (*types.Type, bool, error) {
-	generatingForPackage := false
-	for _, t := range p.Types {
-		if !util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...)).GenerateClient {
-			continue
-		}
-		generatingForPackage = true
-		for _, member := range t.Members {
-			if member.Name == "ObjectMeta" {
-				return member.Type, isInternal(member), nil
-			}
-		}
+// Tags represents a genclient configuration for a single type.
+type Tags struct {
+	util.Tags
+
+	GenerateDuck bool
+}
+
+func (t Tags) NeedsInformerInjection() bool {
+	return t.GenerateClient && !t.NoVerbs && t.HasVerb("list") && t.HasVerb("watch")
+}
+
+func (t Tags) NeedsDuckInjection() bool {
+	return t.GenerateDuck
+}
+
+// MustParseClientGenTags calls ParseClientGenTags but instead of returning error it panics.
+func MustParseClientGenTags(lines []string) Tags {
+	ret := Tags{
+		Tags: util.MustParseClientGenTags(lines),
 	}
-	if generatingForPackage {
-		return nil, false, fmt.Errorf("unable to find ObjectMeta for any types in package %s", p.Path)
-	}
-	return nil, false, nil
+
+	values := types.ExtractCommentTags("+", lines)
+	// log.Printf("GOT values %v", values)
+	_, ret.GenerateDuck = values["genduck"]
+
+	return ret
 }
 
 // isInternal returns true if the tags for a member do not contain a json tag
@@ -193,8 +195,8 @@ func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *
 			return generators
 		},
 		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+			return tags.NeedsInformerInjection()
 		},
 	})
 
@@ -219,8 +221,8 @@ func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *
 			return generators
 		},
 		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+			return tags.NeedsInformerInjection()
 		},
 	})
 
@@ -252,8 +254,8 @@ func versionFactoryPackages(basePackage string, boilerplate []byte, customArgs *
 			return generators
 		},
 		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+			return tags.NeedsInformerInjection()
 		},
 	})
 
@@ -279,8 +281,8 @@ func versionFactoryPackages(basePackage string, boilerplate []byte, customArgs *
 			return generators
 		},
 		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+			return tags.NeedsInformerInjection()
 		},
 	})
 
@@ -323,8 +325,8 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
-				tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
 			},
 		})
 
@@ -351,8 +353,75 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
-				tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.GenerateClient && tags.HasVerb("list") && tags.HasVerb("watch")
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
+		})
+	}
+	return vers
+}
+
+func versionDuckPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
+	packagePath := filepath.Join(basePackage, "ducks", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
+
+	vers := make([]generator.Package, 0, len(typesToGenerate))
+
+	for _, t := range typesToGenerate {
+		// Fix for golang iterator bug.
+		t := t
+
+		packagePath := packagePath + "/" + strings.ToLower(t.Name.Name)
+
+		// Impl
+		vers = append(vers, &generator.DefaultPackage{
+			PackageName: strings.ToLower(t.Name.Name),
+			PackagePath: packagePath,
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &duckGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: strings.ToLower(t.Name.Name),
+					},
+					outputPackage:  packagePath,
+					groupVersion:   gv,
+					groupGoName:    groupGoName,
+					typeToGenerate: t,
+					imports:        generator.NewImportTracker(),
+				})
+
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsDuckInjection()
+			},
+		})
+
+		// Fake
+		vers = append(vers, &generator.DefaultPackage{
+			PackageName: "fake",
+			PackagePath: packagePath + "/fake",
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &fakeDuckGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "fake",
+					},
+					outputPackage:    packagePath + "/fake",
+					imports:          generator.NewImportTracker(),
+					typeToGenerate:   t,
+					groupVersion:     gv,
+					groupGoName:      groupGoName,
+					duckInjectionPkg: packagePath,
+				})
+
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsDuckInjection()
 			},
 		})
 	}

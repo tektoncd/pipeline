@@ -21,7 +21,7 @@ import (
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/git"
 	"github.com/tektoncd/pipeline/pkg/termination"
-	"knative.dev/pkg/logging"
+	"go.uber.org/zap"
 )
 
 var (
@@ -42,8 +42,8 @@ func init() {
 
 func main() {
 	flag.Parse()
-
-	logger, _ := logging.NewLogger("", "git-init")
+	prod, _ := zap.NewProduction()
+	logger := prod.Sugar()
 	defer func() {
 		_ = logger.Sync()
 	}()

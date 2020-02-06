@@ -20,6 +20,7 @@ Creation of a `PipelineRun` will trigger the creation of
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
+- [LimitRange Name](#limitrange-name)
 
 ## Syntax
 
@@ -36,7 +37,6 @@ following fields:
     your `PipelineRun` resource object.
     - [`pipelineRef` or `pipelineSpec`](#specifiying-a-pipeline) - Specifies the [`Pipeline`](pipelines.md) you want to run.
 - Optional:
-
   - [`resources`](#resources) - Specifies which
     [`PipelineResources`](resources.md) to use for this `PipelineRun`.
   - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
@@ -51,6 +51,10 @@ following fields:
     follow the instruction [here](taskruns.md#Configuring-default-timeout) to configure the
     default timeout, the same way as `TaskRun`.
   - [`podTemplate`](#pod-template) - Specifies a [pod template](./podtemplates.md) that will be used as the basis for the `Task` pod.
+  - [`limitRangeName`](#limitrange-name) - Specifies the name of a LimitRange that exists in the namespace of the `PipelineRun`. This LimitRange's minimum 
+    for container resource requests will be used as part of requesting the appropriate amount of CPU, memory, and ephemeral storage for containers that are 
+    part of the `TaskRuns` of a `PipelineRun`. This property only needs to be specified if the `PipelineRun` is happening in a namespace with a LimitRange 
+    minimum specified for container resource requests.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -372,6 +376,39 @@ spec:
   # […]
   status: "PipelineRunCancelled"
 ```
+
+## LimitRange Name
+
+In order to request the minimum amount of resources needed to support the containers 
+for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
+memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
+resource request values are needed since `steps` only execute one at a time in `TaskRun` pod. 
+All requests that are not the max values are set to zero as a result. 
+
+When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
+with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `PipelineRuns` 
+are attempting to run, the `limitRangeName` property must be specified to appropriately apply the LimitRange's 
+minimum values to containers that are part of a `TaskRun` associated with a `PipelineRun`. This property helps 
+prevent failures of `TaskRuns` not meeting the minimum requirements specified by a LimitRange for containers.
+
+In the example below, the LimitRange `limit-mem-cpu-per-container` will be applied to all `TaskRuns` associated 
+with the `PipelineRun`:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  creationTimestamp: null
+  generateName: deploy-pipeline-run-
+  namespace: default
+spec:
+  pipelineRef:
+    name: deploy-pipeline-hello
+  limitRangeName: "limit-mem-cpu-per-container"
+status: {}
+```
+
+An example `PipelineRun` using `limitRangeName` is available [here](../examples/pipelineruns/no-ci/limitrange.yaml).
 
 ---
 

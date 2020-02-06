@@ -89,5 +89,5 @@ func (o *ObjectSorter) IndexerForObjectType(obj runtime.Object) cache.Indexer {
 }
 
 func emptyIndexer() cache.Indexer {
-	return cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	return cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 }

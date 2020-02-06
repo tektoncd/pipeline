@@ -53,8 +53,8 @@ var (
 	// KnativeRevisionMetrics stores a set of metric types which are supported
 	// by resource type knative_revision.
 	KnativeRevisionMetrics = sets.NewString(
-		"knative.dev/serving/activator/request_count",
-		"knative.dev/serving/activator/request_latencies",
+		"knative.dev/internal/serving/activator/request_count",
+		"knative.dev/internal/serving/activator/request_latencies",
 		"knative.dev/serving/autoscaler/desired_pods",
 		"knative.dev/serving/autoscaler/requested_pods",
 		"knative.dev/serving/autoscaler/actual_pods",
@@ -62,7 +62,11 @@ var (
 		"knative.dev/serving/autoscaler/panic_request_concurrency",
 		"knative.dev/serving/autoscaler/target_concurrency_per_pod",
 		"knative.dev/serving/autoscaler/panic_mode",
-		"knative.dev/serving/revision/request_count",
-		"knative.dev/serving/revision/request_latencies",
+		"knative.dev/internal/serving/revision/request_count",
+		"knative.dev/internal/serving/revision/request_latencies",
+		"knative.dev/internal/serving/controller/cert_expiration_durations",
+		"knative.dev/internal/serving/controller/cert_total_num",
+		"knative.dev/internal/serving/controller/cert_issuance_latencies",
+		"knative.dev/internal/serving/controller/cert_creation_count",
 	)
 )

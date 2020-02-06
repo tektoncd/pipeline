@@ -48,21 +48,17 @@ var (
 	// go.opencensus.io/tag/validate.go. Currently those restrictions are:
 	// - length between 1 and 255 inclusive
 	// - characters are printable US-ASCII
-	requestOperationKey  = mustNewTagKey("request_operation")
-	kindGroupKey         = mustNewTagKey("kind_group")
-	kindVersionKey       = mustNewTagKey("kind_version")
-	kindKindKey          = mustNewTagKey("kind_kind")
-	resourceGroupKey     = mustNewTagKey("resource_group")
-	resourceVersionKey   = mustNewTagKey("resource_version")
-	resourceResourceKey  = mustNewTagKey("resource_resource")
-	resourceNameKey      = mustNewTagKey("resource_name")
-	resourceNamespaceKey = mustNewTagKey("resource_namespace")
-	admissionAllowedKey  = mustNewTagKey("admission_allowed")
+	requestOperationKey  = tag.MustNewKey("request_operation")
+	kindGroupKey         = tag.MustNewKey("kind_group")
+	kindVersionKey       = tag.MustNewKey("kind_version")
+	kindKindKey          = tag.MustNewKey("kind_kind")
+	resourceGroupKey     = tag.MustNewKey("resource_group")
+	resourceVersionKey   = tag.MustNewKey("resource_version")
+	resourceResourceKey  = tag.MustNewKey("resource_resource")
+	resourceNameKey      = tag.MustNewKey("resource_name")
+	resourceNamespaceKey = tag.MustNewKey("resource_namespace")
+	admissionAllowedKey  = tag.MustNewKey("admission_allowed")
 )
-
-func init() {
-	register()
-}
 
 // StatsReporter reports webhook metrics
 type StatsReporter interface {
@@ -111,7 +107,7 @@ func (r *reporter) ReportRequest(req *admissionv1beta1.AdmissionRequest, resp *a
 	return nil
 }
 
-func register() {
+func RegisterMetrics() {
 	tagKeys := []tag.Key{
 		requestOperationKey,
 		kindGroupKey,
@@ -140,12 +136,4 @@ func register() {
 	); err != nil {
 		panic(err)
 	}
-}
-
-func mustNewTagKey(s string) tag.Key {
-	tagKey, err := tag.NewKey(s)
-	if err != nil {
-		panic(err)
-	}
-	return tagKey
 }

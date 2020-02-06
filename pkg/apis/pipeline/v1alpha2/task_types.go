@@ -81,7 +81,7 @@ type TaskSpec struct {
 
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
-	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+	Sidecars []Sidecar `json:"sidecars,omitempty"`
 
 	// Workspaces are the volumes that this Task requires.
 	Workspaces []WorkspaceDeclaration
@@ -110,6 +110,9 @@ type Step struct {
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
 }
+
+// A sidecar has the same data structure as a Step, consisting of a Container, and optional Script.
+type Sidecar = Step
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // TaskList contains a list of Task

@@ -25,22 +25,96 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestConvertScripts_NothingToConvert(t *testing.T) {
-	gotInit, got := convertScripts(images.ShellImage, []v1alpha1.Step{{Container: corev1.Container{
-		Image: "step-1",
-	}}, {Container: corev1.Container{
-		Image: "step-2",
-	}}})
+func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+		Container: corev1.Container{
+			Image: "step-1",
+		},
+	}, {
+		Container: corev1.Container{
+			Image: "step-2",
+		},
+	}}, []v1alpha1.Step{})
 	want := []corev1.Container{{
 		Image: "step-1",
 	}, {
 		Image: "step-2",
 	}}
-	if d := cmp.Diff(want, got); d != "" {
+	if d := cmp.Diff(want, gotScripts); d != "" {
 		t.Errorf("Diff (-want, +got): %s", d)
 	}
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
+	}
+
+	if len(gotSidecars) != 0 {
+		t.Errorf("Wanted 0 sidecars, got %v", len(gotSidecars))
+	}
+}
+
+func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+		Container: corev1.Container{
+			Image: "step-1",
+		},
+	}, {
+		Container: corev1.Container{
+			Image: "step-2",
+		},
+	}}, nil)
+	want := []corev1.Container{{
+		Image: "step-1",
+	}, {
+		Image: "step-2",
+	}}
+	if d := cmp.Diff(want, gotScripts); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+	if gotInit != nil {
+		t.Errorf("Wanted nil init container, got %v", gotInit)
+	}
+
+	if len(gotSidecars) != 0 {
+		t.Errorf("Wanted 0 sidecars, got %v", len(gotSidecars))
+	}
+}
+
+func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+		Container: corev1.Container{
+			Image: "step-1",
+		},
+	}, {
+		Container: corev1.Container{
+			Image: "step-2",
+		},
+	}}, []v1alpha1.Step{{
+		Container: corev1.Container{
+			Image: "sidecar-1",
+		},
+	}})
+	want := []corev1.Container{{
+		Image: "step-1",
+	}, {
+		Image: "step-2",
+	}}
+	wantSidecar := []corev1.Container{{
+		Image: "sidecar-1",
+	}}
+	if d := cmp.Diff(want, gotScripts); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+
+	if d := cmp.Diff(wantSidecar, gotSidecars); d != "" {
+		t.Errorf("Diff (-want, +got): %s", d)
+	}
+
+	if gotInit != nil {
+		t.Errorf("Wanted nil init container, got %v", gotInit)
+	}
+
+	if len(gotSidecars) != 1 {
+		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
 	}
 }
 
@@ -55,7 +129,7 @@ func TestConvertScripts(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, got := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -78,7 +152,7 @@ script-3`,
 			VolumeMounts: preExistingVolumeMounts,
 			Args:         []string{"my", "args"},
 		},
-	}})
+	}}, []v1alpha1.Step{})
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
@@ -131,7 +205,106 @@ script-heredoc-randomly-generated-j2tds
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff (-want, +got): %s", d)
 	}
-	if d := cmp.Diff(want, got); d != "" {
+	if d := cmp.Diff(want, gotSteps); d != "" {
 		t.Errorf("Containers Diff (-want, +got): %s", d)
 	}
+
+	if len(gotSidecars) != 0 {
+		t.Errorf("Expected zero sidecars, got %v", len(gotSidecars))
+	}
+}
+
+func TestConvertScripts_WithSidecar(t *testing.T) {
+	names.TestingSeed()
+
+	preExistingVolumeMounts := []corev1.VolumeMount{{
+		Name:      "pre-existing-volume-mount",
+		MountPath: "/mount/path",
+	}, {
+		Name:      "another-one",
+		MountPath: "/another/one",
+	}}
+
+	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+		Script: `#!/bin/sh
+script-1`,
+		Container: corev1.Container{Image: "step-1"},
+	}, {
+		// No script to convert here.
+		Container: corev1.Container{Image: "step-2"},
+	}, {
+		Script: `#!/bin/sh
+script-3`,
+		Container: corev1.Container{
+			Image:        "step-3",
+			VolumeMounts: preExistingVolumeMounts,
+			Args:         []string{"my", "args"},
+		},
+	}}, []v1alpha1.Step{{
+		Script: `#!/bin/sh
+sidecar-1`,
+		Container: corev1.Container{Image: "sidecar-1"},
+	}})
+	wantInit := &corev1.Container{
+		Name:    "place-scripts",
+		Image:   images.ShellImage,
+		TTY:     true,
+		Command: []string{"sh"},
+		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
+#!/bin/sh
+script-1
+script-heredoc-randomly-generated-mz4c7
+tmpfile="/tekton/scripts/script-2-mssqb"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
+#!/bin/sh
+script-3
+script-heredoc-randomly-generated-78c5n
+tmpfile="/tekton/scripts/sidecar-script-0-6nl7g"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'sidecar-script-heredoc-randomly-generated-j2tds'
+#!/bin/sh
+sidecar-1
+sidecar-script-heredoc-randomly-generated-j2tds
+`},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+	}
+	want := []corev1.Container{{
+		Image:        "step-1",
+		Command:      []string{"/tekton/scripts/script-0-9l9zj"},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+	}, {
+		Image: "step-2",
+	}, {
+		Image:   "step-3",
+		Command: []string{"/tekton/scripts/script-2-mssqb"},
+		Args:    []string{"my", "args"},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
+			{Name: "another-one", MountPath: "/another/one"},
+			scriptsVolumeMount,
+		},
+	}}
+
+	wantSidecars := []corev1.Container{{
+		Image:        "sidecar-1",
+		Command:      []string{"/tekton/scripts/sidecar-script-0-6nl7g"},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+	}}
+	if d := cmp.Diff(wantInit, gotInit); d != "" {
+		t.Errorf("Init Container Diff (-want, +got): %s", d)
+	}
+	if d := cmp.Diff(want, gotSteps); d != "" {
+		t.Errorf("Step Containers Diff (-want, +got): %s", d)
+	}
+	if d := cmp.Diff(wantSidecars, gotSidecars); d != "" {
+		t.Errorf("Sidecar Containers Diff (-want, +got): %s", d)
+	}
+
+	if len(gotSidecars) != 1 {
+		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
+	}
+
 }
