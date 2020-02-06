@@ -36,19 +36,6 @@ type Pipeline struct {
 	// Spec holds the desired state of the Pipeline from the client
 	// +optional
 	Spec PipelineSpec `json:"spec"`
-
-	// Status is deprecated.
-	// It usually is used to communicate the observed state of the Pipeline from
-	// the controller, but was unused as there is no controller for Pipeline.
-	// +optional
-	Status *PipelineStatus `json:"status,omitempty"`
-}
-
-// PipelineStatus does not contain anything because Pipelines on their own
-// do not have a status, they just hold data which is later used by a
-// PipelineRun.
-// Deprecated
-type PipelineStatus struct {
 }
 
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {

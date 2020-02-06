@@ -874,8 +874,8 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 									Name: "secret1",
 								},
 								Key: "cadatakey",
-								},
 							},
+						},
 						Name: "CADATA",
 					}},
 				}}},
@@ -1114,7 +1114,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 						Env: []corev1.EnvVar{
 							{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
 						},
-						},
+					},
 				}},
 				Volumes: []corev1.Volume{{
 					Name:         "volume-storage-gcs-keys-secret-name",
