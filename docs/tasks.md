@@ -21,7 +21,6 @@ entire Kubernetes cluster.
     - [Step script](#step-script)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
-  - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
   - [Volumes](#volumes)
   - [Workspaces](#workspaces)
   - [Step Template](#step-template)
