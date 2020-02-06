@@ -1330,7 +1330,11 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		*out = new(metav1.Duration)
 		**out = **in
 	}
-	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.PodTemplate != nil {
+		in, out := &in.PodTemplate, &out.PodTemplate
+		*out = new(pod.Template)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
 		*out = make([]WorkspaceBinding, len(*in))
