@@ -155,12 +155,6 @@ type PipelineRunSpec struct {
 	// with those declared in the pipeline.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
-	// Used to specify name of LimitRange that exists in namespace
-	// where PipelineRun will run so that the LimitRange's minimum for
-	// container requests can be used by containers of TaskRuns associated
-	// with PipelineRun
-	// +optional
-	LimitRangeName string `json:"limitRangeName"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

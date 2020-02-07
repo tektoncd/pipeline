@@ -53,5 +53,4 @@ metadata:
 spec:
   pipelineRef:
     name: pipeline-hello
-  limitRangeName: "limit-mem-cpu-per-container"
 status: {}

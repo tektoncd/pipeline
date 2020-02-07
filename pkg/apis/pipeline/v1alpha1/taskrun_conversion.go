@@ -55,7 +55,6 @@ func (source *TaskRunSpec) ConvertUp(ctx context.Context, sink *v1alpha2.TaskRun
 	sink.Timeout = source.Timeout
 	sink.PodTemplate = source.PodTemplate
 	sink.Workspaces = source.Workspaces
-	sink.LimitRangeName = source.LimitRangeName
 	sink.Params = source.Params
 	sink.Resources = source.Resources
 	// Deprecated fields
@@ -140,7 +139,6 @@ func (sink *TaskRunSpec) ConvertDown(ctx context.Context, source *v1alpha2.TaskR
 	sink.Timeout = source.Timeout
 	sink.PodTemplate = source.PodTemplate
 	sink.Workspaces = source.Workspaces
-	sink.LimitRangeName = source.LimitRangeName
 	sink.Params = source.Params
 	sink.Resources = source.Resources
 	return nil

@@ -58,7 +58,6 @@ func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1alpha2.Pip
 	sink.Timeout = source.Timeout
 	sink.PodTemplate = source.PodTemplate
 	sink.Workspaces = source.Workspaces
-	sink.LimitRangeName = source.LimitRangeName
 	return nil
 }
 
@@ -93,6 +92,5 @@ func (sink *PipelineRunSpec) ConvertDown(ctx context.Context, source *v1alpha2.P
 	sink.Timeout = source.Timeout
 	sink.PodTemplate = source.PodTemplate
 	sink.Workspaces = source.Workspaces
-	sink.LimitRangeName = source.LimitRangeName
 	return nil
 }
