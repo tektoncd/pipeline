@@ -9,11 +9,7 @@ This tutorial will walk you through creating and running some simple
 - [Creating a hello world `Task`](#task)
 - [Creating a hello world `Pipeline`](#pipeline)
 
-Before starting this tutorial, please install the [Tekton CLI](https://github.com/tektoncd/cli) and install the latest Tekton release by the following command:
-
-```bash
-kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
-```
+Before starting this tutorial, please install the [Tekton CLI](https://github.com/tektoncd/cli) and the [latest Tekton release](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#installing-tekton-pipelines)
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
