@@ -1643,14 +1643,15 @@ func TestUpdateTaskRunResourceResult(t *testing.T) {
 			ContainerStatuses: []corev1.ContainerStatus{{
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"name":"source-image","digest":"sha256:1234"}]`,
+						Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
 					},
 				},
 			}},
 		},
 		want: []v1alpha1.PipelineResourceResult{{
-			Name:   "source-image",
-			Digest: "sha256:1234",
+			Key:         "digest",
+			Value:       "sha256:1234",
+			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -1683,7 +1684,7 @@ func TestUpdateTaskRunResult(t *testing.T) {
 			ContainerStatuses: []corev1.ContainerStatus{{
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"name":"source-image","digest":"sha256:1234", "type": "PipelineResourceResult"}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}, "type": "PipelineResourceResult"}]`,
 					},
 				},
 			}},
@@ -1693,9 +1694,10 @@ func TestUpdateTaskRunResult(t *testing.T) {
 			Value: "resultValue",
 		}},
 		want: []v1alpha1.PipelineResourceResult{{
-			Name:       "source-image",
-			Digest:     "sha256:1234",
-			ResultType: "PipelineResourceResult",
+			Key:         "digest",
+			Value:       "sha256:1234",
+			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
+			ResultType:  "PipelineResourceResult",
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -1730,7 +1732,7 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 			ContainerStatuses: []corev1.ContainerStatus{{
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"name":"source-image","digest":"sha256:1234"}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
 					},
 				},
 			}},
@@ -1740,8 +1742,9 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 			Value: "resultValue",
 		}},
 		want: []v1alpha1.PipelineResourceResult{{
-			Name:   "source-image",
-			Digest: "sha256:1234",
+			Key:         "digest",
+			Value:       "sha256:1234",
+			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
