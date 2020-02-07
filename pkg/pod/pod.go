@@ -119,18 +119,13 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
-	// If present on TaskRunSpec, use LimitRangeName to get LimitRange
-	// so it can be used in resolveResourceRequests
-	var limitRange *corev1.LimitRange
-	if taskRun.Spec.LimitRangeName != "" {
-		limitRange, err = kubeclient.CoreV1().LimitRanges(taskRun.Namespace).Get(taskRun.Spec.LimitRangeName, metav1.GetOptions{})
-		if err != nil {
-			return nil, err
-		}
+	limitRangeMin, err := getLimitRangeMinimum(taskRun.Namespace, kubeclient)
+	if err != nil {
+		return nil, err
 	}
 
 	// Zero out non-max resource requests.
-	stepContainers = resolveResourceRequests(stepContainers, limitRange)
+	stepContainers = resolveResourceRequests(stepContainers, limitRangeMin)
 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
@@ -261,4 +256,34 @@ func MakeLabels(s *v1alpha1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[taskRunLabelKey] = s.Name
 	return labels
+}
+
+// getLimitRangeMinimum gets all LimitRanges in a namespace and
+// searches for if a container minimum is specified. Due to
+// https://github.com/kubernetes/kubernetes/issues/79496, the
+// max LimitRange minimum must be found in the event of conflicting
+// container minimums specified.
+func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (corev1.ResourceList, error) {
+	limitRanges, err := kubeclient.CoreV1().LimitRanges(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	min := allZeroQty()
+	for _, lr := range limitRanges.Items {
+		lrItems := lr.Spec.Limits
+		for _, lrItem := range lrItems {
+			if lrItem.Type == corev1.LimitTypeContainer {
+				if lrItem.Min != nil {
+					for k, v := range lrItem.Min {
+						if v.Cmp(min[k]) > 0 {
+							min[k] = v
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return min, nil
 }

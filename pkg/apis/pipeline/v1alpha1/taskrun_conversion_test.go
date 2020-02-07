@@ -69,7 +69,6 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Params: []Param{{
 					Name:  "p1",
 					Value: v1alpha2.ArrayOrString{StringVal: "baz"},
@@ -125,7 +124,6 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Params: []Param{{
 					Name:  "p1",
 					Value: v1alpha2.ArrayOrString{StringVal: "baz"},
@@ -171,7 +169,6 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Params: []Param{{
 					Name:  "p1",
 					Value: v1alpha2.ArrayOrString{StringVal: "baz"},
@@ -209,7 +206,6 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Resources: &v1alpha2.TaskRunResources{
 					Inputs: []v1alpha2.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha2.PipelineResourceBinding{
@@ -255,7 +251,6 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Resources: &v1alpha2.TaskRunResources{
 					Outputs: []v1alpha2.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha2.PipelineResourceBinding{

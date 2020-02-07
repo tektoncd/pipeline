@@ -26,7 +26,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 - [Examples](#examples)
 - [Sidecars](#sidecars)
 - [Logs](logs.md)
-- [LimitRange Name](#limitrange-name)
+- [LimitRanges](#limitrange-name)
 
 ---
 
@@ -61,9 +61,6 @@ following fields:
   - [`podTemplate`](#pod-template) - Specifies a [pod template](./podtemplates.md) that will be used as the basis for the `Task` pod.
   - [`workspaces`](#workspaces) - Specify the actual volumes to use for the
     [workspaces](tasks.md#workspaces) declared by a `Task`
-  - [`limitRangeName`](#limitrange-name) - Specifies the name of a LimitRange that exists in the namespace of the `TaskRun`. This LimitRange's minimum 
-    for container resource requests will be used as part of requesting the appropriate amount of CPU, memory, and ephemeral storage for containers that are 
-    part of a `TaskRun`. This property only needs to be specified if the `TaskRun` is happening in a namespace with a LimitRange minimum specified for container resource requests.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -704,7 +701,7 @@ with the `get pods` command. The Pod description will instead show a Status of
 Failed and the individual container statuses will correctly reflect how and why
 they exited.
 
-## LimitRange Name
+## LimitRanges
 
 In order to request the minimum amount of resources needed to support the containers 
 for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
@@ -714,31 +711,10 @@ All requests that are not the max values are set to zero as a result.
 
 When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
 with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `TaskRuns` 
-are attempting to run, the `limitRangeName` property must be specified to appropriately apply the LimitRange's 
-minimum values to `steps` that are part of a `TaskRun`. This property helps prevent failures of `TaskRuns` not 
-meeting the minimum requirements specified by a LimitRange for containers.
+are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum 
+set for container resource requests instead of requesting 0.
 
-In the example below, the LimitRange `limit-mem-cpu-per-container` will be applied to all `steps` associated with 
-a `TaskRun` in namespace `default`:
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: TaskRun
-metadata:
-  creationTimestamp: null
-  generateName: echo-hello-world-run-
-  namespace: default
-spec:
-  inputs: {}
-  outputs: {}
-  serviceAccountName: ""
-  taskRef:
-    name: echo-hello-world
-  timeout: 1h0m0s
-  limitRangeName: "limit-mem-cpu-per-container"
-```
-
-An example `TaskRun` using `limitRangeName` is available [here](../examples/taskruns/no-ci/limitrange.yaml).
+An example `TaskRun` with a LimitRange is available [here](../examples/taskruns/no-ci/limitrange.yaml).
 
 ---
 

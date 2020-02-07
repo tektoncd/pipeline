@@ -53,11 +53,6 @@ type TaskRunSpec struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
-	// Used to specify name of LimitRange that exists in namespace
-	// where TaskRun will run so that the LimitRange's minimum for
-	// container requests can be used by containers of TaskRun
-	// +optional
-	LimitRangeName string `json:"limitRangeName"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

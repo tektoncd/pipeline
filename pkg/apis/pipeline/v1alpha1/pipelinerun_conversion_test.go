@@ -73,7 +73,6 @@ func TestPipelineRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Params: []Param{{
 					Name:  "p1",
 					Value: v1alpha2.ArrayOrString{StringVal: "baz"},
@@ -134,7 +133,6 @@ func TestPipelineRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				LimitRangeName: "foo",
 				Params: []Param{{
 					Name:  "p1",
 					Value: v1alpha2.ArrayOrString{StringVal: "baz"},
