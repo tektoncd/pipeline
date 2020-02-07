@@ -62,12 +62,6 @@ func main() {
 		if err != nil {
 			logger.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
 		}
-		// We need to write both the old Name/Digest style and the new Key/Value styles.
-		output = append(output, v1alpha1.PipelineResourceResult{
-			Name:   imageResource.Name,
-			Digest: digest.String(),
-		})
-
 		output = append(output, v1alpha1.PipelineResourceResult{
 			Key:   "digest",
 			Value: digest.String(),

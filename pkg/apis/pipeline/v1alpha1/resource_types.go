@@ -115,19 +115,10 @@ type PipelineResourceBinding struct {
 }
 
 // PipelineResourceResult used to export the image name and digest as json
-type PipelineResourceResult struct {
-	// Name and Digest are deprecated.
-	Name   string `json:"name"`
-	Digest string `json:"digest"`
-	// These will replace Name and Digest (https://github.com/tektoncd/pipeline/issues/1392)
-	Key         string              `json:"key"`
-	Value       string              `json:"value"`
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
-	ResultType  ResultType          `json:"type,omitempty"`
-}
+type PipelineResourceResult = v1alpha2.PipelineResourceResult
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not
-type ResultType string
+type ResultType = v1alpha2.ResultType
 
 // ResourceFromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize

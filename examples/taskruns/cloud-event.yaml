@@ -140,8 +140,8 @@ spec:
         if response.status == 200:
           print("Got it!")
           taskrun = json.loads(response.read().decode('utf-8'))
-          digest = taskrun['taskRun']['status']['resourcesResult'][0]['digest']
-          image_name = taskrun['taskRun']['status']['resourcesResult'][0]['name']
+          digest = taskrun['taskRun']['status']['resourcesResult'][0]['value']
+          image_name = taskrun['taskRun']['status']['resourcesResult'][0]['resourceRef']['name']
           print("Got digest %s for image %s" % (digest, image_name))
           if image_name == "myimage" and digest:
             break

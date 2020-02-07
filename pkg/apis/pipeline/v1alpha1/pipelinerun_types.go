@@ -106,13 +106,7 @@ const (
 )
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
-type PipelineResourceRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name,omitempty"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
-}
+type PipelineResourceRef = v1alpha2.PipelineResourceRef
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64

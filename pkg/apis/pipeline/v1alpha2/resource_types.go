@@ -112,7 +112,11 @@ type PipelineResourceResult struct {
 	Key         string              `json:"key"`
 	Value       string              `json:"value"`
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	ResultType  ResultType          `json:"type,omitempty"`
 }
+
+// ResultType used to find out whether a PipelineResourceResult is from a task result or not
+type ResultType string
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {

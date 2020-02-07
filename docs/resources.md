@@ -478,7 +478,7 @@ URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 
 The PullRequest resource works with self hosted or enterprise GitHub/GitLab
 instances. Simply provide the pull request URL and set the `provider` parameter.
-If you need to skip certificate validation set the `insecure-skip-tls-verify` 
+If you need to skip certificate validation set the `insecure-skip-tls-verify`
 parameter to `"true"`.
 
 ```yaml
@@ -574,8 +574,10 @@ for example:
 status:
     ...
     resourcesResult:
-    - digest: sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660
-      name: skaffold-image-leeroy-web
+    - key: "digest"
+      value: "sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660"
+      resourceRef:
+        name: skaffold-image-leeroy-web
     ...
 ```
 
