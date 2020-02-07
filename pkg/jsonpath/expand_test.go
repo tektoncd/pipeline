@@ -376,7 +376,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf("%s", tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			result, err := Expand(tc.input, context)
 			if err != nil {
 				if tc.expected == expectedError {
