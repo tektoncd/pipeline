@@ -736,7 +736,7 @@ func TestMakeLabels(t *testing.T) {
 		"foo":           "bar",
 		"hello":         "world",
 	}
-	got := makeLabels(&v1alpha1.TaskRun{
+	got := MakeLabels(&v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: taskRunName,
 			Labels: map[string]string{
