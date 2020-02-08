@@ -382,7 +382,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  ReasonTimedOut,
-			Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.Spec.Timeout.String()),
+			Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.Spec.Timeout.Duration.String()),
 		}
 	}
 
