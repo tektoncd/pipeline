@@ -180,7 +180,7 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 }
 
 func updateCompletedTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {
-	if didTaskRunFail(pod) {
+	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(pod)
 		trs.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -231,7 +231,8 @@ func updateIncompleteTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {
 	}
 }
 
-func didTaskRunFail(pod *corev1.Pod) bool {
+// DidTaskRunFail check the status of pod to decide if related taskrun is failed
+func DidTaskRunFail(pod *corev1.Pod) bool {
 	f := pod.Status.Phase == corev1.PodFailed
 	for _, s := range pod.Status.ContainerStatuses {
 		if isContainerStep(s.Name) {
