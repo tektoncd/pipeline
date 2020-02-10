@@ -1,67 +1,63 @@
 # Tekton Pipelines
 
-Tekton Pipelines is an open source implementation to configure and run CI/CD
-style pipelines for your Kubernetes application.
+Tekton Pipelines is a custom Kubernetes extension that installs and runs on your Kubernetes cluster.
+It defines a set of Kubernetes [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) that act as building blocks from which you can assemble custom CI/CD pipelines. Once installed,
+Tekton Pipelines becomes available via the Kubernetes CLI (kubectl) and via API calls, just
+like pods and other resources. Tekton is open-source and part of the [CD Foundation](https://cd.foundation/),
+a [Linux Foundation](https://www.linuxfoundation.org/projects/) project.
 
-Pipeline creates
-[Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
-as building blocks to declare pipelines.
+## Tekton Pipelines entities
 
-A custom resource is an extension of Kubernetes API which can create a custom
-[Kubernetes Object](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#understanding-kubernetes-objects).
-Once a custom resource is installed, users can create and access its objects
-with kubectl, just as they do for built-in resources like pods, deployments etc.
-These resources run on-cluster and are implemented by
-[Kubernetes Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions).
+Tekton Pipelines defines the following entities:
 
-High level details of this design:
+<table>
+  <tr>
+    <th>Entity</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>Task</code></td>
+    <td>Defines a series of steps which launch specific build or delivery tools that ingest specific inputs and produce specific outputs.</td>
+  </tr>
+  <tr>
+    <td><code>TaskRun</code></td>
+    <td>Instantiates a <code>Task</code> for execution with specific inputs, outputs, and execution parameters. Can be invoked on its own or as part of a <code>Pipeline</code>.</td>
+  </tr>
+  <tr>
+    <td><code>Pipeline</code></td>
+    <td>Defines a series of <code>Tasks</code> that accomplish a specific build or delivery goal. Can be triggered by an event or invoked from a <code>PipelineRun</code>.</td>
+  </tr>
+  <tr>
+    <td><code>PipelineResource</code></td>
+    <td>Defines locations for inputs ingested and outputs produced by the steps in <code>Tasks</code>.</td>
+  </tr>
+  <tr>
+    <td><code>PipelineRun</code></td>
+    <td>Instantiates a <code>Pipeline</code> for execution with specific inputs, outputs, and execution parameters.</td>
+  </tr>
+</table>
 
-- [Pipelines](pipelines.md) do not know what will trigger them, they can be
-  triggered by events or by manually creating [PipelineRuns](pipelineruns.md)
-- [Tasks](tasks.md) can exist and be invoked completely independently of
-  [Pipelines](pipelines.md); they are highly cohesive and loosely coupled
-- [Tasks](tasks.md) can depend on artifacts and parameters created by other
-  tasks.
-- [Tasks](tasks.md) can be invoked via [TaskRuns](taskruns.md)
-- [PipelineResources](resources.md) are the artifacts used as inputs and outputs
-  of Tasks.
+## Getting started
 
-## Usage
+To get started, complete the [Tekton Pipelines Tutorial](tutorial.md) and go through our 
+[examples](https://github.com/tektoncd/pipeline/tree/master/examples)
 
-- [How do I create a new Pipeline?](pipelines.md)
-- [How do I make a Task?](tasks.md)
-- [How do I make Resources?](resources.md)
-- [How do I control auth?](auth.md)
-- [How do I run a Pipeline?](pipelineruns.md)
-- [How do I run a Task on its own?](taskruns.md)
-- [How do I get logs?](logs.md)
+## Understanding Tekton Pipelines
 
-## Learn more
+See the following topics to learn how to use Tekton Pipelines in your project:
 
-See the following reference topics for information about each of the build
-components:
+- [Creating a Task](tasks.md)
+- [Running a standalone Task](taskruns.md)
+- [Creating a Pipeline](pipelines.md)
+- [Creating PipelineResources](resources.md)
+- [Running a Pipeline](pipelineruns.md)
+- [Configuring authentication](auth.md)
+- [Using labels](labels.md)
+- [Viewing logs](logs.md)
 
-- [`Task`](tasks.md)
-- [`TaskRun`](taskruns.md)
-- [`Pipeline`](pipelines.md)
-- [`PipelineRun`](pipelineruns.md)
-- [`PipelineResource`](resources.md)
+## Contributing to Tekton Pipelines
 
-Additional reference topics not related to a specific component:
-
-- [Labels](labels.md)
-- [Logs](logs.md)
-
-## Try it out
-
-- Follow along with [the tutorial](tutorial.md)
-- Look at
-  [the examples](https://github.com/tektoncd/pipeline/tree/master/examples)
-
-## Related info
-
-If you are interested in contributing to the Tekton Pipeline project, see the
-[Tekton Pipeline contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
+If you'd like to contribute to the Tekton Pipelines project, see the [Tekton Pipeline Contributor's Guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
 
 ---
 
