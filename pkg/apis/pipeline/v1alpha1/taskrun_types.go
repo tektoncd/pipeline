@@ -18,22 +18,16 @@ package v1alpha1
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	// +optional
-	Inputs TaskRunInputs `json:"inputs,omitempty"`
-	// +optional
-	Outputs TaskRunOutputs `json:"outputs,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
@@ -60,6 +54,18 @@ type TaskRunSpec struct {
 	// container requests can be used by containers of TaskRun
 	// +optional
 	LimitRangeName string `json:"limitRangeName"`
+
+	// From v1alpha2
+	// +optional
+	Params []Param `json:"params,omitempty"`
+	// +optional
+	Resources *v1alpha2.TaskRunResources `json:"resources,omitempty"`
+
+	// Deprecated
+	// +optional
+	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	// +optional
+	Outputs TaskRunOutputs `json:"outputs,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -96,138 +102,43 @@ type TaskRunOutputs struct {
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 }
 
-var taskRunCondSet = apis.NewBatchConditionSet()
-
 // TaskRunStatus defines the observed state of TaskRun
-type TaskRunStatus struct {
-	duckv1beta1.Status `json:",inline"`
-
-	// TaskRunStatusFields inlines the status fields.
-	TaskRunStatusFields `json:",inline"`
-}
+type TaskRunStatus = v1alpha2.TaskRunStatus
 
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
-type TaskRunStatusFields struct {
-	// PodName is the name of the pod responsible for executing this task's steps.
-	PodName string `json:"podName"`
-
-	// StartTime is the time the build is actually started.
-	// +optional
-	StartTime *metav1.Time `json:"startTime,omitempty"`
-
-	// CompletionTime is the time the build completed.
-	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// Steps describes the state of each build step container.
-	// +optional
-	Steps []StepState `json:"steps,omitempty"`
-
-	// CloudEvents describe the state of each cloud event requested via a
-	// CloudEventResource.
-	// +optional
-	CloudEvents []CloudEventDelivery `json:"cloudEvents,omitempty"`
-
-	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
-	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
-	// +optional
-	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
-
-	// Results from Resources built during the taskRun. currently includes
-	// the digest of build container images
-	// +optional
-	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
-
-	// TaskRunResults are the list of results written out by the task's containers
-	// +optional
-	TaskRunResults []TaskRunResult `json:"taskResults,omitempty"`
-
-	// The list has one entry per sidecar in the manifest. Each entry is
-	// represents the imageid of the corresponding sidecar.
-	Sidecars []SidecarState `json:"sidecars,omitempty"`
-}
+type TaskRunStatusFields = v1alpha2.TaskRunStatusFields
 
 // TaskRunResult used to describe the results of a task
-type TaskRunResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Value the given value of the result
-	Value string `json:"value"`
-}
-
-// GetCondition returns the Condition matching the given type.
-func (tr *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return taskRunCondSet.Manage(tr).GetCondition(t)
-}
-
-// InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
-// and set the started time to the current time
-func (tr *TaskRunStatus) InitializeConditions() {
-	if tr.StartTime.IsZero() {
-		tr.StartTime = &metav1.Time{Time: time.Now()}
-	}
-	taskRunCondSet.Manage(tr).InitializeConditions()
-}
-
-// SetCondition sets the condition, unsetting previous conditions with the same
-// type as necessary.
-func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
-	if newCond != nil {
-		taskRunCondSet.Manage(tr).SetCondition(*newCond)
-	}
-}
+type TaskRunResult = v1alpha2.TaskRunResult
 
 // StepState reports the results of running a step in the Task.
-type StepState struct {
-	corev1.ContainerState
-	Name          string `json:"name,omitempty"`
-	ContainerName string `json:"container,omitempty"`
-	ImageID       string `json:"imageID,omitempty"`
-}
+type StepState = v1alpha2.StepState
 
 // SidecarState reports the results of sidecar in the Task.
-type SidecarState struct {
-	Name    string `json:"name,omitempty"`
-	ImageID string `json:"imageID,omitempty"`
-}
+type SidecarState = v1alpha2.SidecarState
 
 // CloudEventDelivery is the target of a cloud event along with the state of
 // delivery.
-type CloudEventDelivery struct {
-	// Target points to an addressable
-	Target string                  `json:"target,omitempty"`
-	Status CloudEventDeliveryState `json:"status,omitempty"`
-}
+type CloudEventDelivery = v1alpha2.CloudEventDelivery
 
 // CloudEventCondition is a string that represents the condition of the event.
-type CloudEventCondition string
+type CloudEventCondition = v1alpha2.CloudEventCondition
 
 const (
 	// CloudEventConditionUnknown means that the condition for the event to be
 	// triggered was not met yet, or we don't know the state yet.
-	CloudEventConditionUnknown CloudEventCondition = "Unknown"
+	CloudEventConditionUnknown CloudEventCondition = v1alpha2.CloudEventConditionUnknown
 	// CloudEventConditionSent means that the event was sent successfully
-	CloudEventConditionSent CloudEventCondition = "Sent"
+	CloudEventConditionSent CloudEventCondition = v1alpha2.CloudEventConditionSent
 	// CloudEventConditionFailed means that there was one or more attempts to
 	// send the event, and none was successful so far.
-	CloudEventConditionFailed CloudEventCondition = "Failed"
+	CloudEventConditionFailed CloudEventCondition = v1alpha2.CloudEventConditionFailed
 )
 
 // CloudEventDeliveryState reports the state of a cloud event to be sent.
-type CloudEventDeliveryState struct {
-	// Current status
-	Condition CloudEventCondition `json:"condition,omitempty"`
-	// SentAt is the time at which the last attempt to send the event was made
-	// +optional
-	SentAt *metav1.Time `json:"sentAt,omitempty"`
-	// Error is the text of error (if any)
-	Error string `json:"message"`
-	// RetryCount is the number of attempts of sending the cloud event
-	RetryCount int32 `json:"retryCount"`
-}
+type CloudEventDeliveryState = v1alpha2.CloudEventDeliveryState
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
