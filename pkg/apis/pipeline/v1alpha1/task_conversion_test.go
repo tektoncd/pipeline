@@ -106,7 +106,7 @@ func TestTaskConversion(t *testing.T) {
 		},
 		wantErr: true,
 	}, {
-		name: "deprecated and non deprecated inputs",
+		name: "deprecated and non deprecated params",
 		in: &Task{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:       "foo",
