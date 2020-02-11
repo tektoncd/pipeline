@@ -707,6 +707,11 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		*out = make([]v1alpha2.WorkspacePipelineTaskBinding, len(*in))
 		copy(*out, *in)
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	return
 }
 

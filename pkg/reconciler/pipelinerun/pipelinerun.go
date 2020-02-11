@@ -560,7 +560,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 				Params: rprt.PipelineTask.Params,
 			},
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
-			Timeout:            getTaskRunTimeout(pr),
+			Timeout:            getTaskRunTimeout(pr, rprt),
 			PodTemplate:        pr.Spec.PodTemplate,
 		}}
 
@@ -627,7 +627,7 @@ func getTaskrunLabels(pr *v1alpha1.PipelineRun, pipelineTaskName string) map[str
 	return labels
 }
 
-func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
+func getTaskRunTimeout(pr *v1alpha1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
 	var timeout time.Duration
@@ -636,6 +636,7 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 	} else {
 		timeout = pr.Spec.Timeout.Duration
 	}
+
 	// If the value of the timeout is 0 for any resource, there is no timeout.
 	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
 	if timeout != apisconfig.NoTimeoutDuration {
@@ -648,9 +649,20 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 				taskRunTimeout = &metav1.Duration{Duration: 1 * time.Second}
 			}
 		} else {
-			taskRunTimeout = &metav1.Duration{Duration: timeout}
+			// check if PipelineTask has a timeout specified
+			if rprt.PipelineTask.Timeout != nil {
+				taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+			} else {
+				taskRunTimeout = &metav1.Duration{Duration: timeout}
+			}
 		}
 	}
+
+	// check if PipelineTask has a timeout specified even if PipelineRun doesn't have a timeout
+	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
+		taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+	}
+
 	return taskRunTimeout
 }
 
@@ -713,7 +725,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 				Params:    rcc.PipelineTaskCondition.Params,
 				Resources: rcc.ToTaskResourceBindings(),
 			},
-			Timeout:     getTaskRunTimeout(pr),
+			Timeout:     getTaskRunTimeout(pr, rprt),
 			PodTemplate: pr.Spec.PodTemplate,
 		}}
 
