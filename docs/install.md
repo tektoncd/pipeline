@@ -125,10 +125,10 @@ for more information_
 
 ### How are resources shared between tasks
 
-Pipelines need a way to share `PipelineResources` between tasks. The alternatives are a
-[Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/),
+Pipelines need a way to share `PipelineResources` between tasks. The options are a
+[Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/),
 an [S3 Bucket](https://aws.amazon.com/s3/)
-or a [GCS storage bucket](https://cloud.google.com/storage/)
+or a [GCS Bucket](https://cloud.google.com/storage/)
 
 The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
@@ -153,7 +153,7 @@ The GCS storage bucket or the S3 bucket can be configured using a ConfigMap with
 This is a limitation coming from using [gsutil](https://cloud.google.com/storage/docs/gsutil) with a boto configuration
 behind the scene to access the S3 bucket.
 
-An typical configuration to use an S3 bucket is available below :
+A typical configuration to use an S3 bucket is available below :
 
 ```yaml
 apiVersion: v1
@@ -218,6 +218,31 @@ data:
 
 *NOTE:* The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
 file contains the keys that can be overriden and their default values.
+
+### Turning On or Off Features of the Pipelines Controller
+
+The ConfigMap `feature-flags` can be used to turn on or off specific features
+of the Pipelines Controller.
+
+Supported flags:
+
+- `disable-home-env-overwrite` - Setting this flag to "true" will prevent Tekton
+from overwriting Step containers' `$HOME` environment variable. The default
+value is "false" and so the default behaviour is for `$HOME` to be overwritten by
+Tekton with `/tekton/home`. This default is very likely to change in an upcoming
+release. For further reference see https://github.com/tektoncd/pipeline/issues/2013.
+
+Here is an example of the `feature-flags` ConfigMap with `disable-home-env-overwrite`
+flipped on:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+data:
+  disable-home-env-overwrite: "true" # Tekton will not overwrite $HOME in Steps.
+```
 
 ## Custom Releases
 
