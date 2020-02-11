@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -44,6 +45,10 @@ var (
 func TestMakePod(t *testing.T) {
 	names.TestingSeed()
 
+	implicitEnvVars := []corev1.EnvVar{{
+		Name:  "HOME",
+		Value: homeDir,
+	}}
 	secretsVolumeMount := corev1.VolumeMount{
 		Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
 		MountPath: "/tekton/creds-secrets/multi-creds",
@@ -793,5 +798,47 @@ func TestMakeLabels(t *testing.T) {
 	})
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff labels:\n%s", d)
+	}
+}
+
+func TestShouldOverrideHomeEnv(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		configMap   *corev1.ConfigMap
+		expected    bool
+	}{{
+		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in true",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		},
+		expected: true,
+	}, {
+		description: "Setting disable-home-env-overwrite to false should result in true",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureFlagDisableHomeEnvKey: "false",
+			},
+		},
+		expected: true,
+	}, {
+		description: "Setting disable-home-env-overwrite to true should result in false",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureFlagDisableHomeEnvKey: "true",
+			},
+		},
+		expected: false,
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			kubeclient := fakek8s.NewSimpleClientset(
+				tc.configMap,
+			)
+			if result := shouldOverrideHomeEnv(kubeclient); result != tc.expected {
+				t.Errorf("Expected %t Received %t", tc.expected, result)
+			}
+		})
 	}
 }
