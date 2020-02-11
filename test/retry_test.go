@@ -113,17 +113,14 @@ func TestTaskRunRetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to list Pods: %v", err)
 	} else if len(pods.Items) != wantPods {
-		// TODO: Make this an error.
-		t.Logf("BUG: Found %d Pods, want %d", len(pods.Items), wantPods)
+		t.Errorf("BUG: Found %d Pods, want %d", len(pods.Items), wantPods)
 	}
 	for _, p := range pods.Items {
 		if _, found := podNames[p.Name]; !found {
-			// TODO: Make this an error.
-			t.Logf("BUG: TaskRunStatus.RetriesStatus did not report pod name %q", p.Name)
+			t.Errorf("BUG: TaskRunStatus.RetriesStatus did not report pod name %q", p.Name)
 		}
 		if p.Status.Phase != corev1.PodFailed {
-			// TODO: Make this an error.
-			t.Logf("BUG: Pod %q is not failed: %v", p.Name, p.Status.Phase)
+			t.Errorf("BUG: Pod %q is not failed: %v", p.Name, p.Status.Phase)
 		}
 	}
 }
