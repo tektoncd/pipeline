@@ -730,7 +730,7 @@ func TestApplyWorkspaces(t *testing.T) {
 
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{
+	ts := &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 		Results: []v1alpha1.TaskResult{{
 			Name:        "current-date-unix-timestamp",
 			Description: "The current date in unix timestamp format",
@@ -752,7 +752,7 @@ func TestTaskResults(t *testing.T) {
 			},
 			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",
 		}},
-	}
+	}}
 	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
 		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current-date-unix-timestamp"
 		spec.Steps[0].Args[0] = "/tekton/results/current-date-unix-timestamp"
