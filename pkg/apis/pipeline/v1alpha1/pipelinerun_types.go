@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var (
@@ -97,12 +96,12 @@ type PipelineRunSpec struct {
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
-type PipelineRunSpecStatus string
+type PipelineRunSpecStatus = v1alpha2.PipelineRunSpecStatus
 
 const (
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
-	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
+	PipelineRunSpecStatusCancelled = v1alpha2.PipelineRunSpecStatusCancelled
 )
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
@@ -113,68 +112,15 @@ type PipelineResourceRef = v1alpha2.PipelineResourceRef
 type PipelineRef = v1alpha2.PipelineRef
 
 // PipelineRunStatus defines the observed state of PipelineRun
-type PipelineRunStatus struct {
-	duckv1beta1.Status `json:",inline"`
-
-	// PipelineRunStatusFields inlines the status fields.
-	PipelineRunStatusFields `json:",inline"`
-}
-
-var pipelineRunCondSet = apis.NewBatchConditionSet()
-
-// GetCondition returns the Condition matching the given type.
-func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return pipelineRunCondSet.Manage(pr).GetCondition(t)
-}
-
-// InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
-// and set the started time to the current time
-func (pr *PipelineRunStatus) InitializeConditions() {
-	if pr.TaskRuns == nil {
-		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
-	}
-	if pr.StartTime.IsZero() {
-		pr.StartTime = &metav1.Time{Time: time.Now()}
-	}
-	pipelineRunCondSet.Manage(pr).InitializeConditions()
-}
-
-// SetCondition sets the condition, unsetting previous conditions with the same
-// type as necessary.
-func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
-	if newCond != nil {
-		pipelineRunCondSet.Manage(pr).SetCondition(*newCond)
-	}
-}
+type PipelineRunStatus = v1alpha2.PipelineRunStatus
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
-type PipelineRunStatusFields struct {
-	// StartTime is the time the PipelineRun is actually started.
-	// +optional
-	StartTime *metav1.Time `json:"startTime,omitempty"`
-
-	// CompletionTime is the time the PipelineRun completed.
-	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// map of PipelineRunTaskRunStatus with the taskRun name as the key
-	// +optional
-	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
-}
+type PipelineRunStatusFields = v1alpha2.PipelineRunStatusFields
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
-type PipelineRunTaskRunStatus struct {
-	// PipelineTaskName is the name of the PipelineTask.
-	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
-	// Status is the TaskRunStatus for the corresponding TaskRun
-	// +optional
-	Status *TaskRunStatus `json:"status,omitempty"`
-	// ConditionChecks maps the name of a condition check to its Status
-	// +optional
-	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
-}
+type PipelineRunTaskRunStatus = v1alpha2.PipelineRunTaskRunStatus
 
 type PipelineRunConditionCheckStatus = v1alpha2.PipelineRunConditionCheckStatus
 

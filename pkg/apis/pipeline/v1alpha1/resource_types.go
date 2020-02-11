@@ -101,18 +101,7 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 
 // PipelineResourceBinding connects a reference to an instance of a PipelineResource
 // with a PipelineResource dependency that the Pipeline has declared
-type PipelineResourceBinding struct {
-	// Name is the name of the PipelineResource in the Pipeline's declaration
-	Name string `json:"name,omitempty"`
-	// ResourceRef is a reference to the instance of the actual PipelineResource
-	// that should be used
-	// +optional
-	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
-	// ResourceSpec is specification of a resource that should be created and
-	// consumed by the task
-	// +optional
-	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
-}
+type PipelineResourceBinding = v1alpha2.PipelineResourceBinding
 
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult = v1alpha2.PipelineResourceResult
