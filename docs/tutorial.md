@@ -436,7 +436,7 @@ to do so, use the following command:
 ```bash
 kubectl create clusterrole tutorial-role \
                --verb=get,list,watch,create,update,patch,delete \
-               --resource=deployments
+               --resource=deployments,deployments.apps
 ```
 
 Now you need to assign this new role `tutorial-role` to your `ServiceAccount`,
