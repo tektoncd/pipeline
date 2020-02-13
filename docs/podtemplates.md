@@ -46,6 +46,10 @@ The current fields supported are:
   [priority class](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/)
   to use when running the pod. Use this, for example, to selectively enable
   preemption on lower priority workloads.
+  - `schedulerName` the name of the [scheduler](https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/)
+  to use when dispatching the Pod. This can be used when workloads of specific types need specific schedulers,
+  eg: If you are using volcano.sh for Machine Learning Workloads, you can pass the schedulerName and have Tasks be 
+  dispatched by the volcano.sh scheduler.
 
 
 A pod template can be specified for `TaskRun` or `PipelineRun` resources.
