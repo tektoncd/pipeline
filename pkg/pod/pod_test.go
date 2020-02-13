@@ -676,14 +676,20 @@ script-heredoc-randomly-generated-78c5n
 	}, {
 		desc: "using another scheduler",
 		ts: v1alpha1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "schedule-me",
-				Image:   "image",
-				Command: []string{"cmd"}, // avoid entrypoint lookup.
-			}}},
+			TaskSpec: v1alpha2.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "schedule-me",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
+						},
+					},
+				},
+			},
 		},
 		trs: v1alpha1.TaskRunSpec{
-			PodTemplate: v1alpha1.PodTemplate{
+			PodTemplate: &v1alpha1.PodTemplate{
 				SchedulerName: "there-scheduler",
 			},
 		},
@@ -702,14 +708,17 @@ script-heredoc-randomly-generated-78c5n
 					"-wait_file_content",
 					"-post_file",
 					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
 					"-entrypoint",
 					"cmd",
 					"--",
 				},
-				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
-				WorkingDir:   pipeline.WorkspaceDir,
-				Resources:    corev1.ResourceRequirements{Requests: allZeroQty()},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
 			}},
 		},
 	}} {

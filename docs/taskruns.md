@@ -192,7 +192,8 @@ allows to customize some Pod specific field per `Task` execution, aka `TaskRun`.
 
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the TaskRun, using a
-PersistenceVolumeClaim. The Pod will also run as a non-root user.
+PersistenceVolumeClaim. The SchedulerName has also been provided to define which scheduler should be used to
+dispatch the Pod. The Pod will also run as a non-root user.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -219,6 +220,7 @@ spec:
   taskRef:
     name: mytask
   podTemplate:
+    schedulerName: volcano
     securityContext:
       runAsNonRoot: true
     volumes:
