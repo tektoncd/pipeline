@@ -375,7 +375,7 @@ tasks:
             resource: source-repo
 ```
 
-In this example, `my-condition` refers to a [Condition](#conditions) custom resource. The `build-push` 
+In this example, `my-condition` refers to a [Condition](./conditions.md) custom resource. The `build-push` 
 task will only be executed if the condition evaluates to true. 
 
 Resources in conditions can also use the [`from`](#from) field to indicate that they 
