@@ -45,11 +45,11 @@ func TestMakePod(t *testing.T) {
 	names.TestingSeed()
 
 	secretsVolumeMount := corev1.VolumeMount{
-		Name:      "tekton-internal-secret-volume-multi-creds",
+		Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
 		MountPath: "/tekton/creds-secrets/multi-creds",
 	}
 	secretsVolume := corev1.Volume{
-		Name:         "tekton-internal-secret-volume-multi-creds",
+		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	}
 

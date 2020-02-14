@@ -110,7 +110,7 @@ func TestCredsInit(t *testing.T) {
 			},
 			Env: envVars,
 			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
-				Name:      "tekton-internal-secret-volume-my-creds",
+				Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 				MountPath: "/tekton/creds-secrets/my-creds",
 			}),
 		},

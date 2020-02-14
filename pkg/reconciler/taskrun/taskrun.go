@@ -539,7 +539,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {
-		return nil, fmt.Errorf("translating Build to Pod: %w", err)
+		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
