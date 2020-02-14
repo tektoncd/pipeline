@@ -73,7 +73,7 @@ func TestSendCloudEvent(t *testing.T) {
 		eventSourceURI:   defaultEventSourceURI,
 		cloudEventClient: defaultCloudEventClient,
 		wantErr:          true,
-		errRegexp:        fmt.Sprintf("%s: unsupported protocol scheme", invalidSinkURI),
+		errRegexp:        fmt.Sprintf("\"%s\": unsupported protocol scheme", invalidSinkURI),
 	}, {
 		desc:             "send a cloud event, fail to send",
 		sinkURI:          defaultSinkURI,
