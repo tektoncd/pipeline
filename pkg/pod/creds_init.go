@@ -65,7 +65,7 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 		}
 
 		if matched {
-			name := names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("tekton-internal-secret-volume-%s", secret.Name))
+			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("tekton-internal-secret-volume-%s", secret.Name))
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
