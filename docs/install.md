@@ -9,7 +9,7 @@ Use this page to add the component to an existing Kubernetes cluster.
 
 ## Pre-requisites
 
-1. A Kubernetes cluster version 1.11 or later (_if you don't have an existing
+1. A Kubernetes cluster version 1.15 or later (_if you don't have an existing
    cluster_):
 
    ```bash
@@ -34,7 +34,7 @@ Use this page to add the component to an existing Kubernetes cluster.
 
 The versions of Tekton Pipelines available are:
 
-* [Officially released versions](https://github.com/tektoncd/pipeline/releases), e.g. `v0.6.0`
+* [Officially released versions](https://github.com/tektoncd/pipeline/releases), e.g. `v0.10.0`
 * [Nightly releases](../tekton/README.md#nightly-releases) are
   published every night to `gcr.io/tekton-nightly`
 * `HEAD` - To install the most recent, unreleased code in the repo see
