@@ -27,12 +27,11 @@ import (
 
 func TestValidateVariables(t *testing.T) {
 	type args struct {
-		input         string
-		prefix        string
-		contextPrefix string
-		locationName  string
-		path          string
-		vars          map[string]struct{}
+		input        string
+		prefix       string
+		locationName string
+		path         string
+		vars         map[string]struct{}
 	}
 	for _, tc := range []struct {
 		name          string
@@ -41,11 +40,10 @@ func TestValidateVariables(t *testing.T) {
 	}{{
 		name: "valid variable",
 		args: args{
-			input:         "--flag=$(inputs.params.baz)",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
+			input:        "--flag=$(inputs.params.baz)",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
 			vars: map[string]struct{}{
 				"baz": {},
 			},
@@ -54,11 +52,10 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "multiple variables",
 		args: args{
-			input:         "--flag=$(inputs.params.baz) $(input.params.foo)",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
+			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
 			vars: map[string]struct{}{
 				"baz": {},
 				"foo": {},
@@ -80,11 +77,10 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "undefined variable",
 		args: args{
-			input:         "--flag=$(inputs.params.baz)",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
+			input:        "--flag=$(inputs.params.baz)",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
 			vars: map[string]struct{}{
 				"foo": {},
 			},
@@ -96,11 +92,10 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "undefined variable and defined variable",
 		args: args{
-			input:         "--flag=$(inputs.params.baz) $(input.params.foo)",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
+			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
 			vars: map[string]struct{}{
 				"foo": {},
 			},
@@ -111,7 +106,7 @@ func TestValidateVariables(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := substitution.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.contextPrefix, tc.args.locationName, tc.args.path, tc.args.vars)
+			got := substitution.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.locationName, tc.args.path, tc.args.vars)
 
 			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariable() error did not match expected error %s", d)

@@ -318,13 +318,13 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 }
 
 func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariable(name, value, prefix, "", "step", "taskspec.steps", vars)
+	return substitution.ValidateVariable(name, value, prefix, "step", "taskspec.steps", vars)
 }
 
 func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableProhibited(name, value, prefix, "", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableProhibited(name, value, prefix, "step", "taskspec.steps", arrayNames)
 }
 
 func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableIsolated(name, value, prefix, "", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableIsolated(name, value, prefix, "step", "taskspec.steps", arrayNames)
 }
