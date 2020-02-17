@@ -76,6 +76,8 @@ spec:
       params:
         - name: package
           value: $(params.package)
+        - name: flags
+          value: -v -mod=vendor
       resources:
         inputs:
           - name: source
@@ -88,7 +90,7 @@ spec:
         - name: package
           value: $(params.package)
         - name: flags
-          value: -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
+          value: -mod=vendor -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
       resources:
         inputs:
           - name: source
