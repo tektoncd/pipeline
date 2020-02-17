@@ -111,6 +111,8 @@ spec:
       value: /workspace/go
     - name: GO111MODULE
       value: "off"
+    - name: GOFLAGS
+      value: "-mod=vendor"
     - name: CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
       value: /secret/release.json
     script: |

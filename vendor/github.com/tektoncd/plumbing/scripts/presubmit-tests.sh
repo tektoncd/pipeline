@@ -44,6 +44,12 @@ IS_DOCUMENTATION_PR=0
 # Directory to use for temporary files.
 WORK_DIR=""
 
+# yamllint config file to override some rules, see https://git.io/JvLom
+YAML_LINT_CONFIG=${YAML_LINT_CONFIG:-}
+
+# goflags to use to override default behavior (if a go.mod file and a vendor folder exists, set it "-mod=vendor")
+GOFLAGS=${GOFLAGS:-}
+
 # Returns true if PR only contains the given file regexes.
 # Parameters: $1 - file regexes, space separated.
 function pr_only_contains() {
@@ -146,18 +152,22 @@ function markdown_build_tests() {
 
 # Perform yaml build tests if necessary, unless disabled.
 function yaml_build_tests() {
+  local yamllintargs
+
   (( DISABLE_YAML_LINTING )) && return 0
   subheader "Linting the yaml files"
   local yamlfiles=""
-   
+
   for file in $(cat ${CHANGED_FILES}); do
     [[ -z $(echo "${file}" | grep '\.yaml$\|\.yml$' | grep -v '^vendor/' | grep -v '^third_party/') ]] && continue
 
     echo "found ${file}"
     [[ -f "${file}" ]] && yamlfiles="${yamlfiles} ${file}"
   done
+
   [[ -z "${yamlfiles}" ]] && return 0
-  yamllint ${yamlfiles}
+  [[ -f ${YAML_LINT_CONFIG} ]] && yamllintargs="-c ${YAML_LINT_CONFIG}"
+  yamllint ${yamllintargs} ${yamlfiles}
 }
 
 # Default build test runner that:
@@ -318,6 +328,8 @@ function main() {
   if function_exists extra_initialization; then
      extra_initialization
   fi
+
+  [[ -z "${GOFLAGS}" ]] && [[ -e go.mod ]] && [[ -d vendor/ ]] && export GOFLAGS="-mod=vendor"
 
   [[ -z $1 ]] && set -- "--all-tests"
 

@@ -30,7 +30,7 @@ require (
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/rogpeppe/go-internal v1.3.2 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
-	github.com/tektoncd/plumbing v0.0.0-20191216083742-847dcf196de9
+	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
 	go.opencensus.io v0.22.1
 	go.uber.org/zap v1.10.0
