@@ -135,20 +135,6 @@ response:
 return pipeline.  
 ```
 
-```
-path: apis/tekton.dev/v1alpha1/namespaces/{namespace}/pipelines/{pipeline_name}
-
-method: DELETE
-
-description: delete a pipeline within a specified namespace
-
-example for request:
-curl -X DELETE -H "Content-Type: application/json" 
-http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/pipelines/tutorial-pipeline
-
-response:
-no body to return
-```
 
 ```
 path: apis/tekton.dev/v1alpha1/namespaces/{namespace}/pipelines/{pipeline_name}
@@ -180,6 +166,34 @@ http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/pipelines/tutor
 
 response:
 return pipeline.json
+```
+
+```
+path: apis/tekton.dev/v1alpha1/namespaces/{namespace}/pipelines/{name}
+
+method: DELETE
+
+description: delete a pipeline within a specified namespace
+
+example for request:
+curl -X DELETE -H "Content-Type: application/json" 
+http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/pipelines/tutorial-pipeline
+
+response:
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+    
+  },
+  "status": "Success",
+  "details": {
+    "name": "tutorial-pipeline",
+    "group": "tekton.dev",
+    "kind": "pipelines",
+    "uid": "840eb67a-01c6-4171-8a8f-2254844b1fff"
+  }
+}
 ```
 
 ---
@@ -413,7 +427,20 @@ example for request:
 curl -X DELETE -H "Content-Type: application/json" http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/pipelineruns/mypipelinerun
 
 response:
-no body to return
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+    
+  },
+  "status": "Success",
+  "details": {
+    "name": "mypipelinerun",
+    "group": "tekton.dev",
+    "kind": "pipelineruns",
+    "uid": "c6c1214c-9c17-4cf7-b9c2-8970f93791d2"
+  }
+}
 ```
 
 ```
@@ -579,7 +606,7 @@ curl -X DELETE -H "Content-Type: application/json"
 http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/pipelineresources/git-resource
 
 resonse:
-no body to return
+return Success status.
 ```
 
 ---
@@ -772,7 +799,7 @@ example for request:
 curl -X DELETE -H 'Conten-Type: application/json' http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/tasks/mytask 
 
 response:
-no body to return.
+return Success status.
 ```
 
 ---
@@ -895,7 +922,7 @@ example for request:
 curl -X DELETE -H 'Conten-Type: application/json' http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/clustertasks/myclustertask
 
 response:
-no body to return.
+return Success status.
 ```
 
 ---
@@ -1059,7 +1086,7 @@ example for request:
 curl -X DELETE -H 'Conten-Type: application/json' http://127.0.0.1:8001/apis/tekton.dev/v1alpha1/namespaces/tekton/taskruns/mytaskrun
 
 response:
-no body to return.
+return Success status.
 ```
 
 ```
