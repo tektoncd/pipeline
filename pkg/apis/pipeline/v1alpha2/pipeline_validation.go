@@ -289,13 +289,13 @@ func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames m
 }
 
 func validatePipelineVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariable(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }
 
 func validatePipelineNoArrayReferenced(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableProhibited(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return substitution.ValidateVariableProhibited(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }
 
 func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableIsolated(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }

@@ -28,8 +28,8 @@ const parameterSubstitution = "[_a-zA-Z][_a-zA-Z0-9.-]*"
 
 const braceMatchingRegex = "(\\$(\\(%s.(?P<var>%s)\\)))"
 
-func ValidateVariable(name, value, prefix, contextPrefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, contextPrefix+prefix); present {
+func ValidateVariable(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			if _, ok := vars[v]; !ok {
 				return &apis.FieldError{
@@ -43,8 +43,8 @@ func ValidateVariable(name, value, prefix, contextPrefix, locationName, path str
 }
 
 // Verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
-func ValidateVariableProhibited(name, value, prefix, contextPrefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, contextPrefix+prefix); present {
+func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			if _, ok := vars[v]; ok {
 				return &apis.FieldError{
@@ -58,9 +58,9 @@ func ValidateVariableProhibited(name, value, prefix, contextPrefix, locationName
 }
 
 // Verifies that variables matching the relevant string expressions are completely isolated if present.
-func ValidateVariableIsolated(name, value, prefix, contextPrefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, contextPrefix+prefix); present {
-		firstMatch, _ := extractExpressionFromString(value, contextPrefix+prefix)
+func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
+		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
 			if _, ok := vars[v]; ok {
 				if len(value) != len(firstMatch) {
