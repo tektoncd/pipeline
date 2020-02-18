@@ -104,7 +104,7 @@ Below is an example output:
 [echo] hello world
 ```
 
-### Specifying the inputs and outputs for your `Task`
+### Specifying `Task` inputs and outputs
 
 In more complex scenarios, a `Task` requires you to define inputs and outputs. For example, a
 `Task` could fetch source code from a GitHub repository and build a Docker image from it.
