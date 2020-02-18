@@ -59,7 +59,7 @@ Apply your YAML files as follows:
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To check whether running your `Task` succeeded, use the following command:
+To check whether running your `TaskRun` succeeded, use the following command:
 
 ```bash
 tkn taskrun describe echo-hello-world-task-run
@@ -90,15 +90,15 @@ NAME
 echo
 ```
 
-The `Succeeded` status confirms that the `Task` completed with no errors.
+The `Succeeded` status confirms that the `TaskRun` completed with no errors.
 
-To see more detail about the execution of your `Task` view its logs:
+To see more detail about the execution of your `TaskRun`, view its logs as follows:
 
 ```bash
 tkn taskrun logs echo-hello-world-task-run
 ```
 
-Below is the example output:
+Below is an example output:
 
 ```
 [echo] hello world
