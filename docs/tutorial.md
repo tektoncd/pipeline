@@ -53,7 +53,7 @@ spec:
     name: echo-hello-world
 ```
 
-Apply your YAML files to the build as follows:
+Apply your YAML files as follows:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
