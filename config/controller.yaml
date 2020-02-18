@@ -20,6 +20,7 @@ metadata:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: controller
     pipeline.tekton.dev/release: "devel"
+    version: "devel"
 spec:
   replicas: 1
   selector:
@@ -35,6 +36,7 @@ spec:
         app.kubernetes.io/component: controller
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
         pipeline.tekton.dev/release: "devel"
+        version: "devel"
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
@@ -81,6 +83,7 @@ metadata:
   labels:
     app: tekton-pipelines-controller
     pipeline.tekton.dev/release: "devel"
+    version: "devel"
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
 spec:
