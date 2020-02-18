@@ -24,6 +24,7 @@ metadata:
     app.kubernetes.io/name: tekton-pipelines
     app.kubernetes.io/component: webhook-controller
     pipeline.tekton.dev/release: "devel"
+    version: "devel"
 spec:
   replicas: 1
   selector:
@@ -40,6 +41,7 @@ spec:
         app.kubernetes.io/name: tekton-pipelines
         app.kubernetes.io/component: webhook-controller
         pipeline.tekton.dev/release: "devel"
+        version: "devel"
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
@@ -78,6 +80,7 @@ metadata:
     app: tekton-pipelines-webhook
     role: webhook
     pipeline.tekton.dev/release: devel
+    version: "devel"
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
 spec:
