@@ -106,7 +106,7 @@ Below is the example output:
 
 ### Specifying the inputs and outputs for your `Task`
 
-In more complex scenarios, a `Task` requires you to define your inputs and outputs. For example a
+In more complex scenarios, a `Task` requires you to define inputs and outputs. For example, a
 `Task` could fetch source code from a GitHub repository and build a Docker image from it.
 
 Use one or more [`PipelineResources`](resources.md) to define the artifacts you'd like to pass in
