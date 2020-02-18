@@ -40,7 +40,7 @@ Tekton Pipelines defines the following entities:
 ## Getting started
 
 To get started, complete the [Tekton Pipelines Tutorial](tutorial.md) and go through our 
-[examples](https://github.com/tektoncd/pipeline/tree/master/examples)
+[examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ## Understanding Tekton Pipelines
 
