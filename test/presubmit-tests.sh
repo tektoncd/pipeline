@@ -31,7 +31,7 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 function post_build_tests() {
   header "running golangci-lint"
   # deadline of 5m, and show all the issues
-  golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
+  golangci-lint run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
 }
 
 # We use the default build, unit and integration test runners.
