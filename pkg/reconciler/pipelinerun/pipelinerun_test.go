@@ -228,25 +228,24 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccountName("test-sa"),
-			tb.TaskRunInputs(
-				tb.TaskRunInputsParam("foo", "somethingfun"),
-				tb.TaskRunInputsParam("bar", "somethingmorefun"),
-				tb.TaskRunInputsParam("templatedparam", "$(inputs.workspace.revision)"),
-				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
-			),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingResourceSpec(
-					&v1alpha1.PipelineResourceSpec{
-						Type: v1alpha1.PipelineResourceTypeImage,
-						Params: []v1alpha1.ResourceParam{{
-							Name:  "url",
-							Value: "gcr.io/sven",
-						}},
-					},
-				),
+			tb.TaskRunParam("foo", "somethingfun"),
+			tb.TaskRunParam("bar", "somethingmorefun"),
+			tb.TaskRunParam("templatedparam", "$(inputs.workspace.revision)"),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("some-repo")),
+				tb.TaskRunResourcesOutput("image-to-use",
+					tb.TaskResourceBindingResourceSpec(
+						&v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeImage,
+							Params: []v1alpha1.ResourceParam{{
+								Name:  "url",
+								Value: "gcr.io/sven",
+							}},
+						},
+					),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
+				tb.TaskRunResourcesOutput("workspace", tb.TaskResourceBindingRef("some-repo"),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),

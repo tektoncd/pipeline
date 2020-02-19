@@ -71,7 +71,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	// Validate that the parameters type are correct
-	if err := validateParameterTypes(ts.Params); err != nil {
+	if err := ValidateParameterTypes(ts.Params); err != nil {
 		return err
 	}
 
@@ -86,11 +86,13 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	// FIXME(vdemeester) validate param variables
-	if err := validateParameterVariables(ts.Steps, ts.Params); err != nil {
+	if err := ValidateParameterVariables(ts.Steps, ts.Params); err != nil {
 		return err
 	}
-	// FIXME(vdemeester) validate resource
+
+	if err := ValidateResourcesVariables(ts.Steps, ts.Resources); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -190,7 +192,7 @@ func validateSteps(steps []Step) *apis.FieldError {
 	return nil
 }
 
-func validateParameterTypes(params []ParamSpec) *apis.FieldError {
+func ValidateParameterTypes(params []ParamSpec) *apis.FieldError {
 	for _, p := range params {
 		// Ensure param has a valid type.
 		validType := false
@@ -218,7 +220,7 @@ func validateParameterTypes(params []ParamSpec) *apis.FieldError {
 	return nil
 }
 
-func validateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
+func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
@@ -233,6 +235,24 @@ func validateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 		return err
 	}
 	return validateArrayUsage(steps, "params", arrayParameterNames)
+}
+
+func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.FieldError {
+	if resources == nil {
+		return nil
+	}
+	resourceNames := map[string]struct{}{}
+	if resources.Inputs != nil {
+		for _, r := range resources.Inputs {
+			resourceNames[r.Name] = struct{}{}
+		}
+	}
+	if resources.Outputs != nil {
+		for _, r := range resources.Outputs {
+			resourceNames[r.Name] = struct{}{}
+		}
+	}
+	return validateVariables(steps, "resources.(?:inputs|outputs)", resourceNames)
 }
 
 func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *apis.FieldError {

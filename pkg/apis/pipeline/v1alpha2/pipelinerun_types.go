@@ -211,6 +211,18 @@ func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
 	}
 }
 
+// MarkResourceNotConvertible adds a Warning-severity condition to the resource noting
+// that it cannot be converted to a higher version.
+func (pr *PipelineRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
+	pipelineRunCondSet.Manage(pr).SetCondition(apis.Condition{
+		Type:     ConditionTypeConvertible,
+		Status:   corev1.ConditionFalse,
+		Severity: apis.ConditionSeverityWarning,
+		Reason:   err.Field,
+		Message:  err.Message,
+	})
+}
+
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.

@@ -160,26 +160,24 @@ var (
 					},
 				},
 			}},
-		},
-		Inputs: &v1alpha1.Inputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name: "workspace",
-				},
-			}},
-		},
-		Outputs: &v1alpha1.Outputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name:       "imageToUse-ab",
-					TargetPath: "/foo/builtImage",
-				},
-			}, {
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name:       "imageToUse-re",
-					TargetPath: "foo/builtImage",
-				},
-			}},
+			Resources: &v1alpha2.TaskResources{
+				Inputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "workspace",
+					},
+				}},
+				Outputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "imageToUse-ab",
+						TargetPath: "/foo/builtImage",
+					},
+				}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "imageToUse-re",
+						TargetPath: "foo/builtImage",
+					},
+				}},
+			},
 		},
 	}
 
@@ -190,13 +188,13 @@ var (
 				Image: "someImage",
 				Args:  []string{"$(outputs.resources.bucket.path)"},
 			}}},
-		},
-		Outputs: &v1alpha1.Outputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name: "bucket",
-				},
-			}},
+			Resources: &v1alpha2.TaskResources{
+				Outputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "bucket",
+					},
+				}},
+			},
 		},
 	}
 
@@ -250,85 +248,73 @@ var (
 
 	arrayTaskRun0Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name: "array-param",
-					Value: v1alpha1.ArrayOrString{
-						Type:     v1alpha1.ParamTypeArray,
-						ArrayVal: []string{},
-					}},
-				},
+			Params: []v1alpha1.Param{{
+				Name: "array-param",
+				Value: v1alpha1.ArrayOrString{
+					Type:     v1alpha1.ParamTypeArray,
+					ArrayVal: []string{},
+				}},
 			},
 		},
 	}
 
 	arrayTaskRun1Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
 		},
 	}
 
 	arrayTaskRun3Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo", "bar", "third"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}},
 		},
 	}
 
 	arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo", "bar", "third"),
-				}, {
-					Name:  "another-array-param",
-					Value: *builder.ArrayOrString("part1", "part2"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}, {
+				Name:  "another-array-param",
+				Value: *builder.ArrayOrString("part1", "part2"),
+			}},
 		},
 	}
 
 	arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
-				}, {
-					Name:  "normal-param",
-					Value: *builder.ArrayOrString("foo"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
+			}, {
+				Name:  "normal-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
 		},
 	}
 
 	arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param1",
-					Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
-				}, {
-					Name:  "array-param2",
-					Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
-				}, {
-					Name:  "string-param1",
-					Value: *builder.ArrayOrString("foo"),
-				}, {
-					Name:  "string-param2",
-					Value: *builder.ArrayOrString("bar"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param1",
+				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+			}, {
+				Name:  "array-param2",
+				Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
+			}, {
+				Name:  "string-param1",
+				Value: *builder.ArrayOrString("foo"),
+			}, {
+				Name:  "string-param2",
+				Value: *builder.ArrayOrString("bar"),
+			}},
 		},
 	}
 
@@ -486,15 +472,13 @@ func TestApplyArrayParameters(t *testing.T) {
 func TestApplyParameters(t *testing.T) {
 	tr := &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "myimage",
-					Value: *builder.ArrayOrString("bar"),
-				}, {
-					Name:  "FOO",
-					Value: *builder.ArrayOrString("world"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "myimage",
+				Value: *builder.ArrayOrString("bar"),
+			}, {
+				Name:  "FOO",
+				Value: *builder.ArrayOrString("world"),
+			}},
 		},
 	}
 	dp := []v1alpha1.ParamSpec{{

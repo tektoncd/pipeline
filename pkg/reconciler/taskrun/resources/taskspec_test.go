@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -48,7 +49,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return task, nil }
-	taskMeta, taskSpec, err := GetTaskData(tr, gt)
+	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -77,7 +78,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
-	taskMeta, taskSpec, err := GetTaskData(tr, gt)
+	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -99,7 +100,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
-	_, _, err := GetTaskData(tr, gt)
+	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
 	}
@@ -117,7 +118,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("something went wrong") }
-	_, _, err := GetTaskData(tr, gt)
+	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}

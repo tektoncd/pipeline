@@ -45,21 +45,20 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name: "step1",
 					}}},
-				},
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						},
-					}},
+					Resources: &v1alpha2.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+					},
 				},
 			},
 		},
@@ -69,8 +68,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -78,9 +77,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -114,21 +111,20 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					}}, {Container: corev1.Container{
 						Name: "step2",
 					}}},
-				},
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						},
-					}},
+					Resources: &v1alpha2.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+					},
 				},
 			},
 		},
@@ -138,8 +134,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -147,9 +143,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{

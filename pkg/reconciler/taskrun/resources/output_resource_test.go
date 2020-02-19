@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/pkg/logging"
@@ -121,8 +122,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -130,9 +131,7 @@ func TestValidOutputResources(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -150,19 +149,19 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -211,8 +210,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -230,12 +229,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -284,8 +285,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -303,12 +304,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "image",
+							}}},
+					},
 				},
 			},
 		},
@@ -327,8 +330,8 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -345,12 +348,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -372,8 +377,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -381,9 +386,7 @@ func TestValidOutputResources(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -401,20 +404,20 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name:       "source-workspace",
-							Type:       "storage",
-							TargetPath: "faraway-disk",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name:       "source-workspace",
+								Type:       "storage",
+								TargetPath: "faraway-disk",
+							}}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -480,8 +483,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -499,12 +502,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -563,8 +568,8 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -582,12 +587,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -625,8 +632,8 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -643,12 +650,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -690,8 +699,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -708,12 +717,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "image",
+							}}},
+					},
 				},
 			},
 		},
@@ -735,8 +746,8 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -753,13 +764,15 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name:       "source-workspace",
-							Type:       "image",
-							TargetPath: "/workspace",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name:       "source-workspace",
+								Type:       "image",
+								TargetPath: "/workspace",
+							}}},
+					},
 				},
 			},
 		},
@@ -776,8 +789,8 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -794,12 +807,14 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "image",
+							}}},
+					},
 				},
 			},
 		},
@@ -816,8 +831,8 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -841,16 +856,18 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}, {
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace-1",
-							Type: "image",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "image",
+							}}, {
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace-1",
+								Type: "image",
+							}}},
+					},
 				},
 			},
 		},
@@ -905,8 +922,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -914,9 +931,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -934,19 +949,19 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -973,8 +988,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -992,12 +1007,14 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -1020,8 +1037,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -1038,12 +1055,14 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -1114,12 +1133,14 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "git",
+							}}},
+					},
 				},
 			},
 		},
@@ -1133,8 +1154,8 @@ func TestInvalidOutputResources(t *testing.T) {
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -1155,12 +1176,14 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -1183,8 +1206,8 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1alpha2.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-workspace",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -1201,12 +1224,14 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
 				},
 			},
 		},
@@ -1219,12 +1244,14 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name:     "source-workspace",
-						Type:     "git",
-						Optional: true,
-					}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:     "source-workspace",
+							Type:     "git",
+							Optional: true,
+						}}},
+					},
 				},
 			},
 		},
@@ -1247,12 +1274,14 @@ func TestInvalidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name:     "source-workspace",
-						Type:     "git",
-						Optional: false,
-					}}},
+				TaskSpec: v1alpha2.TaskSpec{
+					Resources: &v1alpha2.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:     "source-workspace",
+							Type:     "git",
+							Optional: false,
+						}}},
+					},
 				},
 			},
 		},
@@ -1281,7 +1310,10 @@ func TestInvalidOutputResources(t *testing.T) {
 
 func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.PipelineResourceInterface {
 	resolved := make(map[string]v1alpha1.PipelineResourceInterface)
-	for _, r := range taskRun.Spec.Outputs.Resources {
+	if taskRun.Spec.Resources == nil {
+		return resolved
+	}
+	for _, r := range taskRun.Spec.Resources.Outputs {
 		var i v1alpha1.PipelineResourceInterface
 		if name := r.ResourceRef.Name; name != "" {
 			i = outputResources[name]

@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -231,6 +232,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
+	if err := tr.ConvertUp(ctx, &v1alpha2.TaskRun{}); err != nil {
+		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+			tr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
+		return err
+	}
+
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -241,8 +250,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	getTaskFunc, kind := c.getTaskFunc(tr)
-	taskMeta, taskSpec, err := resources.GetTaskData(tr, getTaskFunc)
+	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskFunc)
 	if err != nil {
+		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+			tr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
 		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -284,7 +297,13 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	inputs := []v1alpha2.TaskResourceBinding{}
+	outputs := []v1alpha2.TaskResourceBinding{}
+	if tr.Spec.Resources != nil {
+		inputs = tr.Spec.Resources.Inputs
+		outputs = tr.Spec.Resources.Outputs
+	}
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
@@ -296,7 +315,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(tr.Spec.Params, rtr); err != nil {
 		c.Logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -503,7 +522,6 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	}
 
 	// Get actual resource
-
 	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to output image resource error %v", tr.Name, err)
@@ -523,8 +541,8 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	}
 
 	var defaults []v1alpha1.ParamSpec
-	if ts.Inputs != nil {
-		defaults = append(defaults, ts.Inputs.Params...)
+	if len(ts.Params) > 0 {
+		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
 	ts = resources.ApplyParameters(ts, tr, defaults...)

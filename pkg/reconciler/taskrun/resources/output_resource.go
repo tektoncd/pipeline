@@ -53,8 +53,7 @@ func AddOutputResources(
 	outputResources map[string]v1alpha1.PipelineResourceInterface,
 	logger *zap.SugaredLogger,
 ) (*v1alpha1.TaskSpec, error) {
-
-	if taskSpec == nil || taskSpec.Outputs == nil {
+	if taskSpec == nil || taskSpec.Resources == nil || taskSpec.Resources.Outputs == nil {
 		return taskSpec, nil
 	}
 
@@ -66,8 +65,14 @@ func AddOutputResources(
 		return nil, err
 	}
 	needsPvc := false
-	for _, output := range taskSpec.Outputs.Resources {
-		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
+	for _, output := range taskSpec.Resources.Outputs {
+		if taskRun.Spec.Resources == nil {
+			if output.Optional {
+				continue
+			}
+			return nil, fmt.Errorf("couldnt find resource named %q, no bounded resources", output.Name)
+		}
+		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Resources.Outputs)
 		// Continue if the declared resource is optional and not specified in TaskRun
 		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
 		if output.Optional && boundResource == nil {

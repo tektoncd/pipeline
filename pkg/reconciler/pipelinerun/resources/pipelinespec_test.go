@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.PipelineInterface, error) { return pipeline, nil }
-	pipelineMeta, pipelineSpec, err := GetPipelineData(pr, gt)
+	pipelineMeta, pipelineSpec, err := GetPipelineData(context.Background(), pr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting pipeline spec but got: %s", err)
@@ -81,7 +82,7 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("shouldn't be called") }
-	pipelineMeta, pipelineSpec, err := GetPipelineData(pr, gt)
+	pipelineMeta, pipelineSpec, err := GetPipelineData(context.Background(), pr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting pipeline spec but got: %s", err)
@@ -103,7 +104,7 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("shouldn't be called") }
-	_, _, err := GetPipelineData(tr, gt)
+	_, _, err := GetPipelineData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced pipeline spec but didn't get error")
 	}
@@ -121,7 +122,7 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.PipelineInterface, error) { return nil, errors.New("something went wrong") }
-	_, _, err := GetPipelineData(tr, gt)
+	_, _, err := GetPipelineData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
 	}
