@@ -53,8 +53,7 @@ func AddInputResource(
 	inputResources map[string]v1alpha1.PipelineResourceInterface,
 	logger *zap.SugaredLogger,
 ) (*v1alpha1.TaskSpec, error) {
-
-	if taskSpec.Inputs == nil {
+	if taskSpec == nil || taskSpec.Resources == nil || taskSpec.Resources.Inputs == nil {
 		return taskSpec, nil
 	}
 	taskSpec = taskSpec.DeepCopy()
@@ -73,9 +72,15 @@ func AddInputResource(
 	}
 
 	// Iterate in reverse through the list, each element prepends but we want the first one to remain first.
-	for i := len(taskSpec.Inputs.Resources) - 1; i >= 0; i-- {
-		input := taskSpec.Inputs.Resources[i]
-		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
+	for i := len(taskSpec.Resources.Inputs) - 1; i >= 0; i-- {
+		input := taskSpec.Resources.Inputs[i]
+		if taskRun.Spec.Resources == nil {
+			if input.Optional {
+				continue
+			}
+			return nil, fmt.Errorf("couldnt find resource named %q, no bounded resources", input.Name)
+		}
+		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Resources.Inputs)
 		// Continue if the declared resource is optional and not specified in TaskRun
 		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
 		if input.Optional && boundResource == nil {

@@ -99,6 +99,18 @@ type TaskRunStatus struct {
 	TaskRunStatusFields `json:",inline"`
 }
 
+// MarkResourceNotConvertible adds a Warning-severity condition to the resource noting
+// that it cannot be converted to a higher version.
+func (trs *TaskRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
+	taskRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:     ConditionTypeConvertible,
+		Status:   corev1.ConditionFalse,
+		Severity: apis.ConditionSeverityWarning,
+		Reason:   err.Field,
+		Message:  err.Message,
+	})
+}
+
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
@@ -152,24 +164,24 @@ type TaskRunResult struct {
 }
 
 // GetCondition returns the Condition matching the given type.
-func (tr *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return taskRunCondSet.Manage(tr).GetCondition(t)
+func (trs *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return taskRunCondSet.Manage(trs).GetCondition(t)
 }
 
 // InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
 // and set the started time to the current time
-func (tr *TaskRunStatus) InitializeConditions() {
-	if tr.StartTime.IsZero() {
-		tr.StartTime = &metav1.Time{Time: time.Now()}
+func (trs *TaskRunStatus) InitializeConditions() {
+	if trs.StartTime.IsZero() {
+		trs.StartTime = &metav1.Time{Time: time.Now()}
 	}
-	taskRunCondSet.Manage(tr).InitializeConditions()
+	taskRunCondSet.Manage(trs).InitializeConditions()
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
+func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
-		taskRunCondSet.Manage(tr).SetCondition(*newCond)
+		taskRunCondSet.Manage(trs).SetCondition(*newCond)
 	}
 }
 

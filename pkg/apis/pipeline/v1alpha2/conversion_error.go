@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"fmt"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -25,13 +26,26 @@ const (
 	// ConditionTypeConvertible is a Warning condition that is set on
 	// resources when they cannot be converted to warn of a forthcoming
 	// breakage.
-	ConditionTypeConvertible apis.ConditionType = v1alpha2.ConditionTypeConvertible
+	ConditionTypeConvertible apis.ConditionType = "Convertible"
 )
 
 // CannotConvertError is returned when a field cannot be converted.
-type CannotConvertError = v1alpha2.CannotConvertError
+type CannotConvertError struct {
+	Message string
+	Field   string
+}
 
 var _ error = (*CannotConvertError)(nil)
 
+// Error implements error
+func (cce *CannotConvertError) Error() string {
+	return cce.Message
+}
+
 // ConvertErrorf creates a CannotConvertError from the field name and format string.
-var ConvertErrorf = v1alpha2.ConvertErrorf
+func ConvertErrorf(field, msg string, args ...interface{}) error {
+	return &CannotConvertError{
+		Message: fmt.Sprintf(msg, args...),
+		Field:   field,
+	}
+}
