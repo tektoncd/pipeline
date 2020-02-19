@@ -483,20 +483,6 @@ func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
 	}
 }
 
-// SetSidecarStateName sets Name of Sidecar for SidecarState.
-func SetSidecarStateName(name string) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.Name = name
-	}
-}
-
-// SetSidecarStateImageID sets ImageID of Sidecar for SidecarState.
-func SetSidecarStateImageID(imageID string) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ImageID = imageID
-	}
-}
-
 // TaskRunOwnerReference sets the OwnerReference, with specified kind and name, to the TaskRun.
 func TaskRunOwnerReference(kind, name string, ops ...OwnerReferenceOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {

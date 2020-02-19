@@ -139,6 +139,25 @@ func TestSidecarTaskSupport(t *testing.T) {
 			if !primaryTerminated || !sidecarTerminated {
 				t.Errorf("Either the primary or sidecar containers did not terminate")
 			}
+
+			trCheckSidecarStatus, err := clients.TaskRunClient.Get(sidecarTaskRunName, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Error getting TaskRun: %v", err)
+			}
+
+			sidecarFromStatus := trCheckSidecarStatus.Status.Sidecars[0]
+
+			// Check if Sidecar ContainerName is present for SidecarStatus
+			if sidecarFromStatus.ContainerName != fmt.Sprintf("sidecar-%s", sidecarContainerName) {
+				t.Errorf("Sidecar ContainerName should be: %s", sidecarContainerName)
+			}
+
+			// Check if Terminated status is present for SidecarStatus
+			if trCheckSidecarStatus.Name == "sidecar-test-task-run-1" && sidecarFromStatus.Terminated == nil {
+				t.Errorf("TaskRunStatus: Sidecar container has a nil Terminated status but non-nil is expected.")
+			} else if trCheckSidecarStatus.Name == "sidecar-test-task-run-1" && sidecarFromStatus.Terminated.Reason != "Completed" {
+				t.Errorf("TaskRunStatus: Sidecar container has a nil Terminated reason of %s but should be Completed", sidecarFromStatus.Terminated.Reason)
+			}
 		})
 	}
 }

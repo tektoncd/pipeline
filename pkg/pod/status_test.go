@@ -491,8 +491,112 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-running-step",
 				}},
 				Sidecars: []v1alpha1.SidecarState{{
-					Name:    "running",
-					ImageID: "image-id",
+					ContainerState: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+					Name:          "running",
+					ImageID:       "image-id",
+					ContainerName: "sidecar-running",
+				}},
+			},
+		},
+	}, {
+		desc: "with-sidecar-waiting",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-waiting-step",
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason:  "PodInitializing",
+						Message: "PodInitializing",
+					},
+				},
+			}, {
+				Name:    "sidecar-waiting",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Reason:  "PodInitializing",
+						Message: "PodInitializing",
+					},
+				},
+				Ready: true,
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionRunning},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "PodInitializing",
+							Message: "PodInitializing",
+						},
+					},
+					Name:          "waiting-step",
+					ContainerName: "step-waiting-step",
+				}},
+				Sidecars: []v1alpha1.SidecarState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "PodInitializing",
+							Message: "PodInitializing",
+						},
+					},
+					Name:          "waiting",
+					ImageID:       "image-id",
+					ContainerName: "sidecar-waiting",
+				}},
+			},
+		},
+	}, {
+		desc: "with-sidecar-terminated",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-running-step",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
+				},
+			}, {
+				Name:    "sidecar-error",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   "Error",
+						Message:  "Error",
+					},
+				},
+				Ready: true,
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionRunning},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+					Name:          "running-step",
+					ContainerName: "step-running-step",
+				}},
+				Sidecars: []v1alpha1.SidecarState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Reason:   "Error",
+							Message:  "Error",
+						},
+					},
+					Name:          "error",
+					ImageID:       "image-id",
+					ContainerName: "sidecar-error",
 				}},
 			},
 		},

@@ -99,6 +99,13 @@ var (
 		),
 	))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
+	taskSidecar = tb.Task("test-task-sidecar", "foo", tb.TaskSpec(
+		tb.Sidecar("sidecar", "image-id"),
+	))
+	taskMultipleSidecars = tb.Task("test-task-sidecar", "foo", tb.TaskSpec(
+		tb.Sidecar("sidecar", "image-id"),
+		tb.Sidecar("sidecar2", "image-id"),
+	))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
 		simpleStep, tb.TaskInputs(
@@ -1145,7 +1152,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 		return true, nil, errors.New("induce failure fetching pods")
 	})
 
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
 		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Build Pod but got nil")
 	}
 }
@@ -1196,7 +1203,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1219,7 +1226,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).UpdateStatus(pod); err != nil {
 		t.Errorf("Unexpected error while updating build: %v", err)
 	}
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
@@ -1259,7 +1266,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1289,7 +1296,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1377,7 +1384,7 @@ func TestReconcileTimeouts(t *testing.T) {
 		c := testAssets.Controller
 		clients := testAssets.Clients
 
-		if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", tc.taskRun.Namespace, tc.taskRun.Name)); err != nil {
+		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 		}
 		newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
@@ -1879,5 +1886,122 @@ func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
 			}
 		})
+	}
+}
+
+func TestReconcile_Single_SidecarState(t *testing.T) {
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	taskRun := tb.TaskRun("test-taskrun-sidecars", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(taskSidecar.Name),
+		),
+		tb.TaskRunStatus(
+			tb.SidecarState(
+				tb.SidecarStateName("sidecar"),
+				tb.SidecarStateImageID("image-id"),
+				tb.SidecarStateContainerName("sidecar-sidecar"),
+				tb.SetSidecarStateRunning(runningState),
+			),
+		),
+	)
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{taskSidecar},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	getTaskRun, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expected := v1alpha1.SidecarState{
+		Name:          "sidecar",
+		ImageID:       "image-id",
+		ContainerName: "sidecar-sidecar",
+		ContainerState: corev1.ContainerState{
+			Running: &runningState,
+		},
+	}
+
+	if c := cmp.Diff(expected, getTaskRun.Status.Sidecars[0]); c != "" {
+		t.Errorf("TestReconcile_Single_SidecarState (-want, +got): %s", c)
+	}
+}
+
+func TestReconcile_Multiple_SidecarStates(t *testing.T) {
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
+	taskRun := tb.TaskRun("test-taskrun-sidecars", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(taskMultipleSidecars.Name),
+		),
+		tb.TaskRunStatus(
+			tb.SidecarState(
+				tb.SidecarStateName("sidecar1"),
+				tb.SidecarStateImageID("image-id"),
+				tb.SidecarStateContainerName("sidecar-sidecar1"),
+				tb.SetSidecarStateRunning(runningState),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.SidecarState(
+				tb.SidecarStateName("sidecar2"),
+				tb.SidecarStateImageID("image-id"),
+				tb.SidecarStateContainerName("sidecar-sidecar2"),
+				tb.SetSidecarStateWaiting(waitingState),
+			),
+		),
+	)
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{taskMultipleSidecars},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	getTaskRun, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expected := []v1alpha1.SidecarState{
+		{
+			Name:          "sidecar1",
+			ImageID:       "image-id",
+			ContainerName: "sidecar-sidecar1",
+			ContainerState: corev1.ContainerState{
+				Running: &runningState,
+			},
+		},
+		{
+			Name:          "sidecar2",
+			ImageID:       "image-id",
+			ContainerName: "sidecar-sidecar2",
+			ContainerState: corev1.ContainerState{
+				Waiting: &waitingState,
+			},
+		},
+	}
+
+	for i, sc := range getTaskRun.Status.Sidecars {
+		if c := cmp.Diff(expected[i], sc); c != "" {
+			t.Errorf("TestReconcile_Multiple_SidecarStates sidecar%d (-want, +got): %s", i+1, c)
+		}
 	}
 }
