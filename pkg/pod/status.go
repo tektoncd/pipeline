@@ -84,7 +84,7 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 		// An injected sidecar might not have the "sidecar-" prefix, so
 		// we can't just look for that prefix, we need to look at any
 		// non-step container.
-		if isContainerStep(s.Name) {
+		if IsContainerStep(s.Name) {
 			continue
 		}
 		if s.State.Running != nil && s.Ready {
@@ -112,7 +112,6 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 	}
 
 	trs.PodName = pod.Name
-
 	trs.Steps = []v1alpha1.StepState{}
 	trs.Sidecars = []v1alpha1.SidecarState{}
 	logger, _ := logging.NewLogger("", "status")
@@ -121,7 +120,7 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 	}()
 
 	for _, s := range pod.Status.ContainerStatuses {
-		if isContainerStep(s.Name) {
+		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
 				msg := s.State.Terminated.Message
 				r, err := termination.ParseMessage(msg)
@@ -158,8 +157,10 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 			})
 		} else if isContainerSidecar(s.Name) {
 			trs.Sidecars = append(trs.Sidecars, v1alpha1.SidecarState{
-				Name:    trimSidecarPrefix(s.Name),
-				ImageID: s.ImageID,
+				ContainerState: *s.State.DeepCopy(),
+				Name:           TrimSidecarPrefix(s.Name),
+				ContainerName:  s.Name,
+				ImageID:        s.ImageID,
 			})
 		}
 	}
@@ -196,6 +197,7 @@ func updateCompletedTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {
 			Message: "All Steps have completed executing",
 		})
 	}
+
 	// update tr completed time
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
@@ -235,7 +237,7 @@ func updateIncompleteTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {
 func DidTaskRunFail(pod *corev1.Pod) bool {
 	f := pod.Status.Phase == corev1.PodFailed
 	for _, s := range pod.Status.ContainerStatuses {
-		if isContainerStep(s.Name) {
+		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
 				f = f || s.State.Terminated.ExitCode != 0 || isOOMKilled(s)
 			}
@@ -247,7 +249,7 @@ func DidTaskRunFail(pod *corev1.Pod) bool {
 func areStepsComplete(pod *corev1.Pod) bool {
 	stepsComplete := len(pod.Status.ContainerStatuses) > 0 && pod.Status.Phase == corev1.PodRunning
 	for _, s := range pod.Status.ContainerStatuses {
-		if isContainerStep(s.Name) {
+		if IsContainerStep(s.Name) {
 			if s.State.Terminated == nil {
 				stepsComplete = false
 			}
@@ -287,7 +289,7 @@ func getFailureMessage(pod *corev1.Pod) string {
 	}
 
 	for _, s := range pod.Status.ContainerStatuses {
-		if isContainerStep(s.Name) {
+		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
 				if isOOMKilled(s) {
 					return oomKilled
