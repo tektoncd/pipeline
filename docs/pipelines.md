@@ -20,6 +20,7 @@ This document defines `Pipelines` and their capabilities.
       - [Timeout](#timeout)
     - [Results](#results)
     - [Ordering](#ordering)
+    - [Failure Strategies](#failure-strategies)
   - [Examples](#examples)
 
 ## Syntax
@@ -547,6 +548,348 @@ build-app  build-frontend
 1. The entire `Pipeline` will be finished executing after `lint-repo` and
    `deploy-all` have completed.
 
+## Failure Strategies
+
+In a Tekton PipelineRun, multiple tasks are executed based on the order specified using [`from`](#from) and/or
+[`runAfter`](#runafter) clauses. A PipelineRun triggers the creation of TaskRun for each task in the pipeline.
+PipelineRun runs until all Tasks have completed or until a failure occurs. PipelineRun declares failure when any one of
+the TaskRuns fail and it stops the entire Pipeline. To continue the execution of a Pipeline in case of such failure, add
+a pipeline task level `runOn` section which determines if a task should run based on the status of its parent pipeline tasks.
+
+`runOn` takes a map of task and a list of states that the parent TaskRuns have to be in for it to run. The parent
+TaskRuns are the tasks which are specified in [`runAfter`](#runafter) of the current task. A list of states specified in
+`runOn` without a task in `runAfter` would cause a pipeline validation failure. The possible states with `runOn` are
+`success` and `failure`.
+
+Some of the sample execution graphs using `runOn` and their status:
+
+#### Run task when a parent task fails
+
+```none
+           task1
+    failure |
+            v
+          task2
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+```
+
+*Pipeline Status: Succeeded and Tasks Completed: 1, Skipped: 0, Failed: 1*
+
+```
+tkn pr describe <pipeline>
+...
+🗂  Taskruns
+
+ NAME                                         TASK NAME   STARTED         DURATION     STATUS
+ ∙ pipelinerun-runon-failure-task2-l5b8q   task2       2 minutes ago   12 seconds   Succeeded
+ ∙ pipelinerun-runon-failure-task1-6f25q   task1       2 minutes ago   27 seconds   Failed
+```
+
+#### State of a parent task specified in runOn section conflicts with the actual state
+
+```none
+           task1 (finishes with success)
+    failure |
+            v
+          task2
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: successful-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+```
+*Pipeline Status: Completed and Tasks Completed: 1, Skipped: 1, Failed: 0*
+
+```
+🗂  Taskruns
+
+ NAME                                                    TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-runon-failure-conflicted-task2-5bfz4   task2       ---              ---          Failed(SkippedAsStateConflicted)
+ ∙ pipelinerun-runon-failure-conflicted-task1-z9wdj   task1       11 minutes ago   24 seconds   Succeeded
+```
+
+Note, `task2` depends on failure of parent task `task1` but `task1` was successful therefore `task2` was skipped and
+marked with a state `SkippedAsStateConflicted`.
+
+#### Last task in the pipeline fails
+
+```none
+           task1 (finishes with failure)
+    failure |
+            v
+          task2 (executes since runOn state matches but results in failure)
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+```
+
+*Pipeline Status: Failed*
+
+```
+tkn pr describe pipelinerun-runon-end-with-failure
+🗂  Taskruns
+
+ NAME                                                  TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-runon-end-with-failure-task2-cghlk   task2       17 minutes ago   11 seconds   Failed
+ ∙ pipelinerun-runon-end-with-failure-task1-jpnc8   task1       17 minutes ago   29 seconds   Failed
+```
+
+#### Task with multiple dependencies based on different states
+
+Consider the following execution graph where `task2` executes if `task1` succeeds and `task3` executes if `task1` fails.
+
+```none
+             task1
+    success /     \ failure
+           v      v
+        task2   task3
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["success"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+```
+
+*Pipeline Status: Completed and Tasks Completed: 1, Skipped: 1, Failed: 1*
+
+```
+tkn pr describe pipelinerun-runon-success-failure
+...
+🗂  Taskruns
+
+ NAME                                                 TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-runon-success-failure-task2-wxn9n   task2       ---              ---          Failed(SkippedAsStateConflicted)
+ ∙ pipelinerun-runon-success-failure-task3-dszrf   task3       10 minutes ago   12 seconds   Succeeded
+ ∙ pipelinerun-runon-success-failure-task1-sn5gg   task1       10 minutes ago   30 seconds   Failed
+
+```
+
+#### Task with multiple parents along with different states
+
+```none
+         task1      task2
+  success |         / failure
+            task3
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: successful-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1", "task2"]
+      runOn:
+        - task: task1
+          states: ["success"]
+        - task: task2
+          states: ["failure"]
+```
+
+*Pipeline Status: Succeeded and Tasks Completed: 2, Skipped: 0, Failed: 1*
+
+```none
+🌡️  Status
+
+STARTED          DURATION     STATUS
+36 seconds ago   18 seconds   Succeeded
+
+🗂  Taskruns
+
+ NAME                                           TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-runon-two-roots-task3-9dwdc   task3       26 seconds ago   8 seconds    Succeeded
+ ∙ pipelinerun-runon-two-roots-task1-csjch   task1       36 seconds ago   7 seconds    Succeeded
+ ∙ pipelinerun-runon-two-roots-task2-cnszx   task2       36 seconds ago   10 seconds   Failed
+```
+
+#### Task with multiple states in runOn
+
+```none
+  Pipeline:
+         task1
+           | success, failure
+         task2
+           | failure
+         task3
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["success", "failure"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["success"]
+```
+
+*Pipeline Status: Succeeded and Tasks Completed: 2, Skipped: 0, Failed: 1*
+
+```none
+🌡️  Status
+
+STARTED          DURATION   STATUS
+12 minutes ago   1 minute   Succeeded
+
+🗂  Taskruns
+
+ NAME                                                                TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-single-branch-multiple-states-in-norunon-task-tw2pm   task3       11 minutes ago   20 seconds   Succeeded
+ ∙ pipelinerun-single-branch-multiple-states-in-norunon-task-m2454   task2       12 minutes ago   20 seconds   Succeeded
+ ∙ pipelinerun-single-branch-multiple-states-in-norunon-task-f7hzs   task1       12 minutes ago   21 seconds   Failed
+```
+
+#### Pipeline with multiple dependencies based on different states
+
+This is little complex example with `task2` depending on success of `task1` whereas `task3` depending on failure of `task1`,
+and in turn these tasks (`task2` and `task3`) having dependencies. With the help of failure strategies, pipeline completes
+execution and marks `TaskRun` for `task3` and `task5` as skipped with `SkippedAsStateConflicted` state since `task1` succeeds.
+
+```none
+             task1
+    success /     \ failure
+         task2   task3
+   failure |       | success
+         task4   task5
+```
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: successful-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+    - name: task4
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["failure"]
+    - name: task5
+      taskRef:
+        Name: successful-task
+      runAfter: ["task3"]
+```
+
+*Pipeline Status: Completed and Tasks Completed: 2, Skipped: 2, Failed: 1*
+
+```none
+🌡️  Status
+
+STARTED          DURATION   STATUS
+17 minutes ago   1 minute   Succeeded(Completed)
+
+🗂  Taskruns
+
+ NAME                                                            TASK NAME   STARTED          DURATION     STATUS
+ ∙ pipelinerun-two-branches-mix-of-success-failure-task4-5sxxm   task4       16 minutes ago   17 seconds   Succeeded
+ ∙ pipelinerun-two-branches-mix-of-success-failure-task2-s942v   task2       16 minutes ago   23 seconds   Failed
+ ∙ pipelinerun-two-branches-mix-of-success-failure-task3-8mhh9   task3       16 minutes ago   ---          Failed(SkippedAsStateConflicted)
+ ∙ pipelinerun-two-branches-mix-of-success-failure-task5-96zkh   task5       16 minutes ago   ---          Failed(SkippedAsStateConflicted)
+ ∙ pipelinerun-two-branches-mix-of-success-failure-task1-trxwl   task1       17 minutes ago   22 seconds   Succeeded
+```
+
+```none
+ tkn tr describe pipelinerun-two-branches-mix-of-success-failure-task3-8mhh9
+🌡️  Status
+
+STARTED          DURATION    STATUS
+17 minutes ago   ---         Failed(SkippedAsStateConflicted)
+
+Message
+
+TaskRun "pipelinerun-two-branches-mix-of-success-failure-task3-8mhh9" was skipped
+```
 ## Examples
 
 For complete examples, see

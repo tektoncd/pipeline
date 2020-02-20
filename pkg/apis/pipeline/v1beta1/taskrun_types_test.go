@@ -151,6 +151,17 @@ func TestTaskRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestTaskRun_IsSkipped(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Status: v1beta1.TaskRunSpecStatusSkipped,
+		},
+	}
+	if !tr.IsSkipped() {
+		t.Fatal("Expected pipelinerun status to be skipped")
+	}
+}
+
 func TestTaskRunKey(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{

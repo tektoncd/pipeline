@@ -103,6 +103,7 @@ type PipelineTask struct {
 	// outputs.
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
+
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
@@ -117,6 +118,10 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// RunOn declares a list of dependent tasks and their states that they have to be in to run this task
+	// +optional
+	RunOn []PipelineTaskRunOn `json:"runOn,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {
@@ -231,3 +236,29 @@ type PipelineList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
 }
+
+// PipelineTaskRunOn represents runOn of a pipelineTask which is a map of task and a list of states, e.g.
+// runOn:
+//  - task: task1
+//    states: ["success", "failure"]
+//  - task: task2
+//    states: ["success"]
+type PipelineTaskRunOn struct {
+	// Task is the name of the PipelineTask as specified in a pipeline
+	Task string `json:"task"`
+	// States is a list of states of a PipelineTask which is specified in the Task above
+	States []PipelineTaskState `json:"states"`
+}
+
+// PipelineTaskState represents the state of a parent PipelineTask that it has to be in for it to run
+type PipelineTaskState = string
+
+const (
+	// PipelineTaskStateSuccess indicates that a PipelineTask has finished execution successfully
+	PipelineTaskStateSuccess PipelineTaskState = "success"
+	// PipelineTaskStateFailure indicates that a PipelineTask has finished execution and has failed
+	PipelineTaskStateFailure PipelineTaskState = "failure"
+)
+
+// AllPipelineTaskStates is used for validation to check if a provided state is one of the supported/known states
+var AllPipelineTaskStates = []PipelineTaskState{PipelineTaskStateSuccess, PipelineTaskStateFailure}

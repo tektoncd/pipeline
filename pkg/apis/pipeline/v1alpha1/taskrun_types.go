@@ -68,6 +68,8 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = v1beta1.TaskRunSpecStatusCancelled
+	// TaskRunSpecStatusSkipped indicates that the task should be skipped and not executed
+	TaskRunSpecStatusSkipped = v1beta1.TaskRunSpecStatusSkipped
 )
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -207,6 +209,11 @@ func (tr *TaskRun) IsSuccessful() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsSkipped returns true if the TaskRun's spec status is set to Skipped state
+func (tr *TaskRun) IsSkipped() bool {
+	return tr.Spec.Status == TaskRunSpecStatusSkipped
 }
 
 // GetRunKey return the taskrun key for timeout handler map

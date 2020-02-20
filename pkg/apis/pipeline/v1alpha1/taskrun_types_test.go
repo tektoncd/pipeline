@@ -112,6 +112,15 @@ func TestTaskRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestTaskRunIsSkipped(t *testing.T) {
+	tr := tb.TaskRun("", "", tb.TaskRunSpec(
+		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusSkipped)),
+	)
+	if !tr.IsSkipped() {
+		t.Fatal("Expected pipelinerun status to be skipped")
+	}
+}
+
 func TestTaskRunKey(t *testing.T) {
 	tr := tb.TaskRun("taskrunname", "")
 	expectedKey := fmt.Sprintf("TaskRun/%p", tr)

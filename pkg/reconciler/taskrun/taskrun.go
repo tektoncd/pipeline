@@ -139,24 +139,32 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
-		if err != nil {
-			c.Logger.Errorf("Error stopping sidecars for TaskRun %q: %v", name, err)
-			merr = multierror.Append(merr, err)
+
+		if !tr.IsSkipped() {
+			if err != nil {
+				c.Logger.Errorf("Error stopping sidecars for TaskRun %q: %v", name, err)
+				merr = multierror.Append(merr, err)
+			}
 		}
 
 		go func(metrics *Recorder) {
 			err := metrics.DurationAndCount(tr)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			if !tr.IsSkipped() {
+				if err != nil {
+					c.Logger.Warnf("Failed to log the metrics : %v", err)
+				}
 			}
 			err = metrics.RecordPodLatency(pod, tr)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			if !tr.IsSkipped() {
+				if err != nil {
+					c.Logger.Warnf("Failed to log the metrics : %v", err)
+				}
 			}
 		}(c.metrics)
 
 		return merr.ErrorOrNil()
 	}
+
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	if err := c.reconcile(ctx, tr); err != nil {
@@ -238,6 +246,16 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			return nil
 		}
 		return err
+	}
+
+	if tr.IsSkipped() {
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "SkippedAsStateConflicted",
+			Message: fmt.Sprintf("TaskRun %q was skipped", tr.Name),
+		})
+		return nil
 	}
 
 	// If the taskrun is cancelled, kill resources and update status

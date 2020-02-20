@@ -1,0 +1,284 @@
+# Task producing failure by exiting with 1
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: failure-task
+spec:
+  steps:
+    - name: fail
+      image: ubuntu
+      script: exit 1
+---
+
+# Task producing success by exiting with 0
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: successful-task
+spec:
+  steps:
+    - name: success
+      image: ubuntu
+      script: exit 0
+---
+
+#  Pipeline:
+#         task1
+#           | failure
+#         task2
+#           | failure
+#         task3
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-single-branch-three-tasks-failure-failure
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["failure"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-single-branch-three-tasks-failure-failure
+spec:
+  pipelineRef:
+    name: pipeline-single-branch-three-tasks-failure-failure
+---
+
+# Pipeline:
+#         task1
+#           | failure
+#         task2
+#           | success
+#         task3
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-single-branch-three-tasks-failure-success
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["success"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-single-branch-three-tasks-failure-success
+spec:
+  pipelineRef:
+    name: pipeline-single-branch-three-tasks-failure-success
+---
+
+# Pipeline:
+#         task1
+#           | success
+#         task2
+#           | failure
+#         task3
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-single-branch-three-tasks-success-failure
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: successful-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["success"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["failure"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-single-branch-three-tasks-success-failure
+spec:
+  pipelineRef:
+    name: pipeline-single-branch-three-tasks-success-failure
+---
+
+#  Pipeline:
+#         task1
+#           | failure
+#         task2
+#           | failure
+#         task3
+#           | no runOn
+#         task4
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-single-branch-four-tasks-failure-failure-norunon
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["failure"]
+    - name: task4
+      taskRef:
+        Name: successful-task
+      runAfter: ["task3"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-single-branch-four-tasks-failure-failure-norunon
+spec:
+  pipelineRef:
+    name: pipeline-single-branch-four-tasks-failure-failure-norunon
+---
+
+#  Pipeline:
+#         task1
+#           | success, failure
+#         task2
+#           | failure
+#         task3
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-single-branch-multiple-states-in-norunon
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: failure-task
+    - name: task2
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["success", "failure"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["success"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-single-branch-multiple-states-in-norunon
+spec:
+  pipelineRef:
+    name: pipeline-single-branch-multiple-states-in-norunon
+---
+
+
+# Pipeline:
+#             task1
+#    success /     \ failure
+#         task2   task3
+#   failure |       | success
+#         task4   task5
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-two-branches-mix-of-success-failure
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+        Name: successful-task
+    - name: task2
+      taskRef:
+        Name: failure-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["success"]
+    - name: task3
+      taskRef:
+        Name: successful-task
+      runAfter: ["task1"]
+      runOn:
+        - task: task1
+          states: ["failure"]
+    - name: task4
+      taskRef:
+        Name: successful-task
+      runAfter: ["task2"]
+      runOn:
+        - task: task2
+          states: ["failure"]
+    - name: task5
+      taskRef:
+        Name: successful-task
+      runAfter: ["task3"]
+      runOn:
+        - task: task3
+          states: ["success"]
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-two-branches-mix-of-success-failure
+spec:
+  pipelineRef:
+    name: pipeline-two-branches-mix-of-success-failure
+---

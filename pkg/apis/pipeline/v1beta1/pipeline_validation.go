@@ -201,6 +201,10 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	// Validate PipelineTask runOn and runAfter
+	if err := validatePipelineTaskRunOn(ps.Tasks); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -305,4 +309,54 @@ func validatePipelineNoArrayReferenced(name, value, prefix string, vars map[stri
 
 func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
 	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
+}
+
+func validatePipelineTaskRunOn(pipelineTasks []PipelineTask) *apis.FieldError {
+	// iterate over each PipelineTask to validate dependencies specified in runAfter and tasks in runOn
+	for ptIdx, pt := range pipelineTasks {
+		// store all tasks specified in runOn for this pipelineTask
+		var dependentTasks []string
+		for dIdx, d := range pt.RunOn {
+			for sIdx, state := range d.States {
+				if err := validatePipelineTaskStates(state,
+					fmt.Sprintf("spec.tasks[%d].runOn[%d].%s.states[%d].%s", ptIdx, dIdx, d.Task, sIdx, state)); err != nil {
+					return err
+				}
+			}
+			if err := checkForDuplicateStates(d.States, fmt.Sprintf("spec.tasks[%d].runOn[%d].%s.states", ptIdx, dIdx, d.Task)); err != nil {
+				return err
+			}
+			dependentTasks = append(dependentTasks, d.Task)
+		}
+		// compare the list of tasks in runAfter and in runOn
+		// runOn should not have any extra task specified outside of runAfter
+		missing := list.DiffLeft(dependentTasks, pt.RunAfter)
+		if len(missing) > 0 {
+			return apis.ErrInvalidValue(
+				fmt.Sprintf("pipeline task %q has a list of tasks under runOn which does not exists in runAfter: %s", pt.Name, missing),
+				fmt.Sprintf("spec.tasks[%d].%q.runOn", ptIdx, pt.Name),
+			)
+		}
+	}
+	return nil
+}
+
+func checkForDuplicateStates(states []PipelineTaskState, path string) *apis.FieldError {
+	seen := map[string]struct{}{}
+	for _, s := range states {
+		if _, ok := seen[strings.ToLower(s)]; ok {
+			return apis.ErrMultipleOneOf(path)
+		}
+		seen[strings.ToLower(s)] = struct{}{}
+	}
+	return nil
+}
+
+func validatePipelineTaskStates(state PipelineTaskState, path string) *apis.FieldError {
+	for _, validState := range AllPipelineTaskStates {
+		if state == validState {
+			return nil
+		}
+	}
+	return apis.ErrInvalidValue(state, path)
 }
