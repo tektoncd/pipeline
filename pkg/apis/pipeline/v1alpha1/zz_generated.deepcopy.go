@@ -542,6 +542,13 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.RunOn != nil {
+		in, out := &in.RunOn, &out.RunOn
+		*out = make([]v1beta1.PipelineTaskRunOn, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

@@ -673,6 +673,108 @@ func TestPipeline_Validate(t *testing.T) {
 			},
 		},
 		failureExpected: true,
+	}, {
+		name: "valid runAfter and runOn",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pipeline-task1",
+					TaskRef: &v1beta1.TaskRef{Name: "task1"},
+				}, {
+					Name:     "pipeline-task2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task2"},
+					RunAfter: []string{"pipeline-task1"},
+					RunOn: []v1beta1.PipelineTaskRunOn{{
+						Task:   "pipeline-task1",
+						States: []string{v1beta1.PipelineTaskStateSuccess},
+					}},
+				}},
+			},
+		},
+		failureExpected: false,
+	}, {
+		name: "valid runAfter but invalid task in runOn",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pipeline-task1",
+					TaskRef: &v1beta1.TaskRef{Name: "task1"},
+				}, {
+					Name:     "pipeline-task2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task2"},
+					RunAfter: []string{"pipeline-task1"},
+					RunOn: []v1beta1.PipelineTaskRunOn{{
+						Task:   "pipeline-task1",
+						States: []string{v1beta1.PipelineTaskStateSuccess},
+					}, {
+						Task:   "invalid-task",
+						States: []string{v1beta1.PipelineTaskStateSuccess},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "valid runAfter but invalid state in runOn",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pipeline-task1",
+					TaskRef: &v1beta1.TaskRef{Name: "task1"},
+				}, {
+					Name:     "pipeline-task2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task2"},
+					RunAfter: []string{"pipeline-task1"},
+					RunOn: []v1beta1.PipelineTaskRunOn{{
+						Task:   "pipeline-task1",
+						States: []string{"foo"},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "valid runAfter but duplicate states in runOn",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pipeline-task1",
+					TaskRef: &v1beta1.TaskRef{Name: "task1"},
+				}, {
+					Name:     "pipeline-task2",
+					TaskRef:  &v1beta1.TaskRef{Name: "task2"},
+					RunAfter: []string{"pipeline-task1"},
+					RunOn: []v1beta1.PipelineTaskRunOn{{
+						Task:   "pipeline-task1",
+						States: []string{v1beta1.PipelineTaskStateSuccess, v1beta1.PipelineTaskStateSuccess},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "runOn without runAfter",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "pipeline-task1",
+					TaskRef: &v1beta1.TaskRef{Name: "task1"},
+				}, {
+					Name:    "pipeline-task2",
+					TaskRef: &v1beta1.TaskRef{Name: "task2"},
+					RunOn: []v1beta1.PipelineTaskRunOn{{
+						Task:   "pipeline-task1",
+						States: []string{v1beta1.PipelineTaskStateSuccess},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

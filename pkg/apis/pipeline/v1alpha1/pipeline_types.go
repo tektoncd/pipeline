@@ -127,6 +127,7 @@ type PipelineTask struct {
 	// Resources declares the resources given to this task as inputs and
 	// outputs.
 	// +optional
+
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
 	// Parameters declares parameters passed to this task.
 	// +optional
@@ -142,6 +143,10 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// RunOn declares a list of dependent tasks and their states that they have to be in to run this task.
+	// +optional
+	RunOn []PipelineTaskRunOn `json:"runOn,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {
@@ -222,3 +227,12 @@ type PipelineList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
 }
+
+// PipelineTaskRunOn represents runOn of a pipelineTask which is a map of task and a list of states, e.g.
+type PipelineTaskRunOn = v1beta1.PipelineTaskRunOn
+
+// PipelineTaskState represents the state of a parent PipelineTask that it has to be in for it to run
+type PipelineTaskState = v1beta1.PipelineTaskState
+
+// AllPipelineTaskStates is used for validation to check if a provided state is one of the supported/known states
+var AllPipelineTaskStates = v1beta1.AllPipelineTaskStates

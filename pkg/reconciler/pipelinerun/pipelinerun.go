@@ -435,8 +435,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		reconciler.EmitEvent(c.Recorder, before, after, pr)
 		return err
 	}
-
-	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
+	// Get the next tasks to be executed which doesnt't have any TaskRuns created yet
+	// ExecutedPipelineTaskNames gets the list of finished tasks (either successful or failed or skipped)
+	// GetSchedulable parses the whole graph and get a list of candidates based on already executed tasks
+	// e.g. for this Pipeline task1 -> task2 (runAfter task1) -> task3 (runAfter task2)
+	// GetSchedulable returns task1 followed by task2 (after task1 finishes) followed by task3 (after task2 finishes)
+	candidateTasks, err := dag.GetSchedulable(d, pipelineState.CompletedPipelineTaskNames()...)
 	if err != nil {
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
@@ -466,13 +470,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		if rprt == nil {
 			continue
 		}
+		if rprt.SkipTaskRun {
+			continue
+		}
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
 			rprt.TaskRun, err = c.createTaskRun(rprt, pr, as.StorageBasePath(pr))
 			if err != nil {
 				c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 			}
-		} else if !rprt.ResolvedConditionChecks.HasStarted() {
+			continue
+		}
+		if !rprt.ResolvedConditionChecks.HasStarted() {
 			for _, rcc := range rprt.ResolvedConditionChecks {
 				rcc.ConditionCheck, err = c.makeConditionCheckContainer(rprt, rcc, pr)
 				if err != nil {
@@ -480,6 +489,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 					return fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			}
+			continue
 		}
 	}
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -496,11 +506,23 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {
 	status := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	for _, rprt := range state {
-		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
+		var prtrs *v1alpha1.PipelineRunTaskRunStatus
+		if rprt.TaskRun == nil && rprt.SkipTaskRun {
+			prtrs = &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: rprt.PipelineTask.Name,
+			}
+			if prtrs.Status == nil {
+				prtrs.Status = &v1alpha1.TaskRunStatus{}
+			}
+			prtrs.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  resources.ReasonSkippedRunOnStatusMismatch,
+				Message: fmt.Sprintf("runOn states didn't match for Task %s in PipelineRun %s", rprt.TaskRunName, pr.Name),
+			})
+		} else if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
-
-		var prtrs *v1alpha1.PipelineRunTaskRunStatus
 		if rprt.TaskRun != nil {
 			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
 		}
