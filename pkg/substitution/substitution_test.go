@@ -218,6 +218,14 @@ func TestApplyArrayReplacements(t *testing.T) {
 			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
 		},
 		expectedOutput: []string{"1", "2"},
+	}, {
+		name: "array star replacement",
+		args: args{
+			input:              "$(match[*])",
+			stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
+			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
+		},
+		expectedOutput: []string{"1", "2"},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			actualOutput := substitution.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)

@@ -137,8 +137,26 @@ func TestTaskSpecValidate(t *testing.T) {
 			Steps: []v1alpha2.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "myimage",
-				Command:    []string{"$(param.foo-is-baz)"},
+				Command:    []string{"$(params.foo-is-baz)"},
 				Args:       []string{"$(params.baz)", "middle string", "$(params.foo-is-baz)"},
+				WorkingDir: "/foo/bar/src/",
+			}}},
+		},
+	}, {
+		name: "valid star array template variable",
+		fields: fields{
+			Params: []v1alpha2.ParamSpec{{
+				Name: "baz",
+				Type: v1alpha2.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1alpha2.ParamTypeArray,
+			}},
+			Steps: []v1alpha2.Step{{Container: corev1.Container{
+				Name:       "mystep",
+				Image:      "myimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"$(params.baz[*])", "middle string", "$(params.foo-is-baz[*])"},
 				WorkingDir: "/foo/bar/src/",
 			}}},
 		},
@@ -432,7 +450,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha2.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "$(params.baz)",
-				Command:    []string{"$(param.foo-is-baz)"},
+				Command:    []string{"$(params.foo-is-baz)"},
 				Args:       []string{"$(params.baz)", "middle string", "url"},
 				WorkingDir: "/foo/bar/src/",
 			}}},
@@ -454,7 +472,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha2.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(param.foo-is-baz)"},
+				Command:    []string{"$(params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
 				WorkingDir: "/foo/bar/src/",
 			}}},
@@ -464,7 +482,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
-		name: "array not properly isolated",
+		name: "array star not properly isolated",
 		fields: fields{
 			Params: []v1alpha2.ParamSpec{{
 				Name: "baz",
@@ -476,13 +494,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha2.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(param.foo-is-baz)"},
-				Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
 				WorkingDir: "/foo/bar/src/",
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(params.baz)" for step arg[0]`,
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
@@ -504,13 +522,41 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha2.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(param.foo-is-baz)"},
+				Command:    []string{"$(params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
 				WorkingDir: "/foo/bar/src/",
 			}}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(params.baz)" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		name: "inferred array star not properly isolated",
+		fields: fields{
+			Params: []v1alpha2.ParamSpec{{
+				Name: "baz",
+				Default: &v1alpha2.ArrayOrString{
+					Type:     v1alpha2.ParamTypeArray,
+					ArrayVal: []string{"implied", "array", "type"},
+				},
+			}, {
+				Name: "foo-is-baz",
+				Default: &v1alpha2.ArrayOrString{
+					Type:     v1alpha2.ParamTypeArray,
+					ArrayVal: []string{"implied", "array", "type"},
+				},
+			}},
+			Steps: []v1alpha2.Step{{Container: corev1.Container{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {

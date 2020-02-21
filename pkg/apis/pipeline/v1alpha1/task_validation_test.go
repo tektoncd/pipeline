@@ -226,8 +226,32 @@ func TestTaskSpecValidate(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "$(inputs.resources.source.url)",
-				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.params.foo-is-baz)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
+			}}},
+		},
+	}, {
+		name: "valid star array template variable",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validImageResource},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:       "mystep",
+				Image:      "$(inputs.resources.source.url)",
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
+				Args:       []string{"$(inputs.params.baz[*])", "middle string", "$(input.params.foo-is-baz[*])"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},
 		},
@@ -544,13 +568,41 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "$(inputs.params.baz)",
-				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable type invalid in "$(inputs.params.baz)" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "star array used in unaccepted field",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validImageResource},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:       "mystep",
+				Image:      "$(inputs.params.baz[*])",
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
+				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(inputs.params.baz[*])" for step image`,
 			Paths:   []string{"taskspec.steps.image"},
 		},
 	}, {
@@ -572,7 +624,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},
@@ -582,7 +634,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
-		name: "array not properly isolated",
+		name: "star array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
@@ -600,13 +652,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(inputs.param.foo-is-baz)"},
-				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(inputs.params.baz[*])", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
+			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz[*])" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
@@ -646,7 +698,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},

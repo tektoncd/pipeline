@@ -174,6 +174,15 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: false,
 	}, {
+		name: "valid star array parameter variables",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(baz[*])", "and", "$(foo-is-baz[*])")),
+		)),
+		failureExpected: false,
+	}, {
 		name: "pipeline parameter nested in task parameter",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
@@ -288,11 +297,27 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "star array parameter used as string",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(params.baz[*])")),
+		)),
+		failureExpected: true,
+	}, {
 		name: "array parameter string template not isolated",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "first", "value: $(params.baz)", "last")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "star array parameter string template not isolated",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "first", "value: $(params.baz[*])", "last")),
 		)),
 		failureExpected: true,
 	}, {

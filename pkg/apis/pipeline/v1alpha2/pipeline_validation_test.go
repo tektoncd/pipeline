@@ -255,7 +255,27 @@ func TestPipeline_Validate(t *testing.T) {
 					Name:    "bar",
 					TaskRef: &v1alpha2.TaskRef{Name: "bar-task"},
 					Params: []v1alpha2.Param{{
-						Name: "a-param", Value: v1alpha2.ArrayOrString{ArrayVal: []string{"$(baz)", "and", "$(foo-is-)"}},
+						Name: "a-param", Value: v1alpha2.ArrayOrString{ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
+					}},
+				}},
+			},
+		},
+		failureExpected: false,
+	}, {
+		name: "valid star array parameter variables",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha2.PipelineSpec{
+				Params: []v1alpha2.ParamSpec{{
+					Name: "baz", Type: v1alpha2.ParamTypeArray, Default: &v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeArray, ArrayVal: []string{"some", "default"}},
+				}, {
+					Name: "foo-is-baz", Type: v1alpha2.ParamTypeArray,
+				}},
+				Tasks: []v1alpha2.PipelineTask{{
+					Name:    "bar",
+					TaskRef: &v1alpha2.TaskRef{Name: "bar-task"},
+					Params: []v1alpha2.Param{{
+						Name: "a-param", Value: v1alpha2.ArrayOrString{ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
 					}},
 				}},
 			},
@@ -532,6 +552,24 @@ func TestPipeline_Validate(t *testing.T) {
 		},
 		failureExpected: true,
 	}, {
+		name: "star array parameter used as string",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha2.PipelineSpec{
+				Params: []v1alpha2.ParamSpec{{
+					Name: "baz", Type: v1alpha2.ParamTypeString, Default: &v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				}},
+				Tasks: []v1alpha2.PipelineTask{{
+					Name:    "bar",
+					TaskRef: &v1alpha2.TaskRef{Name: "bar-task"},
+					Params: []v1alpha2.Param{{
+						Name: "a-param", Value: v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeString, StringVal: "$(params.baz[*])"},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
 		name: "array parameter string template not isolated",
 		p: &v1alpha2.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
@@ -544,6 +582,24 @@ func TestPipeline_Validate(t *testing.T) {
 					TaskRef: &v1alpha2.TaskRef{Name: "bar-task"},
 					Params: []v1alpha2.Param{{
 						Name: "a-param", Value: v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "star array parameter string template not isolated",
+		p: &v1alpha2.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha2.PipelineSpec{
+				Params: []v1alpha2.ParamSpec{{
+					Name: "baz", Type: v1alpha2.ParamTypeString, Default: &v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				}},
+				Tasks: []v1alpha2.PipelineTask{{
+					Name:    "bar",
+					TaskRef: &v1alpha2.TaskRef{Name: "bar-task"},
+					Params: []v1alpha2.Param{{
+						Name: "a-param", Value: v1alpha2.ArrayOrString{Type: v1alpha2.ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
 					}},
 				}},
 			},
