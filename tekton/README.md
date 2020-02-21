@@ -186,7 +186,6 @@ Install Task from plumbing too:
 
 ```bash
 # Apply the Tasks we are using from the catalog
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/resources/release/

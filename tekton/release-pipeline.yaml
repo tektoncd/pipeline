@@ -57,23 +57,7 @@ spec:
             resource: bucket
           - name: source-to-release
             resource: source-repo
-    - name: lint
-      runAfter: [precheck]
-      taskRef:
-        name: golangci-lint
-      params:
-        - name: package
-          value: $(params.package)
-        - name: flags
-          value: -v
-        - name: version
-          value: v1.24
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
     - name: unit-tests
-      runAfter: [lint]
       taskRef:
         name: golang-test
       params:
@@ -86,7 +70,7 @@ spec:
           - name: source
             resource: source-repo
     - name: build
-      runAfter: [lint]
+      runAfter: [precheck]
       taskRef:
         name: golang-build
       params:
