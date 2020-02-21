@@ -69,8 +69,11 @@ type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
 // ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
 type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
 
-// StepStateOp is an operation which modify a StepStep struct.
+// StepStateOp is an operation which modifies a StepState struct.
 type StepStateOp func(*v1alpha1.StepState)
+
+// SidecarStateOp is an operation which modifies a SidecarState struct.
+type SidecarStateOp func(*v1alpha1.SidecarState)
 
 // VolumeOp is an operation which modify a Volume struct.
 type VolumeOp func(*corev1.Volume)
@@ -349,6 +352,17 @@ func StepState(ops ...StepStateOp) TaskRunStatusOp {
 	}
 }
 
+// SidecarState adds a SidecarState to the TaskRunStatus.
+func SidecarState(ops ...SidecarStateOp) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		state := &v1alpha1.SidecarState{}
+		for _, op := range ops {
+			op(state)
+		}
+		s.Sidecars = append(s.Sidecars, *state)
+	}
+}
+
 // TaskRunStartTime sets the start time to the TaskRunStatus.
 func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -466,6 +480,20 @@ func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
 		s.ContainerState = corev1.ContainerState{
 			Waiting: &waiting,
 		}
+	}
+}
+
+// SetSidecarStateName sets Name of Sidecar for SidecarState.
+func SetSidecarStateName(name string) SidecarStateOp {
+	return func(s *v1alpha1.SidecarState) {
+		s.Name = name
+	}
+}
+
+// SetSidecarStateImageID sets ImageID of Sidecar for SidecarState.
+func SetSidecarStateImageID(imageID string) SidecarStateOp {
+	return func(s *v1alpha1.SidecarState) {
+		s.ImageID = imageID
 	}
 }
 

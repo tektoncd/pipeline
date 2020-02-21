@@ -202,6 +202,10 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			tb.PodName("my-pod-name"),
 			tb.StatusCondition(apis.Condition{Type: apis.ConditionSucceeded}),
 			tb.StepState(tb.StateTerminated(127)),
+			tb.SidecarState(
+				tb.SetSidecarStateName("sidecar"),
+				tb.SetSidecarStateImageID("ImageID"),
+			),
 		),
 	)
 	expectedTaskRun := &v1alpha1.TaskRun{
@@ -281,7 +285,8 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				PodName: "my-pod-name",
+				PodName:  "my-pod-name",
+				Sidecars: []v1alpha2.SidecarState{{Name: "sidecar", ImageID: "ImageID"}},
 				Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
 				}}},
