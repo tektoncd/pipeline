@@ -54,6 +54,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Configuring authentication](auth.md)
 - [Using labels](labels.md)
 - [Viewing logs](logs.md)
+- [Pipelines metrics](metrics.md)
 
 ## Contributing to Tekton Pipelines
 
