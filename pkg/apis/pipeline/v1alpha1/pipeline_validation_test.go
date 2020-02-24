@@ -356,6 +356,15 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineWorkspaceDeclaration("foo"),
 		)),
 		failureExpected: true,
+	}, {
+		name: "task params results malformed variable substitution expression",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("a-task", "a-task"),
+			tb.PipelineTask("b-task", "b-task",
+				tb.PipelineTaskParam("b-param", "$(tasks.a-task.resultTypo.bResult)"),
+			),
+		)),
+		failureExpected: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

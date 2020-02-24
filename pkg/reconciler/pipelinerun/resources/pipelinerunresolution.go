@@ -128,7 +128,8 @@ func (t ResolvedPipelineRunTask) IsCancelled() bool {
 	return c.IsFalse() && c.Reason == v1alpha1.TaskRunSpecStatusCancelled
 }
 
-func (state PipelineRunState) toMap() map[string]*ResolvedPipelineRunTask {
+// ToMap returns a map that maps pipeline task name to the resolved pipeline run task
+func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 	m := make(map[string]*ResolvedPipelineRunTask)
 	for _, rprt := range state {
 		m[rprt.PipelineTask.Name] = rprt
@@ -431,7 +432,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 		if rprt.IsSuccessful() {
 			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}
-		if isSkipped(rprt, state.toMap(), dag) {
+		if isSkipped(rprt, state.ToMap(), dag) {
 			skipTasks++
 			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}

@@ -403,6 +403,22 @@ tasks:
       name: echo-hello
 ```
 
+### Results
+
+Tasks can declare [results](./tasks.md#results) that they will emit during their execution. These results can be used as values for params in subsequent tasks of a Pipeline. Tekton will infer the ordering of these Tasks to ensure that the Task emitting the results runs before the Task consuming those results in its parameters.
+
+Using a Task result as a value for another Task's parameter is done with variable substitution. Here is what a Pipeline Task's param looks like with a result wired into it:
+
+```yaml
+params:
+  - name: foo
+    value: "$(tasks.previous-task-name.results.bar-result)"
+```
+
+In this example the previous pipeline task has name "previous-task-name" and its result is declared in the Task definition as having name "bar-result".
+
+For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/pipelineruns/task_results_example.yaml).
+
 ## Ordering
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run

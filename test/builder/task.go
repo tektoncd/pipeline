@@ -396,6 +396,15 @@ func StatusCondition(condition apis.Condition) TaskRunStatusOp {
 	}
 }
 
+func TaskRunResult(name, value string) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.TaskRunResults = append(s.TaskRunResults, v1beta1.TaskRunResult{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
 func Retry(retry v1alpha1.TaskRunStatus) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.RetriesStatus = append(s.RetriesStatus, retry)

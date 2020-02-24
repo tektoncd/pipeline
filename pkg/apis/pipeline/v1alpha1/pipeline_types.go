@@ -158,6 +158,14 @@ func (pt PipelineTask) Deps() []string {
 			deps = append(deps, rd.From...)
 		}
 	}
+	// Add any dependents from task results
+	for _, param := range pt.Params {
+		if resultRefs, err := v1beta1.NewResultRefs(param); err == nil {
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
+	}
 	return deps
 }
 

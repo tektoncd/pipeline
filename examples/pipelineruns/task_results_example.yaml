@@ -1,0 +1,93 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: sum-and-multiply-pipeline
+spec:
+  params:
+    - name: a
+      type: string
+      default: "1"
+    - name: b
+      type: string
+      default: "1"
+  tasks:
+    - name: sum-inputs
+      taskRef:
+        name: sum
+      params:
+        - name: a
+          value: "$(params.a)"
+        - name: b
+          value: "$(params.b)"
+    - name: multiply-inputs
+      taskRef:
+        name: multiply
+      params:
+        - name: a
+          value: "$(params.a)"
+        - name: b
+          value: "$(params.b)"
+    - name: sum-and-multiply
+      taskRef:
+        name: sum
+      params:
+        - name: a
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.sum-inputs.results.sum)"
+        - name: b
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.sum-inputs.results.sum)"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: sum
+  annotations:
+    description: |
+      A simple task that sums the two provided integers
+spec:
+  inputs:
+    params:
+      - name: a
+        type: string
+        default: "1"
+        description: The first integer
+      - name: b
+        type: string
+        default: "1"
+        description: The second integer
+  results:
+    - name: sum
+      description: The sum of the two provided integers
+  steps:
+    - name: sum
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n $(( "$(inputs.params.a)" + "$(inputs.params.b)" )) | tee $(results.sum.path)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: multiply
+  annotations:
+    description: |
+      A simple task that multiplies the two provided integers
+spec:
+  inputs:
+    params:
+      - name: a
+        type: string
+        default: "1"
+        description: The first integer
+      - name: b
+        type: string
+        default: "1"
+        description: The second integer
+  results:
+    - name: product
+      description: The product of the two provided integers
+  steps:
+    - name: product
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n $(( "$(inputs.params.a)" * "$(inputs.params.b)" )) | tee $(results.product.path)

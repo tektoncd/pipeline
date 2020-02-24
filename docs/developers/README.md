@@ -280,3 +280,52 @@ status:
 ```
 
 Instead of hardcoding the path to the result file, the user can also use a variable. So `/tekton/results/current-date-unix-timestamp` can be replaced with: `$(results.current-date-unix-timestamp.path)`. This is more flexible if the path to result files ever changes.
+
+## How task results can be used in pipeline's tasks
+
+Now that we have tasks that can return a result, the user can refer to a task result in a pipeline by using the syntax
+`$(tasks.<task name>.results.<result name>)`. This will substitute the task result at the location of the variable.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: sum-and-multiply-pipeline
+    #...
+  tasks:
+    - name: sum-inputs
+    #...
+    - name: multiply-inputs
+    #...
+- name: sum-and-multiply
+      taskRef:
+        name: sum
+      params:
+        - name: a
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.sum-inputs.results.sum)"
+        - name: b
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.sum-inputs.results.sum)"
+```
+
+This results in:
+
+```shell
+tkn pipeline start sum-and-multiply-pipeline
+? Value for param `a` of type `string`? (Default is `1`) 10
+? Value for param `b` of type `string`? (Default is `1`) 15
+Pipelinerun started: sum-and-multiply-pipeline-run-rgd9j
+
+In order to track the pipelinerun progress run:
+tkn pipelinerun logs sum-and-multiply-pipeline-run-rgd9j -f -n default
+```
+
+```shell
+tkn pipelinerun logs sum-and-multiply-pipeline-run-rgd9j -f -n default
+[multiply-inputs : product] 150
+
+[sum-inputs : sum] 25
+
+[sum-and-multiply : sum] 30050
+```
+
+As you can see, you can define multiple tasks in the same pipeline and use the result of more than one task inside another task parameter. The substitution is only done inside `pipeline.spec.tasks[].params[]`. For a complete example demonstrating Task Results in a Pipeline, see the [pipelinerun example](../examples/pipelineruns/task_results_example.yaml).
