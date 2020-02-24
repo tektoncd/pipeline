@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
@@ -51,6 +52,22 @@ func ApplyParameters(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) *v1alph
 	}
 
 	return ApplyReplacements(p, stringReplacements, arrayReplacements)
+}
+
+// ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params in targets
+func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
+	stringReplacements := map[string]string{}
+
+	for _, resolvedResultRef := range resolvedResultRefs {
+		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
+		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
+	}
+
+	for _, resolvedPipelineRunTask := range targets {
+		pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
+		pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
+		resolvedPipelineRunTask.PipelineTask = pipelineTask
+	}
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.

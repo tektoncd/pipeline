@@ -441,7 +441,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
 
-	rprts := pipelineState.GetNextTasks(candidateTasks)
+	nextRprts := pipelineState.GetNextTasks(candidateTasks)
+	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
+	if err != nil {
+		c.Logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedValidation,
+			Message: err.Error(),
+		})
+		return nil
+	}
+	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
 
 	var as artifacts.ArtifactStorageInterface
 
@@ -450,7 +462,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
-	for _, rprt := range rprts {
+	for _, rprt := range nextRprts {
 		if rprt == nil {
 			continue
 		}
