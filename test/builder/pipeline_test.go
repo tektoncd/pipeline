@@ -54,6 +54,7 @@ func TestPipeline(t *testing.T) {
 		),
 		tb.PipelineTask("never-gonna", "give-you-up",
 			tb.RunAfter("foo"),
+			tb.PipelineTaskTimeout(5*time.Second),
 		),
 		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -132,6 +133,7 @@ func TestPipeline(t *testing.T) {
 				Name:     "never-gonna",
 				TaskRef:  &v1alpha1.TaskRef{Name: "give-you-up"},
 				RunAfter: []string{"foo"},
+				Timeout:  &metav1.Duration{Duration: 5 * time.Second},
 			}, {
 				Name: "foo",
 				TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{

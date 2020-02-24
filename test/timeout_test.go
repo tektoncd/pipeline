@@ -220,3 +220,146 @@ func TestTaskRunTimeout(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 	}
 }
+
+func TestPipelineTaskTimeout(t *testing.T) {
+	c, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	t.Logf("Creating Tasks in namespace %s", namespace)
+	task1 := tb.Task("success", namespace, tb.TaskSpec(
+		tb.Step("ubuntu", tb.StepCommand("sleep"), tb.StepArgs("1s"))))
+
+	task2 := tb.Task("timeout", namespace, tb.TaskSpec(
+		tb.Step("ubuntu", tb.StepCommand("sleep"), tb.StepArgs("10s"))))
+
+	if _, err := c.TaskClient.Create(task1); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task1.Name, err)
+	}
+	if _, err := c.TaskClient.Create(task2); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task2.Name, err)
+	}
+
+	pipeline := tb.Pipeline("pipelinetasktimeout", namespace,
+		tb.PipelineSpec(
+			tb.PipelineTask("pipelinetask1", task1.Name, tb.PipelineTaskTimeout(10*time.Second)),
+			tb.PipelineTask("pipelinetask2", task2.Name, tb.PipelineTaskTimeout(5*time.Second)),
+		),
+	)
+
+	pipelineRun := tb.PipelineRun("prtasktimeout", namespace, tb.PipelineRunSpec(pipeline.Name))
+
+	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
+	}
+	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipelineRun %q already finished", pipelineRun.Name)
+			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+				return true, nil
+			}
+		}
+		return false, nil
+	}, "PipelineRunRunning"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
+	}
+
+	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	if err != nil {
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRun.Name, namespace)
+	errChan := make(chan error, len(taskrunList.Items))
+	defer close(errChan)
+
+	for _, taskrunItem := range taskrunList.Items {
+		go func(name string) {
+			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				c := tr.Status.GetCondition(apis.ConditionSucceeded)
+				if c != nil {
+					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+						return true, fmt.Errorf("taskRun %q already finished", name)
+					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+						return true, nil
+					}
+				}
+				return false, nil
+			}, "TaskRunRunning")
+			errChan <- err
+		}(taskrunItem.Name)
+	}
+
+	for i := 1; i <= len(taskrunList.Items); i++ {
+		if <-errChan != nil {
+			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+		}
+	}
+
+	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
+		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s with PipelineTask timeout in namespace %s to fail", pipelineRun.Name, namespace)
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionFalse {
+				if c.Reason == resources.ReasonFailed {
+					return true, nil
+				}
+				return true, fmt.Errorf("pipelineRun %q completed with the wrong reason: %s", pipelineRun.Name, c.Reason)
+			} else if c.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("pipelineRun %q completed successfully, but should have been Failed", pipelineRun.Name)
+			}
+		}
+		return false, nil
+	}, "PipelineRunTimedOut"); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for TaskRun from PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
+	var wg sync.WaitGroup
+	for _, taskrunItem := range taskrunList.Items {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				cond := tr.Status.GetCondition(apis.ConditionSucceeded)
+				if cond != nil {
+					if tr.Spec.TaskRef.Name == task1.Name && cond.Status == corev1.ConditionTrue {
+						if cond.Reason == "Succeeded" {
+							return true, nil
+						}
+						return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", task1.Name, cond.Reason)
+					} else if tr.Spec.TaskRef.Name == task1.Name && cond.Status == corev1.ConditionFalse {
+						return true, fmt.Errorf("taskRun %q failed, but should have been Succeeded", name)
+					}
+
+					if tr.Spec.TaskRef.Name == task2.Name && cond.Status == corev1.ConditionFalse {
+						if cond.Reason == "TaskRunTimeout" {
+							return true, nil
+						}
+						return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", task2.Name, cond.Reason)
+					} else if tr.Spec.TaskRef.Name == task2.Name && cond.Status == corev1.ConditionTrue {
+						return true, fmt.Errorf("taskRun %q should have timed out", name)
+					}
+				}
+				return false, nil
+			}, "TaskRunTimeout")
+			if err != nil {
+				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
+			}
+		}(taskrunItem.Name)
+	}
+	wg.Wait()
+}

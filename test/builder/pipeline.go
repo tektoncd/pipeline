@@ -276,6 +276,13 @@ func PipelineTaskWorkspaceBinding(name, workspace string) PipelineTaskOp {
 	}
 }
 
+// PipelineTaskTimeout sets the timeout for the PipelineTask.
+func PipelineTaskTimeout(duration time.Duration) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Timeout = &metav1.Duration{Duration: duration}
+	}
+}
+
 // PipelineRun creates a PipelineRun with default values.
 // Any number of PipelineRun modifier can be passed to transform it.
 func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
