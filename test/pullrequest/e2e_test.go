@@ -187,7 +187,7 @@ func banner(t *testing.T, s string) {
 // If none is set, it falls back to the default "AUTH_TOKEN" environment
 // variable.
 // If AUTH_TOKEN is not set, it falls back to a static token. This token is not
-// valid for real enviroments, but will work for the local proxy.
+// valid for real environments, but will work for the local proxy.
 func envToken(env string) string {
 	t := os.Getenv(env)
 	if t == "" {
