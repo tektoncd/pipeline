@@ -1,7 +1,13 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: taskrun-limitrange-ns
+---
+apiVersion: v1
 kind: LimitRange
 metadata:
   name: limit-mem-cpu-per-container
+  namespace: taskrun-limitrange-ns
 spec:
   limits:
   - max:
@@ -22,6 +28,7 @@ apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: echo-hello-world
+  namespace: taskrun-limitrange-ns
 spec:
   steps:
     - name: echo
@@ -32,25 +39,16 @@ spec:
         - "hello world"
 ---
 apiVersion: tekton.dev/v1alpha1
-kind: Pipeline
+kind: TaskRun
 metadata:
-  name: pipeline-hello
+  generateName: echo-hello-world-run-
+  namespace: taskrun-limitrange-ns
 spec:
-  tasks:
-  - name: hello-world-1
-    taskRef:
-      name: echo-hello-world
-  - name: hello-world-2
-    taskRef:
-      name: echo-hello-world
-    runAfter:
-      - hello-world-1
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineRun
-metadata:
-  generateName: pipeline-hello-run-
-spec:
-  pipelineRef:
-    name: pipeline-hello
-status: {}
+  inputs: {}
+  outputs: {}
+  serviceAccountName: ""
+  taskRef:
+    name: echo-hello-world
+  timeout: 1h0m0s
+status:
+  podName: ""
