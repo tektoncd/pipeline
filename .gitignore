@@ -45,3 +45,6 @@
 # Release-generated source archives, just in case they get committed
 # accidentally.
 cmd/*/kodata/source.tar.gz
+
+# binaries
+test/pullrequest/pullrequest-init
