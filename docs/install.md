@@ -244,6 +244,25 @@ data:
   disable-home-env-overwrite: "true" # Tekton will not overwrite $HOME in Steps.
 ```
 
+- `disable-working-directory-overwrite` - Setting this flag to "true" will prevent Tekton
+from overwriting Step containers' working directory. The default
+value is "false" and so the default behaviour is for the working directory to be 
+overwritten by Tekton with `/workspace` if the working directory is not specified explicitly
+for the step container. This default is very likely to change in an upcoming
+release. For further reference see https://github.com/tektoncd/pipeline/issues/1836.
+
+Here is an example of the `feature-flags` ConfigMap with `disable-working-directory-overwrite`
+flipped on:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+data:
+  disable-working-directory-overwrite: "true" # Tekton will not overwrite the working directory in Steps.
+```
+
 ## Custom Releases
 
 The [release Task](./../tekton/README.md) can be used for creating a custom
