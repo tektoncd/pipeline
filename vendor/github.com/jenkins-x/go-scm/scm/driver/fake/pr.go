@@ -3,8 +3,10 @@ package fake
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/jenkins-x/go-scm/scm"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type pullService struct {
@@ -42,33 +44,50 @@ func (s *pullService) ListComments(ctx context.Context, repo string, number int,
 	return append([]*scm.Comment{}, f.PullRequestComments[number]...), nil, nil
 }
 
-func (s *pullService) ListLabels(context.Context, string, int, scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
-	r := []*scm.Label{}
-	for _, l := range s.data.PullRequestLabelsExisting {
-		r = append(r, &scm.Label{
-			Name: l,
-		})
+func (s *pullService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+	f := s.data
+	re := regexp.MustCompile(fmt.Sprintf(`^%s#%d:(.*)$`, repo, number))
+	la := []*scm.Label{}
+	allLabels := sets.NewString(f.PullRequestLabelsExisting...)
+	allLabels.Insert(f.PullRequestLabelsAdded...)
+	allLabels.Delete(f.PullRequestLabelsRemoved...)
+	for _, l := range allLabels.List() {
+		groups := re.FindStringSubmatch(l)
+		if groups != nil {
+			la = append(la, &scm.Label{Name: groups[1]})
+		}
 	}
-	return r, nil, nil
+	return la, nil, nil
 }
 
 func (s *pullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	s.data.PullRequestLabelsAdded = append(s.data.PullRequestLabelsAdded, label)
-	s.data.PullRequestLabelsExisting = append(s.data.PullRequestLabelsExisting, label)
-	return nil, nil
-}
-
-func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	s.data.PullRequestLabelsRemoved = append(s.data.PullRequestLabelsRemoved, label)
-
-	left := []string{}
-	for _, l := range s.data.PullRequestLabelsExisting {
-		if l != label {
-			left = append(left, l)
+	f := s.data
+	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
+	if sets.NewString(f.PullRequestLabelsAdded...).Has(labelString) {
+		return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
+	}
+	if f.RepoLabelsExisting == nil {
+		f.PullRequestLabelsAdded = append(f.PullRequestLabelsAdded, labelString)
+		return nil, nil
+	}
+	for _, l := range f.RepoLabelsExisting {
+		if label == l {
+			f.PullRequestLabelsAdded = append(f.PullRequestLabelsAdded, labelString)
+			return nil, nil
 		}
 	}
-	s.data.PullRequestLabelsExisting = left
-	return nil, nil
+	return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
+}
+
+// DeleteLabel removes a label
+func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
+	f := s.data
+	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
+	if !sets.NewString(f.PullRequestLabelsRemoved...).Has(labelString) {
+		f.PullRequestLabelsRemoved = append(f.PullRequestLabelsRemoved, labelString)
+		return nil, nil
+	}
+	return nil, fmt.Errorf("cannot remove %v from %s/#%d", label, repo, number)
 }
 
 func (s *pullService) Merge(context.Context, string, int) (*scm.Response, error) {
@@ -81,6 +100,7 @@ func (s *pullService) Close(context.Context, string, int) (*scm.Response, error)
 
 func (s *pullService) CreateComment(ctx context.Context, repo string, number int, comment *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	f := s.data
+	f.PullRequestCommentsAdded = append(f.PullRequestCommentsAdded, fmt.Sprintf("%s#%d:%s", repo, number, comment.Body))
 	answer := &scm.Comment{
 		ID:     f.IssueCommentID,
 		Body:   comment.Body,
@@ -93,12 +113,33 @@ func (s *pullService) CreateComment(ctx context.Context, repo string, number int
 
 func (s *pullService) DeleteComment(ctx context.Context, repo string, number int, id int) (*scm.Response, error) {
 	f := s.data
-	newComments := []*scm.Comment{}
-	for _, c := range f.PullRequestComments[number] {
-		if c.ID != id {
-			newComments = append(newComments, c)
+	f.PullRequestCommentsDeleted = append(f.PullRequestCommentsDeleted, fmt.Sprintf("%s#%d", repo, id))
+	for num, ics := range f.PullRequestComments {
+		for i, ic := range ics {
+			if ic.ID == id {
+				f.PullRequestComments[num] = append(ics[:i], ics[i+1:]...)
+				return nil, nil
+			}
 		}
 	}
-	f.PullRequestComments[number] = newComments
-	return nil, nil
+	return nil, fmt.Errorf("could not find issue comment %d", id)
+}
+
+func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	f := s.data
+	f.PullRequestID++
+	answer := &scm.PullRequest{
+		Number: f.PullRequestID,
+		Title:  input.Title,
+		Body:   input.Body,
+		Base: scm.PullRequestBranch{
+			Ref: input.Base,
+		},
+		Head: scm.PullRequestBranch{
+			Ref: input.Head,
+		},
+	}
+	f.PullRequestsCreated[f.PullRequestID] = input
+	f.PullRequests[f.PullRequestID] = answer
+	return answer, nil, nil
 }

@@ -22,10 +22,23 @@ type (
 		Data    []byte
 	}
 
+	// FileEntry returns the details of a file
+	FileEntry struct {
+		Name string
+		Path string
+		Type string
+		Size int
+		Sha  string
+		Link string
+	}
+
 	// ContentService provides access to repositroy content.
 	ContentService interface {
 		// Find returns the repository file content by path.
 		Find(ctx context.Context, repo, path, ref string) (*Content, *Response, error)
+
+		// Lists the files or directories at the given path
+		List(ctx context.Context, repo, path, ref string) ([]*FileEntry, *Response, error)
 
 		// Create creates a new repositroy file.
 		Create(ctx context.Context, repo, path string, params *ContentParams) (*Response, error)
