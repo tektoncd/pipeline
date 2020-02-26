@@ -72,6 +72,14 @@ func (s *repositoryService) List(context.Context, scm.ListOptions) ([]*scm.Repos
 	panic("implement me")
 }
 
+func (s *repositoryService) ListOrganisation(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+	panic("implement me")
+}
+
+func (s *repositoryService) ListUser(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+	panic("implement me")
+}
+
 func (s *repositoryService) ListLabels(context.Context, string, scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	f := s.data
 	la := []*scm.Label{}

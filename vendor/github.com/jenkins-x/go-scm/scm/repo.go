@@ -108,6 +108,12 @@ type (
 		// List returns a list of repositories.
 		List(context.Context, ListOptions) ([]*Repository, *Response, error)
 
+		// List returns a list of repositories for a given organisation
+		ListOrganisation(context.Context, string, ListOptions) ([]*Repository, *Response, error)
+
+		// List returns a list of repositories for a given user.
+		ListUser(context.Context, string, ListOptions) ([]*Repository, *Response, error)
+
 		// ListLabels returns the labels on a repo
 		ListLabels(context.Context, string, ListOptions) ([]*Label, *Response, error)
 

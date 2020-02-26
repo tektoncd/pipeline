@@ -28,6 +28,13 @@ func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm
 	}, res, err
 }
 
+func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
+	endpoint := fmt.Sprintf("repos/%s/contents/%s?ref=%s", repo, path, ref)
+	out := []*entry{}
+	res, err := s.client.do(ctx, "GET", endpoint, nil, &out)
+	return convertEntryList(out), res, err
+}
+
 func (s *contentService) Create(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
 }
@@ -47,6 +54,15 @@ type content struct {
 	Content string `json:"content"`
 }
 
+type entry struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Path string `json:"path"`
+	Size int    `json:"size"`
+	Sha  string `json:"sha"`
+	URL  string `json:"url"`
+}
+
 type contentUpdate struct {
 	Sha     string `json:"sha"`
 	Message string `json:"message"`
@@ -61,4 +77,23 @@ type contentUpdate struct {
 		Email string    `json:"email"`
 		Date  time.Time `json:"date"`
 	} `json:"committer"`
+}
+
+func convertEntryList(out []*entry) []*scm.FileEntry {
+	answer := make([]*scm.FileEntry, 0, len(out))
+	for _, o := range out {
+		answer = append(answer, convertEntry(o))
+	}
+	return answer
+}
+
+func convertEntry(from *entry) *scm.FileEntry {
+	return &scm.FileEntry{
+		Name: from.Name,
+		Path: from.Path,
+		Type: from.Type,
+		Size: from.Size,
+		Sha:  from.Sha,
+		Link: from.URL,
+	}
 }
