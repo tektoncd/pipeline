@@ -20,7 +20,7 @@ Creation of a `PipelineRun` will trigger the creation of
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
-- [LimitRanges](#limitrange-name)
+- [LimitRanges](#limitranges)
 
 ## Syntax
 
@@ -378,7 +378,7 @@ spec:
 In order to request the minimum amount of resources needed to support the containers 
 for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
 memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
-resource request values are needed since `steps` only execute one at a time in `TaskRun` pod. 
+resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod. 
 All requests that are not the max values are set to zero as a result. 
 
 When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
