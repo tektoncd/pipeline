@@ -4,7 +4,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 * [Before you begin](#before-you-begin)
 * [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
-* [Installing Tekton PIpelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
+* [Installing Tekton Pipelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
 * [Configuring artifact storage](#configuring-artifact-storage)
 * [Customizing basic execution parameters](#configuring-basic-execution-parameters)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
@@ -154,7 +154,7 @@ use a `ConfigMap` with the name `config-artifact-bucket` and the following attri
   
 **Important:** Configure your bucket's retention policy to delete all files after your `Tasks` finish running.
 
-**Note:** You can only use an S3 bucket locakted in the `us-east-1` region. This is a limitation of [`gsutil`](https://cloud.google.com/storage/docs/gsutil) running a `boto` configuration behind the scenes to access the S3 bucket.
+**Note:** You can only use an S3 bucket located in the `us-east-1` region. This is a limitation of [`gsutil`](https://cloud.google.com/storage/docs/gsutil) running a `boto` configuration behind the scenes to access the S3 bucket.
 
 Below is an example configuration that uses an S3 bucket:
 
@@ -187,7 +187,7 @@ data:
 
 ## Customizing basic execution parameters
 
-You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, use the ConfigMap `config-defaults`.
+You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
 
 The example below customizes the following:
 - the default service account from `default` to `tekton`.
