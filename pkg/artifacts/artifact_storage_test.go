@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -210,7 +211,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				PVCSizeKey: "10Gi",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi", defaultStorageClass),
 			ShellImage:            "busybox",
@@ -227,7 +228,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				PVCStorageClassNameKey: customStorageClass,
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: GetPersistentVolumeClaim("5Gi", &customStorageClass),
 			ShellImage:            "busybox",
@@ -246,7 +247,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location: "gs://fake-bucket",
 			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -270,7 +271,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
 			ShellImage:            "busybox",
@@ -288,7 +289,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
 			ShellImage:            "busybox",
@@ -302,7 +303,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				Name:      GetBucketConfigName(),
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
 			ShellImage:            "busybox",
@@ -319,7 +320,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				BucketLocationKey: "gs://fake-bucket",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "gs://fake-bucket",
 			ShellImage:  "busybox",
 			GsutilImage: "google/cloud-sdk",
@@ -339,7 +340,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountFieldName:  "BOTO_CONFIG",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "s3://fake-bucket",
 			ShellImage:  "busybox",
 			GsutilImage: "google/cloud-sdk",
@@ -572,7 +573,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
 
-	expectedArtifactPVC := &v1alpha1.ArtifactPVC{
+	expectedArtifactPVC := &storage.ArtifactPVC{
 		Name:                  "pipelineruntest",
 		PersistentVolumeClaim: persistentVolumeClaim,
 		ShellImage:            "busybox",
@@ -608,7 +609,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location: "gs://fake-bucket",
 			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -631,7 +632,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:       pipelinerun.Name,
 			ShellImage: "busybox",
 		},
@@ -647,7 +648,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:       pipelinerun.Name,
 			ShellImage: "busybox",
 		},
@@ -659,7 +660,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				Name:      GetBucketConfigName(),
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:       pipelinerun.Name,
 			ShellImage: "busybox",
 		},
@@ -687,7 +688,7 @@ func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
 
-	expectedArtifactPVC := &v1alpha1.ArtifactPVC{
+	expectedArtifactPVC := &storage.ArtifactPVC{
 		Name:       "pipelineruntest",
 		ShellImage: "busybox",
 	}
@@ -715,7 +716,7 @@ func TestGetArtifactStorageWithPVCConfigMap(t *testing.T) {
 				PVCSizeKey: "10Gi",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:       "pipelineruntest",
 			ShellImage: "busybox",
 		},

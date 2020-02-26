@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 )
 
@@ -108,24 +107,3 @@ type PipelineResourceResult = v1alpha2.PipelineResourceResult
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not
 type ResultType = v1alpha2.ResultType
-
-// ResourceFromType returns an instance of the correct PipelineResource object type which can be
-// used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
-// a PipelineResource in a pod.
-func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
-	switch r.Spec.Type {
-	case PipelineResourceTypeGit:
-		return NewGitResource(images.GitImage, r)
-	case PipelineResourceTypeImage:
-		return NewImageResource(r)
-	case PipelineResourceTypeCluster:
-		return NewClusterResource(images.KubeconfigWriterImage, r)
-	case PipelineResourceTypeStorage:
-		return NewStorageResource(images, r)
-	case PipelineResourceTypePullRequest:
-		return NewPullRequestResource(images.PRImage, r)
-	case PipelineResourceTypeCloudEvent:
-		return NewCloudEventResource(r)
-	}
-	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
-}

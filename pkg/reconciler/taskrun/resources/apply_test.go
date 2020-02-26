@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
@@ -340,7 +341,7 @@ var (
 		"bucket":     gcsResource,
 	}
 
-	gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	gitResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "git-resource",
 		},
@@ -353,7 +354,7 @@ var (
 		},
 	}, images)
 
-	imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	imageResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "image-resource",
 		},
@@ -366,7 +367,7 @@ var (
 		},
 	}, images)
 
-	gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	gcsResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "gcs-resource",
 		},

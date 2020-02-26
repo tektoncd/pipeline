@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package storage_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +69,7 @@ func TestInvalidNewStorageResource(t *testing.T) {
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1alpha1.NewStorageResource(images, tc.pipelineResource)
+			_, err := storage.NewResource(images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating GCS resource")
 			}
@@ -84,7 +85,7 @@ func TestValidNewGCSResource(t *testing.T) {
 		tb.PipelineResourceSpecParam("dir", "anything"),
 		tb.PipelineResourceSpecSecretParam("GOOGLE_APPLICATION_CREDENTIALS", "secretName", "secretKey"),
 	))
-	expectedGCSResource := &v1alpha1.GCSResource{
+	expectedGCSResource := &storage.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
 		Type:     v1alpha1.PipelineResourceTypeStorage,
@@ -98,7 +99,7 @@ func TestValidNewGCSResource(t *testing.T) {
 		GsutilImage: "google/cloud-sdk",
 	}
 
-	gcsRes, err := v1alpha1.NewGCSResource(images, pr)
+	gcsRes, err := storage.NewGCSResource(images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
@@ -108,7 +109,7 @@ func TestValidNewGCSResource(t *testing.T) {
 }
 
 func TestGCSGetReplacements(t *testing.T) {
-	gcsResource := &v1alpha1.GCSResource{
+	gcsResource := &storage.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
 		Type:     v1alpha1.PipelineResourceTypeGCS,
@@ -130,7 +131,7 @@ func TestGetParams(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "gcs"),
 		tb.PipelineResourceSpecSecretParam("test-field-name", "test-secret-name", "test-secret-key"),
 	))
-	gcsResource, err := v1alpha1.NewStorageResource(images, pr)
+	gcsResource, err := storage.NewResource(images, pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}
@@ -149,12 +150,12 @@ func TestGetInputSteps(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
-		gcsResource *v1alpha1.GCSResource
+		gcsResource *storage.GCSResource
 		wantSteps   []v1alpha1.Step
 		wantErr     bool
 	}{{
 		name: "valid download protected buckets",
-		gcsResource: &v1alpha1.GCSResource{
+		gcsResource: &storage.GCSResource{
 			Name:     "gcs-valid",
 			Location: "gs://some-bucket",
 			TypeDir:  true,
@@ -193,7 +194,7 @@ gsutil rsync -d -r gs://some-bucket /workspace
 		}},
 	}, {
 		name: "duplicate secret mount paths",
-		gcsResource: &v1alpha1.GCSResource{
+		gcsResource: &storage.GCSResource{
 			Name:     "gcs-valid",
 			Location: "gs://some-bucket",
 			Secrets: []v1alpha1.SecretParam{{
@@ -252,12 +253,12 @@ func TestGetOutputTaskModifier(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
-		gcsResource *v1alpha1.GCSResource
+		gcsResource *storage.GCSResource
 		wantSteps   []v1alpha1.Step
 		wantErr     bool
 	}{{
 		name: "valid upload to protected buckets with directory paths",
-		gcsResource: &v1alpha1.GCSResource{
+		gcsResource: &storage.GCSResource{
 			Name:     "gcs-valid",
 			Location: "gs://some-bucket",
 			TypeDir:  true,
@@ -281,7 +282,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 		}}},
 	}, {
 		name: "duplicate secret mount paths",
-		gcsResource: &v1alpha1.GCSResource{
+		gcsResource: &storage.GCSResource{
 			Name:     "gcs-valid",
 			Location: "gs://some-bucket",
 			Secrets: []v1alpha1.SecretParam{{
@@ -310,7 +311,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 		}}},
 	}, {
 		name: "valid upload to protected buckets with single file",
-		gcsResource: &v1alpha1.GCSResource{
+		gcsResource: &storage.GCSResource{
 			Name:        "gcs-valid",
 			Location:    "gs://some-bucket",
 			TypeDir:     false,

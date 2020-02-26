@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package storage
 
 import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -31,10 +33,11 @@ const secretVolumeMountPath = "/var/bucketsecret"
 
 // ArtifactBucket contains the Storage bucket configuration defined in the
 // Bucket config map.
+// +k8s:deepcopy-gen=true
 type ArtifactBucket struct {
 	Name     string
 	Location string
-	Secrets  []SecretParam
+	Secrets  []resource.SecretParam
 
 	ShellImage  string
 	GsutilImage string
@@ -46,15 +49,15 @@ func (b *ArtifactBucket) GetType() string {
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
-func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
+func (b *ArtifactBucket) StorageBasePath(pr *v1alpha1.PipelineRun) string {
 	return fmt.Sprintf("%s-%s-bucket", pr.Name, pr.Namespace)
 }
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
-func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
+func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []Step{{Container: corev1.Container{
+	return []v1alpha1.Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
 		Image:   b.ShellImage,
 		Command: []string{"mkdir", "-p", destinationPath},
@@ -69,10 +72,10 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
-func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
+func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []Step{{Container: corev1.Container{
+	return []v1alpha1.Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        b.GsutilImage,
 		Command:      []string{"gsutil"},

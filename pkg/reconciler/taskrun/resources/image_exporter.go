@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -36,7 +37,7 @@ func AddOutputImageDigestExporter(
 	gr GetResource,
 ) error {
 
-	output := []*v1alpha1.ImageResource{}
+	output := []*image.Resource{}
 	if len(tr.Spec.Outputs.Resources) > 0 {
 		for _, trb := range tr.Spec.Outputs.Resources {
 			boundResource, err := getBoundResource(trb.Name, tr.Spec.Outputs.Resources)
@@ -49,7 +50,7 @@ func AddOutputImageDigestExporter(
 				return fmt.Errorf("failed to get output pipeline Resource for taskRun %q resource %v; error: %w while adding output image digest exporter", tr.Name, boundResource, err)
 			}
 			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
-				imageResource, err := v1alpha1.NewImageResource(resource)
+				imageResource, err := image.NewResource(resource)
 				if err != nil {
 					return fmt.Errorf("invalid Image Resource for taskRun %q resource %v; error: %w", tr.Name, boundResource, err)
 				}

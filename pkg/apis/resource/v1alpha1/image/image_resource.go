@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,22 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package image
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
-// NewImageResource creates a new ImageResource from a PipelineResource.
-func NewImageResource(r *PipelineResource) (*ImageResource, error) {
-	if r.Spec.Type != PipelineResourceTypeImage {
+// Resource defines an endpoint where artifacts can be stored, such as images.
+type Resource struct {
+	Name           string                                `json:"name"`
+	Type           resourcev1alpha1.PipelineResourceType `json:"type"`
+	URL            string                                `json:"url"`
+	Digest         string                                `json:"digest"`
+	OutputImageDir string
+}
+
+// NewResource creates a new ImageResource from a PipelineResourcev1alpha1.
+func NewResource(r *resourcev1alpha1.PipelineResource) (*Resource, error) {
+	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypeImage {
 		return nil, fmt.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
 	}
-	ir := &ImageResource{
+	ir := &Resource{
 		Name: r.Name,
-		Type: PipelineResourceTypeImage,
+		Type: resourcev1alpha1.PipelineResourceTypeImage,
 	}
 
 	for _, param := range r.Spec.Params {
@@ -44,27 +56,18 @@ func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 	return ir, nil
 }
 
-// ImageResource defines an endpoint where artifacts can be stored, such as images.
-type ImageResource struct {
-	Name           string               `json:"name"`
-	Type           PipelineResourceType `json:"type"`
-	URL            string               `json:"url"`
-	Digest         string               `json:"digest"`
-	OutputImageDir string
-}
-
 // GetName returns the name of the resource
-func (s ImageResource) GetName() string {
+func (s Resource) GetName() string {
 	return s.Name
 }
 
 // GetType returns the type of the resource, in this case "image"
-func (s ImageResource) GetType() PipelineResourceType {
-	return PipelineResourceTypeImage
+func (s Resource) GetType() resourcev1alpha1.PipelineResourceType {
+	return resourcev1alpha1.PipelineResourceTypeImage
 }
 
 // Replacements is used for template replacement on an ImageResource inside of a Taskrun.
-func (s *ImageResource) Replacements() map[string]string {
+func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":   s.Name,
 		"type":   string(s.Type),
@@ -74,16 +77,16 @@ func (s *ImageResource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *ImageResource) GetInputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
-	return &InternalTaskModifier{}, nil
+func (s *Resource) GetInputTaskModifier(_ *pipelinev1alpha1.TaskSpec, _ string) (pipelinev1alpha1.TaskModifier, error) {
+	return &pipelinev1alpha1.InternalTaskModifier{}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *ImageResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
-	return &InternalTaskModifier{}, nil
+func (s *Resource) GetOutputTaskModifier(_ *pipelinev1alpha1.TaskSpec, _ string) (pipelinev1alpha1.TaskModifier, error) {
+	return &pipelinev1alpha1.InternalTaskModifier{}, nil
 }
 
-func (s ImageResource) String() string {
+func (s Resource) String() string {
 	// the String() func implements the Stringer interface, and therefore
 	// cannot return an error
 	// if the Marshal func gives an error, the returned string will be empty

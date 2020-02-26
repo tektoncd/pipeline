@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 )
 
 var (
@@ -46,7 +47,7 @@ func main() {
 		_ = logger.Sync()
 	}()
 
-	imageResources := []*v1alpha1.ImageResource{}
+	imageResources := []*image.Resource{}
 	if err := json.Unmarshal([]byte(*images), &imageResources); err != nil {
 		logger.Fatalf("Error reading images array: %v", err)
 	}

@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package cluster_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -29,19 +31,19 @@ import (
 func TestNewClusterResource(t *testing.T) {
 	for _, c := range []struct {
 		desc     string
-		resource *v1alpha1.PipelineResource
-		want     *v1alpha1.ClusterResource
+		resource *resourcev1alpha1.PipelineResource
+		want     *cluster.Resource
 	}{{
 		desc: "basic cluster resource",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeCluster,
+			resourcev1alpha1.PipelineResourceTypeCluster,
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
-		want: &v1alpha1.ClusterResource{
+		want: &cluster.Resource{
 			Name:                  "test-cluster-resource",
-			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			Type:                  resourcev1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
 			Token:                 "my-token",
@@ -50,15 +52,15 @@ func TestNewClusterResource(t *testing.T) {
 	}, {
 		desc: "resource with password instead of token",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeCluster,
+			resourcev1alpha1.PipelineResourceTypeCluster,
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("username", "user"),
 			tb.PipelineResourceSpecParam("password", "pass"),
 		)),
-		want: &v1alpha1.ClusterResource{
+		want: &cluster.Resource{
 			Name:                  "test-cluster-resource",
-			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			Type:                  resourcev1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
 			Username:              "user",
@@ -68,13 +70,13 @@ func TestNewClusterResource(t *testing.T) {
 	}, {
 		desc: "set insecure flag to true when there is no cert",
 		resource: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeCluster,
+			resourcev1alpha1.PipelineResourceTypeCluster,
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
-		want: &v1alpha1.ClusterResource{
+		want: &cluster.Resource{
 			Name:                  "test-cluster-resource",
-			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			Type:                  resourcev1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			Token:                 "my-token",
 			Insecure:              true,
@@ -83,15 +85,15 @@ func TestNewClusterResource(t *testing.T) {
 	}, {
 		desc: "basic cluster resource with namespace",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeCluster,
+			resourcev1alpha1.PipelineResourceTypeCluster,
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
 			tb.PipelineResourceSpecParam("token", "my-token"),
 			tb.PipelineResourceSpecParam("namespace", "my-namespace"),
 		)),
-		want: &v1alpha1.ClusterResource{
+		want: &cluster.Resource{
 			Name:                  "test-cluster-resource",
-			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			Type:                  resourcev1alpha1.PipelineResourceTypeCluster,
 			URL:                   "http://10.10.10.10",
 			CAData:                []byte("my-cluster-cert"),
 			Token:                 "my-token",
@@ -101,16 +103,16 @@ func TestNewClusterResource(t *testing.T) {
 	}, {
 		desc: "basic resource with secrets",
 		resource: tb.PipelineResource("test-cluster-resource", "default", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeCluster,
+			resourcev1alpha1.PipelineResourceTypeCluster,
 			tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
 			tb.PipelineResourceSpecSecretParam("cadata", "secret1", "cadatakey"),
 			tb.PipelineResourceSpecSecretParam("token", "secret1", "tokenkey"),
 		)),
-		want: &v1alpha1.ClusterResource{
+		want: &cluster.Resource{
 			Name: "test-cluster-resource",
-			Type: v1alpha1.PipelineResourceTypeCluster,
+			Type: resourcev1alpha1.PipelineResourceTypeCluster,
 			URL:  "http://10.10.10.10",
-			Secrets: []v1alpha1.SecretParam{{
+			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "cadata",
 				SecretKey:  "cadatakey",
 				SecretName: "secret1",
@@ -123,7 +125,7 @@ func TestNewClusterResource(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got, err := v1alpha1.NewClusterResource("override-with-kubeconfig-writer:latest", c.resource)
+			got, err := cluster.NewResource("override-with-kubeconfig-writer:latest", c.resource)
 			if err != nil {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
@@ -136,11 +138,11 @@ func TestNewClusterResource(t *testing.T) {
 
 func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 	names.TestingSeed()
-	clusterResource := &v1alpha1.ClusterResource{
+	clusterResource := &cluster.Resource{
 		Name: "test-cluster-resource",
-		Type: v1alpha1.PipelineResourceTypeCluster,
+		Type: resourcev1alpha1.PipelineResourceTypeCluster,
 		URL:  "http://10.10.10.10",
-		Secrets: []v1alpha1.SecretParam{{
+		Secrets: []resourcev1alpha1.SecretParam{{
 			FieldName:  "cadata",
 			SecretKey:  "cadatakey",
 			SecretName: "secret1",
@@ -148,8 +150,8 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 	}
 
-	ts := v1alpha1.TaskSpec{}
-	wantSteps := []v1alpha1.Step{{Container: corev1.Container{
+	ts := pipelinev1alpha1.TaskSpec{}
+	wantSteps := []pipelinev1alpha1.Step{{Container: corev1.Container{
 		Name:    "kubeconfig-9l9zj",
 		Image:   "override-with-kubeconfig-writer:latest",
 		Command: []string{"/ko-app/kubeconfigwriter"},

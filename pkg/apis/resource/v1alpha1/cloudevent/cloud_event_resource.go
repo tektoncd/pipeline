@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019-2020 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,27 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package cloudevent
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
-// CloudEventResource is an event sink to which events are delivered when a TaskRun has finished
-type CloudEventResource struct {
+// Resource is an event sink to which events are delivered when a TaskRun has finished
+type Resource struct {
 	// Name is the name used to reference to the PipelineResource
 	Name string `json:"name"`
 	// Type must be `PipelineResourceTypeCloudEvent`
-	Type PipelineResourceType `json:"type"`
+	Type resource.PipelineResourceType `json:"type"`
 	// TargetURI is the URI of the sink which the cloud event is develired to
 	TargetURI string `json:"targetURI"`
 }
 
-// NewCloudEventResource creates a new CloudEvent resource to pass to a Task
-func NewCloudEventResource(r *PipelineResource) (*CloudEventResource, error) {
-	if r.Spec.Type != PipelineResourceTypeCloudEvent {
-		return nil, fmt.Errorf("CloudEventResource: Cannot create a Cloud Event resource from a %s Pipeline Resource", r.Spec.Type)
+// NewResource creates a new CloudEvent resource to pass to a Task
+func NewResource(r *resource.PipelineResource) (*Resource, error) {
+	if r.Spec.Type != resource.PipelineResourceTypeCloudEvent {
+		return nil, fmt.Errorf("cloudevent.Resource: Cannot create a Cloud Event resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	var targetURI string
 	var targetURISpecified bool
@@ -49,9 +52,9 @@ func NewCloudEventResource(r *PipelineResource) (*CloudEventResource, error) {
 	}
 
 	if !targetURISpecified {
-		return nil, fmt.Errorf("CloudEventResource: Need URI to be specified in order to create a CloudEvent resource %s", r.Name)
+		return nil, fmt.Errorf("cloudevent.Resource: Need URI to be specified in order to create a CloudEvent resource %s", r.Name)
 	}
-	return &CloudEventResource{
+	return &Resource{
 		Name:      r.Name,
 		Type:      r.Spec.Type,
 		TargetURI: targetURI,
@@ -59,17 +62,17 @@ func NewCloudEventResource(r *PipelineResource) (*CloudEventResource, error) {
 }
 
 // GetName returns the name of the resource
-func (s CloudEventResource) GetName() string {
+func (s Resource) GetName() string {
 	return s.Name
 }
 
 // GetType returns the type of the resource, in this case "cloudEvent"
-func (s CloudEventResource) GetType() PipelineResourceType {
-	return PipelineResourceTypeCloudEvent
+func (s Resource) GetType() resource.PipelineResourceType {
+	return resource.PipelineResourceTypeCloudEvent
 }
 
 // Replacements is used for template replacement on an CloudEventResource inside of a Taskrun.
-func (s *CloudEventResource) Replacements() map[string]string {
+func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":       s.Name,
 		"type":       string(s.Type),
@@ -78,11 +81,11 @@ func (s *CloudEventResource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *CloudEventResource) GetInputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
-	return &InternalTaskModifier{}, nil
+func (s *Resource) GetInputTaskModifier(_ *v1alpha1.TaskSpec, _ string) (v1alpha1.TaskModifier, error) {
+	return &v1alpha1.InternalTaskModifier{}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *CloudEventResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
-	return &InternalTaskModifier{}, nil
+func (s *Resource) GetOutputTaskModifier(_ *v1alpha1.TaskSpec, _ string) (v1alpha1.TaskModifier, error) {
+	return &v1alpha1.InternalTaskModifier{}, nil
 }
