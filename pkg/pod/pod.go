@@ -34,8 +34,9 @@ import (
 const (
 	homeDir = "/tekton/home"
 
-	featureFlagConfigMapName     = "feature-flags"
-	featureFlagDisableHomeEnvKey = "disable-home-env-overwrite"
+	featureFlagConfigMapName        = "feature-flags"
+	featureFlagDisableHomeEnvKey    = "disable-home-env-overwrite"
+	featureFlagDisableWorkingDirKey = "disable-working-directory-overwrite"
 
 	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
@@ -166,8 +167,9 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	// - sets container name to add "step-" prefix or "step-unnamed-#" if not specified.
 	// TODO(#1605): Remove this loop and make each transformation in
 	// isolation.
+	shouldOverrideWorkingDir := shouldOverrideWorkingDir(kubeclient)
 	for i, s := range stepContainers {
-		if s.WorkingDir == "" {
+		if s.WorkingDir == "" && shouldOverrideWorkingDir {
 			stepContainers[i].WorkingDir = pipeline.WorkspaceDir
 		}
 		if s.Name == "" {
@@ -307,6 +309,20 @@ func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (co
 func shouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
 	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
 	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableHomeEnvKey] == "true" {
+		return false
+	}
+	return true
+}
+
+// shouldOverrideWorkingDir returns a bool indicating whether a Pod should have its
+// working directory overwritten with /workspace or if it should be
+// left unmodified. The default behaviour is to overwrite the working directory with '/workspace'
+// if not specified by the user,  but this is planned to change in an upcoming release.
+//
+// For further reference see https://github.com/tektoncd/pipeline/issues/1836
+func shouldOverrideWorkingDir(kubeclient kubernetes.Interface) bool {
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
+	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableWorkingDirKey] == "true" {
 		return false
 	}
 	return true
