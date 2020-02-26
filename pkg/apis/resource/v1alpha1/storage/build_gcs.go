@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package storage
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -60,7 +62,7 @@ var validArtifactTypes = []GCSArtifactType{
 // BuildGCSResource does incremental uploads for files in  directory.
 type BuildGCSResource struct {
 	Name         string
-	Type         PipelineResourceType
+	Type         resource.PipelineResourceType
 	Location     string
 	ArtifactType GCSArtifactType
 
@@ -69,8 +71,8 @@ type BuildGCSResource struct {
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task.
-func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
-	if r.Spec.Type != PipelineResourceTypeStorage {
+func NewBuildGCSResource(images pipeline.Images, r *resource.PipelineResource) (*BuildGCSResource, error) {
+	if r.Spec.Type != resource.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	if r.Spec.SecretParams != nil {
@@ -110,10 +112,12 @@ func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCS
 func (s BuildGCSResource) GetName() string { return s.Name }
 
 // GetType returns the type of the resource, in this case "storage".
-func (s BuildGCSResource) GetType() PipelineResourceType { return PipelineResourceTypeStorage }
+func (s BuildGCSResource) GetType() resource.PipelineResourceType {
+	return resource.PipelineResourceTypeStorage
+}
 
 // GetSecretParams returns nil because it takes no secret params.
-func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
+func (s *BuildGCSResource) GetSecretParams() []resource.SecretParam { return nil }
 
 // Replacements returns the set of available replacements for this resource.
 func (s *BuildGCSResource) Replacements() map[string]string {
@@ -125,14 +129,14 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns a TaskModifier that prepends a step to a Task to fetch the archive or manifest.
-func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+func (s *BuildGCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, sourcePath string) (v1alpha1.TaskModifier, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if sourcePath != "" {
 		args = append(args, "--dest_dir", sourcePath)
 	}
 
-	steps := []Step{
+	steps := []v1alpha1.Step{
 		CreateDirStep(s.ShellImage, s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
@@ -143,15 +147,15 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &InternalTaskModifier{
+	return &v1alpha1.InternalTaskModifier{
 		StepsToPrepend: steps,
 		Volumes:        volumes,
 	}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *BuildGCSResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
-	return &InternalTaskModifier{}, nil
+func (s *BuildGCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, sourcePath string) (v1alpha1.TaskModifier, error) {
+	return &v1alpha1.InternalTaskModifier{}, nil
 }
 
 func getArtifactType(val string) (GCSArtifactType, error) {

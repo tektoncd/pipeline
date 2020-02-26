@@ -21,6 +21,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,8 +34,8 @@ func InitializeCloudEvents(tr *v1alpha1.TaskRun, prs []*v1alpha1.PipelineResourc
 	if len(tr.Status.CloudEvents) == 0 {
 		var targets []string
 		for _, output := range prs {
-			if output.Spec.Type == v1alpha1.PipelineResourceTypeCloudEvent {
-				cer, _ := v1alpha1.NewCloudEventResource(output)
+			if output.Spec.Type == resource.PipelineResourceTypeCloudEvent {
+				cer, _ := cloudevent.NewResource(output)
 				targets = append(targets, cer.TargetURI)
 			}
 		}

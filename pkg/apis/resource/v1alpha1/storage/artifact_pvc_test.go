@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package storage_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ import (
 func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	pvc := v1alpha1.ArtifactPVC{
+	pvc := storage.ArtifactPVC{
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
@@ -49,7 +50,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	pvc := v1alpha1.ArtifactPVC{
+	pvc := storage.ArtifactPVC{
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
@@ -80,7 +81,7 @@ func TestPVCGetPvcMount(t *testing.T) {
 		Name:      name,
 		MountPath: pvcDir,
 	}
-	got := v1alpha1.GetPvcMount(name)
+	got := storage.GetPvcMount(name)
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -94,14 +95,14 @@ func TestPVCGetMakeStep(t *testing.T) {
 		Image:   "busybox",
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
 	}}
-	got := v1alpha1.CreateDirStep("busybox", "workspace", "/workspace/destination")
+	got := storage.CreateDirStep("busybox", "workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
 }
 
 func TestStorageBasePath(t *testing.T) {
-	pvc := v1alpha1.ArtifactPVC{
+	pvc := storage.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
 	pipelinerun := &v1alpha1.PipelineRun{

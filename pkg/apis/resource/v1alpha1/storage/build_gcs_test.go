@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package storage_test
 
 import (
 	"testing"
@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -92,7 +93,7 @@ func TestBuildGCSResource_Invalid(t *testing.T) {
 		)),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1alpha1.NewStorageResource(images, tc.pipelineResource)
+			_, err := storage.NewResource(images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating BuildGCS resource")
 			}
@@ -107,7 +108,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "Manifest"),
 	))
-	expectedGCSResource := &v1alpha1.BuildGCSResource{
+	expectedGCSResource := &storage.BuildGCSResource{
 		Name:                 "build-gcs-resource",
 		Location:             "gs://fake-bucket",
 		Type:                 v1alpha1.PipelineResourceTypeStorage,
@@ -116,7 +117,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 
-	r, err := v1alpha1.NewBuildGCSResource(images, pr)
+	r, err := storage.NewBuildGCSResource(images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating BuildGCS resource: %s", err)
 	}
@@ -126,7 +127,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 }
 
 func TestBuildGCS_GetReplacements(t *testing.T) {
-	r := &v1alpha1.BuildGCSResource{
+	r := &storage.BuildGCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
 		Type:     v1alpha1.PipelineResourceTypeBuildGCS,
@@ -142,14 +143,14 @@ func TestBuildGCS_GetReplacements(t *testing.T) {
 }
 
 func TestBuildGCS_GetInputSteps(t *testing.T) {
-	for _, at := range []v1alpha1.GCSArtifactType{
-		v1alpha1.GCSArchive,
-		v1alpha1.GCSZipArchive,
-		v1alpha1.GCSTarGzArchive,
-		v1alpha1.GCSManifest,
+	for _, at := range []storage.GCSArtifactType{
+		storage.GCSArchive,
+		storage.GCSZipArchive,
+		storage.GCSTarGzArchive,
+		storage.GCSManifest,
 	} {
 		t.Run(string(at), func(t *testing.T) {
-			resource := &v1alpha1.BuildGCSResource{
+			resource := &storage.BuildGCSResource{
 				Name:                 "gcs-valid",
 				Location:             "gs://some-bucket",
 				ArtifactType:         at,
@@ -187,7 +188,7 @@ func TestBuildGCS_InvalidArtifactType(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "InVaLiD"),
 	))
-	if _, err := v1alpha1.NewBuildGCSResource(images, pr); err == nil {
+	if _, err := storage.NewBuildGCSResource(images, pr); err == nil {
 		t.Error("NewBuildGCSResource: expected error")
 	}
 }

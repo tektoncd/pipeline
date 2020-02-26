@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019-2020 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,28 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package image_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestNewImageResource_Invalid(t *testing.T) {
 	r := tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 
-	_, err := v1alpha1.NewImageResource(r)
+	_, err := image.NewResource(r)
 	if err == nil {
 		t.Error("Expected error creating Image resource")
 	}
 }
 
 func TestNewImageResource_Valid(t *testing.T) {
-	want := &v1alpha1.ImageResource{
+	want := &image.Resource{
 		Name:   "image-resource",
 		Type:   v1alpha1.PipelineResourceTypeImage,
 		URL:    "https://test.com/test/test",
@@ -52,7 +53,7 @@ func TestNewImageResource_Valid(t *testing.T) {
 		),
 	)
 
-	got, err := v1alpha1.NewImageResource(r)
+	got, err := image.NewResource(r)
 	if err != nil {
 		t.Fatalf("Unexpected error creating Image resource: %s", err)
 	}
@@ -63,7 +64,7 @@ func TestNewImageResource_Valid(t *testing.T) {
 }
 
 func TestImageResource_Replacements(t *testing.T) {
-	ir := &v1alpha1.ImageResource{
+	ir := &image.Resource{
 		Name:   "image-resource",
 		Type:   v1alpha1.PipelineResourceTypeImage,
 		URL:    "https://test.com/test/test",

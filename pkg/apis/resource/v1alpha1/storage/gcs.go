@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package storage
 
 import (
 	"fmt"
@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -39,20 +41,20 @@ fi
 // GCSResource is a GCS endpoint from which to get artifacts which is required
 // by a Build/Task for context (e.g. a archive from which to build an image).
 type GCSResource struct {
-	Name     string               `json:"name"`
-	Type     PipelineResourceType `json:"type"`
-	Location string               `json:"location"`
-	TypeDir  bool                 `json:"typeDir"`
+	Name     string                                `json:"name"`
+	Type     resourcev1alpha1.PipelineResourceType `json:"type"`
+	Location string                                `json:"location"`
+	TypeDir  bool                                  `json:"typeDir"`
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
-	Secrets []SecretParam `json:"secrets"`
+	Secrets []resourcev1alpha1.SecretParam `json:"secrets"`
 
 	ShellImage  string `json:"-"`
 	GsutilImage string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
-func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, error) {
-	if r.Spec.Type != PipelineResourceTypeStorage {
+func NewGCSResource(images pipeline.Images, r *resourcev1alpha1.PipelineResource) (*GCSResource, error) {
+	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	var location string
@@ -90,12 +92,12 @@ func (s GCSResource) GetName() string {
 }
 
 // GetType returns the type of the resource, in this case "storage"
-func (s GCSResource) GetType() PipelineResourceType {
-	return PipelineResourceTypeStorage
+func (s GCSResource) GetType() resourcev1alpha1.PipelineResourceType {
+	return resourcev1alpha1.PipelineResourceTypeStorage
 }
 
 // GetSecretParams returns the resource secret params
-func (s *GCSResource) GetSecretParams() []SecretParam { return s.Secrets }
+func (s *GCSResource) GetSecretParams() []resourcev1alpha1.SecretParam { return s.Secrets }
 
 // Replacements is used for template replacement on an GCSResource inside of a Taskrun.
 func (s *GCSResource) Replacements() map[string]string {
@@ -107,7 +109,7 @@ func (s *GCSResource) Replacements() map[string]string {
 }
 
 // GetOutputTaskModifier returns the TaskModifier to be used when this resource is an output.
-func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
+func (s *GCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1alpha1.TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
 		args = []string{"rsync", "-d", "-r", path, s.Location}
@@ -117,7 +119,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	step := Step{Container: corev1.Container{
+	step := v1alpha1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        s.GsutilImage,
 		Command:      []string{"gsutil"},
@@ -128,14 +130,14 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &InternalTaskModifier{
-		StepsToAppend: []Step{step},
+	return &v1alpha1.InternalTaskModifier{
+		StepsToAppend: []v1alpha1.Step{step},
 		Volumes:       volumes,
 	}, nil
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
+func (s *GCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1alpha1.TaskModifier, error) {
 	if path == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
@@ -147,7 +149,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	steps := []Step{
+	steps := []v1alpha1.Step{
 		CreateDirStep(s.ShellImage, s.Name, path),
 		{
 			Script: script,
@@ -162,7 +164,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &InternalTaskModifier{
+	return &v1alpha1.InternalTaskModifier{
 		StepsToPrepend: steps,
 		Volumes:        volumes,
 	}, nil

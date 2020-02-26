@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
@@ -88,7 +89,7 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
+		mkdirSteps := []v1alpha1.Step{storage.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
 		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {

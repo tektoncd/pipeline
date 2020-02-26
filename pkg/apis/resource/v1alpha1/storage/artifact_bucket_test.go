@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package storage_test
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -33,7 +34,7 @@ const (
 var (
 	expectedVolumeName = fmt.Sprintf("volume-bucket-%s", secretName)
 
-	bucket = v1alpha1.ArtifactBucket{
+	bucket = storage.ArtifactBucket{
 		Location: "gs://fake-bucket",
 		Secrets: []v1alpha1.SecretParam{{
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",

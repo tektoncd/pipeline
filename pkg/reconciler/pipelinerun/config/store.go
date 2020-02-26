@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"knative.dev/pkg/configmap"
 )
@@ -29,7 +29,7 @@ type cfgKey struct{}
 
 // +k8s:deepcopy-gen=false
 type Config struct {
-	ArtifactBucket *v1alpha1.ArtifactBucket
+	ArtifactBucket *storage.ArtifactBucket
 }
 
 func FromContext(ctx context.Context) *Config {
@@ -68,7 +68,7 @@ func (s *Store) Load() *Config {
 	ep := s.UntypedLoad(artifacts.GetBucketConfigName())
 	if ep == nil {
 		return &Config{
-			ArtifactBucket: &v1alpha1.ArtifactBucket{
+			ArtifactBucket: &storage.ArtifactBucket{
 				Location:    "",
 				ShellImage:  s.images.ShellImage,
 				GsutilImage: s.images.GsutilImage,
@@ -77,7 +77,7 @@ func (s *Store) Load() *Config {
 	}
 
 	return &Config{
-		ArtifactBucket: ep.(*v1alpha1.ArtifactBucket).DeepCopy(),
+		ArtifactBucket: ep.(*storage.ArtifactBucket).DeepCopy(),
 	}
 
 }

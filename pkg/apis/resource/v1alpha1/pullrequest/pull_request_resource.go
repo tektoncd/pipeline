@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package pullrequest
 
 import (
 	"fmt"
@@ -22,6 +22,8 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -33,11 +35,11 @@ const (
 	authTokenEnv = "AUTH_TOKEN"
 )
 
-// PullRequestResource is an endpoint from which to get data which is required
+// Resource is an endpoint from which to get data which is required
 // by a Build/Task for context.
-type PullRequestResource struct {
-	Name string               `json:"name"`
-	Type PipelineResourceType `json:"type"`
+type Resource struct {
+	Name string                                `json:"name"`
+	Type resourcev1alpha1.PipelineResourceType `json:"type"`
 
 	// URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
@@ -45,18 +47,18 @@ type PullRequestResource struct {
 	// SCM provider (github or gitlab today). This will be guessed from URL if not set.
 	Provider string `json:"provider"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
-	Secrets []SecretParam `json:"secrets"`
+	Secrets []resourcev1alpha1.SecretParam `json:"secrets"`
 
 	PRImage               string `json:"-"`
 	InsecureSkipTLSVerify bool   `json:"insecure-skip-tls-verify"`
 }
 
-// NewPullRequestResource create a new git resource to pass to a Task
-func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestResource, error) {
-	if r.Spec.Type != PipelineResourceTypePullRequest {
+// NewResource create a new git resource to pass to a Task
+func NewResource(prImage string, r *resourcev1alpha1.PipelineResource) (*Resource, error) {
+	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypePullRequest {
 		return nil, fmt.Errorf("cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
 	}
-	prResource := PullRequestResource{
+	prResource := Resource{
 		Name:                  r.Name,
 		Type:                  r.Spec.Type,
 		Secrets:               r.Spec.SecretParams,
@@ -82,22 +84,22 @@ func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestRe
 }
 
 // GetName returns the name of the resource
-func (s PullRequestResource) GetName() string {
+func (s Resource) GetName() string {
 	return s.Name
 }
 
 // GetType returns the type of the resource, in this case "Git"
-func (s PullRequestResource) GetType() PipelineResourceType {
-	return PipelineResourceTypePullRequest
+func (s Resource) GetType() resourcev1alpha1.PipelineResourceType {
+	return resourcev1alpha1.PipelineResourceTypePullRequest
 }
 
 // GetURL returns the url to be used with this resource
-func (s *PullRequestResource) GetURL() string {
+func (s *Resource) GetURL() string {
 	return s.URL
 }
 
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
-func (s *PullRequestResource) Replacements() map[string]string {
+func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":                     s.Name,
 		"type":                     string(s.Type),
@@ -108,20 +110,20 @@ func (s *PullRequestResource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *PullRequestResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
-	return &InternalTaskModifier{
+func (s *Resource) GetInputTaskModifier(ts *pipelinev1alpha1.TaskSpec, sourcePath string) (pipelinev1alpha1.TaskModifier, error) {
+	return &pipelinev1alpha1.InternalTaskModifier{
 		StepsToPrepend: s.getSteps("download", sourcePath),
 	}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
-	return &InternalTaskModifier{
+func (s *Resource) GetOutputTaskModifier(ts *pipelinev1alpha1.TaskSpec, sourcePath string) (pipelinev1alpha1.TaskModifier, error) {
+	return &pipelinev1alpha1.InternalTaskModifier{
 		StepsToAppend: s.getSteps("upload", sourcePath),
 	}, nil
 }
 
-func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
+func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1alpha1.Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 	if s.Provider != "" {
 		args = append(args, []string{"-provider", s.Provider}...)
@@ -148,7 +150,7 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 		}
 	}
 
-	return []Step{{Container: corev1.Container{
+	return []pipelinev1alpha1.Step{{Container: corev1.Container{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},

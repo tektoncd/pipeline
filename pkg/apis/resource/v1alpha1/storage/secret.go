@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package storage
 
 import (
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func getSecretEnvVarsAndVolumeMounts(name, mountPath string, secrets []SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
+func getSecretEnvVarsAndVolumeMounts(name, mountPath string, secrets []resource.SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
 	mountPaths := make(map[string]struct{})
 	var (
 		envVars           []corev1.EnvVar

@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
@@ -281,7 +282,7 @@ func setUp() {
 	}}
 	inputResourceInterfaces = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := v1alpha1.ResourceFromType(r, images)
+		ri, _ := resource.FromType(r, images)
 		inputResourceInterfaces[r.Name] = ri
 	}
 }
@@ -1406,7 +1407,7 @@ func mockResolveTaskResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pip
 			i = inputResourceInterfaces[r.ResourceRef.Name]
 			resolved[r.Name] = i
 		case r.ResourceSpec != nil:
-			i, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+			i, _ = resource.FromType(&v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
 				},

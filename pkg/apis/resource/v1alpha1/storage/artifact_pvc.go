@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package storage
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -30,6 +29,7 @@ var (
 )
 
 // ArtifactPVC represents the pvc created by the pipelinerun for artifacts temporary storage.
+// +k8s:deepcopy-gen=true
 type ArtifactPVC struct {
 	Name                  string
 	PersistentVolumeClaim *corev1.PersistentVolumeClaim
@@ -39,17 +39,17 @@ type ArtifactPVC struct {
 
 // GetType returns the type of the artifact storage.
 func (p *ArtifactPVC) GetType() string {
-	return pipeline.ArtifactStoragePVCType
+	return ArtifactStoragePVCType
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage.
-func (p *ArtifactPVC) StorageBasePath(pr *PipelineRun) string {
+func (p *ArtifactPVC) StorageBasePath(pr *v1alpha1.PipelineRun) string {
 	return pvcDir
 }
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage.
-func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
-	return []Step{{Container: corev1.Container{
+func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
+	return []v1alpha1.Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image:   p.ShellImage,
 		Command: []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
@@ -57,8 +57,8 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage.
-func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
-	return []Step{{Container: corev1.Container{
+func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
+	return []v1alpha1.Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
 		Image:        p.ShellImage,
 		Command:      []string{"mkdir", "-p", destinationPath},
@@ -77,16 +77,6 @@ func GetPvcMount(name string) corev1.VolumeMount {
 		Name:      name,   // taskrun pvc name
 		MountPath: pvcDir, // nothing should be mounted here
 	}
-}
-
-// CreateDirStep returns a container step to create a dir at destinationPath. The name
-// of the step will include name.
-func CreateDirStep(shellImage string, name, destinationPath string) Step {
-	return Step{Container: corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
-		Image:   shellImage,
-		Command: []string{"mkdir", "-p", destinationPath},
-	}}
 }
 
 // GetSecretsVolumes returns the list of volumes for secrets to be mounted on

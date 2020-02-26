@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -97,9 +98,9 @@ func AddInputResource(
 				if as.GetType() == pipeline.ArtifactStoragePVCType {
 					mountPVC = true
 					for _, s := range cpSteps {
-						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
+						s.VolumeMounts = []corev1.VolumeMount{storage.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
+							storage.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {
