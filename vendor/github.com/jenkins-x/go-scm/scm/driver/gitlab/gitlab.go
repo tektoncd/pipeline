@@ -6,6 +6,7 @@
 package gitlab
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/url"
@@ -60,7 +61,17 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 		Method: method,
 		Path:   path,
 	}
-
+	// if we are posting or putting data, we need to
+	// write it to the body of the request.
+	if in != nil {
+		buf := new(bytes.Buffer)
+		json.NewEncoder(buf).Encode(in)
+		if req.Header == nil {
+			req.Header = map[string][]string{}
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Body = buf
+	}
 	// execute the http request
 	res, err := c.Client.Do(ctx, req)
 	if err != nil {

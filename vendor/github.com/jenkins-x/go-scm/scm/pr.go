@@ -42,6 +42,13 @@ type (
 		Updated        time.Time
 	}
 
+	PullRequestInput struct {
+		Title string
+		Head  string
+		Base  string
+		Body  string
+	}
+
 	// Milestone the milestotne
 	Milestone struct {
 		Number      int
@@ -118,6 +125,9 @@ type (
 
 		// DeleteLabel deletes a label from a pull request
 		DeleteLabel(ctx context.Context, repo string, number int, label string) (*Response, error)
+
+		// Create creates a new pull request in a repo.
+		Create(context.Context, string, *PullRequestInput) (*PullRequest, *Response, error)
 	}
 )
 

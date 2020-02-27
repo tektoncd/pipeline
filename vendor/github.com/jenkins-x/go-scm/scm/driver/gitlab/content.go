@@ -39,6 +39,10 @@ func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm
 	}, res, err
 }
 
+func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 func (s *contentService) Create(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
 }

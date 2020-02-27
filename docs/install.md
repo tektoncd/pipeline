@@ -187,9 +187,11 @@ data:
 
 ## Customizing basic execution parameters
 
-You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
+You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by
+Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
 
 The example below customizes the following:
+
 - the default service account from `default` to `tekton`.
 - the default timeout from 60 minutes to 20 minutes.
 - the default `app.kuberrnetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
@@ -212,6 +214,25 @@ data:
 
 **Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
 file lists the keys you can customize along with their default values.
+
+### Customizing the Pipelines Controller behavior
+
+To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` as follows:
+
+- `disable-home-env-overwrite` - set this flag to `true` to prevent Tekton
+from overwriting the `$HOME` environment variable for the containers executing your `Steps`. 
+The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+data:
+  disable-home-env-overwrite: "true" # Tekton will not overwrite $HOME in Steps.
+```
 
 ## Creating a custom release of Tekton Pipelines
 

@@ -147,11 +147,14 @@ If the image is a private registry, the service account should include an
 
 ## Builder namespace on containers
 
-The `/tekton/` namespace is reserved on containers for various system tools,
-such as the following:
+The `/tekton/` directory is reserved on containers for internal usage. Examples
+of how this directory is used:
 
-- The environment variable HOME is set to `/tekton/home`, used by the builder
-  tools and injected on into all of the step containers
+- Task Results are written to `/tekton/results`
+- Various tools like the entrypoint are placed in `/tekton/tools`
+- The termination log message is written to `/tekton/termination`
+- Sequencing step containers is done using both `/tekton/downward/ready`
+and numbered files in `/tekton/tools`
 
 ## Handling of injected sidecars
 

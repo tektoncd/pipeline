@@ -51,6 +51,20 @@ func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.
 	return res, err
 }
 
+func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/pulls", repo)
+	in := &prInput{
+		Title: input.Title,
+		Head:  input.Head,
+		Base:  input.Base,
+		Body:  input.Body,
+	}
+
+	out := new(pr)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertPullRequest(out), res, err
+}
+
 type prBranch struct {
 	Ref  string     `json:"ref"`
 	Sha  string     `json:"sha"`
@@ -100,6 +114,13 @@ type file struct {
 	Patch            string `json:"patch"`
 	BlobURL          string `json:"blob_url"`
 	PreviousFilename string `json:"previous_filename"`
+}
+
+type prInput struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	Head  string `json:"head"`
+	Base  string `json:"base"`
 }
 
 func convertPullRequestList(from []*pr) []*scm.PullRequest {

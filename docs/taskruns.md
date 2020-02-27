@@ -26,7 +26,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 - [Examples](#examples)
 - [Sidecars](#sidecars)
 - [Logs](logs.md)
-- [LimitRanges](#limitrange-name)
+- [LimitRanges](#limitranges)
 
 ---
 
@@ -50,7 +50,7 @@ following fields:
   - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
-    specified in the configmap - config-defaults will be applied.
+    specified in the configmap `config-defaults` will be applied.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
@@ -708,7 +708,7 @@ they exited.
 In order to request the minimum amount of resources needed to support the containers 
 for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
 memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
-resource request values are needed since `steps` only execute one at a time in `TaskRun` pod. 
+resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod. 
 All requests that are not the max values are set to zero as a result. 
 
 When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 

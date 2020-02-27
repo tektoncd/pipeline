@@ -537,7 +537,7 @@ func getFixes(fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv
 	// derive package names from import paths, see if the file is already
 	// complete. We can't add any imports yet, because we don't know
 	// if missing references are actually package vars.
-	p := &pass{fset: fset, f: f, srcDir: srcDir}
+	p := &pass{fset: fset, f: f, srcDir: srcDir, env: env}
 	if fixes, done := p.load(); done {
 		return fixes, nil
 	}
@@ -559,8 +559,7 @@ func getFixes(fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv
 	}
 
 	// Third pass: get real package names where we had previously used
-	// the naive algorithm. This is the first step that will use the
-	// environment, so we provide it here for the first time.
+	// the naive algorithm.
 	p = &pass{fset: fset, f: f, srcDir: srcDir, env: env}
 	p.loadRealPackageNames = true
 	p.otherFiles = otherFiles
@@ -641,6 +640,30 @@ func getCandidatePkgs(ctx context.Context, wrappedCallback *scanCallback, filena
 		},
 	}
 	return env.GetResolver().scan(ctx, scanFilter)
+}
+
+func ScoreImportPaths(ctx context.Context, env *ProcessEnv, paths []string) map[string]int {
+	result := make(map[string]int)
+	for _, path := range paths {
+		result[path] = env.GetResolver().scoreImportPath(ctx, path)
+	}
+	return result
+}
+
+func PrimeCache(ctx context.Context, env *ProcessEnv) error {
+	// Fully scan the disk for directories, but don't actually read any Go files.
+	callback := &scanCallback{
+		rootFound: func(gopathwalk.Root) bool {
+			return true
+		},
+		dirFound: func(pkg *pkg) bool {
+			return false
+		},
+		packageNameLoaded: func(pkg *pkg) bool {
+			return false
+		},
+	}
+	return getCandidatePkgs(ctx, callback, "", "", env)
 }
 
 func candidateImportName(pkg *pkg) string {
@@ -726,6 +749,8 @@ type ProcessEnv struct {
 	LocalPrefix string
 	Debug       bool
 
+	BuildFlags []string
+
 	// If non-empty, these will be used instead of the
 	// process-wide values.
 	GOPATH, GOROOT, GO111MODULE, GOPROXY, GOFLAGS, GOSUMDB string
@@ -735,6 +760,13 @@ type ProcessEnv struct {
 	Logf func(format string, args ...interface{})
 
 	resolver Resolver
+}
+
+// CopyConfig copies the env's configuration into a new env.
+func (e *ProcessEnv) CopyConfig() *ProcessEnv {
+	copy := *e
+	copy.resolver = nil
+	return &copy
 }
 
 func (e *ProcessEnv) env() []string {
@@ -791,8 +823,13 @@ func (e *ProcessEnv) buildContext() *build.Context {
 	return &ctx
 }
 
-func (e *ProcessEnv) invokeGo(args ...string) (*bytes.Buffer, error) {
-	cmd := exec.Command("go", args...)
+func (e *ProcessEnv) invokeGo(verb string, args ...string) (*bytes.Buffer, error) {
+	goArgs := []string{verb}
+	if verb != "env" {
+		goArgs = append(goArgs, e.BuildFlags...)
+	}
+	goArgs = append(goArgs, args...)
+	cmd := exec.Command("go", goArgs...)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
@@ -822,6 +859,10 @@ func cmdDebugStr(cmd *exec.Cmd) string {
 
 func addStdlibCandidates(pass *pass, refs references) {
 	add := func(pkg string) {
+		// Prevent self-imports.
+		if path.Base(pkg) == pass.f.Name.Name && filepath.Join(pass.env.GOROOT, "src", pkg) == pass.srcDir {
+			return
+		}
 		exports := copyExports(stdlib[pkg])
 		pass.addCandidate(
 			&ImportInfo{ImportPath: pkg},
@@ -851,6 +892,8 @@ type Resolver interface {
 	// loadExports returns the set of exported symbols in the package at dir.
 	// loadExports may be called concurrently.
 	loadExports(ctx context.Context, pkg *pkg, includeTest bool) (string, []string, error)
+	// scoreImportPath returns the relevance for an import path.
+	scoreImportPath(ctx context.Context, path string) int
 
 	ClearForNewScan()
 }
@@ -1226,6 +1269,13 @@ func (r *gopathResolver) scan(ctx context.Context, callback *scanCallback) error
 	case <-scanDone:
 	}
 	return nil
+}
+
+func (r *gopathResolver) scoreImportPath(ctx context.Context, path string) int {
+	if _, ok := stdlib[path]; ok {
+		return MaxRelevance
+	}
+	return MaxRelevance - 1
 }
 
 func filterRoots(roots []gopathwalk.Root, include func(gopathwalk.Root) bool) []gopathwalk.Root {

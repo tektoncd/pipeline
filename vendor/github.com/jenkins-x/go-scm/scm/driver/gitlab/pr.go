@@ -132,6 +132,20 @@ func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.
 	return res, err
 }
 
+func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests", encode(repo))
+	in := &prInput{
+		Title:        input.Title,
+		SourceBranch: input.Head,
+		TargetBranch: input.Base,
+		Description:  input.Body,
+	}
+
+	out := new(pr)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertPullRequest(out), res, err
+}
+
 type pr struct {
 	Number int    `json:"iid"`
 	Sha    string `json:"sha"`
@@ -150,6 +164,10 @@ type pr struct {
 	Created      time.Time `json:"created_at"`
 	Updated      time.Time `json:"updated_at"`
 	Closed       time.Time
+	DiffRefs     struct {
+		BaseSHA string `json:"base_sha"`
+		HeadSHA string `json:"head_sha"`
+	} `json:"diff_refs"`
 }
 
 type changes struct {
@@ -164,6 +182,13 @@ type change struct {
 	Deleted bool   `json:"deleted_file"`
 }
 
+type prInput struct {
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	SourceBranch string `json:"source_branch"`
+	TargetBranch string `json:"target_branch"`
+}
+
 func convertPullRequestList(from []*pr) []*scm.PullRequest {
 	to := []*scm.PullRequest{}
 	for _, v := range from {
@@ -173,6 +198,13 @@ func convertPullRequestList(from []*pr) []*scm.PullRequest {
 }
 
 func convertPullRequest(from *pr) *scm.PullRequest {
+	// Diff refs only seem to be populated in more recent merge requests. Default
+	// to from.Sha for compatibility / consistency, but fallback to HeadSHA if
+	// it's not populated.
+	headSHA := from.Sha
+	if headSHA == "" && from.DiffRefs.HeadSHA != "" {
+		headSHA = from.DiffRefs.HeadSHA
+	}
 	return &scm.PullRequest{
 		Number: from.Number,
 		Title:  from.Title,
@@ -188,6 +220,14 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 			Name:   from.Author.Name,
 			Login:  from.Author.Username,
 			Avatar: from.Author.Avatar,
+		},
+		Head: scm.PullRequestBranch{
+			Ref: fmt.Sprintf("refs/heads/%s", from.SourceBranch),
+			Sha: headSHA,
+		},
+		Base: scm.PullRequestBranch{
+			Ref: fmt.Sprintf("refs/heads/%s", from.TargetBranch),
+			Sha: from.DiffRefs.BaseSHA,
 		},
 		Created: from.Created,
 		Updated: from.Updated,
