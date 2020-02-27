@@ -250,8 +250,8 @@ can be passed to the `Task` from a `TaskRun`.
 Input parameters in the form of `$(inputs.params.foo)` are replaced inside of
 the [`steps`](#steps) (see also [variable substitution](#variable-substitution)).
 
-The following `Task` declares an input parameter called 'flags', and uses it in
-the `steps.args` list.
+The following `Task` declares two input parameters named 'flags' (array) and 'someURL' (string), and uses them in
+the `steps.args` list. Array parameters like 'flags' can be expanded inside of an existing array by using star expansion syntax by adding `[*]` to the named parameter as we do below using `$(inputs.params.flags[*])`. 
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -268,7 +268,7 @@ spec:
   steps:
     - name: build
       image: my-builder
-      args: ["build", "$(inputs.params.flags)", "url=$(inputs.params.someURL)"]
+      args: ["build", "$(inputs.params.flags[*])", "url=$(inputs.params.someURL)"]
 ```
 
 The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
@@ -576,7 +576,7 @@ Param values from resources can also be accessed using [variable substitution](.
 
 ##### Variable Substitution with Parameters of Type `Array`
 
-Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
+Referenced parameters of type `array` can be expanded using 'star-expansion' by adding `[*]` to the named parameter to insert the array elements in the reference string's spot.
 
 So, with the following parameter:
 
@@ -590,7 +590,7 @@ inputs:
           - "elements"
 ```
 
-then `command: ["first", "$(inputs.params.array-param)", "last"]` will become
+then `command: ["first", "$(inputs.params.array-param[*])", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
 
 Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
@@ -602,14 +602,14 @@ the string isn't isolated:
 ```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "additionalArg $(inputs.params.build-args)"]
+      args: ["build", "additionalArg $(inputs.params.build-args[*])"]
 ```
 
 Similarly, referencing `build-args` in a non-array field is also invalid:
 
 ```yaml
  - name: build-step
-      image: "$(inputs.params.build-args)"
+      image: "$(inputs.params.build-args[*])"
       args: ["build", "args"]
 ```
 
@@ -618,7 +618,7 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 ```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "$(inputs.params.build-args)", "additonalArg"]
+      args: ["build", "$(inputs.params.build-args[*])", "additonalArg"]
 ```
 
 #### Variable Substitution with Workspaces
