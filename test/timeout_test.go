@@ -230,10 +230,10 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	t.Logf("Creating Tasks in namespace %s", namespace)
 	task1 := tb.Task("success", namespace, tb.TaskSpec(
-		tb.Step("ubuntu", tb.StepCommand("sleep"), tb.StepArgs("1s"))))
+		tb.Step("busybox", tb.StepCommand("sleep"), tb.StepArgs("1s"))))
 
 	task2 := tb.Task("timeout", namespace, tb.TaskSpec(
-		tb.Step("ubuntu", tb.StepCommand("sleep"), tb.StepArgs("10s"))))
+		tb.Step("busybox", tb.StepCommand("sleep"), tb.StepArgs("10s"))))
 
 	if _, err := c.TaskClient.Create(task1); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task1.Name, err)
@@ -244,7 +244,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	pipeline := tb.Pipeline("pipelinetasktimeout", namespace,
 		tb.PipelineSpec(
-			tb.PipelineTask("pipelinetask1", task1.Name, tb.PipelineTaskTimeout(20*time.Second)),
+			tb.PipelineTask("pipelinetask1", task1.Name, tb.PipelineTaskTimeout(60*time.Second)),
 			tb.PipelineTask("pipelinetask2", task2.Name, tb.PipelineTaskTimeout(5*time.Second)),
 		),
 	)

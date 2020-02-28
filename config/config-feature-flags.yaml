@@ -28,3 +28,13 @@ data:
   # See https://github.com/tektoncd/pipeline/issues/2013 for more
   # info.
   disable-home-env-overwrite: "false"
+  # Setting this flag to "true" will prevent Tekton overriding your
+  # Task container's working directory.
+  #
+  # The default behaviour currently is for Tekton to override the
+  # working directory if not set by the user but this will change
+  # in an upcoming release.
+  #
+  # See https://github.com/tektoncd/pipeline/issues/1836 for more
+  # info.
+  disable-working-directory-overwrite: "false"

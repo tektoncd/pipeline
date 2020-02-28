@@ -842,3 +842,45 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldOverrideWorkingDir(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		configMap   *corev1.ConfigMap
+		expected    bool
+	}{{
+		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in true",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		},
+		expected: true,
+	}, {
+		description: "Setting disable-working-directory-overwrite to false should result in true",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureFlagDisableWorkingDirKey: "false",
+			},
+		},
+		expected: true,
+	}, {
+		description: "Setting disable-working-directory-overwrite to true should result in false",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureFlagDisableWorkingDirKey: "true",
+			},
+		},
+		expected: false,
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			kubeclient := fakek8s.NewSimpleClientset(
+				tc.configMap,
+			)
+			if result := shouldOverrideWorkingDir(kubeclient); result != tc.expected {
+				t.Errorf("Expected %t Received %t", tc.expected, result)
+			}
+		})
+	}
+}
