@@ -149,6 +149,14 @@ The GCS storage bucket or the S3 bucket can be configured using a ConfigMap with
 - `bucket.service.account.field.name`: the name of the environment variable to use when specifying the
   secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
 
+Both options provide the same functionality to the pipeline. The choice is based
+on the infrastructure used, for example in some Kubernetes platforms, the
+creation of a persistent volume could be slower than uploading/downloading files
+to a bucket, or if the the cluster is running in multiple zones, the access to
+the persistent volume can fail.
+
+#### S3 Bucket Example
+
 *Note:* When using an S3 bucket, there is a restriction that the bucket is located in the us-east-1 region.
 This is a limitation coming from using [gsutil](https://cloud.google.com/storage/docs/gsutil) with a boto configuration
 behind the scene to access the S3 bucket.
@@ -160,6 +168,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: tekton-storage
+  namespace: tekton-pipelines
 type: kubernetes.io/opaque
 stringData:
   boto-config: |
@@ -174,7 +183,8 @@ stringData:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-artifact-pvc
+  name: config-artifact-bucket
+  namespace: tekton-pipelines
 data:
   location: s3://mybucket
   bucket.service.account.secret.name: tekton-storage
@@ -182,11 +192,40 @@ data:
   bucket.service.account.field.name: BOTO_CONFIG
 ```
 
-Both options provide the same functionality to the pipeline. The choice is based
-on the infrastructure used, for example in some Kubernetes platforms, the
-creation of a persistent volume could be slower than uploading/downloading files
-to a bucket, or if the the cluster is running in multiple zones, the access to
-the persistent volume can fail.
+#### GCS Bucket Example
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tekton-storage
+  namespace: tekton-pipelines
+type: kubernetes.io/opaque
+stringData:
+  gcs-config: |
+    {
+      "type": "service_account",
+      "project_id": "gproject",
+      "private_key_id": "some-key-id",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nME[...]dF=\n-----END PRIVATE KEY-----\n",
+      "client_email": "tekton-storage@gproject.iam.gserviceaccount.com",
+      "client_id": "1234567890",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/tekton-storage%40gproject.iam.gserviceaccount.com"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-bucket
+  namespace: tekton-pipelines
+data:
+  location: gs://mybucket
+  bucket.service.account.secret.name: tekton-storage
+  bucket.service.account.secret.key: gcs-config
+  bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
+```
 
 ### Overriding default ServiceAccount, Timeout or PodTemplate used for TaskRun and PipelineRun
 
@@ -246,7 +285,7 @@ data:
 
 - `disable-working-directory-overwrite` - Setting this flag to "true" will prevent Tekton
 from overwriting Step containers' working directory. The default
-value is "false" and so the default behaviour is for the working directory to be 
+value is "false" and so the default behaviour is for the working directory to be
 overwritten by Tekton with `/workspace` if the working directory is not specified explicitly
 for the step container. This default is very likely to change in an upcoming
 release. For further reference see https://github.com/tektoncd/pipeline/issues/1836.
