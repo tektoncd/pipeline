@@ -25,6 +25,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 2. If you don't have an existing Kubernetes cluster, set one up, version 1.15 or later:
 
    ```bash
+   #Example command for creating a cluster on GKE
    gcloud container clusters create $CLUSTER_NAME \
      --zone=$CLUSTER_ZONE
    ```
@@ -85,6 +86,7 @@ for more information.
    uses the default `system:admin` user (`admin:admin` for MiniShift):
 
    ```bash
+   # For MiniShift: oc login -u admin:admin
    oc login -u system:admin
    ```
 
