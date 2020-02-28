@@ -244,7 +244,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	pipeline := tb.Pipeline("pipelinetasktimeout", namespace,
 		tb.PipelineSpec(
-			tb.PipelineTask("pipelinetask1", task1.Name, tb.PipelineTaskTimeout(20*time.Second)),
+			tb.PipelineTask("pipelinetask1", task1.Name, tb.PipelineTaskTimeout(60*time.Second)),
 			tb.PipelineTask("pipelinetask2", task2.Name, tb.PipelineTaskTimeout(5*time.Second)),
 		),
 	)
