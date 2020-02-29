@@ -86,15 +86,48 @@ func HandleAll(h func(interface{})) cache.ResourceEventHandler {
 // Filter makes it simple to create FilterFunc's for use with
 // cache.FilteringResourceEventHandler that filter based on the
 // schema.GroupVersionKind of the controlling resources.
+//
+// Deprecated: Use FilterGroupVersionKind or FilterGroupKind instead
 func Filter(gvk schema.GroupVersionKind) func(obj interface{}) bool {
+	return FilterGroupVersionKind(gvk)
+}
+
+// FilterGroupVersionKind makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on the
+// schema.GroupVersionKind of the controlling resources.
+func FilterGroupVersionKind(gvk schema.GroupVersionKind) func(obj interface{}) bool {
 	return func(obj interface{}) bool {
-		if object, ok := obj.(metav1.Object); ok {
-			owner := metav1.GetControllerOf(object)
-			return owner != nil &&
-				owner.APIVersion == gvk.GroupVersion().String() &&
-				owner.Kind == gvk.Kind
+		object, ok := obj.(metav1.Object)
+		if !ok {
+			return false
 		}
-		return false
+
+		owner := metav1.GetControllerOf(object)
+		return owner != nil &&
+			owner.APIVersion == gvk.GroupVersion().String() &&
+			owner.Kind == gvk.Kind
+	}
+}
+
+// FilterGroupKind makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on the
+// schema.GroupKind of the controlling resources.
+func FilterGroupKind(gk schema.GroupKind) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		object, ok := obj.(metav1.Object)
+		if !ok {
+			return false
+		}
+
+		owner := metav1.GetControllerOf(object)
+		if owner == nil {
+			return false
+		}
+
+		ownerGV, err := schema.ParseGroupVersion(owner.APIVersion)
+		return err == nil &&
+			ownerGV.Group == gk.Group &&
+			owner.Kind == gk.Kind
 	}
 }
 

@@ -49,9 +49,9 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	if contexts.IsUpgradeViaDefaulting(ctx) {
 		v := v1beta1.TaskRunSpec{}
-		if trs.ConvertUp(ctx, &v) == nil {
+		if trs.ConvertTo(ctx, &v) == nil {
 			alpha := TaskRunSpec{}
-			if alpha.ConvertDown(ctx, &v) == nil {
+			if alpha.ConvertFrom(ctx, &v) == nil {
 				*trs = alpha
 			}
 		}

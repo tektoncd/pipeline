@@ -84,7 +84,11 @@ type metricsConfig struct {
 
 	// recorder provides a hook for performing custom transformations before
 	// writing the metrics to the stats.RecordWithOptions interface.
-	recorder func(context.Context, stats.Measurement, ...stats.Options) error
+	recorder func(context.Context, []stats.Measurement, ...stats.Options) error
+
+	// secretFetcher provides access for fetching Kubernetes Secrets from an
+	// informer cache.
+	secretFetcher SecretFetcher
 
 	// ---- OpenCensus specific below ----
 	// collectorAddress is the address of the collector, if not `localhost:55678`
@@ -144,17 +148,21 @@ func NewStackdriverClientConfigFromMap(config map[string]string) *StackdriverCli
 	}
 }
 
-// Record applies the `ros` Options to `ms` and then records the resulting
+// record applies the `ros` Options to each measurement in `mss` and then records the resulting
 // measurements in the metricsConfig's designated backend.
-func (mc *metricsConfig) Record(ctx context.Context, ms stats.Measurement, ros ...stats.Options) error {
+func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
 	if mc == nil || mc.recorder == nil {
-		return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(ms))...)
+		return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 	}
-	return mc.recorder(ctx, ms, ros...)
+	return mc.recorder(ctx, mss, ros...)
 }
 
 func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metricsConfig, error) {
 	var mc metricsConfig
+
+	// We don't check if this is `nil` right now, because this is a transition step.
+	// Eventually, this should be a startup check.
+	mc.secretFetcher = ops.Secrets
 
 	if ops.Domain == "" {
 		return nil, errors.New("metrics domain cannot be empty")
@@ -235,14 +243,24 @@ func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metri
 		if !allowCustomMetrics {
 			servingOrEventing := metricskey.KnativeRevisionMetrics.Union(
 				metricskey.KnativeTriggerMetrics).Union(metricskey.KnativeBrokerMetrics)
-			mc.recorder = func(ctx context.Context, ms stats.Measurement, ros ...stats.Options) error {
-				metricType := path.Join(mc.stackdriverMetricTypePrefix, ms.Measure().Name())
-
-				if servingOrEventing.Has(metricType) {
-					return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(ms))...)
+			mc.recorder = func(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
+				// Perform array filtering in place using two indices: w(rite)Index and r(ead)Index.
+				wIdx := 0
+				for rIdx := 0; rIdx < len(mss); rIdx++ {
+					metricType := path.Join(mc.stackdriverMetricTypePrefix, mss[rIdx].Measure().Name())
+					if servingOrEventing.Has(metricType) {
+						mss[wIdx] = mss[rIdx]
+						wIdx++
+					}
+					// Otherwise, skip the measurement (because it won't be accepted).
 				}
-				// Otherwise, skip (because it won't be accepted)
-				return nil
+				// Found no matched metrics.
+				if wIdx == 0 {
+					return nil
+				}
+				// Trim the list to the number of written objects.
+				mss = mss[:wIdx]
+				return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 			}
 		}
 	}

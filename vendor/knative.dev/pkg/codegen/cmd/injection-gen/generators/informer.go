@@ -90,6 +90,10 @@ func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
 		}),
+		"contextContext": c.Universe.Type(types.Name{
+			Package: "context",
+			Name:    "Context",
+		}),
 	}
 
 	sw.Do(injectionInformer, m)
@@ -105,14 +109,14 @@ func init() {
 // Key is used for associating the Informer inside the context.Context.
 type Key struct{}
 
-func withInformer(ctx context.Context) (context.Context, {{.controllerInformer|raw}}) {
+func withInformer(ctx {{.contextContext|raw}}) ({{.contextContext|raw}}, {{.controllerInformer|raw}}) {
 	f := {{.factoryGet|raw}}(ctx)
 	inf := f.{{.group}}().{{.version}}().{{.type|publicPlural}}()
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
 // Get extracts the typed informer from the context.
-func Get(ctx context.Context) {{.informersTypedInformer|raw}} {
+func Get(ctx {{.contextContext|raw}}) {{.informersTypedInformer|raw}} {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		{{.loggingFromContext|raw}}(ctx).Panic(

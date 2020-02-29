@@ -48,8 +48,7 @@ type Source struct {
 }
 
 type SourceSpec struct {
-	// Sink is a reference to an object that will resolve to a domain name or a
-	// URI directly to use as the sink.
+	// Sink is a reference to an object that will resolve to a uri to use as the sink.
 	Sink Destination `json:"sink,omitempty"`
 
 	// CloudEventOverrides defines overrides to control the output format and

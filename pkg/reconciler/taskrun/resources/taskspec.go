@@ -50,7 +50,7 @@ func GetTaskData(ctx context.Context, taskRun *v1alpha1.TaskRun, getTask GetTask
 		taskSpec = t.TaskSpec()
 		taskSpec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-		if err := taskSpec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
+		if err := taskSpec.ConvertTo(ctx, &v1beta1.TaskSpec{}); err != nil {
 			return nil, nil, err
 		}
 	case taskRun.Spec.TaskSpec != nil:

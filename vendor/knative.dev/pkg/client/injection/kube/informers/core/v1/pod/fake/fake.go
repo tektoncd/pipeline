@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	pod "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	fake "knative.dev/pkg/client/injection/kube/informers/factory/fake"

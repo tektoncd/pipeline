@@ -236,7 +236,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	if err := pr.ConvertUp(ctx, &v1beta1.PipelineRun{}); err != nil {
+	if err := pr.ConvertTo(ctx, &v1beta1.PipelineRun{}); err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
 			return nil

@@ -7,7 +7,6 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go v1.0.0
-	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.4 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
@@ -22,7 +21,6 @@ require (
 	github.com/jenkins-x/go-scm v1.5.73
 	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
-	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
@@ -30,7 +28,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/prometheus/procfs v0.0.5 // indirect
-	github.com/rogpeppe/go-internal v1.3.2 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
@@ -44,25 +41,26 @@ require (
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.2.5 // indirect
-	k8s.io/api v0.17.2
-	k8s.io/apimachinery v0.17.2
-	k8s.io/client-go v0.17.0
-	k8s.io/code-generator v0.17.1
+	k8s.io/api v0.17.3
+	k8s.io/apiextensions-apiserver v0.17.3 // indirect
+	k8s.io/apimachinery v0.17.3
+	k8s.io/client-go v0.17.3
+	k8s.io/code-generator v0.17.3
 	k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c // indirect
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
 	knative.dev/eventing-contrib v0.11.2
-	knative.dev/pkg v0.0.0-20200207155214-fef852970f43
+	knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
 )
 
-// Knative deps (release-0.12)
+// Knative deps (release-0.13)
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
 	knative.dev/caching => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20200113182502-b8dc5fbc6d2f
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
 	knative.dev/pkg/vendor/github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 )
 

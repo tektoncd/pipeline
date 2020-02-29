@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 The Knative Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,6 +71,10 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
 		}),
+		"contextContext": c.Universe.Type(types.Name{
+			Package: "context",
+			Name:    "Context",
+		}),
 	}
 
 	sw.Do(injectionClient, m)
@@ -86,12 +90,12 @@ func init() {
 // Key is used as the key for associating information with a context.Context.
 type Key struct{}
 
-func withClient(ctx context.Context, cfg *{{.restConfig|raw}}) context.Context {
+func withClient(ctx {{.contextContext|raw}}, cfg *{{.restConfig|raw}}) context.Context {
 	return context.WithValue(ctx, Key{}, {{.clientSetNewForConfigOrDie|raw}}(cfg))
 }
 
 // Get extracts the {{.clientSetInterface|raw}} client from the context.
-func Get(ctx context.Context) {{.clientSetInterface|raw}} {
+func Get(ctx {{.contextContext|raw}}) {{.clientSetInterface|raw}} {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
 		{{.loggingFromContext|raw}}(ctx).Panic(

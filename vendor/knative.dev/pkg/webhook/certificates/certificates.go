@@ -18,6 +18,9 @@ package certificates
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
@@ -26,6 +29,11 @@ import (
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
+)
+
+const (
+	// Time used for updating a certificate before it expires. Default 1 week.
+	oneWeek = 7 * 24 * time.Hour
 )
 
 type reconciler struct {
@@ -67,8 +75,18 @@ func (r *reconciler) reconcileCertificate(ctx context.Context) error {
 	} else if _, haskey := secret.Data[certresources.CACert]; !haskey {
 		logger.Infof("Certificate secret %q is missing key %q", r.secretName, certresources.CACert)
 	} else {
-		// It has all of the keys, it's good.
-		return nil
+		// Check the expiration date of the certificate to see if it needs to be updated
+		cert, err := tls.X509KeyPair(secret.Data[certresources.ServerCert], secret.Data[certresources.ServerKey])
+		if err != nil {
+			logger.Warnf("Error creating pem from certificate and key: %v", err)
+		} else {
+			certData, err := x509.ParseCertificate(cert.Certificate[0])
+			if err != nil {
+				logger.Errorf("Error parsing certificate: %v", err)
+			} else if time.Now().Add(oneWeek).Before(certData.NotAfter) {
+				return nil
+			}
+		}
 	}
 	// Don't modify the informer copy.
 	secret = secret.DeepCopy()

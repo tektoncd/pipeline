@@ -232,7 +232,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	if err := tr.ConvertUp(ctx, &v1beta1.TaskRun{}); err != nil {
+	if err := tr.ConvertTo(ctx, &v1beta1.TaskRun{}); err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			tr.Status.MarkResourceNotConvertible(ce)
 			return nil

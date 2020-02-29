@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 The Knative Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,6 +75,12 @@ func (g *fakeClientGenerator) GenerateType(c *generator.Context, t *types.Type, 
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
 		}),
+		"contextContext": c.Universe.Type(types.Name{
+			Package: "context",
+			Name:    "Context",
+		}),
+		"restConfig":    c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
+		"runtimeObject": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime", Name: "Object"}),
 	}
 
 	sw.Do(injectionFakeClient, m)
@@ -87,18 +93,18 @@ func init() {
 	{{.injectionRegisterClient|raw}}(withClient)
 }
 
-func withClient(ctx context.Context, cfg *rest.Config) context.Context {
+func withClient(ctx {{.contextContext|raw}}, cfg *{{.restConfig|raw}}) {{.contextContext|raw}} {
 	ctx, _ = With(ctx)
 	return ctx
 }
 
-func With(ctx context.Context, objects ...runtime.Object) (context.Context, *{{.fakeClient|raw}}) {
+func With(ctx {{.contextContext|raw}}, objects ...{{.runtimeObject|raw}}) ({{.contextContext|raw}}, *{{.fakeClient|raw}}) {
 	cs := fake.NewSimpleClientset(objects...)
 	return context.WithValue(ctx, {{.clientKey|raw}}{}, cs), cs
 }
 
 // Get extracts the Kubernetes client from the context.
-func Get(ctx context.Context) *{{.fakeClient|raw}} {
+func Get(ctx {{.contextContext|raw}}) *{{.fakeClient|raw}} {
 	untyped := ctx.Value({{.clientKey|raw}}{})
 	if untyped == nil {
 		{{.loggingFromContext|raw}}(ctx).Panic(

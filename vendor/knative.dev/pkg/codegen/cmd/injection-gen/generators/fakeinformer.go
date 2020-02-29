@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
+Copyright 2019 The Knative Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,6 +91,10 @@ func (g *fakeInformerGenerator) GenerateType(c *generator.Context, t *types.Type
 			Package: "knative.dev/pkg/injection",
 			Name:    "Fake.RegisterInformer",
 		}),
+		"contextContext": c.Universe.Type(types.Name{
+			Package: "context",
+			Name:    "Context",
+		}),
 	}
 
 	sw.Do(injectionFakeInformer, m)
@@ -105,7 +109,7 @@ func init() {
 	{{.injectionRegisterInformer|raw}}(withInformer)
 }
 
-func withInformer(ctx context.Context) (context.Context, {{.controllerInformer|raw}}) {
+func withInformer(ctx {{.contextContext|raw}}) ({{.contextContext|raw}}, {{.controllerInformer|raw}}) {
 	f := {{.factoryGet|raw}}(ctx)
 	inf := f.{{.group}}().{{.version}}().{{.type|publicPlural}}()
 	return context.WithValue(ctx, {{.informerKey|raw}}{}, inf), inf.Informer()

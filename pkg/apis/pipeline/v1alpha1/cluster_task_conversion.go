@@ -27,23 +27,23 @@ import (
 
 var _ apis.Convertible = (*ClusterTask)(nil)
 
-// ConvertUp implements api.Convertible
-func (source *ClusterTask) ConvertUp(ctx context.Context, obj apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (source *ClusterTask) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.ClusterTask:
 		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertUp(ctx, &sink.Spec)
+		return source.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-// ConvertDown implements api.Convertible
-func (sink *ClusterTask) ConvertDown(ctx context.Context, obj apis.Convertible) error {
+// ConvertFrom implements api.Convertible
+func (sink *ClusterTask) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.ClusterTask:
 		sink.ObjectMeta = source.ObjectMeta
-		return sink.Spec.ConvertDown(ctx, &source.Spec)
+		return sink.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}

@@ -244,7 +244,7 @@ func (r *reporter) ReportReconcile(duration time.Duration, key, success string) 
 		return err
 	}
 
-	metrics.Record(ctx, reconcileCountStat.M(1))
-	metrics.Record(ctx, reconcileLatencyStat.M(int64(duration/time.Millisecond)))
+	metrics.RecordBatch(ctx, reconcileCountStat.M(1),
+		reconcileLatencyStat.M(duration.Milliseconds()))
 	return nil
 }

@@ -99,17 +99,32 @@ func (s *Status) GetCondition(t apis.ConditionType) *apis.Condition {
 }
 
 // ConvertTo helps implement apis.Convertible for types embedding this Status.
-func (source *Status) ConvertTo(ctx context.Context, sink *Status) {
+//
+// By default apis.ConditionReady and apis.ConditionSucceeded will be copied over to the
+// sink. Other conditions types are tested against a list of predicates. If any of the predicates
+// return true the condition type will be copied to the sink
+func (source *Status) ConvertTo(ctx context.Context, sink *Status, predicates ...func(apis.ConditionType) bool) {
 	sink.ObservedGeneration = source.ObservedGeneration
+
+	conditions := make(apis.Conditions, 0, len(source.Conditions))
 	for _, c := range source.Conditions {
-		switch c.Type {
+
 		// Copy over the "happy" condition, which is the only condition that
 		// we can reliably transfer.
-		case apis.ConditionReady, apis.ConditionSucceeded:
-			sink.SetConditions(apis.Conditions{c})
-			return
+		if c.Type == apis.ConditionReady || c.Type == apis.ConditionSucceeded {
+			conditions = append(conditions, c)
+			continue
+		}
+
+		for _, predicate := range predicates {
+			if predicate(c.Type) {
+				conditions = append(conditions, c)
+				break
+			}
 		}
 	}
+
+	sink.SetConditions(conditions)
 }
 
 // Populate implements duck.Populatable
