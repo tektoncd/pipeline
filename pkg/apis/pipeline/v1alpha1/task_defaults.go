@@ -34,9 +34,9 @@ func (t *Task) SetDefaults(ctx context.Context) {
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	if contexts.IsUpgradeViaDefaulting(ctx) {
 		v := v1beta1.TaskSpec{}
-		if ts.ConvertUp(ctx, &v) == nil {
+		if ts.ConvertTo(ctx, &v) == nil {
 			alpha := TaskSpec{}
-			if alpha.ConvertDown(ctx, &v) == nil {
+			if alpha.ConvertFrom(ctx, &v) == nil {
 				*ts = alpha
 			}
 		}

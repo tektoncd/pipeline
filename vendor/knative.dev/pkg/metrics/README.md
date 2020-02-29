@@ -94,7 +94,7 @@ statistics for a short period of time if not.
       **This is true today.**
       [Ensure this on an ongoing basis.](https://github.com/knative/pkg/issues/957)
 - [ ] Google to implement OpenCensus Agent configuration to match what they are
-      doing for Stackdriver now. (No public issue link because this shoud be in
+      doing for Stackdriver now. (No public issue link because this should be in
       Google's vendor-specific configuration.)
 - [ ] Document how to configure OpenCensus/OpenTelemetry Agent + Prometheus to
       achieve the current level of application visibility, and determine a

@@ -27,6 +27,7 @@ import (
 type CustomArgs struct {
 	VersionedClientSetPackage        string
 	ExternalVersionsInformersPackage string
+	ListersPackage                   string
 }
 
 // NewDefaults returns default arguments for the generator.
@@ -41,6 +42,7 @@ func NewDefaults() (*args.GeneratorArgs, *CustomArgs) {
 func (ca *CustomArgs) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&ca.VersionedClientSetPackage, "versioned-clientset-package", ca.VersionedClientSetPackage, "the full package name for the versioned injection clientset to use")
 	fs.StringVar(&ca.ExternalVersionsInformersPackage, "external-versions-informers-package", ca.ExternalVersionsInformersPackage, "the full package name for the external versions injection informer to use")
+	fs.StringVar(&ca.ListersPackage, "listers-package", ca.ListersPackage, "the full package name for client listers to use")
 }
 
 // Validate checks the given arguments.

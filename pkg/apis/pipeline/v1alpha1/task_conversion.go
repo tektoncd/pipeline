@@ -27,18 +27,18 @@ import (
 
 var _ apis.Convertible = (*Task)(nil)
 
-// ConvertUp implements api.Convertible
-func (source *Task) ConvertUp(ctx context.Context, obj apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (source *Task) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.Task:
 		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertUp(ctx, &sink.Spec)
+		return source.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1beta1.TaskSpec) error {
+func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) error {
 	sink.Steps = source.Steps
 	sink.Volumes = source.Volumes
 	sink.StepTemplate = source.StepTemplate
@@ -100,18 +100,18 @@ func (source *TaskSpec) ConvertUp(ctx context.Context, sink *v1beta1.TaskSpec) e
 	return nil
 }
 
-// ConvertDown implements api.Convertible
-func (sink *Task) ConvertDown(ctx context.Context, obj apis.Convertible) error {
+// ConvertFrom implements api.Convertible
+func (sink *Task) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.Task:
 		sink.ObjectMeta = source.ObjectMeta
-		return sink.Spec.ConvertDown(ctx, &source.Spec)
+		return sink.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (sink *TaskSpec) ConvertDown(ctx context.Context, source *v1beta1.TaskSpec) error {
+func (sink *TaskSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskSpec) error {
 	sink.Steps = source.Steps
 	sink.Volumes = source.Volumes
 	sink.StepTemplate = source.StepTemplate

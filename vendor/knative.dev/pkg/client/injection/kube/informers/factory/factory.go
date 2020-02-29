@@ -19,7 +19,7 @@ limitations under the License.
 package factory
 
 import (
-	"context"
+	context "context"
 
 	informers "k8s.io/client-go/informers"
 	client "knative.dev/pkg/client/injection/kube/client"

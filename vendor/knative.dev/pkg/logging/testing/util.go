@@ -18,7 +18,6 @@ package testing
 
 import (
 	"context"
-	"testing"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -27,7 +26,7 @@ import (
 )
 
 // TestLogger gets a logger to use in unit and end to end tests
-func TestLogger(t *testing.T) *zap.SugaredLogger {
+func TestLogger(t zaptest.TestingT) *zap.SugaredLogger {
 	opts := zaptest.WrapOptions(
 		zap.AddCaller(),
 		zap.Development(),
@@ -41,6 +40,6 @@ func TestLogger(t *testing.T) *zap.SugaredLogger {
 func ClearAll() {}
 
 // TestContextWithLogger returns a context with a logger to be used in tests
-func TestContextWithLogger(t *testing.T) context.Context {
+func TestContextWithLogger(t zaptest.TestingT) context.Context {
 	return logging.WithLogger(context.TODO(), TestLogger(t))
 }

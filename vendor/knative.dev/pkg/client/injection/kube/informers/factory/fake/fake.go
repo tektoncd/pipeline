@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	informers "k8s.io/client-go/informers"
 	fake "knative.dev/pkg/client/injection/kube/client/fake"

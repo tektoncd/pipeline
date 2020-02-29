@@ -19,6 +19,7 @@ package generators
 import (
 	"strings"
 
+	codegennamer "k8s.io/code-generator/pkg/namer"
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
 )
@@ -28,13 +29,26 @@ func NameSystems() namer.NameSystems {
 	pluralExceptions := map[string]string{
 		"Endpoints": "Endpoints",
 	}
+
+	publicPluralNamer := namer.NewPublicPluralNamer(pluralExceptions)
+
+	publicNamer := &ExceptionNamer{
+		Exceptions: map[string]string{},
+		KeyFunc: func(t *types.Type) string {
+			return t.Name.Package + "." + t.Name.Name
+		},
+		Delegate: namer.NewPublicNamer(0),
+	}
+
 	return namer.NameSystems{
 		"public":             namer.NewPublicNamer(0),
 		"private":            namer.NewPrivateNamer(0),
 		"raw":                namer.NewRawNamer("", nil),
-		"publicPlural":       namer.NewPublicPluralNamer(pluralExceptions),
+		"publicPlural":       publicPluralNamer,
 		"allLowercasePlural": namer.NewAllLowercasePluralNamer(pluralExceptions),
 		"lowercaseSingular":  &lowercaseSingularNamer{},
+		"apiGroup":           codegennamer.NewTagOverrideNamer("publicPlural", publicPluralNamer),
+		"versionedClientset": &versionedClientsetNamer{public: publicNamer},
 	}
 }
 
@@ -44,6 +58,22 @@ type lowercaseSingularNamer struct{}
 // Name returns t's name in all lowercase.
 func (n *lowercaseSingularNamer) Name(t *types.Type) string {
 	return strings.ToLower(t.Name.Name)
+}
+
+type versionedClientsetNamer struct {
+	public *ExceptionNamer
+}
+
+func (r *versionedClientsetNamer) Name(t *types.Type) string {
+	// Turns type into a GroupVersion type string based on package.
+	parts := strings.Split(t.Name.Package, "/")
+	group := parts[len(parts)-2]
+	version := parts[len(parts)-1]
+
+	g := r.public.Name(&types.Type{Name: types.Name{Name: group, Package: t.Name.Package}})
+	v := r.public.Name(&types.Type{Name: types.Name{Name: version, Package: t.Name.Package}})
+
+	return g + v
 }
 
 // DefaultNameSystem returns the default name system for ordering the types to be

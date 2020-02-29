@@ -19,7 +19,7 @@ limitations under the License.
 package validatingwebhookconfiguration
 
 import (
-	"context"
+	context "context"
 
 	v1beta1 "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	factory "knative.dev/pkg/client/injection/kube/informers/factory"

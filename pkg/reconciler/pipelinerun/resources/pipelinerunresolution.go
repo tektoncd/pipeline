@@ -322,7 +322,7 @@ func ResolvePipelineRun(
 			spec = *pt.TaskSpec
 		}
 		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		if err := spec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
+		if err := spec.ConvertTo(ctx, &v1beta1.TaskSpec{}); err != nil {
 			return nil, err
 		}
 		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)

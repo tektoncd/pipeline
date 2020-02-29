@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/markbates/inflect"
-	"github.com/mattbaird/jsonpatch"
 	"go.uber.org/zap"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

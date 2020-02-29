@@ -19,7 +19,6 @@ package v1
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -27,67 +26,54 @@ import (
 type Destination struct {
 	// Ref points to an Addressable.
 	// +optional
-	Ref *corev1.ObjectReference `json:"ref,omitempty"`
+	Ref *KReference `json:"ref,omitempty"`
 
 	// URI can be an absolute URL(non-empty scheme and non-empty host) pointing to the target or a relative URI. Relative URIs will be resolved using the base URI retrieved from Ref.
 	// +optional
 	URI *apis.URL `json:"uri,omitempty"`
 }
 
+// Validate the Destination has all the necessary fields and check the
+// Namespace matches that of the parent object (using apis.ParentMeta).
 func (dest *Destination) Validate(ctx context.Context) *apis.FieldError {
 	if dest == nil {
 		return nil
 	}
-	return ValidateDestination(*dest).ViaField(apis.CurrentField)
+	return ValidateDestination(ctx, *dest).ViaField(apis.CurrentField)
 }
 
 // ValidateDestination validates Destination.
-func ValidateDestination(dest Destination) *apis.FieldError {
-	var ref *corev1.ObjectReference
-	if dest.Ref != nil {
-		ref = dest.Ref
-	}
-	if ref == nil && dest.URI == nil {
+func ValidateDestination(ctx context.Context, dest Destination) *apis.FieldError {
+	ref := dest.Ref
+	uri := dest.URI
+	if ref == nil && uri == nil {
 		return apis.ErrGeneric("expected at least one, got none", "ref", "uri")
 	}
 
-	if ref != nil && dest.URI != nil && dest.URI.URL().IsAbs() {
+	if ref != nil && uri != nil && uri.URL().IsAbs() {
 		return apis.ErrGeneric("Absolute URI is not allowed when Ref or [apiVersion, kind, name] is present", "[apiVersion, kind, name]", "ref", "uri")
 	}
-	// IsAbs() check whether the URL has a non-empty scheme. Besides the non-empty scheme, we also require dest.URI has a non-empty host
-	if ref == nil && dest.URI != nil && (!dest.URI.URL().IsAbs() || dest.URI.Host == "") {
+	// IsAbs() check whether the URL has a non-empty scheme. Besides the non-empty scheme, we also require uri has a non-empty host
+	if ref == nil && uri != nil && (!uri.URL().IsAbs() || uri.Host == "") {
 		return apis.ErrInvalidValue("Relative URI is not allowed when Ref and [apiVersion, kind, name] is absent", "uri")
 	}
-	if ref != nil && dest.URI == nil {
-		if dest.Ref != nil {
-			return validateDestinationRef(*ref).ViaField("ref")
-		}
+	if ref != nil && uri == nil {
+		return ref.Validate(ctx).ViaField("ref")
 	}
 	return nil
 }
 
-// GetRef gets the ObjectReference from this Destination, if one is present. If no ref is present,
+// GetRef gets the KReference from this Destination, if one is present. If no ref is present,
 // then nil is returned.
-func (dest *Destination) GetRef() *corev1.ObjectReference {
+func (dest *Destination) GetRef() *KReference {
 	if dest == nil {
 		return nil
 	}
 	return dest.Ref
 }
 
-func validateDestinationRef(ref corev1.ObjectReference) *apis.FieldError {
-	// Check the object.
-	var errs *apis.FieldError
-	// Required Fields
-	if ref.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("name"))
+func (d *Destination) SetDefaults(ctx context.Context) {
+	if d.Ref != nil && d.Ref.Namespace == "" {
+		d.Ref.Namespace = apis.ParentMeta(ctx).Namespace
 	}
-	if ref.APIVersion == "" {
-		errs = errs.Also(apis.ErrMissingField("apiVersion"))
-	}
-	if ref.Kind == "" {
-		errs = errs.Also(apis.ErrMissingField("kind"))
-	}
-
-	return errs
 }

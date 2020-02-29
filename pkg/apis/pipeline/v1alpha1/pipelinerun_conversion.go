@@ -27,12 +27,12 @@ import (
 
 var _ apis.Convertible = (*PipelineRun)(nil)
 
-// ConvertUp implements api.Convertible
-func (source *PipelineRun) ConvertUp(ctx context.Context, obj apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (source *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.PipelineRun:
 		sink.ObjectMeta = source.ObjectMeta
-		if err := source.Spec.ConvertUp(ctx, &sink.Spec); err != nil {
+		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
 			return err
 		}
 		sink.Status = source.Status
@@ -42,11 +42,11 @@ func (source *PipelineRun) ConvertUp(ctx context.Context, obj apis.Convertible) 
 	}
 }
 
-func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.PipelineRunSpec) error {
+func (source *PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.PipelineRunSpec) error {
 	sink.PipelineRef = source.PipelineRef
 	if source.PipelineSpec != nil {
 		sink.PipelineSpec = &v1beta1.PipelineSpec{}
-		if err := source.PipelineSpec.ConvertUp(ctx, sink.PipelineSpec); err != nil {
+		if err := source.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec); err != nil {
 			return err
 		}
 	}
@@ -61,12 +61,12 @@ func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.Pipe
 	return nil
 }
 
-// ConvertDown implements api.Convertible
-func (sink *PipelineRun) ConvertDown(ctx context.Context, obj apis.Convertible) error {
+// ConvertFrom implements api.Convertible
+func (sink *PipelineRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.PipelineRun:
 		sink.ObjectMeta = source.ObjectMeta
-		if err := sink.Spec.ConvertDown(ctx, &source.Spec); err != nil {
+		if err := sink.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
 			return err
 		}
 		sink.Status = source.Status
@@ -76,11 +76,11 @@ func (sink *PipelineRun) ConvertDown(ctx context.Context, obj apis.Convertible) 
 	}
 }
 
-func (sink *PipelineRunSpec) ConvertDown(ctx context.Context, source *v1beta1.PipelineRunSpec) error {
+func (sink *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.PipelineRunSpec) error {
 	sink.PipelineRef = source.PipelineRef
 	if source.PipelineSpec != nil {
 		sink.PipelineSpec = &PipelineSpec{}
-		if err := sink.PipelineSpec.ConvertDown(ctx, *source.PipelineSpec); err != nil {
+		if err := sink.PipelineSpec.ConvertFrom(ctx, *source.PipelineSpec); err != nil {
 			return err
 		}
 	}

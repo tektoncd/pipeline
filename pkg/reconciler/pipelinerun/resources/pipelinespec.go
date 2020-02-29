@@ -44,7 +44,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1alpha1.PipelineRun, get
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
 
-		if err := pipelineSpec.ConvertUp(ctx, &v1beta1.PipelineSpec{}); err != nil {
+		if err := pipelineSpec.ConvertTo(ctx, &v1beta1.PipelineSpec{}); err != nil {
 			return nil, nil, err
 		}
 	case pipelineRun.Spec.PipelineSpec != nil:

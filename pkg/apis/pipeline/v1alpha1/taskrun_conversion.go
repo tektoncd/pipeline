@@ -27,12 +27,12 @@ import (
 
 var _ apis.Convertible = (*TaskRun)(nil)
 
-// ConvertUp implements api.Convertible
-func (source *TaskRun) ConvertUp(ctx context.Context, obj apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (source *TaskRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.TaskRun:
 		sink.ObjectMeta = source.ObjectMeta
-		if err := source.Spec.ConvertUp(ctx, &sink.Spec); err != nil {
+		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
 			return err
 		}
 		sink.Status = source.Status
@@ -42,12 +42,12 @@ func (source *TaskRun) ConvertUp(ctx context.Context, obj apis.Convertible) erro
 	}
 }
 
-func (source *TaskRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.TaskRunSpec) error {
+func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunSpec) error {
 	sink.ServiceAccountName = source.ServiceAccountName
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
 		sink.TaskSpec = &v1beta1.TaskSpec{}
-		if err := source.TaskSpec.ConvertUp(ctx, sink.TaskSpec); err != nil {
+		if err := source.TaskSpec.ConvertTo(ctx, sink.TaskSpec); err != nil {
 			return err
 		}
 	}
@@ -111,12 +111,12 @@ func (source *TaskRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.TaskRunS
 	return nil
 }
 
-// ConvertDown implements api.Convertible
-func (sink *TaskRun) ConvertDown(ctx context.Context, obj apis.Convertible) error {
+// ConvertFrom implements api.Convertible
+func (sink *TaskRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.TaskRun:
 		sink.ObjectMeta = source.ObjectMeta
-		if err := sink.Spec.ConvertDown(ctx, &source.Spec); err != nil {
+		if err := sink.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
 			return err
 		}
 		sink.Status = source.Status
@@ -126,12 +126,12 @@ func (sink *TaskRun) ConvertDown(ctx context.Context, obj apis.Convertible) erro
 	}
 }
 
-func (sink *TaskRunSpec) ConvertDown(ctx context.Context, source *v1beta1.TaskRunSpec) error {
+func (sink *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskRunSpec) error {
 	sink.ServiceAccountName = source.ServiceAccountName
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
 		sink.TaskSpec = &TaskSpec{}
-		if err := sink.TaskSpec.ConvertDown(ctx, source.TaskSpec); err != nil {
+		if err := sink.TaskSpec.ConvertFrom(ctx, source.TaskSpec); err != nil {
 			return err
 		}
 	}

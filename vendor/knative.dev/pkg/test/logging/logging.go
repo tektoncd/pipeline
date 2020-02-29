@@ -21,15 +21,19 @@ package logging
 
 import (
 	"context"
-	"fmt"
+	"flag"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
-	"knative.dev/pkg/logging"
+	"go.uber.org/zap/zapcore"
+	"k8s.io/klog"
 )
 
 const (
@@ -43,8 +47,6 @@ const (
 
 // FormatLogger is a printf style function for logging in tests.
 type FormatLogger func(template string, args ...interface{})
-
-var logger *zap.SugaredLogger
 
 var exporter *zapMetricExporter
 
@@ -80,29 +82,22 @@ func (e *zapMetricExporter) ExportSpan(vd *trace.SpanData) {
 	}
 }
 
-func newLogger(logLevel string) *zap.SugaredLogger {
-	configJSONTemplate := `{
-	  "level": "%s",
-	  "encoding": "console",
-	  "outputPaths": ["stdout"],
-	  "errorOutputPaths": ["stderr"],
-	  "encoderConfig": {
-	    "timeKey": "ts",
-	    "messageKey": "message",
-	    "levelKey": "level",
-	    "nameKey": "logger",
-	    "callerKey": "caller",
-	    "messageKey": "msg",
-	    "stacktraceKey": "stacktrace",
-	    "lineEnding": "",
-	    "levelEncoder": "",
-	    "timeEncoder": "iso8601",
-	    "durationEncoder": "",
-	    "callerEncoder": ""
-	  }
-	}`
-	configJSON := fmt.Sprintf(configJSONTemplate, logLevel)
-	l, _ := logging.NewLogger(string(configJSON), logLevel, zap.AddCallerSkip(1))
+const (
+	logrZapDebugLevel = 3
+)
+
+func zapLevelFromLogrLevel(logrLevel int) zapcore.Level {
+	// Zap levels are -1, 0, 1, 2,... corresponding to DebugLevel, InfoLevel, WarnLevel, ErrorLevel,...
+	// zapr library just does zapLevel := -1*logrLevel; which means:
+	//  1. Info level is only active at 0 (versus 2 in klog being generally equivalent to Info)
+	//  2. Only verbosity of 0 and 1 map to valid Zap levels
+	// According to https://github.com/uber-go/zap/issues/713 custom levels (i.e. < -1) aren't guaranteed to work, so not using them (for now).
+
+	l := zap.InfoLevel
+	if logrLevel >= logrZapDebugLevel {
+		l = zap.DebugLevel
+	}
+
 	return l
 }
 
@@ -115,9 +110,9 @@ func InitializeMetricExporter(context string) {
 		trace.UnregisterExporter(exporter)
 	}
 
-	logger := logger.Named(context)
+	l := logger.Named(context).Sugar()
 
-	exporter = &zapMetricExporter{logger: logger}
+	exporter = &zapMetricExporter{logger: l}
 	view.RegisterExporter(exporter)
 	trace.RegisterExporter(exporter)
 
@@ -125,12 +120,58 @@ func InitializeMetricExporter(context string) {
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 }
 
-// InitializeLogger initializes the base logger
-func InitializeLogger(logVerbose bool) {
-	logLevel := "info"
-	if logVerbose {
-		logLevel = "debug"
-	}
+func printFlags() {
+	var flagList []interface{}
+	flag.CommandLine.VisitAll(func(f *flag.Flag) {
+		flagList = append(flagList, f.Name, f.Value.String())
+	})
+	logger.Sugar().Debugw("Test Flags", flagList...)
+}
 
-	logger = newLogger(logLevel)
+var (
+	zapCore              zapcore.Core
+	logger               *zap.Logger
+	verbosity            int // Amount of log verbosity
+	loggerInitializeOnce = &sync.Once{}
+)
+
+// InitializeLogger initializes logging for Knative tests.
+// It should be called prior to executing tests but after command-line flags have been processed.
+// It is recommended doing it in the TestMain() function.
+func InitializeLogger() {
+	loggerInitializeOnce.Do(func() {
+		humanEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+
+		// Output streams
+		// TODO(coryrc): also open a log file if in Prow?
+		stdOut := zapcore.Lock(os.Stdout)
+
+		// Level function helper
+		zapLevel := zapLevelFromLogrLevel(verbosity)
+		isPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+			return lvl >= zapLevel
+		})
+
+		// Assemble the output streams
+		zapCore = zapcore.NewTee(
+			// TODO(coryrc): log JSON output somewhere?
+			zapcore.NewCore(humanEncoder, stdOut, isPriority),
+		)
+
+		logger = zap.New(zapCore)
+		zap.ReplaceGlobals(logger) // Gets used by klog/glog proxy libraries
+
+		// Set klog/glog verbosities (works with and without proxy libraries)
+		klogLevel := klog.Level(0)
+		klogLevel.Set(strconv.Itoa(verbosity))
+
+		if verbosity > 2 {
+			printFlags()
+		}
+	})
+}
+
+func init() {
+	flag.IntVar(&verbosity, "verbosity", 2,
+		"Amount of verbosity, 0-10. See https://github.com/go-logr/logr#how-do-i-choose-my-v-levels and https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md")
 }
