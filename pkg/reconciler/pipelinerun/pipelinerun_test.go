@@ -644,8 +644,21 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 		tb.StepState(tb.StateTerminated(127)),
 	)))
 
+	successrcc := resources.ResolvedConditionCheck{
+		ConditionRegisterName: successCondition.Name + "-0",
+		ConditionCheckName:    successConditionCheckName,
+		Condition:             successCondition,
+		ConditionCheck:        successConditionCheck,
+	}
+	failingrcc := resources.ResolvedConditionCheck{
+		ConditionRegisterName: failingCondition.Name + "-0",
+		ConditionCheckName:    failingConditionCheckName,
+		Condition:             failingCondition,
+		ConditionCheck:        failingConditionCheck,
+	}
+
 	successConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
-		ConditionName: successCondition.Name,
+		ConditionName: successrcc.ConditionRegisterName,
 		Status: &v1alpha1.ConditionCheckStatus{
 			ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
 				Check: corev1.ContainerState{
@@ -658,7 +671,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 		},
 	}
 	failingConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
-		ConditionName: failingCondition.Name,
+		ConditionName: failingrcc.ConditionRegisterName,
 		Status: &v1alpha1.ConditionCheckStatus{
 			ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
 				Check: corev1.ContainerState{
@@ -669,17 +682,6 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
 			},
 		},
-	}
-
-	successrcc := resources.ResolvedConditionCheck{
-		ConditionCheckName: successConditionCheckName,
-		Condition:          successCondition,
-		ConditionCheck:     successConditionCheck,
-	}
-	failingrcc := resources.ResolvedConditionCheck{
-		ConditionCheckName: failingConditionCheckName,
-		Condition:          failingCondition,
-		ConditionCheck:     failingConditionCheck,
 	}
 
 	failedTaskRunStatus := v1alpha1.TaskRunStatus{
@@ -1504,8 +1506,8 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	}
 	ccNameBase := prName + "-hello-world-1-9l9zj"
 	ccNames := map[string]string{
-		"cond-1": ccNameBase + "-cond-1-mz4c7",
-		"cond-2": ccNameBase + "-cond-2-mssqb",
+		"cond-1": ccNameBase + "-cond-1-0-mz4c7",
+		"cond-2": ccNameBase + "-cond-2-1-mssqb",
 	}
 	expectedConditionChecks := make([]*v1alpha1.TaskRun, len(conditions))
 	for index, condition := range conditions {
@@ -1537,7 +1539,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 
 	conditionCheckName := pipelineRunName + "task-2-always-false-xxxyyy"
 	prccs[conditionCheckName] = &v1alpha1.PipelineRunConditionCheckStatus{
-		ConditionName: "always-false",
+		ConditionName: "always-false-0",
 		Status:        &v1alpha1.ConditionCheckStatus{},
 	}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
