@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +41,7 @@ func TestTaskConversionBadType(t *testing.T) {
 }
 
 func TestTaskConversion(t *testing.T) {
-	versions := []apis.Convertible{&v1alpha2.Task{}}
+	versions := []apis.Convertible{&v1beta1.Task{}}
 
 	tests := []struct {
 		name    string
@@ -56,22 +56,22 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Steps: []v1alpha2.Step{{Container: corev1.Container{
+				TaskSpec: v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{Container: corev1.Container{
 						Image: "foo",
 					}}},
 					Volumes: []corev1.Volume{{}},
-					Params: []v1alpha2.ParamSpec{{
+					Params: []v1beta1.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1alpha2.ParamTypeString,
+						Type:        v1beta1.ParamTypeString,
 						Description: "My first param",
 					}},
-					Resources: &v1alpha2.TaskResources{
-						Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "input-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},
-						Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+						Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "output-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},
@@ -88,9 +88,9 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Resources: &v1alpha2.TaskResources{
-						Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "input-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},
@@ -114,17 +114,17 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Params: []v1alpha2.ParamSpec{{
+				TaskSpec: v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1alpha2.ParamTypeString,
+						Type:        v1beta1.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
 				Inputs: &Inputs{
 					Params: []ParamSpec{{
 						Name:        "param-1",
-						Type:        v1alpha2.ParamTypeString,
+						Type:        v1beta1.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
@@ -140,9 +140,9 @@ func TestTaskConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Resources: &v1alpha2.TaskResources{
-						Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "output-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},
@@ -184,7 +184,7 @@ func TestTaskConversion(t *testing.T) {
 }
 
 func TestTaskConversionFromDeprecated(t *testing.T) {
-	versions := []apis.Convertible{&v1alpha2.Task{}}
+	versions := []apis.Convertible{&v1beta1.Task{}}
 	tests := []struct {
 		name     string
 		in       *Task
@@ -202,7 +202,7 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Inputs: &Inputs{
 					Params: []ParamSpec{{
 						Name:        "param-1",
-						Type:        v1alpha2.ParamTypeString,
+						Type:        v1beta1.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
@@ -215,10 +215,10 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Params: []v1alpha2.ParamSpec{{
+				TaskSpec: v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1alpha2.ParamTypeString,
+						Type:        v1beta1.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
@@ -248,9 +248,9 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Resources: &v1alpha2.TaskResources{
-						Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "input-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},
@@ -282,9 +282,9 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
-					Resources: &v1alpha2.TaskResources{
-						Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 							Name: "output-1",
 							Type: resource.PipelineResourceTypeGit,
 						}}},

@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: build-gcs-targz-
+spec:
+  taskSpec:
+    resources:
+      inputs:
+      - name: source
+        type: storage
+    steps:
+    - image: ubuntu
+      script: cat source/file.txt
+  resources:
+    inputs:
+    - name: source
+      resourceSpec:
+        type: storage
+        params:
+          - name: location
+            value: gs://build-crd-tests/archive.tar.gz
+          - name: artifactType
+            value: TarGzArchive
+          - name: type
+            value: build-gcs

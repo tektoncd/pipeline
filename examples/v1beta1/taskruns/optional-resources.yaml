@@ -1,0 +1,130 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-check-optional-resources
+spec:
+  params:
+  - name: filename
+    type: string
+    default: "README.md"
+  resources:
+    inputs:
+      - name: git-repo
+        type: git
+        description: "The input is code from a git repository"
+        optional: true
+    outputs:
+      - name: optionalimage
+        type: image
+        description: "The output is a Docker image"
+        optional: true
+  steps:
+    - name: check-git-repo
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        if [ -d $(resources.inputs.git-repo.path) ]; then
+          echo "Git repo was cloned at $(resources.inputs.git-repo.path)"
+          if [ -f $(resources.inputs.git-repo.path)/$(inputs.params.filename) ]; then
+            echo "$(inputs.params.filename) does exist at $(resources.inputs.git-repo.path)"
+          else
+            echo "$(inputs.params.filename) does not exist at $(resources.inputs.git-repo.path)"
+          fi
+        else
+          echo "Git repo was not cloned at $(resources.inputs.git-repo.path)"
+        fi
+        if [ "$(outputs.resources.optionalimage.url)" == "" ]; then
+          echo "Image URL: $(outputs.resources.optionalimage.url)"
+        else
+          echo "No image URL specified."
+        fi
+        echo "Yay, Input and Output Resources can be Optional!"
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: demo-optional-inputs-resources-with-resources
+spec:
+  params:
+  - name: filename
+    value: "README.md"
+  resources:
+    inputs:
+      - name: git-repo
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: https://github.com/tektoncd/pipeline.git
+    outputs:
+      - name: optionalimage
+        resourceSpec:
+          type: image
+          params:
+            - name: url
+              value: gcr.io/foo/bar
+  taskRef:
+    name: task-check-optional-resources
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: demo-optional-inputs-resources-invalid-filename
+spec:
+  params:
+  - name: filename
+    value: "invalid.md"
+  resources:
+    inputs:
+      - name: git-repo
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: https://github.com/tektoncd/pipeline.git
+  taskRef:
+    name: task-check-optional-resources
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: demo-optional-inputs-resources-without-resources
+spec:
+  params:
+  - name: filename
+    value: "README.md"
+  taskRef:
+    name: task-check-optional-resources
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: demo-optional-inputs-resources-without-resources-and-params
+spec:
+  taskRef:
+    name: task-check-optional-resources
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: demo-optional-outputs-resources-with-input-resources
+spec:
+  params:
+  - name: filename
+    value: "README.md"
+  resources:
+    inputs:
+      - name: git-repo
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: https://github.com/tektoncd/pipeline.git
+  taskRef:
+    name: task-check-optional-resources
+---

@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: git-volume-
+spec:
+  taskSpec:
+    steps:
+    - name: git
+      image: gcr.io/cloud-builders/git
+      workingDir: /path/to/git/rules_docker
+      args: ["status"]
+      volumeMounts:
+      - name: source
+        mountPath: /path/to/git
+
+    volumes:
+    - name: source
+      gitRepo:  # https://kubernetes.io/docs/concepts/storage/volumes/#gitrepo
+        # gitRepo is deprecated.
+        repository: "https://github.com/bazelbuild/rules_docker.git"
+        revision: "3caddbe7f75fde6afb2e2c63654b5bbeeeedf2ac"

@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: home-volume-
+spec:
+  taskSpec:
+    steps:
+    - name: write
+      image: ubuntu
+      script: echo some stuff > /tekton/home/stuff
+    - name: read
+      image: ubuntu
+      script: cat /tekton/home/stuff
+    - name: override-homevol
+      image: ubuntu
+      # /tekton/home/stuff *doesn't* exist, because the specified volumeMount
+      # conflicts with it, and the user's explicit declaration wins the tie.
+      script: |
+        #!/usr/bin/env bash
+        [[ ! -f /tekton/home/stuff ]]
+      volumeMounts:
+      - name: empty
+        mountPath: /tekton/home
+    volumes:
+    - name: empty
+      emptyDir: {}

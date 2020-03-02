@@ -20,12 +20,12 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
-func validateResources(requiredResources []v1alpha2.TaskResource, providedResources map[string]*v1alpha1.PipelineResource) error {
+func validateResources(requiredResources []v1beta1.TaskResource, providedResources map[string]*v1alpha1.PipelineResource) error {
 	required := make([]string, 0, len(requiredResources))
 	optional := make([]string, 0, len(requiredResources))
 	for _, resource := range requiredResources {
@@ -64,7 +64,7 @@ func validateResources(requiredResources []v1alpha2.TaskResource, providedResour
 	return nil
 }
 
-func validateParams(paramSpecs []v1alpha2.ParamSpec, params []v1alpha1.Param) error {
+func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1alpha1.Param) error {
 	var neededParams []string
 	paramTypes := make(map[string]v1alpha1.ParamType)
 	neededParams = make([]string, 0, len(paramSpecs))
@@ -113,8 +113,8 @@ func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.Resol
 	if err := validateParams(rtr.TaskSpec.Params, params); err != nil {
 		return fmt.Errorf("invalid input params: %w", err)
 	}
-	inputs := []v1alpha2.TaskResource{}
-	outputs := []v1alpha2.TaskResource{}
+	inputs := []v1beta1.TaskResource{}
+	outputs := []v1beta1.TaskResource{}
 	if rtr.TaskSpec.Resources != nil {
 		inputs = rtr.TaskSpec.Resources.Inputs
 		outputs = rtr.TaskSpec.Resources.Outputs

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -85,7 +85,7 @@ func TestPipeline_Validate(t *testing.T) {
 		name: "pipeline spec with taskref and taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "foo",
 						Image: "bar",
@@ -104,7 +104,7 @@ func TestPipeline_Validate(t *testing.T) {
 		name: "pipeline spec valid taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "foo",
 						Image: "bar",

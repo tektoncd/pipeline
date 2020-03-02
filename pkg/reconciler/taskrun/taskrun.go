@@ -27,7 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -232,8 +232,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	if err := tr.ConvertUp(ctx, &v1alpha2.TaskRun{}); err != nil {
-		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+	if err := tr.ConvertUp(ctx, &v1beta1.TaskRun{}); err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			tr.Status.MarkResourceNotConvertible(ce)
 			return nil
 		}
@@ -252,7 +252,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	getTaskFunc, kind := c.getTaskFunc(tr)
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskFunc)
 	if err != nil {
-		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			tr.Status.MarkResourceNotConvertible(ce)
 			return nil
 		}
@@ -297,8 +297,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	inputs := []v1alpha2.TaskResourceBinding{}
-	outputs := []v1alpha2.TaskResourceBinding{}
+	inputs := []v1beta1.TaskResourceBinding{}
+	outputs := []v1beta1.TaskResourceBinding{}
 	if tr.Spec.Resources != nil {
 		inputs = tr.Spec.Resources.Inputs
 		outputs = tr.Spec.Resources.Outputs

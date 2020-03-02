@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sink
+spec:
+  selector:
+    app: cloudevent
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: cloudevent
+  name: message-sink
+spec:
+  containers:
+  - env:
+    - name: PORT
+      value: "8080"
+    name: cloudeventlistener
+    image: python:3-alpine
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sh"]
+    args:
+    - -ce
+    - |
+      cat <<EOF | python
+      from http.server import BaseHTTPRequestHandler, HTTPServer
+
+      class GetAndPostHandler(BaseHTTPRequestHandler):
+
+          def do_POST(self):
+            content = self.rfile.read(int(self.headers.get('Content-Length')))
+            with open("content.txt", mode="wb") as f:
+              f.write(content)
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(b'<html><body><h1>POST!</h1></body></html>')
+
+          def do_GET(self):
+            with open("content.txt", mode="rb") as f:
+              content = f.read()
+            self.send_response(200 if content else 404)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(content)
+
+      if __name__ == "__main__":
+        open("content.txt", 'a').close()
+        httpd = HTTPServer(('', $PORT), GetAndPostHandler)
+        print('Starting httpd...')
+        httpd.serve_forever()
+      EOF
+    ports:
+    - containerPort: 8080
+      name: user-port
+      protocol: TCP
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: send-cloud-event-task
+
+spec:
+  resources:
+    outputs:
+      - name: myimage
+        type: image
+      - name: notification
+        type: cloudEvent
+  steps:
+    - name: wait-for-sink
+      image: python:3-alpine
+      imagePullPolicy: IfNotPresent
+      script: |
+        #!/usr/bin/env python3
+        import http.client
+        import json
+        import sys
+        import time
+
+        while True:
+          conn = http.client.HTTPConnection("sink:8080")
+          try:
+            conn.request("GET", "/")
+            break
+          except:
+            # Perhaps the service is not setup yet, so service name does not
+            # resolve or it does not accept connections on 8080 yet
+            print("Not yet...")
+            time.sleep(10)
+    - name: build-index-json
+      image: busybox
+      script: |
+        set -e
+        cat <<EOF > $(resources.outputs.myimage.path)/index.json
+        {
+          "schemaVersion": 2,
+          "manifests": [
+            {
+              "mediaType": "application/vnd.oci.image.index.v1+json",
+              "size": 314,
+              "digest": "sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+            }
+          ]
+        }
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: poll-for-content-task
+spec:
+  steps:
+  - name: polling
+    image: python:3-alpine
+    imagePullPolicy: IfNotPresent
+    script: |
+      #!/usr/bin/env python3
+      import http.client
+      import json
+      import sys
+      import time
+
+      while True:
+        conn = http.client.HTTPConnection("sink:8080")
+        try:
+          conn.request("GET", "/")
+        except:
+          # Perhaps the service is not setup yet, so service name does not
+          # resolve or it does not accept connections on 8080 yet
+          print("Not yet...")
+          time.sleep(10)
+          continue
+        response = conn.getresponse()
+        if response.status == 200:
+          print("Got it!")
+          taskrun = json.loads(response.read().decode('utf-8'))
+          digest = taskrun['taskRun']['status']['resourcesResult'][0]['value']
+          image_name = taskrun['taskRun']['status']['resourcesResult'][0]['resourceRef']['name']
+          print("Got digest %s for image %s" % (digest, image_name))
+          if image_name == "myimage" and digest:
+            break
+          else:
+            sys.exit(1)
+        else:
+          print("Not yet...")
+          time.sleep(10)
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: send-cloud-event
+spec:
+  resources:
+    outputs:
+    - name: myimage
+      resourceSpec:
+        type: image
+        params:
+        - name: url
+          value: fake-registry/test/fake-image
+    - name: notification
+      resourceSpec:
+        type: cloudEvent
+        params:
+        - name: targetURI
+          value: http://sink.default:8080
+  taskRef:
+    name: send-cloud-event-task
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: poll-for-content-run
+spec:
+  taskRef:
+    name: poll-for-content-task

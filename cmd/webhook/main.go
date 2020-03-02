@@ -22,7 +22,7 @@ import (
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
@@ -47,12 +47,12 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 	v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
 	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
-	// v1alpha2
-	v1alpha2.SchemeGroupVersion.WithKind("Pipeline"):    &v1alpha2.Pipeline{},
-	v1alpha2.SchemeGroupVersion.WithKind("Task"):        &v1alpha2.Task{},
-	v1alpha2.SchemeGroupVersion.WithKind("ClusterTask"): &v1alpha2.ClusterTask{},
-	v1alpha2.SchemeGroupVersion.WithKind("TaskRun"):     &v1alpha2.TaskRun{},
-	v1alpha2.SchemeGroupVersion.WithKind("PipelineRun"): &v1alpha2.PipelineRun{},
+	// v1beta1
+	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},
+	v1beta1.SchemeGroupVersion.WithKind("Task"):        &v1beta1.Task{},
+	v1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &v1beta1.ClusterTask{},
+	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
+	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {

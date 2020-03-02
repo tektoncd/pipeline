@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +44,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1alpha1.PipelineRun, get
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
 
-		if err := pipelineSpec.ConvertUp(ctx, &v1alpha2.PipelineSpec{}); err != nil {
+		if err := pipelineSpec.ConvertUp(ctx, &v1beta1.PipelineSpec{}); err != nil {
 			return nil, nil, err
 		}
 	case pipelineRun.Spec.PipelineSpec != nil:

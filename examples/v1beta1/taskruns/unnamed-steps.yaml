@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: unnamed-steps-
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      script: 'true'
+    - image: ubuntu
+      script: 'true'
+    - image: ubuntu
+      script: 'true'

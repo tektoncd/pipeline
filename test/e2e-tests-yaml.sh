@@ -33,7 +33,7 @@ install_pipeline_crd
 
 # Run the tests
 failed=0
-for version in v1alpha1 v1alpha2; do
+for version in v1alpha1 v1beta1; do
   for test in taskrun pipelinerun; do
     header "Running YAML e2e tests for ${version} ${test}s"
     if ! run_yaml_tests ${version} ${test}; then

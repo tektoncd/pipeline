@@ -27,7 +27,7 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
@@ -56,7 +56,7 @@ func TestPipeline(t *testing.T) {
 			tb.RunAfter("foo"),
 			tb.PipelineTaskTimeout(5*time.Second),
 		),
-		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "step",
 				Image: "myimage",
@@ -136,7 +136,7 @@ func TestPipeline(t *testing.T) {
 				Timeout:  &metav1.Duration{Duration: 5 * time.Second},
 			}, {
 				Name: "foo",
-				TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "step",
 						Image: "myimage",

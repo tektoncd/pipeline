@@ -27,7 +27,7 @@ import (
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -321,7 +321,7 @@ func ResolvePipelineRun(
 			spec = *pt.TaskSpec
 		}
 		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		if err := spec.ConvertUp(ctx, &v1alpha2.TaskSpec{}); err != nil {
+		if err := spec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
 			return nil, err
 		}
 		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)

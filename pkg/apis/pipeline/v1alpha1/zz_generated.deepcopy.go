@@ -22,7 +22,7 @@ package v1alpha1
 
 import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	v1alpha2 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -174,7 +174,7 @@ func (in *ConditionSpec) DeepCopyInto(out *ConditionSpec) {
 	in.Check.DeepCopyInto(&out.Check)
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.ParamSpec, len(*in))
+		*out = make([]v1beta1.ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -202,12 +202,12 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 	*out = *in
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.TaskResource, len(*in))
+		*out = make([]v1beta1.TaskResource, len(*in))
 		copy(*out, *in)
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.ParamSpec, len(*in))
+		*out = make([]v1beta1.ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -235,7 +235,7 @@ func (in *Outputs) DeepCopyInto(out *Outputs) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.TaskResource, len(*in))
+		*out = make([]v1beta1.TaskResource, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -382,7 +382,7 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	*out = *in
 	if in.PipelineRef != nil {
 		in, out := &in.PipelineRef, &out.PipelineRef
-		*out = new(v1alpha2.PipelineRef)
+		*out = new(v1beta1.PipelineRef)
 		**out = **in
 	}
 	if in.PipelineSpec != nil {
@@ -392,21 +392,21 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.PipelineResourceBinding, len(*in))
+		*out = make([]v1beta1.PipelineResourceBinding, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.ServiceAccountNames != nil {
 		in, out := &in.ServiceAccountNames, &out.ServiceAccountNames
-		*out = make([]v1alpha2.PipelineRunSpecServiceAccountName, len(*in))
+		*out = make([]v1beta1.PipelineRunSpecServiceAccountName, len(*in))
 		copy(*out, *in)
 	}
 	if in.Timeout != nil {
@@ -421,7 +421,7 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspaceBinding, len(*in))
+		*out = make([]v1beta1.WorkspaceBinding, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -444,7 +444,7 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 	*out = *in
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.PipelineDeclaredResource, len(*in))
+		*out = make([]v1beta1.PipelineDeclaredResource, len(*in))
 		copy(*out, *in)
 	}
 	if in.Tasks != nil {
@@ -456,14 +456,14 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.ParamSpec, len(*in))
+		*out = make([]v1beta1.ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspacePipelineDeclaration, len(*in))
+		*out = make([]v1beta1.WorkspacePipelineDeclaration, len(*in))
 		copy(*out, *in)
 	}
 	return
@@ -500,7 +500,7 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	*out = *in
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
-		*out = new(v1alpha2.TaskRef)
+		*out = new(v1beta1.TaskRef)
 		**out = **in
 	}
 	if in.TaskSpec != nil {
@@ -510,7 +510,7 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1alpha2.PipelineTaskCondition, len(*in))
+		*out = make([]v1beta1.PipelineTaskCondition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -522,19 +522,19 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(v1alpha2.PipelineTaskResources)
+		*out = new(v1beta1.PipelineTaskResources)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspacePipelineTaskBinding, len(*in))
+		*out = make([]v1beta1.WorkspacePipelineTaskBinding, len(*in))
 		copy(*out, *in)
 	}
 	if in.Timeout != nil {
@@ -670,14 +670,14 @@ func (in *TaskRunInputs) DeepCopyInto(out *TaskRunInputs) {
 	*out = *in
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.TaskResourceBinding, len(*in))
+		*out = make([]v1beta1.TaskResourceBinding, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -733,7 +733,7 @@ func (in *TaskRunOutputs) DeepCopyInto(out *TaskRunOutputs) {
 	*out = *in
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = make([]v1alpha2.TaskResourceBinding, len(*in))
+		*out = make([]v1beta1.TaskResourceBinding, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -756,7 +756,7 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	*out = *in
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
-		*out = new(v1alpha2.TaskRef)
+		*out = new(v1beta1.TaskRef)
 		**out = **in
 	}
 	if in.TaskSpec != nil {
@@ -776,21 +776,21 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
-		*out = make([]v1alpha2.WorkspaceBinding, len(*in))
+		*out = make([]v1beta1.WorkspaceBinding, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
-		*out = make([]v1alpha2.Param, len(*in))
+		*out = make([]v1beta1.Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
-		*out = new(v1alpha2.TaskRunResources)
+		*out = new(v1beta1.TaskRunResources)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Inputs.DeepCopyInto(&out.Inputs)

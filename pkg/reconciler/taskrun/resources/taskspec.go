@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -50,7 +50,7 @@ func GetTaskData(ctx context.Context, taskRun *v1alpha1.TaskRun, getTask GetTask
 		taskSpec = t.TaskSpec()
 		taskSpec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-		if err := taskSpec.ConvertUp(ctx, &v1alpha2.TaskSpec{}); err != nil {
+		if err := taskSpec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
 			return nil, nil, err
 		}
 	case taskRun.Spec.TaskSpec != nil:

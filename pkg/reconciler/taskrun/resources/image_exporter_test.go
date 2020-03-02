@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,11 +41,11 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name: "step1",
 					}}},
-					Resources: &v1alpha2.TaskResources{
+					Resources: &v1beta1.TaskResources{
 						Inputs: []v1alpha1.TaskResource{{
 							ResourceDeclaration: v1alpha1.ResourceDeclaration{
 								Name: "source-image",
@@ -68,7 +68,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Resources: &v1alpha2.TaskRunResources{
+				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
@@ -105,13 +105,13 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name: "step1",
 					}}, {Container: corev1.Container{
 						Name: "step2",
 					}}},
-					Resources: &v1alpha2.TaskResources{
+					Resources: &v1beta1.TaskResources{
 						Inputs: []v1alpha1.TaskResource{{
 							ResourceDeclaration: v1alpha1.ResourceDeclaration{
 								Name: "source-image",
@@ -134,7 +134,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Resources: &v1alpha2.TaskRunResources{
+				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",

@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // GetOutputSteps will add the correct `path` to the output resources for pt
@@ -103,7 +103,7 @@ func WrapSteps(tr *v1alpha1.TaskRunSpec, pt *v1alpha1.PipelineTask, inputs, outp
 		return
 	}
 	if tr.Resources == nil {
-		tr.Resources = &v1alpha2.TaskRunResources{}
+		tr.Resources = &v1beta1.TaskRunResources{}
 	}
 	if pt.Resources != nil {
 		// Add presteps to setup updated input

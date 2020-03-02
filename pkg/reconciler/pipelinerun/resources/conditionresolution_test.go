@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,7 +196,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			tb.ConditionSpecCheck("foo", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "foo",
 					Image: "ubuntu",
@@ -210,7 +210,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			tb.ConditionSpecCheck("", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "condition-check-bar",
 					Image: "ubuntu",
@@ -227,7 +227,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			tb.ConditionParamSpec("img", v1alpha1.ParamTypeString),
 		)),
 		want: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:       "$(inputs.params.name)",
 					Image:      "$(inputs.params.img)",
@@ -258,7 +258,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				)),
 		},
 		want: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "name",
 					Image: "ubuntu",
