@@ -25,7 +25,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
@@ -53,13 +52,6 @@ func main() {
 		Runner:          &realRunner{},
 		PostWriter:      &realPostWriter{},
 		Results:         strings.Split(*results, ","),
-	}
-	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
-	// The result folder should only be created if there are actual results to defined for the entrypoint.
-	if len(e.Results) >= 1 && e.Results[0] != "" {
-		if err := os.MkdirAll(pipeline.DefaultResultPath, 0755); err != nil {
-			log.Fatalf("Error creating the results directory: %v", err)
-		}
 	}
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {

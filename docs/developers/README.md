@@ -281,6 +281,10 @@ status:
 
 Instead of hardcoding the path to the result file, the user can also use a variable. So `/tekton/results/current-date-unix-timestamp` can be replaced with: `$(results.current-date-unix-timestamp.path)`. This is more flexible if the path to result files ever changes.
 
+### Known issues
+
+When using a podTemplate to specify a non-root user for all containers, a task will not be able to modify the contents of the results directory and may fail.
+
 ## How task results can be used in pipeline's tasks
 
 Now that we have tasks that can return a result, the user can refer to a task result in a pipeline by using the syntax
