@@ -192,6 +192,15 @@ func TestPipeline_Validate(t *testing.T) {
 		},
 		failureExpected: true,
 	}, {
+		name: "pipeline spec invalid task name 2",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{Name: "fooTask", TaskRef: &v1beta1.TaskRef{Name: "foo-task"}}},
+			},
+		},
+		failureExpected: true,
+	}, {
 		name: "pipeline spec invalid taskref name",
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},

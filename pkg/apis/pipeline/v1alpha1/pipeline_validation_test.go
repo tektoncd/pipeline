@@ -69,6 +69,12 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "pipeline spec invalid task name 2",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("FooTask", "foo-task"),
+		)),
+		failureExpected: true,
+	}, {
 		name: "pipeline spec invalid taskref name",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "_foo-task"),
@@ -97,13 +103,13 @@ func TestPipeline_Validate(t *testing.T) {
 	}, {
 		name: "pipeline spec invalid taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
+			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
 		)),
 		failureExpected: true,
 	}, {
 		name: "pipeline spec valid taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "foo",
