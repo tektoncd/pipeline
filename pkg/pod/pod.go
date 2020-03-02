@@ -34,6 +34,9 @@ import (
 const (
 	homeDir = "/tekton/home"
 
+	// ResultsDir is the folder used by default to create the results file
+	ResultsDir = "/tekton/results"
+
 	featureFlagConfigMapName        = "feature-flags"
 	featureFlagDisableHomeEnvKey    = "disable-home-env-overwrite"
 	featureFlagDisableWorkingDirKey = "disable-working-directory-overwrite"
@@ -58,12 +61,18 @@ var (
 	}, {
 		Name:      "tekton-internal-home",
 		MountPath: homeDir,
+	}, {
+		Name:      "tekton-internal-results",
+		MountPath: ResultsDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "tekton-internal-home",
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}, {
+		Name:         "tekton-internal-results",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 )
@@ -92,6 +101,11 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	} else if credsInitContainer != nil {
 		initContainers = append(initContainers, *credsInitContainer)
 		volumes = append(volumes, secretsVolumes...)
+	}
+
+	// make tekton results folder writable by any user
+	if makeTektonFolderWritableInit := makeTektonResultsFolderWritable(images.ShellImage, implicitVolumeMounts); makeTektonFolderWritableInit != nil {
+		initContainers = append(initContainers, *makeTektonFolderWritableInit)
 	}
 
 	// Merge step template with steps.
@@ -253,7 +267,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}, nil
 }
 
-// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
+// MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func MakeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun

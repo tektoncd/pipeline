@@ -65,6 +65,14 @@ func TestMakePod(t *testing.T) {
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
+	resultsInit := corev1.Container{
+		Name:         "tekton-results-folder-writable",
+		Image:        images.ShellImage,
+		Command:      []string{"sh"},
+		Args:         []string{"-c", "chmod 777 /tekton/results"},
+		VolumeMounts: implicitVolumeMounts,
+	}
+
 	runtimeClassName := "gvisor"
 	automountServiceAccountToken := false
 	dnsPolicy := corev1.DNSNone
@@ -88,7 +96,7 @@ func TestMakePod(t *testing.T) {
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -141,6 +149,7 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMount),
 				Env:          implicitEnvVars,
 			},
+				resultsInit,
 				placeToolsInit,
 			},
 			Containers: []corev1.Container{{
@@ -196,7 +205,7 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -246,7 +255,7 @@ func TestMakePod(t *testing.T) {
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-a-very-very-long-character-step-name-to-trigger-max-len", // step name trimmed.
 				Image:   "image",
@@ -282,7 +291,7 @@ func TestMakePod(t *testing.T) {
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-ends-with-invalid", // invalid suffix removed.
 				Image:   "image",
@@ -319,14 +328,16 @@ func TestMakePod(t *testing.T) {
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         "working-dir-initializer",
-				Image:        images.ShellImage,
-				Command:      []string{"sh"},
-				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(pipeline.WorkspaceDir, "test"))},
-				WorkingDir:   pipeline.WorkspaceDir,
-				VolumeMounts: implicitVolumeMounts,
-			},
+			InitContainers: []corev1.Container{
+				resultsInit,
+				{
+					Name:         "working-dir-initializer",
+					Image:        images.ShellImage,
+					Command:      []string{"sh"},
+					Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(pipeline.WorkspaceDir, "test"))},
+					WorkingDir:   pipeline.WorkspaceDir,
+					VolumeMounts: implicitVolumeMounts,
+				},
 				placeToolsInit,
 			},
 			Containers: []corev1.Container{{
@@ -371,7 +382,7 @@ func TestMakePod(t *testing.T) {
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -421,20 +432,22 @@ func TestMakePod(t *testing.T) {
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         "place-scripts",
-				Image:        "busybox",
-				Command:      []string{"sh"},
-				TTY:          true,
-				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
-				Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
+			InitContainers: []corev1.Container{
+				resultsInit,
+				{
+					Name:         "place-scripts",
+					Image:        "busybox",
+					Command:      []string{"sh"},
+					TTY:          true,
+					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+					Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'sidecar-script-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
 echo hello from sidecar
 sidecar-script-heredoc-randomly-generated-mz4c7
 `},
-			},
+				},
 				placeToolsInit,
 			},
 			Containers: []corev1.Container{{
@@ -494,7 +507,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			Containers: []corev1.Container{{
 				Name:    "step-unnamed-0",
 				Image:   "image",
@@ -582,12 +595,13 @@ print("Hello from Python")`,
 		}},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:    "place-scripts",
-				Image:   images.ShellImage,
-				Command: []string{"sh"},
-				TTY:     true,
-				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
+			InitContainers: []corev1.Container{
+				resultsInit, {
+					Name:    "place-scripts",
+					Image:   images.ShellImage,
+					Command: []string{"sh"},
+					TTY:     true,
+					Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
@@ -600,13 +614,14 @@ cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
 print("Hello from Python")
 script-heredoc-randomly-generated-78c5n
 `},
-				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
-			}, {
-				Name:         "place-tools",
-				Image:        images.EntrypointImage,
-				Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
-				VolumeMounts: []corev1.VolumeMount{toolsMount},
-			}},
+					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+				},
+				{
+					Name:         "place-tools",
+					Image:        images.EntrypointImage,
+					Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
 				Image:   "image",
@@ -700,7 +715,7 @@ script-heredoc-randomly-generated-78c5n
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{resultsInit, placeToolsInit},
 			SchedulerName:  "there-scheduler",
 			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
 			Containers: []corev1.Container{{

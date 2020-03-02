@@ -5,6 +5,7 @@ wrapping it. In `tektoncd/pipeline` this is used to make sure `Task`'s
 steps are executed in order, or for sidecars.
 
 The following flags are available :
+
 - `-entrypoint`: "original" command to be executed (as
   entrypoint). This will be executed as a sub-process on `entrypoint`
 - `-post_file`: file path to write once the sub-process has
@@ -22,13 +23,13 @@ The following flags are available :
 The following example of usage for `entrypoint`, wait's for
 `/tekton/downward/ready` file to exists and have some content before
 executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/tekton/tools/0` in casse of succes, or
+and will write to `/tekton/tools/0` in case of succes, or
 `/tekton/tools/0.err` in case of failure.
 
-```
+```shell
 entrypoint \
-	-wait_file /tekton/downward/ready \
-	-post_file /tekton/tools/0" \
-	-wait_file_content  \
-	-entrypoint /ko-app/bash -- -args mkdir -p /workspace/git-resource
+ -wait_file /tekton/downward/ready \
+ -post_file /tekton/tools/0" \
+ -wait_file_content  \
+ -entrypoint /ko-app/bash -- -args mkdir -p /workspace/git-resource
 ```
