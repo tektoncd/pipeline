@@ -41,6 +41,7 @@ type GetCondition func(string) (*v1alpha1.Condition, error)
 // exists. ConditionCheck can be nil to represent there being no ConditionCheck (i.e the condition
 // has not been evaluated).
 type ResolvedConditionCheck struct {
+	ConditionRegisterName string
 	PipelineTaskCondition *v1alpha1.PipelineTaskCondition
 	ConditionCheckName    string
 	Condition             *v1alpha1.Condition
