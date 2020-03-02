@@ -138,6 +138,13 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Names cannot be duplicated
 	taskNames := map[string]struct{}{}
 	for i, t := range ps.Tasks {
+		if errs := validation.IsDNS1123Label(t.Name); len(errs) > 0 {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("invalid value %q", t.Name),
+				Paths:   []string{fmt.Sprintf("spec.tasks[%d].name", i)},
+				Details: "Pipeline Task name must be a valid DNS Label. For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+			}
+		}
 		// can't have both taskRef and taskSpec at the same time
 		if (t.TaskRef != nil && t.TaskRef.Name != "") && t.TaskSpec != nil {
 			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.tasks[%d].taskRef", i), fmt.Sprintf("spec.tasks[%d].taskSpec", i))
