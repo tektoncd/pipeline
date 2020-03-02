@@ -1,0 +1,127 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: check-git-pipeline-resource
+spec:
+  params:
+    - name: "path"
+  resources:
+    - name: git-repo
+      type: git
+      optional: true
+  check:
+    image: alpine
+    script: 'test -f $(resources.git-repo.path)/$(params.path)'
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: check-image-pipeline-resource
+spec:
+  resources:
+    - name: built-image
+      type: image
+      optional: true
+  check:
+    image: alpine
+    script: 'test ! -z $(resources.built-image.url)'
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-an-image
+spec:
+  params:
+  - name: DOCKERFILE
+    description: The path to the dockerfile to build from GitHub Repo
+    default: "Dockerfile"
+  resources:
+    inputs:
+      - name: git-repo
+        type: git
+        optional: true
+    outputs:
+      - name: built-image
+        type: image
+        optional: true
+  steps:
+    - name: build-an-image
+      image: "gcr.io/kaniko-project/executor:latest"
+      command:
+        - /kaniko/executor
+      args:
+        - --dockerfile=$(params.DOCKERFILE)
+        - --destination=$(resources.outputs.built-image.url)
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: demo-pipeline-to-build-an-image
+spec:
+  resources:
+    - name: source-repo
+      type: git
+      optional: true
+    - name: web-image
+      type: image
+      optional: true
+  params:
+    - name: "path"
+      default: "README.md"
+  tasks:
+    - name: build-an-image
+      taskRef:
+        name: build-an-image
+      conditions:
+        - conditionRef: "check-git-pipeline-resource"
+          params:
+            - name: "path"
+              value: "$(params.path)"
+          resources:
+            - name: git-repo
+              resource: source-repo
+        - conditionRef: "check-image-pipeline-resource"
+          resources:
+            - name: built-image
+              resource: web-image
+      resources:
+        inputs:
+          - name: git-repo
+            resource: source-repo
+        outputs:
+          - name: built-image
+            resource: web-image
+
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-to-build-an-image-without-resources
+spec:
+  pipelineRef:
+    name: demo-pipeline-to-build-an-image
+  serviceAccountName: 'default'
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-to-build-an-image-without-image-resource
+spec:
+  pipelineRef:
+    name: demo-pipeline-to-build-an-image
+  serviceAccountName: 'default'
+  resources:
+    - name: source-repo
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/tektoncd/pipeline
+---

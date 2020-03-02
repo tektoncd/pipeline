@@ -21,7 +21,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,7 +30,7 @@ var _ apis.Convertible = (*ClusterTask)(nil)
 // ConvertUp implements api.Convertible
 func (source *ClusterTask) ConvertUp(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
-	case *v1alpha2.ClusterTask:
+	case *v1beta1.ClusterTask:
 		sink.ObjectMeta = source.ObjectMeta
 		return source.Spec.ConvertUp(ctx, &sink.Spec)
 	default:
@@ -41,7 +41,7 @@ func (source *ClusterTask) ConvertUp(ctx context.Context, obj apis.Convertible) 
 // ConvertDown implements api.Convertible
 func (sink *ClusterTask) ConvertDown(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
-	case *v1alpha2.ClusterTask:
+	case *v1beta1.ClusterTask:
 		sink.ObjectMeta = source.ObjectMeta
 		return sink.Spec.ConvertDown(ctx, &source.Spec)
 	default:

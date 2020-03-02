@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +41,7 @@ func TestPipelineConversionBadType(t *testing.T) {
 }
 
 func TestPipelineConversion(t *testing.T) {
-	versions := []apis.Convertible{&v1alpha2.Pipeline{}}
+	versions := []apis.Convertible{&v1beta1.Pipeline{}}
 
 	tests := []struct {
 		name    string
@@ -65,7 +65,7 @@ func TestPipelineConversion(t *testing.T) {
 				}},
 				Params: []ParamSpec{{
 					Name:        "param-1",
-					Type:        v1alpha2.ParamTypeString,
+					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
 				}},
 				Workspaces: []WorkspacePipelineDeclaration{{
@@ -82,18 +82,18 @@ func TestPipelineConversion(t *testing.T) {
 					Retries:  10,
 					RunAfter: []string{"task1"},
 					Resources: &PipelineTaskResources{
-						Inputs: []v1alpha2.PipelineTaskInputResource{{
+						Inputs: []v1beta1.PipelineTaskInputResource{{
 							Name:     "input1",
 							Resource: "resource1",
 						}},
-						Outputs: []v1alpha2.PipelineTaskOutputResource{{
+						Outputs: []v1beta1.PipelineTaskOutputResource{{
 							Name:     "output1",
 							Resource: "resource2",
 						}},
 					},
 					Params: []Param{{
 						Name:  "param1",
-						Value: v1alpha2.ArrayOrString{StringVal: "str", Type: v1alpha2.ParamTypeString},
+						Value: v1beta1.ArrayOrString{StringVal: "str", Type: v1beta1.ParamTypeString},
 					}},
 					Workspaces: []WorkspacePipelineTaskBinding{{
 						Name:      "w1",
@@ -101,8 +101,8 @@ func TestPipelineConversion(t *testing.T) {
 					}},
 				}, {
 					Name: "task2",
-					TaskSpec: &TaskSpec{TaskSpec: v1alpha2.TaskSpec{
-						Steps: []v1alpha2.Step{{Container: corev1.Container{
+					TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{Container: corev1.Container{
 							Image: "foo",
 						}}},
 					}},
@@ -121,18 +121,18 @@ func TestPipelineConversion(t *testing.T) {
 			Spec: PipelineSpec{
 				Params: []ParamSpec{{
 					Name:        "param-1",
-					Type:        v1alpha2.ParamTypeString,
+					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
 				}},
 				Tasks: []PipelineTask{{
 					Name: "task2",
 					TaskSpec: &TaskSpec{
-						TaskSpec: v1alpha2.TaskSpec{
-							Steps: []v1alpha2.Step{{Container: corev1.Container{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{Container: corev1.Container{
 								Image: "foo",
 							}}},
-							Resources: &v1alpha2.TaskResources{
-								Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+							Resources: &v1beta1.TaskResources{
+								Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 									Name: "input-1",
 									Type: resource.PipelineResourceTypeGit,
 								}}},

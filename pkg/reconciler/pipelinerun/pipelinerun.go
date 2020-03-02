@@ -27,7 +27,7 @@ import (
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -236,8 +236,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	if err := pr.ConvertUp(ctx, &v1alpha2.PipelineRun{}); err != nil {
-		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+	if err := pr.ConvertUp(ctx, &v1beta1.PipelineRun{}); err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
 			return nil
 		}
@@ -247,7 +247,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	getPipelineFunc := c.getPipelineFunc(pr)
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
-		if ce, ok := err.(*v1alpha2.CannotConvertError); ok {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
 			return nil
 		}
@@ -733,7 +733,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			TaskSpec:           taskSpec,
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Params:             rcc.PipelineTaskCondition.Params,
-			Resources: &v1alpha2.TaskRunResources{
+			Resources: &v1beta1.TaskRunResources{
 				Inputs: rcc.ToTaskResourceBindings(),
 			},
 			Timeout:     getTaskRunTimeout(pr, rprt),

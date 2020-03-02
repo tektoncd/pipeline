@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -79,7 +79,7 @@ func TestMakePod(t *testing.T) {
 		wantAnnotations map[string]string
 	}{{
 		desc: "simple",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "name",
 				Image:   "image",
@@ -115,7 +115,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "with service account",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "name",
 				Image:   "image",
@@ -169,7 +169,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "with-pod-template",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "name",
 				Image:   "image",
@@ -237,7 +237,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "very long step name",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
 				Image:   "image",
@@ -273,7 +273,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "step name ends with non alphanumeric",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "ends-with-invalid-%%__$$",
 				Image:   "image",
@@ -309,7 +309,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "workingDir in workspace",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "name",
 				Image:      "image",
@@ -355,7 +355,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "sidecar container",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "primary-name",
 				Image:   "primary-image",
@@ -404,7 +404,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "sidecar container with script",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "primary-name",
 				Image:   "primary-image",
@@ -471,7 +471,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 		},
 	}, {
 		desc: "resource request",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Image:   "image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
@@ -553,7 +553,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 		},
 	}, {
 		desc: "step with script and stepTemplate",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				Env:  []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 				Args: []string{"template", "args"},
@@ -681,7 +681,7 @@ script-heredoc-randomly-generated-78c5n
 	}, {
 		desc: "using another scheduler",
 		ts: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{
 					{
 						Container: corev1.Container{

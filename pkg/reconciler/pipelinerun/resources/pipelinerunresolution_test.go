@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -93,7 +93,7 @@ var task = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "task",
 	},
-	Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}},
@@ -104,7 +104,7 @@ var clustertask = &v1alpha1.ClusterTask{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "clustertask",
 	},
-	Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}},
@@ -459,7 +459,7 @@ var taskWithOptionalResourcesDeprecated = &v1alpha1.Task{
 		Name: "task",
 	},
 	Spec: v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name: "step1",
 			}}},
@@ -492,12 +492,12 @@ var taskWithOptionalResources = &v1alpha1.Task{
 		Name: "task",
 	},
 	Spec: v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name: "step1",
 			}}},
-			Resources: &v1alpha2.TaskResources{
-				Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
 					Name:     "optional-input",
 					Type:     "git",
 					Optional: true,
@@ -506,7 +506,7 @@ var taskWithOptionalResources = &v1alpha1.Task{
 					Type:     "git",
 					Optional: false,
 				}}},
-				Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
 					Name:     "optional-output",
 					Type:     "git",
 					Optional: true,
@@ -1187,7 +1187,7 @@ func TestResolvePipelineRun(t *testing.T) {
 			tb.PipelineTaskOutputResource("output1", "git-resource"),
 		),
 		tb.PipelineTask("mytask4", "",
-			tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+			tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
 				}}},

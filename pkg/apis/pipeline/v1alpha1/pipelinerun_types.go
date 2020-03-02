@@ -22,7 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -90,37 +90,37 @@ type PipelineRunSpec struct {
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
-type PipelineRunSpecStatus = v1alpha2.PipelineRunSpecStatus
+type PipelineRunSpecStatus = v1beta1.PipelineRunSpecStatus
 
 const (
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
-	PipelineRunSpecStatusCancelled = v1alpha2.PipelineRunSpecStatusCancelled
+	PipelineRunSpecStatusCancelled = v1beta1.PipelineRunSpecStatusCancelled
 )
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
-type PipelineResourceRef = v1alpha2.PipelineResourceRef
+type PipelineResourceRef = v1beta1.PipelineResourceRef
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type PipelineRef = v1alpha2.PipelineRef
+type PipelineRef = v1beta1.PipelineRef
 
 // PipelineRunStatus defines the observed state of PipelineRun
-type PipelineRunStatus = v1alpha2.PipelineRunStatus
+type PipelineRunStatus = v1beta1.PipelineRunStatus
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
-type PipelineRunStatusFields = v1alpha2.PipelineRunStatusFields
+type PipelineRunStatusFields = v1beta1.PipelineRunStatusFields
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
-type PipelineRunTaskRunStatus = v1alpha2.PipelineRunTaskRunStatus
+type PipelineRunTaskRunStatus = v1beta1.PipelineRunTaskRunStatus
 
-type PipelineRunConditionCheckStatus = v1alpha2.PipelineRunConditionCheckStatus
+type PipelineRunConditionCheckStatus = v1beta1.PipelineRunConditionCheckStatus
 
 // PipelineRunSpecServiceAccountName can be used to configure specific
 // ServiceAccountName for a concrete Task
-type PipelineRunSpecServiceAccountName = v1alpha2.PipelineRunSpecServiceAccountName
+type PipelineRunSpecServiceAccountName = v1beta1.PipelineRunSpecServiceAccountName
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -135,7 +135,7 @@ type PipelineRunList struct {
 // PipelineTaskRun reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.
-type PipelineTaskRun = v1alpha2.PipelineTaskRun
+type PipelineTaskRun = v1beta1.PipelineTaskRun
 
 // GetTaskRunRef for pipelinerun
 func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {

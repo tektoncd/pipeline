@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: clustertask-with-optional-resources
+spec:
+  params:
+  - name: filename
+    type: string
+    default: "README.md"
+  resources:
+    inputs:
+      - name: git-repo
+        type: git
+        optional: true
+    outputs:
+      - name: optionalimage
+        type: image
+        optional: true
+  steps:
+    - name: task-echo-success
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        echo "success"
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: clustertask-without-resources
+spec:
+  taskRef:
+    name: clustertask-with-optional-resources
+    kind: ClusterTask

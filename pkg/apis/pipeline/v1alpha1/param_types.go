@@ -17,33 +17,33 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
 // resources). Parameter values are provided by users as inputs on a TaskRun
 // or PipelineRun.
-type ParamSpec = v1alpha2.ParamSpec
+type ParamSpec = v1beta1.ParamSpec
 
 // Param declares an ArrayOrString to use for the parameter called name.
-type Param = v1alpha2.Param
+type Param = v1beta1.Param
 
 // ParamType indicates the type of an input parameter;
 // Used to distinguish between a single string and an array of strings.
-type ParamType = v1alpha2.ParamType
+type ParamType = v1beta1.ParamType
 
 // Valid ParamTypes:
 const (
-	ParamTypeString ParamType = v1alpha2.ParamTypeString
-	ParamTypeArray  ParamType = v1alpha2.ParamTypeArray
+	ParamTypeString ParamType = v1beta1.ParamTypeString
+	ParamTypeArray  ParamType = v1beta1.ParamTypeArray
 )
 
 // AllParamTypes can be used for ParamType validation.
-var AllParamTypes = v1alpha2.AllParamTypes
+var AllParamTypes = v1beta1.AllParamTypes
 
 // ArrayOrString is modeled after IntOrString in kubernetes/apimachinery:
 
 // ArrayOrString is a type that can hold a single string or string array.
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
-type ArrayOrString = v1alpha2.ArrayOrString
+type ArrayOrString = v1beta1.ArrayOrString

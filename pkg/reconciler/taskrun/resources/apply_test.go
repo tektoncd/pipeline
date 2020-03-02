@@ -22,7 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
@@ -46,7 +46,7 @@ var (
 	}
 
 	simpleTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Sidecars: []v1alpha1.Sidecar{{
 				Container: corev1.Container{
 					Name:  "foo",
@@ -160,7 +160,7 @@ var (
 					},
 				},
 			}},
-			Resources: &v1alpha2.TaskResources{
+			Resources: &v1beta1.TaskResources{
 				Inputs: []v1alpha1.TaskResource{{
 					ResourceDeclaration: v1alpha1.ResourceDeclaration{
 						Name: "workspace",
@@ -182,13 +182,13 @@ var (
 	}
 
 	gcsTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "foobar",
 				Image: "someImage",
 				Args:  []string{"$(outputs.resources.bucket.path)"},
 			}}},
-			Resources: &v1alpha2.TaskResources{
+			Resources: &v1beta1.TaskResources{
 				Outputs: []v1alpha1.TaskResource{{
 					ResourceDeclaration: v1alpha1.ResourceDeclaration{
 						Name: "bucket",
@@ -198,7 +198,7 @@ var (
 		},
 	}
 
-	arrayParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	arrayParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -210,7 +210,7 @@ var (
 		}}},
 	}}
 
-	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -222,7 +222,7 @@ var (
 		}}},
 	}}
 
-	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -234,7 +234,7 @@ var (
 		}}},
 	}}
 
-	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "image-$(inputs.params.string-param2)",
@@ -604,7 +604,7 @@ func TestApplyResources(t *testing.T) {
 
 func TestApplyWorkspaces(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
@@ -715,7 +715,7 @@ func TestApplyWorkspaces(t *testing.T) {
 
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Results: []v1alpha1.TaskResult{{
 			Name:        "current-date-unix-timestamp",
 			Description: "The current date in unix timestamp format",

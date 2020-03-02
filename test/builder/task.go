@@ -21,7 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +38,7 @@ type ClusterTaskOp func(*v1alpha1.ClusterTask)
 type TaskSpecOp func(*v1alpha1.TaskSpec)
 
 // TaskResourcesOp is an operation which modify a TaskResources struct.
-type TaskResourcesOp func(*v1alpha2.TaskResources)
+type TaskResourcesOp func(*v1beta1.TaskResources)
 
 // InputsOp is an operation which modify an Inputs struct.
 type InputsOp func(*v1alpha1.Inputs)
@@ -53,7 +53,7 @@ type TaskRunOp func(*v1alpha1.TaskRun)
 type TaskRunSpecOp func(*v1alpha1.TaskRunSpec)
 
 // TaskRunResourcesOp is an operation which modify a TaskRunResources struct.
-type TaskRunResourcesOp func(*v1alpha2.TaskRunResources)
+type TaskRunResourcesOp func(*v1beta1.TaskRunResources)
 
 // TaskResourceOp is an operation which modify a TaskResource struct.
 type TaskResourceOp func(*v1alpha1.TaskResource)
@@ -232,7 +232,7 @@ func TaskParam(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) TaskSpecO
 // TaskResources sets the Resources to the TaskSpec
 func TaskResources(ops ...TaskResourcesOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
-		r := &v1alpha2.TaskResources{}
+		r := &v1beta1.TaskResources{}
 		for _, op := range ops {
 			op(r)
 		}
@@ -242,8 +242,8 @@ func TaskResources(ops ...TaskResourcesOp) TaskSpecOp {
 
 // TaskResourcesInput adds a TaskResource as Inputs to the TaskResources
 func TaskResourcesInput(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) TaskResourcesOp {
-	return func(r *v1alpha2.TaskResources) {
-		i := &v1alpha2.TaskResource{
+	return func(r *v1beta1.TaskResources) {
+		i := &v1beta1.TaskResource{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: name,
 				Type: resourceType,
@@ -258,8 +258,8 @@ func TaskResourcesInput(name string, resourceType v1alpha1.PipelineResourceType,
 
 // TaskResourcesOutput adds a TaskResource as Outputs to the TaskResources
 func TaskResourcesOutput(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) TaskResourcesOp {
-	return func(r *v1alpha2.TaskResources) {
-		o := &v1alpha2.TaskResource{
+	return func(r *v1beta1.TaskResources) {
+		o := &v1beta1.TaskResource{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: name,
 				Type: resourceType,
@@ -607,7 +607,7 @@ func TaskRunSelfLink(selflink string) TaskRunOp {
 func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		spec := &tr.Spec
-		spec.Resources = &v1alpha2.TaskRunResources{}
+		spec.Resources = &v1beta1.TaskRunResources{}
 		// Set a default timeout
 		spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 		for _, op := range ops {
@@ -689,7 +689,7 @@ func TaskRunParam(name, value string, additionalValues ...string) TaskRunSpecOp 
 // TaskRunResources sets the TaskRunResources to the TaskRunSpec
 func TaskRunResources(ops ...TaskRunResourcesOp) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		r := &v1alpha2.TaskRunResources{}
+		r := &v1beta1.TaskRunResources{}
 		for _, op := range ops {
 			op(r)
 		}
@@ -699,7 +699,7 @@ func TaskRunResources(ops ...TaskRunResourcesOp) TaskRunSpecOp {
 
 // TaskRunResourcesInput adds a TaskRunResource as Inputs to the TaskRunResources
 func TaskRunResourcesInput(name string, ops ...TaskResourceBindingOp) TaskRunResourcesOp {
-	return func(r *v1alpha2.TaskRunResources) {
+	return func(r *v1beta1.TaskRunResources) {
 		binding := &v1alpha1.TaskResourceBinding{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 				Name: name,
@@ -714,7 +714,7 @@ func TaskRunResourcesInput(name string, ops ...TaskResourceBindingOp) TaskRunRes
 
 // TaskRunResourcesOutput adds a TaskRunResource as Outputs to the TaskRunResources
 func TaskRunResourcesOutput(name string, ops ...TaskResourceBindingOp) TaskRunResourcesOp {
-	return func(r *v1alpha2.TaskRunResources) {
+	return func(r *v1beta1.TaskRunResources) {
 		binding := &v1alpha1.TaskResourceBinding{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 				Name: name,

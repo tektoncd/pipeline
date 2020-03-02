@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -322,7 +322,7 @@ func TestTaskSpecValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps:        tt.fields.Steps,
 					StepTemplate: tt.fields.StepTemplate,
 					Workspaces:   tt.fields.Workspaces,
@@ -347,9 +347,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Volumes      []corev1.Volume
 		StepTemplate *corev1.Container
 		Workspaces   []v1alpha1.WorkspaceDeclaration
-		// v1alpha2
-		Params    []v1alpha2.ParamSpec
-		Resources *v1alpha2.TaskResources
+		// v1beta1
+		Params    []v1beta1.ParamSpec
+		Resources *v1beta1.TaskResources
 	}
 	tests := []struct {
 		name          string
@@ -924,17 +924,17 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"workspaces.mountpath"},
 		},
 	}, {
-		name: "v1alpha2: params and deprecated inputs.params",
+		name: "v1beta1: params and deprecated inputs.params",
 		fields: fields{
 			Steps: validSteps,
-			Params: []v1alpha2.ParamSpec{{
+			Params: []v1beta1.ParamSpec{{
 				Name: "param1",
-				Type: v1alpha2.ParamTypeString,
+				Type: v1beta1.ParamTypeString,
 			}},
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.ParamSpec{{
 					Name: "param1",
-					Type: v1alpha2.ParamTypeString,
+					Type: v1beta1.ParamTypeString,
 				}},
 			},
 		},
@@ -943,11 +943,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"inputs.params", "params"},
 		},
 	}, {
-		name: "v1alpha2: resources.inputs and deprecated inputs.resource",
+		name: "v1beta1: resources.inputs and deprecated inputs.resource",
 		fields: fields{
 			Steps: validSteps,
-			Resources: &v1alpha2.TaskResources{
-				Inputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name: "input-1",
 					Type: resource.PipelineResourceTypeGit,
 				}}},
@@ -964,11 +964,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"inputs.resources", "resources.inputs"},
 		},
 	}, {
-		name: "v1alpha2: resources.outputs and deprecated outputs.resource",
+		name: "v1beta1: resources.outputs and deprecated outputs.resource",
 		fields: fields{
 			Steps: validSteps,
-			Resources: &v1alpha2.TaskResources{
-				Outputs: []v1alpha2.TaskResource{{ResourceDeclaration: v1alpha2.ResourceDeclaration{
+			Resources: &v1beta1.TaskResources{
+				Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name: "output-1",
 					Type: resource.PipelineResourceTypeGit,
 				}}},
@@ -988,7 +988,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps:        tt.fields.Steps,
 					Volumes:      tt.fields.Volumes,
 					StepTemplate: tt.fields.StepTemplate,

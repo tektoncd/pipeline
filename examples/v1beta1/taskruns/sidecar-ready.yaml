@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: sidecar-ready-
+spec:
+  taskSpec:
+    sidecars:
+    - name: slow-sidecar
+      image: ubuntu
+      command: ['sleep', 'infinity']
+      # The sidecar takes 5s to report as Ready, even after it starts.  If the
+      # step runs as soon as the sidecar starts, it will fail because
+      # /shared/ready isn't available yet.
+      readinessProbe:
+        exec:
+          command:
+          - sh
+          - -c
+          - sleep 5 && touch /shared/ready
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    steps:
+    - name: check-ready
+      image: ubuntu
+      # The step will only succeed if the sidecar has written this file, which
+      # it does 5s after it starts, before it reports Ready.
+      script: cat /shared/ready
+      volumeMounts:
+      - name: shared
+        mountPath: /shared
+
+    # Sidecars don't have /workspace mounted by default, so we have to define
+    # our own shared volume.
+    volumes:
+    - name: shared
+      emptyDir: {}

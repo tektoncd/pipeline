@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
@@ -41,10 +41,10 @@ type PipelineResourceInterface interface {
 }
 
 // TaskModifier is an interface to be implemented by different PipelineResources
-type TaskModifier = v1alpha2.TaskModifier
+type TaskModifier = v1beta1.TaskModifier
 
 // InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.
-type InternalTaskModifier = v1alpha2.InternalTaskModifier
+type InternalTaskModifier = v1beta1.InternalTaskModifier
 
 func checkStepNotAlreadyAdded(s Step, steps []Step) error {
 	for _, step := range steps {
@@ -100,10 +100,10 @@ func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 
 // PipelineResourceBinding connects a reference to an instance of a PipelineResource
 // with a PipelineResource dependency that the Pipeline has declared
-type PipelineResourceBinding = v1alpha2.PipelineResourceBinding
+type PipelineResourceBinding = v1beta1.PipelineResourceBinding
 
 // PipelineResourceResult used to export the image name and digest as json
-type PipelineResourceResult = v1alpha2.PipelineResourceResult
+type PipelineResourceResult = v1beta1.PipelineResourceResult
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not
-type ResultType = v1alpha2.ResultType
+type ResultType = v1beta1.ResultType
