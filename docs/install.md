@@ -144,7 +144,7 @@ To configure a [persistent volume](https://kubernetes.io/docs/concepts/storage/p
 
 ### Configuring a cloud storage bucket
 
-To configure either an [S3 bucket](https://aws.amazon.com/s3/) or a [GCS storage bucket](https://cloud.google.com/storage/), 
+To configure either an [S3 bucket](https://aws.amazon.com/s3/) or a [GCS bucket](https://cloud.google.com/storage/), 
 use a `ConfigMap` with the name `config-artifact-bucket` and the following attributes:
 
 - `location` - the address of the bucket, for example `gs://mybucket` or `s3://mybucket`.
@@ -165,6 +165,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: tekton-storage
+  namespace: tekton-pipelines
 type: kubernetes.io/opaque
 stringData:
   boto-config: |
@@ -179,12 +180,50 @@ stringData:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-artifact-pvc
+  name: config-artifact-bucket
+  namespace: tekton-pipelines
 data:
   location: s3://mybucket
   bucket.service.account.secret.name: tekton-storage
   bucket.service.account.secret.key: boto-config
   bucket.service.account.field.name: BOTO_CONFIG
+```
+
+And this is an example configuration that uses a GCS bucket:
+
+#### GCS Bucket Example
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tekton-storage
+  namespace: tekton-pipelines
+type: kubernetes.io/opaque
+stringData:
+  gcs-config: |
+    {
+      "type": "service_account",
+      "project_id": "gproject",
+      "private_key_id": "some-key-id",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nME[...]dF=\n-----END PRIVATE KEY-----\n",
+      "client_email": "tekton-storage@gproject.iam.gserviceaccount.com",
+      "client_id": "1234567890",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/tekton-storage%40gproject.iam.gserviceaccount.com"
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-bucket
+  namespace: tekton-pipelines
+data:
+  location: gs://mybucket
+  bucket.service.account.secret.name: tekton-storage
+  bucket.service.account.secret.key: gcs-config
+  bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 ```
 
 ## Customizing basic execution parameters
