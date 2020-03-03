@@ -716,7 +716,7 @@ with a minimum set for container resource requests (i.e. CPU, memory, and epheme
 are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum 
 set for container resource requests instead of requesting 0.
 
-An example `TaskRun` with a LimitRange is available [here](../examples/taskruns/no-ci/limitrange.yaml).
+An example `TaskRun` with a LimitRange is available [here](../examples/v1beta1/taskruns/no-ci/limitrange.yaml).
 
 ---
 
