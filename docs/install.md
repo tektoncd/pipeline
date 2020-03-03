@@ -16,7 +16,6 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
    * **[Official](https://github.com/tektoncd/pipeline/releases)** - install this unless you have
      a specific reason to go for a different release.
-
    * **[Nightly](../tekton/README.md#nightly-releases)** - may contain bugs,
      install at your own risk. Nightlies live at `gcr.io/tekton-nightly`.
    * **[`HEAD`]** - this is the bleeding edge. It contains unreleased code that may result
