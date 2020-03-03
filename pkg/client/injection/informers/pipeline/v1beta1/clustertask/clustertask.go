@@ -19,7 +19,7 @@ limitations under the License.
 package clustertask
 
 import (
-	"context"
+	context "context"
 
 	v1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory"

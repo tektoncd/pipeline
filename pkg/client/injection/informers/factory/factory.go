@@ -19,7 +19,7 @@ limitations under the License.
 package factory
 
 import (
-	"context"
+	context "context"
 
 	externalversions "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	client "github.com/tektoncd/pipeline/pkg/client/injection/client"

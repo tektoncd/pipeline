@@ -19,7 +19,7 @@ limitations under the License.
 package pipelineresource
 
 import (
-	"context"
+	context "context"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/informers/externalversions/resource/v1alpha1"
 	factory "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/factory"
