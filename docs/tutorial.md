@@ -211,7 +211,7 @@ secrets:
   - name: regcred
 ```
 
-Once everything is in place, apply your YAML file to start using the `ServiceAccount` in your build:
+Save the `ServiceAccount` definition above to a file and apply the YAML file to make the `ServiceAccount` available for your `TaskRun`:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
