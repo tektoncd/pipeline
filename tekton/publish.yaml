@@ -46,7 +46,7 @@ spec:
   steps:
 
   - name: build-push-base-images
-    image: gcr.io/kaniko-project/executor:v0.15.0
+    image: gcr.io/kaniko-project/executor:v0.17.1
     command:
     - /kaniko/executor
     args:
