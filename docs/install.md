@@ -1,24 +1,35 @@
 # Installing Tekton Pipelines
 
-Use this page to add the component to an existing Kubernetes cluster.
+This guide explains how to install Tekton Pipelines. It covers the following topics:
 
-* [Pre-requisites](#pre-requisites)
-* [Versions](#versions)
-* [Installing Tekton Pipelines](#installing-tekton-pipelines)
-* [Installing Tekton PIpelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
+* [Before you begin](#before-you-begin)
+* [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
+* [Installing Tekton Pipelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
+* [Configuring artifact storage](#configuring-artifact-storage)
+* [Customizing basic execution parameters](#configuring-basic-execution-parameters)
+* [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
+* [Next steps](#next-steps)
 
-## Pre-requisites
+## Before you begin
 
-1. A Kubernetes cluster version 1.15 or later (_if you don't have an existing
-   cluster_):
+1. Choose the version of Tekton Pipelines you want to install. You have the following options:
+
+   * **[Official](https://github.com/tektoncd/pipeline/releases)** - install this unless you have
+     a specific reason to go for a different release.
+   * **[Nightly](../tekton/README.md#nightly-releases)** - may contain bugs,
+     install at your own risk. Nightlies live at `gcr.io/tekton-nightly`.
+   * **[`HEAD`]** - this is the bleeding edge. It contains unreleased code that may result
+     in unpredictable behavior. To get started, see the [development guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md) instead of this page.
+
+2. If you don't have an existing Kubernetes cluster, set one up, version 1.15 or later:
 
    ```bash
-   # Example cluster creation command on GKE
+   #Example command for creating a cluster on GKE
    gcloud container clusters create $CLUSTER_NAME \
      --zone=$CLUSTER_ZONE
    ```
 
-2. Grant cluster-admin permissions to the current user:
+3. Grant `cluster-admin` permissions to the current user:
 
    ```bash
    kubectl create clusterrolebinding cluster-admin-binding \
@@ -26,74 +37,50 @@ Use this page to add the component to an existing Kubernetes cluster.
    --user=$(gcloud config get-value core/account)
    ```
 
-   _See
-   [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
-   for more information_.
+   See [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
+   for more information.
 
-## Versions
+## Installing Tekton Pipelines on Kubernetes
 
-The versions of Tekton Pipelines available are:
+To install Tekton Pipelines on a Kubernetes cluster:
 
-* [Officially released versions](https://github.com/tektoncd/pipeline/releases), e.g. `v0.10.0`
-* [Nightly releases](../tekton/README.md#nightly-releases) are
-  published every night to `gcr.io/tekton-nightly`
-* `HEAD` - To install the most recent, unreleased code in the repo see
-  [the development
-  guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md)
-
-## Installing Tekton Pipelines
-
-To add the Tekton Pipelines component to an existing cluster:
-
-1. Run the
-   [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply)
-   command to install [Tekton Pipelines](https://github.com/tektoncd/pipeline)
-   and its dependencies:
+1. Run the following command to install Tekton Pipelines and its dependencies:
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
-
-   _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
-   https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.)_
-
-   If the container runtime your kubernetes system is does not support
-   `image-reference:tag@digest` (like `cri-o`, used in OpenShift 4.x),
-   you can use the `release.notags.yaml` instead.
+   You can install a specific release using `previous/$VERSION_NUMBER`.
+   For example, https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.
+   
+   If your container runtime does not support `image-reference:tag@digest`
+   (for example, like `cri-o` used in OpenShift 4.x), use `release.notags.yaml` instead:
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
 
-1. Run the
-   [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
-   command to monitor the Tekton Pipelines components until all of the
-   components show a `STATUS` of `Running`:
+1. Monitor the installation using the following command until all components show a `Running` status:
 
    ```bash
-   kubectl get pods --namespace tekton-pipelines
+   kubectl get pods --namespace tekton-pipelines --watch
    ```
 
-   Tip: Instead of running the `kubectl get` command multiple times, you can
-   append the `--watch` flag to view the component's status updates in real
-   time. Use CTRL + C to exit watch mode.
+   **Note:** Hit CTRL+C to stop monitoring.
 
-You are now ready to create and run Tekton Pipelines:
+Congratulations! You have successfully installed Tekton Pipelines on your Kubernetes cluster. Next, see the following topics:
 
-- See [Tekton Pipeline tutorial](./tutorial.md) to get started.
-- Look at the
-  [examples](https://github.com/tektoncd/pipeline/tree/master/examples)
+* [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
+* [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
 
 ### Installing Tekton Pipelines on OpenShift/MiniShift
 
-The `tekton-pipelines-controller` service account needs the `anyuid` security
-context constraint in order to run the webhook pod.
-
-_See
+To install Tekton Pipelines on OpenShift/MiniShift, you must first apply the `anyuid` security
+context constraint to the `tekton-pipelines-controller` service account. This is required to run the webhook Pod.
+See
 [Security Context Constraints](https://docs.openshift.com/container-platform/3.11/admin_guide/manage_scc.html)
-for more information_
+for more information.
 
-1. First, login as a user with `cluster-admin` privileges. The following example
+1. Log on as a user with `cluster-admin` privileges. The following example
    uses the default `system:admin` user (`admin:admin` for MiniShift):
 
    ```bash
@@ -101,67 +88,78 @@ for more information_
    oc login -u system:admin
    ```
 
-1. Run the following commands to set up the project/namespace, and to install
-   Tekton Pipelines:
+1. Set up the project and name space:
 
    ```bash
    oc new-project tekton-pipelines
    oc adm policy add-scc-to-user anyuid -z tekton-pipelines-controller
    oc apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
+1. Install Tekton Pipelines:
 
-   _See
-   [here](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)
-   for an overview of the `oc` command-line tool for OpenShift._
+   ```bash
+   oc apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
+   ```
+   See the
+   [OpenShift CLI documentation](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)
+   for more inforomation on the `oc` command.
 
-1. Run the `oc get` command to monitor the Tekton Pipelines components until all
-   of the components show a `STATUS` of `Running`:
+1. Monitor the installation using the following command until all components show a `Running` status:
 
    ```bash
    oc get pods --namespace tekton-pipelines --watch
    ```
+   
+   **Note:** Hit CTRL + C to stop monitoring.
 
-## Configuring Tekton Pipelines
+Congratulations! You have successfully installed Tekton Pipelines on your OpenShift/MiniShift environment. Next, see the following topics:
 
-### How are resources shared between tasks
+* [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
+* [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
 
-Pipelines need a way to share `PipelineResources` between tasks. The options are a
-[Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/),
-an [S3 Bucket](https://aws.amazon.com/s3/)
-or a [GCS Bucket](https://cloud.google.com/storage/)
+## Configuring artifact storage
 
-The PVC option can be configured using a ConfigMap with the name
-`config-artifact-pvc` and the following attributes:
+`Tasks` in Tekton Pipelines need to ingest inputs from and store outputs to one or more common locations.
+ You can use one of the following solutions to set up resource storage for Tekton Pipelines:
 
-- `size`: the size of the volume (5Gi by default)
-- `storageClassName`: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
+  * [A persistent volume](#configuring-a-persistent-volume)
+  * [A cloud storage bucket](#configuring-a-cloud-storage-bucket)
 
-The GCS storage bucket or the S3 bucket can be configured using a ConfigMap with the name
-`config-artifact-bucket` with the following attributes:
+**Note:** Inputs and output locations for `Tasks` are defined via [`PipelineResources`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md).
 
-- `location`: the address of the bucket (for example gs://mybucket or s3://mybucket)
-- `bucket.service.account.secret.name`: the name of the secret that will contain
-  the credentials for the service account with access to the bucket
-- `bucket.service.account.secret.key`: the key in the secret with the required
-  service account json.
-- The bucket is recommended to be configured with a retention policy after which
-  files will be deleted.
-- `bucket.service.account.field.name`: the name of the environment variable to use when specifying the
+Either option provides the same functionality to Tekton Pipelines. Choose the option that
+best suits your business needs. For example:
+
+ - In some environments, creating a persistent volume could be slower than transferring files to/from a cloud storage bucket. 
+ - If the cluster is running in multiple zones, accessing a persistent volume could be unreliable. 
+
+### Configuring a persistent volume
+
+To configure a [persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/), use a `ConfigMap` with the name `config-artifact-pvc` and the following attributes:
+
+- `size`: the size of the volume. Default is 5GiB.
+- `storageClassName`: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume. The possible values depend on the cluster configuration and the underlying infrastructure provider. Default is the default storage class.
+
+### Configuring a cloud storage bucket
+
+To configure either an [S3 bucket](https://aws.amazon.com/s3/) or a [GCS bucket](https://cloud.google.com/storage/), 
+use a `ConfigMap` with the name `config-artifact-bucket` and the following attributes:
+
+- `location` - the address of the bucket, for example `gs://mybucket` or `s3://mybucket`.
+- `bucket.service.account.secret.name` - the name of the secret containing the credentials for the service account with access to the bucket.
+- `bucket.service.account.secret.key` - the key in the secret with the required
+  service account JSON file.
+- `bucket.service.account.field.name` - the name of the environment variable to use when specifying the
   secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
+  
+**Important:** Configure your bucket's retention policy to delete all files after your `Tasks` finish running.
 
-Both options provide the same functionality to the pipeline. The choice is based
-on the infrastructure used, for example in some Kubernetes platforms, the
-creation of a persistent volume could be slower than uploading/downloading files
-to a bucket, or if the the cluster is running in multiple zones, the access to
-the persistent volume can fail.
+**Note:** You can only use an S3 bucket located in the `us-east-1` region. This is a limitation of [`gsutil`](https://cloud.google.com/storage/docs/gsutil) running a `boto` configuration behind the scenes to access the S3 bucket.
 
-#### S3 Bucket Example
 
-*Note:* When using an S3 bucket, there is a restriction that the bucket is located in the us-east-1 region.
-This is a limitation coming from using [gsutil](https://cloud.google.com/storage/docs/gsutil) with a boto configuration
-behind the scene to access the S3 bucket.
+#### Example configuration for an S3 bucket
 
-A typical configuration to use an S3 bucket is available below :
+Below is an example configuration that uses an S3 bucket:
 
 ```yaml
 apiVersion: v1
@@ -192,7 +190,10 @@ data:
   bucket.service.account.field.name: BOTO_CONFIG
 ```
 
-#### GCS Bucket Example
+#### Example configuration for a GCS bucket
+
+Below is an example configuration that uses a GCS bucket:
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -227,19 +228,17 @@ data:
   bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 ```
 
-### Overriding default ServiceAccount, Timeout or PodTemplate used for TaskRun and PipelineRun
+## Customizing basic execution parameters
 
-The ConfigMap `config-defaults` can be used to override default values.
-You can override the default service account, the default timeout, and the
-default pod template applied to `TaskRun` and `PipelineRun`.
+You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.
 
-The example below overrides the following :
-- the default service account (`default`) to `tekton`
-- the default timeout (60 minutes) to 20 minutes
-- the default pod template to include a node selector to control the node where the pod will be scheduled by default
-(see [here](./taskruns.md#pod-template) or [here](./pipelineruns.md#pod-template) for more infos on pod templates)
-- the default `app.kuberrnetes.io/managed-by` label applied to all Pods created
-  to execute `TaskRun`s.
+The example below customizes the following:
+
+- the default service account from `default` to `tekton`.
+- the default timeout from 60 minutes to 20 minutes.
+- the default `app.kuberrnetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
+- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. 
+  For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#pod-template).
 
 ```yaml
 apiVersion: v1
@@ -255,43 +254,24 @@ data:
   default-managed-by-label-value: "my-tekton-installation"
 ```
 
-*NOTE:* The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
-file contains the keys that can be overriden and their default values.
+**Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)
+file lists the keys you can customize along with their default values.
 
-### Turning On or Off Features of the Pipelines Controller
+### Customizing the Pipelines Controller behavior
 
-The ConfigMap `feature-flags` can be used to turn on or off specific features
-of the Pipelines Controller.
+To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` as follows:
 
-Supported flags:
+- `disable-home-env-overwrite` - set this flag to `true` to prevent Tekton
+from overriding the `$HOME` environment variable for the containers executing your `Steps`. 
+The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
 
-- `disable-home-env-overwrite` - Setting this flag to "true" will prevent Tekton
-from overwriting Step containers' `$HOME` environment variable. The default
-value is "false" and so the default behaviour is for `$HOME` to be overwritten by
-Tekton with `/tekton/home`. This default is very likely to change in an upcoming
-release. For further reference see https://github.com/tektoncd/pipeline/issues/2013.
+- `disable-working-directory-overwrite` - set this flag to "true" to prevent Tekton
+from overriding the working directory for the containers executing your `Steps`.
+The default value is `false`, which causes Tekton to override the working directory
+for each `Step` that does not have its working directory explicitly set with `/workspace`.
+For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/1836).
 
-Here is an example of the `feature-flags` ConfigMap with `disable-home-env-overwrite`
-flipped on:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: feature-flags
-data:
-  disable-home-env-overwrite: "true" # Tekton will not overwrite $HOME in Steps.
-```
-
-- `disable-working-directory-overwrite` - Setting this flag to "true" will prevent Tekton
-from overwriting Step containers' working directory. The default
-value is "false" and so the default behaviour is for the working directory to be
-overwritten by Tekton with `/workspace` if the working directory is not specified explicitly
-for the step container. This default is very likely to change in an upcoming
-release. For further reference see https://github.com/tektoncd/pipeline/issues/1836.
-
-Here is an example of the `feature-flags` ConfigMap with `disable-working-directory-overwrite`
-flipped on:
+For example:
 
 ```yaml
 apiVersion: v1
@@ -299,14 +279,17 @@ kind: ConfigMap
 metadata:
   name: feature-flags
 data:
-  disable-working-directory-overwrite: "true" # Tekton will not overwrite the working directory in Steps.
+  disable-home-env-overwrite: "true" # Tekton will not override the $HOME variable for individual Steps.
+  disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
 ```
 
-## Custom Releases
+## Creating a custom release of Tekton Pipelines
 
-The [release Task](./../tekton/README.md) can be used for creating a custom
-release of Tekton Pipelines. This can be useful for advanced users that need to
-configure the container images built and used by the Pipelines components.
+You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
+
+## Next steps
+
+To get started with Tekton Pipelines, see the [Tekton Pipelines Tutorial](./tutorial.md) and take a look at our [examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ---
 
