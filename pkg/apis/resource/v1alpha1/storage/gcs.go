@@ -103,7 +103,7 @@ func (s *GCSResource) GetSecretParams() []resourcev1alpha1.SecretParam { return 
 func (s *GCSResource) Replacements() map[string]string {
 	return map[string]string{
 		"name":     s.Name,
-		"type":     string(s.Type),
+		"type":     s.Type,
 		"location": s.Location,
 	}
 }
