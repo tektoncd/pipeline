@@ -52,7 +52,7 @@ To install Tekton Pipelines on a Kubernetes cluster:
    You can install a specific release using `previous/$VERSION_NUMBER`. For example:
    
    ```bash
-    kubectl apply --filename `https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml`.
+    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml
    ```
    
    If your container runtime does not support `image-reference:tag@digest`
