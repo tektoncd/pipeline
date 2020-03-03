@@ -267,10 +267,10 @@ spec:
 You can refer to different examples demonstrating usage of optional resources in
 `Task`, `Condition`, and `Pipeline`:
 
--   [Task](../examples/taskruns/optional-resources.yaml)
--   [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
--   [Condition](../examples/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
--   [Pipeline](../examples/pipelineruns/demo-optional-resources.yaml)
+-   [Task](../examples/v1alpha1/taskruns/optional-resources.yaml)
+-   [Cluster Task](../examples/v1alpha1/taskruns/optional-resources-with-clustertask.yaml)
+-   [Condition](../examples/v1alpha1/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
+-   [Pipeline](../examples/v1alpha1/pipelineruns/demo-optional-resources.yaml)
 
 ## Resource Types
 
