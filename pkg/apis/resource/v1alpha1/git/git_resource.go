@@ -121,7 +121,7 @@ func (s *Resource) GetURL() string {
 func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":      s.Name,
-		"type":      string(s.Type),
+		"type":      s.Type,
 		"url":       s.URL,
 		"revision":  s.Revision,
 		"depth":     strconv.FormatUint(uint64(s.Depth), 10),
