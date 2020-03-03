@@ -454,7 +454,7 @@ spec:
     mountPath: /custom/path/relative/to/root
 ```
 
-_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
+_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
 
 ### Step Template
 
