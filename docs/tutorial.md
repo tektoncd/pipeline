@@ -145,7 +145,7 @@ spec:
 
 In the following example you can see a `Task` definition with the `git` input and `image` output
 introduced earlier. The arguments of the `Task` command support variable substitution so that
-the definition of `Task` is constant and the value of parameters can change in runtime.
+the `Task` definition is constant and the value of parameters can change during runtime.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
