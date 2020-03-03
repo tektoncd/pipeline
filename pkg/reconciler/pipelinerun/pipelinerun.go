@@ -27,6 +27,7 @@ import (
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -235,9 +236,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
+	if err := pr.ConvertUp(ctx, &v1beta1.PipelineRun{}); err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			pr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
+		return err
+	}
+
 	getPipelineFunc := c.getPipelineFunc(pr)
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(pr, getPipelineFunc)
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			pr.Status.MarkResourceNotConvertible(ce)
+			return nil
+		}
 		c.Logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -345,7 +358,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
 
-	pipelineState, err := resources.ResolvePipelineRun(
+	pipelineState, err := resources.ResolvePipelineRun(ctx,
 		*pr,
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
@@ -428,7 +441,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
 
-	rprts := pipelineState.GetNextTasks(candidateTasks)
+	nextRprts := pipelineState.GetNextTasks(candidateTasks)
+	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
+	if err != nil {
+		c.Logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedValidation,
+			Message: err.Error(),
+		})
+		return nil
+	}
+	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
 
 	var as artifacts.ArtifactStorageInterface
 
@@ -437,7 +462,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
-	for _, rprt := range rprts {
+	for _, rprt := range nextRprts {
 		if rprt == nil {
 			continue
 		}
@@ -556,9 +581,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Annotations:     getTaskrunAnnotations(pr),
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: rprt.PipelineTask.Params,
-			},
+			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Timeout:            getTaskRunTimeout(pr, rprt),
 			PodTemplate:        pr.Spec.PodTemplate,
@@ -721,9 +744,9 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec:           taskSpec,
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
-			Inputs: v1alpha1.TaskRunInputs{
-				Params:    rcc.PipelineTaskCondition.Params,
-				Resources: rcc.ToTaskResourceBindings(),
+			Params:             rcc.PipelineTaskCondition.Params,
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: rcc.ToTaskResourceBindings(),
 			},
 			Timeout:     getTaskRunTimeout(pr, rprt),
 			PodTemplate: pr.Spec.PodTemplate,

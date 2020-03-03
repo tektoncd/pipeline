@@ -40,21 +40,31 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 	for _, p := range defaults {
 		if p.Default != nil {
 			if p.Default.Type == v1alpha1.ParamTypeString {
+				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
+				// FIXME(vdemeester) Remove that with deprecating v1alpha1
 				stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.StringVal
 			} else {
+				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
+				// FIXME(vdemeester) Remove that with deprecating v1alpha1
 				arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.ArrayVal
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the TaskRun
-	for _, p := range tr.Spec.Inputs.Params {
+	for _, p := range tr.Spec.Params {
 		if p.Value.Type == v1alpha1.ParamTypeString {
+			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
+			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.StringVal
 		} else {
+			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
+			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.ArrayVal
 		}
 	}
 
+	fmt.Println("stringReplacements", stringReplacements)
+	fmt.Println("arrayReplacements", arrayReplacements)
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
 }
 
@@ -64,18 +74,24 @@ func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alph
 	replacements := map[string]string{}
 	for name, r := range resolvedResources {
 		for k, v := range r.Replacements() {
+			replacements[fmt.Sprintf("resources.%s.%s.%s", replacementStr, name, k)] = v
+			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, name, k)] = v
 		}
 	}
 
 	// We always add replacements for 'path'
-	if spec.Inputs != nil {
-		for _, r := range spec.Inputs.Resources {
+	if spec.Resources != nil && spec.Resources.Inputs != nil {
+		for _, r := range spec.Resources.Inputs {
+			replacements[fmt.Sprintf("resources.inputs.%s.path", r.Name)] = v1alpha1.InputResourcePath(r.ResourceDeclaration)
+			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			replacements[fmt.Sprintf("inputs.resources.%s.path", r.Name)] = v1alpha1.InputResourcePath(r.ResourceDeclaration)
 		}
 	}
-	if spec.Outputs != nil {
-		for _, r := range spec.Outputs.Resources {
+	if spec.Resources != nil && spec.Resources.Outputs != nil {
+		for _, r := range spec.Resources.Outputs {
+			replacements[fmt.Sprintf("resources.outputs.%s.path", r.Name)] = v1alpha1.OutputResourcePath(r.ResourceDeclaration)
+			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			replacements[fmt.Sprintf("outputs.resources.%s.path", r.Name)] = v1alpha1.OutputResourcePath(r.ResourceDeclaration)
 		}
 	}

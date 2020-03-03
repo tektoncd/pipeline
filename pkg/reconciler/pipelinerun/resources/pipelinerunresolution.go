@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -26,6 +27,8 @@ import (
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -125,7 +128,8 @@ func (t ResolvedPipelineRunTask) IsCancelled() bool {
 	return c.IsFalse() && c.Reason == v1alpha1.TaskRunSpecStatusCancelled
 }
 
-func (state PipelineRunState) toMap() map[string]*ResolvedPipelineRunTask {
+// ToMap returns a map that maps pipeline task name to the resolved pipeline run task
+func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 	m := make(map[string]*ResolvedPipelineRunTask)
 	for _, rprt := range state {
 		m[rprt.PipelineTask.Name] = rprt
@@ -271,6 +275,7 @@ func (e *ConditionNotFoundError) Error() string {
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
 // It will retrieve the Resources needed for the TaskRun using the mapping of providedResources.
 func ResolvePipelineRun(
+	ctx context.Context,
 	pipelineRun v1alpha1.PipelineRun,
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
@@ -315,6 +320,10 @@ func ResolvePipelineRun(
 			kind = pt.TaskRef.Kind
 		} else {
 			spec = *pt.TaskSpec
+		}
+		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		if err := spec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
+			return nil, err
 		}
 		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)
 		if err != nil {
@@ -423,7 +432,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 		if rprt.IsSuccessful() {
 			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}
-		if isSkipped(rprt, state.toMap(), dag) {
+		if isSkipped(rprt, state.ToMap(), dag) {
 			skipTasks++
 			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}
@@ -543,10 +552,10 @@ func ResolvePipelineTaskResources(pt v1alpha1.PipelineTask, ts *v1alpha1.TaskSpe
 			if resource, ok := providedResources[taskInput.Resource]; ok {
 				rtr.Inputs[taskInput.Name] = resource
 			} else {
-				if ts.Inputs == nil {
+				if ts.Resources == nil || ts.Resources.Inputs == nil {
 					return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
 				}
-				for _, r := range ts.Inputs.Resources {
+				for _, r := range ts.Resources.Inputs {
 					if r.Name == taskInput.Name && !r.Optional {
 						return nil, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
 					}
@@ -557,10 +566,10 @@ func ResolvePipelineTaskResources(pt v1alpha1.PipelineTask, ts *v1alpha1.TaskSpe
 			if resource, ok := providedResources[taskOutput.Resource]; ok {
 				rtr.Outputs[taskOutput.Name] = resource
 			} else {
-				if ts.Outputs == nil {
+				if ts.Resources == nil || ts.Resources.Outputs == nil {
 					return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
 				}
-				for _, r := range ts.Outputs.Resources {
+				for _, r := range ts.Resources.Outputs {
 					if r.Name == taskOutput.Name && !r.Optional {
 						return nil, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
 					}

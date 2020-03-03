@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -68,7 +68,7 @@ func TestTask(t *testing.T) {
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
 		Spec: v1alpha1.TaskSpec{
-			TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:    "mycontainer",
 					Image:   "myimage",
@@ -148,7 +148,7 @@ func TestClusterTask(t *testing.T) {
 	))
 	expectedTask := &v1alpha1.ClusterTask{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
-		Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
@@ -265,7 +265,8 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					Paths: []string{"output-folder"},
 				}},
 			},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			Resources: &v1beta1.TaskRunResources{},
+			Timeout:   &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			TaskRef: &v1alpha1.TaskRef{
 				Name:       "task-output",
 				Kind:       v1alpha1.ClusterTaskKind,
@@ -289,7 +290,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			},
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
 				PodName: "my-pod-name",
-				Sidecars: []v1alpha2.SidecarState{{
+				Sidecars: []v1beta1.SidecarState{{
 					Name:          "sidecar",
 					ImageID:       "ImageID",
 					ContainerName: "ContainerName",
@@ -327,7 +328,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Image:   "image",
 						Command: []string{"/mycmd"},
@@ -343,6 +344,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Params: nil,
 				},
 			},
+			Resources:          &v1beta1.TaskRunResources{},
 			ServiceAccountName: "sa",
 			Status:             v1alpha1.TaskRunSpecStatusCancelled,
 			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
@@ -373,7 +375,7 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Image:   "image",
 						Command: []string{"/mycmd"},
@@ -394,6 +396,7 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 					"label": "value",
 				},
 			},
+			Resources:          &v1beta1.TaskRunResources{},
 			ServiceAccountName: "sa",
 			Status:             v1alpha1.TaskRunSpecStatusCancelled,
 			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
@@ -413,7 +416,7 @@ func TestResolvedTaskResources(t *testing.T) {
 		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", "quuz")),
 	)
 	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
-		TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Image:   "image",
 				Command: []string{"/mycmd"},

@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,25 +41,24 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name: "step1",
 					}}},
-				},
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						},
-					}},
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+					},
 				},
 			},
 		},
@@ -69,8 +68,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -78,9 +77,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -108,27 +105,26 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name: "step1",
 					}}, {Container: corev1.Container{
 						Name: "step2",
 					}}},
-				},
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						}}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name: "source-image",
-							Type: "image",
-						},
-					}},
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-image",
+								Type: "image",
+							},
+						}},
+					},
 				},
 			},
 		},
@@ -138,8 +134,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{
@@ -147,9 +143,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 							},
 						},
 					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
+					Outputs: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
 							ResourceRef: &v1alpha1.PipelineResourceRef{

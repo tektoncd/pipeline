@@ -22,7 +22,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
@@ -45,7 +46,7 @@ var (
 	}
 
 	simpleTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Sidecars: []v1alpha1.Sidecar{{
 				Container: corev1.Container{
 					Name:  "foo",
@@ -159,47 +160,45 @@ var (
 					},
 				},
 			}},
-		},
-		Inputs: &v1alpha1.Inputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name: "workspace",
-				},
-			}},
-		},
-		Outputs: &v1alpha1.Outputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name:       "imageToUse-ab",
-					TargetPath: "/foo/builtImage",
-				},
-			}, {
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name:       "imageToUse-re",
-					TargetPath: "foo/builtImage",
-				},
-			}},
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "workspace",
+					},
+				}},
+				Outputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "imageToUse-ab",
+						TargetPath: "/foo/builtImage",
+					},
+				}, {
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "imageToUse-re",
+						TargetPath: "foo/builtImage",
+					},
+				}},
+			},
 		},
 	}
 
 	gcsTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "foobar",
 				Image: "someImage",
 				Args:  []string{"$(outputs.resources.bucket.path)"},
 			}}},
-		},
-		Outputs: &v1alpha1.Outputs{
-			Resources: []v1alpha1.TaskResource{{
-				ResourceDeclaration: v1alpha1.ResourceDeclaration{
-					Name: "bucket",
-				},
-			}},
+			Resources: &v1beta1.TaskResources{
+				Outputs: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "bucket",
+					},
+				}},
+			},
 		},
 	}
 
-	arrayParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	arrayParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -211,7 +210,7 @@ var (
 		}}},
 	}}
 
-	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -223,7 +222,7 @@ var (
 		}}},
 	}}
 
-	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
@@ -235,7 +234,7 @@ var (
 		}}},
 	}}
 
-	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "image-$(inputs.params.string-param2)",
@@ -249,85 +248,73 @@ var (
 
 	arrayTaskRun0Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name: "array-param",
-					Value: v1alpha1.ArrayOrString{
-						Type:     v1alpha1.ParamTypeArray,
-						ArrayVal: []string{},
-					}},
-				},
+			Params: []v1alpha1.Param{{
+				Name: "array-param",
+				Value: v1alpha1.ArrayOrString{
+					Type:     v1alpha1.ParamTypeArray,
+					ArrayVal: []string{},
+				}},
 			},
 		},
 	}
 
 	arrayTaskRun1Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
 		},
 	}
 
 	arrayTaskRun3Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo", "bar", "third"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}},
 		},
 	}
 
 	arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("foo", "bar", "third"),
-				}, {
-					Name:  "another-array-param",
-					Value: *builder.ArrayOrString("part1", "part2"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}, {
+				Name:  "another-array-param",
+				Value: *builder.ArrayOrString("part1", "part2"),
+			}},
 		},
 	}
 
 	arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param",
-					Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
-				}, {
-					Name:  "normal-param",
-					Value: *builder.ArrayOrString("foo"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
+			}, {
+				Name:  "normal-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
 		},
 	}
 
 	arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "array-param1",
-					Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
-				}, {
-					Name:  "array-param2",
-					Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
-				}, {
-					Name:  "string-param1",
-					Value: *builder.ArrayOrString("foo"),
-				}, {
-					Name:  "string-param2",
-					Value: *builder.ArrayOrString("bar"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "array-param1",
+				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+			}, {
+				Name:  "array-param2",
+				Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
+			}, {
+				Name:  "string-param1",
+				Value: *builder.ArrayOrString("foo"),
+			}, {
+				Name:  "string-param2",
+				Value: *builder.ArrayOrString("bar"),
+			}},
 		},
 	}
 
@@ -340,7 +327,7 @@ var (
 		"bucket":     gcsResource,
 	}
 
-	gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	gitResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "git-resource",
 		},
@@ -353,7 +340,7 @@ var (
 		},
 	}, images)
 
-	imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	imageResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "image-resource",
 		},
@@ -366,7 +353,7 @@ var (
 		},
 	}, images)
 
-	gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	gcsResource, _ = resource.FromType(&v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "gcs-resource",
 		},
@@ -485,15 +472,13 @@ func TestApplyArrayParameters(t *testing.T) {
 func TestApplyParameters(t *testing.T) {
 	tr := &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "myimage",
-					Value: *builder.ArrayOrString("bar"),
-				}, {
-					Name:  "FOO",
-					Value: *builder.ArrayOrString("world"),
-				}},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "myimage",
+				Value: *builder.ArrayOrString("bar"),
+			}, {
+				Name:  "FOO",
+				Value: *builder.ArrayOrString("world"),
+			}},
 		},
 	}
 	dp := []v1alpha1.ParamSpec{{
@@ -619,7 +604,7 @@ func TestApplyResources(t *testing.T) {
 
 func TestApplyWorkspaces(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
@@ -730,7 +715,7 @@ func TestApplyWorkspaces(t *testing.T) {
 
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 		Results: []v1alpha1.TaskResult{{
 			Name:        "current-date-unix-timestamp",
 			Description: "The current date in unix timestamp format",

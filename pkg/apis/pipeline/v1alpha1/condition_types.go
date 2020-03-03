@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -40,12 +40,12 @@ type Condition struct {
 }
 
 // ConditionCheckStatus defines the observed state of ConditionCheck
-type ConditionCheckStatus = v1alpha2.ConditionCheckStatus
+type ConditionCheckStatus = v1beta1.ConditionCheckStatus
 
 // ConditionCheckStatusFields holds the fields of ConfigurationCheck's status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
-type ConditionCheckStatusFields = v1alpha2.ConditionCheckStatusFields
+type ConditionCheckStatusFields = v1beta1.ConditionCheckStatusFields
 
 // ConditionSpec defines the desired state of the Condition
 type ConditionSpec struct {

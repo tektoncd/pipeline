@@ -17,6 +17,13 @@ metadata:
   name: pipelineruns.tekton.dev
 spec:
   group: tekton.dev
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+  - name: v1beta1
+    served: true
+    storage: false
   names:
     kind: PipelineRun
     plural: pipelineruns

@@ -27,7 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -228,25 +228,24 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccountName("test-sa"),
-			tb.TaskRunInputs(
-				tb.TaskRunInputsParam("foo", "somethingfun"),
-				tb.TaskRunInputsParam("bar", "somethingmorefun"),
-				tb.TaskRunInputsParam("templatedparam", "$(inputs.workspace.revision)"),
-				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
-			),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingResourceSpec(
-					&v1alpha1.PipelineResourceSpec{
-						Type: v1alpha1.PipelineResourceTypeImage,
-						Params: []v1alpha1.ResourceParam{{
-							Name:  "url",
-							Value: "gcr.io/sven",
-						}},
-					},
-				),
+			tb.TaskRunParam("foo", "somethingfun"),
+			tb.TaskRunParam("bar", "somethingmorefun"),
+			tb.TaskRunParam("templatedparam", "$(inputs.workspace.revision)"),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("some-repo")),
+				tb.TaskRunResourcesOutput("image-to-use",
+					tb.TaskResourceBindingResourceSpec(
+						&v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeImage,
+							Params: []v1alpha1.ResourceParam{{
+								Name:  "url",
+								Value: "gcr.io/sven",
+							}},
+						},
+					),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
+				tb.TaskRunResourcesOutput("workspace", tb.TaskResourceBindingRef("some-repo"),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
@@ -296,7 +295,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "mystep",
 						Image: "myimage"}}},
@@ -1678,5 +1677,102 @@ func ensurePVCCreated(t *testing.T, clients test.Clients, name, namespace string
 	}
 	if !pvcCreated {
 		t.Errorf("Expected to see volume resource PVC created but didn't")
+	}
+}
+
+func TestReconcileWithTaskResults(t *testing.T) {
+	names.TestingSeed()
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("a-task", "a-task"),
+		tb.PipelineTask("b-task", "b-task",
+			tb.PipelineTaskParam("bParam", "$(tasks.a-task.results.aResult)"),
+		),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+	)}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task", "foo"),
+		tb.Task("b-task", "foo",
+			tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("bParam", v1alpha1.ParamTypeString)),
+			),
+		),
+	}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("test-pipeline-run-different-service-accs-a-task-9l9zj", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+			tb.TaskRunStatus(
+				tb.StatusCondition(
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				),
+				tb.TaskRunResult("aResult", "aResultValue"),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-different-service-accs")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-different-service-accs", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+	expectedTaskRunName := "test-pipeline-run-different-service-accs-b-task-mz4c7"
+	expectedTaskRun := tb.TaskRun(expectedTaskRunName, "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineTask", "b-task"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("b-task"),
+			tb.TaskRunServiceAccountName("test-sa-0"),
+			tb.TaskRunParam("bParam", "aResultValue"),
+		),
+	)
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, d)
 	}
 }

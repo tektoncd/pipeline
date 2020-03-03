@@ -22,6 +22,7 @@ import (
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
@@ -38,6 +39,7 @@ import (
 )
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
+	// v1alpha1
 	v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},
 	v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
 	v1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha1.ClusterTask{},
@@ -45,6 +47,12 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 	v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
 	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
+	// v1beta1
+	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},
+	v1beta1.SchemeGroupVersion.WithKind("Task"):        &v1beta1.Task{},
+	v1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &v1beta1.ClusterTask{},
+	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
+	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -65,9 +73,7 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
-			// FIXME(vdemeester) uncomment that for auto-conversion
-			// return v1alpha2.WithUpgradeViaDefaulting(store.ToContext(ctx))
-			return contexts.WithDefaultConfigurationName(store.ToContext(ctx))
+			return contexts.WithUpgradeViaDefaulting(store.ToContext(ctx))
 		},
 
 		// Whether to disallow unknown fields.

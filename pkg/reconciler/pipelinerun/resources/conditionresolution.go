@@ -22,7 +22,9 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -97,7 +99,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	}
 
 	t := &v1alpha1.TaskSpec{
-		TaskSpec: v1alpha2.TaskSpec{
+		TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{rcc.Condition.Spec.Check},
 		},
 	}
@@ -135,11 +137,11 @@ func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 
 // ApplyResources applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
-func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration, images pipeline.Images) error {
+func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
-			r, err := v1alpha1.ResourceFromType(rSpec, images)
+			r, err := resource.FromType(rSpec, images)
 			if err != nil {
 				return fmt.Errorf("error trying to create resource: %w", err)
 			}

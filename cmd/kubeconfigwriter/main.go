@@ -23,13 +23,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
+	"github.com/tektoncd/pipeline/pkg/logging"
 	"go.uber.org/zap"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/logging"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 var (
@@ -44,7 +43,7 @@ func main() {
 		_ = logger.Sync()
 	}()
 
-	cr := v1alpha1.ClusterResource{}
+	cr := cluster.Resource{}
 	err := json.Unmarshal([]byte(*clusterConfig), &cr)
 	if err != nil {
 		logger.Fatalf("Error reading cluster config: %v", err)
@@ -52,7 +51,7 @@ func main() {
 	createKubeconfigFile(&cr, logger)
 }
 
-func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.SugaredLogger) {
+func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger) {
 	cluster := &clientcmdapi.Cluster{
 		Server:                   resource.URL,
 		InsecureSkipTLSVerify:    resource.Insecure,

@@ -17,19 +17,19 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // WorkspaceDeclaration is a declaration of a volume that a Task requires.
-type WorkspaceDeclaration = v1alpha2.WorkspaceDeclaration
+type WorkspaceDeclaration = v1beta1.WorkspaceDeclaration
 
 // WorkspaceBinding maps a Task's declared workspace to a Volume.
-type WorkspaceBinding = v1alpha2.WorkspaceBinding
+type WorkspaceBinding = v1beta1.WorkspaceBinding
 
 // WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
 // is expected to populate with a workspace binding.
-type WorkspacePipelineDeclaration = v1alpha2.WorkspacePipelineDeclaration
+type WorkspacePipelineDeclaration = v1beta1.WorkspacePipelineDeclaration
 
 // WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
 // mapped to a task's declared workspace.
-type WorkspacePipelineTaskBinding = v1alpha2.WorkspacePipelineTaskBinding
+type WorkspacePipelineTaskBinding = v1beta1.WorkspacePipelineTaskBinding

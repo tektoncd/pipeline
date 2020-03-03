@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +45,7 @@ type GetResource func(string) (*v1alpha1.PipelineResource, error)
 // ResolveTaskResources looks up PipelineResources referenced by inputs and outputs and returns
 // a structure that unites the resolved references and the Task Spec. If referenced PipelineResources
 // can't be found, an error is returned.
-func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.TaskKind, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, gr GetResource) (*ResolvedTaskResources, error) {
+func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.TaskKind, inputs []v1beta1.TaskResourceBinding, outputs []v1beta1.TaskResourceBinding, gr GetResource) (*ResolvedTaskResources, error) {
 	rtr := ResolvedTaskResources{
 		TaskName: taskName,
 		TaskSpec: ts,

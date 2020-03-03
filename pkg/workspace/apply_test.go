@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -202,7 +202,7 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec v1alpha1.TaskSpec
 	}{{
 		name: "binding a single workspace with a PVC",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name: "custom",
 			}},
@@ -214,7 +214,7 @@ func TestApply(t *testing.T) {
 			},
 			SubPath: "/foo/bar/baz",
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-9l9zj",
@@ -236,7 +236,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "binding a single workspace with emptyDir",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name: "custom",
 			}},
@@ -248,7 +248,7 @@ func TestApply(t *testing.T) {
 			},
 			SubPath: "/foo/bar/baz",
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-mz4c7",
@@ -270,7 +270,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "task spec already has volumes and stepTemplate",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "awesome-volume",
@@ -294,7 +294,7 @@ func TestApply(t *testing.T) {
 			},
 			SubPath: "/foo/bar/baz",
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "awesome-volume",
@@ -324,14 +324,14 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "0 workspace bindings",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{
 				Container: corev1.Container{
 					Name: "foo",
 				}}},
 		}},
 		workspaces: []v1alpha1.WorkspaceBinding{},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{
 				Container: corev1.Container{
 					Name: "foo",
@@ -339,7 +339,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "binding multiple workspaces",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name: "custom",
 			}, {
@@ -358,7 +358,7 @@ func TestApply(t *testing.T) {
 				ClaimName: "myotherpvc",
 			},
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-78c5n",
@@ -392,7 +392,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "multiple workspaces binding to the same volume with diff subpaths doesnt duplicate",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name: "custom",
 			}, {
@@ -412,7 +412,7 @@ func TestApply(t *testing.T) {
 			},
 			SubPath: "/very/professional/work/space",
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-j2tds",
@@ -440,7 +440,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "non default mount path",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name:      "custom",
 				MountPath: "/my/fancy/mount/path",
@@ -452,7 +452,7 @@ func TestApply(t *testing.T) {
 				ClaimName: "mypvc",
 			},
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-l22wn",
@@ -474,7 +474,7 @@ func TestApply(t *testing.T) {
 		}},
 	}, {
 		name: "readOnly true marks volume mount readOnly",
-		ts: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		ts: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name:      "custom",
 				MountPath: "/my/fancy/mount/path",
@@ -487,7 +487,7 @@ func TestApply(t *testing.T) {
 				ClaimName: "mypvc",
 			},
 		}},
-		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		expectedTaskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-twkr2",

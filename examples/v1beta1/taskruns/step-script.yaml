@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: step-script-
+spec:
+  taskSpec:
+    params:
+    - name: PARAM
+      default: param-value
+
+    steps:
+    - name: noshebang
+      image: ubuntu
+      script: echo "no shebang"
+    - name: bash
+      image: ubuntu
+      env:
+      - name: FOO
+        value: foooooooo
+      script: |
+        #!/usr/bin/env bash
+        set -euxo pipefail
+        echo "Hello from Bash!"
+        echo FOO is ${FOO}
+        echo substring is ${FOO:2:4}
+        for i in {1..10}; do
+          echo line $i
+        done
+
+    - name: place-file
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        echo "echo Hello from script file" > /workspace/hello
+        chmod +x /workspace/hello
+    - name: run-file
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        /workspace/hello
+
+    - name: contains-eof
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat > file << EOF
+        this file has some contents
+        EOF
+        cat file
+
+    - name: node
+      image: node
+      script: |
+        #!/usr/bin/env node
+        console.log("Hello from Node!")
+
+    - name: python
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        print("Hello from Python!")
+
+    - name: perl
+      image: perl
+      script: |
+        #!/usr/bin/perl
+        print "Hello from Perl!"
+
+    # Test that param values are replaced.
+    - name: params-applied
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        v = '$(params.PARAM)'
+        if v != 'param-value':
+          print('Param values not applied')
+          print('Got: ', v)
+          exit(1)
+
+    # Test that args are allowed and passed to the script as expected.
+    - name: args-allowed
+      image: ubuntu
+      args: ['hello', 'world']
+      script: |
+        #!/usr/bin/env bash
+        [[ $# == 2 ]]
+        [[ $1 == "hello" ]]
+        [[ $2 == "world" ]]

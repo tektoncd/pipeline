@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	v1alpha2 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -67,17 +67,17 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	case v1alpha1.SchemeGroupVersion.WithResource("taskruns"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().TaskRuns().Informer()}, nil
 
-		// Group=tekton.dev, Version=v1alpha2
-	case v1alpha2.SchemeGroupVersion.WithResource("clustertasks"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha2().ClusterTasks().Informer()}, nil
-	case v1alpha2.SchemeGroupVersion.WithResource("pipelines"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha2().Pipelines().Informer()}, nil
-	case v1alpha2.SchemeGroupVersion.WithResource("pipelineruns"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha2().PipelineRuns().Informer()}, nil
-	case v1alpha2.SchemeGroupVersion.WithResource("tasks"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha2().Tasks().Informer()}, nil
-	case v1alpha2.SchemeGroupVersion.WithResource("taskruns"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha2().TaskRuns().Informer()}, nil
+		// Group=tekton.dev, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("clustertasks"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1beta1().ClusterTasks().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("pipelines"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1beta1().Pipelines().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("pipelineruns"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1beta1().PipelineRuns().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("tasks"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1beta1().Tasks().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("taskruns"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1beta1().TaskRuns().Informer()}, nil
 
 	}
 

@@ -21,7 +21,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,7 +30,7 @@ var _ apis.Convertible = (*Pipeline)(nil)
 // ConvertUp implements api.Convertible
 func (source *Pipeline) ConvertUp(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
-	case *v1alpha2.Pipeline:
+	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
 		return source.Spec.ConvertUp(ctx, &sink.Spec)
 	default:
@@ -38,12 +38,12 @@ func (source *Pipeline) ConvertUp(ctx context.Context, obj apis.Convertible) err
 	}
 }
 
-func (source *PipelineSpec) ConvertUp(ctx context.Context, sink *v1alpha2.PipelineSpec) error {
+func (source *PipelineSpec) ConvertUp(ctx context.Context, sink *v1beta1.PipelineSpec) error {
 	sink.Resources = source.Resources
 	sink.Params = source.Params
 	sink.Workspaces = source.Workspaces
 	if len(source.Tasks) > 0 {
-		sink.Tasks = make([]v1alpha2.PipelineTask, len(source.Tasks))
+		sink.Tasks = make([]v1beta1.PipelineTask, len(source.Tasks))
 		for i := range source.Tasks {
 			if err := source.Tasks[i].ConvertUp(ctx, &sink.Tasks[i]); err != nil {
 				return err
@@ -53,11 +53,11 @@ func (source *PipelineSpec) ConvertUp(ctx context.Context, sink *v1alpha2.Pipeli
 	return nil
 }
 
-func (source *PipelineTask) ConvertUp(ctx context.Context, sink *v1alpha2.PipelineTask) error {
+func (source *PipelineTask) ConvertUp(ctx context.Context, sink *v1beta1.PipelineTask) error {
 	sink.Name = source.Name
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
-		sink.TaskSpec = &v1alpha2.TaskSpec{}
+		sink.TaskSpec = &v1beta1.TaskSpec{}
 		if err := source.TaskSpec.ConvertUp(ctx, sink.TaskSpec); err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (source *PipelineTask) ConvertUp(ctx context.Context, sink *v1alpha2.Pipeli
 // ConvertDown implements api.Convertible
 func (sink *Pipeline) ConvertDown(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
-	case *v1alpha2.Pipeline:
+	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
 		return sink.Spec.ConvertDown(ctx, source.Spec)
 	default:
@@ -82,7 +82,7 @@ func (sink *Pipeline) ConvertDown(ctx context.Context, obj apis.Convertible) err
 	}
 }
 
-func (sink *PipelineSpec) ConvertDown(ctx context.Context, source v1alpha2.PipelineSpec) error {
+func (sink *PipelineSpec) ConvertDown(ctx context.Context, source v1beta1.PipelineSpec) error {
 	sink.Resources = source.Resources
 	sink.Params = source.Params
 	sink.Workspaces = source.Workspaces
@@ -97,7 +97,7 @@ func (sink *PipelineSpec) ConvertDown(ctx context.Context, source v1alpha2.Pipel
 	return nil
 }
 
-func (sink *PipelineTask) ConvertDown(ctx context.Context, source v1alpha2.PipelineTask) error {
+func (sink *PipelineTask) ConvertDown(ctx context.Context, source v1beta1.PipelineTask) error {
 	sink.Name = source.Name
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {

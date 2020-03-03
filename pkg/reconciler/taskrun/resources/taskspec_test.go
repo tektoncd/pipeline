@@ -17,11 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -31,7 +32,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "orchestrate",
 		},
-		Spec: v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name: "step1",
 			}}},
@@ -48,7 +49,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return task, nil }
-	taskMeta, taskSpec, err := GetTaskData(tr, gt)
+	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -69,7 +70,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			Name: "mytaskrun",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1alpha2.TaskSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
 				}}},
@@ -77,7 +78,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
-	taskMeta, taskSpec, err := GetTaskData(tr, gt)
+	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
@@ -99,7 +100,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
-	_, _, err := GetTaskData(tr, gt)
+	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
 	}
@@ -117,7 +118,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 		},
 	}
 	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, errors.New("something went wrong") }
-	_, _, err := GetTaskData(tr, gt)
+	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
 	}

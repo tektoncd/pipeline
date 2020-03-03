@@ -1,0 +1,71 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: git-resource-tag-
+spec:
+  taskSpec:
+    resources:
+      inputs:
+      - name: skaffold
+        type: git
+    steps:
+    - image: ubuntu
+      script: cat skaffold/README.md
+  resources:
+    inputs:
+    - name: skaffold
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: v0.32.0
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: git-resource-branch-
+spec:
+  taskSpec:
+    resources:
+      inputs:
+      - name: skaffold
+        type: git
+    steps:
+    - image: ubuntu
+      script: cat skaffold/README.md
+  resources:
+    inputs:
+    - name: skaffold
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: git-resource-ref-
+spec:
+  taskSpec:
+    resources:
+      inputs:
+      - name: skaffold
+        type: git
+    steps:
+    - image: ubuntu
+      script: cat skaffold/README.md
+  resources:
+    inputs:
+    - name: skaffold
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: pull/2932/head
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold

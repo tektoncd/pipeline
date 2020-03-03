@@ -21,7 +21,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,7 +30,7 @@ var _ apis.Convertible = (*PipelineRun)(nil)
 // ConvertUp implements api.Convertible
 func (source *PipelineRun) ConvertUp(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
-	case *v1alpha2.PipelineRun:
+	case *v1beta1.PipelineRun:
 		sink.ObjectMeta = source.ObjectMeta
 		if err := source.Spec.ConvertUp(ctx, &sink.Spec); err != nil {
 			return err
@@ -42,10 +42,10 @@ func (source *PipelineRun) ConvertUp(ctx context.Context, obj apis.Convertible) 
 	}
 }
 
-func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1alpha2.PipelineRunSpec) error {
+func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.PipelineRunSpec) error {
 	sink.PipelineRef = source.PipelineRef
 	if source.PipelineSpec != nil {
-		sink.PipelineSpec = &v1alpha2.PipelineSpec{}
+		sink.PipelineSpec = &v1beta1.PipelineSpec{}
 		if err := source.PipelineSpec.ConvertUp(ctx, sink.PipelineSpec); err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ func (source *PipelineRunSpec) ConvertUp(ctx context.Context, sink *v1alpha2.Pip
 // ConvertDown implements api.Convertible
 func (sink *PipelineRun) ConvertDown(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
-	case *v1alpha2.PipelineRun:
+	case *v1beta1.PipelineRun:
 		sink.ObjectMeta = source.ObjectMeta
 		if err := sink.Spec.ConvertDown(ctx, &source.Spec); err != nil {
 			return err
@@ -76,7 +76,7 @@ func (sink *PipelineRun) ConvertDown(ctx context.Context, obj apis.Convertible) 
 	}
 }
 
-func (sink *PipelineRunSpec) ConvertDown(ctx context.Context, source *v1alpha2.PipelineRunSpec) error {
+func (sink *PipelineRunSpec) ConvertDown(ctx context.Context, source *v1beta1.PipelineRunSpec) error {
 	sink.PipelineRef = source.PipelineRef
 	if source.PipelineSpec != nil {
 		sink.PipelineSpec = &PipelineSpec{}

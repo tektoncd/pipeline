@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -69,6 +69,12 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "pipeline spec invalid task name 2",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("FooTask", "foo-task"),
+		)),
+		failureExpected: true,
+	}, {
 		name: "pipeline spec invalid taskref name",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "_foo-task"),
@@ -85,7 +91,7 @@ func TestPipeline_Validate(t *testing.T) {
 		name: "pipeline spec with taskref and taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "foo",
 						Image: "bar",
@@ -97,14 +103,14 @@ func TestPipeline_Validate(t *testing.T) {
 	}, {
 		name: "pipeline spec invalid taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
+			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
 		)),
 		failureExpected: true,
 	}, {
 		name: "pipeline spec valid taskspec",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1alpha2.TaskSpec{
+			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
 					Steps: []v1alpha1.Step{{Container: corev1.Container{
 						Name:  "foo",
 						Image: "bar",
@@ -171,6 +177,15 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "$(baz)", "and", "$(foo-is-baz)")),
+		)),
+		failureExpected: false,
+	}, {
+		name: "valid star array parameter variables",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(baz[*])", "and", "$(foo-is-baz[*])")),
 		)),
 		failureExpected: false,
 	}, {
@@ -288,11 +303,27 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "star array parameter used as string",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(params.baz[*])")),
+		)),
+		failureExpected: true,
+	}, {
 		name: "array parameter string template not isolated",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "first", "value: $(params.baz)", "last")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "star array parameter string template not isolated",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "first", "value: $(params.baz[*])", "last")),
 		)),
 		failureExpected: true,
 	}, {
@@ -323,6 +354,15 @@ func TestPipeline_Validate(t *testing.T) {
 		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
 			tb.PipelineWorkspaceDeclaration("foo"),
 			tb.PipelineWorkspaceDeclaration("foo"),
+		)),
+		failureExpected: true,
+	}, {
+		name: "task params results malformed variable substitution expression",
+		p: tb.Pipeline("name", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("a-task", "a-task"),
+			tb.PipelineTask("b-task", "b-task",
+				tb.PipelineTaskParam("b-param", "$(tasks.a-task.resultTypo.bResult)"),
+			),
 		)),
 		failureExpected: true,
 	}}

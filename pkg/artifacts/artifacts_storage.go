@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -160,7 +161,7 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1alpha1.PipelineRun,
 		if err != nil {
 			return nil, err
 		}
-		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
+		return &storage.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
 	}
 
 	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
@@ -219,15 +220,15 @@ func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Inte
 		return nil, fmt.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
 	if pvc {
-		return &v1alpha1.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}, nil
+		return &storage.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}, nil
 	}
 	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
 }
 
 // NewArtifactBucketConfigFromConfigMap creates a Bucket from the supplied ConfigMap
-func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
-	return func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
-		c := &v1alpha1.ArtifactBucket{
+func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap *corev1.ConfigMap) (*storage.ArtifactBucket, error) {
+	return func(configMap *corev1.ConfigMap) (*storage.ArtifactBucket, error) {
+		c := &storage.ArtifactBucket{
 			ShellImage:  images.ShellImage,
 			GsutilImage: images.GsutilImage,
 		}

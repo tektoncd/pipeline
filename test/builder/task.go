@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +37,9 @@ type ClusterTaskOp func(*v1alpha1.ClusterTask)
 // TaskSpeOp is an operation which modify a TaskSpec struct.
 type TaskSpecOp func(*v1alpha1.TaskSpec)
 
+// TaskResourcesOp is an operation which modify a TaskResources struct.
+type TaskResourcesOp func(*v1beta1.TaskResources)
+
 // InputsOp is an operation which modify an Inputs struct.
 type InputsOp func(*v1alpha1.Inputs)
 
@@ -47,6 +51,9 @@ type TaskRunOp func(*v1alpha1.TaskRun)
 
 // TaskRunSpecOp is an operation which modify a TaskRunSpec struct.
 type TaskRunSpecOp func(*v1alpha1.TaskRunSpec)
+
+// TaskRunResourcesOp is an operation which modify a TaskRunResources struct.
+type TaskRunResourcesOp func(*v1beta1.TaskRunResources)
 
 // TaskResourceOp is an operation which modify a TaskResource struct.
 type TaskResourceOp func(*v1alpha1.TaskResource)
@@ -211,6 +218,60 @@ func VolumeSource(s corev1.VolumeSource) VolumeOp {
 	}
 }
 
+// TaskParam sets the Params to the TaskSpec
+func TaskParam(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		ps := &v1alpha1.ParamSpec{Name: name, Type: pt}
+		for _, op := range ops {
+			op(ps)
+		}
+		spec.Params = append(spec.Params, *ps)
+	}
+}
+
+// TaskResources sets the Resources to the TaskSpec
+func TaskResources(ops ...TaskResourcesOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		r := &v1beta1.TaskResources{}
+		for _, op := range ops {
+			op(r)
+		}
+		spec.Resources = r
+	}
+}
+
+// TaskResourcesInput adds a TaskResource as Inputs to the TaskResources
+func TaskResourcesInput(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) TaskResourcesOp {
+	return func(r *v1beta1.TaskResources) {
+		i := &v1beta1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			},
+		}
+		for _, op := range ops {
+			op(i)
+		}
+		r.Inputs = append(r.Inputs, *i)
+	}
+}
+
+// TaskResourcesOutput adds a TaskResource as Outputs to the TaskResources
+func TaskResourcesOutput(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) TaskResourcesOp {
+	return func(r *v1beta1.TaskResources) {
+		o := &v1beta1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			},
+		}
+		for _, op := range ops {
+			op(o)
+		}
+		r.Outputs = append(r.Outputs, *o)
+	}
+}
+
 // TaskInputs sets inputs to the TaskSpec.
 // Any number of Inputs modifier can be passed to transform it.
 func TaskInputs(ops ...InputsOp) TaskSpecOp {
@@ -332,6 +393,15 @@ func PodName(name string) TaskRunStatusOp {
 func StatusCondition(condition apis.Condition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
+func TaskRunResult(name, value string) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.TaskRunResults = append(s.TaskRunResults, v1beta1.TaskRunResult{
+			Name:  name,
+			Value: value,
+		})
 	}
 }
 
@@ -546,6 +616,7 @@ func TaskRunSelfLink(selflink string) TaskRunOp {
 func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		spec := &tr.Spec
+		spec.Resources = &v1beta1.TaskRunResources{}
 		// Set a default timeout
 		spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 		for _, op := range ops {
@@ -610,6 +681,58 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
 		trs.ServiceAccountName = sa
+	}
+}
+
+// TaskRunParam sets the Params to the TaskSpec
+func TaskRunParam(name, value string, additionalValues ...string) TaskRunSpecOp {
+	arrayOrString := ArrayOrString(value, additionalValues...)
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Params = append(spec.Params, v1alpha1.Param{
+			Name:  name,
+			Value: *arrayOrString,
+		})
+	}
+}
+
+// TaskRunResources sets the TaskRunResources to the TaskRunSpec
+func TaskRunResources(ops ...TaskRunResourcesOp) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		r := &v1beta1.TaskRunResources{}
+		for _, op := range ops {
+			op(r)
+		}
+		spec.Resources = r
+	}
+}
+
+// TaskRunResourcesInput adds a TaskRunResource as Inputs to the TaskRunResources
+func TaskRunResourcesInput(name string, ops ...TaskResourceBindingOp) TaskRunResourcesOp {
+	return func(r *v1beta1.TaskRunResources) {
+		binding := &v1alpha1.TaskResourceBinding{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
+		}
+		for _, op := range ops {
+			op(binding)
+		}
+		r.Inputs = append(r.Inputs, *binding)
+	}
+}
+
+// TaskRunResourcesOutput adds a TaskRunResource as Outputs to the TaskRunResources
+func TaskRunResourcesOutput(name string, ops ...TaskResourceBindingOp) TaskRunResourcesOp {
+	return func(r *v1beta1.TaskRunResources) {
+		binding := &v1alpha1.TaskResourceBinding{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
+		}
+		for _, op := range ops {
+			op(binding)
+		}
+		r.Outputs = append(r.Outputs, *binding)
 	}
 }
 

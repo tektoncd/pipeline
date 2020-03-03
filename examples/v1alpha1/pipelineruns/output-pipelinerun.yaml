@@ -1,0 +1,105 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-git-output-pipelinerun
+spec:
+  type: git
+  params:
+  - name: revision
+    value: v0.32.0
+  - name: url
+    value: https://github.com/GoogleContainerTools/skaffold
+---
+# Task writes "some stuff" to a predefined path in the workspace git PipelineResource
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-file
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: damnworkspace
+  outputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: read-docs-old
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md']  # tests that targetpath works
+  - name: write-new-stuff
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff']
+---
+# Reads a file from a predefined path in the workspace git PipelineResource
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: check-stuff-file-exists
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: newworkspace
+    params:
+    - name: args
+      type: array
+  steps:
+  - name: read
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['$(inputs.params.args[*])']  # tests that new targetpath and previous task output is dumped
+---
+# The Output of the first Task (git resource) create-file is given as an `Input`
+# to the next `Task` check-stuff-file-exists using`from` clause.
+
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: output-pipeline
+spec:
+  resources:
+  - name: source-repo
+    type: git
+  tasks:
+  - name: first-create-file          # 1. create file
+    taskRef:
+      name: create-file
+    resources:
+      inputs:
+      - name: workspace
+        resource: source-repo
+      outputs:
+      - name: workspace
+        resource: source-repo
+  - name: then-check                 # 2.  check file exists
+    taskRef:
+      name: check-stuff-file-exists
+    params:
+    - name: args
+      value:
+      - '-c'
+      - 'cat /workspace/newworkspace/stuff'
+    resources:
+      inputs:
+      - name: workspace
+        resource: source-repo
+        from: [first-create-file]
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: output-pipeline-run
+spec:
+  pipelineRef:
+    name: output-pipeline
+  serviceAccountName: 'default'
+  resources:
+  - name: source-repo
+    resourceRef:
+      name: skaffold-git-output-pipelinerun

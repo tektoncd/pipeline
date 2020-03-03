@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	tektonv1alpha2 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha2"
+	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -31,7 +31,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface
-	TektonV1alpha2() tektonv1alpha2.TektonV1alpha2Interface
+	TektonV1beta1() tektonv1beta1.TektonV1beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -39,7 +39,7 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	tektonV1alpha1 *tektonv1alpha1.TektonV1alpha1Client
-	tektonV1alpha2 *tektonv1alpha2.TektonV1alpha2Client
+	tektonV1beta1  *tektonv1beta1.TektonV1beta1Client
 }
 
 // TektonV1alpha1 retrieves the TektonV1alpha1Client
@@ -47,9 +47,9 @@ func (c *Clientset) TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface {
 	return c.tektonV1alpha1
 }
 
-// TektonV1alpha2 retrieves the TektonV1alpha2Client
-func (c *Clientset) TektonV1alpha2() tektonv1alpha2.TektonV1alpha2Interface {
-	return c.tektonV1alpha2
+// TektonV1beta1 retrieves the TektonV1beta1Client
+func (c *Clientset) TektonV1beta1() tektonv1beta1.TektonV1beta1Interface {
+	return c.tektonV1beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -77,7 +77,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs.tektonV1alpha2, err = tektonv1alpha2.NewForConfig(&configShallowCopy)
+	cs.tektonV1beta1, err = tektonv1beta1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.tektonV1alpha1 = tektonv1alpha1.NewForConfigOrDie(c)
-	cs.tektonV1alpha2 = tektonv1alpha2.NewForConfigOrDie(c)
+	cs.tektonV1beta1 = tektonv1beta1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -104,7 +104,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.tektonV1alpha1 = tektonv1alpha1.New(c)
-	cs.tektonV1alpha2 = tektonv1alpha2.New(c)
+	cs.tektonV1beta1 = tektonv1beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

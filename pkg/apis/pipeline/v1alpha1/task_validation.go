@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
@@ -79,9 +80,18 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	// Validate Resources declaration
+	if err := ts.Resources.Validate(ctx); err != nil {
+		return err
+	}
+	// Validate that the parameters type are correct
+	if err := v1beta1.ValidateParameterTypes(ts.Params); err != nil {
+		return err
+	}
+
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.
 	// A task can't duplicate input or output names.
-
+	// Deprecated
 	if ts.Inputs != nil {
 		for _, resource := range ts.Inputs.Resources {
 			if err := validateResourceType(resource, fmt.Sprintf("taskspec.Inputs.Resources.%s.Type", resource.Name)); err != nil {
@@ -95,6 +105,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 			return err
 		}
 	}
+	// Deprecated
 	if ts.Outputs != nil {
 		for _, resource := range ts.Outputs.Resources {
 			if err := validateResourceType(resource, fmt.Sprintf("taskspec.Outputs.Resources.%s.Type", resource.Name)); err != nil {
@@ -117,10 +128,19 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := validateInputParameterVariables(ts.Steps, ts.Inputs); err != nil {
+	if err := v1beta1.ValidateParameterVariables(ts.Steps, ts.Params); err != nil {
 		return err
 	}
-	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs); err != nil {
+	// Deprecated
+	if err := validateInputParameterVariables(ts.Steps, ts.Inputs, ts.Params); err != nil {
+		return err
+	}
+
+	if err := v1beta1.ValidateResourcesVariables(ts.Steps, ts.Resources); err != nil {
+		return err
+	}
+	// Deprecated
+	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs, ts.Resources); err != nil {
 		return err
 	}
 	return nil
@@ -251,10 +271,17 @@ func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
 	return nil
 }
 
-func validateInputParameterVariables(steps []Step, inputs *Inputs) *apis.FieldError {
+func validateInputParameterVariables(steps []Step, inputs *Inputs, params []v1beta1.ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
+	for _, p := range params {
+		parameterNames[p.Name] = struct{}{}
+		if p.Type == ParamTypeArray {
+			arrayParameterNames[p.Name] = struct{}{}
+		}
+	}
+	// Deprecated
 	if inputs != nil {
 		for _, p := range inputs.Params {
 			parameterNames[p.Name] = struct{}{}
@@ -270,13 +297,23 @@ func validateInputParameterVariables(steps []Step, inputs *Inputs) *apis.FieldEr
 	return validateArrayUsage(steps, "params", arrayParameterNames)
 }
 
-func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs) *apis.FieldError {
+func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs, resources *v1beta1.TaskResources) *apis.FieldError {
 	resourceNames := map[string]struct{}{}
+	if resources != nil {
+		for _, r := range resources.Inputs {
+			resourceNames[r.Name] = struct{}{}
+		}
+		for _, r := range resources.Outputs {
+			resourceNames[r.Name] = struct{}{}
+		}
+	}
+	// Deprecated
 	if inputs != nil {
 		for _, r := range inputs.Resources {
 			resourceNames[r.Name] = struct{}{}
 		}
 	}
+	// Deprecated
 	if outputs != nil {
 		for _, r := range outputs.Resources {
 			resourceNames[r.Name] = struct{}{}

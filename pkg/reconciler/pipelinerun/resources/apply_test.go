@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
@@ -135,6 +136,152 @@ func TestApplyParameters(t *testing.T) {
 			got := ApplyParameters(&tt.original.Spec, tt.run)
 			if d := cmp.Diff(got, &tt.expected.Spec); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", d)
+			}
+		})
+	}
+}
+
+func TestApplyTaskResults_MinimalExpression(t *testing.T) {
+	type args struct {
+		targets            PipelineRunState
+		resolvedResultRefs ResolvedResultRefs
+	}
+	tests := []struct {
+		name string
+		args args
+		want PipelineRunState
+	}{
+		{
+			name: "Test result substitution on minimal variable substitution expression",
+			args: args{
+				resolvedResultRefs: ResolvedResultRefs{
+					{
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "aResultValue",
+						},
+						ResultReference: v1beta1.ResultRef{
+							PipelineTask: "aTask",
+							Result:       "aResult",
+						},
+						FromTaskRun: "aTaskRun",
+					},
+				},
+				targets: PipelineRunState{
+					{
+						PipelineTask: &v1alpha1.PipelineTask{
+							Name:    "bTask",
+							TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+							Params: []v1beta1.Param{
+								{
+									Name: "bParam",
+									Value: v1beta1.ArrayOrString{
+										Type:      v1beta1.ParamTypeString,
+										StringVal: "$(tasks.aTask.results.aResult)",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: PipelineRunState{
+				{
+					PipelineTask: &v1alpha1.PipelineTask{
+						Name:    "bTask",
+						TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+						Params: []v1beta1.Param{
+							{
+								Name: "bParam",
+								Value: v1beta1.ArrayOrString{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "aResultValue",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
+			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
+				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
+			}
+		})
+	}
+}
+
+func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
+	type args struct {
+		targets            PipelineRunState
+		resolvedResultRefs ResolvedResultRefs
+	}
+	tests := []struct {
+		name string
+		args args
+		want PipelineRunState
+	}{
+		{
+			name: "Test result substitution on embedded variable substitution expression",
+			args: args{
+				resolvedResultRefs: ResolvedResultRefs{
+					{
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "aResultValue",
+						},
+						ResultReference: v1beta1.ResultRef{
+							PipelineTask: "aTask",
+							Result:       "aResult",
+						},
+						FromTaskRun: "aTaskRun",
+					},
+				},
+				targets: PipelineRunState{
+					{
+						PipelineTask: &v1alpha1.PipelineTask{
+							Name:    "bTask",
+							TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+							Params: []v1beta1.Param{
+								{
+									Name: "bParam",
+									Value: v1beta1.ArrayOrString{
+										Type:      v1beta1.ParamTypeString,
+										StringVal: "Result value --> $(tasks.aTask.results.aResult)",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: PipelineRunState{
+				{
+					PipelineTask: &v1alpha1.PipelineTask{
+						Name:    "bTask",
+						TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+						Params: []v1beta1.Param{
+							{
+								Name: "bParam",
+								Value: v1beta1.ArrayOrString{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "Result value --> aResultValue",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
+			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
+				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
 			}
 		})
 	}

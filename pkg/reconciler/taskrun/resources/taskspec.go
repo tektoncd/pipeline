@@ -17,9 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,7 +36,7 @@ type GetClusterTask func(name string) (v1alpha1.TaskInterface, error)
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
-func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta, *v1alpha1.TaskSpec, error) {
+func GetTaskData(ctx context.Context, taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta, *v1alpha1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1alpha1.TaskSpec{}
 	switch {
@@ -45,6 +48,11 @@ func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
+		taskSpec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+
+		if err := taskSpec.ConvertUp(ctx, &v1beta1.TaskSpec{}); err != nil {
+			return nil, nil, err
+		}
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec

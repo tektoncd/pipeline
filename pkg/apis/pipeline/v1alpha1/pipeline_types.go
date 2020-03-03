@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,13 +40,13 @@ type PipelineSpec struct {
 
 // Check that Pipeline may be validated and defaulted.
 // TaskKind defines the type of Task used by the pipeline.
-type TaskKind = v1alpha2.TaskKind
+type TaskKind = v1beta1.TaskKind
 
 const (
 	// NamespacedTaskKind indicates that the task type has a namepace scope.
-	NamespacedTaskKind TaskKind = v1alpha2.NamespacedTaskKind
+	NamespacedTaskKind TaskKind = v1beta1.NamespacedTaskKind
 	// ClusterTaskKind indicates that task type has a cluster scope.
-	ClusterTaskKind TaskKind = v1alpha2.ClusterTaskKind
+	ClusterTaskKind TaskKind = v1beta1.ClusterTaskKind
 )
 
 // +genclient
@@ -158,6 +158,14 @@ func (pt PipelineTask) Deps() []string {
 			deps = append(deps, rd.From...)
 		}
 	}
+	// Add any dependents from task results
+	for _, param := range pt.Params {
+		if resultRefs, err := v1beta1.NewResultRefs(param); err == nil {
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
+	}
 	return deps
 }
 
@@ -172,34 +180,34 @@ func (l PipelineTaskList) Items() []dag.Task {
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
-type PipelineTaskParam = v1alpha2.PipelineTaskParam
+type PipelineTaskParam = v1beta1.PipelineTaskParam
 
 // PipelineTaskCondition allows a PipelineTask to declare a Condition to be evaluated before
 // the Task is run.
-type PipelineTaskCondition = v1alpha2.PipelineTaskCondition
+type PipelineTaskCondition = v1beta1.PipelineTaskCondition
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
 // PipelineResources that it will required to run and names which can be used to
 // refer to these PipelineResources in PipelineTaskResourceBindings.
-type PipelineDeclaredResource = v1alpha2.PipelineDeclaredResource
+type PipelineDeclaredResource = v1beta1.PipelineDeclaredResource
 
 // PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources
 // should be provided to a Task as its inputs and outputs.
-type PipelineTaskResources = v1alpha2.PipelineTaskResources
+type PipelineTaskResources = v1beta1.PipelineTaskResources
 
 // PipelineTaskInputResource maps the name of a declared PipelineResource input
 // dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources
 // that should be used. This input may come from a previous task.
-type PipelineTaskInputResource = v1alpha2.PipelineTaskInputResource
+type PipelineTaskInputResource = v1beta1.PipelineTaskInputResource
 
 // PipelineTaskOutputResource maps the name of a declared PipelineResource output
 // dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources
 // that should be used.
-type PipelineTaskOutputResource = v1alpha2.PipelineTaskOutputResource
+type PipelineTaskOutputResource = v1beta1.PipelineTaskOutputResource
 
 // TaskRef can be used to refer to a specific instance of a task.
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type TaskRef = v1alpha2.TaskRef
+type TaskRef = v1beta1.TaskRef
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

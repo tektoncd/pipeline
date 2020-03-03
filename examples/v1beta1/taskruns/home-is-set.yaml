@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: home-is-set-
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        [[ $HOME == /tekton/home ]]

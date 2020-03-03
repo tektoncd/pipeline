@@ -158,6 +158,14 @@ use a `ConfigMap` with the name `config-artifact-bucket` and the following attri
 
 **Note:** You can only use an S3 bucket located in the `us-east-1` region. This is a limitation of [`gsutil`](https://cloud.google.com/storage/docs/gsutil) running a `boto` configuration behind the scenes to access the S3 bucket.
 
+Both options provide the same functionality to the pipeline. The choice is based
+on the infrastructure used, for example in some Kubernetes platforms, the
+creation of a persistent volume could be slower than uploading/downloading files
+to a bucket, or if the the cluster is running in multiple zones, the access to
+the persistent volume can fail.
+
+#### Example configuration for an S3 bucket
+
 Below is an example configuration that uses an S3 bucket:
 
 ```yaml
@@ -189,9 +197,10 @@ data:
   bucket.service.account.field.name: BOTO_CONFIG
 ```
 
-And this is an example configuration that uses a GCS bucket:
+#### Example configuration for a GCS bucket
 
-#### GCS Bucket Example
+Below is an example configuration that uses a GCS bucket:
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -261,8 +270,14 @@ file lists the keys you can customize along with their default values.
 To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` as follows:
 
 - `disable-home-env-overwrite` - set this flag to `true` to prevent Tekton
-from overwriting the `$HOME` environment variable for the containers executing your `Steps`. 
+from overriding the `$HOME` environment variable for the containers executing your `Steps`. 
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
+
+- `disable-working-directory-overwrite` - set this flag to "true" to prevent Tekton
+from overriding the working directory for the containers executing your `Steps`.
+The default value is `false`, which causes Tekton to override the working directory
+for each `Step` that does not have its working directory explicitly set with `/workspace`.
+For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/1836).
 
 For example:
 
@@ -272,7 +287,8 @@ kind: ConfigMap
 metadata:
   name: feature-flags
 data:
-  disable-home-env-overwrite: "true" # Tekton will not overwrite $HOME in Steps.
+  disable-home-env-overwrite: "true" # Tekton will not override the $HOME variable for individual Steps.
+  disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
 ```
 
 ## Creating a custom release of Tekton Pipelines

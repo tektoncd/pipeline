@@ -13,6 +13,8 @@ This document defines `Pipelines` and their capabilities.
     - [RunAfter](#runAfter)
     - [Retries](#retries)
     - [Conditions](#conditions)
+    - [Timeout](#timeout)
+- [Results](#results)
 - [Ordering](#ordering)
 - [Examples](#examples)
 
@@ -49,6 +51,10 @@ following fields:
         apply to cancellations.
       - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
         conditions are evaluated to be true.
+      - [`timeout`](#timeout) - Specifies timeout after which the `TaskRun` for a Pipeline Task will 
+        fail. There is no default timeout for a Pipeline Task timeout. If no timeout is specified for 
+        the Pipeline Task, the only timeout taken into account for running a `Pipeline` will be a 
+        [timeout for the `PipelineRun`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md#syntax).
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -350,7 +356,6 @@ In this example, the task "build-the-image" will be executed and if the first
 run fails a second one would triggered. But, if that fails no more would
 triggered: a max of two executions.
 
-
 #### conditions
 
 Sometimes you will need to run tasks only when some conditions are true. The `conditions` field 
@@ -403,7 +408,44 @@ tasks:
       name: echo-hello
 ```
 
-## Ordering
+#### Timeout
+
+The Timeout property of a Pipeline Task allows a timeout to be defined for a `TaskRun` that 
+is part of a `PipelineRun`. If the `TaskRun` exceeds the amount of time specified, the `TaskRun` 
+will fail and the `PipelineRun` associated with a `Pipeline` will fail as well. 
+
+There is no default timeout for Pipeline Tasks, so a timeout must be specified with a Pipeline Task 
+when defining a `Pipeline` if one is needed. An example of a Pipeline Task with a Timeout is shown below:
+
+```yaml
+spec:
+  tasks:
+    - name: build-the-image
+      taskRef:
+        name: build-push
+      Timeout: "0h1m30s"
+```
+
+The Timeout property is specified as part of the Pipeline Task on the `Pipeline` spec. The above 
+example has a timeout of one minute and 30 seconds.  
+
+### Results
+
+Tasks can declare [results](./tasks.md#results) that they will emit during their execution. These results can be used as values for params in subsequent tasks of a Pipeline. Tekton will infer the ordering of these Tasks to ensure that the Task emitting the results runs before the Task consuming those results in its parameters.
+
+Using a Task result as a value for another Task's parameter is done with variable substitution. Here is what a Pipeline Task's param looks like with a result wired into it:
+
+```yaml
+params:
+  - name: foo
+    value: "$(tasks.previous-task-name.results.bar-result)"
+```
+
+In this example the previous pipeline task has name "previous-task-name" and its result is declared in the Task definition as having name "bar-result".
+
+For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/pipelineruns/task_results_example.yaml).
+
+### Ordering
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run
 in a graph, specifically a _Directed Acyclic Graph_ or DAG. Each of the Pipeline

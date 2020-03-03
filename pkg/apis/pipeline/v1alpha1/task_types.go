@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 const (
@@ -45,7 +45,7 @@ func (t *Task) Copy() TaskInterface {
 
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
-	v1alpha2.TaskSpec `json:",inline"`
+	v1beta1.TaskSpec `json:",inline"`
 
 	// Inputs is an optional set of parameters and resources which must be
 	// supplied by the user when a Task is executed by a TaskRun.
@@ -58,13 +58,13 @@ type TaskSpec struct {
 }
 
 // TaskResult used to describe the results of a task
-type TaskResult = v1alpha2.TaskResult
+type TaskResult = v1beta1.TaskResult
 
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
-type Step = v1alpha2.Step
+type Step = v1beta1.Step
 
-type Sidecar = v1alpha2.Sidecar
+type Sidecar = v1beta1.Sidecar
 
 // +genclient
 // +genclient:noStatus
@@ -105,9 +105,7 @@ type Inputs struct {
 // the Task definition, and when provided as an Input, the Name will be the
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
-type TaskResource struct {
-	ResourceDeclaration `json:",inline"`
-}
+type TaskResource = v1beta1.TaskResource
 
 // Outputs allow a task to declare what data the Build/Task will be producing,
 // i.e. results such as logs and artifacts such as images.

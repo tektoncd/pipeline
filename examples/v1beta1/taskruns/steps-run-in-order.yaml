@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: steps-run-in-order-
+spec:
+  taskSpec:
+    steps:
+    - image: busybox
+      # NB: command is not set, so it must be looked up from the registry.
+      args: ['-c', 'sleep 3 && touch foo']
+    - image: busybox
+      args: ['-c', 'ls', 'foo']
