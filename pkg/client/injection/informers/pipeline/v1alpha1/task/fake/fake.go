@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	fake "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory/fake"
 	task "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task"

@@ -19,7 +19,7 @@ limitations under the License.
 package client
 
 import (
-	"context"
+	context "context"
 
 	versioned "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	rest "k8s.io/client-go/rest"

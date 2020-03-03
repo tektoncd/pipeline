@@ -19,12 +19,12 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	fake "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	client "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	rest "k8s.io/client-go/rest"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
 )

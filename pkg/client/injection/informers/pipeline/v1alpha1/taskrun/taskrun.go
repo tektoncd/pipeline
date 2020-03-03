@@ -19,7 +19,7 @@ limitations under the License.
 package taskrun
 
 import (
-	"context"
+	context "context"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory"

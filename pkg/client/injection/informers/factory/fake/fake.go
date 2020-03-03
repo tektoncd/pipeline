@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	"context"
+	context "context"
 
 	externalversions "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	fake "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
