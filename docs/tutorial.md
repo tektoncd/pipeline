@@ -514,7 +514,7 @@ tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours 
 ```
 
 The `Succeded` status indicates that your `Pipeline` completed without errors.
-You can also see the statuses of the individual `Tasks`.
+You can also see the statuses of the individual `TaskRuns`.
 
 ## (Optional) Running this tutorial locally
 
