@@ -1,10 +1,10 @@
 # Tekton Pipelines Tutorial
 
 This tutorial uses a simple `Hello World` example to show you how to:
-- Create a `Task`,
-- Create a `Pipeline` containing your `Tasks`,
-- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`,
-- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`.
+- Create a `Task`
+- Create a `Pipeline` containing your `Tasks`
+- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`
+- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
 
 This tutorial consists of the following sections:
 
@@ -21,7 +21,7 @@ Before you begin this tutorial, make sure you have [installed and configured](in
 the latest release of Tekton on your Kubernetes cluster, including the
 [Tekton CLI](https://github.com/tektoncd/cli). 
 
-If you'd like to complete this tutorial on your local workstation, see [Running this tutorial locally](#running-this-tutorial-locally). To learn more about the Tekton entities involved in this tutorial, see [Further reading](#further-reading).
+If you would like to complete this tutorial on your local workstation, see [Running this tutorial locally](#running-this-tutorial-locally). To learn more about the Tekton entities involved in this tutorial, see [Further reading](#further-reading).
 
 ## Creating and running a `Task`
 
@@ -65,7 +65,7 @@ To check whether running your `TaskRun` succeeded, use the following command:
 tkn taskrun describe echo-hello-world-task-run
 ```
 
-Below is the example output:
+The output will look similar to the following:
 
 ```
 Name:        echo-hello-world-task-run
@@ -98,7 +98,7 @@ To see more detail about the execution of your `TaskRun`, view its logs as follo
 tkn taskrun logs echo-hello-world-task-run
 ```
 
-Below is an example output:
+The output will look similar to the following:
 
 ```
 [echo] hello world
@@ -109,7 +109,7 @@ Below is an example output:
 In more complex scenarios, a `Task` requires you to define inputs and outputs. For example, a
 `Task` could fetch source code from a GitHub repository and build a Docker image from it.
 
-Use one or more [`PipelineResources`](resources.md) to define the artifacts you'd like to pass in
+Use one or more [`PipelineResources`](resources.md) to define the artifacts you want to pass in
 and out of your `Task`. The following are examples of the most commonly needed resources.
 
 The [`git` resource](resources.md#git-resource) specifies a git repository with
@@ -129,7 +129,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local git repository.
 ```
 
-The [`image` resource](resources.md#image-resource) specifies the image that the `Task` will build:
+The [`image` resource](resources.md#image-resource) specifies the repository to which the image built by the `Task` will be pushed:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -221,8 +221,8 @@ kubectl apply -f <name-of-file.yaml>
 
 You are now ready for your first `TaskRun`!
 
-A `TaskRun` executes the steps in your `Task`, binds the inputs and outputs to already defined `PipelineResources`,
-and sets the values for your variable substitution parameters.
+A `TaskRun` binds the inputs and outputs to already defined `PipelineResources`, sets values 
+for variable substitution parameters, and executes the `Steps` in the `Task`.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -250,7 +250,7 @@ spec:
           name: skaffold-image-leeroy-web
 ```
 
-Apply your YAML files that contain your `Task`, `TaskRun`, and `PipelineResource` definitions as follows:
+Save the YAML files that contain your `Task`, `TaskRun`, and `PipelineResource` definitions and apply them using the following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -261,7 +261,8 @@ To examine the resources you've created so far, use the following command:
 ```bash
 kubectl get tekton-pipelines
 ```
-Below is an example output:
+
+The output will look similar to the following:
 
 ```
 NAME                                                   AGE
@@ -281,7 +282,7 @@ To see the result of executing your `TaskRun`, use the following command:
 tkn taskrun describe build-docker-image-from-git-source-task-run
 ```
 
-Below is an example output:
+The output will look similar to the following:
 
 ```
 Name:        build-docker-image-from-git-source-task-run
@@ -314,7 +315,7 @@ image-digest-exporter-hlbsq
 ```
 
 The `Succeeded` status indicates the `Task` has completed with no errors. You
-can also confirm that the output Docker image has been created in the location you specified.
+can also confirm that the output Docker image has been created in the location specified in the resource definition.
 
 To view detailed information about the execution of your `TaskRun`, view the logs:
 
@@ -325,8 +326,8 @@ tkn taskrun logs build-docker-image-from-git-source-task-run
 ## Creating and running a `Pipeline`
 
 A [`Pipeline`](pipelines.md) defines an ordered series of `Tasks` that you want to execute
-along with the inputs and outputs of each `Task`. You can specify whether the output of one
-`Task` is used as an input for the next `Task` using the [`from`](pipelines.md#from).
+along with the along with corresponding inputs and outputs for each `Task`. You can specify whether the output of one
+`Task` is used as an input for the next `Task` using the [`from`](pipelines.md#from) property.
 `Pipelines` offer the same variable substitution as `Tasks`.
 
 Below is an example definition of a `Pipeline`:
@@ -438,7 +439,6 @@ kubectl create clusterrolebinding tutorial-binding \
              --serviceaccount=default:tutorial-service
 ```
 
-
 To run your `Pipeline`, instantiate it with a [`PipelineRun`](pipelineruns.md) as follows:
 
 ```yaml
@@ -459,17 +459,17 @@ spec:
         name: skaffold-image-leeroy-web
 ```
 
-The `PipelineRun` automatically defines a corresponding `TaskRun` for each `Task` you've defined
-in your `Pipeline`. It also  and collect the results of running each `Task`. In our example, the
+The `PipelineRun` automatically defines a corresponding `TaskRun` for each `Task` you have defined
+in your `Pipeline` collects the results of executing each `TaskRun`. In our example, the
 `TaskRun` order is as follows:
 
 1. `tutorial-pipeline-run-1-build-skaffold-web` runs `build-skaffold-web`,
    since it has no [`from` or `runAfter` clauses](pipelines.md#ordering).
-1. `tutorial-pipeline-run-1-deploy-web`  runs `deploy-web`, because
+1. `tutorial-pipeline-run-1-deploy-web` runs `deploy-web` because
    its [input](tasks.md#inputs) `web-image` comes [`from`](pipelines.md#from)
    `build-skaffold-web`. Thus, `build-skaffold-web` must run before `deploy-web`.
 
-Apply the above YAML files as follows:
+Save the `Task`, `Pipeline`, and `PipelineRun` definitions above to as YAML files and apply them using the following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -482,13 +482,13 @@ You can monitor the execution of your `PipelineRun` in realtime as follows:
 tkn pipelinerun logs tutorial-pipeline-run-1 -f
 ```
 
-To view the output of your `PipelineRun`, use the following command:
+To view detailed information about your `PipelineRun`, use the following command:
 
 ```bash
 tkn pipelinerun describe tutorial-pipeline-run-1
 ```
 
-Below is an example output:
+The output will look similar to the following:
 
 ```bash
 Name:           tutorial-pipeline-run-1
@@ -513,7 +513,7 @@ tutorial-pipeline-run-1-deploy-web-jjf2l           deploy-web           4 hours 
 tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours ago   1 minute     Succeeded
 ```
 
-The `Succeded` status indicates that your `Pipeline` completed without errors.
+The `Succeded` status indicates that your `PipelineRun` completed without errors.
 You can also see the statuses of the individual `TaskRuns`.
 
 ## Running this tutorial locally
