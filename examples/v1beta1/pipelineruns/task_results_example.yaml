@@ -89,3 +89,16 @@ spec:
       script: |
         #!/usr/bin/env bash
         echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: sum-and-multiply-pipeline-run-
+spec:
+  pipelineRef:
+    name: sum-and-multiply-pipeline
+  params:
+    - name: a
+      value: "2"
+    - name: b
+      value: "10"
