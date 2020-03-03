@@ -332,4 +332,4 @@ tkn pipelinerun logs sum-and-multiply-pipeline-run-rgd9j -f -n default
 [sum-and-multiply : sum] 30050
 ```
 
-As you can see, you can define multiple tasks in the same pipeline and use the result of more than one task inside another task parameter. The substitution is only done inside `pipeline.spec.tasks[].params[]`. For a complete example demonstrating Task Results in a Pipeline, see the [pipelinerun example](../../examples/v1alpha1/pipelineruns/task_results_example.yaml).
+As you can see, you can define multiple tasks in the same pipeline and use the result of more than one task inside another task parameter. The substitution is only done inside `pipeline.spec.tasks[].params[]`. For a complete example demonstrating Task Results in a Pipeline, see the [pipelinerun example](../../examples/v1beta1/pipelineruns/task_results_example.yaml).
