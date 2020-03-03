@@ -189,7 +189,7 @@ spec:
 
 ### Configuring `Task` execution credentials
 
-Before you can execute your `TaskRun` you must create a `secret` to push your image
+Before you can execute your `TaskRun`, you must create a `secret` to push your image
 to your desired image registry:
 
 ```bash
