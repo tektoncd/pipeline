@@ -49,8 +49,11 @@ To install Tekton Pipelines on a Kubernetes cluster:
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
-   You can install a specific release using `previous/$VERSION_NUMBER`.
-   For example, https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.
+   You can install a specific release using `previous/$VERSION_NUMBER`. For example:
+   
+   ```bash
+    kubectl apply --filename `https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml`.
+   ```
    
    If your container runtime does not support `image-reference:tag@digest`
    (for example, like `cri-o` used in OpenShift 4.x), use `release.notags.yaml` instead:
@@ -265,7 +268,7 @@ To customize the behavior of the Pipelines Controller, modify the ConfigMap `fea
 from overriding the `$HOME` environment variable for the containers executing your `Steps`. 
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
 
-- `disable-working-directory-overwrite` - set this flag to "true" to prevent Tekton
+- `disable-working-directory-overwrite` - set this flag to `true` to prevent Tekton
 from overriding the working directory for the containers executing your `Steps`.
 The default value is `false`, which causes Tekton to override the working directory
 for each `Step` that does not have its working directory explicitly set with `/workspace`.
