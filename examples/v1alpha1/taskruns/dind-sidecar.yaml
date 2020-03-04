@@ -40,6 +40,10 @@ spec:
     sidecars:
     - image: docker:dind
       name: server
+      args:
+        - --storage-driver=vfs
+        - --userland-proxy=false
+        - --debug
       securityContext:
         privileged: true
       env:
