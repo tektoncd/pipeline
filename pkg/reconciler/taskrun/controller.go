@@ -97,7 +97,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
 
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("TaskRun")),
+			FilterFunc: controller.FilterGroupKind(v1alpha1.Kind("TaskRun")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
