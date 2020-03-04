@@ -117,7 +117,7 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 		configmap.Constructors{
 			logging.ConfigMapName():           logging.NewConfigFromConfigMap,
 			defaultconfig.DefaultsConfigName:  defaultconfig.NewDefaultsFromConfigMap,
-			pkgleaderelection.ConfigMapName(): pkgleaderelection.NewConfigFromMap,
+			pkgleaderelection.ConfigMapName(): pkgleaderelection.NewConfigFromConfigMap,
 		},
 	)
 }
