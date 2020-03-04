@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -69,14 +70,29 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 	if refs == nil {
 		return nil
 	}
-	resolvedResultRefByRef := make(map[v1beta1.ResultRef]*ResolvedResultRef)
+	resolvedResultRefByRef := make(map[v1beta1.ResultRef]*ResolvedResultRef, len(refs))
 	for _, resolvedResultRef := range refs {
 		resolvedResultRefByRef[resolvedResultRef.ResultReference] = resolvedResultRef
 	}
 	deduped := make([]*ResolvedResultRef, 0, len(resolvedResultRefByRef))
 
-	for _, ressolvedResultRef := range resolvedResultRefByRef {
-		deduped = append(deduped, ressolvedResultRef)
+	// Sort the resulting keys to produce a deterministic ordering.
+	order := make([]v1beta1.ResultRef, 0, len(refs))
+	for key := range resolvedResultRefByRef {
+		order = append(order, key)
+	}
+	sort.Slice(order, func(i, j int) bool {
+		if order[i].PipelineTask > order[j].PipelineTask {
+			return false
+		}
+		if order[i].Result > order[j].Result {
+			return false
+		}
+		return true
+	})
+
+	for _, key := range order {
+		deduped = append(deduped, resolvedResultRefByRef[key])
 	}
 	return deduped
 }
