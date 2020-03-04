@@ -52,6 +52,11 @@ type ConditionSpec struct {
 	// Check declares container whose exit code determines where a condition is true or false
 	Check Step `json:"check,omitempty"`
 
+	// Description is a user-facing description of the condition that may be
+	// used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
+
 	// Params is an optional set of parameters which must be supplied by the user when a Condition
 	// is evaluated
 	// +optional

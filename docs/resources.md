@@ -46,9 +46,10 @@ following fields:
         the `PipelineResource` object, for example a `name`.
     -   [`spec`][kubernetes-overview] - Specifies the configuration information
         for your `PipelineResource` resource object.
-    -   [`type`](#resource-types) - Specifies the `type` of the
-        `PipelineResource`
+        -   [`type`](#resource-types) - Specifies the `type` of the
+            `PipelineResource`
 -   Optional:
+    -   [`description`](#description) - Description of the Resource.
     -   [`params`](#resource-types) - Parameters which are specific to each type
         of `PipelineResource`
     -   [`optional`](#optional-resources) - Boolean flag to mark a resource
@@ -224,6 +225,10 @@ resourcesResult:
   resourceRef:
     name: skaffold-image-leeroy-web
 ```
+
+### Description
+
+The `description` field is an optional field and can be used to provide description of the Resource.
 
 ### Optional Resources
 

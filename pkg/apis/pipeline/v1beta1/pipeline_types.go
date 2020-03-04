@@ -52,6 +52,10 @@ func (p *Pipeline) Copy() PipelineInterface {
 
 // PipelineSpec defines the desired state of Pipeline.
 type PipelineSpec struct {
+	// Description is a user-facing description of the pipeline that may be
+	// used to populate a UI.
+	// +optional
+	Description string `json:"description,omitempty"`
 	// Resources declares the names and types of the resources given to the
 	// Pipeline's tasks as inputs and outputs.
 	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
