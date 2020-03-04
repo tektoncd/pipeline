@@ -129,7 +129,11 @@ function run_yaml_tests() {
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko apply -f config/ || fail_test "Build pipeline installation failed"
+  ko resolve -f config/ \
+      | sed -e 's%"level": "info"%"level": "debug"%' \
+      | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
+      | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
+      | kubectl apply -f - || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
 }
 
