@@ -35,14 +35,15 @@ following fields:
     - [`tasks`](#pipeline-tasks) - Specifies which `Tasks` to run and how to run
       them
 - Optional:
+  - [`description`](#description) - Description of the Pipeline.
   - [`resources`](#declared-resources) - Specifies which
     [`PipelineResources`](resources.md) of which types the `Pipeline` will be
     using in its [Tasks](#pipeline-tasks)
   - `tasks`
-    - `resources.inputs` / `resource.outputs`
-      - [`from`](#from) - Used when the content of the
-        [`PipelineResource`](resources.md) should come from the
-        [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
+      - `resources.inputs` / `resource.outputs`
+          - [`from`](#from) - Used when the content of the
+            [`PipelineResource`](resources.md) should come from the
+            [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
       - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
@@ -58,6 +59,10 @@ following fields:
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+
+### Description
+
+The `description` field is an optional field and can be used to provide description of the Pipeline.
 
 ### Declared resources
 

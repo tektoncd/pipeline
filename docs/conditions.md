@@ -25,7 +25,8 @@ following fields:
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `Condition` resource object. In order for a `Condition` to do anything,
     the spec must include:
-    - [`check`](#check) - Specifies a container that you want to run for evaluating the condition 
+    - [`check`](#check) - Specifies a container that you want to run for evaluating the condition
+    - [`description`](#description) - Description of the Condition.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -36,6 +37,10 @@ The `check` field is required. You define a single check to define the body of a
 check must specify a [`Step`](./tasks.md#steps). The container image runs till completion. The container 
 must exit successfully i.e. with an exit code 0 for the condition evaluation to be successful. All other 
 exit codes are considered to be a condition check failure.
+
+### Description
+
+The `description` field is an optional field and can be used to provide description of the Condition.
 
 ### Parameters
 

@@ -76,6 +76,7 @@ following fields:
     - [`steps`](#steps) - Specifies one or more container images that you want
       to run in your `Task`.
 - Optional:
+  - [`description`](#description) - Description of the Task.
   - [`params`](#params) - Specifies parameters
   - [`resources`](#resources) - Specifies
     [`PipelineResources`](resources.md) needed or created by your
@@ -226,6 +227,10 @@ steps:
     #!/usr/bin/env bash
     /bin/my-binary
 ```
+
+### Description
+
+The `description` field is an optional field and can be used to provide description of the Task.
 
 ### Parameters
 

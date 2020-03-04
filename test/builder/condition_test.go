@@ -35,6 +35,7 @@ func TestCondition(t *testing.T) {
 				"label-2": "label-value-2",
 			}),
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
+			tb.ConditionDescription("Test Condition"),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
 				tb.ParamSpecDefault("default"),
 				tb.ParamSpecDescription("desc")),
@@ -59,6 +60,7 @@ func TestCondition(t *testing.T) {
 					Command: []string{"exit 0"},
 				},
 			},
+			Description: "Test Condition",
 			Params: []v1alpha1.ParamSpec{{
 				Name:        "param-1",
 				Type:        v1alpha1.ParamTypeString,

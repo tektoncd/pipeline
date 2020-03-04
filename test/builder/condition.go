@@ -82,6 +82,13 @@ func ConditionSpecCheck(name, image string, ops ...ContainerOp) ConditionSpecOp 
 	}
 }
 
+// ConditionDescription sets the description of the condition
+func ConditionDescription(desc string) ConditionSpecOp {
+	return func(spec *v1alpha1.ConditionSpec) {
+		spec.Description = desc
+	}
+}
+
 func ConditionSpecCheckScript(script string) ConditionSpecOp {
 	return func(spec *v1alpha1.ConditionSpec) {
 		spec.Check.Script = script

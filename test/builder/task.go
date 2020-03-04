@@ -146,6 +146,13 @@ func TaskSpec(ops ...TaskSpecOp) TaskOp {
 	}
 }
 
+// TaskDescription sets the description of the task
+func TaskDescription(desc string) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.Description = desc
+	}
+}
+
 // Step adds a step with the specified name and image to the TaskSpec.
 // Any number of Container modifier can be passed to transform it.
 func Step(image string, ops ...StepOp) TaskSpecOp {

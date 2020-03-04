@@ -37,6 +37,7 @@ func TestPipeline(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
+		tb.PipelineDescription("Test Pipeline"),
 		tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value"), tb.ParamSpecDescription("default description")),
 		tb.PipelineTask("foo", "banana",
 			tb.PipelineTaskParam("stringparam", "value"),
@@ -80,6 +81,7 @@ func TestPipeline(t *testing.T) {
 				Name: "my-only-image-resource",
 				Type: "image",
 			}},
+			Description: "Test Pipeline",
 			Params: []v1alpha1.ParamSpec{{
 				Name:        "first-param",
 				Type:        v1alpha1.ParamTypeString,
