@@ -28,6 +28,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection/sharedmain"
+	pkgleaderelection "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
 	"knative.dev/pkg/webhook"
@@ -114,8 +115,9 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 
 		// The configmaps to validate.
 		configmap.Constructors{
-			logging.ConfigMapName():          logging.NewConfigFromConfigMap,
-			defaultconfig.DefaultsConfigName: defaultconfig.NewDefaultsFromConfigMap,
+			logging.ConfigMapName():           logging.NewConfigFromConfigMap,
+			defaultconfig.DefaultsConfigName:  defaultconfig.NewDefaultsFromConfigMap,
+			pkgleaderelection.ConfigMapName(): pkgleaderelection.NewConfigFromMap,
 		},
 	)
 }
