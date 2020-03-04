@@ -1,6 +1,8 @@
 package resources
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -256,14 +258,32 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
 			got, err := extractResultRefsFromParam(tt.fields.pipelineRunState, tt.args.param)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
-				return
+				t.Fatalf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef  -want, +got: %v", d)
+			if len(tt.want) != len(got) {
+				t.Fatalf("incorrect number of refs, want %d, got %d", len(tt.want), len(got))
+			}
+			for _, rGot := range got {
+				foundMatch := false
+				for _, rWant := range tt.want {
+					if d := cmp.Diff(rGot, rWant); d == "" {
+						foundMatch = true
+					}
+				}
+				if !foundMatch {
+					t.Fatalf("Expected resolved refs:\n%s\n\nbut received:\n%s\n", resolvedSliceAsString(tt.want), resolvedSliceAsString(got))
+				}
 			}
 		})
 	}
+}
+
+func resolvedSliceAsString(rs []*ResolvedResultRef) string {
+	var s []string
+	for _, r := range rs {
+		s = append(s, fmt.Sprintf("%#v", *r))
+	}
+	return fmt.Sprintf("[\n%s\n]", strings.Join(s, ",\n"))
 }
 
 func TestResolveResultRefs(t *testing.T) {
