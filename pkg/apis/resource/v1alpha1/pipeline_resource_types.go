@@ -93,8 +93,12 @@ type PipelineResourceStatus struct {
 
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
-	Type   PipelineResourceType `json:"type"`
-	Params []ResourceParam      `json:"params"`
+	// Description is a user-facing description of the resource that may be
+	// used to populate a UI.
+	// +optional
+	Description string               `json:"description,omitempty"`
+	Type        PipelineResourceType `json:"type"`
+	Params      []ResourceParam      `json:"params"`
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`
@@ -126,7 +130,7 @@ type ResourceDeclaration struct {
 	Name string `json:"name"`
 	// Type is the type of this resource;
 	Type PipelineResourceType `json:"type"`
-	// Description is a user-facing description of the parameter that may be
+	// Description is a user-facing description of the declared resource that may be
 	// used to populate a UI.
 	// +optional
 	Description string `json:"description,omitempty"`

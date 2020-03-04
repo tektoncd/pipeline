@@ -53,6 +53,7 @@ func TestTask(t *testing.T) {
 			tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage),
 			tb.OutputsResource("myoptionalimage", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
 		),
+		tb.TaskDescription("Test Task"),
 		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
@@ -69,6 +70,7 @@ func TestTask(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
 		Spec: v1alpha1.TaskSpec{
 			TaskSpec: v1beta1.TaskSpec{
+				Description: "Test Task",
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:    "mycontainer",
 					Image:   "myimage",
