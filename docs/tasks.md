@@ -393,6 +393,18 @@ spec:
 
 defines two results `current-date-unix-timestamp` and `current-date-human-readable`. To define a result, you specify a `name` that will correspond to the file name in the `/tekton/results` folder and a `description` where you can explain the purpose of the result.
 
+Note: The maximum size of a Task's results is limited by Kubernetes' container termination log feature. The results
+are passed back to the controller via this mechanism. At time of writing this has a capped maximum size of
+["2048 bytes or 80 lines, whichever is smaller"](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
+
+A Task Result is encoded as a JSON object when it is written to the termination log and Tekton also uses this
+object to pass some other information back to the controller as well. As such Task Results are best utilized for
+_small_ pieces of data.  Good candidates are commit SHAs, branch names, ephemeral namespace names, and so on.
+
+If you are writing many small Task Results from a single Task you can work around this size limit by writing
+the results from separate Steps - each Step has its own termination log. But for data larger than a kilobyte
+the next best alternative is to use a [Workspace](#workspaces) to shuttle data between Tasks in a Pipeline.
+
 ### Volumes
 
 Specifies one or more
