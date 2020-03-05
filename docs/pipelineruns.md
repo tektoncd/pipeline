@@ -92,7 +92,6 @@ spec:
 [Here](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec.yaml) is a sample `PipelineRun` to display different
 greetings while embedding the spec of the `Pipeline` directly in the `PipelineRun`.
 
-
 After creating such a `PipelineRun`, the logs from this pod are displaying morning greetings:
 
 ```bash
@@ -101,6 +100,7 @@ Good Morning, Bob!
 ```
 
 And the logs from this pod are displaying evening greetings:
+
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
 Good Night, Bob!
@@ -120,7 +120,6 @@ spec:
 
 [Here](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml) is a sample `PipelineRun` with embedded
 the spec of the `Pipeline` directly in the `PipelineRun` along with the spec of the `Task` under `PipelineSpec`.
-
 
 ### Resources
 
@@ -153,7 +152,6 @@ spec:
 ```
 
 Or you can embed the spec of the `Resource` directly in the `PipelineRun`:
-
 
 ```yaml
 spec:
@@ -224,6 +222,7 @@ spec:
     - taskName: build-task
       serviceAccountName: sa-for-build
 ```
+
 If used with this `Pipeline`, `test-task` will use the `ServiceAccount` `sa-1`, while `build-task` will use `sa-for-build`.
 
 ```yaml

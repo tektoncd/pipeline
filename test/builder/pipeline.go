@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -149,6 +150,27 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 			op(pTask)
 		}
 		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
+func PipelineResult(name, value, description string, ops ...PipelineOp) PipelineSpecOp {
+	return func(ps *v1alpha1.PipelineSpec) {
+		pResult := &v1beta1.PipelineResult{
+			Name:        name,
+			Value:       value,
+			Description: description,
+		}
+		ps.Results = append(ps.Results, *pResult)
+	}
+}
+
+func PipelineRunResult(name, value string) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		pResult := &v1beta1.PipelineRunResult{
+			Name:  name,
+			Value: value,
+		}
+		s.PipelineResults = append(s.PipelineResults, *pResult)
 	}
 }
 

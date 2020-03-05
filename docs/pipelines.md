@@ -65,6 +65,7 @@ following fields:
         fail. There is no default timeout for a Pipeline Task timeout. If no timeout is specified for
         the Pipeline Task, the only timeout taken into account for running a `Pipeline` will be a
         [timeout for the `PipelineRun`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md#syntax).
+  - [`results`](#pipeline-results) - Specifies which `results` is defined for the pipeline
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -419,7 +420,7 @@ spec:
 The Timeout property is specified as part of the Pipeline Task on the `Pipeline` spec. The above
 example has a timeout of one minute and 30 seconds.
 
-### Results
+#### Results
 
 Tasks can declare [results](./tasks.md#results) that they will emit during their execution. These results can be used as values for params in subsequent tasks of a Pipeline. Tekton will infer the ordering of these Tasks to ensure that the Task emitting the results runs before the Task consuming those results in its parameters.
 
@@ -435,7 +436,7 @@ In this example the previous pipeline task has name "previous-task-name" and its
 
 For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
-### Ordering
+#### Ordering
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run
 in a graph, specifically a _Directed Acyclic Graph_ or DAG. Each of the Pipeline
@@ -527,6 +528,22 @@ build-app  build-frontend
    execute (it requires `PipelineResources` from both Pipeline Tasks).
 1. The entire `Pipeline` will be finished executing after `lint-repo` and
    `deploy-all` have completed.
+
+### Pipeline Results
+
+A pipeline can declare results that they will emit during their execution. These results can be defined as reference to task results executed
+during the pipeline execution.
+
+```yaml
+  results:
+    - name: sum
+      description: the sum of all three operands
+      value: $(tasks.second-add.results.sum)
+```
+
+In this example the pipeline result has name "sum" and its result is declared as the task result value from the tasks named `second-add`.
+
+For a complete example demonstrating pipeline Results in a Pipeline see the [pipeline example](../examples/pipelineruns/pipelinerun-results.yaml).
 
 ## Examples
 

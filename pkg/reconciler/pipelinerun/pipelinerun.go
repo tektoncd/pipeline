@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -157,6 +158,11 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	var merr error
 
 	if pr.IsDone() {
+		// We may be reading a version of the object that was stored at an older version
+		// and may not have had all of the assumed default specified.
+		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+
+		c.updatePipelineResults(ctx, pr)
 		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return err
@@ -231,6 +237,93 @@ func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipe
 	return gtFunc
 }
 
+func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.PipelineRun) {
+	if err := pr.ConvertTo(ctx, &v1beta1.PipelineRun{}); err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			pr.Status.MarkResourceNotConvertible(ce)
+		}
+		return
+	}
+
+	getPipelineFunc := c.getPipelineFunc(pr)
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
+	if err != nil {
+		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
+			pr.Status.MarkResourceNotConvertible(ce)
+			return
+		}
+		c.Logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonCouldntGetPipeline,
+			Message: fmt.Sprintf("Error retrieving pipeline for pipelinerun %s: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+		})
+		return
+	}
+	if pipelineSpec.Results != nil && len(pipelineSpec.Results) != 0 {
+		providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
+		if err != nil {
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetResource,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
+			})
+			return
+		}
+		pipelineState, err := resources.ResolvePipelineRun(ctx,
+			*pr,
+			func(name string) (v1alpha1.TaskInterface, error) {
+				return c.taskLister.Tasks(pr.Namespace).Get(name)
+			},
+			func(name string) (*v1alpha1.TaskRun, error) {
+				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			},
+			func(name string) (v1alpha1.TaskInterface, error) {
+				return c.clusterTaskLister.Get(name)
+			},
+			func(name string) (*v1alpha1.Condition, error) {
+				return c.conditionLister.Conditions(pr.Namespace).Get(name)
+			},
+			pipelineSpec.Tasks, providedResources,
+		)
+		if err != nil {
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			switch err := err.(type) {
+			case *resources.TaskNotFoundError:
+				pr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: ReasonCouldntGetTask,
+					Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+						fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pipelineMeta.Name), err),
+				})
+			case *resources.ConditionNotFoundError:
+				pr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: ReasonCouldntGetCondition,
+					Message: fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
+						fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
+				})
+			default:
+				pr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: ReasonFailedValidation,
+					Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
+						fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
+				})
+			}
+		}
+		resolvedResultRefs, _ := resources.ResolveResultRefs(pipelineState, nil, pipelineSpec.Results)
+		pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
+	}
+}
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
@@ -442,7 +535,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	nextRprts := pipelineState.GetNextTasks(candidateTasks)
-	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
+	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts, nil)
 	if err != nil {
 		c.Logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
 		pr.Status.SetCondition(&apis.Condition{
@@ -488,9 +581,29 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
-
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
+}
+
+func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
+	var results []v1beta1.PipelineRunResult
+	stringReplacements := map[string]string{}
+
+	for _, resolvedResultRef := range resolvedResultRefs {
+		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
+		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
+	}
+	for _, result := range pipelineSpec.Results {
+		in := result.Value
+		for k, v := range stringReplacements {
+			in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
+		}
+		results = append(results, v1beta1.PipelineRunResult{
+			Name:  result.Name,
+			Value: in,
+		})
+	}
+	return results
 }
 
 func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {

@@ -68,6 +68,22 @@ type PipelineSpec struct {
 	// provided by a PipelineRun.
 	// +optional
 	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
+	// Results are values that this pipeline can output once run
+	// +optional
+	Results []PipelineResult `json:"results,omitempty"`
+}
+
+// PipelineResult used to describe the results of a pipeline
+type PipelineResult struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// Description is a human-readable description of the result
+	// +optional
+	Description string `json:"description"`
+
+	// Value the expression used to retrieve the value
+	Value string `json:"value"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
