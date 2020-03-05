@@ -120,6 +120,29 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		},
 		wc: contexts.WithUpgradeViaDefaulting,
 	}, {
+		name: "Embedded PipelineSpec default",
+		in: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "foo",
+					}},
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "foo",
+						Type: "string",
+					}},
+				},
+				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			},
+		},
+		wc: contexts.WithUpgradeViaDefaulting,
+	}, {
 		name: "PipelineRef default config context",
 		in: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
