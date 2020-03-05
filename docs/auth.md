@@ -117,13 +117,14 @@ to authenticate when retrieving any `PipelineResources`.
    type: kubernetes.io/basic-auth
    stringData:
      username: <username>
-     password: <password>
+     password: <password> # password or github token
    ```
 
    `tekton.dev/git-0` in the example above specifies which web address these
    credentials belong to. See
    [Guiding Credential Selection](#guiding-credential-selection) below for more
    information.
+   > Note: the password can be your account password or github token. 
 
 1. Next, direct a `ServiceAccount` to use this `Secret` (in
    `serviceaccount.yaml`):
@@ -322,12 +323,14 @@ metadata:
 type: kubernetes.io/basic-auth
 stringData:
   username: <cleartext non-encoded>
-  password: <cleartext non-encoded>
+  password: <cleartext non-encoded> # password or github token
 ```
 
 This describes a "Basic Auth" (username and password) secret that should be used
 to access Git repos at github.com and gitlab.com, as well as Docker repositories
 at gcr.io.
+
+> Note: the password can be your github password or github token.
 
 Similarly, for SSH:
 
