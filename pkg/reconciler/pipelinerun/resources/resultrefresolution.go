@@ -37,7 +37,7 @@ type ResolvedResultRef struct {
 }
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineRunTask
-func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, error) {
+func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState, pipelineResults []v1beta1.PipelineResult) (ResolvedResultRefs, error) {
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
 		resolvedResultRefs, err := convertParamsToResultRefs(pipelineRunState, target)
@@ -46,13 +46,37 @@ func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunSta
 		}
 		allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
 	}
+	for _, result := range pipelineResults {
+		resolvedResultRefs := convertPipelineResultToResultRefs(pipelineRunState, result)
+		if resolvedResultRefs != nil {
+			allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
+		}
+	}
 	return removeDup(allResolvedResultRefs), nil
 }
 
-// extractResultRefsFromParam resolves any ResultReference that are found in param
+// extractResultRefs resolves any ResultReference that are found in param or pipeline result
 // Returns nil if none are found
-func extractResultRefsFromParam(pipelineRunState PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
-	if resultRefs, err := v1beta1.NewResultRefs(param); err == nil {
+func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
+	expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
+	if ok {
+		return extractResultRefs(expressions, pipelineRunState)
+	}
+	return nil, nil
+}
+
+// extractResultRefs resolves any ResultReference that are found in param or pipeline result
+// Returns nil if none are found
+func extractResultRefsForPipelineResult(pipelineRunState PipelineRunState, result v1beta1.PipelineResult) (ResolvedResultRefs, error) {
+	expressions, ok := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(result)
+	if ok {
+		return extractResultRefs(expressions, pipelineRunState)
+	}
+	return nil, nil
+}
+
+func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
+	if resultRefs, err := v1beta1.NewResultRefs(expressions); err == nil {
 		var resolvedResultRefs ResolvedResultRefs
 		for _, resultRef := range resultRefs {
 			resolvedResultRef, err := resolveResultRef(pipelineRunState, resultRef)
@@ -101,7 +125,7 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 func convertParamsToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
 	var resolvedParams ResolvedResultRefs
 	for _, param := range target.PipelineTask.Params {
-		resolvedResultRefs, err := extractResultRefsFromParam(pipelineRunState, param)
+		resolvedResultRefs, err := extractResultRefsForParam(pipelineRunState, param)
 		if err != nil {
 			return nil, fmt.Errorf("unable to find result referenced by param %q in pipeline task %q: %w", param.Name, target.PipelineTask.Name, err)
 		}
@@ -110,6 +134,15 @@ func convertParamsToResultRefs(pipelineRunState PipelineRunState, target *Resolv
 		}
 	}
 	return resolvedParams, nil
+}
+
+// convertPipelineResultToResultRefs converts all params of the resolved pipeline run task
+func convertPipelineResultToResultRefs(pipelineRunState PipelineRunState, pipelineResult v1beta1.PipelineResult) ResolvedResultRefs {
+	resolvedResultRefs, err := extractResultRefsForPipelineResult(pipelineRunState, pipelineResult)
+	if err != nil {
+		return nil
+	}
+	return resolvedResultRefs
 }
 
 func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, error) {

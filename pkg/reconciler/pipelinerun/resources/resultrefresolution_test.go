@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -256,7 +257,11 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
-			got, err := extractResultRefsFromParam(tt.fields.pipelineRunState, tt.args.param)
+			got, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
+			// sort result ref based on task name to garantee an certain order
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -361,7 +366,10 @@ func TestResolveResultRefs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveResultRefs(tt.args.pipelineRunState, tt.args.targets)
+			got, err := ResolveResultRefs(tt.args.pipelineRunState, tt.args.targets, nil)
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
