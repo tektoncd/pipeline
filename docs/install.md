@@ -91,7 +91,7 @@ for more information.
    oc login -u system:admin
    ```
 
-1. Set up the namespace (project) configure the service account:
+1. Set up the namespace (project) and configure the service account:
 
    ```bash
    oc new-project tekton-pipelines
