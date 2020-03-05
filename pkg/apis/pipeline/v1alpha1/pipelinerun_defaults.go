@@ -56,4 +56,8 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	if prs.PodTemplate == nil {
 		prs.PodTemplate = defaultPodTemplate
 	}
+
+	if prs.PipelineSpec != nil {
+		prs.PipelineSpec.SetDefaults(ctx)
+	}
 }
