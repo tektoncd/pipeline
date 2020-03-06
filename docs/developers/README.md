@@ -283,7 +283,6 @@ Instead of hardcoding the path to the result file, the user can also use a varia
 
 ### Known issues
 
-- When using a podTemplate to specify a non-root user for all containers, a task will not be able to modify the contents of the results directory and may fail.
 - Task Results are returned to the TaskRun controller via the container's
 termination log. At time of writing this has a capped maximum size of ["2048 bytes or 80 lines, whichever is smaller"](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
 
