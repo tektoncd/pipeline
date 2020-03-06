@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/list"
 )
 
-// ValidateBindings will return an error if the bound workspaces in wb satisfy the declared
+// ValidateBindings will return an error if the bound workspaces in wb don't satisfy the declared
 // workspaces in w.
 func ValidateBindings(w []v1alpha1.WorkspaceDeclaration, wb []v1alpha1.WorkspaceBinding) error {
 	// This will also be validated at webhook time but in case the webhook isn't invoked for some
