@@ -36,15 +36,24 @@ func TestCredsInit(t *testing.T) {
 	volumeMounts := []corev1.VolumeMount{{
 		Name: "implicit-volume-mount",
 	}}
-	envVars := []corev1.EnvVar{{
+	fooEnvVar := corev1.EnvVar{
 		Name:  "FOO",
 		Value: "bar",
-	}}
+	}
+	credsInitHomeEnvVar := corev1.EnvVar{
+		Name:  "HOME",
+		Value: credsInitHomeDir,
+	}
+	customHomeEnvVar := corev1.EnvVar{
+		Name:  "HOME",
+		Value: "/users/home/my-test-user",
+	}
 
 	for _, c := range []struct {
-		desc string
-		want *corev1.Container
-		objs []runtime.Object
+		desc    string
+		want    *corev1.Container
+		objs    []runtime.Object
+		envVars []corev1.EnvVar
 	}{{
 		desc: "service account exists with no secrets; nothing to initialize",
 		objs: []runtime.Object{
@@ -72,7 +81,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		want: nil,
 	}, {
-		desc: "service account has annotated secret; initialize creds",
+		desc: "service account has annotated secret and no HOME env var passed in; initialize creds in /tekton/creds",
 		objs: []runtime.Object{
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
@@ -98,6 +107,7 @@ func TestCredsInit(t *testing.T) {
 				},
 			},
 		},
+		envVars: []corev1.EnvVar{fooEnvVar},
 		want: &corev1.Container{
 			Name:    "credential-initializer",
 			Image:   images.CredsImage,
@@ -108,7 +118,51 @@ func TestCredsInit(t *testing.T) {
 				"-basic-git=my-creds=github.com",
 				"-basic-git=my-creds=gitlab.com",
 			},
-			Env: envVars,
+			Env: []corev1.EnvVar{fooEnvVar, credsInitHomeEnvVar},
+			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
+				Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+				MountPath: "/tekton/creds-secrets/my-creds",
+			}),
+		},
+	}, {
+		desc: "service account with secret and HOME env var passed in",
+		objs: []runtime.Object{
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+				Secrets: []corev1.ObjectReference{{
+					Name: "my-creds",
+				}},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/docker-0": "https://us.gcr.io",
+						"tekton.dev/docker-1": "https://docker.io",
+						"tekton.dev/git-0":    "github.com",
+						"tekton.dev/git-1":    "gitlab.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+				Data: map[string][]byte{
+					"username": []byte("foo"),
+					"password": []byte("BestEver"),
+				},
+			},
+		},
+		envVars: []corev1.EnvVar{customHomeEnvVar},
+		want: &corev1.Container{
+			Name:    "credential-initializer",
+			Image:   images.CredsImage,
+			Command: []string{"/ko-app/creds-init"},
+			Args: []string{
+				"-basic-docker=my-creds=https://docker.io",
+				"-basic-docker=my-creds=https://us.gcr.io",
+				"-basic-git=my-creds=github.com",
+				"-basic-git=my-creds=gitlab.com",
+			},
+			Env: []corev1.EnvVar{customHomeEnvVar},
 			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
 				Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 				MountPath: "/tekton/creds-secrets/my-creds",
@@ -118,7 +172,7 @@ func TestCredsInit(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, kubeclient, volumeMounts, envVars)
+			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, kubeclient, volumeMounts, c.envVars)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}

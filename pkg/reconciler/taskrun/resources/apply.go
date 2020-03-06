@@ -125,6 +125,15 @@ func ApplyTaskResults(spec *v1alpha1.TaskSpec) *v1alpha1.TaskSpec {
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }
 
+// ApplyCredentialsPath applies a substitution of the key $(credentials.path) with the path that the creds-init
+// helper will write its credentials to.
+func ApplyCredentialsPath(spec *v1alpha1.TaskSpec, path string) *v1alpha1.TaskSpec {
+	stringReplacements := map[string]string{
+		"credentials.path": path,
+	}
+	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+}
+
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
 func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]string, arrayReplacements map[string][]string) *v1alpha1.TaskSpec {
 	spec = spec.DeepCopy()

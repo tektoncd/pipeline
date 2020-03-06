@@ -25,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
@@ -53,6 +54,13 @@ func main() {
 		PostWriter:      &realPostWriter{},
 		Results:         strings.Split(*results, ","),
 	}
+
+	// Copy any creds injected by creds-init into the $HOME directory of the current
+	// user so that they're discoverable by git / ssh.
+	if err := credentials.CopyCredsToHome(credentials.CredsInitCredentials); err != nil {
+		log.Printf("non-fatal error copying credentials: %q", err)
+	}
+
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {
 		case skipError:

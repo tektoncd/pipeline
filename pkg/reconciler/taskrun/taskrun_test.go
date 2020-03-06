@@ -538,11 +538,18 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunStatus(tb.PodName("some-pod-abcdethat-no-longer-exists")),
 	)
 
+	taskRunWithCredentialsVariable := tb.TaskRun("test-taskrun-with-credentials-variable", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(
+			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd $(credentials.path)")),
+		),
+	))
+
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
+		taskRunWithCredentialsVariable,
 	}
 
 	d := test.Data{
@@ -899,6 +906,43 @@ func TestReconcile(t *testing.T) {
 				),
 			),
 		),
+	}, {
+		name:    "taskrun-with-credentials-variable-default-tekton-home",
+		taskRun: taskRunWithCredentialsVariable,
+		wantPod: tb.Pod("test-taskrun-with-credentials-variable-pod-9l9zj", "foo",
+			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-credentials-variable"),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-credentials-variable",
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-mycontainer", "myimage",
+					tb.Command("/tekton/tools/entrypoint"),
+					tb.Args("-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						// Important bit here: /tekton/home
+						"/mycmd /tekton/home",
+						"--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
+					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
+					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
+					tb.TerminationMessagePath("/tekton/termination"),
+				),
+			),
+		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -1197,7 +1241,7 @@ func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error
 		return nil, err
 	}
 
-	return podconvert.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache)
+	return podconvert.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache, true)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {

@@ -79,24 +79,31 @@ var (
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache) (*corev1.Pod, error) {
+func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache, overrideHomeEnv bool) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
 	var volumes []corev1.Volume
-
+	var volumeMounts []corev1.VolumeMount
 	implicitEnvVars := []corev1.EnvVar{}
 
-	if shouldOverrideHomeEnv(kubeclient) {
+	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
+	volumes = append(volumes, implicitVolumes...)
+	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
+
+	if overrideHomeEnv {
 		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
 			Name:  "HOME",
 			Value: homeDir,
 		})
+	} else {
+		// Add the volume that creds-init will write to when
+		// there's no consistent $HOME for Steps.
+		v, vm := getCredsInitVolume(volumes)
+		volumes = append(volumes, v)
+		volumeMounts = append(volumeMounts, vm)
 	}
 
-	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
-	volumes = append(volumes, implicitVolumes...)
-
 	// Inititalize any credentials found in annotated Secrets.
-	if credsInitContainer, secretsVolumes, err := credsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
+	if credsInitContainer, secretsVolumes, err := credsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, volumeMounts, implicitEnvVars); err != nil {
 		return nil, err
 	} else if credsInitContainer != nil {
 		initContainers = append(initContainers, *credsInitContainer)
@@ -162,7 +169,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
 		}
 		var toAdd []corev1.VolumeMount
-		for _, imp := range implicitVolumeMounts {
+		for _, imp := range volumeMounts {
 			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
 				toAdd = append(toAdd, imp)
 			}
@@ -309,13 +316,13 @@ func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (co
 	return min, nil
 }
 
-// shouldOverrideHomeEnv returns a bool indicating whether a Pod should have its
+// ShouldOverrideHomeEnv returns a bool indicating whether a Pod should have its
 // $HOME environment variable overwritten with /tekton/home or if it should be
 // left unmodified. The default behaviour is to overwrite the $HOME variable
 // but this is planned to change in an upcoming release.
 //
 // For further reference see https://github.com/tektoncd/pipeline/issues/2013
-func shouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
+func ShouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
 	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
 	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableHomeEnvKey] == "true" {
 		return false
