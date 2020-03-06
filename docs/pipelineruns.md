@@ -13,12 +13,13 @@ Creation of a `PipelineRun` will trigger the creation of
 
 - [Syntax](#syntax)
   - [Resources](#resources)
+  - [Params](#params)
   - [Service account](#service-account)
   - [Service accounts](#service-accounts)
   - [Pod Template](#pod-template)
   - [Workspaces](#workspaces)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
-- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
+- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/v1beta1/pipelineruns)
 - [Logs](logs.md)
 - [LimitRanges](#limitranges)
 
@@ -39,6 +40,7 @@ following fields:
 - Optional:
   - [`resources`](#resources) - Specifies which
     [`PipelineResources`](resources.md) to use for this `PipelineRun`.
+  - [`params`](#params) - Specifies which params to be passed to the pipeline specified/referenced by this pipeline run.
   - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
@@ -169,6 +171,23 @@ spec:
         params:
           - name: url
             value: gcr.io/christiewilson-catfactory/leeroy-app
+```
+
+### Params
+
+While writing a Pipelinerun, we can specify params that need to be bound to
+the input params of the pipeline specified/referenced by the Pipelinerun.
+
+This means that a Pipeline can be run with different input params, by writing Pipelineruns
+which bound different input values to the Pipeline params.
+
+```yaml
+spec:
+  params:
+  - name: pl-param-x
+    value: "100"
+  - name: pl-param-y
+    value: "500"
 ```
 
 ### Service Account
