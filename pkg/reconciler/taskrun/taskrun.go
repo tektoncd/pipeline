@@ -334,6 +334,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			Reason:  podconvert.ReasonFailedValidation,
 			Message: err.Error(),
 		})
+		return nil
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
