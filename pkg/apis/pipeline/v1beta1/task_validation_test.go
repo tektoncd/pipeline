@@ -161,6 +161,15 @@ func TestTaskSpecValidate(t *testing.T) {
 			}}},
 		},
 	}, {
+		name: "valid creds-init path variable",
+		fields: fields{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:  "mystep",
+				Image: "echo",
+				Args:  []string{"$(credentials.path)"},
+			}}},
+		},
+	}, {
 		name: "step template included in validation",
 		fields: fields{
 			Steps: []v1beta1.Step{{Container: corev1.Container{

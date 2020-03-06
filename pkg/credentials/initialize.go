@@ -18,11 +18,33 @@ package credentials
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	corev1 "k8s.io/api/core/v1"
 )
+
+const (
+	// credsPath is the path where creds-init will store credentials
+	// when HOME is not being explicitly set to /tekton/home.
+	credsPath = "/tekton/creds"
+
+	// credsDirPermissions are the persmission bits assigned to the directories
+	// copied out of the /tekton/creds and into a Step's HOME.
+	credsDirPermissions = 0700
+
+	// credsFilePermissions are the persmission bits assigned to the files
+	// copied out of /tekton/creds and into a Step's HOME.
+	credsFilePermissions = 0600
+)
+
+// CredsInitCredentials is the complete list of credentials that creds-init can write to /tekton/creds.
+var CredsInitCredentials = []string{".docker", ".gitconfig", ".git-credentials", ".ssh"}
 
 // VolumePath is the path where build secrets are written.
 // It is mutable and exported for testing.
@@ -55,4 +77,82 @@ func SortAnnotations(secrets map[string]string, annotationPrefix string) []strin
 	}
 	sort.Strings(mk)
 	return mk
+}
+
+// CopyCredsToHome copies credentials from the /tekton/creds directory into
+// the current Step's HOME directory. A list of credential paths to try and
+// copy is given as an arg, for example, []string{".docker", ".ssh"}. A missing
+// /tekton/creds directory is not considered an error.
+func CopyCredsToHome(credPaths []string) error {
+	if info, err := os.Stat(credsPath); err != nil || !info.IsDir() {
+		return nil
+	}
+
+	homepath, err := homedir.Dir()
+	if err != nil {
+		return fmt.Errorf("error getting the user's home directory: %w", err)
+	}
+
+	for _, cred := range credPaths {
+		source := filepath.Join(credsPath, cred)
+		destination := filepath.Join(homepath, cred)
+		err := tryCopyCred(source, destination)
+		if err != nil {
+			log.Printf("unsuccessful cred copy: %q from %q to %q: %v", cred, credsPath, homepath, err)
+		}
+	}
+	return nil
+}
+
+// tryCopyCred will recursively copy a given source path to a given
+// destination path. A missing source file is treated as normal behaviour
+// and no error is returned.
+func tryCopyCred(source, destination string) error {
+	fromInfo, err := os.Lstat(source)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("unable to read source file info: %w", err)
+	}
+
+	fromFile, err := os.Open(filepath.Clean(source))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("unable to open source: %w", err)
+	}
+	defer fromFile.Close()
+
+	if fromInfo.IsDir() {
+		err := os.MkdirAll(destination, credsDirPermissions)
+		if err != nil {
+			return fmt.Errorf("unable to create destination directory: %w", err)
+		}
+		subdirs, err := fromFile.Readdirnames(0)
+		if err != nil {
+			return fmt.Errorf("unable to read subdirectories of source: %w", err)
+		}
+		for _, subdir := range subdirs {
+			src := filepath.Join(source, subdir)
+			dst := filepath.Join(destination, subdir)
+			if err := tryCopyCred(src, dst); err != nil {
+				return err
+			}
+		}
+	} else {
+		flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
+		toFile, err := os.OpenFile(destination, flags, credsFilePermissions)
+		if err != nil {
+			return fmt.Errorf("unable to open destination: %w", err)
+		}
+		defer toFile.Close()
+
+		_, err = io.Copy(toFile, fromFile)
+		if err != nil {
+			return fmt.Errorf("error copying from source to destination: %w", err)
+		}
+	}
+	return nil
 }
