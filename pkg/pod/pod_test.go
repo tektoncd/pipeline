@@ -768,7 +768,7 @@ script-heredoc-randomly-generated-78c5n
 			// No entrypoints should be looked up.
 			entrypointCache := fakeCache{}
 
-			got, err := MakePod(images, tr, c.ts, kubeclient, entrypointCache)
+			got, err := MakePod(images, tr, c.ts, kubeclient, entrypointCache, true)
 			if err != nil {
 				t.Fatalf("MakePod: %v", err)
 			}
@@ -840,7 +840,7 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 			kubeclient := fakek8s.NewSimpleClientset(
 				tc.configMap,
 			)
-			if result := shouldOverrideHomeEnv(kubeclient); result != tc.expected {
+			if result := ShouldOverrideHomeEnv(kubeclient); result != tc.expected {
 				t.Errorf("Expected %t Received %t", tc.expected, result)
 			}
 		})

@@ -191,6 +191,19 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				}}},
 			}},
 		},
+	}, {
+		name: "task spec with credentials.path variable",
+		spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{{
+					Container: corev1.Container{
+						Name:  "mystep",
+						Image: "myimage",
+					},
+					Script: `echo "creds-init writes to $(credentials.path)"`,
+				}},
+			}},
+		},
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

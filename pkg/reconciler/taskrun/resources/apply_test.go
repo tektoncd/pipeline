@@ -748,3 +748,51 @@ func TestTaskResults(t *testing.T) {
 		t.Errorf("ApplyTaskResults() got diff %s", d)
 	}
 }
+
+func TestApplyCredentialsPath(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		spec        v1alpha1.TaskSpec
+		path        string
+		want        v1alpha1.TaskSpec
+	}{{
+		description: "replacement in spec container",
+		spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Command: []string{"cp"},
+					Args:    []string{"-R", "$(credentials.path)/", "$HOME"},
+				},
+			}},
+		}},
+		path: "/tekton/creds",
+		want: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Command: []string{"cp"},
+					Args:    []string{"-R", "/tekton/creds/", "$HOME"},
+				},
+			}},
+		}},
+	}, {
+		description: "replacement in spec Script",
+		spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Script: `cp -R "$(credentials.path)/" $HOME`,
+			}},
+		}},
+		path: "/tekton/home",
+		want: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Script: `cp -R "/tekton/home/" $HOME`,
+			}},
+		}},
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			got := resources.ApplyCredentialsPath(&tc.spec, tc.path)
+			if diff := cmp.Diff(&tc.want, got); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
+			}
+		})
+	}
+}
