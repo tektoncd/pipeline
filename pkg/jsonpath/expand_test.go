@@ -122,7 +122,8 @@ func TestExpand(t *testing.T) {
 			"a": float64(1),
 			"b": "abcd",
 		},
-		"null": nil,
+		"null":        nil,
+		"empty_array": []interface{}{},
 	}
 
 	tests := []struct {
@@ -157,6 +158,7 @@ func TestExpand(t *testing.T) {
 		{"$('')$(null)", "null"},
 		{"$('')$(obj)", `{"a":1,"b":"abcd"}`},
 		{"$('')$(array)", `[1,2,3,"a","b","c"]`},
+		{"$(empty_array[*])", ""},
 	}
 
 	for _, test := range tests {

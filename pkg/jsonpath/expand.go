@@ -104,6 +104,12 @@ func expandStringAsList(input string, context interface{}) ([]interface{}, error
 			}
 			return match
 		}
+
+		// if the array or object star expansion is empty, the replacement is the empty string
+		if len(expanded) == 0 {
+			return ""
+		}
+
 		// unless expanded in the context of an array we only want the first list item
 		// at some point we might allow {range} to process JSONPath lists
 		result := expanded[0]
@@ -136,6 +142,10 @@ func expandString(input string, context interface{}) (interface{}, error) {
 	expanded, err := expandStringAsList(input, context)
 	if err != nil {
 		return nil, err
+	}
+	// if the array or object star expansion is empty, return an empty string
+	if len(expanded) == 0 {
+		return "", nil
 	}
 	return expanded[0], nil
 }
