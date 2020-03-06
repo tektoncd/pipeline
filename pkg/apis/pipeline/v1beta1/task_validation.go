@@ -266,6 +266,9 @@ func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *
 		if err := validateTaskNoArrayReferenced("workingDir", step.WorkingDir, prefix, vars); err != nil {
 			return err
 		}
+		if err := validateTaskNoArrayReferenced("script", step.Script, prefix, vars); err != nil {
+			return err
+		}
 		for i, cmd := range step.Command {
 			if err := validateTaskArraysIsolated(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
 				return err
@@ -305,6 +308,9 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 			return err
 		}
 		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
+			return err
+		}
+		if err := validateTaskVariable("script", step.Script, prefix, vars); err != nil {
 			return err
 		}
 		for i, cmd := range step.Command {
