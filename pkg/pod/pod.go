@@ -103,11 +103,6 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		volumes = append(volumes, secretsVolumes...)
 	}
 
-	// make tekton results folder writable by any user
-	if makeTektonFolderWritableInit := makeTektonResultsFolderWritable(images.ShellImage, implicitVolumeMounts); makeTektonFolderWritableInit != nil {
-		initContainers = append(initContainers, *makeTektonFolderWritableInit)
-	}
-
 	// Merge step template with steps.
 	// TODO(#1605): Move MergeSteps to pkg/pod
 	steps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
