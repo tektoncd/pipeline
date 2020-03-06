@@ -185,6 +185,23 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid step with parameterized script",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "baz",
+			}, {
+				Name: "foo-is-baz",
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+				},
+				Script: `
+					#!/usr/bin/env bash
+					hello $(params.baz)`,
+			}},
+		},
+	}, {
 		name: "valid step with script and args",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -458,6 +475,52 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `variable type invalid in "$(params.baz)" for step image`,
 			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "array star used in unaccepted field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "baz",
+				Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1beta1.ParamTypeArray,
+			}},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:       "mystep",
+				Image:      "$(params.baz[*])",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"$(params.baz)", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz[*])" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "array star used illegaly in script field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "baz",
+				Type: v1beta1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1beta1.ParamTypeArray,
+			}},
+			Steps: []v1beta1.Step{
+				{
+					Script: "$(params.baz[*])",
+					Container: corev1.Container{
+						Name:       "mystep",
+						Image:      "my-image",
+						WorkingDir: "/foo/bar/src/",
+					},
+				}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz[*])" for step script`,
+			Paths:   []string{"taskspec.steps.script"},
 		},
 	}, {
 		name: "array not properly isolated",
