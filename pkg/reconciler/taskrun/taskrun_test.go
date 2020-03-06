@@ -243,18 +243,6 @@ var (
 		actualOps = append(actualOps, ops...)
 		return tb.PodInitContainer("place-tools", "override-with-entrypoint:latest", actualOps...)
 	}
-
-	getResultsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
-		actualOps := []tb.ContainerOp{
-			tb.Command("sh"),
-			tb.VolumeMount("tekton-internal-workspace", "/workspace"),
-			tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-			tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-			tb.Args("-c", "chmod 777 /tekton/results"),
-		}
-		actualOps = append(actualOps, ops...)
-		return tb.PodInitContainer("tekton-results-folder-writable", "busybox", actualOps...)
-	}
 )
 
 func getRunName(tr *v1alpha1.TaskRun) string {
@@ -319,7 +307,6 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.PodServiceAccountName(defaultSAName),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -359,7 +346,6 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
 					tb.Command(entrypointLocation),
@@ -582,7 +568,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -622,7 +607,6 @@ func TestReconcile(t *testing.T) {
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
 					tb.Command(entrypointLocation),
@@ -673,7 +657,6 @@ func TestReconcile(t *testing.T) {
 					},
 				),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				getMkdirResourceContainer("myimage", "/workspace/output/myimage", "mssqb"),
 				tb.PodContainer("step-git-source-git-resource-mz4c7", "override-with-git:latest",
@@ -743,7 +726,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
@@ -801,7 +783,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -839,7 +820,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
@@ -896,7 +876,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getResultsInitContainer(),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
