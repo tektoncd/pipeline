@@ -302,7 +302,7 @@ metadata:
     #...
     - name: multiply-inputs
     #...
-- name: sum-and-multiply
+    - name: sum-and-multiply
       taskRef:
         name: sum
       params:
