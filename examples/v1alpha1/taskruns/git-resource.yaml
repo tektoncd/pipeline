@@ -69,3 +69,58 @@ spec:
             value: pull/2932/head
           - name: url
             value: https://github.com/GoogleContainerTools/skaffold
+
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: git-resource-sslverify-
+spec:
+  taskSpec:
+    inputs:
+      resources:
+        - name: skaffold
+          type: git
+    steps:
+      - image: ubuntu
+        script: cat skaffold/README.md
+  inputs:
+    resources:
+      - name: skaffold
+        resourceSpec:
+          type: git
+          params:
+            - name: revision
+              value: master
+            - name: url
+              value: https://github.com/GoogleContainerTools/skaffold
+            - name: sslVerify
+              value: "false"
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: git-resource-no-proxy-
+spec:
+  taskSpec:
+    inputs:
+      resources:
+        - name: skaffold
+          type: git
+    steps:
+      - image: ubuntu
+        script: cat skaffold/README.md
+  inputs:
+    resources:
+      - name: skaffold
+        resourceSpec:
+          type: git
+          params:
+            - name: revision
+              value: master
+            - name: url
+              value: https://github.com/GoogleContainerTools/skaffold
+            - name: noProxy
+              value: "google.com"
+---

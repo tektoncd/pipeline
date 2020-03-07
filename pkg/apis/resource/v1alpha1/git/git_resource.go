@@ -44,9 +44,12 @@ type Resource struct {
 	Revision   string `json:"revision"`
 	Submodules bool   `json:"submodules"`
 
-	Depth     uint   `json:"depth"`
-	SSLVerify bool   `json:"sslVerify"`
-	GitImage  string `json:"-"`
+	Depth      uint   `json:"depth"`
+	SSLVerify  bool   `json:"sslVerify"`
+	HTTPProxy  string `json:"httpProxy"`
+	HTTPSProxy string `json:"httpsProxy"`
+	NOProxy    string `json:"noProxy"`
+	GitImage   string `json:"-"`
 }
 
 // NewResource creates a new git resource to pass to a Task
@@ -74,6 +77,12 @@ func NewResource(gitImage string, r *resource.PipelineResource) (*Resource, erro
 			gitResource.Depth = toUint(param.Value, 1)
 		case strings.EqualFold(param.Name, "SSLVerify"):
 			gitResource.SSLVerify = toBool(param.Value, true)
+		case strings.EqualFold(param.Name, "HTTPProxy"):
+			gitResource.HTTPProxy = param.Value
+		case strings.EqualFold(param.Name, "HTTPSProxy"):
+			gitResource.HTTPSProxy = param.Value
+		case strings.EqualFold(param.Name, "NOProxy"):
+			gitResource.NOProxy = param.Value
 		}
 	}
 	// default revision to master if nothing is provided
@@ -120,12 +129,15 @@ func (s *Resource) GetURL() string {
 // Replacements is used for template replacement on a GitResource inside of a Taskrun.
 func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
-		"name":      s.Name,
-		"type":      s.Type,
-		"url":       s.URL,
-		"revision":  s.Revision,
-		"depth":     strconv.FormatUint(uint64(s.Depth), 10),
-		"sslVerify": strconv.FormatBool(s.SSLVerify),
+		"name":       s.Name,
+		"type":       s.Type,
+		"url":        s.URL,
+		"revision":   s.Revision,
+		"depth":      strconv.FormatUint(uint64(s.Depth), 10),
+		"sslVerify":  strconv.FormatBool(s.SSLVerify),
+		"httpProxy":  s.HTTPProxy,
+		"httpsProxy": s.HTTPSProxy,
+		"noProxy":    s.NOProxy,
 	}
 }
 
@@ -147,6 +159,23 @@ func (s *Resource) GetInputTaskModifier(_ *v1alpha1.TaskSpec, path string) (v1al
 		args = append(args, "-sslVerify=false")
 	}
 
+	env := []corev1.EnvVar{{
+		Name:  "TEKTON_RESOURCE_NAME",
+		Value: s.Name,
+	}}
+
+	if len(s.HTTPProxy) != 0 {
+		env = append(env, corev1.EnvVar{Name: "HTTP_PROXY", Value: s.HTTPProxy})
+	}
+
+	if len(s.HTTPSProxy) != 0 {
+		env = append(env, corev1.EnvVar{Name: "HTTPS_PROXY", Value: s.HTTPSProxy})
+	}
+
+	if len(s.NOProxy) != 0 {
+		env = append(env, corev1.EnvVar{Name: "NO_PROXY", Value: s.NOProxy})
+	}
+
 	step := v1alpha1.Step{
 		Container: corev1.Container{
 			Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
@@ -155,10 +184,7 @@ func (s *Resource) GetInputTaskModifier(_ *v1alpha1.TaskSpec, path string) (v1al
 			Args:       args,
 			WorkingDir: pipeline.WorkspaceDir,
 			// This is used to populate the ResourceResult status.
-			Env: []corev1.EnvVar{{
-				Name:  "TEKTON_RESOURCE_NAME",
-				Value: s.Name,
-			}},
+			Env: env,
 		},
 	}
 
