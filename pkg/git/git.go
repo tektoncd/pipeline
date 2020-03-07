@@ -46,11 +46,14 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 
 // FetchSpec describes how to initialize and fetch from a Git repository.
 type FetchSpec struct {
-	URL       string
-	Revision  string
-	Path      string
-	Depth     uint
-	SSLVerify bool
+	URL        string
+	Revision   string
+	Path       string
+	Depth      uint
+	SSLVerify  bool
+	HTTPProxy  string
+	HTTPSProxy string
+	NOProxy    string
 }
 
 // Fetch fetches the specified git repository at the revision into path.

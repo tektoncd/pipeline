@@ -51,7 +51,7 @@ func TestGitPipelineRun(t *testing.T) {
 			defer tearDown(t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision)); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision, "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
@@ -78,6 +78,40 @@ func TestGitPipelineRun(t *testing.T) {
 	}
 }
 
+// TestGitPipelineRun_Disable_SSLVerify will verify the source code is retrieved even after disabling SSL certificates (sslVerify)
+func TestGitPipelineRun_Disable_SSLVerify(t *testing.T) {
+	t.Parallel()
+
+	c, namespace := setup(t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "false", "", "", "")); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
+	}
+
+	t.Logf("Creating Task %s", gitTestTaskName)
+	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
+	}
+
+	t.Logf("Creating Pipeline %s", gitTestPipelineName)
+	if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
+	}
+
+	t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
+	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
+	}
+
+	if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
+		t.Fatalf("PipelineRun execution failed")
+	}
+}
+
 // TestGitPipelineRunFail is a test to ensure that the code extraction from github fails as expected when
 // an invalid revision is passed on the pipelineresource.
 func TestGitPipelineRunFail(t *testing.T) {
@@ -88,7 +122,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey", "true", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -146,11 +180,83 @@ func TestGitPipelineRunFail(t *testing.T) {
 	}
 }
 
-func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResource {
+// TestGitPipelineRunFail_HTTPS_PROXY is a test to ensure that the code extraction from github fails as expected when
+// an invalid HTTPS_PROXY is passed on the pipelineresource.
+func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
+	t.Parallel()
+
+	c, namespace := setup(t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "true", "", "invalid.https.proxy.com", "")); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
+	}
+
+	t.Logf("Creating Task %s", gitTestTaskName)
+	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
+	}
+
+	t.Logf("Creating Pipeline %s", gitTestPipelineName)
+	if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
+	}
+
+	t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
+	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
+	}
+
+	if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+		taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
+		if err != nil {
+			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", gitTestPipelineRunName, err)
+		}
+		for _, tr := range taskruns.Items {
+			if tr.Status.PodName != "" {
+				p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
+				}
+
+				for _, stat := range p.Status.ContainerStatuses {
+					if strings.HasPrefix(stat.Name, "step-git-source-"+gitSourceResourceName) {
+						if stat.State.Terminated != nil {
+							req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
+							logContent, err := req.Do().Raw()
+							if err != nil {
+								t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
+							}
+							// Check for failure messages from fetch and pull in the log file
+							if strings.Contains(strings.ToLower(string(logContent)), "could not resolve proxy: invalid.https.proxy.com") &&
+								strings.Contains(strings.ToLower(string(logContent)), "pathspec 'master' did not match any file(s) known to git") {
+								t.Logf("Found exepected errors when using non-existent https proxy")
+							} else {
+								t.Logf("Container `%s` log File: %s", stat.Name, logContent)
+								t.Fatalf("The git code extraction did not fail as expected.  Expected errors not found in log file.")
+							}
+						}
+					}
+				}
+			}
+		}
+
+	} else {
+		t.Fatalf("PipelineRun succeeded when should have failed")
+	}
+}
+
+func getGitPipelineResource(namespace, revision, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),
+		tb.PipelineResourceSpecParam("sslVerify", sslverify),
+		tb.PipelineResourceSpecParam("httpProxy", httpproxy),
+		tb.PipelineResourceSpecParam("httpsProxy", httpsproxy),
+		tb.PipelineResourceSpecParam("noProxy", noproxy),
 	))
 }
 
