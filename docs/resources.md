@@ -377,6 +377,38 @@ spec:
       value: refs/pull/52525/head
 ```
 
+#### Using HTTP/HTTPS Proxy
+
+The `httpProxy` and `httpsProxy` parameter can be used to proxy non-SSL/SSL requests, for example to use an enterprise
+proxy server for SSL requests:
+
+```yaml
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/bobcatfish/wizzbang.git
+    - name: httpsProxy
+      value: "my-enterprise.proxy.com"
+```
+
+#### Using No Proxy
+
+The `noProxy` parameter can be used to opt out of proxying, for example, to not proxy HTTP/HTTPS requests to
+`no.proxy.com`:
+
+```yaml
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/bobcatfish/wizzbang.git
+    - name: noProxy
+      value: "no.proxy.com"
+```
+
+Note: `httpProxy`, `httpsProxy`, and `noProxy` are all optional but no validation done if all three are specified.
+
 ### Pull Request Resource
 
 The `pullRequest` resource represents a pull request event from a source control
