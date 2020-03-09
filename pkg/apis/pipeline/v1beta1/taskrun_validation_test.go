@@ -189,7 +189,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
-		wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),
+		wantErr: apis.ErrMultipleOneOf("spec.params.name"),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
