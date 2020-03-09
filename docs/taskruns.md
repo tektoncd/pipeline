@@ -13,7 +13,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 
 - [Syntax](#syntax)
   - [Specifying a `Task`](#specifying-a-task)
-  - [Input parameters](#input-parameters)
+  - [Parameters](#parameters)
   - [Providing resources](#providing-resources)
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
@@ -37,7 +37,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`.
+    `tekton.dev/v1beta1`.
   - [`kind`][kubernetes-overview] - Specify the `TaskRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `TaskRun` resource object, for example a `name`.
@@ -51,9 +51,10 @@ following fields:
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap `config-defaults` will be applied.
-  - [`inputs`] - Specifies [input parameters](#input-parameters) and
-    [input resources](#providing-resources)
-  - [`outputs`] - Specifies [output resources](#providing-resources)
+  - [`params`](#parameters) - Specifies parameters values
+  - [`resources`](#providing-resources) - Specifies `PipelineResource` values
+    - [`inputs`] - Specifies input resources
+    - [`outputs`] - Specifies output resources
   - [`timeout`] - Specifies timeout after which the `TaskRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
     there is no timeout. You can also follow the instruction [here](#Configuring-default-timeout)
@@ -83,8 +84,8 @@ Or you can embed the spec of the `Task` directly in the `TaskRun`:
 ```yaml
 spec:
   taskSpec:
-    inputs:
-      resources:
+    resources:
+      inputs:
         - name: workspace
           type: git
     steps:
@@ -100,17 +101,16 @@ spec:
           - --destination=gcr.io/my-project/gohelloworld
 ```
 
-### Input parameters
+### Parameters
 
 If a `Task` has [`parameters`](tasks.md#parameters), you can specify values for
-them using the `input` section:
+them using the `params` section:
 
 ```yaml
 spec:
-  inputs:
-    params:
-      - name: flags
-        value: -someflag
+  params:
+    - name: flags
+      value: -someflag
 ```
 
 If a parameter does not have a default value, it must be specified.
@@ -126,19 +126,23 @@ They can be provided via references to existing
 
 ```yaml
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: java-git-resource
+    outputs:
+      - name: image
+        resourceRef:
+          name: my-app-image
 ```
 
 Or by embedding the specs of the resources directly:
 
 ```yaml
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceSpec:
           type: git
@@ -193,7 +197,7 @@ PersistenceVolumeClaim. The SchedulerName has also been provided to define which
 dispatch the Pod. The Pod will also run as a non-root user.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: mytask
@@ -208,7 +212,7 @@ spec:
         - name: my-cache
           mountPath: /my-cache
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: mytaskRun
@@ -408,13 +412,13 @@ spec:
     - name: url
       value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: read-task
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
   steps:
@@ -422,15 +426,15 @@ spec:
       image: ubuntu
       script: cat workspace/README.md
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: read-repo-run
 spec:
   taskRef:
     name: read-task
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: go-example-git
@@ -454,19 +458,19 @@ spec:
     - name: url
       value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: go-example-git
   taskSpec:
-    inputs:
-      resources:
+    resources:
+      inputs:
         - name: workspace
           type: git
     steps:
@@ -488,15 +492,15 @@ a Pipeline Resource Spec but not both. Below is an example where Git Pipeline
 Resource Spec is provided as input for TaskRun `read-repo`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: read-repo
 spec:
   taskRef:
     name: read-task
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceSpec:
           type: git
@@ -534,14 +538,14 @@ spec:
 spec:
   taskRef:
     name: dockerfile-build-and-push
-  inputs:
-    resources:
+  params:
+    - name: IMAGE
+      value: gcr.io/my-project/rester-tester
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: mchmarny-repo
-    params:
-      - name: IMAGE
-        value: gcr.io/my-project/rester-tester
 ```
 
 Build `googlecloudplatform/cloud-builder`'s `wget` builder:
@@ -562,17 +566,17 @@ spec:
 spec:
   taskRef:
     name: dockerfile-build-and-push
-  inputs:
-    resources:
+  params:
+    - name: IMAGE
+      value: gcr.io/my-project/wget
+    # Optional override to specify the subdirectory containing the Dockerfile
+    - name: DIRECTORY
+      value: /workspace/wget
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: cloud-builder-repo
-    params:
-      - name: IMAGE
-        value: gcr.io/my-project/wget
-      # Optional override to specify the subdirectory containing the Dockerfile
-      - name: DIRECTORY
-        value: /workspace/wget
 ```
 
 Build `googlecloudplatform/cloud-builder`'s `docker` builder with `17.06.1`:
@@ -593,19 +597,19 @@ spec:
 spec:
   taskRef:
     name: dockerfile-build-and-push
-  inputs:
-    resources:
+  params:
+    - name: IMAGE
+      value: gcr.io/my-project/docker
+    # Optional overrides
+    - name: DIRECTORY
+      value: /workspace/docker
+    - name: DOCKERFILE_NAME
+      value: Dockerfile-17.06.1
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: cloud-builder-repo
-    params:
-      - name: IMAGE
-        value: gcr.io/my-project/docker
-      # Optional overrides
-      - name: DIRECTORY
-        value: /workspace/docker
-      - name: DOCKERFILE_NAME
-        value: Dockerfile-17.06.1
 ```
 
 #### Using a `ServiceAccount`
@@ -613,14 +617,14 @@ spec:
 Specifying a `ServiceAccount` to access a private `git` repository:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: test-task-with-serviceaccount-git-ssh
 spec:
   serviceAccountName: test-task-robot-git-ssh
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
   steps:
@@ -705,15 +709,15 @@ they exited.
 
 ## LimitRanges
 
-In order to request the minimum amount of resources needed to support the containers 
-for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
-memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
-resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod. 
-All requests that are not the max values are set to zero as a result. 
+In order to request the minimum amount of resources needed to support the containers
+for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU,
+memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max
+resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod.
+All requests that are not the max values are set to zero as a result.
 
-When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
-with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `TaskRuns` 
-are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum 
+When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace
+with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `TaskRuns`
+are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum
 set for container resource requests instead of requesting 0.
 
 An example `TaskRun` with a LimitRange is available [here](../examples/v1beta1/taskruns/no-ci/limitrange.yaml).

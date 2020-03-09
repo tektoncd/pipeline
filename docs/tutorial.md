@@ -19,16 +19,16 @@ specific to a given cloud computing service.
 
 Before you begin this tutorial, make sure you have [installed and configured](install.md)
 the latest release of Tekton on your Kubernetes cluster, including the
-[Tekton CLI](https://github.com/tektoncd/cli). 
+[Tekton CLI](https://github.com/tektoncd/cli).
 
 If you would like to complete this tutorial on your local workstation, see [Running this tutorial locally](#running-this-tutorial-locally). To learn more about the Tekton entities involved in this tutorial, see [Further reading](#further-reading).
 
 ## Creating and running a `Task`
 
-A [`Task`](tasks.md) defines a series of `steps` that run in a desired order and complete a set amount of build work. Every `Task` runs as a Pod on your Kubernetes cluster with each `step` as its own container. For example, the following `Task` outputs "Hello World": 
+A [`Task`](tasks.md) defines a series of `steps` that run in a desired order and complete a set amount of build work. Every `Task` runs as a Pod on your Kubernetes cluster with each `step` as its own container. For example, the following `Task` outputs "Hello World":
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: echo-hello-world
@@ -44,7 +44,7 @@ spec:
 To run this `Task`, instantiate it using a [`TaskRun`](taskruns.md):
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: echo-hello-world-task-run
@@ -148,28 +148,27 @@ introduced earlier. The arguments of the `Task` command support variable substit
 the `Task` definition is constant and the value of parameters can change during runtime.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: build-docker-image-from-git-source
 spec:
-  inputs:
-    resources:
+  params:
+    - name: pathToDockerFile
+      type: string
+      description: The path to the dockerfile to build
+      default: /workspace/docker-source/Dockerfile
+    - name: pathToContext
+      type: string
+      description: |
+        The build context used by Kaniko
+        (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
+      default: /workspace/docker-source
+  resources:
+    inputs:
       - name: docker-source
         type: git
-    params:
-      - name: pathToDockerFile
-        type: string
-        description: The path to the dockerfile to build
-        default: /workspace/docker-source/Dockerfile
-      - name: pathToContext
-        type: string
-        description:
-          The build context used by Kaniko
-          (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-        default: /workspace/docker-source
-  outputs:
-    resources:
+    outputs:
       - name: builtImage
         type: image
   steps:
@@ -182,9 +181,9 @@ spec:
       command:
         - /kaniko/executor
       args:
-        - --dockerfile=$(inputs.params.pathToDockerFile)
-        - --destination=$(outputs.resources.builtImage.url)
-        - --context=$(inputs.params.pathToContext)
+        - --dockerfile=$(params.pathToDockerFile)
+        - --destination=$(resources.outputs.builtImage.url)
+        - --context=$(params.pathToContext)
 ```
 
 ### Configuring `Task` execution credentials
@@ -221,11 +220,11 @@ kubectl apply -f <name-of-file.yaml>
 
 You are now ready for your first `TaskRun`!
 
-A `TaskRun` binds the inputs and outputs to already defined `PipelineResources`, sets values 
+A `TaskRun` binds the inputs and outputs to already defined `PipelineResources`, sets values
 for variable substitution parameters, and executes the `Steps` in the `Task`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: build-docker-image-from-git-source-task-run
@@ -233,18 +232,17 @@ spec:
   serviceAccountName: tutorial-service
   taskRef:
     name: build-docker-image-from-git-source
-  inputs:
-    resources:
+  params:
+    - name: pathToDockerFile
+      value: Dockerfile
+    - name: pathToContext
+      value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
+  resource:
+    inputs:
       - name: docker-source
         resourceRef:
           name: skaffold-git
-    params:
-      - name: pathToDockerFile
-        value: Dockerfile
-      - name: pathToContext
-        value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
-  outputs:
-    resources:
+    outputs:
       - name: builtImage
         resourceRef:
           name: skaffold-image-leeroy-web
@@ -333,7 +331,7 @@ along with the along with corresponding inputs and outputs for each `Task`. You 
 Below is an example definition of a `Pipeline`:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: tutorial-pipeline
@@ -380,25 +378,25 @@ spec:
 The above `Pipeline` is referencing a `Task` called `deploy-using-kubectl` defined as follows:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: deploy-using-kubectl
 spec:
-  inputs:
-    resources:
+  params:
+    - name: path
+      type: string
+      description: Path to the manifest to apply
+    - name: yamlPathToImage
+      type: string
+      description: |
+        The path to the image to replace in the yaml manifest (arg to yq)
+  resources:
+    inputs:
       - name: source
         type: git
       - name: image
         type: image
-    params:
-      - name: path
-        type: string
-        description: Path to the manifest to apply
-      - name: yamlPathToImage
-        type: string
-        description:
-          The path to the image to replace in the yaml manifest (arg to yq)
   steps:
     - name: replace-image
       image: mikefarah/yq
@@ -406,16 +404,16 @@ spec:
       args:
         - "w"
         - "-i"
-        - "$(inputs.params.path)"
-        - "$(inputs.params.yamlPathToImage)"
-        - "$(inputs.resources.image.url)"
+        - "$(params.path)"
+        - "$(params.yamlPathToImage)"
+        - "$(resources.inputs.image.url)"
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl
       command: ["kubectl"]
       args:
         - "apply"
         - "-f"
-        - "$(inputs.params.path)"
+        - "$(params.path)"
 ```
 
 ### Configuring `Pipeline` execution credentials
@@ -442,7 +440,7 @@ kubectl create clusterrolebinding tutorial-binding \
 To run your `Pipeline`, instantiate it with a [`PipelineRun`](pipelineruns.md) as follows:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: tutorial-pipeline-run-1
@@ -526,7 +524,7 @@ Complete these prerequisites to run this tutorial locally:
 
 - Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Install [Docker for Desktop](https://www.docker.com/products/docker-desktop) and configure it to use six CPUs,
-  10 GB of RAM and 2GB of swap space. 
+  10 GB of RAM and 2GB of swap space.
 - Set `host.docker.local:5000` as an insecure registry with Docker for
   Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
   for details.
@@ -547,7 +545,7 @@ You must reconfigure any `image` resource definitions in your `PipelineResources
 
 - Set the URL to `host.docker.internal:5000/myregistry/<image_name>`
 - Set the `KO_DOCKER_REPO` variable to `localhost:5000/myregistry` before using `ko`
-- Set your applications (such as deployment definitions) to push to 
+- Set your applications (such as deployment definitions) to push to
   `localhost:5000/myregistry/<image name>`.
 
 ### Reconfigure logging
