@@ -4,7 +4,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 * [Before you begin](#before-you-begin)
 * [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
-* [Installing Tekton Pipelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
+* [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
 * [Configuring artifact storage](#configuring-artifact-storage)
 * [Customizing basic execution parameters](#configuring-basic-execution-parameters)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
@@ -50,11 +50,11 @@ To install Tekton Pipelines on a Kubernetes cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
    You can install a specific release using `previous/$VERSION_NUMBER`. For example:
-   
+
    ```bash
     kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml
    ```
-   
+
    If your container runtime does not support `image-reference:tag@digest`
    (for example, like `cri-o` used in OpenShift 4.x), use `release.notags.yaml` instead:
 
@@ -75,16 +75,16 @@ Congratulations! You have successfully installed Tekton Pipelines on your Kubern
 * [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
 
-### Installing Tekton Pipelines on OpenShift/MiniShift
+### Installing Tekton Pipelines on OpenShift
 
-To install Tekton Pipelines on OpenShift/MiniShift, you must first apply the `anyuid` security
+To install Tekton Pipelines on OpenShift, you must first apply the `anyuid` security
 context constraint to the `tekton-pipelines-controller` service account. This is required to run the webhook Pod.
 See
-[Security Context Constraints](https://docs.openshift.com/container-platform/3.11/admin_guide/manage_scc.html)
+[Security Context Constraints](https://docs.openshift.com/container-platform/4.3/authentication/managing-security-context-constraints.html)
 for more information.
 
 1. Log on as a user with `cluster-admin` privileges. The following example
-   uses the default `system:admin` user (`admin:admin` for MiniShift):
+   uses the default `system:admin` user:
 
    ```bash
    # For MiniShift: oc login -u admin:admin
@@ -103,7 +103,7 @@ for more information.
    oc apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
    See the
-   [OpenShift CLI documentation](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)
+   [OpenShift CLI documentation](https://docs.openshift.com/container-platform/4.3/cli_reference/openshift_cli/getting-started-cli.html)
    for more inforomation on the `oc` command.
 
 1. Monitor the installation using the following command until all components show a `Running` status:
@@ -111,13 +111,16 @@ for more information.
    ```bash
    oc get pods --namespace tekton-pipelines --watch
    ```
-   
+
    **Note:** Hit CTRL + C to stop monitoring.
 
-Congratulations! You have successfully installed Tekton Pipelines on your OpenShift/MiniShift environment. Next, see the following topics:
+Congratulations! You have successfully installed Tekton Pipelines on your OpenShift environment. Next, see the following topics:
 
 * [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
+
+If you want to run OpenShift 4.x on your laptop (or desktop), you
+should take a look at [Red Hat CodeReady Containers](https://github.com/code-ready/crc).
 
 ## Configuring artifact storage
 
@@ -132,8 +135,8 @@ Congratulations! You have successfully installed Tekton Pipelines on your OpenSh
 Either option provides the same functionality to Tekton Pipelines. Choose the option that
 best suits your business needs. For example:
 
- - In some environments, creating a persistent volume could be slower than transferring files to/from a cloud storage bucket. 
- - If the cluster is running in multiple zones, accessing a persistent volume could be unreliable. 
+ - In some environments, creating a persistent volume could be slower than transferring files to/from a cloud storage bucket.
+ - If the cluster is running in multiple zones, accessing a persistent volume could be unreliable.
 
 ### Configuring a persistent volume
 
@@ -144,7 +147,7 @@ To configure a [persistent volume](https://kubernetes.io/docs/concepts/storage/p
 
 ### Configuring a cloud storage bucket
 
-To configure either an [S3 bucket](https://aws.amazon.com/s3/) or a [GCS bucket](https://cloud.google.com/storage/), 
+To configure either an [S3 bucket](https://aws.amazon.com/s3/) or a [GCS bucket](https://cloud.google.com/storage/),
 use a `ConfigMap` with the name `config-artifact-bucket` and the following attributes:
 
 - `location` - the address of the bucket, for example `gs://mybucket` or `s3://mybucket`.
@@ -153,7 +156,7 @@ use a `ConfigMap` with the name `config-artifact-bucket` and the following attri
   service account JSON file.
 - `bucket.service.account.field.name` - the name of the environment variable to use when specifying the
   secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
-  
+
 **Important:** Configure your bucket's retention policy to delete all files after your `Tasks` finish running.
 
 **Note:** You can only use an S3 bucket located in the `us-east-1` region. This is a limitation of [`gsutil`](https://cloud.google.com/storage/docs/gsutil) running a `boto` configuration behind the scenes to access the S3 bucket.
@@ -239,7 +242,7 @@ The example below customizes the following:
 - the default service account from `default` to `tekton`.
 - the default timeout from 60 minutes to 20 minutes.
 - the default `app.kuberrnetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
-- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. 
+- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default.
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#pod-template).
 
 ```yaml
@@ -264,7 +267,7 @@ file lists the keys you can customize along with their default values.
 To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` as follows:
 
 - `disable-home-env-overwrite` - set this flag to `true` to prevent Tekton
-from overriding the `$HOME` environment variable for the containers executing your `Steps`. 
+from overriding the `$HOME` environment variable for the containers executing your `Steps`.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
 
 - `disable-working-directory-overwrite` - set this flag to `true` to prevent Tekton
