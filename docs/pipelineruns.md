@@ -29,7 +29,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`
+    `tekton.dev/vbeta1`
   - [`kind`][kubernetes-overview] - Specify the `PipelineRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineRun` resource object, for example a `name`.
@@ -222,7 +222,7 @@ In the following example, the `Task` is defined with a `volumeMount`
 `persistentVolumeClaim`. The Pod will also run as a non-root user.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: mytask
@@ -236,7 +236,7 @@ spec:
         - name: my-cache
           mountPath: /my-cache
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: mypipeline
@@ -246,7 +246,7 @@ spec:
       taskRef:
         name: mytask
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: mypipelineRun
@@ -364,7 +364,7 @@ spec to mark it as cancelled. Related `TaskRun` instances will be marked as
 cancelled and running Pods will be deleted.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: go-example-git
@@ -375,15 +375,15 @@ spec:
 
 ## LimitRanges
 
-In order to request the minimum amount of resources needed to support the containers 
-for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU, 
-memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max 
-resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod. 
-All requests that are not the max values are set to zero as a result. 
+In order to request the minimum amount of resources needed to support the containers
+for `steps` that are part of a `TaskRun`, Tekton only requests the maximum values for CPU,
+memory, and ephemeral storage from the `steps` that are part of a TaskRun. Only the max
+resource request values are needed since `steps` only execute one at a time in a `TaskRun` pod.
+All requests that are not the max values are set to zero as a result.
 
-When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace 
-with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `PipelineRuns` 
-are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum 
+When a [LimitRange](https://kubernetes.io/docs/concepts/policy/limit-range/) is present in a namespace
+with a minimum set for container resource requests (i.e. CPU, memory, and ephemeral storage) where `PipelineRuns`
+are attempting to run, Tekton will search through all LimitRanges present in the namespace and use the minimum
 set for container resource requests instead of requesting 0.
 
 An example `PipelineRun` with a LimitRange is available [here](../examples/v1beta1/pipelineruns/no-ci/limitrange.yaml).

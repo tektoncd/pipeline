@@ -80,19 +80,19 @@ spec:
 This is the equivalent Task:
 
 ```
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: go-test
 spec:
-  inputs:
-    params:
-    - name: TARGET
-      description: The Go target to test
-      default: ./...
+  params:
+  - name: TARGET
+    description: The Go target to test
+    default: ./...
 
-    # The Task must operate on some source, e.g., in a Git repo.
-    resources:
+  # The Task must operate on some source, e.g., in a Git repo.
+  resources:
+    inputs:
     - name: source
       type: git
 
@@ -100,7 +100,7 @@ spec:
   - name: go-test  # <-- the step must specify a name.
     image: golang
     workingDir: /workspace/source  # <-- set workingdir
-    command: ['go', 'test', '$(inputs.params.TARGET)']  # <-- specify inputs.params.TARGET
+    command: ['go', 'test', '$(params.TARGET)']  # <-- specify params.TARGET
 ```
 
 ### Build -> TaskRun
@@ -128,18 +128,18 @@ spec:
 This is the equivalent TaskRun:
 
 ```
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: example-run
 spec:
   taskRef:
     name: go-test
-  inputs:
-    params:
-    - name: TARGET
-      value: ./path/to/test/...
-    resources:
+  params:
+  - name: TARGET
+    value: ./path/to/test/...
+  resources:
+    inputs:
     - name: source
       resourceSpec:
         type: git
