@@ -24,6 +24,11 @@ type Data struct {
 	TestRef                    string
 	PullRequestsCreated        map[int]*scm.PullRequestInput
 	PullRequestID              int
+	CreateRepositories         []*scm.RepositoryInput
+	Repositories               []*scm.Repository
+	CurrentUser                scm.User
+	Users                      []*scm.User
+	Hooks                      map[string][]*scm.Hook
 
 	//All Labels That Exist In The Repo
 	RepoLabelsExisting []string

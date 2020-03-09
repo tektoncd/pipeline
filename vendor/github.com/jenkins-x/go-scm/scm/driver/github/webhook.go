@@ -14,8 +14,8 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/jenkins-x/go-scm/pkg/hmac"
 	"github.com/jenkins-x/go-scm/scm"
-	"github.com/jenkins-x/go-scm/scm/driver/internal/hmac"
 	"github.com/jenkins-x/go-scm/scm/driver/internal/null"
 	"github.com/sirupsen/logrus"
 )
@@ -104,6 +104,10 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		return hook, err
 	} else if key == "" {
 		return hook, nil
+	}
+
+	if logWebHooks {
+		log.Infof("Webhook HMAC token: %s", key)
 	}
 
 	sig := req.Header.Get("X-Hub-Signature")

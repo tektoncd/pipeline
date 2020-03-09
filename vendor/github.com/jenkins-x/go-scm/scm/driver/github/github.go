@@ -39,6 +39,7 @@ func New(uri string) (*scm.Client, error) {
 	// initialize services
 	client.Driver = scm.DriverGithub
 	client.Contents = &contentService{client}
+	client.Deployments = &deploymentService{client}
 	client.Git = &gitService{client}
 	client.Issues = &issueService{client}
 	client.Organizations = &organizationService{client}

@@ -94,8 +94,11 @@ type (
 
 		// Services used for communicating with the API.
 		Driver        Driver
+		Apps          AppService
 		Contents      ContentService
+		Deployments   DeploymentService
 		Git           GitService
+		GraphQL       GraphQLService
 		Organizations OrganizationService
 		Issues        IssueService
 		PullRequests  PullRequestService
@@ -103,8 +106,6 @@ type (
 		Reviews       ReviewService
 		Users         UserService
 		Webhooks      WebhookService
-		GraphQL       GraphQLService
-		Apps          AppService
 
 		// DumpResponse optionally specifies a function to
 		// dump the the response body for debugging purposes.
