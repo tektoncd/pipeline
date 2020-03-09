@@ -80,7 +80,7 @@ variables such as `path` using the variable substitution syntax below where
 
 #### In Task Spec:
 
-For an input resource in a `Task` spec: `shell $(inputs.resources.<name>.<key>)`
+For an input resource in a `Task` spec: `shell $(resources.inputs.<name>.<key>)`
 
 Or for an output resource:
 
@@ -99,7 +99,7 @@ $(resources.<name>.<key>)
 #### Accessing local path to resource
 
 The `path` key is pre-defined and refers to the local path to a resource on the
-mounted volume `shell $(inputs.resources.<name>.path)`
+mounted volume `shell $(resources.inputs.<name>.path)`
 
 ### Controlling where resources are mounted
 
@@ -110,14 +110,14 @@ will be initialized under `/workspace`. The following example demonstrates how
 git input repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: task-with-input
   namespace: default
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
         targetPath: go/src/github.com/tektoncd/pipeline
@@ -160,18 +160,17 @@ resource `java-git-resource` (including the war artifact) copied to the
 destination path `/custom/workspace/`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: volume-task
   namespace: default
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
-  outputs:
-    resources:
+    outputs:
       - name: workspace
   steps:
     - name: build-war
@@ -184,7 +183,7 @@ spec:
 ```
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: volume-taskrun
@@ -192,13 +191,12 @@ metadata:
 spec:
   taskRef:
     name: volume-task
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         resourceRef:
           name: java-git-resource
-  outputs:
-    resources:
+    outputs:
       - name: workspace
         paths:
           - /custom/workspace/
@@ -234,13 +232,13 @@ for that resource. Resources declared as `optional` in a `Task` does not have be
 specified in `TaskRun`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: task-check-optional-resources
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: git-repo
         type: git
         optional: true
@@ -250,7 +248,7 @@ Similarly, resources declared as `optional` in a `Pipeline` does not have to be
 specified in `PipelineRun`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-build-image
@@ -267,10 +265,10 @@ spec:
 You can refer to different examples demonstrating usage of optional resources in
 `Task`, `Condition`, and `Pipeline`:
 
--   [Task](../examples/v1alpha1/taskruns/optional-resources.yaml)
--   [Cluster Task](../examples/v1alpha1/taskruns/optional-resources-with-clustertask.yaml)
--   [Condition](../examples/v1alpha1/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
--   [Pipeline](../examples/v1alpha1/pipelineruns/demo-optional-resources.yaml)
+-   [Task](../examples/v1beta1/taskruns/optional-resources.yaml)
+-   [Cluster Task](../examples/v1beta1/taskruns/optional-resources-with-clustertask.yaml)
+-   [Condition](../examples/v1beta1/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
+-   [Pipeline](../examples/v1beta1/pipelineruns/demo-optional-resources.yaml)
 
 ## Resource Types
 
@@ -542,17 +540,16 @@ exported. For example this build-push task defines the `outputImageDir` for the
 `builtImage` resource in `/workspace/buildImage`
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: build-push
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
-  outputs:
-    resources:
+    outputs:
       - name: builtImage
         type: image
         targetPath: /workspace/builtImage
@@ -674,14 +671,14 @@ Example usage of the `cluster` resource in a `Task`, using
 [variable substitution](tasks.md#variable-substitution):
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: deploy-image
   namespace: default
 spec:
-  inputs:
-    resources:
+  resources:
+    inputs:
       - name: workspace
         type: git
       - name: dockerimage
@@ -695,8 +692,8 @@ spec:
       args:
         - "-c"
         - kubectl --kubeconfig
-          /workspace/$(inputs.resources.testcluster.name)/kubeconfig --context
-          $(inputs.resources.testcluster.name) apply -f /workspace/service.yaml'
+          /workspace/$(resources.inputs.testcluster.name)/kubeconfig --context
+          $(resources.inputs.testcluster.name) apply -f /workspace/service.yaml'
 ```
 
 To use the `cluster` resource with Google Kubernetes Engine, you should use the
@@ -940,7 +937,7 @@ The content of an event is for example:
 Context Attributes,
   SpecVersion: 0.2
   Type: dev.tekton.event.task.successful
-  Source: /apis/tekton.dev/v1alpha1/namespaces/default/taskruns/pipeline-run-api-16aa55-source-to-image-task-rpndl
+  Source: /apis/tekton.dev/v1beta1/namespaces/default/taskruns/pipeline-run-api-16aa55-source-to-image-task-rpndl
   ID: pipeline-run-api-16aa55-source-to-image-task-rpndl
   Time: 2019-07-04T11:03:53.058694712Z
   ContentType: application/json
