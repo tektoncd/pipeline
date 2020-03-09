@@ -38,6 +38,13 @@ type repository struct {
 	} `json:"permissions"`
 }
 
+type repositoryInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Homepage    string `json:"homepage"`
+	Private     bool   `json:"private"`
+}
+
 type hook struct {
 	ID     int      `json:"id,omitempty"`
 	Name   string   `json:"name"`
@@ -199,6 +206,23 @@ func (s *repositoryService) ListLabels(ctx context.Context, repo string, opts sc
 	return convertLabelObjects(out), res, err
 }
 
+// Create creates a new repository
+func (s *repositoryService) Create(ctx context.Context, input *scm.RepositoryInput) (*scm.Repository, *scm.Response, error) {
+	path := "/user/repos"
+	if input.Namespace != "" {
+		path = fmt.Sprintf("/orgs/%s/repos", input.Namespace)
+
+	}
+	in := new(repositoryInput)
+	in.Name = input.Name
+	in.Description = input.Description
+	in.Homepage = input.Homepage
+	in.Private = input.Private
+	out := new(repository)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertRepository(out), res, err
+}
+
 // CreateHook creates a new repository webhook.
 func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/hooks", repo)
@@ -335,9 +359,19 @@ func convertCombinedStatus(from *combinedStatus) *scm.CombinedStatus {
 }
 
 func convertStatusList(from []*status) []*scm.Status {
+	// The GitHub API may return multiple statuses with the same Context, in
+	// reverse chronological order:
+	// https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref.
+	// We only expose the most recent one to consumers.
 	to := []*scm.Status{}
+	unique := make(map[string]interface{})
 	for _, v := range from {
-		to = append(to, convertStatus(v))
+		convertedStatus := convertStatus(v)
+		if _, ok := unique[convertedStatus.Label]; ok {
+			continue
+		}
+		to = append(to, convertedStatus)
+		unique[convertedStatus.Label] = nil
 	}
 	return to
 }
