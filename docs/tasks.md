@@ -6,9 +6,11 @@ will run inside a pod on your cluster.
 
 A `Task` declares:
 
-- [Inputs](#inputs)
-- [Outputs](#outputs)
+- [Parameters](#parameters)
+- [Resources](#resources)
 - [Steps](#steps)
+- [Workspaces](#workspaces)
+- [Results](#results)
 
 A `Task` is available within a namespace, and `ClusterTask` is available across
 entire Kubernetes cluster.
@@ -19,12 +21,15 @@ entire Kubernetes cluster.
 - [Syntax](#syntax)
   - [Steps](#steps)
     - [Step script](#step-script)
-  - [Inputs](#inputs)
-  - [Outputs](#outputs)
-  - [Volumes](#volumes)
+  - [Parameters](#paramaters)
+  - [Resources](#resources)
+    - [Inputs](#inputs)
+    - [Outputs](#outputs)
   - [Workspaces](#workspaces)
-  - [Step Template](#step-template)
   - [Results](#results)
+  - [Volumes](#volumes)
+  - [Step Template](#step-template)
+  - [Sidecars](#sidecars)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
 - [Debugging Tips](#debugging)
@@ -37,7 +42,7 @@ In case of using a ClusterTask, the `TaskRef` kind should be added. The default
 kind is Task which represents a namespaced Task
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: demo-pipeline
@@ -61,7 +66,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/v1alpha1`.
+    `tekton.dev/v1beta`.
   - [`kind`][kubernetes-overview] - Specify the `Task` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `Task` resource object, for example a `name`.
@@ -71,15 +76,18 @@ following fields:
     - [`steps`](#steps) - Specifies one or more container images that you want
       to run in your `Task`.
 - Optional:
-  - [`inputs`](#inputs) - Specifies parameters and
-    [`PipelineResources`](resources.md) needed by your `Task`
-  - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md)
-    created by your `Task`
+  - [`params`](#params) - Specifies parameters
+  - [`resources`](#resources) - Specifies
+    [`PipelineResources`](resources.md) needed or created by your
+    `Task`. *Note: this is an alpha field, it is not supported as the
+    rest of the beta field*.
+    - [`inputs`](#inputs-resources) - resources needed by your `Task`.
+    - [`outputs`](#outputs-resources) - resources created by your `Task`
+  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
+    be mounted and available
   - [`results`](#results) - Specifies the result file name where the task can write its result
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
-  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
-    be mounted and available
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
   - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
@@ -92,22 +100,21 @@ The following example is a non-working sample where most of the possible
 configuration fields are used:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: example-task-name
 spec:
-  inputs:
-    resources:
+  params:
+    - name: pathToDockerFile
+      type: string
+      description: The path to the dockerfile to build
+      default: /workspace/workspace/Dockerfile
+  resources:
+    inputs:
       - name: workspace
         type: git
-    params:
-      - name: pathToDockerFile
-        type: string
-        description: The path to the dockerfile to build
-        default: /workspace/workspace/Dockerfile
-  outputs:
-    resources:
+    outputs:
       - name: builtImage
         type: image
   steps:
@@ -116,10 +123,10 @@ spec:
       args: ["ubuntu-build-example", "SECRETS-example.md"]
     - image: gcr.io/example-builders/build-example
       command: ["echo"]
-      args: ["$(inputs.params.pathToDockerFile)"]
+      args: ["$(params.pathToDockerFile)"]
     - name: dockerfile-pushexample
       image: gcr.io/example-builders/push-example
-      args: ["push", "$(outputs.resources.builtImage.url)"]
+      args: ["push", "$(resources.outputs.builtImage.url)"]
       volumeMounts:
         - name: docker-socket-example
           mountPath: /var/run/docker.sock
@@ -220,14 +227,7 @@ steps:
     /bin/my-binary
 ```
 
-### Inputs
-
-A `Task` can declare the inputs it needs, which can be either or both of:
-
-- [`parameters`](#parameters)
-- [input resources](#input-resources)
-
-#### Parameters
+### Parameters
 
 Tasks can declare input parameters that must be supplied to the task during a
 TaskRun. Some example use-cases of this include:
@@ -242,63 +242,68 @@ parameter name, `barIsBa$` or `0banana` are not.
 
 Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of compilation flags need to be supplied to a task building an application. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
-##### Usage
+#### Usage
 
 The following example shows how Tasks can be parameterized, and these parameters
 can be passed to the `Task` from a `TaskRun`.
 
-Input parameters in the form of `$(inputs.params.foo)` are replaced inside of
+Input parameters in the form of `$(params.foo)` are replaced inside of
 the [`steps`](#steps) (see also [variable substitution](#variable-substitution)).
 
 The following `Task` declares two input parameters named 'flags' (array) and 'someURL' (string), and uses them in
-the `steps.args` list. Array parameters like 'flags' can be expanded inside of an existing array by using star expansion syntax by adding `[*]` to the named parameter as we do below using `$(inputs.params.flags[*])`. 
+the `steps.args` list. Array parameters like 'flags' can be expanded inside of an existing array by using star expansion syntax by adding `[*]` to the named parameter as we do below using `$(params.flags[*])`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: task-with-parameters
 spec:
-  inputs:
-    params:
-      - name: flags
-        type: array
-      - name: someURL
-        type: string
+  params:
+    - name: flags
+      type: array
+    - name: someURL
+      type: string
   steps:
     - name: build
       image: my-builder
-      args: ["build", "$(inputs.params.flags[*])", "url=$(inputs.params.someURL)"]
+      args: ["build", "$(params.flags[*])", "url=$(params.someURL)"]
 ```
 
 The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: run-with-parameters
 spec:
   taskRef:
     name: task-with-parameters
-  inputs:
-    params:
-      - name: flags
-        value:
-          - "--set"
-          - "arg1=foo"
-          - "--randomflag"
-          - "--someotherflag"
-      - name: someURL
-        value: "http://google.com"
+  params:
+    - name: flags
+      value:
+        - "--set"
+        - "arg1=foo"
+        - "--randomflag"
+        - "--someotherflag"
+    - name: someURL
+      value: "http://google.com"
 ```
+
+### Resources
+
+A `Task` can declare the resources it needs and create, which can be either or both of:
+
+- [input resources](#input-resources)
+- [output resources](#output-resources)
 
 #### Input resources
 
 Use input [`PipelineResources`](resources.md) field to provide your `Task` with
 data or context that is needed by your `Task`. See the [using resources docs](./resources.md#using-resources).
 
-### Outputs
+#### Output resources
 
 `Task` definitions can include inputs and outputs
 [`PipelineResource`](resources.md) declarations. If specific set of resources
@@ -307,8 +312,8 @@ next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
 
 ```yaml
-outputs:
-  resources:
+resources:
+  outputs:
     name: storage-gcs
     type: gcs
 steps:
@@ -335,12 +340,11 @@ directory. After execution of the Task steps, (new) tar file in directory
 `tar-artifact` resource definition.
 
 ```yaml
-inputs:
-  resources:
+resources:
+  inputs:
     name: tar-artifact
     targetPath: customworkspace
-outputs:
-  resources:
+  outputs:
     name: tar-artifact
 steps:
  - name: untar
@@ -357,6 +361,48 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
+### Workspaces
+
+`workspaces` are a way of declaring volumes you expect to be made available to your
+executing `Task` and the path to make them available at. They are similar to
+[`volumes`](#volumes) but allow you to enforce at runtime that the volumes have
+been attached and [allow you to specify subpaths](taskruns.md#workspaces) in the volumes
+to attach.
+
+The volume will be made available at `/workspace/myworkspace`, or you can override
+this with `mountPath`. The value at `mountPath` can be anywhere on your pod's filesystem.
+The path will be available via [variable substitution](#variable-substitution) with
+`$(workspaces.myworkspace.path)`.
+
+A task can declare that it will not write to the volume by adding `readOnly: true`
+to the workspace declaration. This will in turn mark the volumeMount as `readOnly`
+on the Task's underlying pod.
+
+The actual volumes must be provided at runtime
+[in the `TaskRun`](taskruns.md#workspaces).
+In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))
+it [will be possible to specify these in the `PipelineRun`](pipelineruns.md#workspaces)
+as well.
+
+For example:
+
+```yaml
+spec:
+  steps:
+  - name: write-message
+    image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      set -xe
+      echo hello! > $(workspaces.messages.path)/message
+  workspaces:
+  - name: messages
+    description: The folder where we write the message to
+    mountPath: /custom/path/relative/to/root
+```
+
+_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
+
 ### Results
 
 Specifies one or more result files in which you want the task's [`steps`](#steps) to write a result. All result files are written
@@ -365,7 +411,7 @@ into the `/tekton/results` folder. This folder is created automatically if the t
 For example, this task:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: print-date
@@ -425,48 +471,6 @@ For example, use volumes to accomplish one of the following common tasks:
   **Note:** Building a container image using `docker build` on-cluster is _very
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
   This is used only for the purposes of demonstration.
-
-### Workspaces
-
-`workspaces` are a way of declaring volumes you expect to be made available to your
-executing `Task` and the path to make them available at. They are similar to
-[`volumes`](#volumes) but allow you to enforce at runtime that the volumes have
-been attached and [allow you to specify subpaths](taskruns.md#workspaces) in the volumes
-to attach.
-
-The volume will be made available at `/workspace/myworkspace`, or you can override
-this with `mountPath`. The value at `mountPath` can be anywhere on your pod's filesystem.
-The path will be available via [variable substitution](#variable-substitution) with
-`$(workspaces.myworkspace.path)`.
-
-A task can declare that it will not write to the volume by adding `readOnly: true`
-to the workspace declaration. This will in turn mark the volumeMount as `readOnly`
-on the Task's underlying pod.
-
-The actual volumes must be provided at runtime
-[in the `TaskRun`](taskruns.md#workspaces).
-In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))
-it [will be possible to specify these in the `PipelineRun`](pipelineruns.md#workspaces)
-as well.
-
-For example:
-
-```yaml
-spec:
-  steps:
-  - name: write-message
-    image: ubuntu
-    script: |
-      #!/usr/bin/env bash
-      set -xe
-      echo hello! > $(workspaces.messages.path)/message
-  workspaces:
-  - name: messages
-    description: The folder where we write the message to
-    mountPath: /custom/path/relative/to/root
-```
-
-_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
 
 ### Step Template
 
@@ -572,16 +576,16 @@ has been created to track this bug.
 - [`workspaces`](#variable-substitution-with-workspaces)
 - [`volumes`](#variable-substitution-with-volumes)
 
-#### Input and Output substitution
+#### Parameter and Resource substitution
 
-[`inputs`](#inputs) and [`outputs`](#outputs) attributes can be used in replacements,
+[`params`](#parameters) and [`resources`](#resources) attributes can be used in replacements,
 including [`params`](#params) and [`resources`](./resources.md#variable-substitution).
 
-Input parameters can be referenced in the `Task` spec using the variable substitution syntax below,
+Parameters can be referenced in the `Task` spec using the variable substitution syntax below,
 where `<name>` is the name of the parameter:
 
 ```shell
-$(inputs.params.<name>)
+$(params.<name>)
 ```
 
 Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
@@ -593,16 +597,15 @@ Referenced parameters of type `array` can be expanded using 'star-expansion' by 
 So, with the following parameter:
 
 ```yaml
-inputs:
-    params:
-      - name: array-param
-        value:
-          - "some"
-          - "array"
-          - "elements"
+params:
+  - name: array-param
+    value:
+      - "some"
+      - "array"
+      - "elements"
 ```
 
-then `command: ["first", "$(inputs.params.array-param[*])", "last"]` will become
+then `command: ["first", "$(params.array-param[*])", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
 
 Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
@@ -614,14 +617,14 @@ the string isn't isolated:
 ```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "additionalArg $(inputs.params.build-args[*])"]
+      args: ["build", "additionalArg $(params.build-args[*])"]
 ```
 
 Similarly, referencing `build-args` in a non-array field is also invalid:
 
 ```yaml
  - name: build-step
-      image: "$(inputs.params.build-args[*])"
+      image: "$(params.build-args[*])"
       args: ["build", "args"]
 ```
 
@@ -630,7 +633,7 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 ```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "$(inputs.params.build-args[*])", "additonalArg"]
+      args: ["build", "$(params.build-args[*])", "additonalArg"]
 ```
 
 #### Variable Substitution with Workspaces
@@ -682,36 +685,35 @@ This is used only for the purposes of demonstration.
 
 ```yaml
 spec:
-  inputs:
-    resources:
+  params:
+    # These may be overridden, but provide sensible defaults.
+    - name: directory
+      type: string
+      description: The directory containing the build context.
+      default: /workspace
+    - name: dockerfileName
+      type: string
+      description: The name of the Dockerfile
+      default: Dockerfile
+  resources:
+    inputs:
       - name: workspace
         type: git
-    params:
-      # These may be overridden, but provide sensible defaults.
-      - name: directory
-        type: string
-        description: The directory containing the build context.
-        default: /workspace
-      - name: dockerfileName
-        type: string
-        description: The name of the Dockerfile
-        default: Dockerfile
-  outputs:
-    resources:
+    outputs:
       - name: builtImage
         type: image
   steps:
     - name: dockerfile-build
       image: gcr.io/cloud-builders/docker
-      workingDir: "$(inputs.params.directory)"
+      workingDir: "$(params.directory)"
       args:
         [
           "build",
           "--no-cache",
           "--tag",
-          "$(outputs.resources.image)",
+          "$(resources.outputs.image.url)",
           "--file",
-          "$(inputs.params.dockerfileName)",
+          "$(params.dockerfileName)",
           ".",
         ]
       volumeMounts:
@@ -720,7 +722,7 @@ spec:
 
     - name: dockerfile-push
       image: gcr.io/cloud-builders/docker
-      args: ["push", "$(outputs.resources.image)"]
+      args: ["push", "$(resources.outputs.image.url)"]
       volumeMounts:
         - name: docker-socket
           mountPath: /var/run/docker.sock
@@ -765,54 +767,53 @@ spec:
 
 ```yaml
 spec:
-  inputs:
-    params:
-      - name: CFGNAME
-        type: string
-        description: Name of config map
-      - name: volumeName
-        type: string
-        description: Name of volume
+  params:
+    - name: CFGNAME
+      type: string
+      description: Name of config map
+    - name: volumeName
+      type: string
+      description: Name of volume
   steps:
     - image: ubuntu
       script: |
         #!/usr/bin/env bash
         cat /var/configmap/test
       volumeMounts:
-        - name: "$(inputs.params.volumeName)"
+        - name: "$(params.volumeName)"
           mountPath: /var/configmap
 
   volumes:
-    - name: "$(inputs.params.volumeName)"
+    - name: "$(params.volumeName)"
       configMap:
-        name: "$(inputs.params.CFGNAME)"
+        name: "$(params.CFGNAME)"
 ```
 
 #### Using secret as environment source
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: goreleaser
 spec:
-  inputs:
-    params:
-    - name: package
-      type: string
-      description: base package to build in
-    - name: github-token-secret
-      type: string
-      description: name of the secret holding the github-token
-      default: github-token
-    resources:
+  params:
+  - name: package
+    type: string
+    description: base package to build in
+  - name: github-token-secret
+    type: string
+    description: name of the secret holding the github-token
+    default: github-token
+  resources:
+    inputs:
     - name: source
       type: git
-      targetPath: src/$(inputs.params.package)
+      targetPath: src/$(params.package)
   steps:
   - name: release
     image: goreleaser/goreleaser
-    workingDir: /workspace/src/$(inputs.params.package)
+    workingDir: /workspace/src/$(params.package)
     command:
     - goreleaser
     args:
@@ -823,32 +824,31 @@ spec:
     - name: GITHUB_TOKEN
       valueFrom:
         secretKeyRef:
-          name: $(inputs.params.github-token-secret)
+          name: $(params.github-token-secret)
           key: bot-token
 ```
 
 #### Using a sidecar
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: with-sidecar-task
 spec:
-  inputs:
-    params:
-    - name: sidecar-image
-      type: string
-      description: Image name of the sidecar container
-    - name: sidecar-env
-      type: string
-      description: Environment variable value
+  params:
+  - name: sidecar-image
+    type: string
+    description: Image name of the sidecar container
+  - name: sidecar-env
+    type: string
+    description: Environment variable value
   sidecars:
   - name: sidecar
-    image: $(inputs.params.sidecar-image)
+    image: $(params.sidecar-image)
     env:
     - name: SIDECAR_ENV
-      value: $(inputs.params.sidecar-env)  
+      value: $(params.sidecar-env)
   steps:
   - name: test
     image: hello-world
