@@ -47,6 +47,9 @@ type user struct {
 }
 
 func convertUser(from *user) *scm.User {
+	if from == nil {
+		return nil
+	}
 	return &scm.User{
 		Avatar:  from.Avatar,
 		Email:   from.Email.String,
