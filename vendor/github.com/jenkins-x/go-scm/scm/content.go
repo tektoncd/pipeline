@@ -40,7 +40,7 @@ type (
 		// Lists the files or directories at the given path
 		List(ctx context.Context, repo, path, ref string) ([]*FileEntry, *Response, error)
 
-		// Create creates a new repositroy file.
+		// Create creates a new repository file.
 		Create(ctx context.Context, repo, path string, params *ContentParams) (*Response, error)
 
 		// Update updates a repository file.

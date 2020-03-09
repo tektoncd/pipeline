@@ -26,6 +26,16 @@ type (
 		Updated   time.Time
 	}
 
+	// RepositoryInput provides the input fields required for
+	// creating a new repository.
+	RepositoryInput struct {
+		Namespace   string
+		Name        string
+		Description string
+		Homepage    string
+		Private     bool
+	}
+
 	// Perm represents a user's repository permissions.
 	Perm struct {
 		Pull  bool
@@ -125,6 +135,9 @@ type (
 
 		// FindCombinedStatus returns the combined status for a ref
 		FindCombinedStatus(ctx context.Context, repo, ref string) (*CombinedStatus, *Response, error)
+
+		// Create creates a new repository .
+		Create(context.Context, *RepositoryInput) (*Repository, *Response, error)
 
 		// CreateHook creates a new repository webhook.
 		CreateHook(context.Context, string, *HookInput) (*Hook, *Response, error)

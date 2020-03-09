@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/imdario/mergo v0.3.8 // indirect
-	github.com/jenkins-x/go-scm v1.5.73
+	github.com/jenkins-x/go-scm v1.5.79
 	github.com/json-iterator/go v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
