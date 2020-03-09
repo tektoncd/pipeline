@@ -104,7 +104,7 @@ func validateParameters(params []Param) *apis.FieldError {
 	seen := map[string]struct{}{}
 	for _, p := range params {
 		if _, ok := seen[strings.ToLower(p.Name)]; ok {
-			return apis.ErrMultipleOneOf("spec.inputs.params")
+			return apis.ErrMultipleOneOf("spec.params.name")
 		}
 		seen[p.Name] = struct{}{}
 	}
