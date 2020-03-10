@@ -89,7 +89,7 @@ type TaskSpec struct {
 	Sidecars []Sidecar `json:"sidecars,omitempty"`
 
 	// Workspaces are the volumes that this Task requires.
-	Workspaces []WorkspaceDeclaration
+	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
 
 	// Results are values that this Task can output
 	Results []TaskResult `json:"results,omitempty"`
