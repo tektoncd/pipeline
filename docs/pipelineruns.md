@@ -11,16 +11,18 @@ Creation of a `PipelineRun` will trigger the creation of
 
 ---
 
-- [Syntax](#syntax)
-  - [Resources](#resources)
-  - [Service account](#service-account)
-  - [Service accounts](#service-accounts)
-  - [Pod Template](#pod-template)
+- [PipelineRuns](#pipelineruns)
+  - [Syntax](#syntax)
+    - [Specifying a pipeline](#specifying-a-pipeline)
+    - [Resources](#resources)
+    - [Params](#params)
+    - [Service Account](#service-account)
+    - [Service Accounts](#service-accounts)
+    - [Pod Template](#pod-template)
+  - [PersistentVolumeClaims](#persistentvolumeclaims)
   - [Workspaces](#workspaces)
-- [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
-- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
-- [Logs](logs.md)
-- [LimitRanges](#limitranges)
+  - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
+  - [LimitRanges](#limitranges)
 
 ## Syntax
 
@@ -355,7 +357,7 @@ workspaces:
     secretName: my-secret
 ```
 
-_For a complete example see [workspace.yaml](../examples/v1beta1/pipelineruns/workspace.yaml)._
+_For a complete example see [workspaces.yaml](../examples/v1beta1/pipelineruns/workspaces.yaml)._
 
 ## Cancelling a PipelineRun
 
