@@ -4,19 +4,23 @@ This document defines `Pipelines` and their capabilities.
 
 ---
 
-- [Syntax](#syntax)
-  - [Declared resources](#declared-resources)
-  - [Workspaces](#declared-workspaces)
-  - [Parameters](#parameters)
-  - [Pipeline Tasks](#pipeline-tasks)
-    - [From](#from)
-    - [RunAfter](#runAfter)
-    - [Retries](#retries)
-    - [Conditions](#conditions)
-    - [Timeout](#timeout)
-- [Results](#results)
-- [Ordering](#ordering)
-- [Examples](#examples)
+- [Pipelines](#pipelines)
+  - [Syntax](#syntax)
+    - [Description](#description)
+    - [Declared resources](#declared-resources)
+    - [Declared Workspaces](#declared-workspaces)
+      - [Workspaces Don't Imply Task Ordering (Yet)](#workspaces-dont-imply-task-ordering-yet)
+    - [Parameters](#parameters)
+      - [Usage](#usage)
+    - [Pipeline Tasks](#pipeline-tasks)
+      - [from](#from)
+      - [runAfter](#runafter)
+      - [retries](#retries)
+      - [conditions](#conditions)
+      - [Timeout](#timeout)
+    - [Results](#results)
+    - [Ordering](#ordering)
+  - [Examples](#examples)
 
 ## Syntax
 
@@ -448,7 +452,7 @@ params:
 
 In this example the previous pipeline task has name "previous-task-name" and its result is declared in the Task definition as having name "bar-result".
 
-For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/pipelineruns/task_results_example.yaml).
+For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
 ### Ordering
 

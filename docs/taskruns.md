@@ -11,22 +11,26 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 
 ---
 
-- [Syntax](#syntax)
-  - [Specifying a `Task`](#specifying-a-task)
-  - [Parameters](#parameters)
-  - [Providing resources](#providing-resources)
-  - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
-  - [Service Account](#service-account)
+- [TaskRuns](#taskruns)
+  - [Syntax](#syntax)
+    - [Specifying a task](#specifying-a-task)
+    - [Parameters](#parameters)
+    - [Providing resources](#providing-resources)
+    - [Configuring Default Timeout](#configuring-default-timeout)
+    - [Service Account](#service-account)
   - [Pod Template](#pod-template)
   - [Workspaces](#workspaces)
-- [Status](#status)
-  - [Steps](#steps)
-  - [Task Results](#results)
-- [Cancelling a TaskRun](#cancelling-a-taskrun)
-- [Examples](#examples)
-- [Sidecars](#sidecars)
-- [Logs](logs.md)
-- [LimitRanges](#limitranges)
+  - [Status](#status)
+    - [Steps](#steps)
+    - [Results](#results)
+  - [Cancelling a TaskRun](#cancelling-a-taskrun)
+  - [Examples](#examples)
+    - [Example TaskRun](#example-taskrun)
+    - [Example with embedded specs](#example-with-embedded-specs)
+    - [Example Task Reuse](#example-task-reuse)
+      - [Using a `ServiceAccount`](#using-a-serviceaccount)
+  - [Sidecars](#sidecars)
+  - [LimitRanges](#limitranges)
 
 ---
 
@@ -307,7 +311,7 @@ workspaces:
     secretName: my-secret
 ```
 
-_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
+_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
 
 ## Status
 
