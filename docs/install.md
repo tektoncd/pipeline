@@ -105,7 +105,7 @@ for more information.
    ```
    See the
    [OpenShift CLI documentation](https://docs.openshift.com/container-platform/4.3/cli_reference/openshift_cli/getting-started-cli.html)
-   for more inforomation on the `oc` command.
+   for more information on the `oc` command.
 
 1. Monitor the installation using the following command until all components show a `Running` status:
 

@@ -59,7 +59,7 @@ following fields:
 
 ### Specifying a pipeline
 
-Since a `PipelineRun` is an invocation of a [`Pipeline`](pipelines.md), you must sepcify
+Since a `PipelineRun` is an invocation of a [`Pipeline`](pipelines.md), you must specify
 what `Pipeline` to invoke.
 
 You can do this by providing a reference to an existing `Pipeline`:
@@ -122,7 +122,7 @@ When running a [`Pipeline`](pipelines.md), you will need to specify the
 be run with different `PipelineResources` in cases such as:
 
 - When triggering the run of a `Pipeline` against a pull request, the triggering
-  system must specify the commitish of a git `PipelineResource` to use
+  system must specify the commit-ish of a git `PipelineResource` to use
 - When invoking a `Pipeline` manually against one's own setup, one will need to
   ensure one's own GitHub fork (via the git `PipelineResource`), image
   registry (via the image `PipelineResource`) and Kubernetes cluster (via the

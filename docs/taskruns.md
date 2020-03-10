@@ -197,7 +197,7 @@ allows to customize some Pod specific field per `Task` execution, aka `TaskRun`.
 
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the TaskRun, using a
-PersistenceVolumeClaim. The SchedulerName has also been provided to define which scheduler should be used to
+PersistentVolumeClaim. The SchedulerName has also been provided to define which scheduler should be used to
 dispatch the Pod. The Pod will also run as a non-root user.
 
 ```yaml
@@ -346,7 +346,7 @@ Fields include start and stop times for the `TaskRun` and each `Step` and exit c
 For each step we also include the fully-qualified image used, with the digest.
 
 If any pods have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
-by Kubernetes, the `Taskrun` will be marked as failed even if the exitcode is 0.
+by Kubernetes, the `Taskrun` will be marked as failed even if the exit code is 0.
 
 ### Steps
 
@@ -689,7 +689,7 @@ Typical examples of the sidecar pattern are logging daemons, services to
 update files on a shared volume, and network proxies.
 
 Tekton will happily work with sidecars injected into a TaskRun's
-pods but the behaviour is a bit nuanced: When TaskRun's steps are complete
+pods but the behavior is a bit nuanced: When TaskRun's steps are complete
 any sidecar containers running inside the Pod will be terminated. In
 order to terminate the sidecars they will be restarted with a new
 "nop" image that quickly exits. The result will be that your TaskRun's

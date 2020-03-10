@@ -75,7 +75,7 @@ refer to the local path to the mounted resource.
 
 ### Variable substitution
 
-`Task` and `Condition` specs can refer resource params as well as pre-defined
+`Task` and `Condition` specs can refer resource params as well as predefined
 variables such as `path` using the variable substitution syntax below where
 `<name>` is the resource's `name` and `<key>` is one of the resource's `params`:
 
@@ -99,7 +99,7 @@ $(resources.<name>.<key>)
 
 #### Accessing local path to resource
 
-The `path` key is pre-defined and refers to the local path to a resource on the
+The `path` key is predefined and refers to the local path to a resource on the
 mounted volume `shell $(resources.inputs.<name>.path)`
 
 ### Controlling where resources are mounted
@@ -472,7 +472,7 @@ https://godoc.org/github.com/jenkins-x/go-scm/scm#State
 
 #### Pull Request
 
-The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication
+The `pullRequest` resource will look for GitHub or GitLab OAuth authentication
 tokens in spec secrets with a field name called `authToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
