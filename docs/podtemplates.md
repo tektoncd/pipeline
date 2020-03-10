@@ -7,7 +7,7 @@ configuration that will be used as the basis for the `Task` pod.
 This allows to customize some Pod specific field per `Task` execution, aka `TaskRun`.
 
 Alternatively, you can also define a default pod template in tekton config, see [here](./install.md)
-When a pod template is specified for a `PipelineRun` or `TaskRun`, the default pod template is ignored, ie
+When a pod template is specified for a `PipelineRun` or `TaskRun`, the default pod template is ignored, i.e.
 both templates are **NOT** merged, it's always one or the other.
 
 ---
@@ -49,7 +49,7 @@ The current fields supported are:
 - `schedulerName` the name of the 
   [scheduler](https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/)
   to use when dispatching the Pod. This can be used when workloads of specific types need specific schedulers,
-  eg: If you are using volcano.sh for Machine Learning Workloads, you can pass the schedulerName and have Tasks be 
+  e.g.: If you are using volcano.sh for Machine Learning Workloads, you can pass the schedulerName and have Tasks be 
   dispatched by the volcano.sh scheduler.
 
 
