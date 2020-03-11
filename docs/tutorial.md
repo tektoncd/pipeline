@@ -324,7 +324,7 @@ tkn taskrun logs build-docker-image-from-git-source-task-run
 ## Creating and running a `Pipeline`
 
 A [`Pipeline`](pipelines.md) defines an ordered series of `Tasks` that you want to execute
-along with the along with corresponding inputs and outputs for each `Task`. You can specify whether the output of one
+along with the corresponding inputs and outputs for each `Task`. You can specify whether the output of one
 `Task` is used as an input for the next `Task` using the [`from`](pipelines.md#from) property.
 `Pipelines` offer the same variable substitution as `Tasks`.
 
