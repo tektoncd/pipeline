@@ -4,19 +4,23 @@ This document defines `Pipelines` and their capabilities.
 
 ---
 
-- [Syntax](#syntax)
-  - [Declared resources](#declared-resources)
-  - [Workspaces](#declared-workspaces)
-  - [Parameters](#parameters)
-  - [Pipeline Tasks](#pipeline-tasks)
-    - [From](#from)
-    - [RunAfter](#runAfter)
-    - [Retries](#retries)
-    - [Conditions](#conditions)
-    - [Timeout](#timeout)
-- [Results](#results)
-- [Ordering](#ordering)
-- [Examples](#examples)
+- [Pipelines](#pipelines)
+  - [Syntax](#syntax)
+    - [Description](#description)
+    - [Declared resources](#declared-resources)
+    - [Declared Workspaces](#declared-workspaces)
+      - [Workspaces Don't Imply Task Ordering (Yet)](#workspaces-dont-imply-task-ordering-yet)
+    - [Parameters](#parameters)
+      - [Usage](#usage)
+    - [Pipeline Tasks](#pipeline-tasks)
+      - [from](#from)
+      - [runAfter](#runafter)
+      - [retries](#retries)
+      - [conditions](#conditions)
+      - [Timeout](#timeout)
+    - [Results](#results)
+    - [Ordering](#ordering)
+  - [Examples](#examples)
 
 ## Syntax
 
@@ -127,16 +131,16 @@ This will tell Tekton to take whatever workspace is provided by the PipelineRun
 with name "pipeline-ws1" and wire it into the "output" workspace expected by
 the gen-code task. The same workspace will then also be wired into the "src" workspace
 expected by the commit task. If the workspace provided by the PipelineRun is a
-persitent volume claim then we have successfully shared files between the two tasks!
+persistent volume claim then we have successfully shared files between the two tasks!
 
 #### Workspaces Don't Imply Task Ordering (Yet)
 
 One usecase for workspaces in `Pipeline`s is to provide a PVC to multiple `Task`s
-and have one or some write to it before the others read from it. This kind of behaviour
+and have one or some write to it before the others read from it. This kind of behavior
 relies on the order of the `Task`s - one writes, the next reads, and so on - but this
 ordering is not currently enforced by Tekton. This means that `Task`s which write to a
 PVC may be run at the same time as `Task`s expecting to read that data. In the worst case
-this can result in deadlock behaviour where multiple `Task`'s pods are all attempting
+this can result in deadlock behavior where multiple `Task`'s pods are all attempting
 to mount a PVC for writing at the same time.
 
 To avoid this situation `Pipeline` authors can explicitly declare the ordering of `Task`s
@@ -448,7 +452,7 @@ params:
 
 In this example the previous pipeline task has name "previous-task-name" and its result is declared in the Task definition as having name "bar-result".
 
-For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/pipelineruns/task_results_example.yaml).
+For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
 ### Ordering
 

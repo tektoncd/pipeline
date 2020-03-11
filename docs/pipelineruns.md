@@ -11,17 +11,18 @@ Creation of a `PipelineRun` will trigger the creation of
 
 ---
 
-- [Syntax](#syntax)
-  - [Resources](#resources)
-  - [Params](#params)
-  - [Service account](#service-account)
-  - [Service accounts](#service-accounts)
-  - [Pod Template](#pod-template)
+- [PipelineRuns](#pipelineruns)
+  - [Syntax](#syntax)
+    - [Specifying a pipeline](#specifying-a-pipeline)
+    - [Resources](#resources)
+    - [Params](#params)
+    - [Service Account](#service-account)
+    - [Service Accounts](#service-accounts)
+    - [Pod Template](#pod-template)
+  - [PersistentVolumeClaims](#persistentvolumeclaims)
   - [Workspaces](#workspaces)
-- [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
-- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/v1beta1/pipelineruns)
-- [Logs](logs.md)
-- [LimitRanges](#limitranges)
+  - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
+  - [LimitRanges](#limitranges)
 
 ## Syntax
 
@@ -59,7 +60,7 @@ following fields:
 
 ### Specifying a pipeline
 
-Since a `PipelineRun` is an invocation of a [`Pipeline`](pipelines.md), you must sepcify
+Since a `PipelineRun` is an invocation of a [`Pipeline`](pipelines.md), you must specify
 what `Pipeline` to invoke.
 
 You can do this by providing a reference to an existing `Pipeline`:
@@ -122,7 +123,7 @@ When running a [`Pipeline`](pipelines.md), you will need to specify the
 be run with different `PipelineResources` in cases such as:
 
 - When triggering the run of a `Pipeline` against a pull request, the triggering
-  system must specify the commitish of a git `PipelineResource` to use
+  system must specify the commit-ish of a git `PipelineResource` to use
 - When invoking a `Pipeline` manually against one's own setup, one will need to
   ensure one's own GitHub fork (via the git `PipelineResource`), image
   registry (via the image `PipelineResource`) and Kubernetes cluster (via the
@@ -268,7 +269,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: mypipelineRun
+  name: mypipelinerun
 spec:
   pipelineRef:
     name: mypipeline
@@ -374,7 +375,7 @@ workspaces:
     secretName: my-secret
 ```
 
-_For a complete example see [workspace.yaml](../examples/v1beta1/pipelineruns/workspace.yaml)._
+_For a complete example see [workspaces.yaml](../examples/v1beta1/pipelineruns/workspaces.yaml)._
 
 ## Cancelling a PipelineRun
 

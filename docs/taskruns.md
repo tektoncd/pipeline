@@ -11,22 +11,26 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 
 ---
 
-- [Syntax](#syntax)
-  - [Specifying a `Task`](#specifying-a-task)
-  - [Parameters](#parameters)
-  - [Providing resources](#providing-resources)
-  - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
-  - [Service Account](#service-account)
+- [TaskRuns](#taskruns)
+  - [Syntax](#syntax)
+    - [Specifying a task](#specifying-a-task)
+    - [Parameters](#parameters)
+    - [Providing resources](#providing-resources)
+    - [Configuring Default Timeout](#configuring-default-timeout)
+    - [Service Account](#service-account)
   - [Pod Template](#pod-template)
   - [Workspaces](#workspaces)
-- [Status](#status)
-  - [Steps](#steps)
-  - [Task Results](#results)
-- [Cancelling a TaskRun](#cancelling-a-taskrun)
-- [Examples](#examples)
-- [Sidecars](#sidecars)
-- [Logs](logs.md)
-- [LimitRanges](#limitranges)
+  - [Status](#status)
+    - [Steps](#steps)
+    - [Results](#results)
+  - [Cancelling a TaskRun](#cancelling-a-taskrun)
+  - [Examples](#examples)
+    - [Example TaskRun](#example-taskrun)
+    - [Example with embedded specs](#example-with-embedded-specs)
+    - [Example Task Reuse](#example-task-reuse)
+      - [Using a `ServiceAccount`](#using-a-serviceaccount)
+  - [Sidecars](#sidecars)
+  - [LimitRanges](#limitranges)
 
 ---
 
@@ -193,7 +197,7 @@ allows to customize some Pod specific field per `Task` execution, aka `TaskRun`.
 
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the TaskRun, using a
-PersistenceVolumeClaim. The SchedulerName has also been provided to define which scheduler should be used to
+PersistentVolumeClaim. The SchedulerName has also been provided to define which scheduler should be used to
 dispatch the Pod. The Pod will also run as a non-root user.
 
 ```yaml
@@ -204,7 +208,7 @@ metadata:
   namespace: default
 spec:
   steps:
-    - name: write something
+    - name: writesomething
       image: ubuntu
       command: ["bash", "-c"]
       args: ["echo 'foo' > /my-cache/bar"]
@@ -215,7 +219,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: mytaskRun
+  name: mytaskrun
   namespace: default
 spec:
   taskRef:
@@ -307,7 +311,7 @@ workspaces:
     secretName: my-secret
 ```
 
-_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
+_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
 
 ## Status
 
@@ -342,7 +346,7 @@ Fields include start and stop times for the `TaskRun` and each `Step` and exit c
 For each step we also include the fully-qualified image used, with the digest.
 
 If any pods have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
-by Kubernetes, the `Taskrun` will be marked as failed even if the exitcode is 0.
+by Kubernetes, the `Taskrun` will be marked as failed even if the exit code is 0.
 
 ### Steps
 
@@ -685,7 +689,7 @@ Typical examples of the sidecar pattern are logging daemons, services to
 update files on a shared volume, and network proxies.
 
 Tekton will happily work with sidecars injected into a TaskRun's
-pods but the behaviour is a bit nuanced: When TaskRun's steps are complete
+pods but the behavior is a bit nuanced: When TaskRun's steps are complete
 any sidecar containers running inside the Pod will be terminated. In
 order to terminate the sidecars they will be restarted with a new
 "nop" image that quickly exits. The result will be that your TaskRun's

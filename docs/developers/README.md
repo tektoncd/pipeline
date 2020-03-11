@@ -163,7 +163,7 @@ TaskRun Pods. Without intervention sidecars will typically run for the entire
 lifetime of a Pod but in Tekton's case it's desirable for the sidecars to run
 only as long as Steps take to complete. There's also a need for Tekton to
 schedule the sidecars to start before a Task's Steps begin, just in case the
-Steps rely on a sidecars behaviour, for example to join an Istio service mesh.
+Steps rely on a sidecars behavior, for example to join an Istio service mesh.
 To handle all of this, Tekton Pipelines implements the following lifecycle
 for sidecar containers:
 

@@ -518,7 +518,7 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 			cStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
 			for _, c := range rprt.ResolvedConditionChecks {
 				cStatus[c.ConditionCheckName] = &v1alpha1.PipelineRunConditionCheckStatus{
-					ConditionName: c.Condition.Name,
+					ConditionName: c.ConditionRegisterName,
 				}
 				if c.ConditionCheck != nil {
 					cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
