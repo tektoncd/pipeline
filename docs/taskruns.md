@@ -208,7 +208,7 @@ metadata:
   namespace: default
 spec:
   steps:
-    - name: write something
+    - name: writesomething
       image: ubuntu
       command: ["bash", "-c"]
       args: ["echo 'foo' > /my-cache/bar"]
@@ -219,7 +219,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: mytaskRun
+  name: mytaskrun
   namespace: default
 spec:
   taskRef:

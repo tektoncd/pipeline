@@ -269,7 +269,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: mypipelineRun
+  name: mypipelinerun
 spec:
   pipelineRef:
     name: mypipeline
