@@ -42,7 +42,7 @@ spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
-        image: github.com/tektoncd/pipeline/cmd/controller
+        image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
           "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
