@@ -236,8 +236,8 @@ You can specify your own values that replace the default service account (`Servi
 
 The example below customizes the following:
 
-- Service account from `default` to `tekton`.
-- Timeout from 60 minutes to 20 minutes.
+- The default service account from `default` to `tekton`.
+- The default timeout from 60 minutes to 20 minutes.
 - The `app.kuberrnetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
 - The default Pod template to include a node selector to select the node where the Pod will be scheduled by default. 
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#pod-template).
