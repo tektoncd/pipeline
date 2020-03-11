@@ -23,6 +23,8 @@ spec:
       type: storage
     - name: builtBaseImage
       type: image
+    - name: builtBaseJqImage
+      type: image
     - name: builtEntrypointImage
       type: image
     - name: builtKubeconfigWriterImage
@@ -45,14 +47,30 @@ spec:
       type: cloudEvent
   steps:
 
-  - name: build-push-base-images
+  - name: build-push-build-base-images
     image: gcr.io/kaniko-project/executor:v0.17.1
     command:
     - /kaniko/executor
     args:
     - --dockerfile=/workspace/go/src/github.com/tektoncd/pipeline/images/Dockerfile
     - --destination=$(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtBaseImage.url)
-    - --context=/workspace/go/src/github.com/tektoncd/pipeline
+    - --context=/workspace/go/src/github.com/tektoncd/pipeline/images
+
+    volumeMounts:
+      - name: gcp-secret
+        mountPath: /secret
+    env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /secret/release.json
+
+  - name: build-push-jq-base-images
+    image: gcr.io/kaniko-project/executor:v0.17.1
+    command:
+    - /kaniko/executor
+    args:
+    - --dockerfile=/workspace/go/src/github.com/tektoncd/pipeline/images/Dockerfile.jq
+    - --destination=$(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtJqBaseImage.url)
+    - --context=/workspace/go/src/github.com/tektoncd/pipeline/images/
 
     volumeMounts:
       - name: gcp-secret
