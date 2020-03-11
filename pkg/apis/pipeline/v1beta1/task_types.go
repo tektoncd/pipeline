@@ -133,7 +133,7 @@ type TaskList struct {
 type TaskRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name,omitempty"`
-	// TaskKind inficates the kind of the task, namespaced or cluster scoped.
+	// TaskKind indicates the kind of the task, namespaced or cluster scoped.
 	Kind TaskKind `json:"kind,omitempty"`
 	// API version of the referent
 	// +optional
@@ -145,7 +145,7 @@ type TaskRef struct {
 type TaskKind string
 
 const (
-	// NamespacedTaskKind indicates that the task type has a namepace scope.
+	// NamespacedTaskKind indicates that the task type has a namespaced scope.
 	NamespacedTaskKind TaskKind = "Task"
 	// ClusterTaskKind indicates that task type has a cluster scope.
 	ClusterTaskKind TaskKind = "ClusterTask"
