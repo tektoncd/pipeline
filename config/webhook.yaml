@@ -48,7 +48,7 @@ spec:
       - name: webhook
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: github.com/tektoncd/pipeline/cmd/webhook
+        image: ko://github.com/tektoncd/pipeline/cmd/webhook
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
