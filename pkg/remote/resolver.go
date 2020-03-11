@@ -22,7 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
-// Resolver will retreive Tekton resources like Tasks from remote repositories like an OCI image repositories.
+// Resolver will retrieve Tekton resources like Tasks from remote repositories like an OCI image repositories.
 type Resolver interface {
 	GetTask(taskName string) (*v1beta1.TaskSpec, error)
 }
