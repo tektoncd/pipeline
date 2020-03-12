@@ -687,7 +687,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.TerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
 			),
