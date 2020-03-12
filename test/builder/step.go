@@ -147,10 +147,3 @@ func StepTerminationMessagePath(terminationMessagePath string) StepOp {
 		step.TerminationMessagePath = terminationMessagePath
 	}
 }
-
-// StepTerminationMessagePolicy sets the policy of the termination message.
-func StepTerminationMessagePolicy(terminationMessagePolicy corev1.TerminationMessagePolicy) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.TerminationMessagePolicy = terminationMessagePolicy
-	}
-}

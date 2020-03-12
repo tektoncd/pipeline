@@ -91,11 +91,10 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}, {Container: corev1.Container{
-			Name:                     "image-digest-exporter-9l9zj",
-			Image:                    "override-with-imagedigest-exporter-image:latest",
-			Command:                  []string{"/ko-app/imagedigestexporter"},
-			Args:                     []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
-			TerminationMessagePolicy: "FallbackToLogsOnError",
+			Name:    "image-digest-exporter-9l9zj",
+			Image:   "override-with-imagedigest-exporter-image:latest",
+			Command: []string{"/ko-app/imagedigestexporter"},
+			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
 		}}},
 	}, {
 		desc: "image resource in task with multiple steps",
@@ -163,8 +162,6 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Image:   "override-with-imagedigest-exporter-image:latest",
 			Command: []string{"/ko-app/imagedigestexporter"},
 			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
-
-			TerminationMessagePolicy: "FallbackToLogsOnError",
 		}}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {

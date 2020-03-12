@@ -22,6 +22,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -40,6 +42,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
 		podStatus corev1.PodStatus
+		taskSpec  v1alpha1.TaskSpec
 		want      v1alpha1.TaskRunStatus
 	}{{
 		desc:      "empty",
@@ -600,6 +603,94 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		desc: "non-json-termination-message-with-steps-afterwards-shouldnt-panic",
+		taskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name: "non-json",
+			}}, {Container: corev1.Container{
+				Name: "after-non-json",
+			}}, {Container: corev1.Container{
+				Name: "this-step-might-panic",
+			}}, {Container: corev1.Container{
+				Name: "foo",
+			}}},
+		}},
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodFailed,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "step-this-step-might-panic",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}, {
+				Name:    "step-foo",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}, {
+				Name:    "step-non-json",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Message:  "this is a non-json termination message. dont panic!",
+					},
+				},
+			}, {
+				Name:    "step-after-non-json",
+				ImageID: "image",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  ReasonFailed,
+					Message: `"step-non-json" exited with code 1 (image: "image"); for logs run: kubectl -n foo logs pod -c step-non-json`,
+				}},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+							Message:  "this is a non-json termination message. dont panic!",
+						}},
+
+					Name:          "non-json",
+					ContainerName: "step-non-json",
+					ImageID:       "image",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{}},
+					Name:          "after-non-json",
+					ContainerName: "step-after-non-json",
+					ImageID:       "image",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{}},
+					Name:          "this-step-might-panic",
+					ContainerName: "step-this-step-might-panic",
+					ImageID:       "image",
+				}, {
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{}},
+					Name:          "foo",
+					ContainerName: "step-foo",
+					ImageID:       "image",
+				}},
+				Sidecars: []v1alpha1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			now := metav1.Now()
@@ -624,7 +715,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}
 
-			got := MakeTaskRunStatus(tr, pod, v1alpha1.TaskSpec{})
+			logger, _ := logging.NewLogger("", "status")
+			got := MakeTaskRunStatus(logger, tr, pod, c.taskSpec)
 
 			// Common traits, set for test case brevity.
 			c.want.PodName = "pod"
