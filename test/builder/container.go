@@ -132,13 +132,6 @@ func EphemeralStorage(val string) ResourceListOp {
 	}
 }
 
-// TerminationMessagePolicy sets the policy of the termination message.
-func TerminationMessagePolicy(terminationMessagePolicy corev1.TerminationMessagePolicy) ContainerOp {
-	return func(c *corev1.Container) {
-		c.TerminationMessagePolicy = terminationMessagePolicy
-	}
-}
-
 // TerminationMessagePath sets the termination message path.
 func TerminationMessagePath(terminationMessagePath string) ContainerOp {
 	return func(c *corev1.Container) {

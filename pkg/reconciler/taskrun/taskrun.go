@@ -400,7 +400,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status = podconvert.MakeTaskRunStatus(*tr, pod, *taskSpec)
+	tr.Status = podconvert.MakeTaskRunStatus(c.Logger, *tr, pod, *taskSpec)
 
 	if err := updateTaskRunResourceResult(tr, pod.Status); err != nil {
 		return err
