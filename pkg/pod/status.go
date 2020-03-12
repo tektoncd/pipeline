@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/termination"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -99,7 +99,7 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.TaskSpec) v1alpha1.TaskRunStatus {
+func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.TaskSpec) v1alpha1.TaskRunStatus {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
@@ -114,39 +114,12 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 	trs.PodName = pod.Name
 	trs.Steps = []v1alpha1.StepState{}
 	trs.Sidecars = []v1alpha1.SidecarState{}
-	logger, _ := logging.NewLogger("", "status")
-	defer func() {
-		_ = logger.Sync()
-	}()
 
 	for _, s := range pod.Status.ContainerStatuses {
 		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
-				msg := s.State.Terminated.Message
-				r, err := termination.ParseMessage(msg)
-				if err != nil {
-					logger.Errorf("Could not parse json message %q because of %w", msg, err)
-					break
-				}
-				for index, result := range r {
-					if result.Key == "StartedAt" {
-						t, err := time.Parse(time.RFC3339, result.Value)
-						if err != nil {
-							logger.Errorf("Could not parse time: %q: %w", result.Value, err)
-							break
-						}
-						s.State.Terminated.StartedAt = metav1.NewTime(t)
-						// remove the entry for the starting time
-						r = append(r[:index], r[index+1:]...)
-						if len(r) == 0 {
-							s.State.Terminated.Message = ""
-						} else if bytes, err := json.Marshal(r); err != nil {
-							logger.Errorf("Error marshalling remaining results: %w", err)
-						} else {
-							s.State.Terminated.Message = string(bytes)
-						}
-						break
-					}
+				if err := updateStatusStartTime(&s); err != nil {
+					logger.Errorf("error setting the start time of step %q in taskrun %q: %w", s.Name, tr.Name, err)
 				}
 			}
 			trs.Steps = append(trs.Steps, v1alpha1.StepState{
@@ -178,6 +151,36 @@ func MakeTaskRunStatus(tr v1alpha1.TaskRun, pod *corev1.Pod, taskSpec v1alpha1.T
 	trs.Steps = sortTaskRunStepOrder(trs.Steps, taskSpec.Steps)
 
 	return *trs
+}
+
+// updateStatusStartTime searches for a result called "StartedAt" in the JSON-formatted termination message
+// of a step and sets the State.Terminated.StartedAt field to this time if it's found. The "StartedAt" result
+// is also removed from the list of results in the container status.
+func updateStatusStartTime(s *corev1.ContainerStatus) error {
+	r, err := termination.ParseMessage(s.State.Terminated.Message)
+	if err != nil {
+		return fmt.Errorf("termination message could not be parsed as JSON: %w", err)
+	}
+	for index, result := range r {
+		if result.Key == "StartedAt" {
+			t, err := time.Parse(time.RFC3339, result.Value)
+			if err != nil {
+				return fmt.Errorf("could not parse time value %q in StartedAt field: %w", result.Value, err)
+			}
+			s.State.Terminated.StartedAt = metav1.NewTime(t)
+			// remove the entry for the starting time
+			r = append(r[:index], r[index+1:]...)
+			if len(r) == 0 {
+				s.State.Terminated.Message = ""
+			} else if bytes, err := json.Marshal(r); err != nil {
+				return fmt.Errorf("error marshalling remaining results back into termination message: %w", err)
+			} else {
+				s.State.Terminated.Message = string(bytes)
+			}
+			break
+		}
+	}
+	return nil
 }
 
 func updateCompletedTaskRun(trs *v1alpha1.TaskRunStatus, pod *corev1.Pod) {

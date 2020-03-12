@@ -98,6 +98,5 @@ func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte)
 		Args: []string{
 			"-images", string(imagesJSON),
 		},
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}}
 }
