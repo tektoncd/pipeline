@@ -77,7 +77,7 @@ following fields:
       to run in your `Task`.
 - Optional:
   - [`description`](#description) - Description of the Task.
-  - [`params`](#params) - Specifies parameters
+  - [`params`](#parameters) - Specifies parameters
   - [`resources`](#resources) - Specifies
     [`PipelineResources`](resources.md) needed or created by your
     `Task`. *Note: this is an alpha field, it is not supported as the
