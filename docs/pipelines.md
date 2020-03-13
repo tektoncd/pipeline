@@ -8,8 +8,7 @@ This document defines `Pipelines` and their capabilities.
   - [Syntax](#syntax)
     - [Description](#description)
     - [Declared resources](#declared-resources)
-    - [Declared Workspaces](#declared-workspaces)
-      - [Workspaces Don't Imply Task Ordering (Yet)](#workspaces-dont-imply-task-ordering-yet)
+    - [Workspaces](#workspaces)
     - [Parameters](#parameters)
       - [Usage](#usage)
     - [Pipeline Tasks](#pipeline-tasks)
@@ -89,63 +88,39 @@ spec:
       type: image
 ```
 
-### Declared Workspaces
+### Workspaces
 
 `workspaces` are a way of declaring volumes you expect to be made available to your
-executing `Pipeline` and its `Task`s. They are similar to [`volumes`](#volumes) but
-allow you to enforce at runtime that the volumes have been attached and
-[allow you to specify subpaths](taskruns.md#workspaces) in the volumes to attach.
+executing `Pipeline` and its `Task`s.
 
-Any `Pipeline` using a `Task` that declares a workspace will need to provide one at
-runtime. Doing so requires two additions in a Pipeline:
-
-1. The `Pipeline` will need to declare a list of `workspaces` that `PipelineRun`s will be
-expected to provide. This is done with the `workspaces` field in the `Pipeline`'s spec.
-Each entry in that list must have a unique name.
-2. When a `Pipeline` refers to a `Task` requiring workspaces, one of the named workspaces
-from (1) will need to be provided. The workspace name needs to be mapped from the name
-given to it by the pipeline to the name expected by the task.
-
-In total this looks as follows:
+Here's a short example of a Pipeline Spec with `workspaces`:
 
 ```yaml
 spec:
   workspaces:
-    - name: pipeline-ws1 # The name of a workspace provided by PipelineRuns
+    - name: pipeline-ws1 # The name of the workspace in the Pipeline
   tasks:
     - name: use-ws-from-pipeline
       taskRef:
-        name: gen-code # gen-code task expects a workspace be provided with name "output"
+        name: gen-code # gen-code expects a workspace with name "output"
       workspaces:
         - name: output
           workspace: pipeline-ws1
     - name: use-ws-again
       taskRef:
-        name: commit # commit task expects a workspace be provided with name "src"
+        name: commit # commit expects a workspace with name "src"
+      runAfter:
+        - use-ws-from-pipeline # important: use-ws-from-pipeline writes to the workspace first
       workspaces:
         - name: src
           workspace: pipeline-ws1
 ```
 
-This will tell Tekton to take whatever workspace is provided by the PipelineRun
-with name "pipeline-ws1" and wire it into the "output" workspace expected by
-the gen-code task. The same workspace will then also be wired into the "src" workspace
-expected by the commit task. If the workspace provided by the PipelineRun is a
-persistent volume claim then we have successfully shared files between the two tasks!
+For complete documentation on using `workspaces` in `Pipeline`s, see
+[workspaces.md](./workspaces.md#declaring-workspaces-in-pipelines).
 
-#### Workspaces Don't Imply Task Ordering (Yet)
-
-One usecase for workspaces in `Pipeline`s is to provide a PVC to multiple `Task`s
-and have one or some write to it before the others read from it. This kind of behavior
-relies on the order of the `Task`s - one writes, the next reads, and so on - but this
-ordering is not currently enforced by Tekton. This means that `Task`s which write to a
-PVC may be run at the same time as `Task`s expecting to read that data. In the worst case
-this can result in deadlock behavior where multiple `Task`'s pods are all attempting
-to mount a PVC for writing at the same time.
-
-To avoid this situation `Pipeline` authors can explicitly declare the ordering of `Task`s
-sharing a PVC-backed workspace by using the `runAfter` field. See [the section on
-`runAfter`](#runAfter) for more information about using this field.
+_For a complete example see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspace.yaml)
+in the examples directory._
 
 ### Parameters
 
