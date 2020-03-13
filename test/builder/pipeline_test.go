@@ -397,12 +397,13 @@ func TestPipelineRunWithPipelineSpec(t *testing.T) {
 
 func TestPipelineResource(t *testing.T) {
 	pipelineResource := tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"), tb.PipelineResourceDescription("test description"),
 	))
 	expectedPipelineResource := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "git-resource", Namespace: "foo"},
 		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
+			Description: "test description",
+			Type:        v1alpha1.PipelineResourceTypeGit,
 			Params: []v1alpha1.ResourceParam{{
 				Name: "URL", Value: "https://foo.git",
 			}},

@@ -531,6 +531,13 @@ func PipelineResourceSpec(resourceType v1alpha1.PipelineResourceType, ops ...Pip
 	}
 }
 
+// PipelineResourceDescription sets the description of the pipeline resource
+func PipelineResourceDescription(desc string) PipelineResourceSpecOp {
+	return func(spec *v1alpha1.PipelineResourceSpec) {
+		spec.Description = desc
+	}
+}
+
 // PipelineResourceSpecParam adds a ResourceParam, with specified name and value, to the PipelineResourceSpec.
 func PipelineResourceSpecParam(name, value string) PipelineResourceSpecOp {
 	return func(spec *v1alpha1.PipelineResourceSpec) {
