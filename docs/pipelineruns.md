@@ -290,92 +290,29 @@ internally generated persistent volume claims.
 
 ## Workspaces
 
-Workspaces allow PVC, emptyDir, configmap and secret volume sources to be
-easily wired into tasks and pipelines.
+For a `PipelineRun` to execute a `Pipeline` that declares `workspaces` it needs to map
+those `workspaces` to actual physical volumes.
 
-For a `PipelineRun` to execute [a Pipeline that declares `workspaces`](pipelines.md#workspaces),
-at runtime you need to map the `workspace` names to actual physical volumes.
-This is managed through the `PipelineRun`'s `workspaces` field. Values in `workspaces` are
-[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/),
-however currently we only support a subset of `VolumeSources`:
-
-_If you need support for a `VolumeSource` not listed here
-[please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
-[contribute a PR](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)._
-
-* [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
-* [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
-* [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
-* [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
-
-If the `workspaces` declared in the Pipeline are not provided at runtime, the `PipelineRun` will fail
-with an error.
-
-For example to provide an existing PVC called `mypvc` for a `workspace` called
-`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which already exists
-on the PVC (there will be an error if it does not exist):
+Here are the relevant fields of a `PipelineRun` spec when providing a
+`PersistentVolumeClaim` as a workspace:
 
 ```yaml
 workspaces:
-- name: myworkspace
+- name: myworkspace # must match workspace name in Task
   persistentVolumeClaim:
-    claimName: mypvc
+    claimName: mypvc # this PVC must already exist
   subPath: my-subdir
 ```
 
-An [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) can also be used for
-this with the following caveats:
+For more examples and complete documentation on configuring `workspaces` in
+`PipelineRun`s see [workspaces.md](./workspaces.md#providing-workspaces-with-pipelineruns).
 
-1. An `emptyDir` volume type is not _shared_ amongst Tasks. Instead each Task will simply receive a
-new `emptyDir` of its own from its underlying Pod.
+Tekton supports several different kinds of `Volume` in `Workspaces`. For a list of
+the different kinds see the section on
+[`VolumeSources` for Workspaces](workspaces.md#volumesources-for-workspaces).
 
-```yaml
-workspaces:
-- name: myworkspace
-  emptyDir: {}
-```
-
-A [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap) can also be used
-as a workspace with the following caveats:
-
-1. ConfigMap volume sources are always mounted as read-only inside a task's
-containers - tasks cannot write content to them and a step may error out
-and fail the task if a write is attempted.
-2. The ConfigMap you want to use as a workspace must already exist prior
-to the TaskRun being submitted.
-3. ConfigMaps have a [size limit of 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L5042)
-
-To use a [`configMap`](https://kubernetes.io/docs/concepts/storage/volumes/#configmap)
-as a `workspace`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  configmap:
-    name: my-configmap
-```
-
-A [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret) can also be used as a
-workspace with the following caveats:
-
-1. Secret volume sources are always mounted as read-only inside a task's
-containers - tasks cannot write content to them and a step may error out
-and fail the task if a write is attempted.
-2. The Secret you want to use as a workspace must already exist prior
-to the TaskRun being submitted.
-3. Secrets have a [size limit of 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L4933)
-
-To use a [`secret`](https://kubernetes.io/docs/concepts/storage/volumes/#secret)
-as a `workspace`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  secret:
-    secretName: my-secret
-```
-
-_For a complete example see [workspaces.yaml](../examples/v1beta1/pipelineruns/workspaces.yaml)._
+_For a complete example see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspaces.yaml)
+in the examples directory._
 
 ## Cancelling a PipelineRun
 

@@ -369,27 +369,9 @@ steps:
 ### Workspaces
 
 `workspaces` are a way of declaring volumes you expect to be made available to your
-executing `Task` and the path to make them available at. They are similar to
-[`volumes`](#volumes) but allow you to enforce at runtime that the volumes have
-been attached and [allow you to specify subpaths](taskruns.md#workspaces) in the volumes
-to attach.
+executing `Task` and the path to make them available at.
 
-The volume will be made available at `/workspace/myworkspace`, or you can override
-this with `mountPath`. The value at `mountPath` can be anywhere on your pod's filesystem.
-The path will be available via [variable substitution](#variable-substitution) with
-`$(workspaces.myworkspace.path)`.
-
-A task can declare that it will not write to the volume by adding `readOnly: true`
-to the workspace declaration. This will in turn mark the volumeMount as `readOnly`
-on the Task's underlying pod.
-
-The actual volumes must be provided at runtime
-[in the `TaskRun`](taskruns.md#workspaces).
-In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))
-it [will be possible to specify these in the `PipelineRun`](pipelineruns.md#workspaces)
-as well.
-
-For example:
+Here's a short example of a Task spec with a `workspace`:
 
 ```yaml
 spec:
@@ -406,7 +388,11 @@ spec:
     mountPath: /custom/path/relative/to/root
 ```
 
-_For a complete example see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml)._
+For complete documentation on using `workspaces` in Tasks, see
+[workspaces.md](./workspaces.md#declaring-workspaces-in-tasks).
+
+_For a complete example see [the Workspaces TaskRun](../examples/v1beta1/taskruns/workspace.yaml)
+in the examples directory._
 
 ### Results
 
