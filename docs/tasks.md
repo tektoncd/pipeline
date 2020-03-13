@@ -21,7 +21,7 @@ entire Kubernetes cluster.
 - [Syntax](#syntax)
   - [Steps](#steps)
     - [Step script](#step-script)
-  - [Parameters](#paramaters)
+  - [Parameters](#parameters)
   - [Resources](#resources)
     - [Inputs](#inputs)
     - [Outputs](#outputs)
