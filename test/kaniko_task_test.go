@@ -98,6 +98,10 @@ func TestKanikoTaskRun(t *testing.T) {
 		case "commit":
 			commit = rr.Value
 		}
+		// Every resource should have a ref with a name
+		if rr.ResourceRef.Name == "" {
+			t.Errorf("Resource ref not set for %v in TaskRun: %v", rr, tr)
+		}
 	}
 	if digest == "" {
 		t.Errorf("Digest not found in TaskRun.Status: %v", tr.Status)

@@ -17,8 +17,10 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/git"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
@@ -61,10 +63,14 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Error parsing commit of git repository: %s", err)
 	}
+	resourceName := os.Getenv("TEKTON_RESOURCE_NAME")
 	output := []v1alpha1.PipelineResourceResult{
 		{
 			Key:   "commit",
 			Value: commit,
+			ResourceRef: v1beta1.PipelineResourceRef{
+				Name: resourceName,
+			},
 		},
 	}
 
