@@ -25,36 +25,67 @@ import (
 	imgname "github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 )
 
-// KeychainProvider is an input to the OCIResolver which returns a keychain for fetching remote images with
-// authentication.
-type KeychainProvider func() (authn.Keychain, error)
-
 // OCIResolver will attempt to fetch Tekton resources from an OCI compliant image repository.
 type OCIResolver struct {
-	imageReference   string
-	keychainProvider KeychainProvider
+	imageReference string
+	keychain       authn.Keychain
+}
+
+func NewOCIResolver(image string, keychain authn.Keychain) OCIResolver {
+	return OCIResolver{
+		imageReference: image,
+		keychain:       keychain,
+	}
 }
 
 // GetTask will retrieve the specified task from the resolver's defined image and return its spec. If it cannot be
 // retrieved for any reason, an error is returned.
-func (o OCIResolver) GetTask(taskName string) (*v1beta1.TaskSpec, error) {
+func (o OCIResolver) GetTask(taskName string) (v1alpha1.TaskInterface, error) {
 	taskContents, err := o.readImageLayer("task", taskName)
 	if err != nil {
 		return nil, err
 	}
 
-	// Deserialize the task into a valid task spec.
-	var task v1beta1.Task
-	_, _, err = scheme.Codecs.UniversalDeserializer().Decode(taskContents, nil, &task)
+	// Deserialize the contents into a valid task spec.
+	obj, kind, err := scheme.Codecs.UniversalDeserializer().Decode(taskContents, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid remote task %s: %w", taskName, err)
 	}
 
-	return &task.Spec, nil
+	if t, ok := obj.(*v1alpha1.Task); ok {
+		return t, err
+	}
+
+	if t, ok := obj.(*v1beta1.Task); ok {
+		return &v1alpha1.Task{
+			TypeMeta:   t.TypeMeta,
+			ObjectMeta: t.TaskMetadata(),
+			Spec: v1alpha1.TaskSpec{
+				TaskSpec: t.TaskSpec(),
+			},
+		}, nil
+	}
+
+	if t, ok := obj.(*v1alpha1.ClusterTask); ok {
+		return t, err
+	}
+
+	if t, ok := obj.(*v1beta1.ClusterTask); ok {
+		return &v1alpha1.ClusterTask{
+			TypeMeta:   t.TypeMeta,
+			ObjectMeta: t.TaskMetadata(),
+			Spec: v1alpha1.TaskSpec{
+				TaskSpec: t.TaskSpec(),
+			},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unknown task kind %s", kind.String())
 }
 
 func (o OCIResolver) readImageLayer(kind string, name string) ([]byte, error) {
@@ -63,19 +94,9 @@ func (o OCIResolver) readImageLayer(kind string, name string) ([]byte, error) {
 		return nil, fmt.Errorf("%s is an unparseable task image reference: %w", o.imageReference, err)
 	}
 
-	// Create a keychain for use in authenticating against the remote repository.
-	keychain, err := o.keychainProvider()
-	if err != nil {
-		return nil, err
-	}
-
-	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain))
+	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(o.keychain))
 	if err != nil {
 		return nil, fmt.Errorf("Error pulling image %q: %w", o.imageReference, err)
-	}
-	// Ensure the media type is exclusively the Tekton catalog media type.
-	if mt, err := img.MediaType(); err != nil || string(mt) != "application/vnd.cdf.tekton.catalog.v1beta1+yaml" {
-		return nil, fmt.Errorf("cannot parse reference from image type %s: %w", string(mt), err)
 	}
 
 	m, err := img.Manifest()

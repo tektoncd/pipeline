@@ -83,7 +83,18 @@ spec:
     name: read-task
 ```
 
-Or you can embed the spec of the `Task` directly in the `TaskRun`:
+You can also reference a `Task` contained in an OCI-compliant `Image`.
+
+```yaml
+spec:
+  taskRef:
+    name: read-task
+    image: docker.com/my-repo/my-image
+```
+
+These images can be generated using [this](https://github.com/tektoncd/experimental/tree/master/oci) cli and uploaded to most registries. You can also specify a digest or tag on the image. If access is required to read the image, a [service account](#service-account) must be specified on the `TaskRun` with an `ImagePullSecret` to properly fetch the image.
+
+You can also embed the spec of the `Task` directly in the `TaskRun`:
 
 ```yaml
 spec:

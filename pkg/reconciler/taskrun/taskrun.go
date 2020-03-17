@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
@@ -203,28 +204,40 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.Tas
 	return nil
 }
 
-func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind) {
-	var gtFunc resources.GetTask
-	kind := v1alpha1.NamespacedTaskKind
+func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind, error) {
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Image != "" {
+		taskFunc, err := remote.ImageTaskResolver(c.KubeClientSet, tr.Spec.TaskRef.Image, tr.GetNamespace(), tr.Spec.ServiceAccountName)
+		// This is the only real error case. If we know we need a GetTask func that works on Images but we couldn't create
+		// one, the Task lookup will never suceed
+		if err != nil {
+			return nil, "", fmt.Errorf("Could not lookup remote task: %w", err)
+		}
+
+		kind := v1alpha1.NamespacedTaskKind
+		if tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
+			kind = v1alpha1.ClusterTaskKind
+		}
+
+		return taskFunc, kind, err
+	}
+
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
+		return func(name string) (v1alpha1.TaskInterface, error) {
 			t, err := c.PipelineClientSet.TektonV1alpha1().ClusterTasks().Get(name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
 			return t, nil
-		}
-		kind = v1alpha1.ClusterTaskKind
-	} else {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.PipelineClientSet.TektonV1alpha1().Tasks(tr.Namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return t, nil
-		}
+		}, v1alpha1.ClusterTaskKind, nil
 	}
-	return gtFunc, kind
+
+	return func(name string) (v1alpha1.TaskInterface, error) {
+		t, err := c.PipelineClientSet.TektonV1alpha1().Tasks(tr.Namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return t, nil
+	}, v1alpha1.NamespacedTaskKind, nil
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
@@ -249,7 +262,18 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 
-	getTaskFunc, kind := c.getTaskFunc(tr)
+	getTaskFunc, kind, err := c.getTaskFunc(tr)
+	if err != nil {
+		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  podconvert.ReasonFailedResolution,
+			Message: err.Error(),
+		})
+		return nil
+	}
+
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskFunc)
 	if err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
@@ -303,6 +327,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		inputs = tr.Spec.Resources.Inputs
 		outputs = tr.Spec.Resources.Outputs
 	}
+
 	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)

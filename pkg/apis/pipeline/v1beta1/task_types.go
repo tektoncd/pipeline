@@ -138,6 +138,9 @@ type TaskRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
+	// Image reference that contains the task referenced.
+	// +optional
+	Image string `json:"image,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.

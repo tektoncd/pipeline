@@ -20,12 +20,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -87,6 +90,7 @@ var (
 
 	simpleStep        = tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd"))
 	simpleTask        = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
+	remoteOnlyTask    = tb.Task("test-remote-task", "foo", tb.TaskSpec(simpleStep), tb.TaskType())
 	taskMultipleSteps = tb.Task("test-task-multi-steps", "foo", tb.TaskSpec(
 		tb.Step("foo", tb.StepName("z-step"),
 			tb.StepCommand("/mycmd"),
@@ -98,8 +102,9 @@ var (
 			tb.StepCommand("/mycmd"),
 		),
 	))
-	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
-	taskSidecar = tb.Task("test-task-sidecar", "foo", tb.TaskSpec(
+	clustertask           = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
+	remoteOnlyClusterTask = tb.ClusterTask("test-remote-only-clustertask", tb.ClusterTaskSpec(simpleStep), tb.ClusterTaskType())
+	taskSidecar           = tb.Task("test-task-sidecar", "foo", tb.TaskSpec(
 		tb.Sidecar("sidecar", "image-id"),
 	))
 	taskMultipleSidecars = tb.Task("test-task-sidecar", "foo", tb.TaskSpec(
@@ -440,6 +445,24 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 }
 
 func TestReconcile(t *testing.T) {
+	// For some test cases, we need an image registry to push up an image with a task to reference.
+	s := httptest.NewServer(registry.New())
+	defer s.Close()
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create images using an example task.
+	simpleTaskRef, err := test.CreateTaskImage(u.Host, remoteOnlyTask)
+	if err != nil {
+		t.Errorf("unexpected error pushing task image %w", err)
+	}
+	clusterTaskRef, err := test.CreateTaskImage(u.Host, remoteOnlyClusterTask)
+	if err != nil {
+		t.Errorf("unexpected error pushing cluster task image %w", err)
+	}
+
 	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
@@ -538,15 +561,27 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunStatus(tb.PodName("some-pod-abcdethat-no-longer-exists")),
 	)
 
+	taskRunRemoteRef := tb.TaskRun("test-taskrun-remote-success", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(remoteOnlyTask.Name, tb.TaskRefAPIVersion("tekton.dev/v1alpha1"), tb.TaskRefImage(simpleTaskRef)),
+	))
+
+	taskRunRemoteClusterTask := tb.TaskRun("test-taskrun-remote-clustertask", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(remoteOnlyClusterTask.Name, tb.TaskRefKind(v1alpha1.ClusterTaskKind), tb.TaskRefImage(clusterTaskRef)),
+		),
+	)
+
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
+		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod, taskRunRemoteRef,
+		taskRunRemoteClusterTask,
 	}
 
 	d := test.Data{
-		TaskRuns:          taskruns,
+		TaskRuns: taskruns,
+		// Our remote tasks are purposefully absent.
 		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask},
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
@@ -888,7 +923,84 @@ func TestReconcile(t *testing.T) {
 						"/tekton/termination",
 						"-entrypoint",
 						"/mycmd",
-						"--"),
+						"--",
+					),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
+					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
+					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
+					tb.TerminationMessagePath("/tekton/termination"),
+				),
+			),
+		),
+	}, {
+		name:    "taskrun-remote-success",
+		taskRun: taskRunRemoteRef,
+		wantPod: tb.Pod("test-taskrun-remote-success-pod-abcde", "foo",
+			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskNameLabelKey, "test-remote-task"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-remote-success"),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-remote-success",
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"/mycmd",
+						"--",
+					),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
+					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
+					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
+					tb.TerminationMessagePath("/tekton/termination"),
+				),
+			),
+		),
+	}, {
+		name:    "taskrun-remote-clustertask",
+		taskRun: taskRunRemoteClusterTask,
+		wantPod: tb.Pod("test-taskrun-remote-clustertask-pod-abcde", "foo",
+			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskNameLabelKey, "test-remote-only-clustertask"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-remote-clustertask"),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-remote-clustertask",
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"/mycmd",
+						"--",
+					),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),

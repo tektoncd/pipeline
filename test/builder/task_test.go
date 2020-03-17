@@ -42,7 +42,7 @@ var (
 )
 
 func TestTask(t *testing.T) {
-	task := tb.Task("test-task", "foo", tb.TaskSpec(
+	task := tb.Task("test-task", "foo", tb.TaskType(), tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
 			tb.InputsResource("optional_workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
@@ -67,6 +67,10 @@ func TestTask(t *testing.T) {
 		tb.TaskWorkspace("bread", "kind of bread", "/bread/path", false),
 	))
 	expectedTask := &v1alpha1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
 		Spec: v1alpha1.TaskSpec{
 			TaskSpec: v1beta1.TaskSpec{
@@ -143,12 +147,16 @@ func TestTask(t *testing.T) {
 }
 
 func TestClusterTask(t *testing.T) {
-	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskSpec(
+	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType(), tb.ClusterTaskSpec(
 		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 	))
 	expectedTask := &v1alpha1.ClusterTask{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "ClusterTask",
+		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
 		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -178,6 +186,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			tb.TaskRunTaskRef("task-output",
 				tb.TaskRefKind(v1alpha1.ClusterTaskKind),
 				tb.TaskRefAPIVersion("a1"),
+				tb.TaskRefImage("docker.com/remote/task"),
 			),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource(gitResource.Name,
@@ -273,6 +282,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Name:       "task-output",
 				Kind:       v1alpha1.ClusterTaskKind,
 				APIVersion: "a1",
+				Image:      "docker.com/remote/task",
 			},
 			Workspaces: []v1alpha1.WorkspaceBinding{{
 				Name:     "bread",
