@@ -121,6 +121,9 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    # Double-check the git revision that is going to be used for the release:
    kubectl get pipelineresource/tekton-pipelines-git-vX-Y-Z -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
 
+   # Execute the release pipeline.
+   # By default this will tag the release as Pipelines' latest. If you would like to prevent
+   # this from happening add --param=releaseAsLatest="false"
    tkn pipeline start \
 		--param=versionTag=${VERSION_TAG} \
 		--param=imageRegistry=${IMAGE_REGISTRY} \

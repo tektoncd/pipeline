@@ -12,6 +12,9 @@ spec:
     default: gcr.io/tekton-releases
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
+  - name: releaseAsLatest
+    description: Whether to tag and publish this release as Pipelines' latest
+    default: "true"
   resources:
   - name: source-repo
     type: git
@@ -106,6 +109,8 @@ spec:
           value: $(params.versionTag)
         - name: imageRegistry
           value: $(params.imageRegistry)
+        - name: releaseAsLatest
+          value: $(params.releaseAsLatest)
       resources:
         inputs:
           - name: source
