@@ -2067,3 +2067,72 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		t.Errorf("Expected TaskRun to fail validation but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
 	}
 }
+
+func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
+	for _, tt := range []struct {
+		desc             string
+		d                test.Data
+		wantFailedReason string
+	}{{
+		desc: "Fail ResolveTaskResources",
+		d: test.Data{
+			Tasks: []*v1alpha1.Task{
+				tb.Task("test-task-missing-resource", "foo",
+					tb.TaskSpec(
+						tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+					)),
+			},
+			TaskRuns: []*v1alpha1.TaskRun{
+				tb.TaskRun("test-taskrun-missing-resource", "foo", tb.TaskRunSpec(
+					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
+					tb.TaskRunInputs(
+						tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("git")),
+					),
+				)),
+			},
+			ClusterTasks:      nil,
+			PipelineResources: nil,
+		},
+		wantFailedReason: podconvert.ReasonFailedResolution,
+	}, {
+		desc: "Fail ValidateResolvedTaskResources",
+		d: test.Data{
+			Tasks: []*v1alpha1.Task{
+				tb.Task("test-task-missing-resource", "foo",
+					tb.TaskSpec(
+						tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+					)),
+			},
+			TaskRuns: []*v1alpha1.TaskRun{
+				tb.TaskRun("test-taskrun-missing-resource", "foo", tb.TaskRunSpec(
+					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
+				)),
+			},
+			ClusterTasks:      nil,
+			PipelineResources: nil,
+		},
+		wantFailedReason: podconvert.ReasonFailedValidation,
+	}} {
+		t.Run(tt.desc, func(t *testing.T) {
+			names.TestingSeed()
+			testAssets, cancel := getTaskRunController(t, tt.d)
+			defer cancel()
+			clients := testAssets.Clients
+
+			if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0])); err != nil {
+				t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(tt.d.TaskRuns[0].Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tt.d.TaskRuns[0].Name, err)
+			}
+
+			for _, c := range tr.Status.Conditions {
+				if c.Type != apis.ConditionSucceeded || c.Status != corev1.ConditionFalse || c.Reason != tt.wantFailedReason {
+					t.Errorf("Expected TaskRun to \"%s\" but it did not. Final conditions were:\n%#v", tt.wantFailedReason, tr.Status.Conditions)
+				}
+			}
+		})
+	}
+}
