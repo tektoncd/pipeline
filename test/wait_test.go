@@ -47,7 +47,7 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	}
 	c, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForTaskRunState(c, "foo", TaskRunSucceed("foo"), "TestTaskRunSucceed")
+	err := WaitForTaskRunState(c, "foo", Succeed("foo"), "TestTaskRunSucceed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	}
 	c, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunFailed("bar"), "TestWaitForPipelineRunFailed")
+	err := WaitForPipelineRunState(c, "bar", 2*time.Second, Failed("bar"), "TestWaitForPipelineRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
