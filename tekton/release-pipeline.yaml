@@ -19,6 +19,8 @@ spec:
     type: storage
   - name: builtBaseImage
     type: image
+  - name: builtJqBaseImage
+    type: image
   - name: builtEntrypointImage
     type: image
   - name: builtKubeconfigWriterImage
@@ -117,6 +119,8 @@ spec:
             resource: bucket
           - name: builtBaseImage
             resource: builtBaseImage
+          - name: builtJqBaseImage
+            resource: builtJqBaseImage
           - name: builtEntrypointImage
             resource: builtEntrypointImage
           - name: builtKubeconfigWriterImage

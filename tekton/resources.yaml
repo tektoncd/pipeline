@@ -61,6 +61,16 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
+  name: jq-base-image
+spec:
+  type: image
+  params:
+  - name: url
+    value: jq-base  # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
   name: entrypoint-image
 spec:
   type: image

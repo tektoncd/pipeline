@@ -128,6 +128,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=source-repo=${GIT_RESOURCE_NAME} \
 		--resource=bucket=pipeline-tekton-bucket \
 		--resource=builtBaseImage=base-image \
+		--resource=builtJqBaseImage=jq-base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
 		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
 		--resource=builtCredsInitImage=creds-init-image \
