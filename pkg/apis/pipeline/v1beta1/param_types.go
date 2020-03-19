@@ -127,6 +127,22 @@ func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[str
 	}
 }
 
+// NewArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on
+// how many inputs are given (>1 input will create an array, not string).
+func NewArrayOrString(value string, values ...string) ArrayOrString {
+	if len(values) > 0 {
+		values = append([]string{value}, values...)
+		return ArrayOrString{
+			Type:     ParamTypeArray,
+			ArrayVal: values,
+		}
+	}
+	return ArrayOrString{
+		Type:      ParamTypeString,
+		StringVal: value,
+	}
+}
+
 // ResultRef is a type that represents a reference to a task run result
 type ResultRef struct {
 	PipelineTask string
