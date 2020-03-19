@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,13 +90,15 @@ func TestSidecarTaskSupport(t *testing.T) {
 				t.Errorf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
 			}
 
-			var podName string
-			if err := WaitForTaskRunState(clients, sidecarTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-				podName = tr.Status.PodName
-				return TaskRunSucceed(sidecarTaskRunName)(tr)
-			}, "TaskRunSucceed"); err != nil {
+			if err := WaitForTaskRunState(clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed"); err != nil {
 				t.Errorf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
 			}
+
+			tr, err := clients.TaskRunClient.Get(sidecarTaskRunName, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Error getting Taskrun: %v", err)
+			}
+			podName := tr.Status.PodName
 
 			if err := WaitForPodState(clients, podName, namespace, func(pod *corev1.Pod) (bool, error) {
 				terminatedCount := 0

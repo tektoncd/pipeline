@@ -21,7 +21,8 @@ package test
 import (
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 var (
@@ -39,9 +40,12 @@ type testingT interface {
 
 func ExampleWaitForTaskRunState() {
 	// […] setup the test, get clients
-	if err := WaitForTaskRunState(c, "taskRunName", func(tr *v1alpha1.TaskRun) (bool, error) {
-		if len(tr.Status.Conditions) > 0 {
-			return true, nil
+	if err := WaitForTaskRunState(c, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
+		c := ca.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			}
 		}
 		return false, nil
 	}, "TaskRunHasCondition"); err != nil {
@@ -51,9 +55,12 @@ func ExampleWaitForTaskRunState() {
 
 func ExampleWaitForPipelineRunState() {
 	// […] setup the test, get clients
-	if err := WaitForPipelineRunState(c, "pipelineRunName", 1*time.Minute, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		if len(pr.Status.Conditions) > 0 {
-			return true, nil
+	if err := WaitForPipelineRunState(c, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
+		c := ca.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			}
 		}
 		return false, nil
 	}, "PipelineRunHasCondition"); err != nil {
