@@ -67,6 +67,9 @@ type TaskRunStatusOp func(*v1alpha1.TaskRunStatus)
 // TaskRefOp is an operation which modify a TaskRef struct.
 type TaskRefOp func(*v1alpha1.TaskRef)
 
+// TaskResultOp is an operation which modifies there
+type TaskResultOp func(result *v1beta1.TaskResult)
+
 // TaskRunInputsOp is an operation which modify a TaskRunInputs struct.
 type TaskRunInputsOp func(*v1alpha1.TaskRunInputs)
 
@@ -247,6 +250,17 @@ func TaskResources(ops ...TaskResourcesOp) TaskSpecOp {
 	}
 }
 
+// TaskResults sets the Results to the TaskSpec
+func TaskResults(name, desc string) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		r := &v1beta1.TaskResult{
+			Name:        name,
+			Description: desc,
+		}
+		spec.Results = append(spec.Results, *r)
+	}
+}
+
 // TaskResourcesInput adds a TaskResource as Inputs to the TaskResources
 func TaskResourcesInput(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) TaskResourcesOp {
 	return func(r *v1beta1.TaskResources) {
@@ -276,6 +290,19 @@ func TaskResourcesOutput(name string, resourceType v1alpha1.PipelineResourceType
 			op(o)
 		}
 		r.Outputs = append(r.Outputs, *o)
+	}
+}
+
+// TaskResultsOutput adds a TaskResult as Outputs to the TaskResources
+func TaskResultsOutput(name, desc string, ops ...TaskResultOp) TaskResultOp {
+	return func(result *v1beta1.TaskResult) {
+		r := &v1beta1.TaskResult{
+			Name:        name,
+			Description: desc,
+		}
+		for _, op := range ops {
+			op(r)
+		}
 	}
 }
 
