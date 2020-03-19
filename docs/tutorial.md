@@ -237,7 +237,7 @@ spec:
       value: Dockerfile
     - name: pathToContext
       value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
-  resource:
+  resources:
     inputs:
       - name: docker-source
         resourceRef:
@@ -425,7 +425,7 @@ First, create a new role called `tutorial-role`:
 
 ```bash
 kubectl create clusterrole tutorial-role \
-               --verb=get,list,watch,create,update,patch,delete \
+               --verb=* \
                --resource=deployments,deployments.apps
 ```
 
