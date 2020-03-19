@@ -281,7 +281,7 @@ on [configuring a `VolumeSource`](#volumesources-for-workspaces) in your `Pipeli
 #### Example PipelineRun Specs With Workspaces
 
 The examples below show the relevant fields of `PipelineRun` specs when working with
-`Workspaces`. For a more complete end-to-end example, see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspace.yaml)
+`Workspaces`. For a more complete end-to-end example, see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspaces.yaml)
 in the examples directory.
 
 Here an existing PersistentVolumeClaim called `mypvc` is used for a Pipeline's `workspace`
