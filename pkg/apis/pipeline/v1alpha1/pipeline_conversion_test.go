@@ -56,6 +56,7 @@ func TestPipelineConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: PipelineSpec{
+				Description: "test",
 				Resources: []PipelineDeclaredResource{{
 					Name: "resource1",
 					Type: resource.PipelineResourceTypeGit,
