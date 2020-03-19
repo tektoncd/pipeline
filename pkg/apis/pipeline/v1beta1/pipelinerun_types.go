@@ -58,6 +58,10 @@ type PipelineRun struct {
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
+func (pr *PipelineRun) GetName() string {
+	return pr.ObjectMeta.GetName()
+}
+
 // GetTaskRunRef for pipelinerun
 func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 	return corev1.ObjectReference{
