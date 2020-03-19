@@ -47,6 +47,7 @@ func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) e
 	sink.Results = source.Results
 	sink.Resources = source.Resources
 	sink.Params = source.Params
+	sink.Description = source.Description
 	if source.Inputs != nil {
 		if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
 			// This shouldn't happen as it shouldn't pass validation
@@ -120,5 +121,6 @@ func (sink *TaskSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskSpec)
 	sink.Results = source.Results
 	sink.Params = source.Params
 	sink.Resources = source.Resources
+	sink.Description = source.Description
 	return nil
 }
