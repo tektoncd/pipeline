@@ -58,6 +58,10 @@ type PipelineRun struct {
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
+func (pr *PipelineRun) GetName() string {
+	return pr.ObjectMeta.GetName()
+}
+
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	// +optional

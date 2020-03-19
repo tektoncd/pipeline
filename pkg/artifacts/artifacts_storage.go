@@ -329,6 +329,10 @@ func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity, storageClas
 }
 
 // GetPVCName returns the name that should be used for the PVC for a PipelineRun
-func GetPVCName(pr *v1alpha1.PipelineRun) string {
-	return fmt.Sprintf("%s-pvc", pr.Name)
+func GetPVCName(n named) string {
+	return fmt.Sprintf("%s-pvc", n.GetName())
+}
+
+type named interface {
+	GetName() string
 }
