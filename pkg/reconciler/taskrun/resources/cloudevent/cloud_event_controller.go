@@ -17,8 +17,10 @@ limitations under the License.
 package cloudevent
 
 import (
+	"context"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -67,6 +69,15 @@ func cloudEventDeliveryFromTargets(targets []string) []v1alpha1.CloudEventDelive
 // the TaskRun is complete. `tr` is used to obtain the list of targets but also
 // to construct the body of the
 func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.SugaredLogger) error {
+	logger = logger.With(zap.String("taskrun", tr.Name))
+
+	// Make the event we would like to send:
+	event, err := EventForTaskRun(tr)
+	if err != nil || event == nil {
+		logger.With(zap.Error(err)).Error("failed to produce a cloudevent from TaskRun.")
+		return err
+	}
+
 	// Using multierror here so we can attempt to send all cloud events defined,
 	// regardless of whether they fail or not, and report all failed ones
 	var merr *multierror.Error
@@ -77,7 +88,11 @@ func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.Sugare
 		if eventStatus.Condition != v1alpha1.CloudEventConditionUnknown || eventStatus.RetryCount > 0 {
 			continue
 		}
-		_, err := SendTaskRunCloudEvent(cloudEventDelivery.Target, tr, logger, ceclient)
+
+		// Send the event.
+		err := ceclient.Send(cloudevents.ContextWithTarget(context.Background(), cloudEventDelivery.Target), *event)
+
+		// Record the result.
 		eventStatus.SentAt = &metav1.Time{Time: time.Now()}
 		eventStatus.RetryCount++
 		if err != nil {
@@ -85,12 +100,12 @@ func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.Sugare
 			eventStatus.Condition = v1alpha1.CloudEventConditionFailed
 			eventStatus.Error = merr.Error()
 		} else {
-			logger.Infof("Sent event for target %s", cloudEventDelivery.Target)
+			logger.Infow("Event sent.", zap.String("target", cloudEventDelivery.Target))
 			eventStatus.Condition = v1alpha1.CloudEventConditionSent
 		}
 	}
 	if merr != nil && merr.Len() > 0 {
-		logger.Errorf("Failed to send %d cloud events for TaskRun %s", merr.Len(), tr.Name)
+		logger.With(zap.Error(merr)).Errorw("Failed to send events for TaskRun.", zap.Int("count", merr.Len()))
 	}
 	return merr.ErrorOrNil()
 }

@@ -20,8 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudevents/sdk-go/pkg/cloudevents"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 // FakeClientBehaviour defines how the client will behave
@@ -37,23 +36,34 @@ type FakeClient struct {
 }
 
 // NewFakeClient is a FakeClient factory, it returns a client for the target
-func NewFakeClient(behaviour *FakeClientBehaviour) client.Client {
+func NewFakeClient(behaviour *FakeClientBehaviour) cloudevents.Client {
 	c := FakeClient{
 		behaviour: behaviour,
 	}
 	return c
 }
 
-// Send fakes the Send method from kncloudevents.NewDefaultClient
-func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) (context.Context, *cloudevents.Event, error) {
+var _ cloudevents.Client = (*FakeClient)(nil)
+
+// Send fakes the Send method from cloudevents.Client
+func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) error {
 	c.event = event
 	if c.behaviour.SendSuccessfully {
-		return ctx, &event, nil
+		return nil
 	}
-	return ctx, nil, fmt.Errorf("%s had to fail", event.Context.GetID())
+	return fmt.Errorf("%s had to fail", event.ID())
 }
 
-// StartReceiver fakes the StartReceiver method from kncloudevents.NewDefaultClient
+// Request fakes the Request method from cloudevents.Client
+func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, error) {
+	c.event = event
+	if c.behaviour.SendSuccessfully {
+		return &event, nil
+	}
+	return nil, fmt.Errorf("%s had to fail", event.ID())
+}
+
+// StartReceiver fakes StartReceiver method from cloudevents.Client
 func (c FakeClient) StartReceiver(ctx context.Context, fn interface{}) error {
 	return nil
 }

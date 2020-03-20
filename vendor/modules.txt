@@ -92,19 +92,23 @@ github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
-# github.com/cloudevents/sdk-go v1.0.0
-github.com/cloudevents/sdk-go
-github.com/cloudevents/sdk-go/pkg/cloudevents
-github.com/cloudevents/sdk-go/pkg/cloudevents/client
-github.com/cloudevents/sdk-go/pkg/cloudevents/context
-github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec
-github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/json
-github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/text
-github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec/xml
-github.com/cloudevents/sdk-go/pkg/cloudevents/observability
-github.com/cloudevents/sdk-go/pkg/cloudevents/transport
-github.com/cloudevents/sdk-go/pkg/cloudevents/transport/http
-github.com/cloudevents/sdk-go/pkg/cloudevents/types
+# github.com/cloudevents/sdk-go/v2 v2.0.0-preview6
+github.com/cloudevents/sdk-go/v2
+github.com/cloudevents/sdk-go/v2/binding
+github.com/cloudevents/sdk-go/v2/binding/format
+github.com/cloudevents/sdk-go/v2/binding/spec
+github.com/cloudevents/sdk-go/v2/client
+github.com/cloudevents/sdk-go/v2/context
+github.com/cloudevents/sdk-go/v2/event
+github.com/cloudevents/sdk-go/v2/event/datacodec
+github.com/cloudevents/sdk-go/v2/event/datacodec/json
+github.com/cloudevents/sdk-go/v2/event/datacodec/text
+github.com/cloudevents/sdk-go/v2/event/datacodec/xml
+github.com/cloudevents/sdk-go/v2/extensions
+github.com/cloudevents/sdk-go/v2/observability
+github.com/cloudevents/sdk-go/v2/protocol
+github.com/cloudevents/sdk-go/v2/protocol/http
+github.com/cloudevents/sdk-go/v2/types
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -230,6 +234,9 @@ github.com/jstemmer/go-junit-report/formatter
 github.com/jstemmer/go-junit-report/parser
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/lightstep/tracecontext.go v0.0.0-20181129014701-1757c391b1ac
+github.com/lightstep/tracecontext.go/traceparent
+github.com/lightstep/tracecontext.go/tracestate
 # github.com/mailru/easyjson v0.7.0
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
@@ -291,6 +298,7 @@ go.opencensus.io/metric/metricproducer
 go.opencensus.io/plugin/ocgrpc
 go.opencensus.io/plugin/ochttp
 go.opencensus.io/plugin/ochttp/propagation/b3
+go.opencensus.io/plugin/ochttp/propagation/tracecontext
 go.opencensus.io/resource
 go.opencensus.io/resource/resourcekeys
 go.opencensus.io/stats
@@ -317,7 +325,7 @@ go.uber.org/zap/internal/ztest
 go.uber.org/zap/zapcore
 go.uber.org/zap/zaptest
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+# golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/ssh/terminal
@@ -851,8 +859,6 @@ knative.dev/caching/pkg/apis/caching/v1alpha1
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/scheme
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1
-# knative.dev/eventing-contrib v0.11.2
-knative.dev/eventing-contrib/pkg/kncloudevents
 # knative.dev/pkg v0.0.0-20200227193851-2fe8db300072 => knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

@@ -19,10 +19,10 @@ package cloudevent
 import (
 	"context"
 
-	rest "k8s.io/client-go/rest"
-	"knative.dev/eventing-contrib/pkg/kncloudevents"
-	injection "knative.dev/pkg/injection"
-	logging "knative.dev/pkg/logging"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
 func init() {
@@ -33,11 +33,18 @@ func init() {
 type CECKey struct{}
 
 func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context {
-	cloudEventClient, err := kncloudevents.NewDefaultClient()
+	logger := logging.FromContext(ctx)
+	p, err := cloudevents.NewHTTP()
 	if err != nil {
-		// If we cannot setup a client, die
-		panic(err)
+		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
+		return ctx
 	}
+
+	cloudEventClient, err := cloudevents.NewClient(p, cloudevents.WithUUIDs(), cloudevents.WithTimeNow())
+	if err != nil {
+		logger.Panicf("Error creating the cloudevents client: %s", err)
+	}
+
 	return context.WithValue(ctx, CECKey{}, cloudEventClient)
 }
 

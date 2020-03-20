@@ -17,21 +17,15 @@ limitations under the License.
 package cloudevent
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/cloudevents/sdk-go/pkg/cloudevents"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
-	cecontext "github.com/cloudevents/sdk-go/pkg/cloudevents/context"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
+	"github.com/google/uuid"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"go.uber.org/zap"
-	"knative.dev/eventing-contrib/pkg/kncloudevents"
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -49,8 +43,12 @@ const (
 	TektonTaskRunFailedV1 TektonEventType = "dev.tekton.event.task.failed.v1"
 )
 
-// CEClient matches the `Client` interface from github.com/cloudevents/sdk-go/pkg/cloudevents
-type CEClient client.Client
+func (t TektonEventType) String() string {
+	return string(t)
+}
+
+// CEClient matches the `Client` interface from github.com/cloudevents/sdk-go/v2/cloudevents
+type CEClient cloudevents.Client
 
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
 // a Tekton cloud event. It only includes a TaskRun for now. Using a type opens
@@ -66,68 +64,34 @@ func NewTektonCloudEventData(taskRun *v1alpha1.TaskRun) TektonCloudEventData {
 	}
 }
 
-// SendCloudEvent sends a Cloud Event to the specified SinkURI
-func SendCloudEvent(sinkURI, eventID, eventSourceURI string, data []byte, eventType TektonEventType, logger *zap.SugaredLogger, cloudEventClient CEClient) (cloudevents.Event, error) {
-	var event cloudevents.Event
-
-	cloudEventSource := types.ParseURLRef(eventSourceURI)
-	if cloudEventSource == nil {
-		logger.Errorf("Invalid eventSourceURI: %s", eventSourceURI)
-		return event, fmt.Errorf("invalid eventSourceURI: %s", eventSourceURI)
-	}
-
-	event = cloudevents.Event{
-		Context: cloudevents.EventContextV02{
-			ID:         eventID,
-			Type:       string(eventType),
-			Source:     *cloudEventSource,
-			Time:       &types.Timestamp{Time: time.Now()},
-			Extensions: nil,
-		}.AsV02(),
-		Data: data,
-	}
-	ctxt := cecontext.WithTarget(context.TODO(), sinkURI)
-	_, _, err := cloudEventClient.Send(ctxt, event)
-	if err != nil {
-		logger.Errorf("Error sending the cloud-event: %s", err)
-		return event, err
-	}
-	return event, nil
-}
-
-// SendTaskRunCloudEvent sends a cloud event for a TaskRun
-func SendTaskRunCloudEvent(sinkURI string, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger, cloudEventClient CEClient) (cloudevents.Event, error) {
-	var event cloudevents.Event
-	var err error
-	// Check if a client was provided, if not build one on the fly
-	if cloudEventClient == nil {
-		cloudEventClient, err = kncloudevents.NewDefaultClient()
-		if err != nil {
-			logger.Errorf("Error creating the cloud-event client: %s", err)
-			return event, err
-		}
-	}
+// EventForTaskRun will create a new event based on a TaskRun,
+// or return an error if not possible.
+func EventForTaskRun(taskRun *v1alpha1.TaskRun) (*cloudevents.Event, error) {
 	// Check if the TaskRun is defined
 	if taskRun == nil {
-		return event, errors.New("Cannot send an event for an empty TaskRun")
+		return nil, errors.New("Cannot send an event for an empty TaskRun")
 	}
-	eventID := taskRun.ObjectMeta.Name
-	taskRunStatus := taskRun.Status.GetCondition(apis.ConditionSucceeded)
-	var eventType TektonEventType
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.New().String())
+	event.SetSubject(taskRun.ObjectMeta.Name)
+	event.SetSource(taskRun.ObjectMeta.SelfLink) // TODO: SelfLink is deprecated
+
+	c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
 	switch {
-	case taskRunStatus.IsUnknown():
-		eventType = TektonTaskRunUnknownV1
-	case taskRunStatus.IsFalse():
-		eventType = TektonTaskRunFailedV1
-	case taskRunStatus.IsTrue():
-		eventType = TektonTaskRunSuccessfulV1
+	case c.IsUnknown():
+		event.SetType(TektonTaskRunUnknownV1.String())
+	case c.IsFalse():
+		event.SetType(TektonTaskRunFailedV1.String())
+	case c.IsTrue():
+		event.SetType(TektonTaskRunSuccessfulV1.String())
 	default:
-		return event, fmt.Errorf("unknown condition for in TaskRun.Status %s", taskRunStatus.Status)
+		return nil, fmt.Errorf("unknown condition for in TaskRun.Status %s", c.Status)
 	}
-	eventSourceURI := taskRun.ObjectMeta.SelfLink
-	data, _ := json.Marshal(NewTektonCloudEventData(taskRun))
-	event, err = SendCloudEvent(sinkURI, eventID, eventSourceURI, data, eventType, logger, cloudEventClient)
-	return event, err
+
+	if err := event.SetData(cloudevents.ApplicationJSON, NewTektonCloudEventData(taskRun)); err != nil {
+		return nil, err
+	}
+	return &event, nil
 }
 
 // GetCloudEventDeliveryCompareOptions returns compare options to sort
