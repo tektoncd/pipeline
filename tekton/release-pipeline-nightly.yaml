@@ -48,7 +48,7 @@ spec:
         - name: version
           value: v1.21
         - name: flags
-          value: -v
+          value: "-v --timeout 10m"
       resources:
         inputs:
           - name: source
