@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"testing"
@@ -44,6 +45,10 @@ const (
 var (
 	skipRootUserTests = "false"
 )
+
+func init() {
+	flag.StringVar(&skipRootUserTests, "skipRootUserTests", "false", "Skip tests that require root user")
+}
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {

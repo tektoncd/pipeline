@@ -172,6 +172,8 @@ You can also use
   [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test).
 - The end to end tests take a long time to run so a value like `-timeout=20m`
   can be useful depending on what you're running
+- TestKanikoTaskRun requires containers to run with root user. Using
+  `-skipRootUserTests=true` skips it.
 
 You can [use test flags](#flags) to control the environment your tests run
 against, i.e. override
