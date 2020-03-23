@@ -20,105 +20,139 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
-	imgv1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	remoteimg "github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func pushImage(imgRef name.Reference, task *v1beta1.Task) (imgv1.Image, error) {
-	taskRaw, err := yaml.Marshal(task)
-	if err != nil {
-		return nil, fmt.Errorf("invalid sample task def %s", err.Error())
-	}
-
-	img := mutate.MediaType(empty.Image, types.MediaType("application/vnd.cdf.tekton.catalog.v1beta1+yaml"))
-	layer, err := tarball.LayerFromReader(strings.NewReader(string(taskRaw)))
-	if err != nil {
-		return nil, fmt.Errorf("unexpected error adding task layer to image %s", err.Error())
-	}
-
-	img, err = mutate.Append(img, mutate.Addendum{
-		Layer: layer,
-		Annotations: map[string]string{
-			"org.opencontainers.image.title": fmt.Sprintf("task/%s", task.GetName()),
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not add layer to image %s", err.Error())
-	}
-
-	if err := remoteimg.Write(imgRef, img); err != nil {
-		return nil, fmt.Errorf("could not push example image to registry")
-	}
-
-	return img, nil
-}
 
 func TestOCIResolver(t *testing.T) {
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
 	defer s.Close()
-	u, err := url.Parse(s.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	u, _ := url.Parse(s.URL)
 
-	imgRef, err := name.ParseReference(fmt.Sprintf("%s/test/ociresolver", u.Host))
-	if err != nil {
-		t.Errorf("undexpected error producing image reference %s", err.Error())
-	}
-
-	// Create the image using an example task.
-	task := v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "hello-world",
+	testcases := []struct {
+		name string
+		task v1alpha1.TaskInterface
+	}{
+		{
+			name: "simple-task",
+			task: tb.Task("hello-world", "", tb.TaskType(), tb.TaskSpec(tb.Step("ubuntu", tb.StepCommand("echo 'Hello'")))),
 		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{
-				{
-					Container: v1.Container{
-						Image: "ubuntu",
-					},
-					Script: "echo \"Hello World!\"",
-				},
-			},
+		{
+			name: "cluster-task",
+			task: tb.ClusterTask("hello-world", tb.ClusterTaskType(), tb.ClusterTaskSpec(tb.Step("ubuntu", tb.StepCommand("echo 'Hello'")))),
 		},
 	}
-	img, err := pushImage(imgRef, &task)
-	if err != nil {
-		t.Error(err)
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			var data string
+			var key string
+
+			raw, err := yaml.Marshal(tc.task)
+			if err != nil {
+				t.Errorf("failed to marshal task before uploading as image: %w", err)
+			}
+			data = string(raw)
+			key = fmt.Sprintf("task/%s", tc.task.TaskMetadata().Name)
+
+			imgRef, err := test.CreateImage(u.Host, key, data)
+			if err != nil {
+				t.Errorf("unexpected error pushing task image %w", err)
+			}
+
+			// Now we can call our resolver and see if the spec returned is the same.
+			resolver := OCIResolver{
+				imageReference: imgRef,
+				keychain:       authn.DefaultKeychain,
+			}
+
+			ta, err := resolver.GetTask(tc.task.TaskMetadata().Name)
+			if err != nil {
+				t.Errorf("failed to fetch task %s: %w", tc.task.TaskMetadata().Name, err)
+			}
+
+			if diff := cmp.Diff(ta, tc.task); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func TestOCIResolver_BetaTasks(t *testing.T) {
+	// Set up a fake registry to push an image to.
+	s := httptest.NewServer(registry.New())
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+
+	task := tb.Task("hello-world", "", tb.TaskType(), tb.TaskSpec(tb.Step("ubuntu", tb.StepCommand("echo 'Hello'"))))
+	clusterTask := tb.ClusterTask("hello-world", tb.ClusterTaskType(), tb.ClusterTaskSpec(tb.Step("ubuntu", tb.StepCommand("echo 'Hello'"))))
+
+	betaTask := v1beta1.Task{
+		TypeMeta:   v1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "Task"},
+		ObjectMeta: task.ObjectMeta,
+		Spec:       task.Spec.TaskSpec,
+	}
+	betaClusterTask := v1beta1.ClusterTask{
+		TypeMeta:   v1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
+		ObjectMeta: clusterTask.ObjectMeta,
+		Spec:       clusterTask.Spec.TaskSpec,
 	}
 
-	// Now we can call our resolver and see if the spec returned is the same.
-	digest, err := img.Digest()
-	if err != nil {
-		t.Errorf("unexpected error getting digest of image: %s", err.Error())
+	testcases := []struct {
+		name string
+		task v1beta1.TaskInterface
+	}{
+		{
+			name: "beta-task",
+			task: &betaTask,
+		},
+		{
+			name: "beta-cluster-task",
+			task: &betaClusterTask,
+		},
 	}
-	resolver := OCIResolver{
-		imageReference:   imgRef.Context().Digest(digest.String()).String(),
-		keychainProvider: func() (authn.Keychain, error) { return authn.DefaultKeychain, nil },
-	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			var data string
+			var key string
 
-	actual, err := resolver.GetTask("hello-world")
-	if err != nil {
-		t.Errorf("failed to fetch task hello-world: %s", err.Error())
-	}
+			raw, err := yaml.Marshal(tc.task)
+			if err != nil {
+				t.Errorf("failed to marshal task before uploading as image: %w", err)
+			}
+			data = string(raw)
+			key = fmt.Sprintf("task/%s", tc.task.TaskMetadata().Name)
 
-	if diff := cmp.Diff(actual, &task.Spec); diff != "" {
-		t.Error(diff)
+			imgRef, err := test.CreateImage(u.Host, key, data)
+			if err != nil {
+				t.Errorf("unexpected error pushing task image %w", err)
+			}
+
+			// Now we can call our resolver and see if the spec returned is the same.
+			resolver := OCIResolver{
+				imageReference: imgRef,
+				keychain:       authn.DefaultKeychain,
+			}
+
+			ta, err := resolver.GetTask(tc.task.TaskMetadata().Name)
+			if err != nil {
+				t.Errorf("failed to fetch task %s: %w", tc.task.TaskMetadata().Name, err)
+			}
+
+			if diff := cmp.Diff(ta.TaskSpec(), v1alpha1.TaskSpec{
+				TaskSpec: tc.task.TaskSpec(),
+			}); diff != "" {
+				t.Error(diff)
+			}
+		})
 	}
 }

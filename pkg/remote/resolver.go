@@ -17,22 +17,27 @@ limitations under the License.
 package remote
 
 import (
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"k8s.io/client-go/kubernetes"
 )
 
-// Resolver will retrieve Tekton resources like Tasks from remote repositories like an OCI image repositories.
+// Resolver will retrieve Tekton resources like Tasks from remote repositories like an OCI image repository.
 type Resolver interface {
-	GetTask(taskName string) (*v1beta1.TaskSpec, error)
+	GetTask(string) (v1alpha1.TaskInterface, error)
 }
 
-// TODO: Right now, there is only one resolver type. When more are added, this will need to be updated.
-func NewResolver(imageReference string, serviceAccountName string) Resolver {
-	return OCIResolver{
-		imageReference: imageReference,
-		keychainProvider: func() (authn.Keychain, error) {
-			return k8schain.NewInCluster(k8schain.Options{ServiceAccountName: serviceAccountName})
-		},
+// ImageTaskResolver will return a GetTask function capable of returning a Task from an OCI compliant image using the
+// image pull secrets of the included service account.
+func ImageTaskResolver(k8s kubernetes.Interface, imgRef, ns, serviceAccountName string) (resources.GetTask, error) {
+	kc, err := k8schain.New(k8s, k8schain.Options{
+		Namespace:          ns,
+		ServiceAccountName: serviceAccountName,
+	})
+	if err != nil {
+		return nil, err
 	}
+	resolver := NewOCIResolver(imgRef, kc)
+	return resolver.GetTask, nil
 }

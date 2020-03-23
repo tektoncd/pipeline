@@ -96,6 +96,10 @@ var (
 // Any number of Task modifier can be passed to transform it.
 func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
 	t := &v1alpha1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
@@ -137,6 +141,14 @@ func ClusterTaskSpec(ops ...TaskSpecOp) ClusterTaskOp {
 	}
 }
 
+// TaskType sets the innate TypeMeta of the task. This is useful if you need to serialize/deserialize a task.
+func ClusterTaskType() ClusterTaskOp {
+	return func(t *v1alpha1.ClusterTask) {
+		t.TypeMeta.APIVersion = "tekton.dev/v1alpha1"
+		t.TypeMeta.Kind = "ClusterTask"
+	}
+}
+
 // TaskSpec sets the specified spec of the task.
 // Any number of TaskSpec modifier can be passed to create/modify it.
 func TaskSpec(ops ...TaskSpecOp) TaskOp {
@@ -146,6 +158,14 @@ func TaskSpec(ops ...TaskSpecOp) TaskOp {
 			op(spec)
 		}
 		t.Spec = *spec
+	}
+}
+
+// TaskType sets the innate TypeMeta of the task. This is useful if you need to serialize/deserialize a task.
+func TaskType() TaskOp {
+	return func(t *v1alpha1.Task) {
+		t.TypeMeta.APIVersion = "tekton.dev/v1alpha1"
+		t.TypeMeta.Kind = "Task"
 	}
 }
 
