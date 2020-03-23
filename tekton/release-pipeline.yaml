@@ -67,7 +67,7 @@ spec:
         - name: flags
           value: -v
         - name: version
-          value: v1.21
+          value: v1.24
       resources:
         inputs:
           - name: source
