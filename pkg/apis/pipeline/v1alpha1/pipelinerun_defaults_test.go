@@ -141,7 +141,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			s := config.NewStore(logtesting.TestLogger(t))
 			s.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: config.DefaultsConfigName,
+					Name: config.GetDefaultsConfigName(),
 				},
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
@@ -167,7 +167,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			s := config.NewStore(logtesting.TestLogger(t))
 			s.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: config.DefaultsConfigName,
+					Name: config.GetDefaultsConfigName(),
 				},
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
@@ -199,7 +199,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			s := config.NewStore(logtesting.TestLogger(t))
 			s.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: config.DefaultsConfigName,
+					Name: config.GetDefaultsConfigName(),
 				},
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
@@ -237,7 +237,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			s := config.NewStore(logtesting.TestLogger(t))
 			s.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: config.DefaultsConfigName,
+					Name: config.GetDefaultsConfigName(),
 				},
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
