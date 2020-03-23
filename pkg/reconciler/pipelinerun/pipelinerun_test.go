@@ -943,7 +943,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	// Check that the expected TaskRun was created
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
 	if actual == nil {
-		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+		t.Fatalf("Expected a TaskRun to be created, but it wasn't.")
 	}
 
 	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
