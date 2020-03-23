@@ -214,6 +214,15 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "duplicate resource declaration",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineDeclaredResource("duplicate-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.PipelineDeclaredResource("duplicate-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.PipelineTask("foo", "foo-task",
+				tb.PipelineTaskInputResource("the-resource", "duplicate-resource")),
+		)),
+		failureExpected: true,
+	}, {
 		name: "output resources missing from declaration",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
