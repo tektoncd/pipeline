@@ -19,7 +19,6 @@ limitations under the License.
 package test
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 	"testing"
@@ -27,8 +26,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,10 +44,6 @@ const (
 var (
 	skipRootUserTests = "false"
 )
-
-func init() {
-	flag.StringVar(&skipRootUserTests, "skipRootUserTests", "false", "Skip tests that require root user")
-}
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
@@ -105,10 +98,6 @@ func TestKanikoTaskRun(t *testing.T) {
 		case "commit":
 			commit = rr.Value
 		}
-		// Every resource should have a ref with a name
-		if rr.ResourceRef.Name == "" {
-			t.Errorf("Resource ref not set for %v in TaskRun: %v", rr, tr)
-		}
 	}
 	if digest == "" {
 		t.Errorf("Digest not found in TaskRun.Status: %v", tr.Status)
@@ -146,59 +135,40 @@ func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getTask(repo, namespace string) *v1beta1.Task {
+func getTask(repo, namespace string) *v1alpha1.Task {
 	root := int64(0)
-	return &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: kanikoTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "gitsource", Type: resources.PipelineResourceTypeGit,
-				}}},
-				Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "builtImage", Type: resources.PipelineResourceTypeImage,
-				}}},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:  "kaniko",
-				Image: "gcr.io/kaniko-project/executor:v0.17.1",
-				Args: []string{
-					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
-					fmt.Sprintf("--destination=%s", repo),
-					"--context=/workspace/gitsource",
-					"--oci-layout-path=/workspace/output/builtImage",
-					"--insecure",
-					"--insecure-pull",
-					"--insecure-registry=registry." + namespace + ":5000/",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: &root,
-				},
-			}}},
-			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
-				Name:  "registry",
-				Image: "registry",
-			}}},
-		},
+	taskSpecOps := []tb.TaskSpecOp{
+		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
 	}
+	stepOps := []tb.StepOp{
+		tb.StepName("kaniko"),
+		tb.StepArgs(
+			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
+			fmt.Sprintf("--destination=%s", repo),
+			"--context=/workspace/gitsource",
+			"--oci-layout-path=/workspace/output/builtImage",
+			"--insecure",
+			"--insecure-pull",
+			"--insecure-registry=registry."+namespace+":5000/",
+		),
+		tb.StepSecurityContext(&corev1.SecurityContext{RunAsUser: &root}),
+	}
+	step := tb.Step("gcr.io/kaniko-project/executor:v0.17.1", stepOps...)
+	taskSpecOps = append(taskSpecOps, step)
+	sidecar := tb.Sidecar("registry", "registry")
+	taskSpecOps = append(taskSpecOps, sidecar)
+
+	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
 }
 
-func getTaskRun(namespace string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: kanikoTaskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: kanikoTaskName},
-			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: []v1beta1.TaskResourceBinding{{PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name: "gitsource", ResourceRef: &v1beta1.PipelineResourceRef{Name: kanikoGitResourceName},
-				}}},
-				Outputs: []v1beta1.TaskResourceBinding{{PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name: "builtImage", ResourceRef: &v1beta1.PipelineResourceRef{Name: kanikoImageResourceName},
-				}}},
-			},
-		},
-	}
+func getTaskRun(namespace string) *v1alpha1.TaskRun {
+	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(kanikoTaskName),
+		tb.TaskRunTimeout(2*time.Minute),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoGitResourceName))),
+		tb.TaskRunOutputs(tb.TaskRunOutputsResource("builtImage", tb.TaskResourceBindingRef(kanikoImageResourceName))),
+	))
 }
 
 // getRemoteDigest starts a pod to query the registry from the namespace itself, using skopeo (and jq).

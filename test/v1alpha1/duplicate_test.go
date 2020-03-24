@@ -24,8 +24,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -44,18 +43,12 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		taskrunName := fmt.Sprintf("duplicate-pod-taskrun-%d", i)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
-		taskrun := &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: taskrunName, Namespace: namespace},
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   "busybox",
-						Command: []string{"/bin/echo"},
-						Args:    []string{"simple"},
-					}}},
-				},
-			},
-		}
+		taskrun := tb.TaskRun(taskrunName, namespace, tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(tb.Step("busybox",
+				tb.StepCommand("/bin/echo"),
+				tb.StepArgs("simple"),
+			)),
+		))
 		if _, err := c.TaskRunClient.Create(taskrun); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}

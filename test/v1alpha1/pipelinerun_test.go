@@ -27,8 +27,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -57,7 +55,7 @@ func TestPipelineRun(t *testing.T) {
 		testSetup              func(t *testing.T, c *clients, namespace string, index int)
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
-		pipelineRunFunc        func(int, string) *v1beta1.PipelineRun
+		pipelineRunFunc        func(int, string) *v1alpha1.PipelineRun
 	}
 
 	tds := []tests{{
@@ -96,24 +94,15 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
 			}
 
-			task := &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
-				Spec: v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "path", Type: v1beta1.ParamTypeString,
-					}, {
-						Name: "dest", Type: v1beta1.ParamTypeString,
-					}},
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Name:    "config-docker",
-							Image:   "quay.io/rhpipeline/skopeo:alpine",
-							Command: []string{"skopeo"},
-							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
-						}},
-					},
-				},
-			}
+			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("path", v1alpha1.ParamTypeString),
+					tb.InputsParamSpec("dest", v1alpha1.ParamTypeString)),
+				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
+				tb.Step("quay.io/rhpipeline/skopeo:alpine", tb.StepName("config-docker"),
+					tb.StepCommand("skopeo"),
+					tb.StepArgs("copy", "$(inputs.params.path)", "$(inputs.params.dest)"),
+				),
+			))
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
 			}
@@ -135,16 +124,12 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 			}
 
-			task := &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   "ubuntu",
-						Command: []string{"/bin/bash"},
-						Args:    []string{"-c", "echo hello, world"},
-					}}},
-				},
-			}
+			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				tb.Step("ubuntu",
+					tb.StepCommand("/bin/bash"),
+					tb.StepArgs("-c", "echo hello, world"),
+				),
+			))
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
 			}
@@ -243,168 +228,87 @@ func TestPipelineRun(t *testing.T) {
 	}
 }
 
-func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1beta1.Pipeline {
-	return &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: getName(pipelineName, suffix), Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Params: []v1beta1.ParamSpec{{
-				Name: "path", Type: v1beta1.ParamTypeString,
-			}, {
-				Name: "dest", Type: v1beta1.ParamTypeString,
-			}},
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    task1Name,
-				TaskRef: &v1beta1.TaskRef{Name: getName(taskName, suffix)},
-				Params: []v1beta1.Param{{
-					Name: "path", Value: v1beta1.NewArrayOrString("$(params.path)"),
-				}, {
-					Name: "dest", Value: v1beta1.NewArrayOrString("$(params.dest)"),
-				}},
-			}},
-		},
+func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alpha1.Pipeline {
+	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
+		tb.PipelineParamSpec("path", v1alpha1.ParamTypeString),
+		tb.PipelineParamSpec("dest", v1alpha1.ParamTypeString),
+		tb.PipelineTask(task1Name, getName(taskName, suffix),
+			tb.PipelineTaskParam("path", "$(params.path)"),
+			tb.PipelineTaskParam("dest", "$(params.dest)")),
+	))
+}
+
+func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
+	inWorkspaceResource := tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)
+	outWorkspaceResource := tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit)
+	return []*v1alpha1.Task{
+		tb.Task("create-file", namespace, tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
+				tb.ResourceTargetPath("brandnewspace"),
+			)),
+			tb.TaskOutputs(outWorkspaceResource),
+			tb.Step("ubuntu", tb.StepName("write-data-task-0-step-0"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo stuff > $(outputs.resources.workspace.path)/stuff"),
+			),
+			tb.Step("ubuntu", tb.StepName("write-data-task-0-step-1"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo other > $(outputs.resources.workspace.path)/other"),
+			),
+		)),
+		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
+			tb.TaskInputs(inWorkspaceResource),
+			tb.TaskOutputs(outWorkspaceResource),
+			tb.Step("ubuntu", tb.StepName("read-from-task-0"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
+			),
+			tb.Step("ubuntu", tb.StepName("write-data-task-1"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo something > $(outputs.resources.workspace.path)/something"),
+			),
+		)),
+		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
+			tb.TaskInputs(inWorkspaceResource),
+			tb.TaskOutputs(outWorkspaceResource),
+			tb.Step("ubuntu", tb.StepName("read-from-task-0"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
+			),
+			tb.Step("ubuntu", tb.StepName("write-data-task-1"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo else > $(outputs.resources.workspace.path)/else"),
+			),
+		)),
+		tb.Task("read-files", namespace, tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
+				tb.ResourceTargetPath("readingspace"),
+			)),
+			tb.Step("ubuntu", tb.StepName("read-from-task-0"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
+			),
+			tb.Step("ubuntu", tb.StepName("read-from-task-1"), tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]"),
+			),
+		)),
 	}
 }
 
-func getFanInFanOutTasks(namespace string) []*v1beta1.Task {
-	workspaceResource := v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "workspace",
-		Type: resource.PipelineResourceTypeGit,
-	}}
-	return []*v1beta1.Task{{
-		ObjectMeta: metav1.ObjectMeta{Name: "create-file", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "workspace",
-					Type:       resource.PipelineResourceTypeGit,
-					TargetPath: "brandnewspace",
-				}}},
-				Outputs: []v1beta1.TaskResource{workspaceResource},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "write-data-task-0-step-0",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo stuff > $(resources.outputs.workspace.path)/stuff"},
-			}}, {Container: corev1.Container{
-				Name:    "write-data-task-0-step-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo other > $(resources.outputs.workspace.path)/other"},
-			}}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{Name: "check-create-files-exists", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{workspaceResource},
-				Outputs: []v1beta1.TaskResource{workspaceResource},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"},
-			}}, {Container: corev1.Container{
-				Name:    "write-data-task-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo something > $(outputs.resources.workspace.path)/something"},
-			}}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{Name: "check-create-files-exists-2", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{workspaceResource},
-				Outputs: []v1beta1.TaskResource{workspaceResource},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"},
-			}}, {Container: corev1.Container{
-				Name:    "write-data-task-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo else > $(outputs.resources.workspace.path)/else"},
-			}}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{Name: "read-files", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "workspace",
-					Type:       resource.PipelineResourceTypeGit,
-					TargetPath: "readingspace",
-				}}},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"},
-			}}, {Container: corev1.Container{
-				Name:    "read-from-task-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]"},
-			}}},
-		},
-	}}
-}
+func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
+	outGitResource := tb.PipelineTaskOutputResource("workspace", "git-repo")
 
-func getFanInFanOutPipeline(suffix int, namespace string) *v1beta1.Pipeline {
-	outGitResource := v1beta1.PipelineTaskOutputResource{
-		Name:     "workspace",
-		Resource: "git-repo",
-	}
-	return &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: getName(pipelineName, suffix), Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{{
-				Name: "git-repo", Type: resource.PipelineResourceTypeGit,
-			}},
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "create-file-kritis",
-				TaskRef: &v1beta1.TaskRef{Name: "create-file"},
-				Resources: &v1beta1.PipelineTaskResources{
-					Inputs: []v1beta1.PipelineTaskInputResource{{
-						Name: "workspace", Resource: "git-repo",
-					}},
-					Outputs: []v1beta1.PipelineTaskOutputResource{outGitResource},
-				},
-			}, {
-				Name:    "create-fan-out-1",
-				TaskRef: &v1beta1.TaskRef{Name: "check-create-files-exists"},
-				Resources: &v1beta1.PipelineTaskResources{
-					Inputs: []v1beta1.PipelineTaskInputResource{{
-						Name: "workspace", Resource: "git-repo", From: []string{"create-file-kritis"},
-					}},
-					Outputs: []v1beta1.PipelineTaskOutputResource{outGitResource},
-				},
-			}, {
-				Name:    "create-fan-out-2",
-				TaskRef: &v1beta1.TaskRef{Name: "check-create-files-exists-2"},
-				Resources: &v1beta1.PipelineTaskResources{
-					Inputs: []v1beta1.PipelineTaskInputResource{{
-						Name: "workspace", Resource: "git-repo", From: []string{"create-file-kritis"},
-					}},
-					Outputs: []v1beta1.PipelineTaskOutputResource{outGitResource},
-				},
-			}, {
-				Name:    "check-fan-in",
-				TaskRef: &v1beta1.TaskRef{Name: "read-files"},
-				Resources: &v1beta1.PipelineTaskResources{
-					Inputs: []v1beta1.PipelineTaskInputResource{{
-						Name: "workspace", Resource: "git-repo", From: []string{"create-fan-out-2", "create-fan-out-1"},
-					}},
-				},
-			}},
-		},
-	}
+	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineTask("create-file-kritis", "create-file",
+			tb.PipelineTaskInputResource("workspace", "git-repo"),
+			outGitResource,
+		),
+		tb.PipelineTask("create-fan-out-1", "check-create-files-exists",
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
+			outGitResource,
+		),
+		tb.PipelineTask("create-fan-out-2", "check-create-files-exists-2",
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
+			outGitResource,
+		),
+		tb.PipelineTask("check-fan-in", "read-files",
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-fan-out-2", "create-fan-out-1")),
+		),
+	))
 }
 
 func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
@@ -428,17 +332,11 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 		}},
 	}
 }
-func getFanInFanOutPipelineRun(suffix int, namespace string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: getName(pipelineRunName, suffix), Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
-			Resources: []v1beta1.PipelineResourceBinding{{
-				Name:        "git-repo",
-				ResourceRef: &v1beta1.PipelineResourceRef{Name: "kritis-resource-git"},
-			}},
-		},
-	}
+func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("kritis-resource-git")),
+		))
 }
 
 func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
@@ -470,26 +368,15 @@ func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
 	}
 }
 
-func getHelloWorldPipelineRun(suffix int, namespace string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getName(pipelineRunName, suffix), Namespace: namespace,
-			Labels: map[string]string{
-				"hello-world-key": "hello-world-value",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
-			Params: []v1beta1.Param{{
-				Name:  "path",
-				Value: v1beta1.NewArrayOrString("docker://gcr.io/build-crd-testing/secret-sauce"),
-			}, {
-				Name:  "dest",
-				Value: v1beta1.NewArrayOrString("dir:///tmp/"),
-			}},
-			ServiceAccountName: fmt.Sprintf("%s%d", saName, suffix),
-		},
-	}
+func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
+		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunParam("path", "docker://gcr.io/build-crd-testing/secret-sauce"),
+			tb.PipelineRunParam("dest", "dir:///tmp/"),
+			tb.PipelineRunServiceAccountName(fmt.Sprintf("%s%d", saName, suffix)),
+		),
+	)
 }
 
 func getName(namespace string, suffix int) string {
@@ -531,7 +418,7 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 
 // checkLabelPropagation checks that labels are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
-func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1beta1.TaskRun) {
+func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
 	// Our controllers add 4 labels automatically. If custom labels are set on
 	// the Pipeline, PipelineRun, or Task then the map will have to be resized.
 	labels := make(map[string]string, 4)
@@ -584,7 +471,7 @@ func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineR
 
 // checkAnnotationPropagation checks that annotations are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
-func checkAnnotationPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1beta1.TaskRun) {
+func checkAnnotationPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
 	annotations := make(map[string]string)
 
 	// Check annotation propagation to PipelineRuns.
@@ -621,7 +508,7 @@ func checkAnnotationPropagation(t *testing.T, c *clients, namespace string, pipe
 	assertAnnotationsMatch(t, annotations, pod.ObjectMeta.Annotations)
 }
 
-func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1beta1.TaskRun) *corev1.Pod {
+func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
 	pods, err := kubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
 		LabelSelector: pipeline.GroupName + pipeline.TaskRunLabelKey + " = " + tr.Name,
@@ -651,23 +538,11 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 	}
 }
 
-func getPipelineWithFailingCondition(suffix int, namespace string) *v1beta1.Pipeline {
-	return &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: getName(pipelineName, suffix), Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    task1Name,
-				TaskRef: &v1beta1.TaskRef{Name: getName(taskName, suffix)},
-				Conditions: []v1beta1.PipelineTaskCondition{{
-					ConditionRef: cond1Name,
-				}},
-			}, {
-				Name:     "task2",
-				TaskRef:  &v1beta1.TaskRef{Name: getName(taskName, suffix)},
-				RunAfter: []string{task1Name},
-			}},
-		},
-	}
+func getPipelineWithFailingCondition(suffix int, namespace string) *v1alpha1.Pipeline {
+	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
+		tb.PipelineTask(task1Name, getName(taskName, suffix), tb.PipelineTaskCondition(cond1Name)),
+		tb.PipelineTask("task2", getName(taskName, suffix), tb.RunAfter(task1Name)),
+	))
 }
 
 func getFailingCondition(namespace string) *v1alpha1.Condition {
@@ -675,16 +550,9 @@ func getFailingCondition(namespace string) *v1alpha1.Condition {
 		tb.Command("/bin/bash"), tb.Args("exit 1"))))
 }
 
-func getConditionalPipelineRun(suffix int, namespace string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getName(pipelineRunName, suffix), Namespace: namespace,
-			Labels: map[string]string{
-				"hello-world-key": "hello-world-vaule",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
-		},
-	}
+func getConditionalPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
+		tb.PipelineRunSpec(getName(pipelineName, suffix)),
+	)
 }
