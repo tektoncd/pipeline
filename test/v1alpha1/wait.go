@@ -156,7 +156,7 @@ func WaitForServiceExternalIPState(c *clients, namespace, name string, inState f
 }
 
 // Succeed provides a poll condition function that checks if the ConditionAccessor
-// resource has sucessfully completed or not.
+// resource has successfully completed or not.
 func Succeed(name string) ConditionAccessorFn {
 	return func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
