@@ -124,8 +124,8 @@ its own `workspaces` list. Each entry in the list contains the following fields:
 - `name` - (**required**) The name of the `Workspace` within the `Task` for which the `Volume` is being provided
 - `subPath` - An optional subdirectory on the `Volume` to store data for that `Workspace`
 
-The entry must also include one `VolumeSource`. See [Using `VolumeSources` with `Workspaces`](#using-volumesources-with-workspaces) for more information.
-
+The entry must also include one `VolumeSource`. See [Using `VolumeSources` with `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
+               
 **Caution:**
 - The `subPath` *must* exist on the `Volume` before the `TaskRun` executes or the execution will fail.
 - The `Workspaces` declared in a `Task` must be available when executing the associated `TaskRun`.
@@ -241,7 +241,7 @@ this list must correspond to a `Workspace` declaration in the `Pipeline`. Each e
 - `subPath` - (optional) a directory on the volume that will store that `Workspace's` data. This directory must exist at the
   time the `TaskRun` executes, otherwise the execution will fail.
 
-The entry must also include one `VolumeSource`. See [Using `VolumeSources` with `Workspaces`](#using-volumesources-with-workspaces) for more information.
+The entry must also include one `VolumeSource`. See [Using `VolumeSources` with `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
 
 **Note:** If the `Workspaces` specified by a `Pipeline` are not provided at runtime by a `PipelineRun`, that `PipelineRun` will fail.
 
