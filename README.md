@@ -28,6 +28,7 @@ Tekton Pipelines are **Typed**:
 
 - [Installing Tekton Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
+- Take a look at our [roadmap](roadmap.md)
 
 *Note that starting from the 0.11 release of Tetkon, you need to have
 a cluster with **Kubernetes version 1.15 or later***.
