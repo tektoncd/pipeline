@@ -125,6 +125,21 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 	}
 }
 
+func TestPipelineRunIsCleanedUp(t *testing.T) {
+	pr := &v1beta1.PipelineRun{}
+	foo := &apis.Condition{
+		Type:   v1beta1.ConditionCleanedUp,
+		Status: corev1.ConditionTrue,
+	}
+	if pr.IsCleanedUp() {
+		t.Fatal("Expected pipelinerun status to not be CleanedUp")
+	}
+	pr.Status.SetCondition(foo)
+	if !pr.IsCleanedUp() {
+		t.Fatal("Expected pipelinerun status to be CleanedUp")
+	}
+}
+
 func TestPipelineRunIsDone(t *testing.T) {
 	pr := &v1beta1.PipelineRun{}
 	foo := &apis.Condition{

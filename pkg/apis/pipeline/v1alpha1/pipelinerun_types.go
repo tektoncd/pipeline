@@ -29,6 +29,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const ConditionCleanedUp apis.ConditionType = "CleanedUp"
+
 var (
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   SchemeGroupVersion.Group,
@@ -157,6 +159,11 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() metav1.OwnerReference {
 	return *metav1.NewControllerRef(pr, groupVersionKind)
+}
+
+// IsCleanedUp returns true if the PipelineRun's status indicates that it is cleaned up.
+func (pr *PipelineRun) IsCleanedUp() bool {
+	return !pr.Status.GetCondition(ConditionCleanedUp).IsUnknown()
 }
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.

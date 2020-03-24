@@ -92,6 +92,21 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 	}
 }
 
+func TestTaskRunIsCleanedUp(t *testing.T) {
+	tr := &v1alpha1.TaskRun{}
+	foo := &apis.Condition{
+		Type:   v1alpha1.ConditionCleanedUp,
+		Status: corev1.ConditionTrue,
+	}
+	if tr.IsCleanedUp() {
+		t.Fatal("Expected taskrun status to not be CleanedUp")
+	}
+	tr.Status.SetCondition(foo)
+	if !tr.IsCleanedUp() {
+		t.Fatal("Expected taskrun status to be CleanedUp")
+	}
+}
+
 func TestTaskRunIsDone(t *testing.T) {
 	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
 		apis.Condition{

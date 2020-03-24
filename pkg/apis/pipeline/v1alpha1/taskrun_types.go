@@ -209,6 +209,11 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	return false
 }
 
+// IsCleanedUp returns true if the PipelineRun's status indicates that it is cleaned up.
+func (tr *TaskRun) IsCleanedUp() bool {
+	return !tr.Status.GetCondition(ConditionCleanedUp).IsUnknown()
+}
+
 // IsDone returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsDone() bool {
 	return !tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()

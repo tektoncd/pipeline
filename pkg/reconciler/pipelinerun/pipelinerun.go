@@ -133,6 +133,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// Snapshot original for the label/annotation check below.
 	original := pr.DeepCopy()
 
+	// If the PipelineRun has already been cleaned up, we return early to skip reconciliation.
+	if pr.IsCleanedUp() {
+		c.Logger.Info("Not reconciling cleaned up PipelineRun")
+		return nil
+	}
+
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
@@ -170,6 +176,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
 			return err
 		}
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   v1beta1.ConditionCleanedUp,
+			Status: corev1.ConditionTrue,
+			Reason: "Cleaned Up",
+		})
 		go func(metrics *Recorder) {
 			err := metrics.DurationAndCount(pr)
 			if err != nil {
