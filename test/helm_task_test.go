@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -56,7 +58,6 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	repo := ensureDockerRepo(t)
 	c, namespace := setup(t)
 	setupClusterBindingForHelm(c, t, namespace)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
@@ -153,63 +154,123 @@ func getHelmImageResource(namespace, dockerRepo string) *v1alpha1.PipelineResour
 	))
 }
 
-func getCreateImageTask(namespace string) *v1alpha1.Task {
-	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
-		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
-		tb.Step("gcr.io/kaniko-project/executor:v0.17.1", tb.StepName("kaniko"), tb.StepArgs(
-			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
-			"--context=/workspace/gitsource/",
-			"--destination=$(outputs.resources.builtimage.url)",
-		)),
-	))
+func getCreateImageTask(namespace string) *v1beta1.Task {
+	return &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: createImageTaskName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "gitsource", Type: resources.PipelineResourceTypeGit,
+				}}},
+				Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "builtimage", Type: resources.PipelineResourceTypeImage,
+				}}},
+			},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:  "kaniko",
+				Image: "gcr.io/kaniko-project/executor:v0.17.1",
+				Args: []string{
+					"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
+					"--context=/workspace/gitsource/",
+					"--destination=$(outputs.resources.builtimage.url)",
+				},
+			}}},
+		},
+	}
 }
 
-func getHelmDeployTask(namespace string) *v1alpha1.Task {
-	return tb.Task(helmDeployTaskName, namespace, tb.TaskSpec(
-		tb.TaskInputs(
-			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
-			tb.InputsResource("image", v1alpha1.PipelineResourceTypeImage),
-			tb.InputsParamSpec("pathToHelmCharts", v1alpha1.ParamTypeString, tb.ParamSpecDescription("Path to the helm charts")),
-			tb.InputsParamSpec("chartname", v1alpha1.ParamTypeString, tb.ParamSpecDefault("")),
-		),
-		tb.Step("alpine/helm:2.14.0", tb.StepArgs("init", "--wait")),
-		tb.Step("alpine/helm:2.14.0", tb.StepArgs(
-			"install",
-			"--debug",
-			"--name=$(inputs.params.chartname)",
-			"$(inputs.params.pathToHelmCharts)",
-			"--set",
-			"image.repository=$(inputs.resources.image.url)",
-		)),
-	))
+func getHelmDeployTask(namespace string) *v1beta1.Task {
+	empty := v1beta1.NewArrayOrString("")
+	return &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: helmDeployTaskName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "gitsource", Type: resources.PipelineResourceTypeGit,
+				}}, {ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "image", Type: resources.PipelineResourceTypeImage,
+				}}},
+			},
+			Params: []v1beta1.ParamSpec{{
+				Name: "pathToHelmCharts", Type: v1beta1.ParamTypeString, Description: "Path to the helm charts",
+			}, {
+				Name: "chartname", Type: v1beta1.ParamTypeString, Default: &empty,
+			}},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Image: "alpine/helm:2.14.0",
+				Args:  []string{"init", "--wait"},
+			}}, {Container: corev1.Container{
+				Image: "alpine/helm:2.14.0",
+				Args: []string{"install",
+					"--debug",
+					"--name=$(inputs.params.chartname)",
+					"$(inputs.params.pathToHelmCharts)",
+					"--set",
+					"image.repository=$(inputs.resources.image.url)",
+				},
+			}}},
+		},
+	}
 }
 
-func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
-	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
-		tb.PipelineDeclaredResource("git-repo", "git"),
-		tb.PipelineDeclaredResource("the-image", "image"),
-		tb.PipelineParamSpec("chartname", v1alpha1.ParamTypeString),
-		tb.PipelineTask("push-image", createImageTaskName,
-			tb.PipelineTaskInputResource("gitsource", "git-repo"),
-			tb.PipelineTaskOutputResource("builtimage", "the-image"),
-		),
-		tb.PipelineTask("helm-deploy", helmDeployTaskName,
-			tb.PipelineTaskInputResource("gitsource", "git-repo"),
-			tb.PipelineTaskInputResource("image", "the-image", tb.From("push-image")),
-			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
-			tb.PipelineTaskParam("chartname", "$(params.chartname)"),
-		),
-	))
+func getHelmDeployPipeline(namespace string) *v1beta1.Pipeline {
+	return &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: helmDeployPipelineName, Namespace: namespace},
+		Spec: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "chartname", Type: v1beta1.ParamTypeString,
+			}},
+			Resources: []v1beta1.PipelineDeclaredResource{{
+				Name: "git-repo", Type: "git",
+			}, {
+				Name: "the-image", Type: "image",
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Name:    "push-image",
+				TaskRef: &v1beta1.TaskRef{Name: createImageTaskName},
+				Resources: &v1beta1.PipelineTaskResources{
+					Inputs: []v1beta1.PipelineTaskInputResource{{
+						Name: "gitsource", Resource: "git-repo",
+					}},
+					Outputs: []v1beta1.PipelineTaskOutputResource{{
+						Name: "builtimage", Resource: "the-image",
+					}},
+				},
+			}, {
+				Name:    "helm-deploy",
+				TaskRef: &v1beta1.TaskRef{Name: helmDeployTaskName},
+				Resources: &v1beta1.PipelineTaskResources{
+					Inputs: []v1beta1.PipelineTaskInputResource{{
+						Name: "gitsource", Resource: "git-repo",
+					}, {
+						Name: "image", Resource: "the-image", From: []string{"push-image"},
+					}},
+				},
+				Params: []v1beta1.Param{{
+					Name: "pathToHelmCharts", Value: v1beta1.NewArrayOrString("/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
+				}, {
+					Name: "chartname", Value: v1beta1.NewArrayOrString("$(params.chartname)"),
+				}},
+			}},
+		},
+	}
 }
 
-func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
-	return tb.PipelineRun(helmDeployPipelineRunName, namespace, tb.PipelineRunSpec(
-		helmDeployPipelineName,
-		tb.PipelineRunParam("chartname", "gohelloworld"),
-		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(sourceResourceName)),
-		tb.PipelineRunResourceBinding("the-image", tb.PipelineResourceBindingRef(sourceImageName)),
-	))
+func getHelmDeployPipelineRun(namespace string) *v1beta1.PipelineRun {
+	return &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: helmDeployPipelineRunName, Namespace: namespace},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: helmDeployPipelineName},
+			Params: []v1beta1.Param{{
+				Name: "chartname", Value: v1beta1.NewArrayOrString("gohelloworld"),
+			}},
+			Resources: []v1beta1.PipelineResourceBinding{{
+				Name: "git-repo", ResourceRef: &v1beta1.PipelineResourceRef{Name: sourceResourceName},
+			}, {
+				Name: "the-image", ResourceRef: &v1beta1.PipelineResourceRef{Name: sourceImageName},
+			}},
+		},
+	}
 }
 
 func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
@@ -304,16 +365,25 @@ func helmCleanup(c *clients, t *testing.T, namespace string) {
 
 func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 	helmRemoveAllTaskName := "helm-remove-all-task"
-	helmRemoveAllTask := tb.Task(helmRemoveAllTaskName, namespace, tb.TaskSpec(
-		tb.Step("alpine/helm:2.14.0", tb.StepName("helm-remove-all"), tb.StepCommand("/bin/sh"),
-			tb.StepArgs("-c", "helm ls --short --all | xargs -n1 helm del --purge"),
-		),
-	))
+	helmRemoveAllTask := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: helmRemoveAllTaskName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "helm-remove-all",
+				Image:   "alpine/helm:2.14.0",
+				Command: []string{"/bin/sh"},
+				Args:    []string{"-c", "helm ls --short --all | xargs -n1 helm del --purge"},
+			}}},
+		},
+	}
 
 	helmRemoveAllTaskRunName := "helm-remove-all-taskrun"
-	helmRemoveAllTaskRun := tb.TaskRun(helmRemoveAllTaskRunName, namespace, tb.TaskRunSpec(
-		tb.TaskRunTaskRef(helmRemoveAllTaskName),
-	))
+	helmRemoveAllTaskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: helmRemoveAllTaskRunName, Namespace: namespace},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: helmRemoveAllTaskName},
+		},
+	}
 
 	t.Logf("Creating Task %s", helmRemoveAllTaskName)
 	if _, err := c.TaskClient.Create(helmRemoveAllTask); err != nil {
@@ -333,14 +403,23 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 
 func removeHelmFromCluster(c *clients, t *testing.T, namespace string) {
 	helmResetTaskName := "helm-reset-task"
-	helmResetTask := tb.Task(helmResetTaskName, namespace, tb.TaskSpec(
-		tb.Step("alpine/helm:2.14.0", tb.StepArgs("reset", "--force")),
-	))
+	helmResetTask := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: helmResetTaskName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Image: "alpine/helm:2.14.0",
+				Args:  []string{"reset", "--force"},
+			}}},
+		},
+	}
 
 	helmResetTaskRunName := "helm-reset-taskrun"
-	helmResetTaskRun := tb.TaskRun(helmResetTaskRunName, namespace, tb.TaskRunSpec(
-		tb.TaskRunTaskRef(helmResetTaskName),
-	))
+	helmResetTaskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: helmResetTaskRunName, Namespace: namespace},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: helmResetTaskName},
+		},
+	}
 
 	t.Logf("Creating Task %s", helmResetTaskName)
 	if _, err := c.TaskClient.Create(helmResetTask); err != nil {

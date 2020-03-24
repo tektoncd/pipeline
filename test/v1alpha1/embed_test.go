@@ -23,10 +23,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -64,44 +61,30 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	// completion of the TaskRun means the TaskRun did what it was intended.
 }
 
-func getEmbeddedTask(namespace string, args []string) *v1beta1.Task {
-	return &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: embedTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "docs", Type: resources.PipelineResourceTypeGit,
-				}}},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "cat /workspace/docs/LICENSE"},
-			}}, {Container: corev1.Container{
-				Image:   "busybox",
-				Command: args,
-			}}},
-		},
-	}
+func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
+	return tb.Task(embedTaskName, namespace,
+		tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
+			tb.Step("ubuntu",
+				tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "cat /workspace/docs/LICENSE"),
+			),
+			tb.Step("busybox", tb.StepCommand(args...)),
+		))
 }
 
-func getEmbeddedTaskRun(namespace string) *v1beta1.TaskRun {
-	testSpec := &resources.PipelineResourceSpec{
+func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
+	testSpec := &v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeGit,
 		Params: []v1alpha1.ResourceParam{{
 			Name:  "URL",
 			Value: "https://github.com/knative/docs",
 		}},
 	}
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: embedTaskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: []v1beta1.TaskResourceBinding{{PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name: "docs", ResourceSpec: testSpec,
-				}}},
-			},
-			TaskRef: &v1beta1.TaskRef{Name: embedTaskName},
-		},
-	}
+	return tb.TaskRun(embedTaskRunName, namespace,
+		tb.TaskRunSpec(
+			tb.TaskRunInputs(
+				tb.TaskRunInputsResource("docs", tb.TaskResourceBindingResourceSpec(testSpec)),
+			),
+			tb.TaskRunTaskRef(embedTaskName)))
 }

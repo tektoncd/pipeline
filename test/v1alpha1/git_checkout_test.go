@@ -23,8 +23,6 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -262,54 +260,25 @@ func getGitPipelineResource(namespace, revision, sslverify, httpproxy, httpsprox
 	))
 }
 
-func getGitCheckTask(namespace string) *v1beta1.Task {
-	return &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: gitTestTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "gitsource", Type: resources.PipelineResourceTypeGit,
-				}}},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "alpine/git",
-				Args:  []string{"--git-dir=/workspace/gitsource/.git", "show"},
-			}}},
-		},
-	}
+func getGitCheckTask(namespace string) *v1alpha1.Task {
+	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
+		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
+		tb.Step("alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),
+	))
 }
 
-func getGitCheckPipeline(namespace string) *v1beta1.Pipeline {
-	return &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineName, Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{{
-				Name: "git-repo", Type: resources.PipelineResourceTypeGit,
-			}},
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "git-check",
-				TaskRef: &v1beta1.TaskRef{Name: gitTestTaskName},
-				Resources: &v1beta1.PipelineTaskResources{
-					Inputs: []v1beta1.PipelineTaskInputResource{{
-						Name:     "gitsource",
-						Resource: "git-repo",
-					}},
-				},
-			}},
-		},
-	}
-
+func getGitCheckPipeline(namespace string) *v1alpha1.Pipeline {
+	return tb.Pipeline(gitTestPipelineName, namespace, tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineTask("git-check", gitTestTaskName,
+			tb.PipelineTaskInputResource("gitsource", "git-repo"),
+		),
+	))
 }
 
-func getGitCheckPipelineRun(namespace string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineRunName, Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: gitTestPipelineName},
-			Resources: []v1beta1.PipelineResourceBinding{{
-				Name:        "git-repo",
-				ResourceRef: &v1beta1.PipelineResourceRef{Name: gitSourceResourceName},
-			}},
-		},
-	}
+func getGitCheckPipelineRun(namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(gitTestPipelineRunName, namespace, tb.PipelineRunSpec(
+		gitTestPipelineName,
+		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(gitSourceResourceName)),
+	))
 }
