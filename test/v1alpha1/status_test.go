@@ -21,9 +21,7 @@ package test
 import (
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -38,25 +36,15 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "banana", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   "busybox",
-				Command: []string{"ls", "-la"},
-			}}},
-		},
-	}
+	task := tb.Task("banana", namespace, tb.TaskSpec(
+		tb.Step("busybox", tb.StepCommand("ls", "-la")),
+	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "apple", Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "banana"},
-			ServiceAccountName: "inexistent",
-		},
-	}
+	taskRun := tb.TaskRun("apple", namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccountName("inexistent"),
+	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -66,22 +54,12 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
-			}},
-		},
-	}
-	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "tomatoes"},
-			ServiceAccountName: "inexistent",
-		},
-	}
+	pipeline := tb.Pipeline("tomatoes", namespace,
+		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
+	)
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(
+		"tomatoes", tb.PipelineRunServiceAccountName("inexistent"),
+	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}

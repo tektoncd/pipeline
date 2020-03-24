@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,14 +37,14 @@ func TestStartTime(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 	t.Logf("Creating TaskRun in namespace %q", namespace)
-	tr, err := c.TaskRunClient.Create(&v1beta1.TaskRun{
+	tr, err := c.TaskRunClient.Create(&v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "start-time-test-",
 			Namespace:    namespace,
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{{
 					Container: corev1.Container{Image: "ubuntu"},
 					Script:    "sleep 10",
 				}, {
@@ -59,7 +60,7 @@ func TestStartTime(t *testing.T) {
 					Container: corev1.Container{Image: "ubuntu"},
 					Script:    "sleep 10",
 				}},
-			},
+			}},
 		},
 	})
 	if err != nil {
