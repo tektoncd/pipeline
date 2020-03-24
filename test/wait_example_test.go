@@ -40,7 +40,7 @@ type testingT interface {
 
 func ExampleWaitForTaskRunState() {
 	// […] setup the test, get clients
-	if err := WaitForTaskRunState(c, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForTaskRunState(c, "taskRunName", func(ca conditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
@@ -55,7 +55,7 @@ func ExampleWaitForTaskRunState() {
 
 func ExampleWaitForPipelineRunState() {
 	// […] setup the test, get clients
-	if err := WaitForPipelineRunState(c, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForPipelineRunState(c, "pipelineRunName", 1*time.Minute, func(ca conditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
