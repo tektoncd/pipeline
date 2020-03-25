@@ -1,3 +1,12 @@
+<!--
+---
+title: "Tasks and Pipelines"
+linkTitle: "Tasks and Pipelines"
+weight: 2
+description: >
+  Building Blocks of Tekton CI/CD Workflow
+---
+-->
 # Tekton Pipelines
 
 Tekton Pipelines is a Kubernetes extension that installs and runs on your Kubernetes cluster.
@@ -39,7 +48,7 @@ Tekton Pipelines defines the following entities:
 
 ## Getting started
 
-To get started, complete the [Tekton Pipelines Tutorial](tutorial.md) and go through our 
+To get started, complete the [Tekton Pipelines Tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) and go through our 
 [examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ## Understanding Tekton Pipelines

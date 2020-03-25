@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Pipelines"
+weight: 3
+---
+-->
 # Pipelines
 
 This document defines `Pipelines` and their capabilities.
