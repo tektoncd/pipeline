@@ -173,7 +173,7 @@ func TestTaskRunConversion(t *testing.T) {
 					Name:  "p1",
 					Value: v1beta1.ArrayOrString{StringVal: "baz"},
 				}},
-				Inputs: TaskRunInputs{
+				Inputs: &TaskRunInputs{
 					Params: []Param{{
 						Name:  "p2",
 						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
@@ -215,7 +215,7 @@ func TestTaskRunConversion(t *testing.T) {
 						Paths: []string{"foo", "bar"},
 					}},
 				},
-				Inputs: TaskRunInputs{
+				Inputs: &TaskRunInputs{
 					Resources: []TaskResourceBinding{{
 						PipelineResourceBinding: PipelineResourceBinding{
 							Name:        "i1",
@@ -260,7 +260,7 @@ func TestTaskRunConversion(t *testing.T) {
 						Paths: []string{"foo", "bar"},
 					}},
 				},
-				Outputs: TaskRunOutputs{
+				Outputs: &TaskRunOutputs{
 					Resources: []TaskResourceBinding{{
 						PipelineResourceBinding: PipelineResourceBinding{
 							Name:        "o1",
@@ -314,7 +314,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskRunSpec{
-				Inputs: TaskRunInputs{
+				Inputs: &TaskRunInputs{
 					Params: []Param{{
 						Name:  "p2",
 						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
@@ -344,7 +344,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskRunSpec{
-				Inputs: TaskRunInputs{
+				Inputs: &TaskRunInputs{
 					Resources: []TaskResourceBinding{{
 						PipelineResourceBinding: PipelineResourceBinding{
 							Name:        "i1",
@@ -382,7 +382,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskRunSpec{
-				Outputs: TaskRunOutputs{
+				Outputs: &TaskRunOutputs{
 					Resources: []TaskResourceBinding{{
 						PipelineResourceBinding: PipelineResourceBinding{
 							Name:        "o1",
