@@ -41,6 +41,45 @@ spec:
       args:
         - "Hello World"
 ```
+
+Apply your `Task` YAML file as follows:
+
+```bash
+kubectl apply -f <name-of-task-file.yaml>
+```
+
+To see details about your created `Task`, use the following command:  
+```bash
+tkn task describe echo-hello-world
+```
+
+The output will look similar to the following:
+
+```
+Name:        echo-hello-world
+Namespace:   default
+
+📨 Input Resources
+
+ No input resources
+
+📡 Output Resources
+
+ No output resources
+
+⚓ Params
+
+ No params
+
+🦶 Steps
+
+ ∙ echo
+
+🗂  Taskruns
+
+ No taskruns
+```
+
 To run this `Task`, instantiate it using a [`TaskRun`](taskruns.md):
 
 ```yaml
@@ -53,10 +92,10 @@ spec:
     name: echo-hello-world
 ```
 
-Apply your YAML files as follows:
+Apply your `TaskRun` YAML file as follows:
 
 ```bash
-kubectl apply -f <name-of-file.yaml>
+kubectl apply -f <name-of-taskrun-file.yaml>
 ```
 
 To check whether running your `TaskRun` succeeded, use the following command:
