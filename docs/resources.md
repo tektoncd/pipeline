@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "PipelineResources"
+weight: 5
+---
+-->
 # PipelineResources
 
 `PipelineResources` in a pipeline are the set of objects that are going to be

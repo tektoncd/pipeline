@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Pod Templates"
+weight: 11
+---
+-->
 # PodTemplates
 
 A pod template specifies a subset of
@@ -6,7 +12,7 @@ configuration that will be used as the basis for the `Task` pod.
 
 This allows to customize some Pod specific field per `Task` execution, aka `TaskRun`.
 
-Alternatively, you can also define a default pod template in tekton config, see [here](./install.md)
+Alternatively, you can also define a default pod template in tekton config, see [here](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
 When a pod template is specified for a `PipelineRun` or `TaskRun`, the default pod template is ignored, i.e.
 both templates are **NOT** merged, it's always one or the other.
 
