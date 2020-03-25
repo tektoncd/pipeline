@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "PipelineRuns"
+weight: 4
+---
+-->
 # PipelineRuns
 
 This document defines `PipelineRuns` and their capabilities.

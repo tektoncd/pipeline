@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Logs"
+weight: 8
+---
+-->
 # Logs
 
 Logs for [`PipelineRuns`](pipelineruns.md) and [`TaskRuns`](taskruns.md) are
