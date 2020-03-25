@@ -774,11 +774,12 @@ func TaskRunResourcesOutput(name string, ops ...TaskResourceBindingOp) TaskRunRe
 // Any number of TaskRunInputs modifier can be passed to transform it.
 func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		inputs := &spec.Inputs
-		for _, op := range ops {
-			op(inputs)
+		if spec.Inputs == nil {
+			spec.Inputs = &v1alpha1.TaskRunInputs{}
 		}
-		spec.Inputs = *inputs
+		for _, op := range ops {
+			op(spec.Inputs)
+		}
 	}
 }
 
@@ -843,11 +844,12 @@ func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
 // Any number of TaskRunOutputs modifier can be passed to transform it.
 func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		outputs := &spec.Outputs
-		for _, op := range ops {
-			op(outputs)
+		if spec.Outputs == nil {
+			spec.Outputs = &v1alpha1.TaskRunOutputs{}
 		}
-		spec.Outputs = *outputs
+		for _, op := range ops {
+			op(spec.Outputs)
+		}
 	}
 }
 

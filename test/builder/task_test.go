@@ -231,7 +231,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			Inputs: v1alpha1.TaskRunInputs{
+			Inputs: &v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
 					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 						Name: "git-resource",
@@ -256,7 +256,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					Value: *tb.ArrayOrString("array", "values"),
 				}},
 			},
-			Outputs: v1alpha1.TaskRunOutputs{
+			Outputs: &v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
 					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 						Name: "git-resource",
