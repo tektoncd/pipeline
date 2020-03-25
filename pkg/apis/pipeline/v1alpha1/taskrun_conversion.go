@@ -58,37 +58,40 @@ func (source *TaskRunSpec) ConvertUp(ctx context.Context, sink *v1beta1.TaskRunS
 	sink.Params = source.Params
 	sink.Resources = source.Resources
 	// Deprecated fields
-	if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
-		// This shouldn't happen as it shouldn't pass validation
-		return apis.ErrMultipleOneOf("inputs.params", "params")
-	}
-	if len(source.Inputs.Params) > 0 {
-		sink.Params = make([]v1beta1.Param, len(source.Inputs.Params))
-		for i, param := range source.Inputs.Params {
-			sink.Params[i] = *param.DeepCopy()
+	if source.Inputs != nil {
+		if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
+			// This shouldn't happen as it shouldn't pass validation
+			return apis.ErrMultipleOneOf("inputs.params", "params")
 		}
-	}
-	if len(source.Inputs.Resources) > 0 {
-		if sink.Resources == nil {
-			sink.Resources = &v1beta1.TaskRunResources{}
+		if len(source.Inputs.Params) > 0 {
+			sink.Params = make([]v1beta1.Param, len(source.Inputs.Params))
+			for i, param := range source.Inputs.Params {
+				sink.Params[i] = *param.DeepCopy()
+			}
 		}
-		if len(source.Inputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Inputs) > 0 {
-			// This shouldn't happen as it shouldn't pass validation but just in case
-			return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
-		}
-		sink.Resources.Inputs = make([]v1beta1.TaskResourceBinding, len(source.Inputs.Resources))
-		for i, resource := range source.Inputs.Resources {
-			sink.Resources.Inputs[i] = v1beta1.TaskResourceBinding{
-				PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name:         resource.Name,
-					ResourceRef:  resource.ResourceRef,
-					ResourceSpec: resource.ResourceSpec,
-				},
-				Paths: resource.Paths,
+		if len(source.Inputs.Resources) > 0 {
+			if sink.Resources == nil {
+				sink.Resources = &v1beta1.TaskRunResources{}
+			}
+			if len(source.Inputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Inputs) > 0 {
+				// This shouldn't happen as it shouldn't pass validation but just in case
+				return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
+			}
+			sink.Resources.Inputs = make([]v1beta1.TaskResourceBinding, len(source.Inputs.Resources))
+			for i, resource := range source.Inputs.Resources {
+				sink.Resources.Inputs[i] = v1beta1.TaskResourceBinding{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name:         resource.Name,
+						ResourceRef:  resource.ResourceRef,
+						ResourceSpec: resource.ResourceSpec,
+					},
+					Paths: resource.Paths,
+				}
 			}
 		}
 	}
-	if len(source.Outputs.Resources) > 0 {
+
+	if source.Outputs != nil && len(source.Outputs.Resources) > 0 {
 		if sink.Resources == nil {
 			sink.Resources = &v1beta1.TaskRunResources{}
 		}
