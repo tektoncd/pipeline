@@ -942,11 +942,11 @@ func TestReconcileWithTimeout(t *testing.T) {
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
-	}
-
-	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
-	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
-		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
+	} else {
+		// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
+		if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
+			t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
+		}
 	}
 }
 

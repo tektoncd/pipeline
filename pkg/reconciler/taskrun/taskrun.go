@@ -431,7 +431,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 		if tr.Spec.TaskRef != nil {
 			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 		} else {
-			msg = fmt.Sprintf("Invalid TaskSpec")
+			msg = "Invalid TaskSpec"
 		}
 	}
 	tr.Status.SetCondition(&apis.Condition{
