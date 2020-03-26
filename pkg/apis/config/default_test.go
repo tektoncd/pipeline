@@ -38,7 +38,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultServiceAccount:      "tekton",
 				DefaultManagedByLabelValue: "something-else",
 			},
-			fileName: DefaultsConfigName,
+			fileName: GetDefaultsConfigName(),
 		},
 		{
 			expectedConfig: &Defaults{
