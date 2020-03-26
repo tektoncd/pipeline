@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Tasks"
+weight: 1
+---
+-->
 # Tasks
 
 A `Task` (or a [`ClusterTask`](#clustertask)) is a collection of sequential

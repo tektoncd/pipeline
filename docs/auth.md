@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Authentication"
+weight: 6
+---
+-->
 # Authentication
 
 This document defines how authentication is provided during execution of a

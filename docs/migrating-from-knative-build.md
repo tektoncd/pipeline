@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Migration from KNative Build"
+weight: 12
+---
+-->
 # Migrating from [Knative Build](https://github.com/knative/build)
 
 This doc describes a process for users who are familiar with Knative `Build` and

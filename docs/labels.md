@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Labels"
+weight: 9
+---
+-->
 # Labels
 
 In order to make it easier to identify objects that are all part of the same

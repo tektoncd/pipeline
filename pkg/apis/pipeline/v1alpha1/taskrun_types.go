@@ -56,9 +56,9 @@ type TaskRunSpec struct {
 	Resources *v1beta1.TaskRunResources `json:"resources,omitempty"`
 	// Deprecated
 	// +optional
-	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	Inputs *TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs TaskRunOutputs `json:"outputs,omitempty"`
+	Outputs *TaskRunOutputs `json:"outputs,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
