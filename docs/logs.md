@@ -9,9 +9,6 @@ weight: 8
 Logs for [`PipelineRuns`](pipelineruns.md) and [`TaskRuns`](taskruns.md) are
 associated with the underlying pod.
 
-_In [#107](https://github.com/tektoncd/pipeline/issues/107) we will add a
-solution to persist logs outside of your kubernetes cluster._
-
 To access these logs currently you have a few options:
 
 - [You can get the logs from the pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
