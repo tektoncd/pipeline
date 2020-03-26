@@ -1,27 +1,35 @@
-# Tekton Pipelines Tutorial
+# Getting Started with Tekton Pipelines
 
-This tutorial uses a simple `Hello World` example to show you how to:
-- Create a `Task`
-- Create a `Pipeline` containing your `Tasks`
-- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`
+This guide will get you started with Tekton Pipelines with a simple `Hello World` tutorial.
+This tutorial uses a simple `Hello World` example to show you how to:	
+
+- Create a `Task`	
+- Create a `Pipeline` containing your `Tasks`	
+- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
 - Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
 
-This tutorial consists of the following sections:
+This tutorial uses a simple `Hello World` example to show you how to:	
 
-- [Creating and running a `Task`](#creating-and-running-a-task)
-- [Creating and running a `Pipeline`](#creating-and-running-a-pipeline)
+- Create a `Task`	
+- Create a `Pipeline` containing your `Tasks`	
+- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
+- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
 
-**Note:** Items requiring configuration are marked with the `#configure` annotation.
-This includes Docker registries, log output locations, and other configuration items
-specific to a given cloud computing service.
+This tutorial uses a simple `Hello World` example to show you how to:	
+
+- Create a `Task`	
+- Create a `Pipeline` containing your `Tasks`	
+- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
+- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
 
 ## Before you begin
 
-Before you begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-the latest release of Tekton on your Kubernetes cluster, including the
-[Tekton CLI](https://github.com/tektoncd/cli).
+Before you begin this tutorial, make sure you have [installed and configured](install.md)
+the latest release of Tekton on your Kubernetes cluster, including the [Tekton CLI](https://github.com/tektoncd/cli). 
 
-If you would like to complete this tutorial on your local workstation, see [Running this tutorial locally](#running-this-tutorial-locally). To learn more about the Tekton entities involved in this tutorial, see [Further reading](#further-reading).
+If you would like to complete this tutorial on your local workstation, install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
+
+You will need an account on [Docker Hub](https://hub.docker.com).
 
 ## Creating and running a `Task`
 
@@ -41,45 +49,6 @@ spec:
       args:
         - "Hello World"
 ```
-
-Apply your `Task` YAML file as follows:
-
-```bash
-kubectl apply -f <name-of-task-file.yaml>
-```
-
-To see details about your created `Task`, use the following command:  
-```bash
-tkn task describe echo-hello-world
-```
-
-The output will look similar to the following:
-
-```
-Name:        echo-hello-world
-Namespace:   default
-
-📨 Input Resources
-
- No input resources
-
-📡 Output Resources
-
- No output resources
-
-⚓ Params
-
- No params
-
-🦶 Steps
-
- ∙ echo
-
-🗂  Taskruns
-
- No taskruns
-```
-
 To run this `Task`, instantiate it using a [`TaskRun`](taskruns.md):
 
 ```yaml
@@ -92,10 +61,10 @@ spec:
     name: echo-hello-world
 ```
 
-Apply your `TaskRun` YAML file as follows:
+Apply your YAML files as follows:
 
 ```bash
-kubectl apply -f <name-of-taskrun-file.yaml>
+kubectl apply -f <name-of-file.yaml>
 ```
 
 To check whether running your `TaskRun` succeeded, use the following command:
@@ -146,7 +115,7 @@ The output will look similar to the following:
 ### Specifying `Task` inputs and outputs
 
 In more complex scenarios, a `Task` requires you to define inputs and outputs. For example, a
-`Task` could fetch source code from a GitHub repository and build a Docker image from it.
+`Task` could fetch source code with a Dockerfile and build a Docker image from it.
 
 Use one or more [`PipelineResources`](resources.md) to define the artifacts you want to pass in
 and out of your `Task`. The following are examples of the most commonly needed resources.
@@ -158,14 +127,14 @@ a specific revision from which the `Task` will pull the source code:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: whoami-git
 spec:
   type: git
   params:
     - name: revision
       value: master
     - name: url
-      value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local git repository.
+      value: https://github.com/popcor255/python-flask-docker-hello-world #configure: change if you want to build something else, perhaps from your own local git repository.
 ```
 
 The [`image` resource](resources.md#image-resource) specifies the repository to which the image built by the `Task` will be pushed:
@@ -174,12 +143,12 @@ The [`image` resource](resources.md#image-resource) specifies the repository to 
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: whoami-image
 spec:
   type: image
   params:
     - name: url
-      value: gcr.io/<use your project>/leeroy-web #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
+      value: docker.io/<your docker hub username>/whoami #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
 In the following example, you can see a `Task` definition with the `git` input and `image` output
@@ -190,39 +159,57 @@ the `Task` definition is constant and the value of parameters can change during 
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: build-docker-image-from-git-source
+  name: build-and-push-docker-image-from-git
 spec:
   params:
-    - name: pathToDockerFile
-      type: string
-      description: The path to the dockerfile to build
-      default: /workspace/docker-source/Dockerfile
-    - name: pathToContext
-      type: string
-      description: |
-        The build context used by Kaniko
-        (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-      default: /workspace/docker-source
+    - name: BUILDER_IMAGE
+      description: The location of the builder image
+      default: quay.io/buildah/stable:v1.11.0
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: Path to the directory to use as context.
+      default: .
+    - name: TLSVERIFY
+      description: Verify the TLS on the registry endpoint (for push/pull to a non-TLS registry)
+      default: "false"
   resources:
     inputs:
-      - name: docker-source
+      - name: source
         type: git
     outputs:
-      - name: builtImage
+      - name: image
         type: image
   steps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v0.17.1
-      # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
-      env:
-        - name: "DOCKER_CONFIG"
-          value: "/tekton/home/.docker/"
-      command:
-        - /kaniko/executor
+      image: $(inputs.params.BUILDER_IMAGE)
+      workingDir: /workspace/source
+      command: ["/bin/bash"]
       args:
-        - --dockerfile=$(params.pathToDockerFile)
-        - --destination=$(resources.outputs.builtImage.url)
-        - --context=$(params.pathToContext)
+        - -c
+        - |
+          set -e
+          SHORT_GIT_HASH="$(cat .git/FETCH_HEAD | awk '{print substr($1,0,7)}')"
+          NEW_IMAGE_ID="$(outputs.resources.image.url):$SHORT_GIT_HASH"
+          NEW_IMAGE_ID="$(echo $NEW_IMAGE_ID | sed s/\$NAMESPACE/$NAMESPACE/)"
+          echo "Building Image $NEW_IMAGE_ID"
+          buildah bud --tls-verify="$(inputs.params.TLSVERIFY)" --layers -f "$(inputs.params.DOCKERFILE)" -t "$NEW_IMAGE_ID" "$(inputs.params.CONTEXT)"
+          echo "Pushing Image $NEW_IMAGE_ID"
+          buildah push --tls-verify="$(inputs.params.TLSVERIFY)" "$NEW_IMAGE_ID" "docker://$NEW_IMAGE_ID"
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: varlibcontainers
+          mountPath: /var/lib/containers
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
 ```
 
 ### Configuring `Task` execution credentials
@@ -230,15 +217,17 @@ spec:
 Before you can execute your `TaskRun`, you must create a `secret` to push your image
 to your desired image registry:
 
+**Note:** You can get your Docker access token at [Docker Hub](https://hub.docker.com/settings/security).
+
 ```bash
 kubectl create secret docker-registry regcred \
-                    --docker-server=<your-registry-server> \
+                    --docker-server=docker.io \
                     --docker-username=<your-name> \
-                    --docker-password=<your-pword> \
+                    --docker-password=<your-token> \
                     --docker-email=<your-email>
 ```
 
-You must also specify a `ServiceAccount` that uses this `secret` to execute your `TaskRun`:
+You must specify a `ServiceAccount` that uses this `secret` to execute your `TaskRun`:
 
 ```yaml
 apiVersion: v1
@@ -266,28 +255,23 @@ for variable substitution parameters, and executes the `Steps` in the `Task`.
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  name: build-docker-image-from-git-source-task-run
+  name: build-and-push-docker-image-from-git-task-run
 spec:
   serviceAccountName: tutorial-service
   taskRef:
-    name: build-docker-image-from-git-source
-  params:
-    - name: pathToDockerFile
-      value: Dockerfile
-    - name: pathToContext
-      value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
+    name: build-and-push-docker-image-from-git
   resources:
     inputs:
-      - name: docker-source
+      - name: source
         resourceRef:
-          name: skaffold-git
+          name: whoami-git
     outputs:
-      - name: builtImage
+      - name: image
         resourceRef:
-          name: skaffold-image-leeroy-web
+          name: whoami-image
 ```
 
-Save the YAML files that contain your `Task`, `TaskRun`, and `PipelineResource` definitions and apply them using the following command:
+Save the YAML files that contain your `Task`, and `PipelineResource` definitions and apply them using the following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -303,14 +287,14 @@ The output will look similar to the following:
 
 ```
 NAME                                                   AGE
-taskruns/build-docker-image-from-git-source-task-run   30s
+task.tekton.dev/build-and-push-docker-image-from-git   60m
 
-NAME                                          AGE
-pipelineresources/skaffold-git                6m
-pipelineresources/skaffold-image-leeroy-web   7m
+NAME                                                               SUCCEEDED   REASON      STARTTIME   COMPLETIONTIME
+taskrun.tekton.dev/build-and-push-docker-image-from-git-task-run   True        Succeeded   6m21s       2m50s
 
 NAME                                       AGE
-tasks/build-docker-image-from-git-source   7m
+pipelineresource.tekton.dev/whoami-git     62m
+pipelineresource.tekton.dev/whoami-image   24m
 ```
 
 To see the result of executing your `TaskRun`, use the following command:
@@ -322,42 +306,39 @@ tkn taskrun describe build-docker-image-from-git-source-task-run
 The output will look similar to the following:
 
 ```
-Name:        build-docker-image-from-git-source-task-run
+Name:        build-and-push-docker-image-from-git-task-run
 Namespace:   default
-Task Ref:    build-docker-image-from-git-source
+Task Ref:    build-and-push-docker-image-from-git
+Service Account:   tutorial-service
 
 Status
-STARTED       DURATION     STATUS
-2 hours ago   56 seconds   Succeeded
+STARTED         DURATION    STATUS
+8 minutes ago   3 minutes   Succeeded
 
 Input Resources
-NAME            RESOURCE REF
-docker-source   skaffold-git
+No resources
 
 Output Resources
-NAME         RESOURCE REF
-builtImage   skaffold-image-leeroy-web
+No resources
 
 Params
-NAME               VALUE
-pathToDockerFile   Dockerfile
-pathToContext      /workspace/docker-source/examples/microservices/leeroy-web
+No params
 
 Steps
-NAME
-build-and-push
-create-dir-builtimage-wtjh9
-git-source-skaffold-git-tck6k
-image-digest-exporter-hlbsq
+NAME                          STATUS
+build-and-push                Completed
+create-dir-image-7z8tq   Completed
+git-source-whoami-git-h62j8   Completed
+image-digest-exporter-zkgqd   Completed
 ```
 
 The `Succeeded` status indicates the `Task` has completed with no errors. You
-can also confirm that the output Docker image has been created in the location specified in the resource definition.
+can confirm that the output Docker image has been created in the location specified in the resource definition.
 
 To view detailed information about the execution of your `TaskRun`, view the logs:
 
 ```bash
-tkn taskrun logs build-docker-image-from-git-source-task-run
+tkn taskrun logs build-and-push-docker-image-from-git-task-run
 ```
 
 ## Creating and running a `Pipeline`
@@ -376,42 +357,34 @@ metadata:
   name: tutorial-pipeline
 spec:
   resources:
-    - name: source-repo
+    - name: source
       type: git
-    - name: web-image
+    - name: image
       type: image
   tasks:
-    - name: build-skaffold-web
+    - name: build-and-push-to-dockerhub
       taskRef:
-        name: build-docker-image-from-git-source
+        name: build-and-push-docker-image-from-git
       params:
-        - name: pathToDockerFile
-          value: Dockerfile
-        - name: pathToContext
-          value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
+        - name: DOCKERFILE
+          value: ./Dockerfile
+          #configure: this will change the default value of your params in your tasks
       resources:
         inputs:
-          - name: docker-source
-            resource: source-repo
+          - name: source
+            resource: git
         outputs:
-          - name: builtImage
-            resource: web-image
-    - name: deploy-web
+          - name: image
+            resource: image
+    - name: deploy-app
       taskRef:
         name: deploy-using-kubectl
       resources:
         inputs:
-          - name: source
-            resource: source-repo
           - name: image
-            resource: web-image
+            resource: image
             from:
-              - build-skaffold-web
-      params:
-        - name: path
-          value: /workspace/source/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
-        - name: yamlPathToImage
-          value: "spec.template.spec.containers[0].image"
+              - build-and-push-to-dockerhub
 ```
 
 The above `Pipeline` is referencing a `Task` called `deploy-using-kubectl` defined as follows:
@@ -422,37 +395,30 @@ kind: Task
 metadata:
   name: deploy-using-kubectl
 spec:
-  params:
-    - name: path
-      type: string
-      description: Path to the manifest to apply
-    - name: yamlPathToImage
-      type: string
-      description: |
-        The path to the image to replace in the yaml manifest (arg to yq)
   resources:
     inputs:
-      - name: source
-        type: git
       - name: image
         type: image
   steps:
-    - name: replace-image
-      image: mikefarah/yq
-      command: ["yq"]
+    - name: apply-inline-yaml
+      image: k3integrations/kubectl
+      command: ["/bin/bash"]
       args:
-        - "w"
-        - "-i"
-        - "$(params.path)"
-        - "$(params.yamlPathToImage)"
-        - "$(resources.inputs.image.url)"
-    - name: run-kubectl
-      image: lachlanevenson/k8s-kubectl
-      command: ["kubectl"]
-      args:
-        - "apply"
-        - "-f"
-        - "$(params.path)"
+        - -c
+        - |
+          set -e
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name:  tekton-tutorial-pod
+          spec:
+            containers:
+            - name: tekton-tutorial-pod
+              image: $(inputs.resources.image.url)
+              ports:
+                - containerPort: 80
+          EOF
 ```
 
 ### Configuring `Pipeline` execution credentials
@@ -465,7 +431,7 @@ First, create a new role called `tutorial-role`:
 ```bash
 kubectl create clusterrole tutorial-role \
                --verb=* \
-               --resource=deployments,deployments.apps
+               --resource=pods,deployments,deployments.apps
 ```
 
 Next, assign this new role to your `ServiceAccount`:
@@ -488,12 +454,12 @@ spec:
   pipelineRef:
     name: tutorial-pipeline
   resources:
-    - name: source-repo
+    - name: source
       resourceRef:
-        name: skaffold-git
-    - name: web-image
+        name: whoami-git
+    - name: image
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: whoami-image
 ```
 
 The `PipelineRun` automatically defines a corresponding `TaskRun` for each `Task` you have defined
@@ -511,7 +477,7 @@ Save the `Task`, `Pipeline`, and `PipelineRun` definitions above to as YAML file
 ```bash
 kubectl apply -f <name-of-file.yaml>
 ```
-**Note:** Also apply the `deploy-task` or the `PipelineRun` will not execute.
+**Note:**  Apply the `deploy-task` or the `PipelineRun` will not execute.
 
 You can monitor the execution of your `PipelineRun` in realtime as follows:
 
@@ -551,49 +517,7 @@ tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours 
 ```
 
 The `Succeded` status indicates that your `PipelineRun` completed without errors.
-You can also see the statuses of the individual `TaskRuns`.
-
-## Running this tutorial locally
-
-This section provides guidelines for completing this tutorial on your local workstation.
-
-### Prerequisites
-
-Complete these prerequisites to run this tutorial locally:
-
-- Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
-- Install [Docker for Desktop](https://www.docker.com/products/docker-desktop) and configure it to use six CPUs,
-  10 GB of RAM and 2GB of swap space.
-- Set `host.docker.local:5000` as an insecure registry with Docker for
-  Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
-  for details.
-- Pass `--insecure` as an argument to your Kaniko tasks so that you can push to an insecure registry.
-- Run a local (insecure) Docker registry as follows:
-
-  `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
-
-- (Optional) Install a Docker registry viewer to verify the images have been pushed:
-
-`docker run -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web`
-
-- Verify that you can push to `host.docker.internal:5000/myregistry/<image_name>`.
-
-### Reconfigure `image` resources
-
-You must reconfigure any `image` resource definitions in your `PipelineResources` as follows:
-
-- Set the URL to `host.docker.internal:5000/myregistry/<image_name>`
-- Set the `KO_DOCKER_REPO` variable to `localhost:5000/myregistry` before using `ko`
-- Set your applications (such as deployment definitions) to push to
-  `localhost:5000/myregistry/<image name>`.
-
-### Reconfigure logging
-
-- You can keep your logs in memory only without sending them to a logging service
-  such as [Stackdriver](https://cloud.google.com/logging/).
-- You can deploy Elasticsearch, Beats, or Kibana locally to view logs. You can find an
-  example configuration at <https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
-- To learn more about obtaining logs, see [Logs](logs.md).
+You can see the statuses of the individual `TaskRuns`.
 
 ## Further reading
 
@@ -604,6 +528,7 @@ To learn more about the Tekton Pipelines entities involved in this tutorial, see
 - [`Pipelines`](pipelines.md)
 - [`PipelineResources`](resources.md)
 - [`PipelineRuns`](pipelineruns.md)
+- [`Logs`](logs.md)
 
 ---
 
