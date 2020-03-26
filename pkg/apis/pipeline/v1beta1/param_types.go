@@ -186,9 +186,6 @@ func NewResultRefs(param Param) ([]*ResultRef, error) {
 // This is useful if we want to make sure the param looks like a ResultReference before
 // performing strict validation
 func LooksLikeContainsResultRefs(param Param) bool {
-	if param.Value.Type != ParamTypeString {
-		return false
-	}
 	extractedExpressions, ok := getVarSubstitutionExpressions(param)
 	if !ok {
 		return false
@@ -207,18 +204,36 @@ func looksLikeResultRef(expression string) bool {
 
 // getVarSubstitutionExpressions extracts all the value between "$(" and ")""
 func getVarSubstitutionExpressions(param Param) ([]string, bool) {
-	if param.Value.Type != ParamTypeString {
-		return nil, false
-	}
-	expressions := variableSubstitutionRegex.FindAllString(param.Value.StringVal, -1)
-	if expressions == nil {
-		return nil, false
-	}
 	var allExpressions []string
-	for _, expression := range expressions {
-		allExpressions = append(allExpressions, stripVarSubExpression(expression))
+	switch param.Value.Type {
+	case ParamTypeArray:
+		// array type
+		for _, value := range param.Value.ArrayVal {
+			expressions := variableSubstitutionRegex.FindAllString(value, -1)
+			if expressions == nil {
+				continue
+			}
+			for _, expression := range expressions {
+				allExpressions = append(allExpressions, stripVarSubExpression(expression))
+			}
+		}
+		if len(allExpressions) == 0 {
+			return nil, false
+		}
+		return allExpressions, true
+	case ParamTypeString:
+		// string type
+		expressions := variableSubstitutionRegex.FindAllString(param.Value.StringVal, -1)
+		if expressions == nil {
+			return nil, false
+		}
+		for _, expression := range expressions {
+			allExpressions = append(allExpressions, stripVarSubExpression(expression))
+		}
+		return allExpressions, true
+	default:
+		return nil, false
 	}
-	return allExpressions, true
 }
 
 func stripVarSubExpression(expression string) string {
