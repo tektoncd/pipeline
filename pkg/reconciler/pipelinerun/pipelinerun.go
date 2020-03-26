@@ -587,6 +587,10 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			PodTemplate:        pr.Spec.PodTemplate,
 		}}
 
+	if len(rprt.PipelineTask.NodeSelector) > 0 {
+		tr.Spec.PodTemplate.NodeSelector = rprt.PipelineTask.NodeSelector
+	}
+
 	if rprt.ResolvedTaskResources.TaskName != "" {
 		tr.Spec.TaskRef = &v1alpha1.TaskRef{
 			Name: rprt.ResolvedTaskResources.TaskName,

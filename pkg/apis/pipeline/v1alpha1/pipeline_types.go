@@ -142,6 +142,10 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// Set the NodeSelector on PipelineTask level to allow
+	// for different NodeSelectors for different steps.
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 func (pt PipelineTask) HashKey() string {
