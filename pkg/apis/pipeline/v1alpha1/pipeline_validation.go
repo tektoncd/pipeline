@@ -154,7 +154,7 @@ func validateParamResults(tasks []PipelineTask) error {
 // of Tasks expressed in the Pipeline makes sense.
 func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
+		return apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces")
 	}
 
 	// Names cannot be duplicated

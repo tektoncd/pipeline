@@ -50,6 +50,11 @@ func TestPipeline_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
+		name: "pipeline spec missing",
+		p: tb.Pipeline("pipeline", "namespace",
+		),
+		failureExpected: true,
+	}, {
 		name: "pipeline spec invalid (duplicate tasks)",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task"),
