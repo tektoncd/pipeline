@@ -137,7 +137,7 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrInvalidValue("spec.type", "not-supported"),
 		}, {
 			name: "missing spec",
-			res: &v1alpha1.PipelineResource{},
+			res:  &v1alpha1.PipelineResource{},
 			want: apis.ErrMissingField("spec.type"),
 		},
 	}
