@@ -368,7 +368,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "nil",
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
-			Paths:   []string{""},
+			Paths:   []string{"steps"},
 		},
 	}, {
 		name: "no build",
