@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -41,9 +40,6 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
-	if equality.Semantic.DeepEqual(ts, &TaskSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
-	}
 
 	if len(ts.Steps) == 0 {
 		return apis.ErrMissingField("steps")

@@ -100,6 +100,12 @@ func TestPipeline_Validate(t *testing.T) {
 		},
 		failureExpected: true,
 	}, {
+		name: "pipeline spec missing",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		},
+		failureExpected: true,
+	}, {
 		name: "pipeline spec missing taskref and taskspec",
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},

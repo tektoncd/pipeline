@@ -39,7 +39,7 @@ func (r *PipelineResource) Validate(ctx context.Context) *apis.FieldError {
 
 func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(rs, &PipelineResourceSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
+		return apis.ErrMissingField("spec.type")
 	}
 	if rs.Type == PipelineResourceTypeCluster {
 		var authFound, cadataFound, isInsecure bool
