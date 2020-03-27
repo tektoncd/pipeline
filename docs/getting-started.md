@@ -199,7 +199,7 @@ spec:
 Before you can execute your `TaskRun`, you must create a `secret` to push your image
 to your desired image registry:
 
-*** Note: *** You can get your docker access token at [docker hub](https://hub.docker.com/settings/security).
+**Note:** You can get your docker access token at [docker hub](https://hub.docker.com/settings/security).
 
 ```bash
 kubectl create secret docker-registry regcred \
