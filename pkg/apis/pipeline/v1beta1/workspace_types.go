@@ -81,7 +81,7 @@ type WorkspacePipelineDeclaration struct {
 	// used in the Pipeline. It can be useful to include a bit of detail about which
 	// tasks are intended to have access to the data on the workspace.
 	// +optional
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 }
 
 // WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
