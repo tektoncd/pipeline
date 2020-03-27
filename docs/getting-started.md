@@ -2,6 +2,13 @@
 
 This guide will get you started with tekton pipelines with a simple `Hello World` tutorial.
 
+This tutorial uses a simple `Hello World` example to show you how to:	
+
+- Create a `Task`	
+- Create a `Pipeline` containing your `Tasks`	
+- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
+- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
+
 ## Before you begin
 
 Before you begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
