@@ -33,6 +33,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	k8sres "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
@@ -156,6 +157,51 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun; 0 from taskrun since it should not be executed due to condition failing
 		expectedNumberOfEvents: 1,
 		pipelineRunFunc:        getConditionalPipelineRun,
+	}, {
+		name: "pipelinerun succeeds with LimitRange minimum in namespace",
+		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+			t.Helper()
+			if _, err := c.KubeClient.Kube.CoreV1().LimitRanges(namespace).Create(getLimitRange("prlimitrange", namespace, "100m", "99Mi", "100m")); err != nil {
+				t.Fatalf("Failed to create LimitRange `%s`: %s", "prlimitrange", err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
+				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
+				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
+			}
+
+			task := &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
+				Spec: v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "path", Type: v1beta1.ParamTypeString,
+					}, {
+						Name: "dest", Type: v1beta1.ParamTypeString,
+					}},
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Name:    "config-docker",
+							Image:   "quay.io/rhpipeline/skopeo:alpine",
+							Command: []string{"skopeo"},
+							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
+						}},
+					},
+				},
+			}
+			if _, err := c.TaskClient.Create(task); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", fmt.Sprint("task", index), err)
+			}
+			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
+			}
+		},
+		expectedTaskRuns: []string{task1Name},
+		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 2,
+		pipelineRunFunc:        getHelloWorldPipelineRun,
 	}}
 
 	for i, td := range tds {
@@ -685,6 +731,24 @@ func getConditionalPipelineRun(suffix int, namespace string) *v1beta1.PipelineRu
 		},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
+		},
+	}
+}
+
+func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemeralStorage string) *corev1.LimitRange {
+	return &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type: corev1.LimitTypeContainer,
+					Min: corev1.ResourceList{
+						corev1.ResourceCPU:              k8sres.MustParse(resourceCPU),
+						corev1.ResourceMemory:           k8sres.MustParse(resourceMemory),
+						corev1.ResourceEphemeralStorage: k8sres.MustParse(resourceEphemeralStorage),
+					},
+				},
+			},
 		},
 	}
 }
