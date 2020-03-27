@@ -2,9 +2,9 @@
 
 This guide will get you started with tekton pipelines with a simple `Hello World` tutorial.
 
-## Before we begin
+## Before you begin
 
-Before we begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+Before you begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
 the latest release of Tekton on your Kubernetes cluster, including the [Tekton CLI](https://github.com/tektoncd/cli). 
 
 If you would like to complete this tutorial on your local workstation, make sure you run clean profile of [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
