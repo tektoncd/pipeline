@@ -518,47 +518,6 @@ tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours 
 The `Succeded` status indicates that your `PipelineRun` completed without errors.
 You can also see the statuses of the individual `TaskRuns`.
 
-## Running this tutorial locally
-
-This section provides guidelines for completing this tutorial on your local workstation.
-
-### Prerequisites
-
-Complete these prerequisites to run this tutorial locally:
-
-- Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
-- Install [Docker for Desktop](https://www.docker.com/products/docker-desktop) and configure it to use six CPUs,
-  10 GB of RAM and 2GB of swap space.
-- Set `host.docker.local:5000` as an insecure registry with Docker for
-  Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
-  for details.
-- Pass `--insecure` as an argument to your Kaniko tasks so that you can push to an insecure registry.
-- Run a local (insecure) Docker registry as follows:
-
-  `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
-
-- (Optional) Install a Docker registry viewer to verify the images have been pushed:
-
-`docker run -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web`
-
-- Verify that you can push to `host.docker.internal:5000/myregistry/<image_name>`.
-
-### Reconfigure `image` resources
-
-You must reconfigure any `image` resource definitions in your `PipelineResources` as follows:
-
-- Set the URL to `host.docker.internal:5000/myregistry/<image_name>`
-- Set the `KO_DOCKER_REPO` variable to `localhost:5000/myregistry` before using `ko`
-- Set your applications (such as deployment definitions) to push to
-  `localhost:5000/myregistry/<image name>`.
-
-### Reconfigure logging
-
-- You can keep your logs in memory only without sending them to a logging service
-  such as [Stackdriver](https://cloud.google.com/logging/).
-- You can deploy Elasticsearch, Beats, or Kibana locally to view logs. You can find an
-  example configuration at <https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
-- To learn more about obtaining logs, see [Logs](logs.md).
 
 ## Further reading
 
@@ -569,6 +528,7 @@ To learn more about the Tekton Pipelines entities involved in this tutorial, see
 - [`Pipelines`](pipelines.md)
 - [`PipelineResources`](resources.md)
 - [`PipelineRuns`](pipelineruns.md)
+- [`Logs`](logs.md)
 
 ---
 
