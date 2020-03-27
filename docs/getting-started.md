@@ -15,9 +15,9 @@ the latest release of Tekton on your Kubernetes cluster, including the [Tekton C
 
 If you would like to complete this tutorial on your local workstation, make sure you run clean profile of [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
 
-You will also need an account on [Docker Hub](https://hub.docker.com).
+You will need an account on [Docker Hub](https://hub.docker.com).
 
-Also, make sure you are in the tekton-pipelines namespace if you have tekton installed.
+Make sure you are in the tekton-pipelines namespace if you have tekton installed.
 
 ## Creating and running a `Task`
 
@@ -215,7 +215,7 @@ kubectl create secret docker-registry regcred \
                     --docker-email=<your-email>
 ```
 
-You must also specify a `ServiceAccount` that uses this `secret` to execute your `TaskRun`:
+You must specify a `ServiceAccount` that uses this `secret` to execute your `TaskRun`:
 
 ```yaml
 apiVersion: v1
@@ -324,7 +324,7 @@ image-digest-exporter-hlbsq
 ```
 
 The `Succeeded` status indicates the `Task` has completed with no errors. You
-can also confirm that the output Docker image has been created in the location specified in the resource definition.
+can confirm that the output Docker image has been created in the location specified in the resource definition.
 
 To view detailed information about the execution of your `TaskRun`, view the logs:
 
@@ -482,7 +482,7 @@ Save the `Task`, `Pipeline`, and `PipelineRun` definitions above to as YAML file
 ```bash
 kubectl apply -f <name-of-file.yaml>
 ```
-**Note:** Also apply the `deploy-task` or the `PipelineRun` will not execute.
+**Note:**  Apply the `deploy-task` or the `PipelineRun` will not execute.
 
 You can monitor the execution of your `PipelineRun` in realtime as follows:
 
@@ -522,7 +522,7 @@ tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours 
 ```
 
 The `Succeded` status indicates that your `PipelineRun` completed without errors.
-You can also see the statuses of the individual `TaskRuns`.
+You can see the statuses of the individual `TaskRuns`.
 
 
 ## Further reading
