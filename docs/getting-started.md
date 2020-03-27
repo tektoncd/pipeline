@@ -1,7 +1,6 @@
 # Getting Started with Tekton Pipelines
 
 This guide will get you started with tekton pipelines with a simple `Hello World` tutorial.
-
 This tutorial uses a simple `Hello World` example to show you how to:	
 
 - Create a `Task`	
@@ -16,7 +15,7 @@ the latest release of Tekton on your Kubernetes cluster, including the [Tekton C
 
 If you would like to complete this tutorial on your local workstation, make sure you run clean profile of [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
 
-You will also need an account on [docker hub](https://hub.docker.com).
+You will also need an account on [Docker Hub](https://hub.docker.com).
 
 Also, make sure you are in the tekton-pipelines namespace if you have tekton installed.
 
@@ -206,7 +205,7 @@ spec:
 Before you can execute your `TaskRun`, you must create a `secret` to push your image
 to your desired image registry:
 
-**Note:** You can get your docker access token at [docker hub](https://hub.docker.com/settings/security).
+**Note:** You can get your Docker access token at [Docker Hub](https://hub.docker.com/settings/security).
 
 ```bash
 kubectl create secret docker-registry regcred \
