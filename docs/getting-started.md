@@ -17,8 +17,6 @@ If you would like to complete this tutorial on your local workstation, install [
 
 You will need an account on [Docker Hub](https://hub.docker.com).
 
-Make sure you are in the tekton-pipelines namespace if you have tekton installed.
-
 ## Creating and running a `Task`
 
 A [`Task`](tasks.md) defines a series of `steps` that run in a desired order and complete a set amount of build work. Every `Task` runs as a Pod on your Kubernetes cluster with each `step` as its own container. For example, the following `Task` outputs "Hello World":
