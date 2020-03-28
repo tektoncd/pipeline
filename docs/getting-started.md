@@ -1,6 +1,6 @@
 # Getting Started with Tekton Pipelines
 
-This guide will get you started with tekton pipelines with a simple `Hello World` tutorial.
+This guide will get you started with Tekton Pipelines with a simple `Hello World` tutorial.
 This tutorial uses a simple `Hello World` example to show you how to:	
 
 - Create a `Task`	
