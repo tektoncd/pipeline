@@ -10,7 +10,7 @@ This tutorial uses a simple `Hello World` example to show you how to:
 
 ## Before you begin
 
-Before you begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+Before you begin this tutorial, make sure you have [installed and configured](install.md)
 the latest release of Tekton on your Kubernetes cluster, including the [Tekton CLI](https://github.com/tektoncd/cli). 
 
 If you would like to complete this tutorial on your local workstation, make sure you run clean profile of [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
@@ -209,7 +209,7 @@ to your desired image registry:
 
 ```bash
 kubectl create secret docker-registry regcred \
-                    --docker-server=<your-registry-server> \
+                    --docker-server=docker.io \
                     --docker-username=<your-name> \
                     --docker-password=<your-token> \
                     --docker-email=<your-email>
@@ -275,14 +275,14 @@ The output will look similar to the following:
 
 ```
 NAME                                                   AGE
-taskruns/build-docker-image-from-git-source-task-run   30s
+task.tekton.dev/build-and-push-docker-image-from-git   60m
 
-NAME                                          AGE
-pipelineresources/skaffold-git                6m
-pipelineresources/skaffold-image-leeroy-web   7m
+NAME                                                               SUCCEEDED   REASON      STARTTIME   COMPLETIONTIME
+taskrun.tekton.dev/build-and-push-docker-image-from-git-task-run   True        Succeeded   6m21s       2m50s
 
 NAME                                       AGE
-tasks/build-docker-image-from-git-source   7m
+pipelineresource.tekton.dev/whoami-git     62m
+pipelineresource.tekton.dev/whoami-image   24m
 ```
 
 To see the result of executing your `TaskRun`, use the following command:
@@ -294,33 +294,30 @@ tkn taskrun describe build-docker-image-from-git-source-task-run
 The output will look similar to the following:
 
 ```
-Name:        build-docker-image-from-git-source-task-run
+Name:        build-and-push-docker-image-from-git-task-run
 Namespace:   default
-Task Ref:    build-docker-image-from-git-source
+Task Ref:    build-and-push-docker-image-from-git
+Service Account:   tutorial-service
 
 Status
-STARTED       DURATION     STATUS
-2 hours ago   56 seconds   Succeeded
+STARTED         DURATION    STATUS
+8 minutes ago   3 minutes   Succeeded
 
 Input Resources
-NAME            RESOURCE REF
-docker-source   skaffold-git
+No resources
 
 Output Resources
-NAME         RESOURCE REF
-builtImage   skaffold-image-leeroy-web
+No resources
 
 Params
-NAME               VALUE
-pathToDockerFile   Dockerfile
-pathToContext      /workspace/docker-source/examples/microservices/leeroy-web
+No params
 
 Steps
-NAME
-build-and-push
-create-dir-builtimage-wtjh9
-git-source-skaffold-git-tck6k
-image-digest-exporter-hlbsq
+NAME                          STATUS
+build-and-push                Completed
+create-dir-builtimage-7z8tq   Completed
+git-source-whoami-git-h62j8   Completed
+image-digest-exporter-zkgqd   Completed
 ```
 
 The `Succeeded` status indicates the `Task` has completed with no errors. You
@@ -329,7 +326,7 @@ can confirm that the output Docker image has been created in the location specif
 To view detailed information about the execution of your `TaskRun`, view the logs:
 
 ```bash
-tkn taskrun logs build-docker-image-from-git-source-task-run
+tkn taskrun logs build-and-push-docker-image-from-git-task-run
 ```
 
 ## Creating and running a `Pipeline`
