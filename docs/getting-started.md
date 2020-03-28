@@ -13,7 +13,7 @@ This tutorial uses a simple `Hello World` example to show you how to:
 Before you begin this tutorial, make sure you have [installed and configured](install.md)
 the latest release of Tekton on your Kubernetes cluster, including the [Tekton CLI](https://github.com/tektoncd/cli). 
 
-If you would like to complete this tutorial on your local workstation, make sure you run clean profile of [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
+If you would like to complete this tutorial on your local workstation, install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
 
 You will need an account on [Docker Hub](https://hub.docker.com).
 
