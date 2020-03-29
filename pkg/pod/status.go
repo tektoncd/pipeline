@@ -281,7 +281,8 @@ func getFailureMessage(pod *corev1.Pod) string {
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
 		if term != nil && term.ExitCode != 0 {
-			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
+			// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+			return fmt.Sprintf(`%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n`,
 				status.Name, term.ExitCode, status.ImageID,
 				pod.Namespace, pod.Name, status.Name)
 		}
