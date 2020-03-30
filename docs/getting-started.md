@@ -120,7 +120,7 @@ spec:
     - name: revision
       value: master
     - name: url
-      value: https://github.com/containous/whoami #configure: change if you want to build something else, perhaps from your own local git repository.
+      value: https://github.com/popcor255/python-flask-docker-hello-world #configure: change if you want to build something else, perhaps from your own local git repository.
 ```
 
 The [`image` resource](resources.md#image-resource) specifies the repository to which the image built by the `Task` will be pushed:
@@ -165,7 +165,7 @@ spec:
       - name: source
         type: git
     outputs:
-      - name: builtImage
+      - name: image
         type: image
   steps:
     - name: build-and-push
@@ -177,7 +177,7 @@ spec:
         - |
           set -e
           SHORT_GIT_HASH="$(cat .git/FETCH_HEAD | awk '{print substr($1,0,7)}')"
-          NEW_IMAGE_ID="$(outputs.resources.builtImage.url):$SHORT_GIT_HASH"
+          NEW_IMAGE_ID="$(outputs.resources.image.url):$SHORT_GIT_HASH"
           NEW_IMAGE_ID="$(echo $NEW_IMAGE_ID | sed s/\$NAMESPACE/$NAMESPACE/)"
           echo "Building Image $NEW_IMAGE_ID"
           buildah bud --tls-verify="$(inputs.params.TLSVERIFY)" --layers -f "$(inputs.params.DOCKERFILE)" -t "$NEW_IMAGE_ID" "$(inputs.params.CONTEXT)"
@@ -252,7 +252,7 @@ spec:
         resourceRef:
           name: whoami-git
     outputs:
-      - name: builtImage
+      - name: image
         resourceRef:
           name: whoami-image
 ```
@@ -313,7 +313,7 @@ No params
 Steps
 NAME                          STATUS
 build-and-push                Completed
-create-dir-builtimage-7z8tq   Completed
+create-dir-image-7z8tq   Completed
 git-source-whoami-git-h62j8   Completed
 image-digest-exporter-zkgqd   Completed
 ```
@@ -343,7 +343,7 @@ metadata:
   name: tutorial-pipeline
 spec:
   resources:
-    - name: git
+    - name: source
       type: git
     - name: image
       type: image
@@ -357,27 +357,20 @@ spec:
           #configure: this will change the default value of your params in your tasks
       resources:
         inputs:
-          - name: git
+          - name: source
             resource: git
         outputs:
           - name: image
             resource: image
-    - name: deploy-web
+    - name: deploy-app
       taskRef:
         name: deploy-using-kubectl
       resources:
         inputs:
-          - name: source
-            resource: source-repo
           - name: image
-            resource: web-image
+            resource: image
             from:
-              - build-skaffold-web
-      params:
-        - name: path
-          value: /workspace/source/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
-        - name: yamlPathToImage
-          value: "spec.template.spec.containers[0].image"
+              - build-and-push-to-dockerhub
 ```
 
 The above `Pipeline` is referencing a `Task` called `deploy-using-kubectl` defined as follows:
@@ -388,37 +381,30 @@ kind: Task
 metadata:
   name: deploy-using-kubectl
 spec:
-  params:
-    - name: path
-      type: string
-      description: Path to the manifest to apply
-    - name: yamlPathToImage
-      type: string
-      description: |
-        The path to the image to replace in the yaml manifest (arg to yq)
   resources:
     inputs:
-      - name: source
-        type: git
       - name: image
         type: image
   steps:
-    - name: replace-image
-      image: mikefarah/yq
-      command: ["yq"]
+    - name: apply-inline-yaml
+      image: k3integrations/kubectl
+      command: ["/bin/bash"]
       args:
-        - "w"
-        - "-i"
-        - "$(params.path)"
-        - "$(params.yamlPathToImage)"
-        - "$(resources.inputs.image.url)"
-    - name: run-kubectl
-      image: lachlanevenson/k8s-kubectl
-      command: ["kubectl"]
-      args:
-        - "apply"
-        - "-f"
-        - "$(params.path)"
+        - -c
+        - |
+          set -e
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name:  tekton-tutorial-pod
+          spec:
+            containers:
+            - name: tekton-tutorial-pod
+              image: $(inputs.resources.image.url)
+              ports:
+                - containerPort: 80
+          EOF
 ```
 
 ### Configuring `Pipeline` execution credentials
@@ -431,7 +417,7 @@ First, create a new role called `tutorial-role`:
 ```bash
 kubectl create clusterrole tutorial-role \
                --verb=* \
-               --resource=deployments,deployments.apps
+               --resource=pods,deployments,deployments.apps
 ```
 
 Next, assign this new role to your `ServiceAccount`:
@@ -454,12 +440,12 @@ spec:
   pipelineRef:
     name: tutorial-pipeline
   resources:
-    - name: source-repo
+    - name: source
       resourceRef:
-        name: skaffold-git
-    - name: web-image
+        name: whoami-git
+    - name: image
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: whoami-image
 ```
 
 The `PipelineRun` automatically defines a corresponding `TaskRun` for each `Task` you have defined
