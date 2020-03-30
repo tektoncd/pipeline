@@ -8,13 +8,6 @@ This tutorial uses a simple `Hello World` example to show you how to:
 - Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
 - Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
 
-This tutorial uses a simple `Hello World` example to show you how to:	
-
-- Create a `Task`	
-- Create a `Pipeline` containing your `Tasks`	
-- Use a `TaskRun` to instantiate and execute a `Task` outside of a `Pipeline`	
-- Use a `PipelineRun` to instantiate and run a `Pipeline` containing your `Tasks`
-
 ## Before you begin
 
 Before you begin this tutorial, make sure you have [installed and configured](install.md)
@@ -511,6 +504,10 @@ tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours 
 
 The `Succeded` status indicates that your `PipelineRun` completed without errors.
 You can see the statuses of the individual `TaskRuns`.
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7bea1e6a626a46158aad33c0c1af3c5615adc9ae
 
 ## Further reading
 
