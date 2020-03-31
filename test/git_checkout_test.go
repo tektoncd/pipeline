@@ -43,7 +43,7 @@ const (
 func TestGitPipelineRun(t *testing.T) {
 	t.Parallel()
 
-	revisions := []string{"master", "c15aced0e5aaee6456fbe6f7a7e95e0b5b3b2b2f", "c15aced", "release-0.1", "v0.1.0", "refs/pull/347/head"}
+	revisions := []string{"master", "c15aced0e5aaee6456fbe6f7a7e95e0b5b3b2b2f", "release-0.1", "v0.1.0", "refs/pull/347/head"}
 
 	for _, revision := range revisions {
 
@@ -53,7 +53,7 @@ func TestGitPipelineRun(t *testing.T) {
 			defer tearDown(t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision, "true", "", "", "")); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision, "", "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
@@ -80,6 +80,57 @@ func TestGitPipelineRun(t *testing.T) {
 	}
 }
 
+// Test revision fetching with refspec specified
+func TestGitPipelineRunWithRefspec(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		description string
+		revision    string
+		refspec     string
+	}{{
+		description: "Fetch refs/tags/v0.1.0 alongside master and checkout the master branch",
+		revision:    "master",
+		refspec:     "refs/tags/v0.1.0:refs/tags/v0.1.0 refs/heads/master:refs/heads/master",
+	}, {
+		description: "Checkout specific revision from refs/pull/1009/head's commit chain",
+		revision:    "968d5d37a61bfb85426c885dc1090c1cc4b33436",
+		refspec:     "refs/pull/1009/head",
+	}, {
+		description: "Fetch refs/pull/1009/head into a named master branch and then check it out",
+		revision:    "master",
+		refspec:     "refs/pull/1009/head:refs/heads/master",
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			c, namespace := setup(t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+			defer tearDown(t, c, namespace)
+
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, tc.revision, tc.refspec, "true", "", "", "")); err != nil {
+				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
+			}
+
+			if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
+			}
+
+			if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
+			}
+
+			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
+			}
+
+			if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+				t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
+				t.Fatalf("PipelineRun execution failed")
+			}
+
+		})
+	}
+}
+
 // TestGitPipelineRun_Disable_SSLVerify will verify the source code is retrieved even after disabling SSL certificates (sslVerify)
 func TestGitPipelineRun_Disable_SSLVerify(t *testing.T) {
 	t.Parallel()
@@ -89,7 +140,7 @@ func TestGitPipelineRun_Disable_SSLVerify(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "false", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "false", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -124,7 +175,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey", "true", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey", "", "true", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -164,8 +215,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 								t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 							}
 							// Check for failure messages from fetch and pull in the log file
-							if strings.Contains(strings.ToLower(string(logContent)), "couldn't find remote ref idontexistrabbitmonkeydonkey") &&
-								strings.Contains(strings.ToLower(string(logContent)), "pathspec 'idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
+							if strings.Contains(strings.ToLower(string(logContent)), "couldn't find remote ref idontexistrabbitmonkeydonkey") {
 								t.Logf("Found exepected errors when retrieving non-existent git revision")
 							} else {
 								t.Logf("Container `%s` log File: %s", stat.Name, logContent)
@@ -192,7 +242,7 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "true", "", "invalid.https.proxy.com", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "true", "", "invalid.https.proxy.com", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -232,8 +282,7 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 								t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 							}
 							// Check for failure messages from fetch and pull in the log file
-							if strings.Contains(strings.ToLower(string(logContent)), "could not resolve proxy: invalid.https.proxy.com") &&
-								strings.Contains(strings.ToLower(string(logContent)), "pathspec 'master' did not match any file(s) known to git") {
+							if strings.Contains(strings.ToLower(string(logContent)), "could not resolve proxy: invalid.https.proxy.com") {
 								t.Logf("Found exepected errors when using non-existent https proxy")
 							} else {
 								t.Logf("Container `%s` log File: %s", stat.Name, logContent)
@@ -250,11 +299,12 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	}
 }
 
-func getGitPipelineResource(namespace, revision, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
+func getGitPipelineResource(namespace, revision, refspec, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),
+		tb.PipelineResourceSpecParam("Refspec", refspec),
 		tb.PipelineResourceSpecParam("sslVerify", sslverify),
 		tb.PipelineResourceSpecParam("httpProxy", httpproxy),
 		tb.PipelineResourceSpecParam("httpsProxy", httpsproxy),

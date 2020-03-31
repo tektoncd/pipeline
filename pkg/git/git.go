@@ -48,15 +48,17 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 type FetchSpec struct {
 	URL        string
 	Revision   string
+	Refspec    string
 	Path       string
 	Depth      uint
+	Submodules bool
 	SSLVerify  bool
 	HTTPProxy  string
 	HTTPSProxy string
 	NOProxy    string
 }
 
-// Fetch fetches the specified git repository at the revision into path.
+// Fetch fetches the specified git repository at the revision into path, using the refspec to fetch if provided.
 func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	if err := ensureHomeEnv(logger); err != nil {
 		return err
@@ -84,53 +86,95 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		return err
 	}
 
-	fetchArgs := []string{"fetch", "--recurse-submodules=yes"}
+	fetchArgs := []string{"fetch"}
+	if spec.Submodules {
+		fetchArgs = append(fetchArgs, "--recurse-submodules=yes")
+	}
 	if spec.Depth > 0 {
 		fetchArgs = append(fetchArgs, fmt.Sprintf("--depth=%d", spec.Depth))
 	}
-	fetchArgs = append(fetchArgs, "origin", spec.Revision)
 
-	if _, err := run(logger, "", fetchArgs...); err != nil {
-		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
-		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
-		if _, err := run(logger, "", "pull", "--recurse-submodules=yes", "origin"); err != nil {
-			logger.Warnf("Failed to pull origin : %s", err)
-		}
-		if _, err := run(logger, "", "checkout", spec.Revision); err != nil {
-			return err
-		}
-	} else if _, err := run(logger, "", "reset", "--hard", "FETCH_HEAD"); err != nil {
+	// Fetch the revision and verify with FETCH_HEAD
+	fetchParam := []string{spec.Revision}
+	checkoutParam := "FETCH_HEAD"
+
+	if spec.Refspec != "" {
+		// if refspec is specified, fetch the refspec and verify with provided revision
+		fetchParam = strings.Split(spec.Refspec, " ")
+		checkoutParam = spec.Revision
+	}
+
+	// git-init always creates and checks out an empty master branch. When the user requests
+	// "master" as the revision, git-fetch will refuse to update the HEAD of the branch it is
+	// currently on. The --update-head-ok parameter tells git-fetch that it is ok to update
+	// the current (empty) HEAD on initial fetch.
+	// The --force parameter tells git-fetch that its ok to update an existing HEAD in a
+	// non-fast-forward manner (though this cannot be possible on initial fetch, it can help
+	// when the refspec specifies the same destination twice)
+	fetchArgs = append(fetchArgs, "origin", "--update-head-ok", "--force")
+	fetchArgs = append(fetchArgs, fetchParam...)
+	if _, err := run(logger, spec.Path, fetchArgs...); err != nil {
+		return fmt.Errorf("failed to fetch %v: %v", fetchParam, err)
+	}
+	// After performing a fetch, verify that the item to checkout is actually valid
+	if _, err := ShowCommit(logger, checkoutParam, spec.Path); err != nil {
+		return fmt.Errorf("error parsing %s after fetching refspec %s", checkoutParam, spec.Refspec)
+	}
+
+	if _, err := run(logger, "", "checkout", "-f", checkoutParam); err != nil {
 		return err
 	}
-	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, spec.Revision, spec.Path)
+
+	commit, err := ShowCommit(logger, "HEAD", spec.Path)
+	if err != nil {
+		return err
+	}
+	ref, err := ShowRef(logger, "HEAD", spec.Path)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Successfully cloned %s @ %s (%s) in path %s", trimmedURL, commit, ref, spec.Path)
+	if spec.Submodules {
+		if err := SubmoduleFetch(logger, spec); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func Commit(logger *zap.SugaredLogger, revision, path string) (string, error) {
-	output, err := run(logger, path, "rev-parse", "HEAD")
+func ShowCommit(logger *zap.SugaredLogger, revision, path string) (string, error) {
+	output, err := run(logger, path, "show", "-q", "--pretty=format:%H", revision)
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimSuffix(output, "\n"), nil
 }
 
-func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
-	if err := ensureHomeEnv(logger); err != nil {
-		return err
+func ShowRef(logger *zap.SugaredLogger, revision, path string) (string, error) {
+	output, err := run(logger, path, "show", "-q", "--pretty=format:%D", revision)
+	if err != nil {
+		return "", err
 	}
+	return strings.TrimSuffix(output, "\n"), nil
+}
 
-	if path != "" {
-		if err := os.Chdir(path); err != nil {
-			return fmt.Errorf("failed to change directory with path %s; err: %w", path, err)
+func SubmoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
+	if spec.Path != "" {
+		if err := os.Chdir(spec.Path); err != nil {
+			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
 		}
 	}
 	if _, err := run(logger, "", "submodule", "init"); err != nil {
 		return err
 	}
-	if _, err := run(logger, "", "submodule", "update", "--recursive"); err != nil {
+	updateArgs := []string{"submodule", "update", "--recursive"}
+	if spec.Depth > 0 {
+		updateArgs = append(updateArgs, "--depth", fmt.Sprintf("--depth=%d", spec.Depth))
+	}
+	if _, err := run(logger, "", updateArgs...); err != nil {
 		return err
 	}
-	logger.Infof("Successfully initialized and updated submodules in path %s", path)
+	logger.Infof("Successfully initialized and updated submodules in path %s", spec.Path)
 	return nil
 }
 
