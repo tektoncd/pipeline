@@ -90,13 +90,13 @@ func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.Sugare
 		}
 
 		// Send the event.
-		err := ceclient.Send(cloudevents.ContextWithTarget(context.Background(), cloudEventDelivery.Target), *event)
+		result := ceclient.Send(cloudevents.ContextWithTarget(context.Background(), cloudEventDelivery.Target), *event)
 
 		// Record the result.
 		eventStatus.SentAt = &metav1.Time{Time: time.Now()}
 		eventStatus.RetryCount++
-		if err != nil {
-			merr = multierror.Append(merr, err)
+		if !cloudevents.IsACK(result) {
+			merr = multierror.Append(merr, result)
 			eventStatus.Condition = v1alpha1.CloudEventConditionFailed
 			eventStatus.Error = merr.Error()
 		} else {
