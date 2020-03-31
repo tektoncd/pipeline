@@ -313,19 +313,53 @@ Params that can be added are the following:
     change the repo, e.g. [to use a fork](#using-a-fork)
 1.  `revision`: Git [revision][git-rev] (branch, tag, commit SHA or ref) to
     clone. You can use this to control what commit [or branch](#using-a-branch)
-    is used. _If no revision is specified, the resource will default to `latest`
-    from `master`._
+    is used. [git checkout][git-checkout] is used to switch to the
+    revision, and will result in a detached HEAD in most cases. Use refspec
+    along with revision if you want to checkout a particular branch without a
+    detached HEAD. _If no revision is specified, the resource will default to `master`._
+1.  `refspec`: (Optional) specify a git [refspec][git-refspec] to pass to git-fetch.
+     Note that if this field is specified, it must specify all refs, branches, tags,
+     or commits required to checkout the specified `revision`. An additional fetch
+     will not be run to obtain the contents of the revision field. If no refspec
+     is specified, the value of the `revision` field will be fetched directly.
+     The refspec is useful in manipulating the repository in several cases:
+     * when the server does not support fetches via the commit SHA (i.e. does
+       not have `uploadpack.allowReachableSHA1InWant` enabled) and you want
+       to fetch and checkout a specific commit hash from a ref chain.
+     * when you want to fetch several other refs alongside your revision
+       (for instance, tags)
+     * when you want to checkout a specific branch, the revision and refspec
+       fields can work together to be able to set the destination of the incoming
+       branch and switch to the branch.
+
+        Examples:
+         - Check out a specified revision commit SHA1 after fetching ref (detached) <br>
+           &nbsp;&nbsp;`revision`: cb17eba165fe7973ef9afec20e7c6971565bd72f <br>
+           &nbsp;&nbsp;`refspec`: refs/smoke/myref <br>
+         - Fetch all tags alongside refs/heads/master and switch to the master branch
+           (not detached) <br>
+           &nbsp;&nbsp;`revision`: master <br>
+           &nbsp;&nbsp;`refspec`: "refs/tags/\*:refs/tags/\* +refs/heads/master:refs/heads/master"<br>
+         - Fetch the develop branch and switch to it (not detached) <br>
+           &nbsp;&nbsp;`revision`: develop <br>
+           &nbsp;&nbsp;`refspec`: refs/heads/develop:refs/heads/develop <br>
+         - Fetch refs/pull/1009/head into the master branch and switch to it (not detached) <br>
+           &nbsp;&nbsp;`revision`: master <br>
+           &nbsp;&nbsp;`refspec`: refs/pull/1009/head:refs/heads/master <br>
+
 1.  `submodules`: defines if the resource should initialize and fetch the
     submodules, value is either `true` or `false`. _If not specified, this will
     default to true_
 1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
-    commit(s) will be fetched. If set to `'0'`, all commits will be fetched. _If
-    not specified, the default depth is 1._
+    commit(s) will be fetched. This setting also applies to submodules. If set to
+     `'0'`, all commits will be fetched. _If not specified, the default depth is 1._
 1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set
     to `true` or `false` in the global git config. _Defaults to `true` if
     omitted._
 
 [git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
+[git-checkout]: https://git-scm.com/docs/git-checkout
+[git-refspec]: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 [git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
 [git-http.sslVerify]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify
 
