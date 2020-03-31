@@ -9,10 +9,10 @@ import (
 	"github.com/cloudevents/sdk-go/v2/event/datacodec/xml"
 )
 
-// Decoder is the expected function signature for decoding `in` to `out`. What
-// `in` is could be decoder dependent. For example, `in` could be bytes, or a
-// base64 string.
-type Decoder func(ctx context.Context, in, out interface{}) error
+// Decoder is the expected function signature for decoding `in` to `out`.
+// If Event sent the payload as base64, Decoder assumes that `in` is the
+// decoded base64 byte array.
+type Decoder func(ctx context.Context, in []byte, out interface{}) error
 
 // Encoder is the expected function signature for encoding `in` to bytes.
 // Returns an error if the encoder has an issue encoding `in`.
@@ -55,7 +55,7 @@ func AddEncoder(contentType string, fn Encoder) {
 // Decode looks up and invokes the decoder registered for the given content
 // type. An error is returned if no decoder is registered for the given
 // content type.
-func Decode(ctx context.Context, contentType string, in, out interface{}) error {
+func Decode(ctx context.Context, contentType string, in []byte, out interface{}) error {
 	if fn, ok := decoder[contentType]; ok {
 		return fn(ctx, in, out)
 	}

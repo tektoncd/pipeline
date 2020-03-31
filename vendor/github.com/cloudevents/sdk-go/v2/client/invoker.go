@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudevents/sdk-go/v2/binding"
+	cecontext "github.com/cloudevents/sdk-go/v2/context"
 	"github.com/cloudevents/sdk-go/v2/protocol"
 )
 
@@ -57,7 +58,7 @@ func (r *receiveInvoker) Invoke(ctx context.Context, m binding.Message, respFn p
 			}
 			// Validate the event conforms to the CloudEvents Spec.
 			if verr := resp.Validate(); verr != nil {
-				return fmt.Errorf("cloudevent validation failed on response event: %v, %w", verr, err)
+				cecontext.LoggerFrom(ctx).Error(fmt.Errorf("cloudevent validation failed on response event: %v, %w", verr, err))
 			}
 		}
 		if respFn != nil {

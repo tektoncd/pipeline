@@ -5,6 +5,7 @@ import (
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/cloudevents/sdk-go/v2/extensions"
 	"github.com/cloudevents/sdk-go/v2/observability"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 	"go.opencensus.io/trace"
 )
 
@@ -42,7 +43,7 @@ func (c *obsClient) applyOptions(opts ...Option) error {
 // Send transmits the provided event on a preconfigured Protocol. Send returns
 // an error if there was an an issue validating the outbound event or the
 // transport returns an error.
-func (c *obsClient) Send(ctx context.Context, e event.Event) error {
+func (c *obsClient) Send(ctx context.Context, e event.Event) protocol.Result {
 	ctx, r := observability.NewReporter(ctx, reportSend)
 	ctx, span := trace.StartSpan(ctx, observability.ClientSpanName, trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
@@ -55,17 +56,17 @@ func (c *obsClient) Send(ctx context.Context, e event.Event) error {
 		extensions.FromSpanContext(span.SpanContext()).AddTracingAttributes(&e)
 	}
 
-	err := c.client.Send(ctx, e)
+	result := c.client.Send(ctx, e)
 
-	if err != nil {
-		r.Error()
-	} else {
+	if protocol.IsACK(result) {
 		r.OK()
+	} else {
+		r.Error()
 	}
-	return err
+	return result
 }
 
-func (c *obsClient) Request(ctx context.Context, e event.Event) (*event.Event, error) {
+func (c *obsClient) Request(ctx context.Context, e event.Event) (*event.Event, protocol.Result) {
 	ctx, r := observability.NewReporter(ctx, reportRequest)
 	ctx, span := trace.StartSpan(ctx, observability.ClientSpanName, trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
@@ -73,14 +74,15 @@ func (c *obsClient) Request(ctx context.Context, e event.Event) (*event.Event, e
 		span.AddAttributes(EventTraceAttributes(&e)...)
 	}
 
-	resp, err := c.client.Request(ctx, e)
+	resp, result := c.client.Request(ctx, e)
 
-	if err != nil {
-		r.Error()
-	} else {
+	if protocol.IsACK(result) {
 		r.OK()
+	} else {
+		r.Error()
 	}
-	return resp, err
+
+	return resp, result
 }
 
 // StartReceiver sets up the given fn to handle Receive.

@@ -6,7 +6,7 @@ import (
 )
 
 // DecodeObserved calls Decode and records the results.
-func DecodeObserved(ctx context.Context, in, out interface{}) error {
+func DecodeObserved(ctx context.Context, in []byte, out interface{}) error {
 	_, r := observability.NewReporter(ctx, reportDecode)
 	err := Decode(ctx, in, out)
 	if err != nil {

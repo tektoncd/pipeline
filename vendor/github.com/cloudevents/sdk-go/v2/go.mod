@@ -10,14 +10,15 @@ require (
 	github.com/gorilla/mux v1.6.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lightstep/tracecontext.go v0.0.0-20181129014701-1757c391b1ac
-	github.com/nats-io/nats-server/v2 v2.1.2
+	github.com/nats-io/nats-streaming-server v0.17.0 // indirect
 	github.com/nats-io/nats.go v1.9.1
+	github.com/nats-io/stan.go v0.6.0
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.5.1
 	github.com/valyala/bytebufferpool v1.0.0
 	go.opencensus.io v0.22.0
 	go.uber.org/zap v1.10.0
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	google.golang.org/api v0.15.0
 	google.golang.org/grpc v1.26.0
 	pack.ag/amqp v0.11.0

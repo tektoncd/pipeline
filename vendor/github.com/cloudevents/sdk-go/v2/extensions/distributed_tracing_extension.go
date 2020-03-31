@@ -87,17 +87,19 @@ func (d DistributedTracingExtension) ToSpanContext() (trace.SpanContext, error) 
 		SpanID:  tp.SpanID,
 	}
 	if tp.Flags.Recorded {
-		sc.TraceOptions &= 1
+		sc.TraceOptions |= 1
 	}
 
 	if ts, err := tracestate.ParseString(d.TraceState); err == nil {
 		entries := make([]octs.Entry, 0, len(ts))
 		for _, member := range ts {
 			var key string
-			if member.Vendor != "" {
-				key = member.Tenant + "@" + member.Vendor
+			if member.Tenant != "" {
+				// Due to github.com/lightstep/tracecontext.go/issues/6,
+				// the meaning of Vendor and Tenant are swapped here.
+				key = member.Vendor + "@" + member.Tenant
 			} else {
-				key = member.Tenant
+				key = member.Vendor
 			}
 			entries = append(entries, octs.Entry{Key: key, Value: member.Value})
 		}

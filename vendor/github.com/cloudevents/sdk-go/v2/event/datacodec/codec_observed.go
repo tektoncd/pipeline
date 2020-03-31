@@ -26,7 +26,7 @@ func SetObservedCodecs() {
 }
 
 // DecodeObserved calls Decode and records the result.
-func DecodeObserved(ctx context.Context, contentType string, in, out interface{}) error {
+func DecodeObserved(ctx context.Context, contentType string, in []byte, out interface{}) error {
 	_, r := observability.NewReporter(ctx, reportDecode)
 	err := Decode(ctx, contentType, in, out)
 	if err != nil {

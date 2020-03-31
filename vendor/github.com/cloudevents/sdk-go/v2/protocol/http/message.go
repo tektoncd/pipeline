@@ -61,7 +61,8 @@ func NewMessageFromHttpResponse(resp *nethttp.Response) *Message {
 	if resp == nil {
 		return nil
 	}
-	return NewMessage(resp.Header, resp.Body)
+	msg := NewMessage(resp.Header, resp.Body)
+	return msg
 }
 
 func (m *Message) ReadEncoding() binding.Encoding {
@@ -125,7 +126,5 @@ func (m *Message) Finish(err error) error {
 	if m.OnFinish != nil {
 		return m.OnFinish(err)
 	}
-	// TODO: if in binary mode, there could be nothing in this request or
-	// response. Meaning Message is not nil but never going to be a valid event.
 	return nil
 }

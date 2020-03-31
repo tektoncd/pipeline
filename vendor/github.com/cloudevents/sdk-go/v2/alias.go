@@ -22,6 +22,7 @@ type Client = client.Client
 // Event
 
 type Event = event.Event
+type Result = protocol.Result
 
 // Context
 
@@ -93,6 +94,21 @@ var (
 	WithUUIDs            = client.WithUUIDs
 	WithTimeNow          = client.WithTimeNow
 	WithTracePropagation = client.WithTracePropagation()
+
+	// Results
+
+	ResultIs = protocol.ResultIs
+	ResultAs = protocol.ResultAs
+
+	// Receipt helpers
+
+	NewReceipt = protocol.NewReceipt
+
+	ResultACK  = protocol.ResultACK
+	ResultNACK = protocol.ResultNACK
+
+	IsACK  = protocol.IsACK
+	IsNACK = protocol.IsNACK
 
 	// Event Creation
 
