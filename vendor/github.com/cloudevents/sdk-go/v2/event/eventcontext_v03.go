@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"fmt"
+	"mime"
 	"sort"
 	"strings"
 
@@ -31,7 +32,6 @@ type EventContextV03 struct {
 	// DataSchema - A link to the schema that the `data` attribute adheres to.
 	SchemaURL *types.URIRef `json:"schemaurl,omitempty"`
 	// GetDataMediaType - A MIME (RFC2046) string describing the media type of `data`.
-	// TODO: Should an empty string assume `application/json`, `application/octet-stream`, or auto-detect the content?
 	DataContentType *string `json:"datacontenttype,omitempty"`
 	// DeprecatedDataContentEncoding describes the content encoding for the `data` attribute. Valid: nil, `Base64`.
 	DataContentEncoding *string `json:"datacontentencoding,omitempty"`
@@ -237,8 +237,12 @@ func (ec EventContextV03) Validate() error {
 	if ec.DataContentType != nil {
 		dataContentType := strings.TrimSpace(*ec.DataContentType)
 		if dataContentType == "" {
-			// TODO: need to test for RFC 2046
 			errors = append(errors, "datacontenttype: if present, MUST adhere to the format specified in RFC 2046")
+		} else {
+			_, _, err := mime.ParseMediaType(dataContentType)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("datacontenttype: failed to parse RFC 2046 media type, %s", err.Error()))
+			}
 		}
 	}
 
@@ -251,7 +255,6 @@ func (ec EventContextV03) Validate() error {
 	if ec.DataContentEncoding != nil {
 		dataContentEncoding := strings.ToLower(strings.TrimSpace(*ec.DataContentEncoding))
 		if dataContentEncoding != Base64 {
-			// TODO: need to test for RFC 2046
 			errors = append(errors, "datacontentencoding: if present, MUST adhere to RFC 2045 Section 6.1")
 		}
 	}

@@ -11,7 +11,10 @@ import (
 type Event struct {
 	Context     EventContext
 	DataEncoded []byte
-	DataBinary  bool
+	// DataBase64 indicates if the event, when serialized, represents
+	// the data field using the base64 encoding.
+	// In v0.3, this field is superseded by DataContentEncoding
+	DataBase64  bool
 	FieldErrors map[string]error
 }
 
@@ -102,7 +105,7 @@ func (e Event) String() string {
 	b.WriteString(e.Context.String())
 
 	if e.DataEncoded != nil {
-		if e.DataBinary {
+		if e.DataBase64 {
 			b.WriteString("Data (binary),\n  ")
 		} else {
 			b.WriteString("Data,\n  ")
@@ -129,7 +132,7 @@ func (e Event) Clone() Event {
 	out := Event{}
 	out.Context = e.Context.Clone()
 	out.DataEncoded = cloneBytes(e.DataEncoded)
-	out.DataBinary = e.DataBinary
+	out.DataBase64 = e.DataBase64
 	out.FieldErrors = e.cloneFieldErrors()
 	return out
 }

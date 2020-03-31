@@ -50,12 +50,12 @@ type EventReader interface {
 
 	// Data Attribute
 
-	// Data returns the raw data buffer, it might be encoded depending on data
-	// content type.
+	// Data returns the raw data buffer
+	// If the event was encoded with base64 encoding, Data returns the already decoded
+	// byte array
 	Data() []byte
 
 	// DataAs attempts to populate the provided data object with the event payload.
-	// data should be a pointer type.
 	DataAs(interface{}) error
 }
 
@@ -90,5 +90,8 @@ type EventWriter interface {
 	SetExtension(string, interface{})
 
 	// SetData encodes the given payload with the given content type.
+	// If the provided payload is a byte array, when marshalled to json it will be encoded as base64.
+	// If the provided payload is different from byte array, datacodec.Encode is invoked to attempt a
+	// marshalling to byte array.
 	SetData(string, interface{}) error
 }

@@ -46,7 +46,7 @@ type Protocol struct {
 	// http server. If nil, the Protocol will create a one.
 	Handler           *http.ServeMux
 	listener          net.Listener
-	roundTripper      http.RoundTripper // TODO: use this.
+	roundTripper      http.RoundTripper
 	server            *http.Server
 	handlerRegistered bool
 	middleware        []Middleware
@@ -63,6 +63,10 @@ func New(opts ...Option) (*Protocol, error) {
 
 	if p.Client == nil {
 		p.Client = http.DefaultClient
+	}
+
+	if p.roundTripper != nil {
+		p.Client.Transport = p.roundTripper
 	}
 
 	if p.ShutdownTimeout == nil {
@@ -116,13 +120,17 @@ func (p *Protocol) Request(ctx context.Context, m binding.Message) (binding.Mess
 	}
 	resp, err := p.Client.Do(req)
 	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode/100 != 2 {
-		return nil, fmt.Errorf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		return nil, protocol.NewReceipt(false, "%w", err)
 	}
 
-	return NewMessage(resp.Header, resp.Body), nil
+	var result protocol.Result
+	if resp.StatusCode/100 == 2 {
+		result = protocol.ResultACK
+	} else {
+		result = protocol.ResultNACK
+	}
+
+	return NewMessage(resp.Header, resp.Body), NewResult(resp.StatusCode, "%w", result)
 }
 
 func (p *Protocol) makeRequest(ctx context.Context) *http.Request {
@@ -235,21 +243,21 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	var fn protocol.ResponseFn = func(ctx context.Context, resp binding.Message, er protocol.Result) error {
-		if resp != nil {
-			status := http.StatusOK
-			if er != nil {
-				var result *Result
-				if protocol.ResultAs(er, &result) {
-					if result.Status > 100 && result.Status < 600 {
-						status = result.Status
-					}
+
+		status := http.StatusOK
+		if er != nil {
+			var result *Result
+			if protocol.ResultAs(er, &result) {
+				if result.StatusCode > 100 && result.StatusCode < 600 {
+					status = result.StatusCode
 				}
 			}
-
+		}
+		if resp != nil {
 			err := WriteResponseWriter(ctx, resp, status, rw, p.transformers)
 			return resp.Finish(err)
 		}
-
+		rw.WriteHeader(status)
 		return nil
 	}
 

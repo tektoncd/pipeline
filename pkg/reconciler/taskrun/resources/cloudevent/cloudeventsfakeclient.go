@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 )
 
 // FakeClientBehaviour defines how the client will behave
@@ -46,7 +47,7 @@ func NewFakeClient(behaviour *FakeClientBehaviour) cloudevents.Client {
 var _ cloudevents.Client = (*FakeClient)(nil)
 
 // Send fakes the Send method from cloudevents.Client
-func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) error {
+func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) protocol.Result {
 	c.event = event
 	if c.behaviour.SendSuccessfully {
 		return nil
@@ -55,7 +56,7 @@ func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) error {
 }
 
 // Request fakes the Request method from cloudevents.Client
-func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, error) {
+func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, protocol.Result) {
 	c.event = event
 	if c.behaviour.SendSuccessfully {
 		return &event, nil

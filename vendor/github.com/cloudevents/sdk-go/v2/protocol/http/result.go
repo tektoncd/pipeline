@@ -9,19 +9,19 @@ import (
 
 // NewResult returns a fully populated http Result that should be used as
 // a transport.Result.
-func NewResult(status int, messageFmt string, args ...interface{}) protocol.Result {
+func NewResult(statusCode int, messageFmt string, args ...interface{}) protocol.Result {
 	return &Result{
-		Status: status,
-		Format: messageFmt,
-		Args:   args,
+		StatusCode: statusCode,
+		Format:     messageFmt,
+		Args:       args,
 	}
 }
 
 // Result wraps the fields required to make adjustments for http Responses.
 type Result struct {
-	Status int
-	Format string
-	Args   []interface{}
+	StatusCode int
+	Format     string
+	Args       []interface{}
 }
 
 // make sure Result implements error.
@@ -30,7 +30,7 @@ var _ error = (*Result)(nil)
 // Is returns if the target error is a Result type checking target.
 func (e *Result) Is(target error) bool {
 	if o, ok := target.(*Result); ok {
-		if e.Status == o.Status {
+		if e.StatusCode == o.StatusCode {
 			return true
 		}
 		return false
@@ -43,5 +43,5 @@ func (e *Result) Is(target error) bool {
 // Error returns the string that is formed by using the format string with the
 // provided args.
 func (e *Result) Error() string {
-	return fmt.Sprintf(e.Format, e.Args...)
+	return fmt.Sprintf("%d: %s", e.StatusCode, fmt.Sprintf(e.Format, e.Args...))
 }

@@ -1,10 +1,12 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/cloudevents/sdk-go/v2/binding/format"
@@ -33,31 +35,16 @@ func WriteResponseWriter(ctx context.Context, m binding.Message, status int, rw 
 type httpResponseWriter struct {
 	rw     http.ResponseWriter
 	status int
+	body   io.Reader
 }
 
 func (b *httpResponseWriter) SetStructuredEvent(ctx context.Context, format format.Format, event io.Reader) error {
 	b.rw.Header().Set(ContentType, format.MediaType())
-	return b.SetData(event)
+	b.body = event
+	return b.finalizeWriter()
 }
 
 func (b *httpResponseWriter) Start(ctx context.Context) error {
-	return nil
-}
-
-func (b *httpResponseWriter) End(ctx context.Context) error {
-	return nil
-}
-
-func (b *httpResponseWriter) SetData(reader io.Reader) error {
-	// Finalize the headers.
-	b.rw.WriteHeader(b.status)
-
-	// Write body.
-	copied, err := io.Copy(b.rw, reader)
-	if err != nil {
-		return err
-	}
-	b.rw.Header().Set("Content-Length", strconv.FormatInt(copied, 10))
 	return nil
 }
 
@@ -84,6 +71,47 @@ func (b *httpResponseWriter) SetExtension(name string, value interface{}) error 
 	}
 	b.rw.Header().Add(prefix+name, s)
 	return nil
+}
+
+func (b *httpResponseWriter) SetData(reader io.Reader) error {
+	b.body = reader
+	return nil
+}
+
+func (b *httpResponseWriter) finalizeWriter() error {
+	if b.body != nil {
+		// Try to figure it out if we have a content-length
+		contentLength := -1
+		switch v := b.body.(type) {
+		case *bytes.Buffer:
+			contentLength = v.Len()
+		case *bytes.Reader:
+			contentLength = v.Len()
+		case *strings.Reader:
+			contentLength = v.Len()
+		}
+
+		if contentLength != -1 {
+			b.rw.Header().Add("Content-length", strconv.Itoa(contentLength))
+		}
+
+		// Finalize the headers.
+		b.rw.WriteHeader(b.status)
+
+		// Write body.
+		_, err := io.Copy(b.rw, b.body)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Finalize the headers.
+		b.rw.WriteHeader(b.status)
+	}
+	return nil
+}
+
+func (b *httpResponseWriter) End(ctx context.Context) error {
+	return b.finalizeWriter()
 }
 
 var _ binding.StructuredWriter = (*httpResponseWriter)(nil) // Test it conforms to the interface

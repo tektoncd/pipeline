@@ -137,7 +137,6 @@ func (ec EventContextV1) AsV03() *EventContextV03 {
 		ret.SchemaURL = &types.URIRef{URL: ec.DataSchema.URL}
 	}
 
-	// TODO: DeprecatedDataContentEncoding needs to be moved to extensions.
 	if ec.Extensions != nil {
 		for k, v := range ec.Extensions {
 			k = strings.ToLower(k)
@@ -216,7 +215,7 @@ func (ec EventContextV1) Validate() error {
 		} else {
 			_, _, err := mime.ParseMediaType(dataContentType)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("datacontenttype: failed to parse media type, %s", err.Error()))
+				errors = append(errors, fmt.Sprintf("datacontenttype: failed to parse RFC 2046 media type, %s", err.Error()))
 			}
 		}
 	}

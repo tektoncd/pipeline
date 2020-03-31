@@ -6,10 +6,9 @@ require (
 	cloud.google.com/go v0.47.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
-	github.com/cloudevents/sdk-go/v2 v2.0.0-preview6
+	github.com/cloudevents/sdk-go/v2 v2.0.0-preview8
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.4 // indirect
-	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/go-cmp v0.4.0
 	github.com/google/go-containerregistry v0.0.0-20200115214256-379933c9c22b
@@ -28,7 +27,6 @@ require (
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.7.0 // indirect
-	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
