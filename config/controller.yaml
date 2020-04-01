@@ -44,16 +44,16 @@ spec:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
-          "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
-          "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
+          "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-nop-image", "tianon/true",
           "-shell-image", "busybox",
           "-gsutil-image", "google/cloud-sdk",
-          "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
-          "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
-          "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
         ]
         volumeMounts:
         - name: config-logging
