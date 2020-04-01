@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "PipelineResources"
-weight: 5
+weight: 6
 ---
 -->
 # PipelineResources

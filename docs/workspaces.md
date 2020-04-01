@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Workspaces"
+weight: 5
+---
+-->
 # Workspaces
 
 - [Overview](#overview)
