@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Pipeline Metrics"
-weight: 13
+weight: 14
 ---
 -->
 # Pipeline Controller Metrics
