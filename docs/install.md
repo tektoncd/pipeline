@@ -6,7 +6,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 * [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
 * [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
 * [Configuring artifact storage](#configuring-artifact-storage)
-* [Customizing basic execution parameters](#configuring-basic-execution-parameters)
+* [Customizing basic execution parameters](#customizing-basic-execution-parameters)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
 * [Next steps](#next-steps)
 
