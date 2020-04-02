@@ -24,9 +24,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	pkgleaderelection "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
@@ -128,8 +130,11 @@ func main() {
 		serviceName = "tekton-pipelines-webhook"
 	}
 
+	// Scope informers to the webhook's namespace instead of cluster-wide
+	ctx := injection.WithNamespaceScope(signals.NewContext(), system.GetNamespace())
+
 	// Set up a signal context with our webhook options
-	ctx := webhook.WithOptions(signals.NewContext(), webhook.Options{
+	ctx = webhook.WithOptions(ctx, webhook.Options{
 		ServiceName: serviceName,
 		Port:        8443,
 		SecretName:  "webhook-certs",
