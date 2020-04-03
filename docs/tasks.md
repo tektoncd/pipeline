@@ -8,24 +8,22 @@ weight: 1
 
 - [Overview](#overview)
 - [Configuring a `Task`](#configuring-a-task)
-  - [`Task` vs. `ClusterTask`](#task-vs-clustertask]
+  - [`Task` vs. `ClusterTask`](#task-vs-clustertask)
   - [Defining `Steps`](#defining-steps)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
-    - [Specifying inputs](#specifying-inputs)
-    - [Specifying outputs](#specifying-outputs)
-  - [Specifying `Workspaces`](#configuring-workspaces)
+  - [Specifying `Workspaces`](#specifying-workspaces)
   - [Storing execution results](#storing-execution-results)
-  - [Specifying `Volumes`](#configuring-volumes)
+  - [Specifying `Volumes`](#specifying-volumes)
   - [Specifying a `Step` template](#specifying-a-step-template)
-  - [Using `Sidecars`](#using-sidecars)
+  - [Specifying `Sidecars`](#specifying-sidecars)
   - [Adding a description](#adding-a-description)
   - [Using variable substitution](#using-variable-substitution)
     - [Substituting parameters and resources](#substituting-parameters-and-resources)
     - [Substituting `Array` parameters](#substituting-array-parameters)
     - [Substituting `Workspace` paths](#substituting-workspace-paths)
-    - [Substituting `Volume` names and types](#substituting-volume-names-and-paths)
+    - [Substituting `Volume` names and types](#substituting-volume-names-and-types)
 - [Code examples](#code-examples)
   - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
   - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
@@ -46,10 +44,10 @@ namespace, while a `ClusterTask` is available across the entire cluster.
 A `Task` declaration includes the following elements:
 
 - [Parameters](#specifying-parameters)
-- [Resources](#speciying-resources)
+- [Resources](#specifying-resources)
 - [Steps](#defining-steps)
-- [Workspaces](#configuring-workspaces)
-- [Results](#obtaining-results)
+- [Workspaces](#specifying-workspaces)
+- [Results](#storing-execution-results)
 
 ## Configuring a `Task`
 
@@ -66,17 +64,16 @@ A `Task` definition supports the following fields:
   - [`steps`](#defining-steps) - Specifies one or more container images to run in the `Task`.
 - Optional:
   - [`description`](#adding-a-description) - An informative description of the `Task`.
-  - [`params`](#parameters) - Specifies execution parameters for the `Task`.
-  - [`resources`](#resources) - **alpha only** Specifies
-    [`PipelineResources`](resources.md) needed or created by your
-    `Task`.
-    - [`inputs`](#inputs-resources) - Specifies the resources ingested by the `Task`.
-    - [`outputs`](#outputs-resources) - Specifies the resources produced by the `Task`.
-  - [`workspaces`](#workspaces) - Specifies paths to volumes required by the `Task`.
-  - [`results`](#results) - Specifies the file to which the `Tasks` writes its execution results.
-  - [`volumes`](#volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
-  - [`stepTemplate`](#step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
-  - [`sidecars`](#sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task.
+  - [`params`](#specifying-parameters) - Specifies execution parameters for the `Task`.
+  - [`resources`](#specifying-resources) - **alpha only** Specifies
+    [`PipelineResources`](resources.md) needed or created by your`Task`.
+    - [`inputs`](#specifying-resources) - Specifies the resources ingested by the `Task`.
+    - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
+  - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
+  - [`results`](#storing-execution-results) - Specifies the file to which the `Tasks` writes its execution results.
+  - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
+  - [`stepTemplate`](#specifying-a-step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
+  - [`sidecars`](#specifying-sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -291,7 +288,7 @@ spec:
       value: "http://google.com"
 ```
 
-### Specifying resources
+### Specifying `Resources`
 
 A `Task` definition can specify input and output resources supplied by
 a `[`PipelineResources`](resources.md#using-resources) entity.
