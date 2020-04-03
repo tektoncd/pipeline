@@ -40,7 +40,7 @@ weight: 1
 
 A `Task` is a collection of `Steps` that you
 define and arrange in a specific order of execution as part of your continuous integration flow. 
-A `Task` executes on a Pod on your Kubernetes cluster. A `Task` is available within a specific
+A `Task` executes as a Pod on your Kubernetes cluster. A `Task` is available within a specific
 namespace, while a `ClusterTask` is available across the entire cluster.
 
 A `Task` declaration includes the following elements:
@@ -125,9 +125,10 @@ A `ClusterTask` is a `Task` scoped to the entire cluster instead of a single nam
 A `ClusterTask` behaves identically to a `Task` and therefore everything in this document
 applies to both.
 
-**Note:** When using a `ClusterTask`, you must add a `TaskRef`. 
+**Note:** When using a `ClusterTask`, you must explicitly set the `kind` sub-field in the `taskRef` field to `ClusterTask`.
+          If not specified, the `kind` sub-field defaults to `Task.` 
 
-Below is an example of a `ClusterTask` declaration:
+Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -148,14 +149,15 @@ spec:
 
 A `Step` is a reference to a container image that executes a specific tool on a
 specific input and produces a specific output. To add `Steps` to a `Task` you
-define one or more `steps` fields (required). The order in which the `steps` fields
-appear in the `Task` is the order in which they will execute.
+define a `steps` field (required) containing a list of desired `Steps`. The order in
+which the `Steps` appear in this list is the order in which they will execute.
 
 The following requirements apply to each container image referenced in a `steps` field:
 
 - The container image must abide by the [container contract](./container-contract.md). 
 - Each container image runs to completion or until the first failure occurs.
-- The CPU, memory, and ephemeral storage resource requests will be set to zero
+- The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
+  specified, the minimums set through `LimitRanges` in that `Namespace`,
   if the container image does not have the largest resource request out of all
   container images in the `Task.` This ensures that the Pod that executes the `Task`
   only requests enough resources to run a single container image in the `Task` rather
@@ -249,7 +251,7 @@ The following example illustrates the use of `Parameters` in a `Task`. The `Task
 (of type `array`) and `someURL` (of type `string`), and uses them in the `steps.args` list. You can expand parameters of type `array`
 inside an existing array using the star operator. In this example, `flags` contains the star operator: `$(params.flags[*])`.
 
-**Note:** Input parameters declared as `$(params.foo)` are subject to [variable substitution](#using-variable-substitution).
+**Note:** Input parameter values can be used as variables throughout the `Task` by using [variable substitution](#using-variable-substitution).
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
