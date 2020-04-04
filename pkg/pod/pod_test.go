@@ -731,6 +731,54 @@ script-heredoc-randomly-generated-78c5n
 				TerminationMessagePath: "/tekton/termination",
 			}},
 		},
+	}, {
+		desc: "using hostNetwork",
+		ts: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "use-my-hostNetwork",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
+						},
+					},
+				},
+			},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			PodTemplate: &v1alpha1.PodTemplate{
+				HostNetwork: true,
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			HostNetwork:    true,
+			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
+			Containers: []corev1.Container{{
+				Name:    "step-use-my-hostNetwork",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
