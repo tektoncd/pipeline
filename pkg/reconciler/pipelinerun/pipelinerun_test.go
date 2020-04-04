@@ -1682,6 +1682,87 @@ func ensurePVCCreated(t *testing.T, clients test.Clients, name, namespace string
 	}
 }
 
+// TestReconcileWithVolumeClaimTemplateWorkspace tests that given a pipeline with volumeClaimTemplate workspace,
+// a PVC is created and that the workspace appears as a PersistentVolumeClaim workspace for TaskRuns.
+func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
+	workspaceName := "ws1"
+	claimName := "myclaim"
+	pipelineRunName := "test-pipeline-run"
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName)),
+		tb.PipelineTask("hello-world-2", "hello-world"),
+		tb.PipelineWorkspaceDeclaration(workspaceName),
+	))}
+
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(pipelineRunName, "foo",
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName, claimName))),
+	}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected PVC was created
+	pvcNames := make([]string, 0)
+	for _, a := range clients.Kube.Actions() {
+		if ca, ok := a.(ktesting.CreateAction); ok {
+			obj := ca.GetObject()
+			if pvc, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+				pvcNames = append(pvcNames, pvc.Name)
+			}
+		}
+	}
+
+	if len(pvcNames) != 1 {
+		t.Errorf("expected one PVC created. %d was created", len(pvcNames))
+	}
+
+	expectedPVCName := fmt.Sprintf("%s-%s-%s", claimName, workspaceName, pipelineRunName)
+	if pvcNames[0] != expectedPVCName {
+		t.Errorf("expected the created PVC to be named %s. It was named %s", expectedPVCName, pvcNames[0])
+	}
+
+	taskRuns, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
+	}
+
+	for _, tr := range taskRuns.Items {
+		for _, ws := range tr.Spec.Workspaces {
+			if ws.VolumeClaimTemplate != nil {
+				t.Fatalf("found volumeClaimTemplate workspace. Did not expect to find any taskruns with volumeClaimTemplate workspaces")
+			}
+
+			if ws.PersistentVolumeClaim == nil {
+				t.Fatalf("found taskRun workspace that is not PersistentVolumeClaim workspace. Did only expect PersistentVolumeClaims workspaces")
+			}
+		}
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
 func TestReconcileWithTaskResults(t *testing.T) {
 	names.TestingSeed()
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(

@@ -2179,3 +2179,54 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestReconcileWorkspaceWithVolumeClaimTemplate tests a reconcile of a TaskRun that has
+// a Workspace with VolumeClaimTemplate and check that it is translated to a created PersistentVolumeClaim.
+func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
+	workspaceName := "ws1"
+	claimName := "mypvc"
+	taskWithWorkspace := tb.Task("test-task-with-workspace", "foo",
+		tb.TaskSpec(
+			tb.TaskWorkspace(workspaceName, "a test task workspace", "", true),
+		))
+	taskRun := tb.TaskRun("test-taskrun-missing-workspace", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunWorkspaceVolumeClaimTemplate(workspaceName, "", &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: claimName,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{},
+		}),
+	))
+	d := test.Data{
+		Tasks:             []*v1alpha1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1alpha1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	ttt, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	for _, w := range ttt.Spec.Workspaces {
+		if w.PersistentVolumeClaim != nil {
+			t.Fatalf("expected workspace from volumeClaimTemplate to be translated to PVC")
+		}
+	}
+
+	expectedPVCName := fmt.Sprintf("%s-%s-%s", claimName, workspaceName, taskRun.Name)
+	_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(expectedPVCName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
+	}
+}

@@ -23,7 +23,16 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
+)
+
+var (
+	taskRunGroupVersionKind = schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    pipeline.TaskRunControllerName,
+	}
 )
 
 // TaskRunSpec defines the desired state of TaskRun
@@ -165,6 +174,11 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 	}
 }
 
+// GetOwnerReference gets the task run as owner reference for any related objects
+func (tr *TaskRun) GetOwnerReference() metav1.OwnerReference {
+	return *metav1.NewControllerRef(tr, taskRunGroupVersionKind)
+}
+
 // GetPipelineRunPVCName for taskrun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
 	if tr == nil {
@@ -227,4 +241,15 @@ func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
 	}
 
 	return false, "", ""
+}
+
+// HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is
+// used for creating PersistentVolumeClaims with an OwnerReference for each run
+func (tr *TaskRun) HasVolumeClaimTemplate() bool {
+	for _, ws := range tr.Spec.Workspaces {
+		if ws.VolumeClaimTemplate != nil {
+			return true
+		}
+	}
+	return false
 }

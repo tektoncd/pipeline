@@ -599,3 +599,18 @@ func PipelineRunWorkspaceBindingEmptyDir(name string) PipelineRunSpecOp {
 		})
 	}
 }
+
+// PipelineRunWorkspaceBindingVolumeClaimTemplate adds an VolumeClaimTemplate Workspace to the workspaces of a pipelineRun spec.
+func PipelineRunWorkspaceBindingVolumeClaimTemplate(name string, claimName string) PipelineRunSpecOp {
+	return func(spec *v1alpha1.PipelineRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name: name,
+			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: claimName,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{},
+			},
+		})
+	}
+}

@@ -208,3 +208,14 @@ func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
 	}
 	return serviceAccountName
 }
+
+// HasVolumeClaimTemplate returns true if PipelineRun contains volumeClaimTemplates that is
+// used for creating PersistentVolumeClaims with an OwnerReference for each run
+func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
+	for _, ws := range pr.Spec.Workspaces {
+		if ws.VolumeClaimTemplate != nil {
+			return true
+		}
+	}
+	return false
+}

@@ -151,6 +151,25 @@ func TestTaskRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestTaskRunHasVolumeClaimTemplate(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name: "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{},
+				},
+			}},
+		},
+	}
+	if !tr.HasVolumeClaimTemplate() {
+		t.Fatal("Expected taskrun to have a volumeClaimTemplate workspace")
+	}
+}
+
 func TestTaskRunKey(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{

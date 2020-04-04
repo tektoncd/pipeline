@@ -27,6 +27,7 @@ import (
 // WorkspaceBinding may include.
 var allVolumeSourceFields []string = []string{
 	"workspace.persistentvolumeclaim",
+	"workspace.volumeclaimtemplate",
 	"workspace.emptydir",
 	"workspace.configmap",
 	"workspace.secret",
@@ -72,6 +73,9 @@ func (b *WorkspaceBinding) Validate(ctx context.Context) *apis.FieldError {
 // has been configured with.
 func (b *WorkspaceBinding) numSources() int {
 	n := 0
+	if b.VolumeClaimTemplate != nil {
+		n++
+	}
 	if b.PersistentVolumeClaim != nil {
 		n++
 	}

@@ -25,8 +25,8 @@ weight: 5
 
 `Workspaces` allow `Tasks` to declare parts of the filesystem that need to be provided
 at runtime by `TaskRuns`. A `TaskRun` can make these parts of the filesystem available
-in many ways: using a read-only `ConfigMap` or `Secret`, a `PersistentVolumeClaim`
-shared with other Tasks, or simply an `emptyDir` that is discarded when the `TaskRun`
+in many ways: using a read-only `ConfigMap` or `Secret`, an existing `PersistentVolumeClaim`
+shared with other Tasks, create a `PersistentVolumeClaim` from a provided `VolumeClaimTemplate`, or simply an `emptyDir` that is discarded when the `TaskRun`
 completes.
 
 `Workspaces` are similar to `Volumes` except that they allow a `Task` author 
@@ -300,8 +300,14 @@ However, they work well for single `TaskRuns` where the data stored in the `empt
 
 #### `persistentVolumeClaim`
 
-The `persistentVolumeClaim` field references a [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim).
+The `persistentVolumeClaim` field references an existing [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim).
 `PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
+
+#### `volumeClaimTemplate`
+
+The `volumeClaimTemplate` is a template of a [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim), created for each `PipelineRun` or `TaskRun`. 
+When the volume is created from a template in a `PipelineRun` or `TaskRun` it will be deleted when the `PipelineRun` or `TaskRun` is deleted.
+`volumeClaimTemplate` volumes are a good choice for sharing data among `Tasks` within a `Pipeline` when the volume is only used during a `PipelineRun` or `TaskRun`.
 
 #### `configMap`
 

@@ -55,6 +55,10 @@ type WorkspaceBinding struct {
 	// for this binding (i.e. the volume will be mounted at this sub directory).
 	// +optional
 	SubPath string `json:"subPath,omitempty"`
+	// VolumeClaimTemplate is a template for a claim that will be created in the same namespace.
+	// The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.
+	// +optional
+	VolumeClaimTemplate *corev1.PersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 	// PersistentVolumeClaimVolumeSource represents a reference to a
 	// PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.
 	// +optional

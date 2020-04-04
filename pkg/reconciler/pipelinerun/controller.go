@@ -31,6 +31,7 @@ import (
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
@@ -80,6 +81,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
 			metrics:           metrics,
+			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := controller.NewImpl(c, c.Logger, pipeline.PipelineRunControllerName)
 

@@ -1952,3 +1952,15 @@ func TestValidateWorkspaceBindings(t *testing.T) {
 		t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
 	}
 }
+
+func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
+	if !noneStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be before first taskrun")
+	}
+}
+
+func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
+	if oneStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be after first taskrun")
+	}
+}
