@@ -893,6 +893,17 @@ func TaskRunWorkspacePVC(name, subPath, claimName string) TaskRunSpecOp {
 	}
 }
 
+// TaskRunWorkspaceVolumeClaimTemplate adds a workspace binding with a VolumeClaimTemplate volume source.
+func TaskRunWorkspaceVolumeClaimTemplate(name, subPath string, volumeClaimTemplate *corev1.PersistentVolumeClaim) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:                name,
+			SubPath:             subPath,
+			VolumeClaimTemplate: volumeClaimTemplate,
+		})
+	}
+}
+
 // ResolvedTaskResources creates a ResolvedTaskResources with default values.
 // Any number of ResolvedTaskResources modifier can be passed to transform it.
 func ResolvedTaskResources(ops ...ResolvedTaskResourcesOp) *resources.ResolvedTaskResources {

@@ -130,6 +130,25 @@ func TestPipelineRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestPipelineRunHasVolumeClaimTemplate(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		Spec: v1beta1.PipelineRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name: "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{},
+				},
+			}},
+		},
+	}
+	if !pr.HasVolumeClaimTemplate() {
+		t.Fatal("Expected pipelinerun to have a volumeClaimTemplate workspace")
+	}
+}
+
 func TestPipelineRunKey(t *testing.T) {
 	pr := tb.PipelineRun("prunname", "testns")
 	expectedKey := fmt.Sprintf("PipelineRun/%p", pr)

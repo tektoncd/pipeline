@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -105,6 +106,7 @@ type Reconciler struct {
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
+	pvcHandler        volumeclaim.PvcHandler
 }
 
 var (
@@ -436,6 +438,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
+	if pipelineState.IsBeforeFirstTaskRun() && pr.HasVolumeClaimTemplate() {
+		// create workspace PVC from template
+		if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference()[0], pr.Namespace); err != nil {
+			c.Logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
+				Message: fmt.Sprintf("Failed to create PVC for PipelineRun %s Workspaces correctly: %s",
+					fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+			})
+			return nil
+		}
+	}
+
 	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
 	if err != nil {
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
@@ -603,9 +620,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineWorkspaceName := ws.Name, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			binding := *b.DeepCopy()
-			binding.Name = taskWorkspaceName
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, binding)
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pr.GetOwnerReference()[0]))
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
@@ -614,6 +629,26 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
 	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+}
+
+// taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
+// If the volume source is a volumeClaimTemplate, the template is applied and passed to TaskRun as a persistentVolumeClaim
+func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWorkspaceName string, owner metav1.OwnerReference) v1alpha1.WorkspaceBinding {
+	if wb.VolumeClaimTemplate == nil {
+		binding := *wb.DeepCopy()
+		binding.Name = taskWorkspaceName
+		return binding
+	}
+
+	// apply template
+	binding := v1alpha1.WorkspaceBinding{
+		SubPath: wb.SubPath,
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
+		},
+	}
+	binding.Name = taskWorkspaceName
+	return binding
 }
 
 func addRetryHistory(tr *v1alpha1.TaskRun) {
