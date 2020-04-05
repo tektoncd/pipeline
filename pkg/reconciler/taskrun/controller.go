@@ -44,6 +44,7 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
+// NewController instantiates a new controller.Impl from knative.dev/pkg/controller
 func NewController(images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
@@ -66,6 +67,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			ConfigMapWatcher:  cmw,
 			ResyncPeriod:      resyncPeriod,
 			Logger:            logger,
+			Recorder:          controller.GetEventRecorder(ctx),
 		}
 
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)

@@ -48,6 +48,7 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/configmap"
@@ -269,6 +270,34 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		Controller: NewController(images)(ctx, configMapWatcher),
 		Clients:    c,
 	}, cancel
+}
+
+func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) error {
+	// We need a timer to handle the case in which we receive fewer events than
+	// we expect, so we only hit the timeout in case of failure of the test.
+	timer := time.NewTimer(1 * time.Second)
+	foundEvents := []string{}
+	for ii := 0; ii < len(wantEvents)+1; ii++ {
+		// We loop over all the events that we expect. Once they are all received
+		// we exit the loop. If we never receive enough events, the timeout takes us
+		// out of the loop.
+		select {
+		case event := <-fr.Events:
+			foundEvents = append(foundEvents, event)
+			if ii > len(wantEvents)-1 {
+				return fmt.Errorf("Received event \"%s\" for %s but not more expected", event, testName)
+			}
+			wantEvent := wantEvents[ii]
+			if !(strings.HasPrefix(event, wantEvent)) {
+				return fmt.Errorf("Expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+			}
+		case <-timer.C:
+			if len(foundEvents) > len(wantEvents) {
+				return fmt.Errorf("Received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
+			}
+		}
+	}
+	return nil
 }
 
 func TestReconcile_ExplicitDefaultSA(t *testing.T) {
@@ -574,11 +603,14 @@ func TestReconcile(t *testing.T) {
 		name       string
 		taskRun    *v1alpha1.TaskRun
 		wantPod    *corev1.Pod
-		wantEvents int
+		wantEvents []string
 	}{{
-		name:       "success",
-		taskRun:    taskRunSuccess,
-		wantEvents: 1,
+		name:    "success",
+		taskRun: taskRunSuccess,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -616,9 +648,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "serviceaccount",
-		taskRun:    taskRunWithSaSuccess,
-		wantEvents: 1,
+		name:    "serviceaccount",
+		taskRun: taskRunWithSaSuccess,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -657,9 +692,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "params",
-		taskRun:    taskRunSubstitution,
-		wantEvents: 1,
+		name:    "params",
+		taskRun: taskRunSubstitution,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-substitution-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -740,9 +778,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "taskrun-with-taskspec",
-		taskRun:    taskRunWithTaskSpec,
-		wantEvents: 1,
+		name:    "taskrun-with-taskspec",
+		taskRun: taskRunWithTaskSpec,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -798,9 +839,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "success-with-cluster-task",
-		taskRun:    taskRunWithClusterTask,
-		wantEvents: 1,
+		name:    "success-with-cluster-task",
+		taskRun: taskRunWithClusterTask,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -839,9 +883,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "taskrun-with-resource-spec-task-spec",
-		taskRun:    taskRunWithResourceSpecAndTaskSpec,
-		wantEvents: 1,
+		name:    "taskrun-with-resource-spec-task-spec",
+		taskRun: taskRunWithResourceSpecAndTaskSpec,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -896,9 +943,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "taskrun-with-pod",
-		taskRun:    taskRunWithPod,
-		wantEvents: 1,
+		name:    "taskrun-with-pod",
+		taskRun: taskRunWithPod,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-pod-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -935,9 +985,12 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:       "taskrun-with-credentials-variable-default-tekton-home",
-		taskRun:    taskRunWithCredentialsVariable,
-		wantEvents: 1,
+		name:    "taskrun-with-credentials-variable-default-tekton-home",
+		taskRun: taskRunWithCredentialsVariable,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
 		wantPod: tb.Pod("test-taskrun-with-credentials-variable-pod-9l9zj",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -993,7 +1046,10 @@ func TestReconcile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			reconciler := c.Reconciler.(*Reconciler)
+			fr := reconciler.Recorder.(*record.FakeRecorder)
+
+			if err := reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1038,15 +1094,9 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			actions := clients.Kube.Actions()
-			var eventCount = 0
-			for _, action := range actions {
-				if action.GetVerb() == "create" && action.GetResource().Resource == "events" {
-					eventCount++
-				}
-			}
-			if d := cmp.Diff(tc.wantEvents, eventCount); d != "" {
-				t.Errorf("Event count does not match (-want, +got): %s. ", d)
+			err = checkEvents(fr, tc.name, tc.wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
 			}
 		})
 	}
@@ -1194,17 +1244,26 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 	}
 
 	testcases := []struct {
-		name    string
-		taskRun *v1alpha1.TaskRun
-		reason  string
+		name       string
+		taskRun    *v1alpha1.TaskRun
+		reason     string
+		wantEvents []string
 	}{{
 		name:    "task run with no task",
 		taskRun: noTaskRun,
 		reason:  podconvert.ReasonFailedResolution,
+		wantEvents: []string{
+			"Normal Started ",
+			"Warning Failed ",
+		},
 	}, {
 		name:    "task run with wrong ref",
 		taskRun: withWrongRef,
 		reason:  podconvert.ReasonFailedResolution,
+		wantEvents: []string{
+			"Normal Started ",
+			"Warning Failed ",
+		},
 	}}
 
 	for _, tc := range testcases {
@@ -1213,24 +1272,28 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
-			// Events are sent in a goroutine, let's sleep a bit to make sure they're
-			// captured by the fake client-go action list
-			time.Sleep(100 * time.Millisecond)
+			reconciler := c.Reconciler.(*Reconciler)
+			fr := reconciler.Recorder.(*record.FakeRecorder)
+			err := reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
+
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
+
+			// Check actions and events
 			actions := clients.Kube.Actions()
-			if len(actions) != 2 ||
-				actions[0].GetVerb() != "list" ||
-				actions[0].GetResource().Resource != "namespaces" ||
-				actions[1].GetVerb() != "create" ||
-				actions[1].GetResource().Resource != "events" {
-				t.Errorf("expected two actions (list namespaces + event) created by the reconciler, got %+v", actions)
+			if len(actions) != 1 || actions[0].Matches("namespaces", "list") {
+				t.Errorf("expected one action (list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
 			}
+
+			err = checkEvents(fr, tc.name, tc.wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
+			}
+
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
@@ -1314,8 +1377,10 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
+	reconciler := c.Reconciler.(*Reconciler)
+	fr := reconciler.Recorder.(*record.FakeRecorder)
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1353,6 +1418,16 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Message: "All Steps have completed executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Errorf("Did not get expected condition (-want, +got): %v", d)
+	}
+
+	wantEvents := []string{
+		"Normal Started ",
+		"Normal Running Not all Steps",
+		"Normal Succeeded",
+	}
+	err = checkEvents(fr, "test-reconcile-pod-updateStatus", wantEvents)
+	if !(err == nil) {
+		t.Errorf(err.Error())
 	}
 }
 
@@ -1409,8 +1484,10 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
+	reconciler := c.Reconciler.(*Reconciler)
+	fr := reconciler.Recorder.(*record.FakeRecorder)
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1427,12 +1504,22 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
 	}
+
+	wantEvents := []string{
+		"Normal Started",
+		"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
+	}
+	err = checkEvents(fr, "test-reconcile-on-cancelled-taskrun", wantEvents)
+	if !(err == nil) {
+		t.Errorf(err.Error())
+	}
 }
 
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
 		taskRun        *v1alpha1.TaskRun
 		expectedStatus *apis.Condition
+		wantEvents     []string
 	}
 
 	testcases := []testCase{
@@ -1454,6 +1541,9 @@ func TestReconcileTimeouts(t *testing.T) {
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 			},
+			wantEvents: []string{
+				"Warning Failed ",
+			},
 		}, {
 			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes",
 				tb.TaskRunNamespace("foo"),
@@ -1470,6 +1560,9 @@ func TestReconcileTimeouts(t *testing.T) {
 				Status:  corev1.ConditionFalse,
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-default-timeout-60-minutes" failed to finish within "1h0m0s"`,
+			},
+			wantEvents: []string{
+				"Warning Failed ",
 			},
 		}, {
 			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes",
@@ -1489,6 +1582,9 @@ func TestReconcileTimeouts(t *testing.T) {
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-nil-timeout-default-60-minutes" failed to finish within "1h0m0s"`,
 			},
+			wantEvents: []string{
+				"Warning Failed ",
+			},
 		}}
 
 	for _, tc := range testcases {
@@ -1500,6 +1596,8 @@ func TestReconcileTimeouts(t *testing.T) {
 		defer cancel()
 		c := testAssets.Controller
 		clients := testAssets.Clients
+		reconciler := c.Reconciler.(*Reconciler)
+		fr := reconciler.Recorder.(*record.FakeRecorder)
 
 		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
@@ -1511,6 +1609,10 @@ func TestReconcileTimeouts(t *testing.T) {
 		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 			t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+		}
+		err = checkEvents(fr, tc.taskRun.Name, tc.wantEvents)
+		if !(err == nil) {
+			t.Errorf(err.Error())
 		}
 	}
 }
@@ -2179,6 +2281,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 		desc             string
 		d                test.Data
 		wantFailedReason string
+		wantEvents       []string
 	}{{
 		desc: "Fail ResolveTaskResources",
 		d: test.Data{
@@ -2200,6 +2303,10 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			PipelineResources: nil,
 		},
 		wantFailedReason: podconvert.ReasonFailedResolution,
+		wantEvents: []string{
+			"Normal Started ",
+			"Warning Failed",
+		},
 	}, {
 		desc: "Fail ValidateResolvedTaskResources",
 		d: test.Data{
@@ -2218,14 +2325,20 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			PipelineResources: nil,
 		},
 		wantFailedReason: podconvert.ReasonFailedValidation,
+		wantEvents: []string{
+			"Normal Started ",
+			"Warning Failed",
+		},
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
 			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, tt.d)
 			defer cancel()
 			clients := testAssets.Clients
+			reconciler := testAssets.Controller.Reconciler.(*Reconciler)
+			fr := reconciler.Recorder.(*record.FakeRecorder)
 
-			if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0])); err != nil {
+			if err := reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0])); err != nil {
 				t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 			}
 
@@ -2238,6 +2351,11 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				if c.Type != apis.ConditionSucceeded || c.Status != corev1.ConditionFalse || c.Reason != tt.wantFailedReason {
 					t.Errorf("Expected TaskRun to \"%s\" but it did not. Final conditions were:\n%#v", tt.wantFailedReason, tr.Status.Conditions)
 				}
+			}
+
+			err = checkEvents(fr, tt.desc, tt.wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
 			}
 		})
 	}
