@@ -18,6 +18,8 @@ weight: 4
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
   - [Configuring a failure timeout](#configuring-a-failure-timeout)
 - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+- [Events](events.md#pipelineruns)
+
 
 
 ## Overview

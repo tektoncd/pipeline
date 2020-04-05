@@ -103,11 +103,16 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
-	tr.Status.InitializeConditions()
-	// In case node time was not synchronized, when controller has been scheduled to other nodes.
-	if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
-		c.Logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetRunKey(), tr.CreationTimestamp, tr.Status.StartTime)
-		tr.Status.StartTime = &tr.CreationTimestamp
+	if !tr.HasStarted() {
+		tr.Status.InitializeConditions()
+		// In case node time was not synchronized, when controller has been scheduled to other nodes.
+		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
+			c.Logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetRunKey(), tr.CreationTimestamp, tr.Status.StartTime)
+			tr.Status.StartTime = &tr.CreationTimestamp
+		}
+		// Emit events
+		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+		reconciler.EmitEvent(c.Recorder, nil, afterCondition, tr)
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -200,7 +205,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	if err = c.reconcile(ctx, tr, taskSpec, rtr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
 	}
-
 	// Emit events (only when ConditionSucceeded was changed)
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -337,6 +341,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun,
 		if k8serrors.IsNotFound(err) {
 			// Keep going, this will result in the Pod being created below.
 		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
 			c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
 			return err
 		}
@@ -401,7 +408,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun,
 	}
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))
-
 	return nil
 }
 
