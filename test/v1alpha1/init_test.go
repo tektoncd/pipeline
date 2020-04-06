@@ -124,9 +124,13 @@ func initializeLogsAndMetrics(t *testing.T) {
 
 func createNamespace(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
 	t.Logf("Create namespace %s to deploy to", namespace)
+	labels := map[string]string{
+		"tekton.dev/test-e2e": "true",
+	}
 	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
+			Name:   namespace,
+			Labels: labels,
 		},
 	}); err != nil {
 		t.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
