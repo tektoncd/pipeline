@@ -332,3 +332,15 @@ tkn pipelinerun logs sum-and-multiply-pipeline-run-rgd9j -f -n default
 ```
 
 As you can see, you can define multiple tasks in the same pipeline and use the result of more than one task inside another task parameter. The substitution is only done inside `pipeline.spec.tasks[].params[]`. For a complete example demonstrating Task Results in a Pipeline, see the [pipelinerun example](../../examples/v1beta1/pipelineruns/task_results_example.yaml).
+
+## Support for running in multi-tenant configuration
+
+In order to support potential multi-tenant configurations the roles of the controller are split into two:
+
+    `tekton-pipelines-controller-cluster-access`: those permissions needed cluster-wide by the controller.
+    `tekton-pipelines-controller-tenant-access`: those permissions needed on a namespace-by-namespace basis.
+
+By default the roles are cluster-scoped for backwards-compatibility and ease-of-use. If you want to
+start running a multi-tenant service you are able to bind `tekton-pipelines-controller-tenant-access`
+using a `RoleBinding` instead of a `ClusterRoleBinding`, thereby limiting the access that the controller has to
+specific tenant namespaces.
