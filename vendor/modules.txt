@@ -853,13 +853,13 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
+# knative.dev/caching v0.0.0-20200406150020-6bd9f38fb03e => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
 knative.dev/caching/pkg/apis/caching
 knative.dev/caching/pkg/apis/caching/v1alpha1
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/scheme
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1
-# knative.dev/pkg v0.0.0-20200227193851-2fe8db300072 => knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
+# knative.dev/pkg v0.0.0-20200406231459-466c676678dd => knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/v1
