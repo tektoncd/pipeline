@@ -258,7 +258,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
 			got, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
-			// sort result ref based on task name to garantee an certain order
+			// sort result ref based on task name to guarantee an certain order
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
