@@ -10,10 +10,17 @@ This guide helps you get started with Tekton Pipelines by walking you through a 
 ## Before you begin
 
 Before you begin this tutorial, make sure you have [installed and configured](install.md)
-the latest release of Tekton on your Kubernetes cluster, including the [Tekton CLI](https://github.com/tektoncd/cli). 
+the latest release of Tekton on your Kubernetes cluster.
 
-If you would like to complete this tutorial on your local workstation, install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
+### Install Minikube
+If you would like to complete this tutorial on your local workstation, you will need Minikube.
+Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
 
+### Install Tekton CLI
+This getting started guide uses the Tekton CLI, tkn, so make sure to install that on your local machine.
+Install [Tekton CLI](https://github.com/tektoncd/cli). 
+
+### Sign in to Docker Hub
 You will need an account on [Docker Hub](https://hub.docker.com).
 
 ## Creating and running a `Task`
@@ -49,7 +56,8 @@ spec:
 Apply your YAML files as follows:
 
 ```bash
-kubectl apply -f <name-of-file.yaml>
+kubectl apply -f <YOUR-TASK.yaml>
+kubectl apply -f <YOUR-TASKRUN.yaml>
 ```
 
 To check whether running your `TaskRun` succeeded, use the following command:
@@ -147,7 +155,7 @@ metadata:
   name: build-and-push-docker-image-from-git
 spec:
   params:
-    - name: BUILDER_IMAGE
+    - name: builder_image
       description: The location of the builder image
       default: quay.io/buildah/stable:v1.14.3
   resources:
@@ -159,7 +167,7 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: $(inputs.params.BUILDER_IMAGE)
+      image: $(params.BUILDER_IMAGE)
       workingDir: /workspace/source
       command: ["/bin/bash"]
       args:
