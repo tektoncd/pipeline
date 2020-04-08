@@ -59,8 +59,8 @@ expected in directory path `/workspace/output/resource_name`.
     name: get-gcs-task
     namespace: default
   spec:
-    outputs:
-      resources:
+    resources:
+      outputs:
         - name: gcs-workspace
           type: storage
   ```
@@ -76,8 +76,8 @@ expected in directory path `/workspace/output/resource_name`.
     name: get-gcs-task
     namespace: default
   spec:
-    outputs:
-      resources:
+    resources:
+      outputs:
         - name: gcs-workspace
           type: storage
           targetPath: /workspace/outputstuff
@@ -95,13 +95,12 @@ expected in directory path `/workspace/output/resource_name`.
     name: get-gcs-task
     namespace: default
   spec:
-    inputs:
-      resources:
+    resources:
+      inputs:
         - name: gcs-workspace
           type: storage
           targetPath: random-space
-    outputs:
-      resources:
+      outputs:
         - name: gcs-workspace
           type: storage
   ```
@@ -117,12 +116,11 @@ expected in directory path `/workspace/output/resource_name`.
     name: get-gcs-task
     namespace: default
   spec:
-    inputs:
-      resources:
+    resources:
+      inputs:
         - name: gcs-workspace
           type: storage
-    outputs:
-      resources:
+      outputs:
         - name: gcs-workspace
           type: storage
   ```
