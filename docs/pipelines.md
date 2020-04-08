@@ -6,85 +6,68 @@ weight: 3
 -->
 # Pipelines
 
-This document defines `Pipelines` and their capabilities.
+- [Overview](#pipelines)
+- [Configuring a `Pipeline`](#configuring-a-pipeline)
+  - [Specifying `Resources`](#specifying-resources)
+  - [Specifying `Workspaces`](#specifying-workspaces)
+  - [Specifying `Parameters`](#specifying-parameters)
+  - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
+    - [Using the `from` parameter](#using-the-from-parameter)
+    - [Using the `runAfter` parameter](#using-the-runafter-parameter)
+    - [Using the `retries` parameter](#using-the-retries-parameter)
+    - [Specifying execution `Conditions`](#specifying-execution-conditions)
+    - [Configuring the failure timeout](#configuring-the-failure-timeout)
+  - [Monitoring execution results](#monitoring-execution-results)
+  - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
+  - [Adding a description](#adding-a-description)
+  - [Code examples](#code-examples)
 
----
+## Overview
 
-- [Pipelines](#pipelines)
-  - [Syntax](#syntax)
-    - [Description](#description)
-    - [Declared resources](#declared-resources)
-    - [Workspaces](#workspaces)
-    - [Parameters](#parameters)
-      - [Usage](#usage)
-    - [Pipeline Tasks](#pipeline-tasks)
-      - [from](#from)
-      - [runAfter](#runafter)
-      - [retries](#retries)
-      - [conditions](#conditions)
-      - [Timeout](#timeout)
-    - [Results](#results)
-    - [Ordering](#ordering)
-  - [Examples](#examples)
+A `Pipeline` is a collection of `Tasks` that you define and arrange in a specific order
+of execution as part of your continuous integration flow. Each `Task` in a `Pipeline`
+executes as a `Pod` on your Kubernetes cluster. You can configure various execution
+conditions to fit your business needs.
 
-## Syntax
+## Configuring a `Pipeline`
 
-To define a configuration file for a `Pipeline` resource, you can specify the
-following fields:
+A `Pipeline` definition supports the following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
     `tekton.dev/v1beta1`.
-  - [`kind`][kubernetes-overview] - Specify the `Pipeline` resource object.
-  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
-    `Pipeline` resource object, for example a `name`.
+  - [`kind`][kubernetes-overview] - Identifies this resource object as a `Pipeline` object.
+  - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
+    `Pipeline` object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    your `Pipeline` resource object. In order for a `Pipeline` to do anything,
-    the spec must include:
-    - [`tasks`](#pipeline-tasks) - Specifies which `Tasks` to run and how to run
-      them
+    this `Pipeline` object. This must include: 
+    - [`tasks`](#pipeline-tasks) - Specifies the `Tasks` that comprise the `Pipeline`
+      and the details of their execution.
 - Optional:
-  - [`description`](#description) - Description of the Pipeline.
-  - [`resources`](#declared-resources) - Specifies which
-    [`PipelineResources`](resources.md) of which types the `Pipeline` will be
-    using in its [Tasks](#pipeline-tasks)
-  - `tasks`
+  - [`resources`](#specifying-resources) - **alpha only** Specifies
+    [`PipelineResources`](resources.md) needed or created by the `Tasks` comprising the `Pipeline`.
+  - `tasks`:
       - `resources.inputs` / `resource.outputs`
-          - [`from`](#from) - Used when the content of the
-            [`PipelineResource`](resources.md) should come from the
-            [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
-      - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
-        should be executed after another Pipeline Task, but there is no
-        [output linking](#from) required
-      - [`retries`](#retries) - Used when the task is wanted to be executed if
-        it fails. Could be a network error or a missing dependency. It does not
-        apply to cancellations.
-      - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
-        conditions are evaluated to be true.
-      - [`timeout`](#timeout) - Specifies timeout after which the `TaskRun` for a Pipeline Task will
-        fail. There is no default timeout for a Pipeline Task timeout. If no timeout is specified for
-        the Pipeline Task, the only timeout taken into account for running a `Pipeline` will be a
-        [timeout for the `PipelineRun`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelineruns.md#syntax).
-  - [`results`](#pipeline-results) - Specifies which `results` is defined for the pipeline
+        - [`from`](#using-the-from-parameter) - Indicates the data for a [`PipelineResource`](resources.md)
+          originates from the output of a previous `Task`.
+      - [`runAfter`](#using-the-runafter-parameter) - Indicates that a `Task`
+        should execute after one or more other `Tasks` without output linking.
+      - [`retries`](#using-the-retries-parameter) - Specifies the number of times to retry the
+        execution of a `Task` after a failure. Does not apply to execution cancellations.
+      - [`conditions`](#specifying-conditions) - Specifies `Conditions` that only allow a `Task`
+        to execute if they evaluate to `true`.
+      - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails. 
+  - [`results`](#pipeline-results) - Specifies the file to which the `Pipeline` writes its execution results.
+  - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-### Description
+## Specifying `Resources`
 
-The `description` field is an optional field and can be used to provide description of the Pipeline.
-
-### Declared resources
-
-In order for a `Pipeline` to interact with the outside world, it will probably
-need [`PipelineResources`](resources.md) which will be given to
-`Tasks` as inputs and outputs.
-
-Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
-section in the `spec`, giving each a name which will be used to refer to these
-`PipelineResources` in the `Tasks`.
-
-For example:
+A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
+for the `Tasks` that comprise it. You can declare those in the `resources` field in the `spec`
+section of the `Pipeline` definition. Each entry requires a unique `name` and a `type`. For example:
 
 ```yaml
 spec:
@@ -95,12 +78,11 @@ spec:
       type: image
 ```
 
-### Workspaces
+## Specifying `Workspaces`
 
-`workspaces` are a way of declaring volumes you expect to be made available to your
-executing `Pipeline` and its `Task`s.
-
-Here's a short example of a Pipeline Spec with `workspaces`:
+`Workspaces` allow you to specify one or more volumes that each `Task` in the `Pipeline`
+requires during execution. You specify one or more `Workspaces` in the `workspaces` field.
+For example:
 
 ```yaml
 spec:
@@ -123,38 +105,37 @@ spec:
           workspace: pipeline-ws1
 ```
 
-For complete documentation on using `workspaces` in `Pipeline`s, see
-[workspaces.md](./workspaces.md#declaring-workspaces-in-pipelines).
+For more information, see:
+- [Using `Workspaces` in `Pipelines`](workspaces.md#using-workspaces-in-pipelines)
+- The [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) code example
 
-_For a complete example see [the Workspaces PipelineRun](../examples/v1beta1/pipelineruns/workspaces.yaml)
-in the examples directory._
+## Specifying `Parameters`
 
-### Parameters
+You can specify global parameters, such as compilation flags or artifact names, that you want to supply
+to the `Pipeline` at execution time. `Parameters` are passed to the `Pipeline` from its corresponding
+`PipelineRun` and can replace template values specified within each `Task` in the `Pipeline`.
 
-`Pipeline`s can declare input parameters that must be supplied to the `Pipeline`
-during a `PipelineRun`. Pipeline parameters can be used to replace template
-values in [`PipelineTask` parameters' values](#pipeline-tasks).
+Parameter names:
+- Must only contain alphanumeric characters, hyphens (`-`), and underscores (`_`).
+- Must begin with a letter or an underscore (`_`).
 
-Parameter names are limited to alpha-numeric characters, `-` and `_` and can
-only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
-parameter name, `barIsBa$` or `0banana` are not.
+For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
-Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of string arguments need to be supplied to a task. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+Each declared parameter has a `type` field, which can be set to either `array` or `string`.
+`array` is useful in cases where the number of compiliation flags being supplied to the `Pipeline`
+varies throughout its execution. If no value is specified, the `type` field defaults to `string`.
+When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+The `description` and `default` fields for a `Parameter` are optional.
 
-#### Usage
+The following example illustrates the use of `Parameters` in a `Pipeline`. 
 
-The following example shows how `Pipeline`s can be parameterized, and these
-parameters can be passed to the `Pipeline` from a `PipelineRun`.
+The following `Pipeline` declares an input parameter called `context` and passes its
+value to the `Task` to set the value of the `pathToContext` parameter within the `Task`.
+If you specify a value for the `default` field and invoke this `Pipeline` in a `PipelineRun`
+without specifying a value for `context`, that value will be used.
 
-Input parameters in the form of `$(params.foo)` are replaced inside of the
-[`PipelineTask` parameters' values](#pipeline-tasks) (see also
-[the complete list of variable substitutions](variables.md#variables-available-in-a-pipeline)).
-
-The following `Pipeline` declares an input parameter called 'context', and uses
-it in the `PipelineTask`'s parameter. The `description` and `default` fields for
-a parameter are optional, and if the `default` field is specified and this
-`Pipeline` is used by a `PipelineRun` without specifying a value for 'context',
-the `default` value will be used.
+**Note:** Input parameter values can be used as variables throughout the `Pipeline`
+by using [variable substitution](variables.md#variables-available-in-a-pipeline).
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -193,14 +174,11 @@ spec:
       value: "/workspace/examples/microservices/leeroy-web"
 ```
 
-### Pipeline Tasks
+## Adding `Tasks` to the `Pipeline`
 
-A `Pipeline` will execute a graph of [`Tasks`](tasks.md) (see
-[ordering](#ordering) for how to express this graph). A valid `Pipeline`
-declaration must include a reference to at least one [`Task`](tasks.md). Each
-`Task` within a `Pipeline` must have a
-[valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
-name and task reference, for example:
+ Your `Pipeline` definition must reference at least one [`Task`](tasks.md).
+Each `Task` within a `Pipeline` must have a [valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
+`name` and a `taskRef`. For example:
 
 ```yaml
 tasks:
@@ -209,8 +187,8 @@ tasks:
       name: build-push
 ```
 
-[Declared `PipelineResources`](#declared-resources) can be given to `Task`s in
-the `Pipeline` as inputs and outputs, for example:
+You can use [`PipelineResources`](#specifying-resources) as inputs and outputs for `Tasks`
+in the `Pipeline`. For example:
 
 ```yaml
 spec:
@@ -227,7 +205,7 @@ spec:
             resource: my-image
 ```
 
-[Parameters](tasks.md#parameters) can also be provided:
+You can also provide [`Parameters`](tasks.md#specifying-parameters):
 
 ```yaml
 spec:
@@ -242,27 +220,20 @@ spec:
           value: /workspace/examples/microservices/leeroy-web
 ```
 
-#### from
+### Using the `from` parameter
 
-Sometimes you will have [Pipeline Tasks](#pipeline-tasks) that need to take as
-input the output of a previous `Task`, for example, an image built by a previous
-`Task`.
+If a `Task` in your `Pipeline` needs to use the output of a previous `Task`
+as its input, use the optional `from` parameter to specify a list of `Tasks`
+that must execute **before** the `Task` that requires their outputs as its 
+input. When your target `Task` executes, only the version of the desired 
+`PipelineResource` produced by the last `Task` in this list is used. The
+`name` of this output `PipelineReource` output must match the `name` of the
+input `PipelineResource` specified in the `Task` that ingests it. 
 
-Express this dependency by adding `from` on [`PipelineResources`](resources.md)
-that your `Tasks` need.
-
-- The (optional) `from` key on an `input source` defines a set of previous
-  `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
-- When the `from` key is specified on an input source, the version of the
-  resource that is from the defined list of tasks is used
-- `from` can support fan in and fan out
-- The `from` clause [expresses ordering](#ordering), i.e. the
-  [Pipeline Task](#pipeline-tasks) which provides the `PipelineResource` must run
-  _before_ the Pipeline Task which needs that `PipelineResource` as an input
-  - The name of the `PipelineResource` must correspond to a `PipelineResource`
-    from the `Task` that the referenced `PipelineTask` gives as an output
-
-For example see this `Pipeline` spec:
+In the example below, the `deploy-app` `Task` ingests the output of the `build-app`
+`Task` named `my-image` as its input.  Therefore, the `build-app` `Task` will 
+execute before the `deploy-app` `Task` regardless of the order in which those
+`Tasks` are declared in the `Pipeline`.
 
 ```yaml
 - name: build-app
@@ -283,22 +254,17 @@ For example see this `Pipeline` spec:
           - build-app
 ```
 
-The resource `my-image` is expected to be given to the `deploy-app` `Task` from
-the `build-app` `Task`. This means that the `PipelineResource` `my-image` must
-also be declared as an output of `build-app`.
+### Using the `runAfter` parameter
 
-This also means that the `build-app` Pipeline Task will run before `deploy-app`,
-regardless of the order they appear in the spec.
+If you need your `Tasks` to execute in a specific order within the `Pipeline`
+but they don't have resource dependencies that require the `from` parameter,
+use the `runAfter` parameter to indicate that a `Task` must execute after
+one or more other `Tasks`.
 
-#### runAfter
-
-Sometimes you will need to have [Pipeline Tasks](#pipeline-tasks) that need to
-run in a certain order, but they do not have an explicit
-[output](tasks.md#outputs) to [input](tasks.md#inputs) dependency (which is
-expressed via [`from`](#from)). In this case you can use `runAfter` to indicate
-that a Pipeline Task should be run after one or more previous Pipeline Tasks.
-
-For example see this `Pipeline` spec:
+In the example below, we want to test the code before we build it. Since there
+is no output from the `test-app` `Task`, the `build-app` `Task` uses `runAfter`
+to indicate that `test-app` must run before it, regardless of the order in which
+they are referenced in the `Pipeline` definition.
 
 ```yaml
 - name: test-app
@@ -319,21 +285,22 @@ For example see this `Pipeline` spec:
         resource: my-repo
 ```
 
-In this `Pipeline`, we want to test the code before we build from it, but there
-is no output from `test-app`, so `build-app` uses `runAfter` to indicate that
-`test-app` should run before it, regardless of the order they appear in the
-spec.
+### Using the `retries` parameter
 
-#### retries
+For each `Task` in the `Pipeline`, you can specify the number of times Tekton
+should retry its execution when it fails. When a `Task` fails, the corresponding
+`TaskRun` sets its `Succeeded` `Condition` to `False`. The `retries` parameter
+instructs Tekton to retry executing the `Task` when this happens.
 
-Sometimes you need a policy for retrying tasks which have problems such as
-network errors, missing dependencies or upload problems. Any of those issues must
-be reflected as False (corev1.ConditionFalse) within the TaskRun Status
-Succeeded Condition. For that reason there is an optional attribute called
-`retries` which declares how many times that task should be retried in case of
-failure.
+If you expect a `Task` to encounter problems during execution (for example,
+you know that there will be issues with network connectivitity or missing
+dependencies), set its `retries` parameter to a suitable value greater than 0.
+If you don't explicitly specify a value, Tekton does not attempt to execute
+the failed `Task` again.
 
-By default and in its absence there are no retries; its value is 0.
+In the example below, the execution of the `build-the-image` `Task` will be
+retried once after a failure; if the retried execution fails, too, the `Task`
+execution fails as a whole.
 
 ```yaml
 tasks:
@@ -343,11 +310,7 @@ tasks:
       name: build-push
 ```
 
-In this example, the task "build-the-image" will be executed and if the first
-run fails a second one would triggered. But, if that fails no more would
-triggered: a max of two executions.
-
-#### conditions
+### Specifying execution `Conditions`
 
 Sometimes you will need to run tasks only when some conditions are true. The `conditions` field
 allows you to list a series of references to [`Conditions`](./conditions.md) that are run before the task
@@ -399,14 +362,16 @@ tasks:
       name: echo-hello
 ```
 
-#### Timeout
+### Configuring the failure timeout
 
-The Timeout property of a Pipeline Task allows a timeout to be defined for a `TaskRun` that
-is part of a `PipelineRun`. If the `TaskRun` exceeds the amount of time specified, the `TaskRun`
-will fail and the `PipelineRun` associated with a `Pipeline` will fail as well.
+You can use the `Timeout` field in the `Task` spec within the `Pipeline` to set the timeout
+of the `TaskRun` that executes that `Task` within the `PipelineRun` that executes your `Pipeline.`
+The `Timeout` value is a `duration` conforming to Go's [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration)
+format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`. 
 
-There is no default timeout for Pipeline Tasks, so a timeout must be specified with a Pipeline Task
-when defining a `Pipeline` if one is needed. An example of a Pipeline Task with a Timeout is shown below:
+**Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](PipelineRun.md#syntax).
+
+In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
 ```yaml
 spec:
@@ -417,14 +382,15 @@ spec:
       Timeout: "0h1m30s"
 ```
 
-The Timeout property is specified as part of the Pipeline Task on the `Pipeline` spec. The above
-example has a timeout of one minute and 30 seconds.
+### Monitoring execution results
 
-#### Results
+Tasks can emit [`Results`](tasks.md#storing-execution-results) while they execute. You can
+use these `Results` values as parameter values in subsequent `Tasks` within your `Pipeline`
+through [variable substitution](variables.md#variables-available-in-a-pipeline). Tekton infers the
+`Task` order so that the `Task` emitting the referenced `Results` values executes before the
+`Task` that consumes them. 
 
-Tasks can declare [results](./tasks.md#results) that they will emit during their execution. These results can be used as values for params in subsequent tasks of a Pipeline. Tekton will infer the ordering of these Tasks to ensure that the Task emitting the results runs before the Task consuming those results in its parameters.
-
-Using a Task result as a value for another Task's parameter is done with variable substitution. Here is what a Pipeline Task's param looks like with a result wired into it:
+In the example below, the result of the `previous-task-name` `Task` is declared as `bar-result`:
 
 ```yaml
 params:
@@ -432,25 +398,21 @@ params:
     value: "$(tasks.previous-task-name.results.bar-result)"
 ```
 
-In this example the previous pipeline task has name "previous-task-name" and its result is declared in the Task definition as having name "bar-result".
+For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
-For a complete example demonstrating Task Results in a Pipeline see the [pipelinerun example](../examples/v1beta1/pipelineruns/task_results_example.yaml).
+## Configuring the `Task` execution order
 
-#### Ordering
-
-The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run
-in a graph, specifically a _Directed Acyclic Graph_ or DAG. Each of the Pipeline
-Tasks is a node, which can be connected with an edge (i.e. a _Graph_) such that one will run
-before another (i.e. _Directed_), and the execution will eventually complete
-(i.e. _Acyclic_, it will not get caught in infinite loops).
+You can connect `Tasks` in a `Pipeline` so that they execute in a Directed Acyclic Graph (DAG).
+Each `Task` in the `Pipeline` becomes a node on the graph that can be connected with an edge
+so that one will run before another and the execution of the `Pipeline` progresses to completion
+without getting stuck in an infinite loop.
 
 This is done using:
 
-- [`from`](#from) clauses on the [`PipelineResources`](resources.md) needed by a
-  `Task`
-- [`runAfter`](#runAfter) clauses on the [Pipeline Tasks](#pipeline-tasks)
+- [`from`](#using-the-from-parameter) clauses on the [`PipelineResources`](resources.md) used by each `Task`, and
+- [`runAfter`](#using-the-runafter-parameter) clauses on the corresponding `Tasks`.
 
-For example see this `Pipeline` spec:
+For example, the `Pipeline` defined as follows
 
 ```yaml
 - name: lint-repo
@@ -506,7 +468,7 @@ For example see this `Pipeline` spec:
           - build-frontend
 ```
 
-This will result in the following execution graph:
+executes according to the following graph:
 
 ```none
         |            |
@@ -520,19 +482,24 @@ build-app  build-frontend
     deploy-all
 ```
 
-1. The `lint-repo` and `test-app` Pipeline Tasks will begin executing
-   simultaneously. (They have no `from` or `runAfter` clauses.)
-1. Once `test-app` completes, both `build-app` and `build-frontend` will begin
-   executing simultaneously (both `runAfter` `test-app`).
-1. When both `build-app` and `build-frontend` have completed, `deploy-all` will
-   execute (it requires `PipelineResources` from both Pipeline Tasks).
-1. The entire `Pipeline` will be finished executing after `lint-repo` and
-   `deploy-all` have completed.
+In particular:
 
-### Pipeline Results
+1. The `lint-repo` and `test-app` `Tasks` have no `from` or `runAfter` clauses
+   and start executing simultaneously.
+2. Once `test-app` completes, both `build-app` and `build-frontend` start
+   executing simultaneously since they both `runAfter` the `test-app` `Task`.
+3. The `deploy-all` `Task` executes once both `build-app` and `build-frontend`
+   complete, since it ingests `PipelineResources` from both.
+4. The entire `Pipeline` completes execution once both `lint-repo` and `deploy-all`
+   complete execution.
 
-A pipeline can declare results that they will emit during their execution. These results can be defined as reference to task results executed
-during the pipeline execution.
+## Monitoring execution results
+
+You can configure your `Pipeline` to emit `Results` during its execution as references to
+the `Results` emitted by each `Task` within it. 
+
+In the example below, the `Pipeline` specifies a `results` entry with the name `sum` that
+references the `Result` emitted by the `second-add` `Task`.
 
 ```yaml
   results:
@@ -541,14 +508,15 @@ during the pipeline execution.
       value: $(tasks.second-add.results.sum)
 ```
 
-In this example the pipeline result has name "sum" and its result is declared as the task result value from the tasks named `second-add`.
+For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/pipelineruns/pipelinerun-results.yaml).
 
-For a complete example demonstrating pipeline Results in a Pipeline see the [pipeline example](../examples/pipelineruns/pipelinerun-results.yaml).
+## Adding a description
 
-## Examples
+The `description` field is an optional field and can be used to provide description of the `Pipeline`.
 
-For complete examples, see
-[the examples folder](https://github.com/tektoncd/pipeline/tree/master/examples).
+## Code examples
+
+For a better understanding of `Pipelines`, study [our code examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ---
 
