@@ -1,4 +1,4 @@
- # Getting Started with Tekton Pipelines
+# Getting Started with Tekton Pipelines
 
 This guide helps you get started with Tekton Pipelines by walking you through a simple `Hello World` tutorial. The tutorial shows you how to:
 
