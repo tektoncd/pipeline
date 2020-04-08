@@ -148,10 +148,9 @@ spec:
       value: docker.io/<your docker hub username>/hello-world #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
-
 In the following example, you can see a `Task` definition with the `git` input and `image` output
 introduced earlier. The arguments of the `Task` command support variable substitution so that
-the `Task` definition is constant and the value of parameters can change during runtime.
+the `Task` definition is constant and the value of parameters can change at runtime.
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
