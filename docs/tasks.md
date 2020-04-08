@@ -6,105 +6,79 @@ weight: 1
 -->
 # Tasks
 
-A `Task` (or a [`ClusterTask`](#clustertask)) is a collection of sequential
-steps you would want to run as part of your continuous integration flow. A task
-will run inside a pod on your cluster.
+- [Overview](#overview)
+- [Configuring a `Task`](#configuring-a-task)
+  - [`Task` vs. `ClusterTask`](#task-vs-clustertask)
+  - [Defining `Steps`](#defining-steps)
+    - [Running scripts within `Steps`](#running-scripts-within-steps)
+  - [Specifying `Parameters`](#specifying-parameters)
+  - [Specifying `Resources`](#specifying-resources)
+  - [Specifying `Workspaces`](#specifying-workspaces)
+  - [Storing execution results](#storing-execution-results)
+  - [Specifying `Volumes`](#specifying-volumes)
+  - [Specifying a `Step` template](#specifying-a-step-template)
+  - [Specifying `Sidecars`](#specifying-sidecars)
+  - [Adding a description](#adding-a-description)
+  - [Using variable substitution](#using-variable-substitution)
+    - [Substituting parameters and resources](#substituting-parameters-and-resources)
+    - [Substituting `Array` parameters](#substituting-array-parameters)
+    - [Substituting `Workspace` paths](#substituting-workspace-paths)
+    - [Substituting `Volume` names and types](#substituting-volume-names-and-types)
+- [Code examples](#code-examples)
+  - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
+  - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
+  - [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
+  - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
+  - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
+- [Debugging](#debugging)
+  - [Inspecting the file structure](#inspecting-the-file-structure)
+  - [Inspecting the `Pod`](#inspecting-the-pod)
 
-A `Task` declares:
+## Overview
 
-- [Parameters](#parameters)
-- [Resources](#resources)
-- [Steps](#steps)
-- [Workspaces](#workspaces)
-- [Results](#results)
+A `Task` is a collection of `Steps` that you
+define and arrange in a specific order of execution as part of your continuous integration flow. 
+A `Task` executes as a Pod on your Kubernetes cluster. A `Task` is available within a specific
+namespace, while a `ClusterTask` is available across the entire cluster.
 
-A `Task` is available within a namespace, and `ClusterTask` is available across
-entire Kubernetes cluster.
+A `Task` declaration includes the following elements:
 
----
+- [Parameters](#specifying-parameters)
+- [Resources](#specifying-resources)
+- [Steps](#defining-steps)
+- [Workspaces](#specifying-workspaces)
+- [Results](#storing-execution-results)
 
-- [ClusterTasks](#clustertask)
-- [Syntax](#syntax)
-  - [Steps](#steps)
-    - [Step script](#step-script)
-  - [Parameters](#parameters)
-  - [Resources](#resources)
-    - [Inputs](#inputs)
-    - [Outputs](#outputs)
-  - [Workspaces](#workspaces)
-  - [Results](#results)
-  - [Volumes](#volumes)
-  - [Step Template](#step-template)
-  - [Sidecars](#sidecars)
-  - [Variable Substitution](#variable-substitution)
-- [Examples](#examples)
-- [Debugging Tips](#debugging)
+## Configuring a `Task`
 
-## ClusterTask
-
-Similar to Task, but with a cluster scope.
-
-In case of using a ClusterTask, the `TaskRef` kind should be added. The default
-kind is Task which represents a namespaced Task
-
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:
-  name: demo-pipeline
-  namespace: default
-spec:
-  tasks:
-    - name: build-skaffold-web
-      taskRef:
-        name: build-push
-        kind: ClusterTask
-      params: ....
-```
-
-A `Task` functions exactly like a `ClusterTask`, and as such all references to
-`Task` below are also describing `ClusterTask`.
-
-## Syntax
-
-To define a configuration file for a `Task` resource, you can specify the
-following fields:
+A `Task` definition supports the following fields:
 
 - Required:
-  - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version. For example, 
     `tekton.dev/v1beta`.
-  - [`kind`][kubernetes-overview] - Specify the `Task` resource object.
-  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
-    `Task` resource object, for example a `name`.
+  - [`kind`][kubernetes-overview] - Identifies this resource object as a `Task` object.
+  - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
+    `Task` resource object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    your `Task` resource object. `Task` steps must be defined through either of
-    the following fields:
-    - [`steps`](#steps) - Specifies one or more container images that you want
-      to run in your `Task`.
+    this `Task` resource object. 
+  - [`steps`](#defining-steps) - Specifies one or more container images to run in the `Task`.
 - Optional:
-  - [`description`](#description) - Description of the Task.
-  - [`params`](#parameters) - Specifies parameters
-  - [`resources`](#resources) - Specifies
-    [`PipelineResources`](resources.md) needed or created by your
-    `Task`. *Note: this is an alpha field, it is not supported as the
-    rest of the beta field*.
-    - [`inputs`](#inputs-resources) - resources needed by your `Task`.
-    - [`outputs`](#outputs-resources) - resources created by your `Task`
-  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
-    be mounted and available
-  - [`results`](#results) - Specifies the result file name where the task can write its result
-  - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
-    available to your `Task`'s steps.
-  - [`stepTemplate`](#step-template) - Specifies a `Container` step
-    definition to use as the basis for all steps within your `Task`.
-  - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
-    steps.
+  - [`description`](#adding-a-description) - An informative description of the `Task`.
+  - [`params`](#specifying-parameters) - Specifies execution parameters for the `Task`.
+  - [`resources`](#specifying-resources) - **alpha only** Specifies
+    [`PipelineResources`](resources.md) needed or created by your`Task`.
+    - [`inputs`](#specifying-resources) - Specifies the resources ingested by the `Task`.
+    - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
+  - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
+  - [`results`](#storing-execution-results) - Specifies the file to which the `Tasks` writes its execution results.
+  - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
+  - [`stepTemplate`](#specifying-a-step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
+  - [`sidecars`](#specifying-sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-The following example is a non-working sample where most of the possible
-configuration fields are used:
+The non-functional example below demonstrates the use of most of the above-mentioned fields:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -142,49 +116,70 @@ spec:
       emptyDir: {}
 ```
 
-### Steps
+### `Task` vs. `ClusterTask`
 
-The `steps` field is required. You define one or more `steps` fields to define
-the body of a `Task`.
+A `ClusterTask` is a `Task` scoped to the entire cluster instead of a single namespace.
+A `ClusterTask` behaves identically to a `Task` and therefore everything in this document
+applies to both.
 
-If multiple `steps` are defined, they will be executed in the same order as they
-are defined, if the `Task` is invoked by a [`TaskRun`](taskruns.md).
-Each `steps` in a `Task` must specify a container image that adheres to the
-[container contract](./container-contract.md). For each of the `steps` fields,
-or container images that you define:
+**Note:** When using a `ClusterTask`, you must explicitly set the `kind` sub-field in the `taskRef` field to `ClusterTask`.
+          If not specified, the `kind` sub-field defaults to `Task.` 
 
-- The container images are run and evaluated in order, starting from the top of
-  the configuration file.
-- Each container image runs until completion or until the first failure is
-  detected.
-- The CPU, memory, and ephemeral storage resource requests will be set to zero
+Below is an example of a Pipeline declaration that uses a `ClusterTask`:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+  namespace: default
+spec:
+  tasks:
+    - name: build-skaffold-web
+      taskRef:
+        name: build-push
+        kind: ClusterTask
+      params: ....
+```
+
+### Defining `Steps`
+
+A `Step` is a reference to a container image that executes a specific tool on a
+specific input and produces a specific output. To add `Steps` to a `Task` you
+define a `steps` field (required) containing a list of desired `Steps`. The order in
+which the `Steps` appear in this list is the order in which they will execute.
+
+The following requirements apply to each container image referenced in a `steps` field:
+
+- The container image must abide by the [container contract](./container-contract.md). 
+- Each container image runs to completion or until the first failure occurs.
+- The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
+  specified, the minimums set through `LimitRanges` in that `Namespace`,
   if the container image does not have the largest resource request out of all
-  container images in the Task. This ensures that the Pod that executes the Task
-  will only request the resources necessary to execute any single container
-  image in the Task, rather than requesting the sum of all of the container
-  image's resource requests.
+  container images in the `Task.` This ensures that the Pod that executes the `Task`
+  only requests enough resources to run a single container image in the `Task` rather
+  than hoard resources for all container images in the `Task` at once.
 
-#### Step Script
+#### Running scripts within `Steps`
 
-To simplify executing scripts inside a container, a step can specify a `script`.
-If this field is present, the step cannot specify `command`.
+A step can specify a `script` field, which contains the body of a script. That script is
+invoked as if it were stored inside the container image, and any `args` are passed directly
+to it.
 
-When specified, a `script` gets invoked as if it were the contents of a file in
-the container. Any `args` are passed to the script file.
+**Note:** If the `script` field is present, the step cannot also contain a `command` field.
 
 Scripts that do not start with a [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))
-line will use the following default preamble:
+line will have the following default preamble prepended:
 
 ```bash
 #!/bin/sh
 set -xe
 ```
 
-Users can override this by starting their script with a shebang to declare what
-tool should be used to interpret the script. That tool must then also be
-available within the step's container.
+You can override this default preamble by prepending a shebang that specifies the desired parser. 
+This parser must be present within that `Step's` container image.
 
-This allows you to execute a Bash script, if the image includes `bash`:
+The example below executes a Bash script:
 
 ```yaml
 steps:
@@ -194,7 +189,7 @@ steps:
     echo "Hello from Bash!"
 ```
 
-...or to execute a Python script, if the image includes `python`:
+The example below executes a Python script:
 
 ```yaml
 steps:
@@ -204,7 +199,7 @@ steps:
     print("Hello from Python!")
 ```
 
-...or to execute a Node script, if the image includes `node`:
+The example below executes a Node script:
 
 ```yaml
 steps:
@@ -214,7 +209,7 @@ steps:
     console.log("Hello from Node!")
 ```
 
-This also simplifies executing script files in the workspace:
+You can execute scripts directly in the workspace:
 
 ```yaml
 steps:
@@ -224,7 +219,7 @@ steps:
     /workspace/my-script.sh  # provided by an input resource
 ```
 
-...or in the container image:
+You can also execute scripts within the container image:
 
 ```yaml
 steps:
@@ -234,35 +229,26 @@ steps:
     /bin/my-binary
 ```
 
-### Description
+### Specifying `Parameters`
 
-The `description` field is an optional field and can be used to provide description of the Task.
+You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.
+ `Parameters` are passed to the `Task` from its corresponding `TaskRun`.
 
-### Parameters
+Parameter names:
+- Must only contain alphanumeric characters, hyphens (`-`), and underscores (`_`).
+- Must begin with a letter or an underscore (`_`).
 
-Tasks can declare input parameters that must be supplied to the task during a
-TaskRun. Some example use-cases of this include:
+For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
-- A Task that needs to know what compilation flags to use when building an
-  application.
-- A Task that needs to know what to name a built artifact.
+Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
+of compiliation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
+`string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
-Parameters name are limited to alpha-numeric characters, `-` and `_` and can
-only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
-parameter name, `barIsBa$` or `0banana` are not.
+The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares two input parameters named `flags`
+(of type `array`) and `someURL` (of type `string`), and uses them in the `steps.args` list. You can expand parameters of type `array`
+inside an existing array using the star operator. In this example, `flags` contains the star operator: `$(params.flags[*])`.
 
-Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of compilation flags need to be supplied to a task building an application. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
-
-#### Usage
-
-The following example shows how Tasks can be parameterized, and these parameters
-can be passed to the `Task` from a `TaskRun`.
-
-Input parameters in the form of `$(params.foo)` are replaced inside of
-the [`steps`](#steps) (see also [variable substitution](#variable-substitution)).
-
-The following `Task` declares two input parameters named 'flags' (array) and 'someURL' (string), and uses them in
-the `steps.args` list. Array parameters like 'flags' can be expanded inside of an existing array by using star expansion syntax by adding `[*]` to the named parameter as we do below using `$(params.flags[*])`.
+**Note:** Input parameter values can be used as variables throughout the `Task` by using [variable substitution](#using-variable-substitution).
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -302,25 +288,14 @@ spec:
       value: "http://google.com"
 ```
 
-### Resources
+### Specifying `Resources`
 
-A `Task` can declare the resources it needs and create, which can be either or both of:
+A `Task` definition can specify input and output resources supplied by
+a `[`PipelineResources`](resources.md#using-resources) entity.
 
-- [input resources](#input-resources)
-- [output resources](#output-resources)
-
-#### Input resources
-
-Use input [`PipelineResources`](resources.md) field to provide your `Task` with
-data or context that is needed by your `Task`. See the [using resources docs](./resources.md#using-resources).
-
-#### Output resources
-
-`Task` definitions can include inputs and outputs
-[`PipelineResource`](resources.md) declarations. If specific set of resources
-are only declared in output then a copy of resource to be uploaded or shared for
-next Task is expected to be present under the path
-`/workspace/output/resource_name/`.
+Use the `input` field to supply your `Task` with the context and/or data it needs to execute.
+If the output of your `Task` is also the input of the next `Task` that executes, you must
+make that data available to that `Task` at `/workspace/output/resource_name/`. For example:
 
 ```yaml
 resources:
@@ -337,18 +312,18 @@ steps:
         value: "world"
 ```
 
-**note**: if the task is relying on output resource functionality then the
-containers in the task `steps` field cannot mount anything in the path
+**Note**: If the `Task` relies on output resource functionality then the
+containers in the `Task's` `steps` field cannot mount anything in the path
 `/workspace/output`.
 
-In the following example Task `tar-artifact` resource is used both as input and
-output so input resource is downloaded into directory `customworkspace`(as
-specified in [`targetPath`](#targetpath)). Step `untar` extracts tar file into
-`tar-scratch-space` directory , `edit-tar` adds a new file and last step
-`tar-it-up` creates new tar file and places in `/workspace/customworkspace/`
-directory. After execution of the Task steps, (new) tar file in directory
-`/workspace/customworkspace` will be uploaded to the bucket defined in
-`tar-artifact` resource definition.
+In the following example, the `tar-artifact` resource is used as both input and
+output. Thus, the input resource is copied into the `customworkspace` directory,
+as specified in the `targetPath` field. The `untar` `Step` extracts the tarball
+into the `tar-scratch-space` directory. The `edit-tar` `Step` adds a new file,
+and the `tar-it-up` `Step` creates a new tarball and places it in the
+`/workspace/customworkspace/` directory. When the `Task` completes execution,
+it places the resulting tarball in the `/workspace/customworkspace` directory
+and uploads it to the bucket defined in the `tar-artifact` field.
 
 ```yaml
 resources:
@@ -372,12 +347,10 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
-### Workspaces
+### Specifying `Workspaces`
 
-`workspaces` are a way of declaring volumes you expect to be made available to your
-executing `Task` and the path to make them available at.
-
-Here's a short example of a Task spec with a `workspace`:
+`Workspaces`[workspaces.md#declaring-workspaces-in-tasks] allow you to specify
+one or more volumes that your `Task` requires during execution. For example:
 
 ```yaml
 spec:
@@ -394,18 +367,17 @@ spec:
     mountPath: /custom/path/relative/to/root
 ```
 
-For complete documentation on using `workspaces` in Tasks, see
-[workspaces.md](./workspaces.md#declaring-workspaces-in-tasks).
+For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
+and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml) example YAML file.
 
-_For a complete example see [the Workspaces TaskRun](../examples/v1beta1/taskruns/workspace.yaml)
-in the examples directory._
+### Storing execution results
 
-### Results
+Use the `results` field to specify one or more files in which the `Task` stores its execution results. These files are
+stored in the `/tekton/results` directory. This directory is created automatically at execution time if at least one file
+is specified in the `results` field. To specify a file, provide its `name` and `description`.
 
-Specifies one or more result files in which you want the task's [`steps`](#steps) to write a result. All result files are written
-into the `/tekton/results` folder. This folder is created automatically if the task defines one or more results.
-
-For example, this task:
+In the example below, the `Task` specifies two files in the `results` field:
+`current-date-unix-timestamp` and `current-date-human-readable`.
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -434,51 +406,43 @@ spec:
         date | tee /tekton/results/current-date-human-readable
 ```
 
-defines two results `current-date-unix-timestamp` and `current-date-human-readable`. To define a result, you specify a `name` that will correspond to the file name in the `/tekton/results` folder and a `description` where you can explain the purpose of the result.
+**Note:** The maximum size of a `Task's` results is limited by the container termination log feature of Kubernetes,
+as results are passed back to the controller via this mechanism. At present, the limit is
+["2048 bytes or 80 lines, whichever is smaller."](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
+Results are written to the termination log encoded as JSON objects and Tekton uses those objects
+to pass additional information to the controller. As such, `Task` results are best suited for holding
+small amounts of data, such as commit SHAs, branch names, ephemeral space names, and so on.
 
-Note: The maximum size of a Task's results is limited by Kubernetes' container termination log feature. The results
-are passed back to the controller via this mechanism. At time of writing this has a capped maximum size of
-["2048 bytes or 80 lines, whichever is smaller"](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
+If your `Task` writes a large number of small results, you can work around this limitation
+by writing each result from a separate `Step` so that each `Step` has its own termination log.
+However, for results larger than a kilobyte, use a [`Workspace`](#specifying-workspaces) to
+shuttle data between `Tasks` within a `Pipeline`.
 
-A Task Result is encoded as a JSON object when it is written to the termination log and Tekton also uses this
-object to pass some other information back to the controller as well. As such Task Results are best utilized for
-_small_ pieces of data.  Good candidates are commit SHAs, branch names, ephemeral namespace names, and so on.
+### Specifying `Volumes`
 
-If you are writing many small Task Results from a single Task you can work around this size limit by writing
-the results from separate Steps - each Step has its own termination log. But for data larger than a kilobyte
-the next best alternative is to use a [Workspace](#workspaces) to shuttle data between Tasks in a Pipeline.
+Specifies one or more [`Volumes`](https://kubernetes.io/docs/concepts/storage/volumes/) that the `Steps` in your
+`Task` require to execute in addition to volumes that are implicitly created for input and output resources.
 
-### Volumes
+For example, you can use `Volumes` to do the following:
 
-Specifies one or more
-[volumes](https://kubernetes.io/docs/concepts/storage/volumes/) that you want to
-make available to your `Task`, including all the [`steps`](#steps). Add volumes
-to complement the volumes that are implicitly created for
-[input resources](#input-resources) and [output resources](#outputs).
+- [Mount a Kubernetes `Secret`](auth.md).
+- Create an `emptyDir` persistent `Volume` that caches data across multiple `Steps`.
+- Mount a [Kubernetes `ConfigMap`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
+  as `Volume` source.
+- Mount a host's Docker socket to use a `Dockerfile` for building container images.
+  **Note:** Building a container image on-cluster using `docker build` is **very
+  unsafe** and is mentioned only for the sake of the example. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
 
-For example, use volumes to accomplish one of the following common tasks:
+### Specifying a `Step` template
 
-- [Mount a Kubernetes secret](./auth.md).
-- Create an `emptyDir` volume to act as a cache for use across multiple build
-  steps. Consider using a persistent volume for inter-build caching.
-- Mount
-  [Kubernetes configmap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
-  as volume source.
-- Mount a host's Docker socket to use a `Dockerfile` for container image builds.
-  **Note:** Building a container image using `docker build` on-cluster is _very
-  unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
-  This is used only for the purposes of demonstration.
+The `stepTemplate` field specifies a [`Container`](https://kubernetes.io/docs/concepts/containers/)
+configuration that will be used as the starting point for all of the `Steps` in your
+`Task`. Individual configurations specified within `Steps` supersede the template wherever
+overlap occurs.
 
-### Step Template
-
-Specifies a [`Container`](https://kubernetes.io/docs/concepts/containers/)
-configuration that will be used as the basis for all [`steps`](#steps) in your
-`Task`. Configuration in an individual step will override or merge with the
-step template's configuration.
-
-In the example below, the `Task` specifies a `stepTemplate` with the
-environment variable `FOO` set to `bar`. The first step will use that value for
-`FOO`, but in the second step, `FOO` is overridden and set to `baz`.
+In the example below, the `Task` specifies a `stepTemplate` field with the environment variable
+`FOO` set to `bar`. The first `Step` in the `Task` uses that value for `FOO`, but the second `Step`
+overrides the value set in the template with `baz`.
 
 ```yaml
 stepTemplate:
@@ -497,20 +461,15 @@ steps:
         value: "baz"
 ```
 
-### Sidecars
+### Specifying `Sidecars`
 
-Specifies a list of
-[`Containers`](https://kubernetes.io/docs/concepts/containers/) to run
-alongside your Steps. These containers can provide auxiliary functions like
-[Docker in Docker](https://hub.docker.com/_/docker) or running a mock API
-server for your app to hit during tests.
+The `sidecars` field specifies a list of [`Containers`](https://kubernetes.io/docs/concepts/containers/)
+to run alongside the `Steps` in your `Task`. You can use `Sidecars` to provide auxiliary functionality, such as
+[Docker in Docker](https://hub.docker.com/_/docker) or running a mock API server that your app can hit during testing.
+`Sidecars` spin up before your `Task` executes and are deleted after the `Task` execution completes.
+For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#sidecars).
 
-Sidecars are started before your Task's steps are executed and are torn
-down after all steps have completed. For further information about a sidecar's
-lifecycle see the [TaskRun doc](./taskruns.md#sidecars).
-
-In the example below, a Docker in Docker sidecar is run so that a step can
-use it to build a docker image:
+In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
 
 ```yaml
 steps:
@@ -545,7 +504,7 @@ volumes:
     emptyDir: {}
 ```
 
-Sidecars can also run a script, like a Step:
+Sidecars, just like `Steps`, can also run scripts:
 
 ```yaml
 sidecars:
@@ -554,44 +513,45 @@ sidecars:
   script: |
     echo 'Hello from sidecar!'
 ```
+**Note:** Tekton's current `Sidecar` implementation contains a bug.
+Tekton uses a container image named `nop` to terminate `Sidecars`.
+That image is configured by passing a flag to the Tekton controller.
+If the configured `nop` image contains the exact command the `Sidecar`
+was executing before receiving a "stop" signal, the `Sidecar` keeps
+running, eventually causing the `TaskRun` to time out with an error.
+For more information, see [issue 1347](https://github.com/tektoncd/pipeline/issues/1347).
 
-Note: There is a known bug with Tekton's existing sidecar implementation.
-Tekton uses a specific image, called "nop", to stop sidecars. The "nop" image
-is configurable using a flag of the Tekton controller. If the configured "nop"
-image contains the command that the sidecar was running before the sidecar
-was stopped then the sidecar will actually keep running, causing the TaskRun's
-Pod to remain running, and eventually causing the TaskRun to timeout rather
-then exit successfully. [Issue 1347](https://github.com/tektoncd/pipeline/issues/1347)
-has been created to track this bug.
+### Adding a description
 
-### Variable Substitution
+The `description` field is an optional field that allows you to add an informative description to the `Task`.
 
-`Tasks` support string replacement using values from:
+### Using variable substitution
 
-- [Inputs and Outputs](#input-and-output-substitution)
-  - [Array params](#variable-substitution-with-parameters-of-type-array)
-- [`workspaces`](#variable-substitution-with-workspaces)
-- [`volumes`](#variable-substitution-with-volumes)
+`Tasks` allow you to substitute variable names for the following entities:
 
-#### Parameter and Resource substitution
+- [Parameters and resources]](#substituting-parameters-and-resources)
+- [`Array` parameters](#substituting-array-parameters)
+- [`Workspaces`](#substituting-workspace-paths)
+- [`Volume` names and types](#substituting-volume-names-and-paths)
 
-[`params`](#parameters) and [`resources`](#resources) attributes can be used in replacements,
-including [`params`](#params) and [`resources`](./resources.md#variable-substitution).
+#### Substituting parameters and resources
 
-Parameters can be referenced in the `Task` spec using the variable substitution syntax below,
-where `<name>` is the name of the parameter:
+[`params`](#specifying-parameters) and [`resources`](#specifying-resources) attributes can replace
+variable values as follows:
 
-```shell
-$(params.<name>)
-```
+- To reference a parameter in a `Task`, use the following syntax, where `<name>` is the name of the parameter:
+  ```shell
+  $(params.<name>)
+  ```
+- To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)  
 
-Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
+#### Substituting `Array' parameters
 
-##### Variable Substitution with Parameters of Type `Array`
+You can expand referenced paramters of type `array` using the star operator. To do so, add the operator (`[*]`)
+to the named parameter to insert the array elements in the spot of the reference string.
 
-Referenced parameters of type `array` can be expanded using 'star-expansion' by adding `[*]` to the named parameter to insert the array elements in the reference string's spot.
-
-So, with the following parameter:
+For example, given a `params` field with the contents listed below, you can expand
+`command: ["first", "$(params.array-param[*])", "last"]` to `command: ["first", "some", "array", "elements", "last"]`:
 
 ```yaml
 params:
@@ -602,14 +562,9 @@ params:
       - "elements"
 ```
 
-then `command: ["first", "$(params.array-param[*])", "last"]` will become
-`command: ["first", "some", "array", "elements", "last"]`
-
-Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
-Any other attempt to reference an array is invalid and will throw an error.
-
-For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because
-the string isn't isolated:
+You **must** reference parameters of type `array` in a completely isolated string within a larger `string` array.
+Referencing an `array` parameter in any other way will result in an error. For example, if `build-args` is a parameter of
+type `array`, then the following example is an invalid `Step` because the string isn't isolated:
 
 ```yaml
  - name: build-step
@@ -617,7 +572,7 @@ the string isn't isolated:
       args: ["build", "additionalArg $(params.build-args[*])"]
 ```
 
-Similarly, referencing `build-args` in a non-array field is also invalid:
+Similarly, referencing `build-args` in a non-`array` field is also invalid:
 
 ```yaml
  - name: build-step
@@ -633,52 +588,48 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
       args: ["build", "$(params.build-args[*])", "additonalArg"]
 ```
 
-#### Variable Substitution with Workspaces
+#### Substituting `Workspace` paths
 
-Paths to a `Task's` declared [workspaces](#workspaces) can be substituted with:
+You can substitute paths to `Workspaces` specified within a `Task` as follows:
 
 ```yaml
 $(workspaces.myworkspace.path)
 ```
 
-Since the name of the `Volume` is not known until runtime and is randomized, you can also
-substitute the volume name with:
+Since the `Volume` name is randomized and only set when the `Task` executes, you can also
+substitute the volume name as follows:
 
 ```yaml
 $(workspaces.myworkspace.volume)
 ```
 
-#### Variable Substitution within Volumes
+#### Substituting `Volume` names and types
 
-Task volume names and different
-[types of volumes](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
-can be parameterized. Current support includes for widely used types of volumes
-like configmap, secret and PersistentVolumeClaim. Here is an
-[example](#using-kubernetes-configmap-as-volume-source) on how to use this in
-Task definitions.
+You can substitute `Volume` names and [types](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
+by parameterizing them. Tekton supports popular `Volume` types such as `ConfigMap`, `Secret`, and `PersistentVolumeClaim`.
+See this [example](#using-kubernetes-configmap-as-volume-source) to find out how to perform this type of substitution
+in your `Task.`
 
-## Examples
+## Code examples
 
-Use these code snippets to help you understand how to define your `Tasks`.
+Study the following code examples to better understand how to configure your `Tasks`:
 
-- [Example of image building and pushing](#example-task)
-- [Mounting extra volumes](#using-an-extra-volume)
-- [Mounting configMap as volume
-  source](#using-kubernetes-configmap-as-volume-source)
-- [Using secret as environment source](#using-secret-as-environment-source)
+- [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
+- [Mounting multiple `Volumes`](#mounting-multiple-volumes)
+- [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
+- [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
+- [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 
 _Tip: See the collection of simple
 [examples](https://github.com/tektoncd/pipeline/tree/master/examples) for
 additional code samples._
 
-### Example Task
+### Building and pushing a Docker image
 
-For example, a `Task` to encapsulate a `Dockerfile` build might look something
-like this:
+The following example `Task` builds and pushes a `Dockerfile`-built image.
 
-**Note:** Building a container image using `docker build` on-cluster is _very
-unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
-This is used only for the purposes of demonstration.
+**Note:** Building a container image using `docker build` on-cluster is **very
+unsafe** and is shown here only as a demonstration. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
 
 ```yaml
 spec:
@@ -732,9 +683,9 @@ spec:
         type: Socket
 ```
 
-#### Using an extra volume
+#### Mounting multiple `Volumes`
 
-Mounting multiple volumes:
+The example below illustrates mounting multiple `Volumes`:
 
 ```yaml
 spec:
@@ -760,7 +711,9 @@ spec:
       emptyDir: {}
 ```
 
-#### Using Kubernetes Configmap as Volume Source
+#### Mounting a `ConfigMap` as a `Volume` source
+
+The example below illustrates how to mount a `ConfigMap` to act as a `Volume` source:
 
 ```yaml
 spec:
@@ -786,7 +739,9 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
-#### Using secret as environment source
+#### Using a `Secret` as an environment source
+
+The example below illustrates how to use a `Secret` as an environment source:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -825,7 +780,9 @@ spec:
           key: bot-token
 ```
 
-#### Using a sidecar
+#### Using a `Sidecar` in a `Task`
+
+The example below illustrates how to use a `Sidecar` in your `Task`:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -851,23 +808,16 @@ spec:
     image: hello-world
 ```
 
-Except as otherwise noted, the content of this page is licensed under the
-[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
-and code samples are licensed under the
-[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
-
 ## Debugging
 
-In software, we do things not because they are easy, but because we think they will be.
-Lots of things can go wrong when writing a Task.
-This section contains some tips on how to debug one.
+This section describes techniques for debugging the most common issues in `Tasks`.
 
-### Inspecting the Filesystem
+### Inspecting the file structure
 
-One common problem when writing Tasks is not understanding where files are on disk.
-For the most part, these all live somewhere under `/workspace`, but the exact layout can
-be tricky.
-To see where things are before your task runs, you can add a step like this:
+A common issue when configuring `Tasks` stems from not knowing the location of your data.
+For the most part, files ingested and output by your `Task` live in the `/workspace` directory,
+but the specifics can vary. To inspect the file structure of your `Task`, add a step that outputs
+the name of every file stored in the `/workspace` directory to the build log. For example:
 
 ```yaml
 - name: build-and-push-1
@@ -881,9 +831,7 @@ To see where things are before your task runs, you can add a step like this:
     find /workspace
 ```
 
-This step will output the name of every file under /workspace to your build logs.
-
-To see the contents of every file, you can use a similar step:
+You can also choose to examine the *contents* of every file used by your `Task`:
 
 ```yaml
 - name: build-and-push-1
@@ -897,11 +845,10 @@ To see the contents of every file, you can use a similar step:
     find /workspace | xargs cat
 ```
 
-These steps are useful both before and after your Task steps!
+### Inspecting the `Pod`
 
-### Inspecting the pod
-
-One `task` will map to one `Pod`, to check arbitrary thing in `Pod`, the best way is to login the `pod`, add a step at the position you want to `pause` the task, then checking.
+To inspect the contents of the `Pod` used by your `Task` at a specific stage in the `Task's` execution,
+log into the `Pod` and add a `Step` that pauses the `Task` at the desired stage. For example:
 
 ```yaml
 - name: pause
@@ -909,3 +856,7 @@ One `task` will map to one `Pod`, to check arbitrary thing in `Pod`, the best wa
   args: ["sleep", "6000"]
 
 ```
+
+Except as otherwise noted, the contents of this page are licensed under the
+[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/).
+Code samples are licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).

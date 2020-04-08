@@ -43,7 +43,7 @@ spec:
         pipeline.tekton.dev/release: "devel"
         version: "devel"
     spec:
-      serviceAccountName: tekton-pipelines-controller
+      serviceAccountName: tekton-pipelines-webhook
       containers:
       - name: webhook
         # This is the Go import path for the binary that is containerized

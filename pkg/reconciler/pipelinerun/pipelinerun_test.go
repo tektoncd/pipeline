@@ -1778,3 +1778,75 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, d)
 	}
 }
+
+func TestReconcileWithPipelineResults(t *testing.T) {
+	names.TestingSeed()
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("a-task", "a-task"),
+		tb.PipelineTask("b-task", "b-task",
+			tb.PipelineTaskParam("bParam", "$(tasks.a-task.results.aResult)"),
+		),
+		tb.PipelineResult("result", "$(tasks.a-task.results.aResult)", "pipeline result"),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+		tb.PipelineRunStatus(
+			tb.PipelineRunResult("result", "aResultValue")),
+	)}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task", "foo"),
+		tb.Task("b-task", "foo",
+			tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("bParam", v1alpha1.ParamTypeString)),
+			),
+		),
+	}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("test-pipeline-run-different-service-accs-a-task-9l9zj", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+			tb.TaskRunStatus(
+				tb.StatusCondition(
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				),
+				tb.TaskRunResult("aResult", "aResultValue"),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-different-service-accs")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+	// Check that the PipelineRun was reconciled correctly
+	pipelineRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-different-service-accs", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+	if d := cmp.Diff(&pipelineRun, &prs[0]); d != "" {
+		t.Errorf("expected to see pipeline run results created. -want, +got: Diff %s", d)
+	}
+}

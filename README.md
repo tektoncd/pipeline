@@ -28,6 +28,7 @@ Tekton Pipelines are **Typed**:
 
 - [Installing Tekton Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
+- Take a look at our [roadmap](roadmap.md)
 
 *Note that starting from the 0.11 release of Tetkon, you need to have
 a cluster with **Kubernetes version 1.15 or later***.
@@ -37,6 +38,7 @@ a cluster with **Kubernetes version 1.15 or later***.
 | Version | Docs | Examples |
 | ------- | ---- | -------- |
 | [HEAD](DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](/docs/README.md) | [Examples @ HEAD](/examples) |
+| [v0.11.1](https://github.com/tektoncd/pipeline/releases/tag/v0.11.1) | [Docs @ v0.11.1](https://github.com/tektoncd/pipeline/tree/v0.11.1/docs#tekton-pipelines) | [Examples @ v0.11.1](https://github.com/tektoncd/pipeline/tree/v0.11.1/examples#examples) |
 | [v0.11.0](https://github.com/tektoncd/pipeline/releases/tag/v0.11.0) | [Docs @ v0.11.0](https://github.com/tektoncd/pipeline/tree/v0.11.0/docs#tekton-pipelines) | [Examples @ v0.11.0](https://github.com/tektoncd/pipeline/tree/v0.11.0/examples#examples) |
 | [v0.11.0-rc4](https://github.com/tektoncd/pipeline/releases/tag/v0.11.0-rc4) | [Docs @ v0.11.0-rc4](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc4/docs#tekton-pipelines) | [Examples @ v0.11.0-rc4](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc4/examples#examples) |
 | [v0.11.0-rc3](https://github.com/tektoncd/pipeline/releases/tag/v0.11.0-rc3) | [Docs @ v0.11.0-rc3](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc3/docs#tekton-pipelines) | [Examples @ v0.11.0-rc3](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc3/examples#examples) |
@@ -62,6 +64,16 @@ a cluster with **Kubernetes version 1.15 or later***.
 
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
 stability level of the API._
+
+## Migrating
+
+### v1alpha1 to v1beta1
+
+In the move from v1alpha1 to v1beta1 several spec fields and Tekton
+CRDs were updated or removed .
+
+For users migrating their Tasks and Pipelines from v1alpha1 to v1beta1, check
+out [the spec changes and migration paths](./docs/migrating-v1alpha1-to-v1beta1.md).
 
 ## Want to contribute
 

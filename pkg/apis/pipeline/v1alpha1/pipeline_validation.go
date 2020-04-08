@@ -140,8 +140,26 @@ func validateGraph(tasks []PipelineTask) error {
 func validateParamResults(tasks []PipelineTask) error {
 	for _, task := range tasks {
 		for _, param := range task.Params {
-			if v1beta1.LooksLikeContainsResultRefs(param) {
-				if _, err := v1beta1.NewResultRefs(param); err != nil {
+			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				if v1beta1.LooksLikeContainsResultRefs(expressions) {
+					if _, err := v1beta1.NewResultRefs(expressions); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// validatePipelineResults ensure that task result variables are properly configured
+func validatePipelineResults(results []PipelineResult) error {
+	for _, result := range results {
+		expressions, ok := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(result)
+		if ok {
+			if v1beta1.LooksLikeContainsResultRefs(expressions) {
+				if _, err := v1beta1.NewResultRefs(expressions); err != nil {
 					return err
 				}
 			}
@@ -226,6 +244,11 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Validate the pipeline's workspaces.
 	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks); err != nil {
 		return err
+	}
+
+	// Validate the pipeline's results
+	if err := validatePipelineResults(ps.Results); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks.params.value")
 	}
 
 	return nil

@@ -466,6 +466,11 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 		*out = make([]v1beta1.WorkspacePipelineDeclaration, len(*in))
 		copy(*out, *in)
 	}
+	if in.Results != nil {
+		in, out := &in.Results, &out.Results
+		*out = make([]v1beta1.PipelineResult, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

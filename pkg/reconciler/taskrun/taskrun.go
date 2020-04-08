@@ -453,9 +453,9 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.Pod
 				if err != nil {
 					return fmt.Errorf("parsing message for container status %d: %v", idx, err)
 				}
-				taskResults, pipelineResults := getResults(r)
+				taskResults, pipelineResourceResults := getResults(r)
 				taskRun.Status.TaskRunResults = append(taskRun.Status.TaskRunResults, taskResults...)
-				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, pipelineResults...)
+				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, pipelineResourceResults...)
 			}
 		}
 	}
