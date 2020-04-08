@@ -8,11 +8,7 @@
     - [Git Resource](#git-resource)
     - [Pull Request Resource](#pull-request-resource)
     - [Image Resource](#image-resource)
-    - [Cluster Resource](#cluster-resource)
-    - [Storage Resources](#storage-resources)
     - [GCS Resource](#gcs-resource)
-    - [BuildGCS Resource](#buildgcs-resource)
-    - [Cloud Event Resource](#cloud-event-resource)
 
 This doc describes the changes you'll need to make when converting your `Task`s,
 `Pipeline`s, `TaskRun`s, and `PipelineRun`s from the `v1alpha1` `apiVersion` to
@@ -174,3 +170,8 @@ the [Kaniko Catalog Task](https://github.com/tektoncd/catalog/blob/v1beta1/kanik
 which demonstrates writing the image digest to a result, and the
 [Buildah Catalog Task](https://github.com/tektoncd/catalog/blob/v1beta1/buildah/)
 which shows how to accept an image digest as a parameter.
+
+### GCS Resource
+
+The [`gcs` Tasks in the Catalog](https://github.com/tektoncd/catalog/tree/v1beta1/gcs) provide
+an equivalent to the GCS Resource.
