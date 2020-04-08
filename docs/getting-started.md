@@ -145,7 +145,7 @@ spec:
   type: image
   params:
     - name: url
-      value: docker.io/<your docker hub username>/hello-world
+      value: docker.io/<your docker hub username>/hello-world #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
 
