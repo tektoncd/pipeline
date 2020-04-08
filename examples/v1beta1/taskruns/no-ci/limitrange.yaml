@@ -36,12 +36,9 @@ kind: TaskRun
 metadata:
   generateName: echo-hello-world-run-
 spec:
-  inputs: {}
-  outputs: {}
   serviceAccountName: ""
   taskRef:
     name: echo-hello-world
   timeout: 1h0m0s
-  limitRangeName: "limit-mem-cpu-per-container"
 status:
   podName: ""
