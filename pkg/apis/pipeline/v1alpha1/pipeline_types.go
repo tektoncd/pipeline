@@ -181,6 +181,7 @@ func (pt PipelineTask) Deps() []string {
 			}
 		}
 	}
+
 	return deps
 }
 

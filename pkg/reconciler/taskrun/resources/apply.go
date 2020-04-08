@@ -62,9 +62,6 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 			arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.ArrayVal
 		}
 	}
-
-	fmt.Println("stringReplacements", stringReplacements)
-	fmt.Println("arrayReplacements", arrayReplacements)
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
 }
 
