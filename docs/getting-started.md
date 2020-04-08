@@ -220,7 +220,7 @@ secrets:
 Save the `ServiceAccount` definition above to a file and apply the YAML file to make the `ServiceAccount` available for your `TaskRun`:
 
 ```bash
-kubectl apply -f <name-of-file.yaml>
+kubectl apply -f <YOUR-SERVICE-ACCOUNT.yaml>
 ```
 
 ### Running your `Task`
@@ -253,7 +253,8 @@ spec:
 Save the YAML files that contain your Task, and `PipelineResource` definitions and apply them using the following command:
 
 ```bash
-kubectl apply -f <name-of-file.yaml>
+kubectl apply -f <YOUR-TASK.yaml>
+kubectl apply -f <YOUR-TASKRUN.yaml>
 ```
 
 To examine the resources you've created so far, use the following command:
@@ -465,7 +466,10 @@ in your `Pipeline` collects the results of executing each `TaskRun`. In our exam
 Save the `Task`, `Pipeline`, and `PipelineRun` definitions above to as YAML files and apply them using the following command:
 
 ```bash
-kubectl apply -f <name-of-file.yaml>
+kubectl apply -f <YOUR-TASK.yaml>
+kubectl apply -f <YOUR-PIPELINE.yaml>
+kubectl apply -f <YOUR-PIPELINERUN.yaml>
+
 ```
 **Note:**  Apply the `deploy-task` or the `PipelineRun` will not execute.
 
