@@ -30,6 +30,8 @@ import (
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	// +optional
+	Debug bool `json:"debug"`
+	// +optional
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	Resources *TaskRunResources `json:"resources,omitempty"`
@@ -152,6 +154,10 @@ type TaskRunStatusFields struct {
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
+
+	// Debug shows if debugMode has been enabled for the TaskRun
+	// +optional
+	Debug bool `json:"debug"`
 }
 
 // TaskRunResult used to describe the results of a task

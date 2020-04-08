@@ -81,10 +81,11 @@ var (
 // by the supplied CRD.
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache, overrideHomeEnv bool) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
+	var helperContainers []corev1.Container
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
 	implicitEnvVars := []corev1.EnvVar{}
-
+	debugMode := taskRun.Status.Debug
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
 	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
@@ -119,10 +120,13 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
-	scriptsInit, stepContainers, sidecarContainers := convertScripts(images.ShellImage, steps, taskSpec.Sidecars)
+	scriptsInit, stepContainers, sidecarContainers := convertScripts(images.ShellImage, steps, taskSpec.Sidecars, debugMode)
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
+		if debugMode {
+			volumes = append(volumes, debugScriptsVolume)
+		}
 	}
 
 	// Initialize any workingDirs under /workspace.
@@ -138,12 +142,15 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary.
-	entrypointInit, stepContainers, err := orderContainers(images.EntrypointImage, stepContainers, taskSpec.Results)
+	entrypointInit, stepContainers, err := orderContainers(images.EntrypointImage, stepContainers, taskSpec.Results, debugMode)
 	if err != nil {
 		return nil, err
 	}
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
+	if debugMode {
+		volumes = append(volumes, debugToolsVolume)
+	}
 
 	limitRangeMin, err := getLimitRangeMinimum(taskRun.Namespace, kubeclient)
 	if err != nil {
@@ -175,6 +182,9 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			}
 		}
 		vms := append(s.VolumeMounts, toAdd...)
+		if debugMode {
+			vms = append(vms, debugToolsMount)
+		}
 		stepContainers[i].VolumeMounts = vms
 	}
 
@@ -210,7 +220,16 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		return nil, err
 	}
 
-	mergedPodContainers := stepContainers
+	// Create Helper Containers (especially the Super Container which will act a bastion post for
+	// carrying out operations like debugging)
+	superContainer, debugContainer := createHelperContainers(images.ShellImage, images.EntrypointImage, debugMode)
+	helperContainers = []corev1.Container{superContainer}
+	if debugMode {
+		helperContainers = append(helperContainers, debugContainer)
+	}
+
+	// Aggregate all containers to be added to the Pod.
+	mergedPodContainers := append(helperContainers, stepContainers...)
 
 	// Merge sidecar containers with step containers.
 	for _, sc := range sidecarContainers {

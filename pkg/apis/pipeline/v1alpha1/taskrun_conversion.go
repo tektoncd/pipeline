@@ -57,6 +57,7 @@ func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunS
 	sink.Workspaces = source.Workspaces
 	sink.Params = source.Params
 	sink.Resources = source.Resources
+	sink.Debug = source.Debug
 	// Deprecated fields
 	if source.Inputs != nil {
 		if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
@@ -144,5 +145,6 @@ func (sink *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskRu
 	sink.Workspaces = source.Workspaces
 	sink.Params = source.Params
 	sink.Resources = source.Resources
+	sink.Debug = source.Debug
 	return nil
 }

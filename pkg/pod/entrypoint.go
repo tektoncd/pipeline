@@ -29,16 +29,18 @@ import (
 )
 
 const (
-	toolsVolumeName  = "tekton-internal-tools"
-	mountPoint       = "/tekton/tools"
-	entrypointBinary = mountPoint + "/entrypoint"
+	toolsVolumeName      = "tekton-internal-tools"
+	mountPoint           = "/tekton/tools"
+	debugToolsVolumeName = "tekton-debug-internal-tools"
+	debugMountPoint      = "/tekton/debug/tools"
+	entrypointBinary     = mountPoint + "/entrypoint"
 
-	downwardVolumeName     = "tekton-internal-downward"
-	downwardMountPoint     = "/tekton/downward"
-	terminationPath        = "/tekton/termination"
-	downwardMountReadyFile = "ready"
-	readyAnnotation        = "tekton.dev/ready"
-	readyAnnotationValue   = "READY"
+	downwardVolumeName   = "tekton-internal-downward"
+	downwardMountPoint   = "/tekton/downward"
+	terminationPath      = "/tekton/termination"
+	readyFile            = "ready"
+	readyAnnotation      = "tekton.dev/ready"
+	readyAnnotationValue = "READY"
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
@@ -55,6 +57,15 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 
+	debugToolsMount = corev1.VolumeMount{
+		Name:      debugToolsVolumeName,
+		MountPath: debugMountPoint,
+	}
+	debugToolsVolume = corev1.Volume{
+		Name:         debugToolsVolumeName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+
 	// TODO(#1605): Signal sidecar readiness by injecting entrypoint,
 	// remove dependency on Downward API.
 	downwardVolume = corev1.Volume{
@@ -62,7 +73,7 @@ var (
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{{
-					Path: downwardMountReadyFile,
+					Path: readyFile,
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
 					},
@@ -86,12 +97,17 @@ var (
 // method, using entrypoint_lookup.go.
 //
 // TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, steps []corev1.Container, results []v1alpha1.TaskResult) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, steps []corev1.Container, results []v1alpha1.TaskResult, debugMode bool) (corev1.Container, []corev1.Container, error) {
+
+	volumeMounts := []corev1.VolumeMount{toolsMount}
+	if debugMode {
+		volumeMounts = append(volumeMounts, debugToolsMount, debugScriptsMount)
+	}
 	initContainer := corev1.Container{
 		Name:         "place-tools",
 		Image:        entrypointImage,
 		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{toolsMount},
+		VolumeMounts: volumeMounts,
 	}
 
 	if len(steps) == 0 {
@@ -104,11 +120,21 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 		case 0:
 			argsForEntrypoint = []string{
 				// First step waits for the Downward volume file.
-				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
+				"-wait_file", filepath.Join(downwardMountPoint, readyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
+			}
+			if debugMode {
+				argsForEntrypoint = []string{
+					// First step waits for the Debug ready file.
+					"-wait_file", filepath.Join(debugMountPoint, readyFile),
+					"-wait_file_content", // Wait for file contents, not just an empty file.
+					// Start next step.
+					"-post_file", filepath.Join(debugMountPoint, fmt.Sprintf("debug-%d", i)),
+					"-termination_path", terminationPath,
+				}
 			}
 		default:
 			// All other steps wait for previous file, write next file.
@@ -116,6 +142,13 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 				"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
+			}
+			if debugMode {
+				argsForEntrypoint = []string{
+					"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
+					"-post_file", filepath.Join(debugMountPoint, fmt.Sprintf("debug-%d", i)),
+					"-termination_path", terminationPath,
+				}
 			}
 		}
 		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)

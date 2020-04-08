@@ -49,6 +49,9 @@ type TaskRunSpec struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
+	// Debug specifies if the TaskRun has to be run in DebugMode
+	// +optional
+	Debug bool `json:"debug"`
 	// From v1beta1
 	// +optional
 	Params []Param `json:"params,omitempty"`

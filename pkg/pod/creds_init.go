@@ -52,7 +52,7 @@ var credsInitHomeVolumeMount = corev1.VolumeMount{
 //
 // If it finds secrets, it also returns a set of Volumes to attach to the Pod
 // to provide those secrets to this initialization.
-func credsInit(credsImage string, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
+func credsInit(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}

@@ -102,6 +102,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
 
+	//Check if TaskRUn in in DebugMode
+	tr.Status.Debug = tr.Spec.Debug
+
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
 	tr.Status.InitializeConditions()
