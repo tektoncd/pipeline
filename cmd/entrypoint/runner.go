@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
@@ -16,6 +18,11 @@ type realRunner struct{}
 var _ entrypoint.Runner = (*realRunner)(nil)
 
 func (*realRunner) Run(args ...string) error {
+	var systemSignals = make(chan os.Signal, 1)
+	defer close(systemSignals)
+	signal.Notify(systemSignals)
+	defer signal.Reset()
+
 	if len(args) == 0 {
 		return nil
 	}
@@ -24,9 +31,18 @@ func (*realRunner) Run(args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// Create dedicated pgidgroup for forwarding
+	// signals to main process and all children
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	if err := cmd.Run(); err != nil {
-		return err
-	}
+	go func() {
+		for s := range systemSignals {
+			if s != syscall.SIGCHLD {
+				// Forward signal to main process and all children
+				syscall.Kill(-cmd.Process.Pid, s.(syscall.Signal))
+			}
+		}
+	}()
+
 	return nil
 }
