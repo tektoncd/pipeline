@@ -114,7 +114,9 @@ Use one or more [`PipelineResources`](resources.md) to define the artifacts you 
 and out of your `Task`. The following are examples of the most commonly needed resources.
 
 The [`git` resource](resources.md#git-resource) specifies a git repository with
-a specific revision from which the `Task` will pull the source code:
+a specific revision from which the `Task` will pull the source code.
+
+**Note:**  In the yaml below replace <em>'https://github.com/popcor255/python-flask-docker-hello-world'</em> with a git repository that has Dockerfile.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -132,6 +134,8 @@ spec:
 
 The [`image` resource](resources.md#image-resource) specifies the repository to which the image built by the `Task` will be pushed:
 
+**Note:**  In the yaml below replace the <em>'docker.io/<your docker hub username>/hello-world'</em> with your docker hub repository
+
 ```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -141,8 +145,9 @@ spec:
   type: image
   params:
     - name: url
-      value: docker.io/<your docker hub username>/hello-world #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
+      value: docker.io/<your docker hub username>/hello-world
 ```
+
 
 In the following example, you can see a `Task` definition with the `git` input and `image` output
 introduced earlier. The arguments of the `Task` command support variable substitution so that
@@ -167,14 +172,14 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: $(params.BUILDER_IMAGE)
+      image: $(params.builder_image)
       workingDir: /workspace/source
       command: ["/bin/bash"]
       args:
         - -c
         - |
           set -e
-          IMAGE_NAME="$(outputs.resources.image.url)"
+          IMAGE_NAME="$(resources.outputs.image.url)"
           buildah bud --tls-verify="false" --layers -f "./Dockerfile" -t "$IMAGE_NAME:latest" .
           buildah push --tls-verify="false" "$IMAGE_NAME:latest" "docker://$IMAGE_NAME:latest"
       securityContext:
