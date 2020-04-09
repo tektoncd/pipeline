@@ -65,6 +65,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Using labels](labels.md)
 - [Viewing logs](logs.md)
 - [Pipelines metrics](metrics.md)
+- [Variable Substitutions](variables.md)
 
 ## Contributing to Tekton Pipelines
 
