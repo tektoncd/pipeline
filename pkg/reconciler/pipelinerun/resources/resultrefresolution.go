@@ -122,20 +122,21 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // convertParamsToResultRefs converts all params of the resolved pipeline run task
 func convertParamsToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
 	var resolvedParams ResolvedResultRefs
-	for _, condition := range target.PipelineTask.Conditions {
-		condRefs, err := convertParams(condition.Params, pipelineRunState, condition.ConditionRef)
+	if target.PipelineTask != nil {
+		for _, condition := range target.PipelineTask.Conditions {
+			condRefs, err := convertParams(condition.Params, pipelineRunState, condition.ConditionRef)
+			if err != nil {
+				return nil, err
+			}
+			resolvedParams = append(resolvedParams, condRefs...)
+		}
+
+		taskParamsRefs, err := convertParams(target.PipelineTask.Params, pipelineRunState, target.PipelineTask.Name)
 		if err != nil {
 			return nil, err
 		}
-		resolvedParams = append(resolvedParams, condRefs...)
+		resolvedParams = append(resolvedParams, taskParamsRefs...)
 	}
-
-	taskParamsRefs, err := convertParams(target.PipelineTask.Params, pipelineRunState, target.PipelineTask.Name)
-	if err != nil {
-		return nil, err
-	}
-	resolvedParams = append(resolvedParams, taskParamsRefs...)
-
 	return resolvedParams, nil
 }
 

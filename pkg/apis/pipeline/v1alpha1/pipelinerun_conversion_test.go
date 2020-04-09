@@ -118,6 +118,19 @@ func TestPipelineRunConversion(t *testing.T) {
 						}},
 						RunAfter: []string{"task1"},
 					}},
+					Finally: []PipelineTask{{
+						Name: "finaltask1",
+						TaskRef: &TaskRef{
+							Name: "taskref",
+						},
+					}, {
+						Name: "finaltask2",
+						TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{Container: corev1.Container{
+								Image: "foo",
+							}}},
+						}},
+					}},
 				},
 				ServiceAccountName: "sa",
 				ServiceAccountNames: []PipelineRunSpecServiceAccountName{{

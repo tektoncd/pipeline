@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipeline_Validate(t *testing.T) {
@@ -368,6 +369,217 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineWorkspaceDeclaration("foo"),
 			tb.PipelineWorkspaceDeclaration("foo"),
 		)),
+		failureExpected: true,
+	}, {
+		name: "valid pipeline with one final task",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "non-final-task",
+					TaskSpec: &v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{Name: "foo", Image: "bar"},
+							}},
+						},
+					},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name: "final-task",
+					TaskSpec: &v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{Name: "foo", Image: "bar"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		failureExpected: false,
+	}, {
+		name: "invalid pipeline without any non final task but at least one final task",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name: "final-task",
+					TaskSpec: &v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{Name: "foo", Image: "bar"},
+							}},
+						},
+					},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with empty finally section",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "non-final-task",
+					TaskSpec: &v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{Name: "foo", Image: "bar"},
+							}},
+						},
+					},
+				}},
+				Finally: []v1alpha1.PipelineTask{},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with duplicate final tasks",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "non-final-task",
+					TaskSpec: &v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{Name: "foo", Image: "bar"},
+							}},
+						},
+					},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:    "final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "final-task"},
+				}, {
+					Name:    "final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "final-task"},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with final task same as non final task",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "non-final-and-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:    "non-final-and-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "final task missing tasfref and taskspec",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name: "final-task",
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "undefined parameter variable in final task",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Params: []v1alpha1.ParamSpec{{
+					Name: "foo", Type: v1alpha1.ParamTypeString,
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:    "final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+					Params: []v1alpha1.Param{{
+						Name: "final-param", Value: v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with final task specifying runAfter",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:     "final-task",
+					TaskRef:  &v1alpha1.TaskRef{Name: "foo-task"},
+					RunAfter: []string{"non-final-task"},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with final task specifying conditions",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:    "final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+					Conditions: []v1alpha1.PipelineTaskCondition{{
+						ConditionRef: "some-condition",
+					}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "invalid pipeline with final task output resources referring to other final task input",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Resources: []v1alpha1.PipelineDeclaredResource{{
+					Name: "great-resource", Type: v1alpha1.PipelineResourceTypeGit,
+				}},
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+				Finally: []v1alpha1.PipelineTask{{
+					Name:    "final-task-1",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name: "final-input-1", Resource: "great-resource",
+						}},
+						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+							Name: "final-output-2", Resource: "great-resource",
+						}},
+					},
+				}, {
+					Name:    "final-task-2",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name: "final-input-2", Resource: "great-resource", From: []string{"final-task-1"},
+						}},
+					},
+				}},
+			},
+		},
 		failureExpected: true,
 	}}
 	for _, tt := range tests {

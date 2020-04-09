@@ -1,0 +1,149 @@
+# Task producing success by exiting with 0
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: successful-task
+spec:
+  steps:
+    - name: success
+      image: ubuntu
+      script: |
+        exit 0
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-with-final-tasks
+spec:
+  tasks:
+    - name: pre-work
+      taskRef:
+        Name: successful-task
+    - name: unit-test
+      taskRef:
+        Name: successful-task
+      runAfter:
+        - pre-work
+    - name: integration-test
+      taskRef:
+        Name: successful-task
+      runAfter:
+        - unit-test
+  finally:
+    - name: cleanup-test
+      taskRef:
+        Name: successful-task
+    - name: report-results
+      taskRef:
+        Name: successful-task
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-final-tasks
+spec:
+  pipelineRef:
+    name: pipeline-with-final-tasks
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-workspace
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: clone-app-repo-to-workspace
+spec:
+  workspaces:
+    - name: shared-workspace
+  resources:
+    inputs:
+      - name: app-git
+        type: git
+        targetPath: application
+  steps:
+    - name: clone-app-repo-to-workspace
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        cp -avr $(resources.inputs.app-git.path)/ $(workspaces.shared-workspace.path)/
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup-workspace
+spec:
+  workspaces:
+    - name: shared-workspace
+  steps:
+    - name: cleanup-workspace
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        rm -rf $(workspaces.shared-workspace.path)/application/
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: clone-into-workspace-and-cleanup-workspace
+spec:
+  resources:
+    - name: app-git
+      type: git
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: clone-app-source
+      taskRef:
+        name: clone-app-repo-to-workspace
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+      resources:
+        inputs:
+          - name: app-git
+            resource: app-git
+  finally:
+    - name: cleanup-workspace
+      taskRef:
+        name: cleanup-workspace
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: write-and-cleanup-workspace
+spec:
+  pipelineRef:
+    name: clone-into-workspace-and-cleanup-workspace
+  workspaces:
+    - name: shared-workspace
+      persistentVolumeClaim:
+        claimName: shared-workspace
+  resources:
+    - name: app-git
+      resourceSpec:
+        type: git
+        params:
+          - name: url
+            value: https://github.com/tektoncd/pipeline.git
+---

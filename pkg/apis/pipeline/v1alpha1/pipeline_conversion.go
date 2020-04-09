@@ -51,6 +51,14 @@ func (source *PipelineSpec) ConvertTo(ctx context.Context, sink *v1beta1.Pipelin
 			}
 		}
 	}
+	if len(source.Finally) > 0 {
+		sink.Finally = make([]v1beta1.PipelineTask, len(source.Finally))
+		for i := range source.Finally {
+			if err := source.Finally[i].ConvertTo(ctx, &sink.Finally[i]); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -93,6 +101,14 @@ func (sink *PipelineSpec) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 		sink.Tasks = make([]PipelineTask, len(source.Tasks))
 		for i := range source.Tasks {
 			if err := sink.Tasks[i].ConvertFrom(ctx, source.Tasks[i]); err != nil {
+				return err
+			}
+		}
+	}
+	if len(source.Finally) > 0 {
+		sink.Finally = make([]PipelineTask, len(source.Finally))
+		for i := range source.Finally {
+			if err := sink.Finally[i].ConvertFrom(ctx, source.Finally[i]); err != nil {
 				return err
 			}
 		}

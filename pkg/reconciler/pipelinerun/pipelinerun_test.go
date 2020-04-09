@@ -1463,7 +1463,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(getTaskRunTimeout(tc.pr, tc.rprt), tc.expected); d != "" {
+			if d := cmp.Diff(getTaskRunTimeout(tc.pr, tc.rprt, false), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", d)
 			}
 		})
@@ -2183,5 +2183,133 @@ func Test_storePipelineSpec(t *testing.T) {
 	}
 	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
 		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+func TestReconcileFailedPipelineRunWithFinally(t *testing.T) {
+	pipelineRunName := "test-pipeline-run-finally"
+	pipelineName := "test-pipelines"
+	taskRunName := "test-pipeline-run-finally-non-final-task"
+	finalTaskRunName := "test-pipeline-run-finally-final-task"
+	taskName := "hello-world"
+
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(pipelineRunName,
+		tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec(pipelineName, tb.PipelineRunServiceAccountName("test-sa")),
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  resources.ReasonFailed,
+			Message: "TaskRun hello-world-1 has failed",
+		}),
+			tb.PipelineRunTaskRunsStatus(taskRunName, &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "hello-world-1",
+				Status:           &v1alpha1.TaskRunStatus{},
+			}),
+			tb.PipelineRunTaskRunsStatus(finalTaskRunName, &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "final-task-1",
+				Status:           &v1alpha1.TaskRunStatus{},
+			}),
+		),
+	)}
+	ps := []*v1alpha1.Pipeline{tb.Pipeline(pipelineName, tb.PipelineNamespace("foo"),
+		tb.PipelineSpec(
+			tb.PipelineTask("hello-world-1", taskName),
+			tb.FinalPipelineTask("final-task-1", taskName),
+		))}
+	ts := []*v1alpha1.Task{tb.Task(taskName, tb.TaskNamespace("foo"))}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(taskRunName,
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, pipelineRunName),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, pipelineName),
+			tb.TaskRunSpec(tb.TaskRunTaskRef(taskName)),
+			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}),
+			),
+		),
+		tb.TaskRun(finalTaskRunName,
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, pipelineRunName),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, pipelineName),
+			tb.TaskRunSpec(tb.TaskRunTaskRef(taskName)),
+			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Type: apis.ConditionSucceeded,
+				}),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/"+pipelineRunName); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) != 2 {
+		t.Fatalf("Expected client to have updated the TaskRun status for a PipelineRun, but it did not")
+	}
+
+	actual := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1alpha1.PipelineRun)
+	if actual == nil {
+		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
+	}
+	t.Log(clients.Pipeline.Actions())
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource == "taskruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did")
+			}
+		}
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be failed and the status should reflect that
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be failed, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "hello-world-1",
+		Status: &v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+	expectedTaskRunsStatus[finalTaskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "final-task-1",
+		Status: &v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+		},
+	}
+
+	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
 }
