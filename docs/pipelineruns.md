@@ -37,7 +37,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `tekton.dev/vbeta1`
+    `tekton.dev/v1beta1`
   - [`kind`][kubernetes-overview] - Specify the `PipelineRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineRun` resource object, for example a `name`.

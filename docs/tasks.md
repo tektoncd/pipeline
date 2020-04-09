@@ -37,7 +37,7 @@ weight: 1
 ## Overview
 
 A `Task` is a collection of `Steps` that you
-define and arrange in a specific order of execution as part of your continuous integration flow. 
+define and arrange in a specific order of execution as part of your continuous integration flow.
 A `Task` executes as a Pod on your Kubernetes cluster. A `Task` is available within a specific
 namespace, while a `ClusterTask` is available across the entire cluster.
 
@@ -54,13 +54,13 @@ A `Task` declaration includes the following elements:
 A `Task` definition supports the following fields:
 
 - Required:
-  - [`apiVersion`][kubernetes-overview] - Specifies the API version. For example, 
-    `tekton.dev/v1beta`.
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version. For example,
+    `tekton.dev/v1beta1`.
   - [`kind`][kubernetes-overview] - Identifies this resource object as a `Task` object.
   - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
     `Task` resource object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    this `Task` resource object. 
+    this `Task` resource object.
   - [`steps`](#defining-steps) - Specifies one or more container images to run in the `Task`.
 - Optional:
   - [`description`](#adding-a-description) - An informative description of the `Task`.
@@ -123,7 +123,7 @@ A `ClusterTask` behaves identically to a `Task` and therefore everything in this
 applies to both.
 
 **Note:** When using a `ClusterTask`, you must explicitly set the `kind` sub-field in the `taskRef` field to `ClusterTask`.
-          If not specified, the `kind` sub-field defaults to `Task.` 
+          If not specified, the `kind` sub-field defaults to `Task.`
 
 Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 
@@ -151,7 +151,7 @@ which the `Steps` appear in this list is the order in which they will execute.
 
 The following requirements apply to each container image referenced in a `steps` field:
 
-- The container image must abide by the [container contract](./container-contract.md). 
+- The container image must abide by the [container contract](./container-contract.md).
 - Each container image runs to completion or until the first failure occurs.
 - The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
   specified, the minimums set through `LimitRanges` in that `Namespace`,
@@ -176,7 +176,7 @@ line will have the following default preamble prepended:
 set -xe
 ```
 
-You can override this default preamble by prepending a shebang that specifies the desired parser. 
+You can override this default preamble by prepending a shebang that specifies the desired parser.
 This parser must be present within that `Step's` container image.
 
 The example below executes a Bash script:
@@ -545,7 +545,7 @@ variable values as follows:
   ```shell
   $(params.<name>)
   ```
-- To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)  
+- To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)
 
 #### Substituting `Array' parameters
 
