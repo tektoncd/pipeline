@@ -147,7 +147,7 @@ parameters can be passed to the `Pipeline` from a `PipelineRun`.
 
 Input parameters in the form of `$(params.foo)` are replaced inside of the
 [`PipelineTask` parameters' values](#pipeline-tasks) (see also
-[variable substitution](tasks.md#variable-substitution)).
+[the complete list of variable substitutions](variables.md#variables-available-in-a-pipeline)).
 
 The following `Pipeline` declares an input parameter called 'context', and uses
 it in the `PipelineTask`'s parameter. The `description` and `default` fields for
