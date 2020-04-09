@@ -534,6 +534,8 @@ The `description` field is an optional field that allows you to add an informati
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
 
+Also see the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task).
+
 #### Substituting parameters and resources
 
 [`params`](#specifying-parameters) and [`resources`](#specifying-resources) attributes can replace
