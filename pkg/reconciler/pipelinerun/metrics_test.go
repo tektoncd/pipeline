@@ -168,5 +168,4 @@ func assertErrIsNil(err error, message string, t *testing.T) {
 
 func unregisterMetrics() {
 	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_count")
-
 }

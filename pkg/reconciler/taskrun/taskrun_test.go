@@ -252,6 +252,7 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
+	//unregisterMetrics()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
@@ -1790,6 +1791,7 @@ func TestUpdateTaskRunResult(t *testing.T) {
 		})
 	}
 }
+
 func TestUpdateTaskRunResult2(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
@@ -1837,6 +1839,7 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 		})
 	}
 }
+
 func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
@@ -1878,6 +1881,7 @@ func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 		})
 	}
 }
+
 func TestUpdateTaskRunResultWhenTaskFailed(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
@@ -1916,6 +1920,7 @@ func TestUpdateTaskRunResultWhenTaskFailed(t *testing.T) {
 		})
 	}
 }
+
 func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
@@ -2228,5 +2233,80 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 	_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
+	}
+}
+
+func TestFailTaskRun(t *testing.T) {
+	testCases := []struct {
+		name           string
+		taskRun        *v1alpha1.TaskRun
+		pod            *corev1.Pod
+		reason         string
+		message        string
+		expectedStatus apis.Condition
+	}{{
+		name: "no-pod-scheduled",
+		taskRun: tb.TaskRun("test-taskrun-run-failed", "foo", tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunCancelled,
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}))),
+		reason:  "some reason",
+		message: "some message",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "some reason",
+			Message: "some message",
+		},
+	}, {
+		name: "pod-scheduled",
+		taskRun: tb.TaskRun("test-taskrun-run-failed", "foo", tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunCancelled,
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}), tb.PodName("foo-is-bar"))),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  "some reason",
+		message: "some message",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "some reason",
+			Message: "some message",
+		},
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1alpha1.TaskRun{tc.taskRun},
+			}
+			if tc.pod != nil {
+				d.Pods = []*corev1.Pod{tc.pod}
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c, ok := testAssets.Controller.Reconciler.(*Reconciler)
+			if !ok {
+				t.Errorf("failed to construct instance of taskrun reconciler")
+				return
+			}
+			err := c.failTaskRun(tc.taskRun, tc.reason, tc.message)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+				t.Fatalf("-want, +got: %v", d)
+			}
+		})
 	}
 }
