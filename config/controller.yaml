@@ -71,6 +71,8 @@ spec:
           value: config-artifact-bucket
         - name: CONFIG_ARTIFACT_PVC_NAME
           value: config-artifact-pvc
+        - name: CONFIG_FEATURE_FLAGS_NAME
+          value: feature-flags
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
       volumes:

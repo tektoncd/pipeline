@@ -18,6 +18,7 @@ package pod
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -31,13 +32,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// GetFeatureFlagsConfigName returns the name of the configmap containing all
+// customizations for the feature flags.
+func GetFeatureFlagsConfigName() string {
+	if e := os.Getenv("CONFIG_FEATURE_FLAGS_NAME"); e != "" {
+		return e
+	}
+	return "feature-flags"
+}
+
 const (
 	homeDir = "/tekton/home"
 
 	// ResultsDir is the folder used by default to create the results file
 	ResultsDir = "/tekton/results"
 
-	featureFlagConfigMapName        = "feature-flags"
 	featureFlagDisableHomeEnvKey    = "disable-home-env-overwrite"
 	featureFlagDisableWorkingDirKey = "disable-working-directory-overwrite"
 
@@ -323,7 +332,7 @@ func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (co
 //
 // For further reference see https://github.com/tektoncd/pipeline/issues/2013
 func ShouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
-	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableHomeEnvKey] == "true" {
 		return false
 	}
@@ -337,7 +346,7 @@ func ShouldOverrideHomeEnv(kubeclient kubernetes.Interface) bool {
 //
 // For further reference see https://github.com/tektoncd/pipeline/issues/1836
 func shouldOverrideWorkingDir(kubeclient kubernetes.Interface) bool {
-	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(featureFlagConfigMapName, metav1.GetOptions{})
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableWorkingDirKey] == "true" {
 		return false
 	}
