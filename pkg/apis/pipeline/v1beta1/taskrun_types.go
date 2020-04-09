@@ -75,7 +75,7 @@ type TaskRunInputs struct {
 // TaskResourceBinding points to the PipelineResource that
 // will be used for the Task input or output called Name.
 type TaskResourceBinding struct {
-	PipelineResourceBinding
+	PipelineResourceBinding `json:",inline"`
 	// Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
 	// The optional Path field corresponds to a path on disk at which the Resource can be found
 	// (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
