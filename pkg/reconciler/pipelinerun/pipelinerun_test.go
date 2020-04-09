@@ -66,6 +66,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
+	//unregisterMetrics()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())

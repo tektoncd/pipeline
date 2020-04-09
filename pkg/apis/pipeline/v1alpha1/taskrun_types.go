@@ -18,7 +18,9 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,6 +79,10 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = v1beta1.TaskRunSpecStatusCancelled
+
+	// TaskRunReasonCancelled indicates that the TaskRun has been cancelled
+	// because it was requested so by the user
+	TaskRunReasonCancelled = v1beta1.TaskRunSpecStatusCancelled
 )
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -221,6 +227,28 @@ func (tr *TaskRun) IsSuccessful() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
+func (tr *TaskRun) HasTimedOut() bool {
+	if tr.Status.StartTime.IsZero() {
+		return false
+	}
+	timeout := tr.GetTimeout()
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := time.Since(tr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+func (tr *TaskRun) GetTimeout() time.Duration {
+	// Use the platform default is no timeout is set
+	if tr.Spec.Timeout == nil {
+		return apisconfig.DefaultTimeoutMinutes * time.Minute
+	}
+	return tr.Spec.Timeout.Duration
 }
 
 // GetRunKey return the taskrun key for timeout handler map
