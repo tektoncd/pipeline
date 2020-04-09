@@ -10,7 +10,7 @@ import (
 	"github.com/cloudevents/sdk-go/v2/protocol"
 )
 
-// Receive is the signature of a fn to be invoked for incoming cloudevents.
+// ReceiveFull is the signature of a fn to be invoked for incoming cloudevents.
 type ReceiveFull func(context.Context, event.Event) protocol.Result
 
 type receiverFn struct {

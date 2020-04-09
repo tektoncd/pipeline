@@ -8,7 +8,7 @@ import (
 // Result leverages go's 1.13 error wrapping.
 type Result error
 
-// Is reports whether any error in err's chain matches target.
+// ResultIs reports whether any error in err's chain matches target.
 //
 // The chain consists of err itself followed by the sequence of errors obtained by
 // repeatedly calling Unwrap.
@@ -18,7 +18,7 @@ type Result error
 // (text from errors/wrap.go)
 var ResultIs = errors.Is
 
-// As finds the first error in err's chain that matches target, and if so, sets
+// ResultAs finds the first error in err's chain that matches target, and if so, sets
 // target to that error value and returns true.
 //
 // The chain consists of err itself followed by the sequence of errors obtained by
@@ -79,10 +79,7 @@ var _ error = (*Receipt)(nil)
 // Is returns if the target error is a Result type checking target.
 func (e *Receipt) Is(target error) bool {
 	if o, ok := target.(*Receipt); ok {
-		if e.ACK == o.ACK {
-			return true
-		}
-		return false
+		return e.ACK == o.ACK
 	}
 	// Allow for wrapped errors.
 	err := fmt.Errorf(e.Format, e.Args...)
@@ -93,4 +90,10 @@ func (e *Receipt) Is(target error) bool {
 // provided args.
 func (e *Receipt) Error() string {
 	return fmt.Sprintf(e.Format, e.Args...)
+}
+
+// Unwrap returns the wrapped error if exist or nil
+func (e *Receipt) Unwrap() error {
+	err := fmt.Errorf(e.Format, e.Args...)
+	return errors.Unwrap(err)
 }

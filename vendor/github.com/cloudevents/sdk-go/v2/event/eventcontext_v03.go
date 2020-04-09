@@ -124,7 +124,7 @@ func (ec EventContextV03) AsV03() *EventContextV03 {
 	return &ec
 }
 
-// AsV04 implements EventContextConverter.AsV04
+// AsV1 implements EventContextConverter.AsV1
 func (ec EventContextV03) AsV1() *EventContextV1 {
 	ret := EventContextV1{
 		ID:              ec.ID,

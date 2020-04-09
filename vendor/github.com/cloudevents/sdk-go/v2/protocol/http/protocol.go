@@ -10,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudevents/sdk-go/v2/protocol"
-
 	"github.com/cloudevents/sdk-go/v2/binding"
 	cecontext "github.com/cloudevents/sdk-go/v2/context"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 )
 
 const (
@@ -25,7 +24,7 @@ const (
 type Protocol struct {
 	Target          *url.URL
 	RequestTemplate *http.Request
-	transformers    binding.TransformerFactories
+	transformers    binding.Transformers
 	Client          *http.Client
 	incoming        chan msgErr
 
@@ -54,7 +53,7 @@ type Protocol struct {
 
 func New(opts ...Option) (*Protocol, error) {
 	p := &Protocol{
-		transformers: make(binding.TransformerFactories, 0),
+		transformers: make(binding.Transformers, 0),
 		incoming:     make(chan msgErr),
 	}
 	if err := p.applyOptions(opts...); err != nil {
@@ -115,22 +114,11 @@ func (p *Protocol) Request(ctx context.Context, m binding.Message) (binding.Mess
 		return nil, fmt.Errorf("not initialized: %#v", p)
 	}
 
-	if err = WriteRequest(ctx, m, req, p.transformers); err != nil {
+	if err = WriteRequest(ctx, m, req, p.transformers...); err != nil {
 		return nil, err
 	}
-	resp, err := p.Client.Do(req)
-	if err != nil {
-		return nil, protocol.NewReceipt(false, "%w", err)
-	}
 
-	var result protocol.Result
-	if resp.StatusCode/100 == 2 {
-		result = protocol.ResultACK
-	} else {
-		result = protocol.ResultNACK
-	}
-
-	return NewMessage(resp.Header, resp.Body), NewResult(resp.StatusCode, "%w", result)
+	return p.do(ctx, req)
 }
 
 func (p *Protocol) makeRequest(ctx context.Context) *http.Request {
@@ -190,13 +178,16 @@ func (p *Protocol) Receive(ctx context.Context) (binding.Message, error) {
 	}
 
 	msg, fn, err := p.Respond(ctx)
-	// No-op the response.
-	defer func() {
-		if fn != nil {
-			_ = fn(ctx, nil, nil)
-		}
-	}()
-	return msg, err
+	// No-op the response when finish is invoked.
+	if msg != nil {
+		return binding.WithFinish(msg, func(err error) {
+			if fn != nil {
+				_ = fn(ctx, nil, nil)
+			}
+		}), err
+	} else {
+		return nil, err
+	}
 }
 
 // Respond receives the next incoming HTTP request as a CloudEvent and waits
@@ -226,25 +217,31 @@ type msgErr struct {
 }
 
 // ServeHTTP implements http.Handler.
-// Blocks until Message.Finish is called.
+// Blocks until ResponseFn is invoked.
 func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-
 	m := NewMessageFromHttpRequest(req)
 	if m == nil || m.ReadEncoding() == binding.EncodingUnknown {
 		p.incoming <- msgErr{msg: nil, err: binding.ErrUnknownEncoding}
 		return // if there was no message, return.
 	}
 
-	done := make(chan error)
+	done := make(chan struct{})
+	var finishErr error
 
 	m.OnFinish = func(err error) error {
-		done <- err
+		finishErr = err
 		return nil
 	}
 
 	var fn protocol.ResponseFn = func(ctx context.Context, resp binding.Message, er protocol.Result) error {
-
+		// Unblock the ServeHTTP after the reply is written
+		defer func() {
+			done <- struct{}{}
+		}()
 		status := http.StatusOK
+		if finishErr != nil {
+			http.Error(rw, fmt.Sprintf("cannot forward CloudEvent: %v", finishErr), http.StatusInternalServerError)
+		}
 		if er != nil {
 			var result *Result
 			if protocol.ResultAs(er, &result) {
@@ -262,8 +259,6 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	p.incoming <- msgErr{msg: m, respFn: fn} // Send to Request
-	if err := <-done; err != nil {
-		fmt.Println("attempting to write an error out on response writer:", err)
-		http.Error(rw, fmt.Sprintf("cannot forward CloudEvent: %v", err), http.StatusInternalServerError)
-	}
+	// Block until ResponseFn is invoked
+	<-done
 }

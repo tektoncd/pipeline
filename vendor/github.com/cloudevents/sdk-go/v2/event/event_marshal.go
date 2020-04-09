@@ -89,12 +89,12 @@ func versionFromRawMessage(raw map[string]json.RawMessage) string {
 	return ""
 }
 
-// JsonEncode
+// JsonEncode encodes an event to JSON
 func JsonEncode(e Event) ([]byte, error) {
 	return jsonEncode(e.Context, e.DataEncoded, e.DataBase64)
 }
 
-// JsonEncodeLegacy
+// JsonEncodeLegacy performs legacy JSON encoding
 func JsonEncodeLegacy(e Event) ([]byte, error) {
 	isBase64 := e.Context.DeprecatedGetDataContentEncoding() == Base64
 	return jsonEncode(e.Context, e.DataEncoded, isBase64)

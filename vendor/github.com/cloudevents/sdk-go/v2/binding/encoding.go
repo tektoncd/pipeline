@@ -16,7 +16,7 @@ const (
 	EncodingUnknown
 )
 
-// Error to specify that or the Message is not an event or it is encoded with an unknown encoding
+// ErrUnknownEncoding specifies that the Message is not an event or it is encoded with an unknown encoding
 var ErrUnknownEncoding = errors.New("unknown Message encoding")
 
 // ErrNotStructured returned by Message.Structured for non-structured messages.

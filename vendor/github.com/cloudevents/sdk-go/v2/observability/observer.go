@@ -31,12 +31,12 @@ type reporter struct {
 	once  sync.Once
 }
 
-// All tags used for Latency measurements.
+// LatencyTags returns all tags used for Latency measurements.
 func LatencyTags() []tag.Key {
 	return []tag.Key{KeyMethod, KeyResult}
 }
 
-// Deprecated. Tracing is always enabled.
+// EnableTracing is deprecated. Tracing is always enabled.
 func EnableTracing(enabled bool) {}
 
 // NewReporter creates and returns a reporter wrapping the provided Observable.

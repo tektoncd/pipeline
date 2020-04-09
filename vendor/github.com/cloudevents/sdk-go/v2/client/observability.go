@@ -34,6 +34,7 @@ var _ observability.Observable = observed(0)
 
 const (
 	specversionAttr     = "cloudevents.specversion"
+	idAttr              = "cloudevents.id"
 	typeAttr            = "cloudevents.type"
 	sourceAttr          = "cloudevents.source"
 	subjectAttr         = "cloudevents.subject"
@@ -66,6 +67,7 @@ func (o observed) LatencyMs() *stats.Float64Measure {
 func EventTraceAttributes(e event.EventReader) []trace.Attribute {
 	as := []trace.Attribute{
 		trace.StringAttribute(specversionAttr, e.SpecVersion()),
+		trace.StringAttribute(idAttr, e.ID()),
 		trace.StringAttribute(typeAttr, e.Type()),
 		trace.StringAttribute(sourceAttr, e.Source()),
 	}

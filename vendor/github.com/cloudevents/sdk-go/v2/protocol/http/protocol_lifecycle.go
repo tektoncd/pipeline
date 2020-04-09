@@ -14,49 +14,49 @@ import (
 
 var _ protocol.Opener = (*Protocol)(nil)
 
-func (e *Protocol) OpenInbound(ctx context.Context) error {
-	e.reMu.Lock()
-	defer e.reMu.Unlock()
+func (p *Protocol) OpenInbound(ctx context.Context) error {
+	p.reMu.Lock()
+	defer p.reMu.Unlock()
 
-	if e.Handler == nil {
-		e.Handler = http.NewServeMux()
+	if p.Handler == nil {
+		p.Handler = http.NewServeMux()
 	}
 
-	if !e.handlerRegistered {
+	if !p.handlerRegistered {
 		// handler.Handle might panic if the user tries to use the same path as the sdk.
-		e.Handler.Handle(e.GetPath(), e)
-		e.handlerRegistered = true
+		p.Handler.Handle(p.GetPath(), p)
+		p.handlerRegistered = true
 	}
 
-	addr, err := e.listen()
+	addr, err := p.listen()
 	if err != nil {
 		return err
 	}
 
-	e.server = &http.Server{
+	p.server = &http.Server{
 		Addr: addr.String(),
 		Handler: &ochttp.Handler{
 			Propagation:    &tracecontext.HTTPFormat{},
-			Handler:        attachMiddleware(e.Handler, e.middleware),
+			Handler:        attachMiddleware(p.Handler, p.middleware),
 			FormatSpanName: formatSpanName,
 		},
 	}
 
 	// Shutdown
 	defer func() {
-		_ = e.server.Close()
-		e.server = nil
+		_ = p.server.Close()
+		p.server = nil
 	}()
 
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- e.server.Serve(e.listener)
+		errChan <- p.server.Serve(p.listener)
 	}()
 
 	// nil check and default
 	shutdown := DefaultShutdownTimeout
-	if e.ShutdownTimeout != nil {
-		shutdown = *e.ShutdownTimeout
+	if p.ShutdownTimeout != nil {
+		shutdown = *p.ShutdownTimeout
 	}
 
 	// wait for the server to return or ctx.Done().
@@ -66,7 +66,7 @@ func (e *Protocol) OpenInbound(ctx context.Context) error {
 		timeout := shutdown
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		err := e.server.Shutdown(ctx)
+		err := p.server.Shutdown(ctx)
 		<-errChan // Wait for server goroutine to exit
 		return err
 	case err := <-errChan:
@@ -77,10 +77,10 @@ func (e *Protocol) OpenInbound(ctx context.Context) error {
 // GetPort returns the listening port.
 // Returns -1 if there is a listening error.
 // Note this will call net.Listen() if  the listener is not already started.
-func (e *Protocol) GetPort() int {
+func (p *Protocol) GetPort() int {
 	// Ensure we have a listener and therefore a port.
-	if _, err := e.listen(); err == nil || e.Port != nil {
-		return *e.Port
+	if _, err := p.listen(); err == nil || p.Port != nil {
+		return *p.Port
 	}
 	return -1
 }
@@ -89,31 +89,31 @@ func formatSpanName(r *http.Request) string {
 	return "cloudevents.http." + r.URL.Path
 }
 
-func (e *Protocol) setPort(port int) {
-	if e.Port == nil {
-		e.Port = new(int)
+func (p *Protocol) setPort(port int) {
+	if p.Port == nil {
+		p.Port = new(int)
 	}
-	*e.Port = port
+	*p.Port = port
 }
 
 // listen if not already listening, update t.Port
-func (e *Protocol) listen() (net.Addr, error) {
-	if e.listener == nil {
+func (p *Protocol) listen() (net.Addr, error) {
+	if p.listener == nil {
 		port := 8080
-		if e.Port != nil {
-			port = *e.Port
+		if p.Port != nil {
+			port = *p.Port
 			if port < 0 || port > 65535 {
 				return nil, fmt.Errorf("invalid port %d", port)
 			}
 		}
 		var err error
-		if e.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port)); err != nil {
+		if p.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port)); err != nil {
 			return nil, err
 		}
 	}
-	addr := e.listener.Addr()
+	addr := p.listener.Addr()
 	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
-		e.setPort(tcpAddr.Port)
+		p.setPort(tcpAddr.Port)
 	}
 	return addr, nil
 }
@@ -122,8 +122,8 @@ func (e *Protocol) listen() (net.Addr, error) {
 // the transport will handle requests on any URI. To discover the true path
 // a request was received on, inspect the context from Receive(cxt, ...) with
 // TransportContextFrom(ctx).
-func (e *Protocol) GetPath() string {
-	path := strings.TrimSpace(e.Path)
+func (p *Protocol) GetPath() string {
+	path := strings.TrimSpace(p.Path)
 	if len(path) > 0 {
 		return path
 	}

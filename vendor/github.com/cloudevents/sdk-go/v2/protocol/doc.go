@@ -1,7 +1,6 @@
 /*
-
-Package transport defines interfaces to decouple the client package
-from transport implementations.
+Package protocol defines interfaces to decouple the client package
+from protocol implementations.
 
 Most event sender and receiver applications should not use this
 package, they should use the client package. This package is for
@@ -19,5 +18,4 @@ Available protocols:
 * Google PubSub
 
 */
-
 package protocol
