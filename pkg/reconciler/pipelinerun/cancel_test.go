@@ -27,6 +27,7 @@ import (
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestCancelPipelineRun(t *testing.T) {
@@ -78,7 +79,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)
-			err := cancelPipelineRun(tc.pipelineRun, tc.pipelineState, c.Pipeline)
+			err := cancelPipelineRun(logtesting.TestLogger(t), tc.pipelineRun, tc.pipelineState, c.Pipeline)
 			if err != nil {
 				t.Fatal(err)
 			}
