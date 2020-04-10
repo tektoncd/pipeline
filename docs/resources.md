@@ -648,10 +648,17 @@ The Cluster resource has the following parameters:
     certificate.
 -   `cadata` (required): holds PEM-encoded bytes (typically read from a root
     certificates bundle).
+-   `clientKeyData`: contains PEM-encoded data from a client key file 
+        for TLS 
+-   `clientCertificateData`: contains PEM-encoded data from a client cert file for TLS
+
 
 Note: Since only one authentication technique is allowed per user, either a
 `token` or a `password` should be provided, if both are provided, the `password`
 will be ignored.
+
+`clientKeyData` and `clientCertificateData` are only required if `token` or 
+`password` is not provided for authentication to cluster.
 
 The following example shows the syntax and structure of a `cluster` resource:
 
