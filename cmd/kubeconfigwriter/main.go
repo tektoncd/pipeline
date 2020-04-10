@@ -32,7 +32,8 @@ import (
 )
 
 var (
-	clusterConfig = flag.String("clusterConfig", "", "json string with the configuration of a cluster based on values from a cluster resource. Only required for external clusters.")
+	clusterConfig  = flag.String("clusterConfig", "", "json string with the configuration of a cluster based on values from a cluster resource. Only required for external clusters.")
+	destinationDir = flag.String("destinationDir", "", "destination directory where generated kubeconfig file will be stored.")
 )
 
 func main() {
@@ -48,10 +49,10 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Error reading cluster config: %v", err)
 	}
-	createKubeconfigFile(&cr, logger)
+	createKubeconfigFile(&cr, logger, destinationDir)
 }
 
-func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger) {
+func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger, destinationDir *string) {
 	cluster := &clientcmdapi.Cluster{
 		Server:                   resource.URL,
 		InsecureSkipTLSVerify:    resource.Insecure,
@@ -72,14 +73,18 @@ func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger)
 	//only one authentication technique per user is allowed in a kubeconfig, so clear out the password if a token is provided
 	user := resource.Username
 	pass := resource.Password
+	clientKeyData := resource.ClientKeyData
+	clientCertificateData := resource.ClientCertificateData
 	if resource.Token != "" {
 		user = ""
 		pass = ""
 	}
 	auth := &clientcmdapi.AuthInfo{
-		Token:    resource.Token,
-		Username: user,
-		Password: pass,
+		Token:                 resource.Token,
+		Username:              user,
+		Password:              pass,
+		ClientKeyData:         clientKeyData,
+		ClientCertificateData: clientCertificateData,
 	}
 	context := &clientcmdapi.Context{
 		Cluster:  resource.Name,
@@ -95,7 +100,17 @@ func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger)
 	c.APIVersion = "v1"
 	c.Kind = "Config"
 
-	destinationFile := fmt.Sprintf("/workspace/%s/kubeconfig", resource.Name)
+	// kubeconfig file location
+	var destinationFile string
+
+	// If the destination Directory is provided, kubeconfig will be written to the given directory.
+	// otherwise it will use default location i.e. "/workspace/<cluster-name>/
+	if *destinationDir != "" {
+		destinationFile = fmt.Sprintf("%s/kubeconfig", *destinationDir)
+	} else {
+		destinationFile = fmt.Sprintf("/workspace/%s/kubeconfig", resource.Name)
+	}
+
 	if err := clientcmd.WriteToFile(*c, destinationFile); err != nil {
 		logger.Fatalf("Error writing kubeconfig to file: %v", err)
 	}

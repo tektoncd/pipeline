@@ -46,6 +46,10 @@ func TestResourceValidation_Invalid(t *testing.T) {
 						Name: "username", Value: "admin",
 					}, {
 						Name: "token", Value: "my-token",
+					}, {
+						Name: "clientKeyData", Value: "Y2xpZW50LWtleS1kYXRh",
+					}, {
+						Name: "clientCertificateData", Value: "Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=",
 					}},
 				},
 			},
@@ -63,7 +67,7 @@ func TestResourceValidation_Invalid(t *testing.T) {
 					}},
 				},
 			},
-			want: apis.ErrMissingField("username or CAData  or token param"),
+			want: apis.ErrMissingField("username or CAData  or token param or clientKeyData or ClientCertificateData"),
 		}, {
 			name: "cluster with missing cadata",
 			res: &v1alpha1.PipelineResource{
@@ -171,6 +175,10 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 						Name: "username", Value: "admin",
 					}, {
 						Name: "token", Value: "my-token",
+					}, {
+						Name: "clientKeyData", Value: "Y2xpZW50LWtleS1kYXRh",
+					}, {
+						Name: "clientCertificateData", Value: "Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=",
 					}},
 				},
 			},

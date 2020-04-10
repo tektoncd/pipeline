@@ -42,7 +42,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("spec.type")
 	}
 	if rs.Type == PipelineResourceTypeCluster {
-		var authFound, cadataFound, isInsecure bool
+		var authFound, cadataFound, clientKeyDataFound, clientCertificateDataFound, isInsecure bool
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
@@ -54,6 +54,10 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 			case strings.EqualFold(param.Name, "CAData"):
 				authFound = true
 				cadataFound = true
+			case strings.EqualFold(param.Name, "ClientKeyData"):
+				clientKeyDataFound = true
+			case strings.EqualFold(param.Name, "ClientCertificateData"):
+				clientCertificateDataFound = true
 			case strings.EqualFold(param.Name, "Token"):
 				authFound = true
 			case strings.EqualFold(param.Name, "insecure"):
@@ -71,10 +75,14 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 				cadataFound = true
 			}
 		}
+		// if both clientKeyData and clientCertificateData found
+		if clientCertificateDataFound && clientKeyDataFound {
+			authFound = true
+		}
 
 		// One auth method must be supplied
 		if !(authFound) {
-			return apis.ErrMissingField("username or CAData  or token param")
+			return apis.ErrMissingField("username or CAData  or token param or clientKeyData or ClientCertificateData")
 		}
 		if !cadataFound && !isInsecure {
 			return apis.ErrMissingField("CAData param")

@@ -98,6 +98,8 @@ Each variable is accessible via `resources.inputs.<resource name>.<variable name
 | `token` | Bearer token. |
 | `insecure` | Whether TLS connection to server should be verified: `"true"` or `"false"`. |
 | `cadata` | Stringified PEM-encoded bytes typically read from a root certificates bundle. |
+| `clientKeyData` | Stringified PEM-encoded bytes from a client key file for TLS. |
+| `clientCertificateData` | Stringified PEM-encoded bytes from a client cert file for TLS. |
 
 #### CloudEvent PipelineResource
 
