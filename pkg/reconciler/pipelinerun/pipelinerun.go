@@ -203,8 +203,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		updated = true
 	}
 
-	// Since we are using the status subresource, it is not possible to update
-	// the status and labels/annotations simultaneously.
+	// When we update the status only, we use updateStatus to minimize the chances of
+	// racing any clients updating other parts of the Run, e.g. the spec or the labels.
+	// If we need to update the labels or annotations, we need to call Update with these
+	// changes explicitly.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
@@ -523,7 +525,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
 		before := pr.Status.GetCondition(apis.ConditionSucceeded)
-		err := cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
+		err := cancelPipelineRun(c.Logger, pr, pipelineState, c.PipelineClientSet)
 		after := pr.Status.GetCondition(apis.ConditionSucceeded)
 		reconciler.EmitEvent(c.Recorder, before, after, pr)
 		return err

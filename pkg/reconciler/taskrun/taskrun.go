@@ -181,8 +181,10 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.Tas
 		updated = true
 	}
 
-	// Since we are using the status subresource, it is not possible to update
-	// the status and labels/annotations simultaneously.
+	// When we update the status only, we use updateStatus to minimize the chances of
+	// racing any clients updating other parts of the Run, e.g. the spec or the labels.
+	// If we need to update the labels or annotations, we need to call Update with these
+	// changes explicitly.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, tr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
