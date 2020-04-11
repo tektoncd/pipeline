@@ -10,7 +10,7 @@ image:
 
 service:
   name: gohelloworld
-  type: LoadBalancer
+  type: ClusterIP
   externalPort: 8080
   internalPort: 8080
 
