@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -111,6 +112,12 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	if rs.Type == PipelineResourceTypePullRequest {
+		if err := validatePullRequest(rs); err != nil {
+			return err
+		}
+	}
+
 	for _, allowedType := range AllResourceTypes {
 		if allowedType == rs.Type {
 			return nil
@@ -137,6 +144,15 @@ func validateURL(u, path string) *apis.FieldError {
 	_, err := url.ParseRequestURI(u)
 	if err != nil {
 		return apis.ErrInvalidValue(u, path)
+	}
+	return nil
+}
+
+func validatePullRequest(s *PipelineResourceSpec) *apis.FieldError {
+	for _, param := range s.SecretParams {
+		if param.FieldName != "authToken" {
+			return apis.ErrInvalidValue(fmt.Sprintf("invalid field name %q in secret parameter. Expected %q", param.FieldName, "authToken"), "spec.secrets.fieldName")
+		}
 	}
 	return nil
 }
