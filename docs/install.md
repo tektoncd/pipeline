@@ -138,6 +138,8 @@ best suits your business needs. For example:
  - In some environments, creating a persistent volume could be slower than transferring files to/from a cloud storage bucket.
  - If the cluster is running in multiple zones, accessing a persistent volume could be unreliable.
 
+**Note:** To customize the names of the `ConfigMaps` for artifact persistence (e.g. to avoid collisions with other services), rename the `ConfigMap` and update the env value defined [controller.yaml](https://github.com/tektoncd/pipeline/blob/e153c6f2436130e95f6e814b4a792fb2599c57ef/config/controller.yaml#L66-L75).
+
 ### Configuring a persistent volume
 
 To configure a [persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/), use a `ConfigMap` with the name `config-artifact-pvc` and the following attributes:
