@@ -31,17 +31,23 @@ type ConditionSpecOp func(spec *v1alpha1.ConditionSpec)
 
 // Condition creates a Condition with default values.
 // Any number of Condition modifiers can be passed to transform it.
-func Condition(name, namespace string, ops ...ConditionOp) *v1alpha1.Condition {
+func Condition(name string, ops ...ConditionOp) *v1alpha1.Condition {
 	condition := &v1alpha1.Condition{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 		},
 	}
 	for _, op := range ops {
 		op(condition)
 	}
 	return condition
+}
+
+// Useful when tests need to specify the namespace
+func ConditionNamespace(namespace string) ConditionOp {
+	return func(t *v1alpha1.Condition) {
+		t.ObjectMeta.Namespace = namespace
+	}
 }
 
 func ConditionLabels(labels map[string]string) ConditionOp {

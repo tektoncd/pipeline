@@ -31,7 +31,7 @@ import (
 )
 
 func TestTaskRun_GetBuildPodRef(t *testing.T) {
-	tr := tb.TaskRun("taskrunname", "testns")
+	tr := tb.TaskRun("taskrunname", tb.TaskRunNamespace("testns"))
 	if d := cmp.Diff(tr.GetBuildPodRef(), corev1.ObjectReference{
 		APIVersion: "v1",
 		Kind:       "Pod",
@@ -49,11 +49,11 @@ func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 		expectedPVCName string
 	}{{
 		name:            "invalid owner reference",
-		tr:              tb.TaskRun("taskrunname", "testns", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
+		tr:              tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
 		expectedPVCName: "",
 	}, {
 		name:            "valid pipelinerun owner",
-		tr:              tb.TaskRun("taskrunname", "testns", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
+		tr:              tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
 		expectedPVCName: "testpr-pvc",
 	}, {
 		name:            "nil taskrun",
@@ -75,11 +75,11 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 		want bool
 	}{{
 		name: "invalid owner reference",
-		tr:   tb.TaskRun("taskrunname", "testns", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
+		tr:   tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
 		want: false,
 	}, {
 		name: "valid pipelinerun owner",
-		tr:   tb.TaskRun("taskrunname", "testns", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
+		tr:   tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
 		want: true,
 	}}
 	for _, tt := range tests {
@@ -92,7 +92,7 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 }
 
 func TestTaskRunIsDone(t *testing.T) {
-	tr := tb.TaskRun("", "", tb.TaskRunStatus(tb.StatusCondition(
+	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
@@ -104,7 +104,7 @@ func TestTaskRunIsDone(t *testing.T) {
 }
 
 func TestTaskRunIsCancelled(t *testing.T) {
-	tr := tb.TaskRun("", "", tb.TaskRunSpec(
+	tr := tb.TaskRun("", tb.TaskRunSpec(
 		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled)),
 	)
 	if !tr.IsCancelled() {
@@ -132,7 +132,7 @@ func TestTaskRunHasVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestTaskRunKey(t *testing.T) {
-	tr := tb.TaskRun("taskrunname", "")
+	tr := tb.TaskRun("taskrunname")
 	expectedKey := fmt.Sprintf("TaskRun/%p", tr)
 	if tr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, tr.GetRunKey())
@@ -167,7 +167,7 @@ func TestTaskRunHasStarted(t *testing.T) {
 	}}
 	for _, tc := range params {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := tb.TaskRun("taskrunname", "testns")
+			tr := tb.TaskRun("taskrunname")
 			tr.Status = tc.trStatus
 			if tr.HasStarted() != tc.expectedValue {
 				t.Fatalf("Expected taskrun HasStarted() to return %t but got %t", tc.expectedValue, tr.HasStarted())
@@ -185,7 +185,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		expetectedPipelineRun string
 	}{{
 		name: "yes",
-		tr: tb.TaskRun("taskrunname", "testns",
+		tr: tb.TaskRun("taskrunname",
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun"),
 		),
@@ -194,7 +194,7 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		expetectedPipelineRun: "pipelinerun",
 	}, {
 		name:          "no",
-		tr:            tb.TaskRun("taskrunname", "testns"),
+		tr:            tb.TaskRun("taskrunname"),
 		expectedValue: false,
 	}}
 
@@ -225,19 +225,19 @@ func TestHasTimedOut(t *testing.T) {
 		expectedStatus bool
 	}{{
 		name: "TaskRun not started",
-		taskRun: tb.TaskRun("test-taskrun-not-started", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-not-started", tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task-name"),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(zeroTime))),
 		expectedStatus: false,
 	}, {
 		name: "TaskRun no timeout",
-		taskRun: tb.TaskRun("test-taskrun-no-timeout", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-no-timeout", tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task-name"), tb.TaskRunTimeout(0),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Hour)))),
 		expectedStatus: false,
 	}, {
 		name: "TaskRun timed out",
-		taskRun: tb.TaskRun("test-taskrun-timeout", "foo", tb.TaskRunSpec(
+		taskRun: tb.TaskRun("test-taskrun-timeout", tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task-name"), tb.TaskRunTimeout(10*time.Second),
 		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Second)))),
 		expectedStatus: true,

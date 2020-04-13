@@ -150,7 +150,7 @@ func TestPipelineRunHasVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestPipelineRunKey(t *testing.T) {
-	pr := tb.PipelineRun("prunname", "testns")
+	pr := tb.PipelineRun("prunname")
 	expectedKey := fmt.Sprintf("PipelineRun/%p", pr)
 	if pr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, pr.GetRunKey())

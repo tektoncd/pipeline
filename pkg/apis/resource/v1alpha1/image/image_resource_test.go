@@ -27,7 +27,7 @@ import (
 )
 
 func TestNewImageResource_Invalid(t *testing.T) {
-	r := tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
+	r := tb.PipelineResource("git-resource", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 
 	_, err := image.NewResource(r)
 	if err == nil {
@@ -45,7 +45,6 @@ func TestNewImageResource_Valid(t *testing.T) {
 
 	r := tb.PipelineResource(
 		"image-resource",
-		"default",
 		tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeImage,
 			tb.PipelineResourceSpecParam("URL", "https://test.com/test/test"),

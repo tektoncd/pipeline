@@ -49,7 +49,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	// Create the Task that echoes text
-	echoTask := tb.Task("echo-task", namespace, tb.TaskSpec(
+	echoTask := tb.Task("echo-task", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("repo", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsParamSpec("text", v1alpha1.ParamTypeString, tb.ParamSpecDescription("The text that should be echoed")),
@@ -63,7 +63,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	}
 
 	// Create the repo PipelineResource (doesn't really matter which repo we use)
-	repoResource := tb.PipelineResource("repo", namespace, tb.PipelineResourceSpec(
+	repoResource := tb.PipelineResource("repo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/githubtraining/example-basic"),
 	))
@@ -73,7 +73,7 @@ func TestDAGPipelineRun(t *testing.T) {
 
 	// Intentionally declaring Tasks in a mixed up order to ensure the order
 	// of execution isn't at all dependent on the order they are declared in
-	pipeline := tb.Pipeline("dag-pipeline", namespace, tb.PipelineSpec(
+	pipeline := tb.Pipeline("dag-pipeline", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("repo", "git"),
 		tb.PipelineTask("pipeline-task-3", "echo-task",
 			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-2-parallel-1", "pipeline-task-2-parallel-2")),
@@ -105,7 +105,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
-	pipelineRun := tb.PipelineRun("dag-pipeline-run", namespace, tb.PipelineRunSpec("dag-pipeline",
+	pipelineRun := tb.PipelineRun("dag-pipeline-run", tb.PipelineRunSpec("dag-pipeline",
 		tb.PipelineRunResourceBinding("repo", tb.PipelineResourceBindingRef("repo")),
 	))
 	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {

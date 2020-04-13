@@ -53,7 +53,7 @@ func TestGitPipelineRun(t *testing.T) {
 			defer tearDown(t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision, "", "true", "", "", "")); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(revision, "", "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
@@ -106,7 +106,7 @@ func TestGitPipelineRunWithRefspec(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 			defer tearDown(t, c, namespace)
 
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, tc.revision, tc.refspec, "true", "", "", "")); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(tc.revision, tc.refspec, "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
@@ -140,7 +140,7 @@ func TestGitPipelineRun_Disable_SSLVerify(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "false", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("master", "", "false", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -175,7 +175,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey", "", "true", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("Idontexistrabbitmonkeydonkey", "", "true", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -242,7 +242,7 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "true", "", "invalid.https.proxy.com", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("master", "", "true", "", "invalid.https.proxy.com", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
@@ -299,8 +299,8 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	}
 }
 
-func getGitPipelineResource(namespace, revision, refspec, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
+func getGitPipelineResource(revision, refspec, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(gitSourceResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),

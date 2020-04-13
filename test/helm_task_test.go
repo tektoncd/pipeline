@@ -59,12 +59,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", sourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGoHelloworldGitResource(namespace)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGoHelloworldGitResource()); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", sourceImageName)
-	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(namespace, repo)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(repo)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
@@ -104,17 +104,17 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	defer helmCleanup(c, t, namespace)
 }
 
-func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(sourceResourceName, namespace, tb.PipelineResourceSpec(
+func getGoHelloworldGitResource() *v1alpha1.PipelineResource {
+	return tb.PipelineResource(sourceResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("url", "https://github.com/tektoncd/pipeline"),
 	))
 }
 
-func getHelmImageResource(namespace, dockerRepo string) *v1alpha1.PipelineResource {
+func getHelmImageResource(dockerRepo string) *v1alpha1.PipelineResource {
 	imageName := fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 
-	return tb.PipelineResource(sourceImageName, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(sourceImageName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage,
 		tb.PipelineResourceSpecParam("url", imageName),
 	))

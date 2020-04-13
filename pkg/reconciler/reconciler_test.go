@@ -38,7 +38,7 @@ import (
 // Test case for providing recorder in the option
 func TestRecorderOptions(t *testing.T) {
 
-	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -47,10 +47,10 @@ func TestRecorderOptions(t *testing.T) {
 			Message: "All Tasks have completed executing",
 		})),
 	)}
-	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hellow-world"),
 	))}
-	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	ts := []*v1alpha1.Task{tb.Task("hello-world")}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,

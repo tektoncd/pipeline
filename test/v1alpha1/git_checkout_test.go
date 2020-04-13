@@ -51,22 +51,22 @@ func TestGitPipelineRun(t *testing.T) {
 			defer tearDown(t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, revision, "", "true", "", "", "")); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(revision, "", "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
 			t.Logf("Creating Task %s", gitTestTaskName)
-			if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+			if _, err := c.TaskClient.Create(getGitCheckTask()); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 			}
 
 			t.Logf("Creating Pipeline %s", gitTestPipelineName)
-			if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+			if _, err := c.PipelineClient.Create(getGitCheckPipeline()); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 			}
 
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun()); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
 			}
 
@@ -104,19 +104,19 @@ func TestGitPipelineRunWithRefspec(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 			defer tearDown(t, c, namespace)
 
-			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, tc.revision, tc.refspec, "true", "", "", "")); err != nil {
+			if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(tc.revision, tc.refspec, "true", "", "", "")); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
-			if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+			if _, err := c.TaskClient.Create(getGitCheckTask()); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 			}
 
-			if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+			if _, err := c.PipelineClient.Create(getGitCheckPipeline()); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 			}
 
-			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+			if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun()); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
 			}
 
@@ -138,22 +138,22 @@ func TestGitPipelineRun_Disable_SSLVerify(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "false", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("master", "", "false", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", gitTestTaskName)
-	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+	if _, err := c.TaskClient.Create(getGitCheckTask()); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", gitTestPipelineName)
-	if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+	if _, err := c.PipelineClient.Create(getGitCheckPipeline()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
 	}
 
@@ -173,22 +173,22 @@ func TestGitPipelineRunFail(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "Idontexistrabbitmonkeydonkey", "", "true", "", "", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("Idontexistrabbitmonkeydonkey", "", "true", "", "", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", gitTestTaskName)
-	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+	if _, err := c.TaskClient.Create(getGitCheckTask()); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", gitTestPipelineName)
-	if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+	if _, err := c.PipelineClient.Create(getGitCheckPipeline()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
 	}
 
@@ -240,22 +240,22 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource(namespace, "master", "", "true", "", "invalid.https.proxy.com", "")); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitPipelineResource("master", "", "true", "", "invalid.https.proxy.com", "")); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", gitTestTaskName)
-	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
+	if _, err := c.TaskClient.Create(getGitCheckTask()); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", gitTestPipelineName)
-	if _, err := c.PipelineClient.Create(getGitCheckPipeline(namespace)); err != nil {
+	if _, err := c.PipelineClient.Create(getGitCheckPipeline()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun(namespace)); err != nil {
+	if _, err := c.PipelineRunClient.Create(getGitCheckPipelineRun()); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", gitTestPipelineRunName, err)
 	}
 
@@ -297,8 +297,8 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 	}
 }
 
-func getGitPipelineResource(namespace, revision, refspec, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
+func getGitPipelineResource(revision, refspec, sslverify, httpproxy, httpsproxy, noproxy string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(gitSourceResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),
@@ -310,15 +310,15 @@ func getGitPipelineResource(namespace, revision, refspec, sslverify, httpproxy, 
 	))
 }
 
-func getGitCheckTask(namespace string) *v1alpha1.Task {
-	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
+func getGitCheckTask() *v1alpha1.Task {
+	return tb.Task(gitTestTaskName, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),
 	))
 }
 
-func getGitCheckPipeline(namespace string) *v1alpha1.Pipeline {
-	return tb.Pipeline(gitTestPipelineName, namespace, tb.PipelineSpec(
+func getGitCheckPipeline() *v1alpha1.Pipeline {
+	return tb.Pipeline(gitTestPipelineName, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
 		tb.PipelineTask("git-check", gitTestTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
@@ -326,8 +326,8 @@ func getGitCheckPipeline(namespace string) *v1alpha1.Pipeline {
 	))
 }
 
-func getGitCheckPipelineRun(namespace string) *v1alpha1.PipelineRun {
-	return tb.PipelineRun(gitTestPipelineRunName, namespace, tb.PipelineRunSpec(
+func getGitCheckPipelineRun() *v1alpha1.PipelineRun {
+	return tb.PipelineRun(gitTestPipelineRunName, tb.PipelineRunSpec(
 		gitTestPipelineName,
 		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(gitSourceResourceName)),
 	))

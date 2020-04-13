@@ -82,7 +82,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	}
 
 	// Create the repo PipelineResource (doesn't really matter which repo we use)
-	repoResource := tb.PipelineResource("repo", namespace, tb.PipelineResourceSpec(
+	repoResource := tb.PipelineResource("repo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/githubtraining/example-basic"),
 	))

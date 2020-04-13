@@ -71,7 +71,7 @@ func TestPipelineRun(t *testing.T) {
 				}
 			}
 
-			for _, res := range getFanInFanOutGitResources(namespace) {
+			for _, res := range getFanInFanOutGitResources() {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
 					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 				}
@@ -131,7 +131,7 @@ func TestPipelineRun(t *testing.T) {
 		name: "pipeline succeeds when task skipped due to failed condition",
 		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
-			cond := getFailingCondition(namespace)
+			cond := getFailingCondition()
 			if _, err := c.ConditionClient.Create(cond); err != nil {
 				t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 			}
@@ -453,9 +453,9 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1beta1.Pipeline {
 	}
 }
 
-func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
+func getFanInFanOutGitResources() []*v1alpha1.PipelineResource {
 	return []*v1alpha1.PipelineResource{
-		tb.PipelineResource("kritis-resource-git", namespace, tb.PipelineResourceSpec(
+		tb.PipelineResource("kritis-resource-git", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeGit,
 			tb.PipelineResourceSpecParam("Url", "https://github.com/grafeas/kritis"),
 			tb.PipelineResourceSpecParam("Revision", "master"),
@@ -716,8 +716,8 @@ func getPipelineWithFailingCondition(suffix int, namespace string) *v1beta1.Pipe
 	}
 }
 
-func getFailingCondition(namespace string) *v1alpha1.Condition {
-	return tb.Condition(cond1Name, namespace, tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
+func getFailingCondition() *v1alpha1.Condition {
+	return tb.Condition(cond1Name, tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
 		tb.Command("/bin/bash"), tb.Args("exit 1"))))
 }
 

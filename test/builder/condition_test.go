@@ -28,7 +28,8 @@ import (
 )
 
 func TestCondition(t *testing.T) {
-	condition := tb.Condition("cond-name", "foo",
+	condition := tb.Condition("cond-name",
+		tb.ConditionNamespace("foo"),
 		tb.ConditionLabels(
 			map[string]string{
 				"label-1": "label-value-1",
@@ -85,7 +86,8 @@ func TestCondition(t *testing.T) {
 }
 
 func TestConditionWithScript(t *testing.T) {
-	condition := tb.Condition("cond-name", "foo",
+	condition := tb.Condition("cond-name",
+		tb.ConditionNamespace("foo"),
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu"),
 			tb.ConditionSpecCheckScript("ls /tmp"),
 		),
