@@ -136,7 +136,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer resetConfigMap(t, c, systemNamespace, artifacts.GetBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
-	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(
+	helloworldResource := tb.PipelineResource(helloworldResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
 		tb.PipelineResourceSpecParam("Revision", "master"),

@@ -35,10 +35,9 @@ type PodStatusOp func(status *corev1.PodStatus)
 
 // Pod creates a Pod with default values.
 // Any number of Pod modifiers can be passed to transform it.
-func Pod(name, namespace string, ops ...PodOp) *corev1.Pod {
+func Pod(name string, ops ...PodOp) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   namespace,
 			Name:        name,
 			Annotations: map[string]string{},
 		},
@@ -47,6 +46,13 @@ func Pod(name, namespace string, ops ...PodOp) *corev1.Pod {
 		op(pod)
 	}
 	return pod
+}
+
+// Useful when tests need to specify the namespace
+func PodNamespace(namespace string) PodOp {
+	return func(t *corev1.Pod) {
+		t.ObjectMeta.Namespace = namespace
+	}
 }
 
 // PodLabel adds an annotation to the Pod.

@@ -34,7 +34,7 @@ import (
 func TestPipeline(t *testing.T) {
 	creationTime := time.Now()
 
-	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
 		tb.PipelineDescription("Test Pipeline"),
@@ -159,7 +159,7 @@ func TestPipelineRun(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)
 
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
@@ -223,7 +223,7 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)
 
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
@@ -295,7 +295,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 	startTime := time.Now()
 	completedTime := startTime.Add(5 * time.Minute)
 
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccountName("sa"),
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
@@ -367,7 +367,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 }
 
 func TestPipelineRunWithPipelineSpec(t *testing.T) {
-	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
 		tb.PipelineTask("a-task", "some-task")),
 		tb.PipelineRunServiceAccountName("sa"),
 	))
@@ -396,7 +396,7 @@ func TestPipelineRunWithPipelineSpec(t *testing.T) {
 }
 
 func TestPipelineResource(t *testing.T) {
-	pipelineResource := tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
+	pipelineResource := tb.PipelineResource("git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"), tb.PipelineResourceDescription("test description"),
 	))
 	expectedPipelineResource := &v1alpha1.PipelineResource{

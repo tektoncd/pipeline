@@ -30,7 +30,7 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-var c = tb.Condition("conditionname", "foo")
+var c = tb.Condition("conditionname")
 
 var notStartedState = TaskConditionCheckState{{
 	ConditionCheckName: "foo",
@@ -192,7 +192,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		want              v1alpha1.TaskSpec
 	}{{
 		name: "user-provided-container-name",
-		cond: tb.Condition("name", "foo", tb.ConditionSpec(
+		cond: tb.Condition("name", tb.ConditionSpec(
 			tb.ConditionSpecCheck("foo", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
@@ -206,7 +206,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		},
 	}, {
 		name: "default-container-name",
-		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+		cond: tb.Condition("bar", tb.ConditionSpec(
 			tb.ConditionSpecCheck("", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
@@ -220,7 +220,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		},
 	}, {
 		name: "with-input-params",
-		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+		cond: tb.Condition("bar", tb.ConditionSpec(
 			tb.ConditionSpecCheck("$(params.name)", "$(params.img)",
 				tb.WorkingDir("$(params.not.replaced)")),
 			tb.ConditionParamSpec("name", v1alpha1.ParamTypeString),
@@ -246,13 +246,13 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		},
 	}, {
 		name: "with-resources",
-		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+		cond: tb.Condition("bar", tb.ConditionSpec(
 			tb.ConditionSpecCheck("name", "ubuntu",
 				tb.Args("$(resources.git-resource.revision)")),
 			tb.ConditionResource("git-resource", v1alpha1.PipelineResourceTypeGit),
 		)),
 		resolvedResources: map[string]*v1alpha1.PipelineResource{
-			"git-resource": tb.PipelineResource("git-resource", "foo",
+			"git-resource": tb.PipelineResource("git-resource",
 				tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
 					tb.PipelineResourceSpecParam("revision", "master"),
 				)),
@@ -293,7 +293,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
 	rcc := ResolvedConditionCheck{
 		ResolvedResources: map[string]*v1alpha1.PipelineResource{
-			"git-resource": tb.PipelineResource("some-repo", "foo"),
+			"git-resource": tb.PipelineResource("some-repo"),
 		},
 	}
 

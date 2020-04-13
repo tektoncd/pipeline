@@ -79,7 +79,8 @@ func TestSendCloudEvents(t *testing.T) {
 		wantTaskRun *v1alpha1.TaskRun
 	}{{
 		name: "testWithMultipleMixedCloudEvents",
-		taskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery", "foo",
+		taskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSelfLink("/task/1234"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
@@ -93,7 +94,8 @@ func TestSendCloudEvents(t *testing.T) {
 				tb.TaskRunCloudEvent("http//attemptedsucceeded", "", 1, v1alpha1.CloudEventConditionSent),
 			),
 		),
-		wantTaskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery", "foo",
+		wantTaskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),
@@ -132,7 +134,8 @@ func TestSendCloudEventsErrors(t *testing.T) {
 		wantTaskRun *v1alpha1.TaskRun
 	}{{
 		name: "testWithMultipleMixedCloudEvents",
-		taskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery", "foo",
+		taskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSelfLink("/task/1234"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
@@ -142,7 +145,8 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				tb.TaskRunCloudEvent("http//sink2", "", 0, v1alpha1.CloudEventConditionUnknown),
 			),
 		),
-		wantTaskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery", "foo",
+		wantTaskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),
@@ -179,7 +183,8 @@ func TestInitializeCloudEvents(t *testing.T) {
 		wantTaskRun       *v1alpha1.TaskRun
 	}{{
 		name: "testWithMultipleMixedResources",
-		taskRun: tb.TaskRun("test-taskrun-multiple-mixed-resources", "foo",
+		taskRun: tb.TaskRun("test-taskrun-multiple-mixed-resources",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSelfLink("/task/1234"), tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 				tb.TaskRunOutputs(
@@ -190,21 +195,22 @@ func TestInitializeCloudEvents(t *testing.T) {
 			),
 		),
 		pipelineResources: []*v1alpha1.PipelineResource{
-			tb.PipelineResource("ce1", "foo", tb.PipelineResourceSpec(
+			tb.PipelineResource("ce1", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeCloudEvent,
 				tb.PipelineResourceSpecParam("TargetURI", "http://foosink"),
 			)),
-			tb.PipelineResource("ce2", "foo", tb.PipelineResourceSpec(
+			tb.PipelineResource("ce2", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeCloudEvent,
 				tb.PipelineResourceSpecParam("TargetURI", "http://barsink"),
 			)),
-			tb.PipelineResource("git", "foo", tb.PipelineResourceSpec(
+			tb.PipelineResource("git", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "http://git.fake"),
 				tb.PipelineResourceSpecParam("Revision", "abcd"),
 			)),
 		},
-		wantTaskRun: tb.TaskRun("test-taskrun-multiple-mixed-resources", "foo",
+		wantTaskRun: tb.TaskRun("test-taskrun-multiple-mixed-resources",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),
@@ -215,7 +221,8 @@ func TestInitializeCloudEvents(t *testing.T) {
 		),
 	}, {
 		name: "testWithNoCloudEventResources",
-		taskRun: tb.TaskRun("test-taskrun-no-cloudevent-resources", "foo",
+		taskRun: tb.TaskRun("test-taskrun-no-cloudevent-resources",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSelfLink("/task/1234"), tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 				tb.TaskRunOutputs(
@@ -224,13 +231,14 @@ func TestInitializeCloudEvents(t *testing.T) {
 			),
 		),
 		pipelineResources: []*v1alpha1.PipelineResource{
-			tb.PipelineResource("git", "foo", tb.PipelineResourceSpec(
+			tb.PipelineResource("git", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "http://git.fake"),
 				tb.PipelineResourceSpecParam("Revision", "abcd"),
 			)),
 		},
-		wantTaskRun: tb.TaskRun("test-taskrun-no-cloudevent-resources", "foo",
+		wantTaskRun: tb.TaskRun("test-taskrun-no-cloudevent-resources",
+			tb.TaskRunNamespace("foo"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),

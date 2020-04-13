@@ -38,7 +38,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	task := tb.Task(taskName, namespace, tb.TaskSpec(
+	task := tb.Task(taskName, tb.TaskSpec(
 		tb.Step("alpine", tb.StepScript("echo foo > /workspace/test/file")),
 		tb.TaskWorkspace("test", "test workspace", "/workspace/test", true),
 	))
@@ -46,7 +46,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	taskRun := tb.TaskRun(taskRunName, namespace, tb.TaskRunSpec(
+	taskRun := tb.TaskRun(taskRunName, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(taskName), tb.TaskRunServiceAccountName("default"),
 		tb.TaskRunWorkspaceEmptyDir("test", ""),
 	))
@@ -95,7 +95,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	task := tb.Task(taskName, namespace, tb.TaskSpec(
+	task := tb.Task(taskName, tb.TaskSpec(
 		tb.Step("alpine", tb.StepScript("cat /workspace/test/file")),
 		tb.TaskWorkspace("test", "test workspace", "/workspace/test/file", true),
 	))
@@ -103,7 +103,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := tb.Pipeline(pipelineName, namespace, tb.PipelineSpec(
+	pipeline := tb.Pipeline(pipelineName, tb.PipelineSpec(
 		tb.PipelineWorkspaceDeclaration("foo"),
 		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo")),
 	))
@@ -111,7 +111,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := tb.PipelineRun(pipelineRunName, namespace,
+	pipelineRun := tb.PipelineRun(pipelineRunName,
 		tb.PipelineRunSpec(
 			pipelineName,
 			// These are the duplicated workspace entries that are being tested.
@@ -136,7 +136,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	task := tb.Task(taskName, namespace, tb.TaskSpec(
+	task := tb.Task(taskName, tb.TaskSpec(
 		tb.Step("alpine", tb.StepScript("cat /workspace/test/file")),
 		tb.TaskWorkspace("test", "test workspace", "/workspace/test/file", true),
 	))
@@ -144,7 +144,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := tb.Pipeline(pipelineName, namespace, tb.PipelineSpec(
+	pipeline := tb.Pipeline(pipelineName, tb.PipelineSpec(
 		tb.PipelineWorkspaceDeclaration("foo"),
 		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo")),
 	))
@@ -152,7 +152,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := tb.PipelineRun(pipelineRunName, namespace,
+	pipelineRun := tb.PipelineRun(pipelineRunName,
 		tb.PipelineRunSpec(
 			pipelineName,
 		),

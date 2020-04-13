@@ -27,7 +27,7 @@ import (
 )
 
 func TestConditionCheck_IsDone(t *testing.T) {
-	tr := tb.TaskRun("", "", tb.TaskRunStatus(tb.StatusCondition(
+	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
@@ -41,7 +41,7 @@ func TestConditionCheck_IsDone(t *testing.T) {
 }
 
 func TestConditionCheck_IsSuccessful(t *testing.T) {
-	tr := tb.TaskRun("", "", tb.TaskRunStatus(tb.StatusCondition(
+	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,

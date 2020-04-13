@@ -35,7 +35,8 @@ func TestPod(t *testing.T) {
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
 	}
-	got := tb.Pod("foo-pod-123456", "foo",
+	got := tb.Pod("foo-pod-123456",
+		tb.PodNamespace("foo"),
 		tb.PodAnnotation("annotation", "annotation-value"),
 		tb.PodLabel("label", "label-value"),
 		tb.PodOwnerReference("TaskRun", "taskrun-foo",

@@ -150,7 +150,7 @@ func TestPipelineRunHasVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestPipelineRunKey(t *testing.T) {
-	pr := tb.PipelineRun("prunname", "testns")
+	pr := tb.PipelineRun("prunname")
 	expectedKey := fmt.Sprintf("PipelineRun/%p", pr)
 	if pr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, pr.GetRunKey())
@@ -225,7 +225,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(t.Name(), func(t *testing.T) {
-			pr := tb.PipelineRun("pr", "foo",
+			pr := tb.PipelineRun("pr",
 				tb.PipelineRunSpec("test-pipeline",
 					tb.PipelineRunTimeout(tc.timeout),
 				),
@@ -249,7 +249,7 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 	}{
 		{
 			name: "default SA",
-			pr: tb.PipelineRun("pr", "ns",
+			pr: tb.PipelineRun("pr",
 				tb.PipelineRunSpec("prs",
 					tb.PipelineRunServiceAccountName("defaultSA"),
 					tb.PipelineRunServiceAccountNameTask("taskName", "taskSA"))),
@@ -260,7 +260,7 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 		},
 		{
 			name: "mixed default SA",
-			pr: tb.PipelineRun("defaultSA", "defaultSA",
+			pr: tb.PipelineRun("defaultSA",
 				tb.PipelineRunSpec("defaultSA",
 					tb.PipelineRunServiceAccountName("defaultSA"),
 					tb.PipelineRunServiceAccountNameTask("task1", "task1SA"),
