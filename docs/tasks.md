@@ -547,7 +547,7 @@ variable values as follows:
   ```
 - To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)
 
-#### Substituting `Array' parameters
+#### Substituting `Array` parameters
 
 You can expand referenced paramters of type `array` using the star operator. To do so, add the operator (`[*]`)
 to the named parameter to insert the array elements in the spot of the reference string.
