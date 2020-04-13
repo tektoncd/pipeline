@@ -259,10 +259,27 @@ func (h *Handler) createNewComments(ctx context.Context, comments []*scm.Comment
 	return merr
 }
 
+func validateStatuses(statuses []*scm.Status) error {
+	var merr error
+	for _, s := range statuses {
+		if s.Label == "" {
+			merr = multierror.Append(merr, fmt.Errorf("invalid status: \"Label\" should not be empty: %v", *s))
+		}
+		if s.State.String() == scm.StateUnknown.String() {
+			merr = multierror.Append(merr, fmt.Errorf("invalid status: \"State\" is empty or has invalid value: %v", *s))
+		}
+	}
+	return merr
+}
+
 func (h *Handler) uploadStatuses(ctx context.Context, statuses []*scm.Status, sha string) error {
 	if statuses == nil {
 		h.logger.Info("Skipping statuses, nothing to set.")
 		return nil
+	}
+
+	if err := validateStatuses(statuses); err != nil {
+		return err
 	}
 
 	h.logger.Infof("Looking for existing status on %s", sha)
