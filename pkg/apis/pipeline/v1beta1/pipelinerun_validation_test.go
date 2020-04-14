@@ -79,6 +79,20 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
+		}, {
+			name: "wrong pipelinerun cancel",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Status: "PipelineRunCancell",
+				},
+			},
+			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled", "spec.status"),
 		},
 	}
 
