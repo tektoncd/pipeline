@@ -535,7 +535,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	if pipelineState.IsBeforeFirstTaskRun() && pr.HasVolumeClaimTemplate() {
 		// create workspace PVC from template
-		if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference()[0], pr.Namespace); err != nil {
+		if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
 			c.Logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
 			pr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
@@ -708,7 +708,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: pr.GetOwnerReference(),
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name),
 			Annotations:     getTaskrunAnnotations(pr),
 		},
@@ -735,7 +735,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineWorkspaceName := ws.Name, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pr.GetOwnerReference()[0]))
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pr.GetOwnerReference()))
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
@@ -887,7 +887,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: pr.GetOwnerReference(),
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 			Labels:          labels,
 			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
 		},

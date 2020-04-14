@@ -314,7 +314,7 @@ func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity, storageClas
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,
 			Name:            GetPVCName(pr),
-			OwnerReferences: pr.GetOwnerReference(),
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
