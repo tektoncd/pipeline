@@ -20,7 +20,10 @@ const (
 	// GroupName is the Kubernetes resource group name for Pipeline types.
 	GroupName = "tekton.dev"
 
-	// TaskLabelKey is used as the label identifier for a task
+	// ClusterTaskLabelKey is used as the label identifier for a ClusterTask
+	ClusterTaskLabelKey = "/clusterTask"
+
+	// TaskLabelKey is used as the label identifier for a Task
 	TaskLabelKey = "/task"
 
 	// TaskRunLabelKey is used as the label identifier for a TaskRun
