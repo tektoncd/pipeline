@@ -152,10 +152,8 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 }
 
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
-func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
-	return []metav1.OwnerReference{
-		*metav1.NewControllerRef(pr, groupVersionKind),
-	}
+func (pr *PipelineRun) GetOwnerReference() metav1.OwnerReference {
+	return *metav1.NewControllerRef(pr, groupVersionKind)
 }
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.
