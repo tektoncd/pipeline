@@ -51,11 +51,12 @@ import (
 )
 
 const (
-	entrypointLocation  = "/tekton/tools/entrypoint"
-	taskNameLabelKey    = pipeline.GroupName + pipeline.TaskLabelKey
-	taskRunNameLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
-	workspaceDir        = "/workspace"
-	currentAPIVersion   = "tekton.dev/v1alpha1"
+	entrypointLocation      = "/tekton/tools/entrypoint"
+	taskNameLabelKey        = pipeline.GroupName + pipeline.TaskLabelKey
+	clusterTaskNameLabelKey = pipeline.GroupName + pipeline.ClusterTaskLabelKey
+	taskRunNameLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
+	workspaceDir            = "/workspace"
+	currentAPIVersion       = "tekton.dev/v1alpha1"
 )
 
 var (
@@ -781,7 +782,7 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithClusterTask,
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde", "foo",
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
-			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
+			tb.PodLabel(clusterTaskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",

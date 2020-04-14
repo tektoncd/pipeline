@@ -52,6 +52,9 @@ The following labels are added to resources automatically:
   [Specifying a `Task`](taskruns.md#specifying-a-task) section of the `TaskRun`
   documentation), and contains the name of the `Task` that the `TaskRun`
   references.
+- `tekton.dev/clusterTask` is added to `TaskRuns` (and propagated to `Pods`) that
+  reference an existing `ClusterTask`and contains the name of the `ClusterTask` 
+  that the `TaskRun` references.
 - `tekton.dev/taskRun` is added to `Pods`, and contains the name of the
   `TaskRun` that created the `Pod`.
 
@@ -76,4 +79,13 @@ the following command:
 
 ```shell
 kubectl get taskruns --all-namespaces -l tekton.dev/task=test-task
+```
+
+### Finding TaskRuns for a Specific ClusterTask
+
+To find all `TaskRuns` that reference a `ClusterTask` named test-clustertask, you could use
+the following command:
+
+```shell
+kubectl get taskruns --all-namespaces -l tekton.dev/clusterTask=test-clustertask
 ```

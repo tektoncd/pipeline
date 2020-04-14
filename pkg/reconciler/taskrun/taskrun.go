@@ -278,7 +278,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.ObjectMeta.Labels[key] = value
 	}
 	if tr.Spec.TaskRef != nil {
-		tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+		if tr.Spec.TaskRef.Kind == "ClusterTask" {
+			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.ClusterTaskLabelKey] = taskMeta.Name
+		} else {
+			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+		}
 	}
 
 	// Propagate annotations from Task to TaskRun.
