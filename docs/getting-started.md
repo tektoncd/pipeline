@@ -201,7 +201,7 @@ to your desired image registry:
 ```bash
 kubectl create secret docker-registry regcred \
                     --docker-server=docker.io \
-                    --docker-username=<your-name> \
+                    --docker-username=<your-username> \
                     --docker-password=<your-token> \
                     --docker-email=<your-email>
 ```
