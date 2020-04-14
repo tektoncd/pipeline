@@ -882,7 +882,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
 	}
-
+	serviceAccountName, podtemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
@@ -893,13 +893,13 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec:           taskSpec,
-			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
+			ServiceAccountName: serviceAccountName,
 			Params:             rcc.PipelineTaskCondition.Params,
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: rcc.ToTaskResourceBindings(),
 			},
 			Timeout:     getTaskRunTimeout(pr, rprt),
-			PodTemplate: pr.Spec.PodTemplate,
+			PodTemplate: podtemplate,
 		}}
 
 	cctr, err := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)

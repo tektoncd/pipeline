@@ -168,6 +168,9 @@ type PipelineRunSpec struct {
 	// with those declared in the pipeline.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
+	// TaskRunSpecs holds a set of runtime specs
+	// +optional
+	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
@@ -309,4 +312,26 @@ type PipelineRunList struct {
 // and produces logs.
 type PipelineTaskRun struct {
 	Name string `json:"name,omitempty"`
+}
+
+// PipelineTaskRunSpec  can be used to configure specific
+// specs for a concrete Task
+type PipelineTaskRunSpec struct {
+	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
+	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
+	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+}
+
+// GetTaskRunSpecs returns the task specific spec for a given
+// PipelineTask if configured, otherwise it returns the PipelineRun's default.
+func (pr *PipelineRun) GetTaskRunSpecs(pipelineTaskName string) (string, *PodTemplate) {
+	serviceAccountName := pr.GetServiceAccountName(pipelineTaskName)
+	taskPodTemplate := pr.Spec.PodTemplate
+	for _, task := range pr.Spec.TaskRunSpecs {
+		if task.PipelineTaskName == pipelineTaskName {
+			taskPodTemplate = task.TaskPodTemplate
+			serviceAccountName = task.TaskServiceAccountName
+		}
+	}
+	return serviceAccountName, taskPodTemplate
 }

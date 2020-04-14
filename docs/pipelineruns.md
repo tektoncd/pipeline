@@ -13,6 +13,7 @@ weight: 4
   - [Speciying `Parameters`](#specifying-parameters)
   - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
   - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
+  - [Specifying `TaskRunSpecs`](#specifying-task-run-specs)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
@@ -51,6 +52,7 @@ A `PipelineRun` definition supports the following fields:
     object that supplies specific execution credentials for the `Pipeline`.
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
+  - [`taskRunSpec`](#specifying-task-run-specs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`. 
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails.
   - [`podTemplate`](#pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
     for the configuration of the `Pod` that executes each `Task`.
@@ -349,3 +351,24 @@ Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+## Specifying task run specs
+
+Specifies a list of  `PipelineRunTaskSpec` which contains `TaskServiceAccountName`,`TaskPodTemplate` and `TaskName`. Mapping the specs to the corresponding `Task` based upon the `TaskName` a PipelineTask will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` overwriting the pipeline wide [`ServiceAccountName`](#service-account)  and [`podTemplate`](#pod-template) configuration, for example:
+
+```yaml
+spec:
+   podTemplate:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 3000
+  taskRunSpecs:
+    - taskName: build-task
+      taskServiceAccountName: sa-for-build
+      taskPodTemplate:
+        nodeSelector:
+          disktype: ssd
+```
+
+If used with this `Pipeline`,  `build-task` will use the task specific pod template (where `nodeSelector` has `disktype` equal to `ssd`). 

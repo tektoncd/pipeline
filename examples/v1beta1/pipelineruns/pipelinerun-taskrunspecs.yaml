@@ -1,0 +1,86 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: add-task-taskspec
+spec:
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+  results:
+    - name: sum
+      description: the sum of the first and second operand
+  steps:
+    - name: add
+      image: alpine
+      env:
+        - name: OP1
+          value: $(params.first)
+        - name: OP2
+          value: $(params.second)
+      command: ["/bin/sh", "-c"]
+      args:
+        - echo -n $((${OP1}+${OP2})) | tee $(results.sum.path);
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: add-pipeline-taskspec
+spec:
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+    - name: third
+      description: the third operand
+  tasks:
+    - name: first-add-taskspec
+      taskRef:
+        name: add-task-taskspec
+      params:
+        - name: first
+          value: $(params.first)
+        - name: second
+          value: $(params.second)
+    - name: second-add-taskspec
+      taskRef:
+        name: add-task-taskspec
+      params:
+        - name: first
+          value: $(tasks.first-add-taskspec.results.sum)
+        - name: second
+          value: $(params.third)
+  results:
+    - name: sum
+      description: the sum of all three operands
+      value: $(tasks.second-add-taskspec.results.sum)
+    - name: partial-sum
+      description: the sum of first two operands
+      value: $(tasks.first-add-taskspec.results.sum)
+    - name: all-sum
+      description: the sum of everything
+      value: $(tasks.second-add-taskspec.results.sum)-$(tasks.first-add-taskspec.results.sum)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: task-spec-pipeline
+spec:
+  pipelineRef:
+    name: add-pipeline-taskspec
+  taskRunSpecs:
+  - pipelineTaskName: first-add-taskspec
+    taskServiceAccountName: 'default'
+  - pipelineTaskName: second-add-taskspec
+    taskPodTemplate:
+      nodeSelector:
+        disktype: ssd
+  params:
+    - name: first
+      value: "2"
+    - name: second
+      value: "10"
+    - name: third
+      value: "10"
