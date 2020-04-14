@@ -53,7 +53,7 @@ func NewResultRefs(expressions []string) ([]*ResultRef, error) {
 	return resultRefs, nil
 }
 
-// LooksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
+// looksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
 // result references.
 // This is useful if we want to make sure the param looks like a ResultReference before
 // performing strict validation
@@ -66,6 +66,8 @@ func LooksLikeContainsResultRefs(expressions []string) bool {
 	return false
 }
 
+// looksLikeResultRef attempts to check if the given string looks like it contains any
+// result references. Returns true if it does, false otherwise
 func looksLikeResultRef(expression string) bool {
 	return strings.HasPrefix(expression, "task") && strings.Contains(expression, ".result")
 }
