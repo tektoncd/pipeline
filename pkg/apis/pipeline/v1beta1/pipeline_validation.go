@@ -198,6 +198,10 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.tasks")
 	}
 
+	if err := validateParamResults(ps.Tasks); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks.params.value")
+	}
+
 	// The parameter variables should be valid
 	if err := validatePipelineParameterVariables(ps.Tasks, ps.Params); err != nil {
 		return err
@@ -206,6 +210,11 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Validate the pipeline's workspaces.
 	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks); err != nil {
 		return err
+	}
+
+	// Validate the pipeline's results
+	if err := validatePipelineResults(ps.Results); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks.params.value")
 	}
 
 	return nil
@@ -312,4 +321,48 @@ func validatePipelineNoArrayReferenced(name, value, prefix string, vars map[stri
 
 func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
 	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
+}
+
+// validateParamResults ensure that task result variables are properly configured
+func validateParamResults(tasks []PipelineTask) error {
+	for _, task := range tasks {
+		for _, param := range task.Params {
+			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				if LooksLikeContainsResultRefs(expressions) {
+					expressions = filter(expressions, looksLikeResultRef)
+					if _, err := NewResultRefs(expressions); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func filter(arr []string, cond func(string) bool) []string {
+	result := []string{}
+	for i := range arr {
+		if cond(arr[i]) {
+			result = append(result, arr[i])
+		}
+	}
+	return result
+}
+
+// validatePipelineResults ensure that task result variables are properly configured
+func validatePipelineResults(results []PipelineResult) error {
+	for _, result := range results {
+		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
+		if ok {
+			if LooksLikeContainsResultRefs(expressions) {
+				expressions = filter(expressions, looksLikeResultRef)
+				if _, err := NewResultRefs(expressions); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
