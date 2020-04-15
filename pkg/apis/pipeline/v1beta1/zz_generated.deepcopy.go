@@ -995,6 +995,16 @@ func (in *ResultRef) DeepCopy() *ResultRef {
 func (in *SidecarState) DeepCopyInto(out *SidecarState) {
 	*out = *in
 	in.ContainerState.DeepCopyInto(&out.ContainerState)
+	if in.Command != nil {
+		in, out := &in.Command, &out.Command
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -1029,6 +1039,16 @@ func (in *Step) DeepCopy() *Step {
 func (in *StepState) DeepCopyInto(out *StepState) {
 	*out = *in
 	in.ContainerState.DeepCopyInto(&out.ContainerState)
+	if in.Command != nil {
+		in, out := &in.Command, &out.Command
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

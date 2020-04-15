@@ -202,17 +202,21 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState
-	Name          string `json:"name,omitempty"`
-	ContainerName string `json:"container,omitempty"`
-	ImageID       string `json:"imageID,omitempty"`
+	Name          string   `json:"name,omitempty"`
+	ContainerName string   `json:"container,omitempty"`
+	ImageID       string   `json:"imageID,omitempty"`
+	Command       []string `json:"command,omitempty"`
+	Args          []string `json:"args,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
 type SidecarState struct {
 	corev1.ContainerState
-	Name          string `json:"name,omitempty"`
-	ContainerName string `json:"container,omitempty"`
-	ImageID       string `json:"imageID,omitempty"`
+	Name          string   `json:"name,omitempty"`
+	ContainerName string   `json:"container,omitempty"`
+	ImageID       string   `json:"imageID,omitempty"`
+	Command       []string `json:"command,omitempty"`
+	Args          []string `json:"args,omitempty"`
 }
 
 // CloudEventDelivery is the target of a cloud event along with the state of

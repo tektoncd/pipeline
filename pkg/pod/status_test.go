@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -42,6 +43,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
 		podStatus corev1.PodStatus
+		podSpec   corev1.PodSpec
 		taskSpec  v1alpha1.TaskSpec
 		want      v1alpha1.TaskRunStatus
 	}{{
@@ -88,6 +90,56 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-state-name",
 				}},
 				Sidecars: []v1alpha1.SidecarState{},
+			},
+		},
+	}, {
+		desc: "cmd-and-args",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-my-container",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+					},
+				},
+			}},
+		},
+		podSpec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:    "step-my-container",
+					Command: []string{"/mycmd"},
+					Args:    []string{"arg1", "arg2"},
+				},
+			},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Succeeded",
+					Message: "All Steps have completed executing",
+				}},
+			},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{
+					{
+						ContainerState: v1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								ExitCode: 0,
+							},
+						},
+						Name:          "my-container",
+						ContainerName: "step-my-container",
+						Command:       []string{"/mycmd"},
+						Args:          []string{"arg1", "arg2"},
+					},
+				},
+				Sidecars: []v1alpha1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
 	}, {
@@ -701,6 +753,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					CreationTimestamp: now,
 				},
 				Status: c.podStatus,
+				Spec:   c.podSpec,
 			}
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
 			tr := v1alpha1.TaskRun{

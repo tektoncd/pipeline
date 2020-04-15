@@ -111,6 +111,11 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1alpha1.TaskRun, pod *core
 		})
 	}
 
+	containerMap := map[string]corev1.Container{}
+	for _, c := range pod.Spec.Containers {
+		containerMap[c.Name] = c
+	}
+
 	trs.PodName = pod.Name
 	trs.Steps = []v1alpha1.StepState{}
 	trs.Sidecars = []v1alpha1.SidecarState{}
@@ -127,6 +132,8 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1alpha1.TaskRun, pod *core
 				Name:           trimStepPrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
+				Command:        containerMap[s.Name].Command,
+				Args:           containerMap[s.Name].Args,
 			})
 		} else if isContainerSidecar(s.Name) {
 			trs.Sidecars = append(trs.Sidecars, v1alpha1.SidecarState{
@@ -134,6 +141,8 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1alpha1.TaskRun, pod *core
 				Name:           TrimSidecarPrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
+				Command:        containerMap[s.Name].Command,
+				Args:           containerMap[s.Name].Args,
 			})
 		}
 	}

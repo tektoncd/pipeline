@@ -287,6 +287,11 @@ steps:
 - container: step-hello
   imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
   name: hello
+  command:
+  - /mycommand
+  args:
+  - arg1
+  - arg2
   terminated:
     containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
     exitCode: 0
@@ -296,7 +301,8 @@ steps:
   ```
 
 Fields include start and stop times for the `TaskRun` and each `Step` and exit codes.
-For each step we also include the fully-qualified image used, with the digest.
+For each step we also include the fully-qualified image used, with the digest, as well
+as the command and arguments run inside the container.
 
 If any pods have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
 by Kubernetes, the `Taskrun` will be marked as failed even if the exit code is 0.
