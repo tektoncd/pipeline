@@ -73,6 +73,8 @@ spec:
           value: config-artifact-pvc
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: feature-flags
+        - name: CONFIG_LEADERELECTION_NAME
+          value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
       volumes:
