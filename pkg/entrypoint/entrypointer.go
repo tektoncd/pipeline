@@ -17,6 +17,7 @@ limitations under the License.
 package entrypoint
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -68,7 +69,7 @@ type Waiter interface {
 
 // Runner encapsulates running commands.
 type Runner interface {
-	Run(args ...string) error
+	Run(ctx context.Context, args ...string) error
 }
 
 // PostWriter encapsulates writing a file when complete.
@@ -113,7 +114,8 @@ func (e Entrypointer) Go() error {
 		Value: time.Now().Format(time.RFC3339),
 	})
 
-	err := e.Runner.Run(e.Args...)
+	err := e.Runner.Run(context.TODO(), e.Args...)
+	output = append(output, e.fmtErrOutPut(err)...)
 
 	// Write the post file *no matter what*
 	e.WritePostFile(e.PostFile, err)
@@ -127,6 +129,24 @@ func (e Entrypointer) Go() error {
 	}
 
 	return err
+}
+
+// fmtErrOutPut will format error to PipelineResourceResult
+func (e Entrypointer) fmtErrOutPut(err error) []v1alpha1.PipelineResourceResult {
+	if err == nil {
+		return []v1alpha1.PipelineResourceResult{}
+	}
+	// TODO: https://github.com/tektoncd/pipeline/issues/1690, add logic to format reason according error type sooner, example: DeadlineExceeded.
+	return []v1alpha1.PipelineResourceResult{
+		{
+			Key:   "Reason",
+			Value: "Unknown",
+		},
+		{
+			Key:   "Message",
+			Value: err.Error(),
+		},
+	}
 }
 
 func (e Entrypointer) readResultsFromDisk() error {

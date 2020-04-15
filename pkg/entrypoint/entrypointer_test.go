@@ -17,6 +17,7 @@ limitations under the License.
 package entrypoint
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -93,6 +94,43 @@ func TestEntrypointerFailures(t *testing.T) {
 			if c.postFile == "" && fpw.wrote != nil {
 				t.Errorf("Wrote post file when not required")
 			}
+
+			if c.waiter == nil {
+				fileContents, err := ioutil.ReadFile("termination")
+				if err == nil {
+					var entries []v1alpha1.PipelineResourceResult
+					if err := json.Unmarshal([]byte(fileContents), &entries); err == nil {
+						index := make(map[string]v1alpha1.PipelineResourceResult, len(entries))
+						for _, item := range entries {
+							index[item.Key] = item
+						}
+						if _, ok := index["StartedAt"]; !ok {
+							t.Error("Didn't find the StartedAt entry")
+						}
+						if reason, ok := index["Reason"]; ok {
+							if reason.Value != "Unknown" {
+								t.Error("Reason should be Unknown")
+							}
+						} else {
+							t.Error("Didn't find the Reason entry")
+						}
+
+						if message, ok := index["Message"]; ok {
+							if message.Value != "runner failed" {
+								t.Error("Message should be runner failed")
+							}
+						} else {
+							t.Error("Didn't find the Message entry ")
+						}
+					}
+				} else if !os.IsNotExist(err) {
+					t.Error("Wanted termination file written, got nil")
+				}
+				if err := os.Remove("termination"); err != nil {
+					t.Errorf("Could not remove termination path: %s", err)
+				}
+			}
+
 		})
 	}
 }
@@ -213,7 +251,7 @@ func (f *fakeWaiter) Wait(file string, _ bool) error {
 
 type fakeRunner struct{ args *[]string }
 
-func (f *fakeRunner) Run(args ...string) error {
+func (f *fakeRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	return nil
 }
@@ -231,7 +269,7 @@ func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 
 type fakeErrorRunner struct{ args *[]string }
 
-func (f *fakeErrorRunner) Run(args ...string) error {
+func (f *fakeErrorRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	return errors.New("runner failed")
 }

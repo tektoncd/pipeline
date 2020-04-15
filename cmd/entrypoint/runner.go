@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 
@@ -15,13 +16,13 @@ type realRunner struct{}
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
-func (*realRunner) Run(args ...string) error {
+func (*realRunner) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return nil
 	}
 	name, args := args[0], args[1:]
 
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

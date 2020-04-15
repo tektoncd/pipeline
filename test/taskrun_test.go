@@ -95,6 +95,7 @@ func TestTaskRunFailure(t *testing.T) {
 			Terminated: &corev1.ContainerStateTerminated{
 				ExitCode: 1,
 				Reason:   "Error",
+				Message:  `[{"key":"Message","value":"exit status 1","resourceRef":{}},{"key":"Reason","value":"Unknown","resourceRef":{}}]`,
 			},
 		},
 		Name:          "unnamed-1",
