@@ -22,15 +22,25 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const (
+	// EventReasonSucceded is the reason set for events about successful completion of TaskRuns / PipelineRuns
+	EventReasonSucceded = "Succeeded"
+	// EventReasonFailed is the reason set for events about unsuccessful completion of TaskRuns / PipelineRuns
+	EventReasonFailed = "Failed"
+)
+
 // EmitEvent emits success or failed event for object
 // if afterCondition is different from beforeCondition
 func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	if beforeCondition != afterCondition && afterCondition != nil {
 		// Create events when the obj result is in.
-		if afterCondition.Status == corev1.ConditionTrue {
-			c.Event(object, corev1.EventTypeNormal, "Succeeded", afterCondition.Message)
-		} else if afterCondition.Status == corev1.ConditionFalse {
-			c.Event(object, corev1.EventTypeWarning, "Failed", afterCondition.Message)
+		switch afterCondition.Status {
+		case corev1.ConditionTrue:
+			c.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+		case corev1.ConditionUnknown:
+			c.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
+		case corev1.ConditionFalse:
+			c.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		}
 	}
 }

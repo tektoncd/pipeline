@@ -64,6 +64,10 @@ const (
 	// config error of container
 	ReasonCreateContainerConfigError = "CreateContainerConfigError"
 
+	// ReasonPodCreationFailed indicates that the reason for the current condition
+	// is that the creation of the pod backing the TaskRun failed
+	ReasonPodCreationFailed = "PodCreationFailed"
+
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the steps
 	// completed successfully
 	ReasonSucceeded = "Succeeded"
