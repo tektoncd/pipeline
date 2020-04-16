@@ -82,6 +82,12 @@ const (
 	// ReasonInvalidGraph indicates that the reason for the failure status is that the
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
 	ReasonInvalidGraph = "PipelineInvalidGraph"
+	// ReasonCancelled indicates that a PipelineRun was cancelled.
+	ReasonCancelled = "PipelineRunCancelled"
+	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
+	// all of the running TaskRuns as cancelled failed.
+	ReasonCouldntCancel = "PipelineRunCouldntCancel"
+
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
 
