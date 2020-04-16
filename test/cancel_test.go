@@ -178,7 +178,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", expectedNumberOfEvents, len(events), events)
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", expectedNumberOfEvents, len(events), events)
 			}
 		})
 	}

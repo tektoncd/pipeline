@@ -265,7 +265,14 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != td.expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
+				collectedEvents := ""
+				for i, event := range events {
+					collectedEvents += fmt.Sprintf("%#v", event)
+					if i < (len(events) - 1) {
+						collectedEvents += ", "
+					}
+				}
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
 			// Wait for up to 10 minutes and restart every second to check if

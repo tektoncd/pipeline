@@ -571,12 +571,14 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	for _, tc := range []struct {
-		name    string
-		taskRun *v1alpha1.TaskRun
-		wantPod *corev1.Pod
+		name       string
+		taskRun    *v1alpha1.TaskRun
+		wantPod    *corev1.Pod
+		wantEvents int
 	}{{
-		name:    "success",
-		taskRun: taskRunSuccess,
+		name:       "success",
+		taskRun:    taskRunSuccess,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -614,8 +616,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "serviceaccount",
-		taskRun: taskRunWithSaSuccess,
+		name:       "serviceaccount",
+		taskRun:    taskRunWithSaSuccess,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -654,8 +657,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "params",
-		taskRun: taskRunSubstitution,
+		name:       "params",
+		taskRun:    taskRunSubstitution,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-substitution-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -736,8 +740,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "taskrun-with-taskspec",
-		taskRun: taskRunWithTaskSpec,
+		name:       "taskrun-with-taskspec",
+		taskRun:    taskRunWithTaskSpec,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -793,8 +798,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "success-with-cluster-task",
-		taskRun: taskRunWithClusterTask,
+		name:       "success-with-cluster-task",
+		taskRun:    taskRunWithClusterTask,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -833,8 +839,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "taskrun-with-resource-spec-task-spec",
-		taskRun: taskRunWithResourceSpecAndTaskSpec,
+		name:       "taskrun-with-resource-spec-task-spec",
+		taskRun:    taskRunWithResourceSpecAndTaskSpec,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -889,8 +896,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "taskrun-with-pod",
-		taskRun: taskRunWithPod,
+		name:       "taskrun-with-pod",
+		taskRun:    taskRunWithPod,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-pod-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -927,8 +935,9 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
-		name:    "taskrun-with-credentials-variable-default-tekton-home",
-		taskRun: taskRunWithCredentialsVariable,
+		name:       "taskrun-with-credentials-variable-default-tekton-home",
+		taskRun:    taskRunWithCredentialsVariable,
+		wantEvents: 1,
 		wantPod: tb.Pod("test-taskrun-with-credentials-variable-pod-9l9zj",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
@@ -1027,6 +1036,17 @@ func TestReconcile(t *testing.T) {
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+
+			actions := clients.Kube.Actions()
+			var eventCount = 0
+			for _, action := range actions {
+				if action.GetVerb() == "create" && action.GetResource().Resource == "events" {
+					eventCount++
+				}
+			}
+			if d := cmp.Diff(tc.wantEvents, eventCount); d != "" {
+				t.Errorf("Event count does not match (-want, +got): %s. ", d)
 			}
 		})
 	}
@@ -1182,7 +1202,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 		taskRun: noTaskRun,
 		reason:  podconvert.ReasonFailedResolution,
 	}, {
-		name:    "task run with no task",
+		name:    "task run with wrong ref",
 		taskRun: withWrongRef,
 		reason:  podconvert.ReasonFailedResolution,
 	}}
@@ -1194,16 +1214,22 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
+			// Events are sent in a goroutine, let's sleep a bit to make sure they're
+			// captured by the fake client-go action list
+			time.Sleep(100 * time.Millisecond)
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
-			if len(clients.Kube.Actions()) != 1 ||
-				clients.Kube.Actions()[0].GetVerb() != "list" ||
-				clients.Kube.Actions()[0].GetResource().Resource != "namespaces" {
-				t.Errorf("expected only one action (list namespaces) created by the reconciler, got %+v", clients.Kube.Actions())
+			actions := clients.Kube.Actions()
+			if len(actions) != 2 ||
+				actions[0].GetVerb() != "list" ||
+				actions[0].GetResource().Resource != "namespaces" ||
+				actions[1].GetVerb() != "create" ||
+				actions[1].GetResource().Resource != "events" {
+				t.Errorf("expected two actions (list namespaces + event) created by the reconciler, got %+v", actions)
 			}
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(apis.ConditionSucceeded)
@@ -1239,7 +1265,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 	})
 
 	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
-		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Build Pod but got nil")
+		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Pod but got nil")
 	}
 }
 
