@@ -38,6 +38,8 @@ import (
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8stesting "k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -1020,6 +1022,59 @@ func TestReconcileWithoutPVC(t *testing.T) {
 	}
 }
 
+func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
+	names.TestingSeed()
+	ptName := "hello-world-1"
+	prName := "test-pipeline-run-with-timeout"
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(prName, tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunCancelled,
+		),
+		// The reconciler uses the presense of this TaskRun in the status to determine that a TaskRun
+		// is already running. The TaskRun will not be retrieved at all so we do not need to seed one.
+		tb.PipelineRunStatus(
+			tb.PipelineRunTaskRunsStatus(prName+ptName, &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: ptName,
+				Status:           &v1alpha1.TaskRunStatus{},
+			}),
+		),
+	)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// Make the patch call fail, i.e. make it so that the controller fails to cancel the TaskRun
+	clients.Pipeline.PrependReactor("patch", "taskruns", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
+	})
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout")
+	if err == nil {
+		t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
+	}
+
+	// Check that the PipelineRun is still running with correct error message
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() {
+		t.Errorf("Expected PipelineRun to still be running since the TaskRun could not be cancelled but succeded condition is %v", condition.Status)
+	}
+	if condition.Reason != ReasonCouldntCancel {
+		t.Errorf("Expected PipelineRun condition to indicate the cancellation failed but reason was %s", condition.Reason)
+	}
+}
+
 func TestReconcileCancelledPipelineRun(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world", tb.Retries(1)),
@@ -1054,7 +1109,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 	}
 
 	// The PipelineRun should be still cancelled.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunCancelled" {
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != ReasonCancelled {
 		t.Errorf("Expected PipelineRun to be cancelled, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
