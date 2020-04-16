@@ -196,13 +196,13 @@ spec:
     - name: pathToDockerFile
       type: string
       description: The path to the dockerfile to build
-      default: /workspace/docker-source/Dockerfile
+      default: $(resources.inputs.docker-source.path)/Dockerfile
     - name: pathToContext
       type: string
       description: |
         The build context used by Kaniko
         (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-      default: /workspace/docker-source
+      default: $(resources.inputs.docker-source.path)
   resources:
     inputs:
       - name: docker-source
@@ -275,7 +275,7 @@ spec:
     - name: pathToDockerFile
       value: Dockerfile
     - name: pathToContext
-      value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
+      value: $(resources.inputs.docker-source.path)/examples/microservices/leeroy-web #configure: may change according to your source
   resources:
     inputs:
       - name: docker-source

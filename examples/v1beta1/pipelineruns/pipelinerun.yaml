@@ -64,7 +64,7 @@ spec:
     env:
     - name: GOPATH
       value: /workspace/go
-    workingDir: /workspace/go/src/github.com/GoogleContainerTools/skaffold
+    workingDir: $(resources.inputs.workspace.path)
     command:
     - echo
     args:
@@ -78,13 +78,13 @@ spec:
   params:
   - name: pathToDockerFile
     description: The path to the dockerfile to build
-    default: /workspace/workspace/Dockerfile
+    default: $(resources.inputs.docker-source.path)/Dockerfile
   - name: pathToContext
     description: The build context used by Kaniko (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-    default: /workspace/workspace
+    default: $(resources.inputs.docker-source.path)
   resources:
     inputs:
-    - name: workspace
+    - name: docker-source
       type: git
     outputs:
     - name: builtImage
@@ -177,10 +177,10 @@ spec:
     - name: pathToDockerFile
       value: Dockerfile
     - name: pathToContext
-      value: /workspace/workspace/examples/microservices/leeroy-web
+      value: $(resources.inputs.docker-source.path)/examples/microservices/leeroy-web
     resources:
       inputs:
-      - name: workspace
+      - name: docker-source
         resource: source-repo
       outputs:
       - name: builtImage
@@ -193,10 +193,10 @@ spec:
     - name: pathToDockerFile
       value: Dockerfile
     - name: pathToContext
-      value: /workspace/workspace/examples/microservices/leeroy-app
+      value: $(resources.inputs.docker-source.path)/examples/microservices/leeroy-app
     resources:
       inputs:
-      - name: workspace
+      - name: docker-source
         resource: source-repo
       outputs:
       - name: builtImage
@@ -214,7 +214,7 @@ spec:
         - build-skaffold-app
     params:
     - name: path
-      value: /workspace/workspace/examples/microservices/leeroy-app/kubernetes/deployment.yaml
+      value: $(resources.inputs.workspace.path)/examples/microservices/leeroy-app/kubernetes/deployment.yaml
     - name: yqArg
       value: "-d1"
     - name: yamlPathToImage
@@ -232,7 +232,7 @@ spec:
         - build-skaffold-web
     params:
     - name: path
-      value: /workspace/workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml
+      value: $(resources.inputs.workspace.path)/examples/microservices/leeroy-web/kubernetes/deployment.yaml
     - name: yqArg
       value: "-d1"
     - name: yamlPathToImage
