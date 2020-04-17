@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -376,7 +377,11 @@ type stepStateSorter struct {
 func (trt *stepStateSorter) constructTaskStepsSorter(taskSpecSteps []v1alpha1.Step) map[string]int {
 	sorter := make(map[string]int)
 	for index, step := range taskSpecSteps {
-		sorter[step.Name] = index
+		stepName := step.Name
+		if stepName == "" {
+			stepName = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("unnamed-%d", index))
+		}
+		sorter[stepName] = index
 	}
 	return sorter
 }
