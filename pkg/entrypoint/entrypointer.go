@@ -82,15 +82,25 @@ type PostWriter interface {
 func (e Entrypointer) Go() error {
 	prod, _ := zap.NewProduction()
 	logger := prod.Sugar()
+
+	output := []v1alpha1.PipelineResourceResult{}
 	defer func() {
+		if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
+			logger.Fatalf("Error while writing message: %s", wErr)
+		}
 		_ = logger.Sync()
 	}()
-	output := []v1alpha1.PipelineResourceResult{}
+
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
 			e.WritePostFile(e.PostFile, err)
+			output = append(output, v1alpha1.PipelineResourceResult{
+				Key:   "StartedAt",
+				Value: time.Now().Format(time.RFC3339),
+			})
+
 			return err
 		}
 	}
@@ -115,9 +125,7 @@ func (e Entrypointer) Go() error {
 			logger.Fatalf("Error while handling results: %s", err)
 		}
 	}
-	if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
-		logger.Fatalf("Error while writing message: %s", wErr)
-	}
+
 	return err
 }
 
