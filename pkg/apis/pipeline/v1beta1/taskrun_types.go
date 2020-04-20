@@ -177,6 +177,9 @@ type TaskRunStatusFields struct {
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
+
+	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
+	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 }
 
 // TaskRunResult used to describe the results of a task

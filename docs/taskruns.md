@@ -316,9 +316,9 @@ If multiple `Steps` are defined in the `Task` invoked by the `TaskRun`, you can 
 status in the `steps.results` field using the following command, where `<name>` is the name of the target
 `TaskRun`:
 
-```
-kubectl get taskrun <name>
-```
+The exact Task Spec used to instantiate the TaskRun is also included in the Status for full auditability.
+
+### Steps
 
 The corresponding statuses appear in the `status.steps` list in the order in which the `Steps` have been
 specified in the `Task` definition.

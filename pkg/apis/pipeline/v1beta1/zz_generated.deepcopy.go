@@ -1481,6 +1481,11 @@ func (in *TaskRunStatusFields) DeepCopyInto(out *TaskRunStatusFields) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.TaskSpec != nil {
+		in, out := &in.TaskSpec, &out.TaskSpec
+		*out = new(TaskSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
