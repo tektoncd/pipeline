@@ -40,7 +40,7 @@ require (
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	google.golang.org/api v0.15.0
+	google.golang.org/api v0.15.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apiextensions-apiserver v0.17.3 // indirect

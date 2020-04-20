@@ -216,6 +216,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
+	// Store the fetched TaskSpec on the TaskRun for auditing
+	if err := storeTaskSpec(ctx, tr, taskSpec); err != nil {
+		c.Logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+	}
+
 	// Propagate labels from Task to TaskRun.
 	if tr.ObjectMeta.Labels == nil {
 		tr.ObjectMeta.Labels = make(map[string]string, len(taskMeta.Labels)+1)
@@ -697,4 +702,13 @@ func applyVolumeClaimTemplates(workspaceBindings []v1alpha1.WorkspaceBinding, ow
 		taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, b)
 	}
 	return taskRunWorkspaceBindings
+}
+
+func storeTaskSpec(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec) error {
+	// Only store the TaskSpec once, if it has never been set before.
+	if tr.Status.TaskSpec == nil {
+		tr.Status.TaskSpec = &v1beta1.TaskSpec{}
+		return ts.ConvertTo(ctx, tr.Status.TaskSpec)
+	}
+	return nil
 }

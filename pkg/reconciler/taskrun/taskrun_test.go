@@ -29,6 +29,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -38,6 +40,7 @@ import (
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -2337,5 +2340,34 @@ func TestFailTaskRun(t *testing.T) {
 				t.Fatalf("-want, +got: %v", d)
 			}
 		})
+	}
+}
+
+func Test_storeTaskSpec(t *testing.T) {
+
+	ctx := context.Background()
+	tr := tb.TaskRun("foo", tb.TaskRunSpec(tb.TaskRunTaskRef("foo-task")))
+
+	ts := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
+	want := &v1beta1.TaskSpec{}
+	if err := ts.ConvertTo(ctx, want); err != nil {
+		t.Errorf("error converting to v1beta1: %v", err)
+	}
+
+	// The first time we set it, it should get copied.
+	if err := storeTaskSpec(ctx, tr, &ts); err != nil {
+		t.Errorf("storeTaskSpec() error = %v", err)
+	}
+	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	ts.Description = "new-task"
+	// The next time, it should not get overwritten
+	if err := storeTaskSpec(ctx, tr, &ts); err != nil {
+		t.Errorf("storeTaskSpec() error = %v", err)
+	}
+	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
+		t.Fatalf("-want, +got: %v", d)
 	}
 }
