@@ -16,6 +16,7 @@ The API is considered to consist of:
 - The structure of the CRDs including the `spec` and `status` sections, as well as:
   - The ordering of the `steps` within the `status`
   - The naming of the `step` containers within the `status`
+  - The labels propagated from `PipelineRuns` to `TaskRuns` and `TaskRuns` to `Pods`.
 - The structure of the [directories created in executing containers by Tekton](docs/tasks.md#reserved-directories)
 - The order that `PipelineResources` declared within a `Task` are applied in
 - The interfaces of the images that are built as part of Tekton Pipelines,
