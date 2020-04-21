@@ -135,7 +135,7 @@ func TestUploadFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r, err = FromDisk(dir)
+	r, err = FromDisk(dir, false)
 	if err != nil {
 		t.Fatal(err)
 	}

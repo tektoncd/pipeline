@@ -232,7 +232,7 @@ func TestFromDiskWithoutComments(t *testing.T) {
 	writeFile(filepath.Join(d, "base.json"), &base)
 	writeFile(filepath.Join(d, "head.json"), &head)
 
-	rsrc, err := FromDisk(d)
+	rsrc, err := FromDisk(d, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func TestFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rsrc, err := FromDisk(d)
+	rsrc, err := FromDisk(d, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,6 +417,131 @@ func readAndUnmarshal(t *testing.T, p string, v interface{}) {
 	}
 	if err := json.Unmarshal(b, v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCommentsFromDisk(t *testing.T) {
+	tests := []struct {
+		name              string
+		files             map[string][]byte
+		disableStrictJSON bool
+		expectErr         bool
+		expectedComments  []*scm.Comment
+	}{
+		{
+			name: "comments from .json and plain text files",
+			files: map[string][]byte{
+				"comment_foo.json": []byte(`
+{
+  "Body": "foo",
+  "Author": {
+    "Login": "author"
+  }
+}`),
+				"comment_bar": []byte("bar"),
+			},
+			expectedComments: []*scm.Comment{
+				{
+					Body: "bar",
+				},
+				{
+					Body:   "foo",
+					Author: scm.User{Login: "author"},
+				},
+			},
+		},
+		{
+			name: "any non-json extension is considered text",
+			files: map[string][]byte{
+				"comment.ANY": []byte("comment_any"),
+			},
+			expectedComments: []*scm.Comment{
+				{
+					Body: "comment_any",
+				},
+			},
+		},
+		{
+			name: "invalid content in .json file",
+			files: map[string][]byte{
+				"comment.json": []byte("invalid_json"),
+			},
+			expectErr: true,
+		},
+		{
+			name: "JSON extension is case-insensitive",
+			files: map[string][]byte{
+				"comment.JSON": []byte("invalid_json"),
+			},
+			expectErr: true,
+		},
+		{
+			name: "JSON extension parsing can be disabled using `disable-json-comments`",
+			files: map[string][]byte{
+				"comment.JSON": []byte("comment"),
+			},
+			disableStrictJSON: true,
+			expectedComments: []*scm.Comment{
+				{
+					Body: "comment",
+				},
+			},
+		},
+		{
+			name: "valid JSON files are parsed as such even with `disable-json-comments`",
+			files: map[string][]byte{
+				"comment_foo.json": []byte(`
+{
+  "Body": "foo",
+  "Author": {
+    "Login": "author"
+  }
+}`),
+			},
+			disableStrictJSON: true,
+			expectedComments: []*scm.Comment{
+				{
+					Body:   "foo",
+					Author: scm.User{Login: "author"},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(d)
+			if err := os.MkdirAll(filepath.Join(d, "comments"), 0750); err != nil {
+				t.Fatal(err)
+			}
+			fileNames := []string{}
+			for fileName, contents := range tt.files {
+				fileNames = append(fileNames, fileName)
+				if err := ioutil.WriteFile(filepath.Join(d, "comments", fileName), contents, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeManifest(t, fileNames, filepath.Join(d, "comments", manifestPath))
+
+			comments, _, err := commentsFromDisk(filepath.Join(d, "comments"), tt.disableStrictJSON)
+			if err == nil && tt.expectErr {
+				t.Fatal("expected error, got nil")
+			}
+			if err != nil && !tt.expectErr {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(comments) != len(tt.expectedComments) {
+				t.Fatalf("Comments length does not match expected length. expected %d, got %d: %+v", len(tt.expectedComments), len(comments), comments)
+			}
+			for i, c := range tt.expectedComments {
+				if d := cmp.Diff(c, comments[i]); d != "" {
+					t.Errorf("Get comments: %s", diff.PrintWantGot(d))
+				}
+			}
+		})
 	}
 }
 
@@ -682,7 +807,7 @@ func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
 	writeFile(filepath.Join(d, "head.json"), &head)
 	writeFile(filepath.Join(d, "pr.json"), &pr)
 
-	rsrc, err := FromDisk(d)
+	rsrc, err := FromDisk(d, false)
 	if err != nil {
 		t.Fatal(err)
 	}

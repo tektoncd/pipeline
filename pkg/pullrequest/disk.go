@@ -19,11 +19,13 @@ package pullrequest
 import (
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -160,7 +162,7 @@ func toDisk(path string, r interface{}, perm os.FileMode) error {
 }
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
-func FromDisk(path string) (*Resource, error) {
+func FromDisk(path string, disableJSONComments bool) (*Resource, error) {
 	r := &Resource{
 		PR:        &scm.PullRequest{},
 		Manifests: make(map[string]Manifest),
@@ -182,7 +184,7 @@ func FromDisk(path string) (*Resource, error) {
 	}
 
 	commentsPath := filepath.Join(path, "comments")
-	r.Comments, manifest, err = commentsFromDisk(commentsPath)
+	r.Comments, manifest, err = commentsFromDisk(commentsPath, disableJSONComments)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +248,7 @@ func manifestFromDisk(path string) (Manifest, error) {
 	return m, nil
 }
 
-func commentsFromDisk(path string) ([]*scm.Comment, Manifest, error) {
+func commentsFromDisk(path string, disableStrictJSON bool) ([]*scm.Comment, Manifest, error) {
 	fis, err := ioutil.ReadDir(path)
 	if isNotExistError(err) {
 		return nil, nil, nil
@@ -263,9 +265,16 @@ func commentsFromDisk(path string) ([]*scm.Comment, Manifest, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		comment := scm.Comment{}
-		if err := json.Unmarshal(b, &comment); err != nil {
-			// The comment might be plain text.
+		var comment scm.Comment
+		if strings.EqualFold(filepath.Ext(fi.Name()), ".json") {
+			if err := json.Unmarshal(b, &comment); err != nil {
+				if disableStrictJSON {
+					comment.Body = string(b)
+				} else {
+					return nil, nil, fmt.Errorf("error parsing comment file %q: %w", fi.Name(), err)
+				}
+			}
+		} else {
 			comment.Body = string(b)
 		}
 		comments = append(comments, &comment)
