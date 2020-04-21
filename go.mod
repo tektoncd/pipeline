@@ -17,6 +17,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jenkins-x/go-scm v1.5.117
 	github.com/mailru/easyjson v0.7.1-0.20191009090205-6c0755d89d1e // indirect
+	github.com/markbates/inflect v1.0.4
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887

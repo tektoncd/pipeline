@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/system"
+	runvalidatinghook "github.com/tektoncd/pipeline/pkg/webhook/authorization/validation"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -192,6 +193,28 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 	)
 }
 
+func NewAuthorizationValidatingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	return runvalidatinghook.NewAdmissionController(ctx,
+
+		// Name of the resource webhook.
+		"uservalidation.webhook.pipeline.tekton.dev",
+
+		// The path on which to serve the webhook.
+		"/user-validation",
+
+		// The resources to validate and default.
+		types,
+
+		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return ctx
+		},
+
+		// Whether to disallow unknown fields.
+		true,
+	)
+}
+
 func main() {
 	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
 	if serviceName == "" {
@@ -220,5 +243,6 @@ func main() {
 		newValidationAdmissionController,
 		newConfigValidationController,
 		newConversionController,
+		NewAuthorizationValidatingAdmissionController,
 	)
 }

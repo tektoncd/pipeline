@@ -89,3 +89,22 @@ webhooks:
   objectSelector:
     matchLabels:
       app.kubernetes.io/part-of: tekton-pipelines
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: uservalidation.webhook.pipeline.tekton.dev
+  labels:
+    pipeline.tekton.dev/release: devel
+webhooks:
+  - admissionReviewVersions:
+      - v1beta1
+    clientConfig:
+      service:
+        name: tekton-pipelines-webhook
+        namespace: tekton-pipelines
+    failurePolicy: Fail
+    sideEffects: None
+    name: uservalidation.webhook.pipeline.tekton.dev
+

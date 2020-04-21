@@ -143,6 +143,12 @@ spec:
       params: ....
 ```
 
+**Note:** Access to cluster scoped resources like `ClusterTask` by any user (`ServiceAccounts` in specific namespace(s)
+or a human user) is not a given to exist for every Kubernetes based cluster, though Tekton allows
+`PipelineRuns` and `TaskRuns` to access any `ClusterTask` by default.  If an administrator wants to restrict
+access to `ClusterTasks` from certain `PipelineRuns` or `TaskRuns`, read about Tekton's use of the Kubernetes
+authorization features [here](authorization.md).
+
 ### Defining `Steps`
 
 A `Step` is a reference to a container image that executes a specific tool on a
