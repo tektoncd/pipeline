@@ -17,7 +17,8 @@ weight: 3
     - [Using the `retries` parameter](#using-the-retries-parameter)
     - [Specifying execution `Conditions`](#specifying-execution-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
-  - [Monitoring execution results](#monitoring-execution-results)
+    - [Configuring execution results at the `Task` level](#configuring-execution-results-at-the-task-level)
+  - [Configuring execution results at the `Pipeline` level](#configuring-execution-results-at-the-pipeline-level)
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
   - [Code examples](#code-examples)
@@ -46,7 +47,7 @@ A `Pipeline` definition supports the following fields:
 - Optional:
   - [`resources`](#specifying-resources) - **alpha only** Specifies
     [`PipelineResources`](resources.md) needed or created by the `Tasks` comprising the `Pipeline`.
-  - `tasks`:
+  - [`tasks`](#adding-tasks-to-the-pipeline):
       - `resources.inputs` / `resource.outputs`
         - [`from`](#using-the-from-parameter) - Indicates the data for a [`PipelineResource`](resources.md)
           originates from the output of a previous `Task`.
@@ -57,7 +58,8 @@ A `Pipeline` definition supports the following fields:
       - [`conditions`](#specifying-execution-conditions) - Specifies `Conditions` that only allow a `Task`
         to execute if they evaluate to `true`.
       - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails. 
-  - [`results`](#monitoring-execution-results-1) - Specifies the file to which the `Pipeline` writes its execution results.
+  - [`results`](#configuring-execution-results-at-the-pipeline-level) - Specifies the location to which
+    the `Pipeline` emits its execution results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
 
 [kubernetes-overview]:
@@ -369,7 +371,7 @@ of the `TaskRun` that executes that `Task` within the `PipelineRun` that execute
 The `Timeout` value is a `duration` conforming to Go's [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration)
 format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`. 
 
-**Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#syntax).
+**Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#configuring-a-pipelinerun).
 
 In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
@@ -382,7 +384,7 @@ spec:
       Timeout: "0h1m30s"
 ```
 
-### Monitoring execution results
+### Configuring execution results at the `Task` level
 
 Tasks can emit [`Results`](tasks.md#storing-execution-results) while they execute. You can
 use these `Results` values as parameter values in subsequent `Tasks` within your `Pipeline`
@@ -399,6 +401,23 @@ params:
 ```
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
+
+## Configuring execution results at the `Pipeline` level
+
+You can configure your `Pipeline` to emit `Results` during its execution as references to
+the `Results` emitted by each `Task` within it. 
+
+In the example below, the `Pipeline` specifies a `results` entry with the name `sum` that
+references the `Result` emitted by the `second-add` `Task`.
+
+```yaml
+  results:
+    - name: sum
+      description: the sum of all three operands
+      value: $(tasks.second-add.results.sum)
+```
+
+For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
 
 ## Configuring the `Task` execution order
 
@@ -492,23 +511,6 @@ In particular:
    complete, since it ingests `PipelineResources` from both.
 4. The entire `Pipeline` completes execution once both `lint-repo` and `deploy-all`
    complete execution.
-
-## Monitoring execution results
-
-You can configure your `Pipeline` to emit `Results` during its execution as references to
-the `Results` emitted by each `Task` within it. 
-
-In the example below, the `Pipeline` specifies a `results` entry with the name `sum` that
-references the `Result` emitted by the `second-add` `Task`.
-
-```yaml
-  results:
-    - name: sum
-      description: the sum of all three operands
-      value: $(tasks.second-add.results.sum)
-```
-
-For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/pipelineruns/pipelinerun-results.yaml).
 
 ## Adding a description
 
