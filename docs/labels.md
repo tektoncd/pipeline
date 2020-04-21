@@ -54,7 +54,8 @@ The following labels are added to resources automatically:
   references.
 - `tekton.dev/clusterTask` is added to `TaskRuns` (and propagated to `Pods`) that
   reference an existing `ClusterTask`and contains the name of the `ClusterTask` 
-  that the `TaskRun` references.
+  that the `TaskRun` references. For backwards compatibility, `TaskRuns` that
+  reference a `ClusterTask` will also receive `tekton.dev/task`.
 - `tekton.dev/taskRun` is added to `Pods`, and contains the name of the
   `TaskRun` that created the `Pod`.
 

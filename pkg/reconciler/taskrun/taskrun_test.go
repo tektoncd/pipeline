@@ -795,6 +795,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde",
 			tb.PodNamespace("foo"),
 			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(clusterTaskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
