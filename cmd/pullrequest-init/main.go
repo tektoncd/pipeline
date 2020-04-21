@@ -26,11 +26,12 @@ import (
 )
 
 var (
-	prURL         = flag.String("url", "", "The url of the pull request to initialize.")
-	path          = flag.String("path", "", "Path of directory under which PR will be copied")
-	mode          = flag.String("mode", "download", "Whether to operate in download or upload mode")
-	provider      = flag.String("provider", "", "The SCM provider to use. Optional")
-	skipTLSVerify = flag.Bool("insecure-skip-tls-verify", false, "Enable skipping TLS certificate verification in the git client. Defaults to false")
+	prURL                     = flag.String("url", "", "The url of the pull request to initialize.")
+	path                      = flag.String("path", "", "Path of directory under which PR will be copied")
+	mode                      = flag.String("mode", "download", "Whether to operate in download or upload mode")
+	provider                  = flag.String("provider", "", "The SCM provider to use. Optional")
+	skipTLSVerify             = flag.Bool("insecure-skip-tls-verify", false, "Enable skipping TLS certificate verification in the git client. Defaults to false")
+	disableStrictJSONComments = flag.Bool("disable-strict-json-comments", false, "Disable strict json parsing for comment files with .json extension")
 )
 
 func main() {
@@ -65,7 +66,7 @@ func main() {
 
 	case "upload":
 		logger.Info("RUNNING UPLOAD!")
-		r, err := pullrequest.FromDisk(*path)
+		r, err := pullrequest.FromDisk(*path, *disableStrictJSONComments)
 		if err != nil {
 			logger.Fatal(err)
 		}

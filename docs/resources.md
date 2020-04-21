@@ -506,7 +506,10 @@ References (head and base) describe Git references. They are represented as a
 set of json files.
 
 Comments describe a pull request comment. They are represented as a set of json
-files.
+files. Add a file or modify the `Body` field in an existing json comment file to
+interact with the PR. Files with json extension will be parsed as such.
+The content of any comments file(s) with other/no extensions will be treated as
+body field of the comment.
 
 Other pull request information can be found in `pr.json`. This is a read-only
 resource. Users should use other subresources (labels, comments, etc) to
