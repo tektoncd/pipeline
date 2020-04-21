@@ -41,7 +41,7 @@ A `Pipeline` definition supports the following fields:
     `Pipeline` object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     this `Pipeline` object. This must include: 
-    - [`tasks`](#pipeline-tasks) - Specifies the `Tasks` that comprise the `Pipeline`
+    - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
       and the details of their execution.
 - Optional:
   - [`resources`](#specifying-resources) - **alpha only** Specifies
@@ -54,10 +54,10 @@ A `Pipeline` definition supports the following fields:
         should execute after one or more other `Tasks` without output linking.
       - [`retries`](#using-the-retries-parameter) - Specifies the number of times to retry the
         execution of a `Task` after a failure. Does not apply to execution cancellations.
-      - [`conditions`](#specifying-conditions) - Specifies `Conditions` that only allow a `Task`
+      - [`conditions`](#specifying-execution-conditions) - Specifies `Conditions` that only allow a `Task`
         to execute if they evaluate to `true`.
       - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails. 
-  - [`results`](#pipeline-results) - Specifies the file to which the `Pipeline` writes its execution results.
+  - [`results`](#monitoring-execution-results-1) - Specifies the file to which the `Pipeline` writes its execution results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
 
 [kubernetes-overview]:
@@ -337,7 +337,7 @@ tasks:
 In this example, `my-condition` refers to a [Condition](conditions.md) custom resource. The `build-push`
 task will only be executed if the condition evaluates to true.
 
-Resources in conditions can also use the [`from`](#from) field to indicate that they
+Resources in conditions can also use the [`from`](#using-the-from-parameter) field to indicate that they
 expect the output of a previous task as input. As with regular Pipeline Tasks, using `from`
 implies ordering --  if task has a condition that takes in an output resource from
 another task, the task producing the output resource will run first:
@@ -369,7 +369,7 @@ of the `TaskRun` that executes that `Task` within the `PipelineRun` that execute
 The `Timeout` value is a `duration` conforming to Go's [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration)
 format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`. 
 
-**Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](PipelineRun.md#syntax).
+**Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#syntax).
 
 In the example below, the `build-the-image` `Task` is configured to time out after 90 seconds:
 
