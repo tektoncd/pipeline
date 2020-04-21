@@ -1,3 +1,19 @@
+/*
+Copyright 2020 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package volumeclaim
 
 import (
@@ -92,5 +108,46 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 
 	if pvc.OwnerReferences[0].Name != ownerName {
 		t.Fatalf("unexptected name in ownerreference on created PVC; expected: %s got %s", ownerName, pvc.OwnerReferences[0].Name)
+	}
+}
+
+// TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata tests that given a volumeClaimTemplate workspace
+// without a metadata part, a PVC is created, with the expected name.
+func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) {
+
+	// given
+
+	// workspace with volumeClaimTemplate without metadata
+	workspaceName := "ws-with-volume-claim-template-without-metadata"
+	ownerName := "taskrun1"
+	workspaces := []v1alpha1.WorkspaceBinding{{
+		Name: workspaceName,
+		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+			Spec: corev1.PersistentVolumeClaimSpec{},
+		},
+	}}
+
+	ownerRef := metav1.OwnerReference{Name: ownerName}
+	namespace := "ns"
+	fakekubeclient := fakek8s.NewSimpleClientset()
+	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
+
+	// when
+
+	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(workspaces, ownerRef, namespace)
+	if err != nil {
+		t.Fatalf("unexpexted error: %v", err)
+	}
+
+	expectedPVCName := fmt.Sprintf("%s-%s", workspaceName, ownerName)
+	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// that
+
+	if pvc.Name != expectedPVCName {
+		t.Fatalf("unexpected PVC name on created PVC; exptected: %s got: %s", expectedPVCName, pvc.Name)
 	}
 }
