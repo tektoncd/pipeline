@@ -74,6 +74,9 @@ const (
 
 	// ReasonFailed indicates that the reason for the failure status is unknown or that one of the steps failed
 	ReasonFailed = "Failed"
+
+	//timeFormat is RFC3339 with millisecond
+	timeFormat = "2006-01-02T15:04:05.000Z07:00"
 )
 
 const oomKilled = "OOMKilled"
@@ -168,7 +171,7 @@ func updateStatusStartTime(s *corev1.ContainerStatus) error {
 	}
 	for index, result := range r {
 		if result.Key == "StartedAt" {
-			t, err := time.Parse(time.RFC3339, result.Value)
+			t, err := time.Parse(timeFormat, result.Value)
 			if err != nil {
 				return fmt.Errorf("could not parse time value %q in StartedAt field: %w", result.Value, err)
 			}
@@ -268,12 +271,18 @@ func areStepsComplete(pod *corev1.Pod) bool {
 
 func sortContainerStatuses(podInstance *corev1.Pod) {
 	sort.Slice(podInstance.Status.ContainerStatuses, func(i, j int) bool {
-		var ifinish, jfinish time.Time
+		var ifinish, istart, jfinish, jstart time.Time
 		if term := podInstance.Status.ContainerStatuses[i].State.Terminated; term != nil {
 			ifinish = term.FinishedAt.Time
+			istart = term.StartedAt.Time
 		}
 		if term := podInstance.Status.ContainerStatuses[j].State.Terminated; term != nil {
 			jfinish = term.FinishedAt.Time
+			jstart = term.StartedAt.Time
+		}
+
+		if ifinish.Equal(jfinish) {
+			return istart.Before(jstart)
 		}
 		return ifinish.Before(jfinish)
 	})

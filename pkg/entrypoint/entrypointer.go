@@ -29,6 +29,11 @@ import (
 	"go.uber.org/zap"
 )
 
+//RFC3339 with millisecond
+const (
+	timeFormat = "2006-01-02T15:04:05.000Z07:00"
+)
+
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
@@ -98,7 +103,7 @@ func (e Entrypointer) Go() error {
 			e.WritePostFile(e.PostFile, err)
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:   "StartedAt",
-				Value: time.Now().Format(time.RFC3339),
+				Value: time.Now().Format(timeFormat),
 			})
 
 			return err
@@ -110,7 +115,7 @@ func (e Entrypointer) Go() error {
 	}
 	output = append(output, v1beta1.PipelineResourceResult{
 		Key:   "StartedAt",
-		Value: time.Now().Format(time.RFC3339),
+		Value: time.Now().Format(timeFormat),
 	})
 
 	err := e.Runner.Run(e.Args...)
