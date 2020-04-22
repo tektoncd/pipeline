@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -100,6 +101,7 @@ func TestPipelineConversion(t *testing.T) {
 						Name:      "w1",
 						Workspace: "workspace1",
 					}},
+					Timeout: &metav1.Duration{Duration: 5 * time.Minute},
 				}, {
 					Name: "task2",
 					TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
