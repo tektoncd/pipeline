@@ -42,8 +42,15 @@ func testGraph(t *testing.T) *dag.Graph {
 	}, {
 		Name: "b",
 	}, {
-		Name:     "w",
-		RunAfter: []string{"b", "y"},
+		Name: "w",
+		Params: []v1alpha1.Param{{
+			Name: "foo",
+			Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "$(tasks.y.results.bar)",
+			},
+		}},
+		RunAfter: []string{"b"},
 	}, {
 		Name:     "x",
 		RunAfter: []string{"a"},
