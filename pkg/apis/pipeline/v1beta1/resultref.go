@@ -30,8 +30,9 @@ const (
 	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
 	ResultTaskPart = "tasks"
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
-	ResultResultPart           = "results"
-	variableSubstitutionFormat = `\$\([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\)`
+	ResultResultPart = "results"
+	// TODO(#2462) use one regex across all substitutions
+	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*\)`
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
@@ -53,7 +54,7 @@ func NewResultRefs(expressions []string) ([]*ResultRef, error) {
 	return resultRefs, nil
 }
 
-// looksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
+// LooksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
 // result references.
 // This is useful if we want to make sure the param looks like a ResultReference before
 // performing strict validation

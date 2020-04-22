@@ -204,6 +204,23 @@ func TestHasResultReference(t *testing.T) {
 				},
 			},
 		}, {
+			name: "Test valid expression with underscores",
+			args: args{
+				param: v1beta1.Param{
+					Name: "param",
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "$(tasks.sum-task.results.sum_result)",
+					},
+				},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sum-task",
+					Result:       "sum_result",
+				},
+			},
+		}, {
 			name: "Test invalid expression: param substitution shouldn't be considered result ref",
 			args: args{
 				param: v1beta1.Param{
