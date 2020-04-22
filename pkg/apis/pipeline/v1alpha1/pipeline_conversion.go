@@ -69,6 +69,7 @@ func (source *PipelineTask) ConvertUp(ctx context.Context, sink *v1beta1.Pipelin
 	sink.Resources = source.Resources
 	sink.Params = source.Params
 	sink.Workspaces = source.Workspaces
+	sink.Timeout = source.Timeout
 	return nil
 }
 
@@ -114,5 +115,6 @@ func (sink *PipelineTask) ConvertDown(ctx context.Context, source v1beta1.Pipeli
 	sink.Resources = source.Resources
 	sink.Params = source.Params
 	sink.Workspaces = source.Workspaces
+	sink.Timeout = source.Timeout
 	return nil
 }
