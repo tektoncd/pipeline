@@ -398,7 +398,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	// Convert the Pod's status to the equivalent TaskRun Status.
 	tr.Status = podconvert.MakeTaskRunStatus(c.Logger, *tr, pod, *taskSpec)
 
-	if err := updateTaskRunResourceResult(tr, pod.Status); err != nil {
+	if err := updateTaskRunResourceResult(tr, *pod); err != nil {
 		return err
 	}
 
@@ -603,9 +603,11 @@ func (c *Reconciler) createPod(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskR
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
-func updateTaskRunResourceResult(taskRun *v1beta1.TaskRun, podStatus corev1.PodStatus) error {
+func updateTaskRunResourceResult(taskRun *v1beta1.TaskRun, pod corev1.Pod) error {
+	podconvert.SortContainerStatuses(&pod)
+
 	if taskRun.IsSuccessful() {
-		for idx, cs := range podStatus.ContainerStatuses {
+		for idx, cs := range pod.Status.ContainerStatuses {
 			if cs.State.Terminated != nil {
 				msg := cs.State.Terminated.Message
 				r, err := termination.ParseMessage(msg)
@@ -617,6 +619,7 @@ func updateTaskRunResourceResult(taskRun *v1beta1.TaskRun, podStatus corev1.PodS
 				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, pipelineResourceResults...)
 			}
 		}
+		taskRun.Status.TaskRunResults = removeDuplicateResults(taskRun.Status.TaskRunResults)
 	}
 	return nil
 }
@@ -639,6 +642,21 @@ func getResults(results []v1beta1.PipelineResourceResult) ([]v1beta1.TaskRunResu
 		}
 	}
 	return taskResults, pipelineResourceResults
+}
+
+func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.TaskRunResult {
+	uniq := make([]v1beta1.TaskRunResult, 0)
+	latest := make(map[string]v1beta1.TaskRunResult, 0)
+	for _, res := range taskRunResult {
+		if _, seen := latest[res.Name]; !seen {
+			uniq = append(uniq, res)
+		}
+		latest[res.Name] = res
+	}
+	for i, res := range uniq {
+		uniq[i] = latest[res.Name]
+	}
+	return uniq
 }
 
 func isExceededResourceQuotaError(err error) bool {

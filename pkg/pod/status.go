@@ -266,7 +266,8 @@ func areStepsComplete(pod *corev1.Pod) bool {
 	return stepsComplete
 }
 
-func sortContainerStatuses(podInstance *corev1.Pod) {
+//SortContainerStatuses sort ContainerStatuses based on "FinishedAt"
+func SortContainerStatuses(podInstance *corev1.Pod) {
 	sort.Slice(podInstance.Status.ContainerStatuses, func(i, j int) bool {
 		var ifinish, jfinish time.Time
 		if term := podInstance.Status.ContainerStatuses[i].State.Terminated; term != nil {
@@ -281,7 +282,7 @@ func sortContainerStatuses(podInstance *corev1.Pod) {
 }
 
 func getFailureMessage(pod *corev1.Pod) string {
-	sortContainerStatuses(pod)
+	SortContainerStatuses(pod)
 	// First, try to surface an error about the actual build step that failed.
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
