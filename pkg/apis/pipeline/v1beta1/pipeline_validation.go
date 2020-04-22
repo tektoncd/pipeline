@@ -331,8 +331,9 @@ func validateParamResults(tasks []PipelineTask) error {
 			if ok {
 				if LooksLikeContainsResultRefs(expressions) {
 					expressions = filter(expressions, looksLikeResultRef)
-					if _, err := NewResultRefs(expressions); err != nil {
-						return err
+					resultRefs := NewResultRefs(expressions)
+					if len(expressions) != len(resultRefs) {
+						return fmt.Errorf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs)
 					}
 				}
 			}
@@ -358,8 +359,9 @@ func validatePipelineResults(results []PipelineResult) error {
 		if ok {
 			if LooksLikeContainsResultRefs(expressions) {
 				expressions = filter(expressions, looksLikeResultRef)
-				if _, err := NewResultRefs(expressions); err != nil {
-					return err
+				resultRefs := NewResultRefs(expressions)
+				if len(expressions) != len(resultRefs) {
+					return fmt.Errorf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs)
 				}
 			}
 		}
