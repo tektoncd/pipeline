@@ -1773,3 +1773,77 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, d)
 	}
 }
+
+func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
+	names.TestingSeed()
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunPipelineSpec(
+				tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString),
+				tb.PipelineTask("a-task", "a-task"),
+				tb.PipelineTask("b-task", "b-task",
+					tb.PipelineTaskParam("bParam", "$(params.foo)/baz@$(tasks.a-task.results.A_RESULT)"),
+				),
+			),
+			tb.PipelineRunParam("foo", "bar"),
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+	)}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task", "foo"),
+		tb.Task("b-task", "foo",
+			tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("bParam", v1alpha1.ParamTypeString)),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Tasks:        ts,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-different-service-accs")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-different-service-accs", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// Since b-task is dependent on a-task, via the results, only a-task should run
+	expectedTaskRunName := "test-pipeline-run-different-service-accs-a-task-9l9zj"
+	expectedTaskRun := tb.TaskRun(expectedTaskRunName, "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("a-task", tb.TaskRefKind(v1beta1.NamespacedTaskKind)),
+			tb.TaskRunServiceAccountName("test-sa-0"),
+		),
+	)
+	// Check that the expected TaskRun was created (only)
+	actual, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
+	}
+}

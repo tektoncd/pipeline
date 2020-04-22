@@ -26,10 +26,9 @@ func TestNewResultReference(t *testing.T) {
 		param v1beta1.Param
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []*v1beta1.ResultRef
-		wantErr bool
+		name string
+		args args
+		want []*v1beta1.ResultRef
 	}{
 		{
 			name: "Test valid expression",
@@ -48,9 +47,8 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test valid expression: substitution within string",
+			name: "substitution within string",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -66,9 +64,8 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test valid expression: multiple substitution",
+			name: "multiple substitution",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -87,9 +84,28 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test invalid expression: first separator typo",
+			name: "multiple substitution with param",
+			args: args{
+				param: v1beta1.Param{
+					Name: "param",
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)",
+					},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				}, {
+					PipelineTask: "sumTask2",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "first separator typo",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -99,10 +115,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: third separator typo",
+			name: "third separator typo",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -112,10 +127,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: param substitution shouldn't be considered result ref",
+			name: "param substitution shouldn't be considered result ref",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -125,10 +139,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: One bad and good result substitution",
+			name: "One bad and good result substitution",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -138,23 +151,24 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
-			if !ok {
+			if !ok && tt.want != nil {
 				t.Fatalf("expected to find expressions but didn't find any")
-			}
-			got, err := v1beta1.NewResultRefs(expressions)
-			if tt.wantErr != (err != nil) {
-				t.Errorf("TestNewResultReference/%s wantErr %v, error = %v", tt.name, tt.wantErr, err)
-				return
-			}
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
+			} else {
+				got := v1beta1.NewResultRefs(expressions)
+				if d := cmp.Diff(tt.want, got); d != "" {
+					t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
+				}
 			}
 		})
 	}
@@ -278,7 +292,7 @@ func TestHasResultReference(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected to find expressions but didn't find any")
 			}
-			got, _ := v1beta1.NewResultRefs(expressions)
+			got := v1beta1.NewResultRefs(expressions)
 			sort.Slice(got, func(i, j int) bool {
 				if got[i].PipelineTask > got[j].PipelineTask {
 					return false

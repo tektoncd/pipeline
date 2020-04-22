@@ -139,10 +139,9 @@ func (pt PipelineTask) Deps() []string {
 		for _, param := range cond.Params {
 			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
 			if ok {
-				if resultRefs, err := NewResultRefs(expressions); err == nil {
-					for _, resultRef := range resultRefs {
-						deps = append(deps, resultRef.PipelineTask)
-					}
+				resultRefs := NewResultRefs(expressions)
+				for _, resultRef := range resultRefs {
+					deps = append(deps, resultRef.PipelineTask)
 				}
 			}
 		}
@@ -151,10 +150,9 @@ func (pt PipelineTask) Deps() []string {
 	for _, param := range pt.Params {
 		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
 		if ok {
-			if resultRefs, err := NewResultRefs(expressions); err == nil {
-				for _, resultRef := range resultRefs {
-					deps = append(deps, resultRef.PipelineTask)
-				}
+			resultRefs := NewResultRefs(expressions)
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
 			}
 		}
 	}
