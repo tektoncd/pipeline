@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -240,14 +241,14 @@ func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []Pipeli
 	return nil
 }
 
-func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) *apis.FieldError {
+func validatePipelineParameterVariables(tasks []PipelineTask, pp []params.ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
-	for _, p := range params {
+	for _, p := range pp {
 		// Verify that p is a valid type.
 		validType := false
-		for _, allowedType := range AllParamTypes {
+		for _, allowedType := range params.AllParamTypes {
 			if p.Type == allowedType {
 				validType = true
 			}
@@ -270,7 +271,7 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 
 		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
 		parameterNames[p.Name] = struct{}{}
-		if p.Type == ParamTypeArray {
+		if p.Type == params.ParamTypeArray {
 			arrayParameterNames[p.Name] = struct{}{}
 		}
 	}
@@ -281,7 +282,7 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames map[string]struct{}, arrayParamNames map[string]struct{}) *apis.FieldError {
 	for _, task := range tasks {
 		for _, param := range task.Params {
-			if param.Value.Type == ParamTypeString {
+			if param.Value.Type == params.ParamTypeString {
 				if err := validatePipelineVariable(fmt.Sprintf("param[%s]", param.Name), param.Value.StringVal, prefix, paramNames); err != nil {
 					return err
 				}

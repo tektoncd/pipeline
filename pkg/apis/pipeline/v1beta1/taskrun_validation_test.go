@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -189,7 +190,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "invalid params",
 		spec: v1beta1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "name",
 				Value: *builder.ArrayOrString("value"),
 			}, {
@@ -239,7 +240,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "parameters",
 		spec: v1beta1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
-			Params: []v1beta1.Param{{
+			Params: []params.Param{{
 				Name:  "name",
 				Value: *builder.ArrayOrString("value"),
 			}},

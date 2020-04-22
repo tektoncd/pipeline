@@ -20,6 +20,7 @@ package resources
 import (
 	"fmt"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -126,9 +127,9 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 }
 
 // convertParamTemplates replaces all instances of $(params.x) in the container to $(inputs.params.x) for each param name.
-func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
+func convertParamTemplates(step *v1alpha1.Step, pp []params.ParamSpec) {
 	replacements := make(map[string]string)
-	for _, p := range params {
+	for _, p := range pp {
 		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("$(inputs.params.%s)", p.Name)
 		v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
 	}

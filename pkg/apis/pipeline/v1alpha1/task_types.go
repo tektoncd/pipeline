@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -97,7 +98,7 @@ type Inputs struct {
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	Params []ParamSpec `json:"params,omitempty"`
+	Params []params.ParamSpec `json:"params,omitempty"`
 }
 
 // TaskResource defines an input or output Resource declared as a requirement

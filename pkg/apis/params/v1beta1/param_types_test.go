@@ -23,46 +23,46 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestParamSpec_SetDefaults(t *testing.T) {
 	tests := []struct {
 		name            string
-		before          *v1beta1.ParamSpec
-		defaultsApplied *v1beta1.ParamSpec
+		before          *params.ParamSpec
+		defaultsApplied *params.ParamSpec
 	}{{
 		name: "inferred string type",
-		before: &v1beta1.ParamSpec{
+		before: &params.ParamSpec{
 			Name: "parametername",
 		},
-		defaultsApplied: &v1beta1.ParamSpec{
+		defaultsApplied: &params.ParamSpec{
 			Name: "parametername",
-			Type: v1beta1.ParamTypeString,
+			Type: params.ParamTypeString,
 		},
 	}, {
 		name: "inferred type from default value",
-		before: &v1beta1.ParamSpec{
+		before: &params.ParamSpec{
 			Name:    "parametername",
 			Default: builder.ArrayOrString("an", "array"),
 		},
-		defaultsApplied: &v1beta1.ParamSpec{
+		defaultsApplied: &params.ParamSpec{
 			Name:    "parametername",
-			Type:    v1beta1.ParamTypeArray,
+			Type:    params.ParamTypeArray,
 			Default: builder.ArrayOrString("an", "array"),
 		},
 	}, {
 		name: "fully defined ParamSpec",
-		before: &v1beta1.ParamSpec{
+		before: &params.ParamSpec{
 			Name:        "parametername",
-			Type:        v1beta1.ParamTypeArray,
+			Type:        params.ParamTypeArray,
 			Description: "a description",
 			Default:     builder.ArrayOrString("an", "array"),
 		},
-		defaultsApplied: &v1beta1.ParamSpec{
+		defaultsApplied: &params.ParamSpec{
 			Name:        "parametername",
-			Type:        v1beta1.ParamTypeArray,
+			Type:        params.ParamTypeArray,
 			Description: "a description",
 			Default:     builder.ArrayOrString("an", "array"),
 		},
@@ -80,14 +80,14 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 
 func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	type args struct {
-		input              *v1beta1.ArrayOrString
+		input              *params.ArrayOrString
 		stringReplacements map[string]string
 		arrayReplacements  map[string][]string
 	}
 	tests := []struct {
 		name           string
 		args           args
-		expectedOutput *v1beta1.ArrayOrString
+		expectedOutput *params.ArrayOrString
 	}{{
 		name: "no replacements on array",
 		args: args{
@@ -140,19 +140,19 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 }
 
 type ArrayOrStringHolder struct {
-	AOrS v1beta1.ArrayOrString `json:"val"`
+	AOrS params.ArrayOrString `json:"val"`
 }
 
 func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  string
-		result v1beta1.ArrayOrString
+		result params.ArrayOrString
 	}{
 		{"{\"val\": \"123\"}", *builder.ArrayOrString("123")},
 		{"{\"val\": \"\"}", *builder.ArrayOrString("")},
-		{"{\"val\":[]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}}},
-		{"{\"val\":[\"oneelement\"]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"oneelement"}}},
-		{"{\"val\":[\"multiple\", \"elements\"]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}}},
+		{"{\"val\":[]}", params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{}}},
+		{"{\"val\":[\"oneelement\"]}", params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"oneelement"}}},
+		{"{\"val\":[\"multiple\", \"elements\"]}", params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}}},
 	}
 
 	for _, c := range cases {
@@ -168,7 +168,7 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 
 func TestArrayOrString_MarshalJSON(t *testing.T) {
 	cases := []struct {
-		input  v1beta1.ArrayOrString
+		input  params.ArrayOrString
 		result string
 	}{
 		{*builder.ArrayOrString("123"), "{\"val\":\"123\"}"},

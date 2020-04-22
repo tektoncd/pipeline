@@ -22,13 +22,14 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/workspace"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...v1alpha1.ParamSpec) *v1alpha1.TaskSpec {
+func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...params.ParamSpec) *v1alpha1.TaskSpec {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 
 	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
@@ -39,7 +40,7 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 	// Set all the default stringReplacements
 	for _, p := range defaults {
 		if p.Default != nil {
-			if p.Default.Type == v1alpha1.ParamTypeString {
+			if p.Default.Type == params.ParamTypeString {
 				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
 				// FIXME(vdemeester) Remove that with deprecating v1alpha1
 				stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.StringVal
@@ -52,7 +53,7 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 	}
 	// Set and overwrite params with the ones from the TaskRun
 	for _, p := range tr.Spec.Params {
-		if p.Value.Type == v1alpha1.ParamTypeString {
+		if p.Value.Type == params.ParamTypeString {
 			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
 			// FIXME(vdemeester) Remove that with deprecating v1alpha1
 			stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.StringVal

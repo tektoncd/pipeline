@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/apis"
 )
@@ -64,7 +65,7 @@ func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunS
 			return apis.ErrMultipleOneOf("inputs.params", "params")
 		}
 		if len(source.Inputs.Params) > 0 {
-			sink.Params = make([]v1beta1.Param, len(source.Inputs.Params))
+			sink.Params = make([]params.Param, len(source.Inputs.Params))
 			for i, param := range source.Inputs.Params {
 				sink.Params[i] = *param.DeepCopy()
 			}

@@ -19,6 +19,7 @@ package taskrun
 import (
 	"fmt"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
@@ -64,16 +65,16 @@ func validateResources(requiredResources []v1beta1.TaskResource, providedResourc
 	return nil
 }
 
-func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1alpha1.Param) error {
+func validateParams(paramSpecs []params.ParamSpec, pp []params.Param) error {
 	var neededParams []string
-	paramTypes := make(map[string]v1alpha1.ParamType)
+	paramTypes := make(map[string]params.ParamType)
 	neededParams = make([]string, 0, len(paramSpecs))
 	for _, inputResourceParam := range paramSpecs {
 		neededParams = append(neededParams, inputResourceParam.Name)
 		paramTypes[inputResourceParam.Name] = inputResourceParam.Type
 	}
-	providedParams := make([]string, 0, len(params))
-	for _, param := range params {
+	providedParams := make([]string, 0, len(pp))
+	for _, param := range pp {
 		providedParams = append(providedParams, param.Name)
 	}
 	missingParams := list.DiffLeft(neededParams, providedParams)
@@ -96,7 +97,7 @@ func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1alpha1.Param) err
 	// Now that we have checked against missing/extra params, make sure each param's actual type matches
 	// the user-specified type.
 	var wrongTypeParamNames []string
-	for _, param := range params {
+	for _, param := range pp {
 		if param.Value.Type != paramTypes[param.Name] {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
@@ -109,8 +110,8 @@ func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1alpha1.Param) err
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
-	if err := validateParams(rtr.TaskSpec.Params, params); err != nil {
+func ValidateResolvedTaskResources(pp []params.Param, rtr *resources.ResolvedTaskResources) error {
+	if err := validateParams(rtr.TaskSpec.Params, pp); err != nil {
 		return fmt.Errorf("invalid input params: %w", err)
 	}
 	inputs := []v1beta1.TaskResource{}

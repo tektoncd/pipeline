@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
@@ -154,10 +155,10 @@ func validatePipelineResources(ctx context.Context, resources []TaskResourceBind
 	return nil
 }
 
-func validateParameters(params []Param) *apis.FieldError {
+func validateParameters(pp []params.Param) *apis.FieldError {
 	// Template must not duplicate parameter names.
 	seen := map[string]struct{}{}
-	for _, p := range params {
+	for _, p := range pp {
 		if _, ok := seen[strings.ToLower(p.Name)]; ok {
 			return apis.ErrMultipleOneOf("spec.inputs.params")
 		}

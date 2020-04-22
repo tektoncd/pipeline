@@ -19,8 +19,9 @@ package resources
 import (
 	"fmt"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
@@ -35,7 +36,7 @@ func ApplyParameters(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) *v1alph
 	// Set all the default stringReplacements
 	for _, p := range p.Params {
 		if p.Default != nil {
-			if p.Default.Type == v1alpha1.ParamTypeString {
+			if p.Default.Type == params.ParamTypeString {
 				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
 			} else {
 				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
@@ -44,7 +45,7 @@ func ApplyParameters(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) *v1alph
 	}
 	// Set and overwrite params with the ones from the PipelineRun
 	for _, p := range pr.Spec.Params {
-		if p.Value.Type == v1alpha1.ParamTypeString {
+		if p.Value.Type == params.ParamTypeString {
 			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
 		} else {
 			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
@@ -59,7 +60,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	stringReplacements := map[string]string{}
 
 	for _, resolvedResultRef := range resolvedResultRefs {
-		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
+		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", results.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, results.ResultResultPart, resolvedResultRef.ResultReference.Result)
 		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
 	}
 
@@ -95,9 +96,9 @@ func ApplyReplacements(p *v1alpha1.PipelineSpec, replacements map[string]string,
 	return p
 }
 
-func replaceParamValues(params []v1alpha1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string) []v1alpha1.Param {
-	for i := range params {
-		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements)
+func replaceParamValues(pp []params.Param, stringReplacements map[string]string, arrayReplacements map[string][]string) []params.Param {
+	for i := range pp {
+		pp[i].Value.ApplyReplacements(stringReplacements, arrayReplacements)
 	}
-	return params
+	return pp
 }

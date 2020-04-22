@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -62,9 +63,9 @@ func TestTaskConversion(t *testing.T) {
 						Image: "foo",
 					}}},
 					Volumes: []corev1.Volume{{}},
-					Params: []v1beta1.ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1beta1.ParamTypeString,
+						Type:        params.ParamTypeString,
 						Description: "My first param",
 					}},
 					Resources: &v1beta1.TaskResources{
@@ -116,16 +117,16 @@ func TestTaskConversion(t *testing.T) {
 			},
 			Spec: TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1beta1.ParamTypeString,
+						Type:        params.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
 				Inputs: &Inputs{
-					Params: []ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1beta1.ParamTypeString,
+						Type:        params.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
@@ -201,9 +202,9 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: TaskSpec{
 				Inputs: &Inputs{
-					Params: []ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1beta1.ParamTypeString,
+						Type:        params.ParamTypeString,
 						Description: "My first param",
 					}},
 				},
@@ -217,9 +218,9 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name:        "param-1",
-						Type:        v1beta1.ParamTypeString,
+						Type:        params.ParamTypeString,
 						Description: "My first param",
 					}},
 				},

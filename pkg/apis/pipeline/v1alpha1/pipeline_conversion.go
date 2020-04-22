@@ -44,6 +44,7 @@ func (source *PipelineSpec) ConvertTo(ctx context.Context, sink *v1beta1.Pipelin
 	sink.Workspaces = source.Workspaces
 	sink.Description = source.Description
 	if len(source.Tasks) > 0 {
+		// todo: why is this failing?
 		sink.Tasks = make([]v1beta1.PipelineTask, len(source.Tasks))
 		for i := range source.Tasks {
 			if err := source.Tasks[i].ConvertTo(ctx, &sink.Tasks[i]); err != nil {

@@ -17,14 +17,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestGenerateString(t *testing.T) {
 	value := builder.ArrayOrString("somestring")
-	expectedValue := &v1alpha1.ArrayOrString{
-		Type:      v1alpha1.ParamTypeString,
+	expectedValue := &params.ArrayOrString{
+		Type:      params.ParamTypeString,
 		StringVal: "somestring",
 	}
 	if d := cmp.Diff(expectedValue, value); d != "" {
@@ -34,8 +34,8 @@ func TestGenerateString(t *testing.T) {
 
 func TestGenerateArray(t *testing.T) {
 	value := builder.ArrayOrString("some", "array", "elements")
-	expectedValue := &v1alpha1.ArrayOrString{
-		Type:     v1alpha1.ParamTypeArray,
+	expectedValue := &params.ArrayOrString{
+		Type:     params.ParamTypeArray,
 		ArrayVal: []string{"some", "array", "elements"},
 	}
 	if d := cmp.Diff(expectedValue, value); d != "" {

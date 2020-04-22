@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
@@ -581,11 +582,11 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	e := v1alpha1.PipelineTask{Name: "e"}
 	xDependsOnA := v1alpha1.PipelineTask{
 		Name: "x",
-		Params: []v1alpha1.Param{
+		Params: []params.Param{
 			{
 				Name: "paramX",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1alpha1.ParamTypeString,
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
 					StringVal: "$(tasks.a.results.resultA)",
 				},
 			},
@@ -594,11 +595,11 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	yDependsOnBRunsAfterC := v1alpha1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"c"},
-		Params: []v1alpha1.Param{
+		Params: []params.Param{
 			{
 				Name: "paramB",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1alpha1.ParamTypeString,
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
 					StringVal: "$(tasks.b.results.resultB)",
 				},
 			},
@@ -606,11 +607,11 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	}
 	zDependsOnDAndE := v1alpha1.PipelineTask{
 		Name: "z",
-		Params: []v1alpha1.Param{
+		Params: []params.Param{
 			{
 				Name: "paramZ",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1alpha1.ParamTypeString,
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
 					StringVal: "$(tasks.d.results.resultD) $(tasks.e.results.resultE)",
 				},
 			},
@@ -669,11 +670,11 @@ func TestBuild_ConditionsParamsFromTaskResults(t *testing.T) {
 		Name: "x",
 		Conditions: []v1beta1.PipelineTaskCondition{{
 			ConditionRef: "cond",
-			Params: []v1alpha1.Param{
+			Params: []params.Param{
 				{
 					Name: "paramX",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1alpha1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.a.results.resultA)",
 					},
 				},

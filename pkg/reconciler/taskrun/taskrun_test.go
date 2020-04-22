@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -121,9 +122,9 @@ var (
 	templatedTask = tb.Task("test-task-with-substitution", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-			tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString), tb.InputsParamSpec("myarghasdefault", v1alpha1.ParamTypeString, tb.ParamSpecDefault("dont see me")),
-			tb.InputsParamSpec("myarghasdefault2", v1alpha1.ParamTypeString, tb.ParamSpecDefault("thedefault")),
-			tb.InputsParamSpec("configmapname", v1alpha1.ParamTypeString),
+			tb.InputsParamSpec("myarg", params.ParamTypeString), tb.InputsParamSpec("myarghasdefault", params.ParamTypeString, tb.ParamSpecDefault("dont see me")),
+			tb.InputsParamSpec("myarghasdefault2", params.ParamTypeString, tb.ParamSpecDefault("thedefault")),
+			tb.InputsParamSpec("configmapname", params.ParamTypeString),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
@@ -491,7 +492,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
+				tb.InputsParamSpec("myarg", params.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
 			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"),
 				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -64,9 +65,9 @@ func TestPipelineConversion(t *testing.T) {
 					Name: "resource2",
 					Type: resource.PipelineResourceTypeImage,
 				}},
-				Params: []ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "param-1",
-					Type:        v1beta1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "My first param",
 				}},
 				Workspaces: []WorkspacePipelineDeclaration{{
@@ -92,9 +93,9 @@ func TestPipelineConversion(t *testing.T) {
 							Resource: "resource2",
 						}},
 					},
-					Params: []Param{{
+					Params: []params.Param{{
 						Name:  "param1",
-						Value: v1beta1.ArrayOrString{StringVal: "str", Type: v1beta1.ParamTypeString},
+						Value: params.ArrayOrString{StringVal: "str", Type: params.ParamTypeString},
 					}},
 					Workspaces: []WorkspacePipelineTaskBinding{{
 						Name:      "w1",
@@ -120,9 +121,9 @@ func TestPipelineConversion(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: PipelineSpec{
-				Params: []ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "param-1",
-					Type:        v1beta1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "My first param",
 				}},
 				Tasks: []PipelineTask{{

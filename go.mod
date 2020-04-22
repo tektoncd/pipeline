@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
+	cloud.google.com/go/storage v1.0.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go/v2 v2.0.0-preview8

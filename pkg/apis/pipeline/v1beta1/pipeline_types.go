@@ -17,6 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -63,27 +66,14 @@ type PipelineSpec struct {
 	Tasks []PipelineTask `json:"tasks,omitempty"`
 	// Params declares a list of input parameters that must be supplied when
 	// this Pipeline is run.
-	Params []ParamSpec `json:"params,omitempty"`
+	Params []params.ParamSpec `json:"params,omitempty"`
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
 	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
 	// Results are values that this pipeline can output once run
 	// +optional
-	Results []PipelineResult `json:"results,omitempty"`
-}
-
-// PipelineResult used to describe the results of a pipeline
-type PipelineResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Description is a human-readable description of the result
-	// +optional
-	Description string `json:"description"`
-
-	// Value the expression used to retrieve the value
-	Value string `json:"value"`
+	Results []results.PipelineResult `json:"results,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -121,7 +111,7 @@ type PipelineTask struct {
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
 	// Parameters declares parameters passed to this task.
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []params.Param `json:"params,omitempty"`
 
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
@@ -152,6 +142,25 @@ func (pt PipelineTask) Deps() []string {
 		for _, rd := range cond.Resources {
 			deps = append(deps, rd.From...)
 		}
+		for _, param := range cond.Params {
+			expressions, ok := results.GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				resultRefs := v1beta1.NewResultRefs(expressions)
+				for _, resultRef := range resultRefs {
+					deps = append(deps, resultRef.PipelineTask)
+				}
+			}
+		}
+	}
+	// Add any dependents from task results
+	for _, param := range pt.Params {
+		expressions, ok := results.GetVarSubstitutionExpressionsForParam(param)
+		if ok {
+			resultRefs := results.NewResultRefs(expressions)
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
 	}
 	return deps
 }
@@ -180,7 +189,7 @@ type PipelineTaskCondition struct {
 
 	// Params declare parameters passed to this Condition
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []params.Param `json:"params,omitempty"`
 
 	// Resources declare the resources provided to this Condition as input
 	Resources []PipelineTaskInputResource `json:"resources,omitempty"`

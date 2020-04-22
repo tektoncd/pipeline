@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 )
 
 // ResultRef is a type that represents a reference to a task run result
@@ -33,30 +35,33 @@ const (
 	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
 	ResultTaskPart = "tasks"
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
-	ResultResultPart           = "results"
-	variableSubstitutionFormat = `\$\([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\)`
+	ResultResultPart = "results"
+	// TODO(#2462) use one regex across all substitutions
+	variableSubstitutionFormat = `\$\([A-Za-z0-9-_]+(\.[A-Za-z0-9-_]+)*\)`
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
-// If the ResultReference can be extracted, they are returned. Otherwise an error is returned
-func NewResultRefs(expressions []string) ([]*ResultRef, error) {
+// If the ResultReference can be extracted, they are returned
+func NewResultRefs(expressions []string) []*ResultRef {
 	var resultRefs []*ResultRef
 	for _, expression := range expressions {
 		pipelineTask, result, err := parseExpression(expression)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid result reference expression: %v", err)
+		// If the expression isn't a result but is some other expression,
+		// parseExpression will return an error, in which case we just skip that expression,
+		// since although it's not a result ref, it might be some other kind of reference
+		if err == nil {
+			resultRefs = append(resultRefs, &ResultRef{
+				PipelineTask: pipelineTask,
+				Result:       result,
+			})
 		}
-		resultRefs = append(resultRefs, &ResultRef{
-			PipelineTask: pipelineTask,
-			Result:       result,
-		})
 	}
-	return resultRefs, nil
+	return resultRefs
 }
 
-// looksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
+// LooksLikeContainsResultRefs attempts to check if param or a pipeline result looks like it contains any
 // result references.
 // This is useful if we want to make sure the param looks like a ResultReference before
 // performing strict validation
@@ -75,16 +80,28 @@ func looksLikeResultRef(expression string) bool {
 	return strings.HasPrefix(expression, "task") && strings.Contains(expression, ".result")
 }
 
+// OnlyResults will filter out and return only the expressions that look like they contain
+// references to results
+func OnlyResults(arr []string) []string {
+	result := []string{}
+	for i := range arr {
+		if looksLikeResultRef(arr[i]) {
+			result = append(result, arr[i])
+		}
+	}
+	return result
+}
+
 // GetVarSubstitutionExpressionsForParam extracts all the value between "$(" and ")"" for a parameter
-func GetVarSubstitutionExpressionsForParam(param Param) ([]string, bool) {
+func GetVarSubstitutionExpressionsForParam(param params.Param) ([]string, bool) {
 	var allExpressions []string
 	switch param.Value.Type {
-	case ParamTypeArray:
+	case params.ParamTypeArray:
 		// array type
 		for _, value := range param.Value.ArrayVal {
 			allExpressions = append(allExpressions, validateString(value)...)
 		}
-	case ParamTypeString:
+	case params.ParamTypeString:
 		// string type
 		allExpressions = append(allExpressions, validateString(param.Value.StringVal)...)
 	default:

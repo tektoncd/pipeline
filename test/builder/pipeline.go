@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -130,9 +132,9 @@ func PipelineDeclaredResource(name string, t v1alpha1.PipelineResourceType) Pipe
 
 // PipelineParamSpec adds a param, with specified name and type, to the PipelineSpec.
 // Any number of PipelineParamSpec modifiers can be passed to transform it.
-func PipelineParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) PipelineSpecOp {
+func PipelineParamSpec(name string, pt params.ParamType, ops ...ParamSpecOp) PipelineSpecOp {
 	return func(ps *v1alpha1.PipelineSpec) {
-		pp := &v1alpha1.ParamSpec{Name: name, Type: pt}
+		pp := &params.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(pp)
 		}
@@ -161,7 +163,7 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 
 func PipelineResult(name, value, description string, ops ...PipelineOp) PipelineSpecOp {
 	return func(ps *v1alpha1.PipelineSpec) {
-		pResult := &v1beta1.PipelineResult{
+		pResult := &results.PipelineResult{
 			Name:        name,
 			Value:       value,
 			Description: description,
@@ -211,7 +213,7 @@ func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
 func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(pt *v1alpha1.PipelineTask) {
-		pt.Params = append(pt.Params, v1alpha1.Param{
+		pt.Params = append(pt.Params, params.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})
@@ -279,9 +281,9 @@ func PipelineTaskCondition(conditionRef string, ops ...PipelineTaskConditionOp) 
 func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 	return func(condition *v1alpha1.PipelineTaskCondition) {
 		if condition.Params == nil {
-			condition.Params = []v1alpha1.Param{}
+			condition.Params = []params.Param{}
 		}
-		condition.Params = append(condition.Params, v1alpha1.Param{
+		condition.Params = append(condition.Params, params.Param{
 			Name:  name,
 			Value: *ArrayOrString(val),
 		})
@@ -432,7 +434,7 @@ func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Params = append(prs.Params, v1alpha1.Param{
+		prs.Params = append(prs.Params, params.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})

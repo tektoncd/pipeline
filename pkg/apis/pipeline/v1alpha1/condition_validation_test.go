@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"knative.dev/pkg/apis"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -32,7 +33,7 @@ func TestCondition_Validate(t *testing.T) {
 	c := tb.Condition("condname",
 		tb.ConditionSpec(
 			tb.ConditionSpecCheck("cname", "ubuntu"),
-			tb.ConditionParamSpec("paramname", v1alpha1.ParamTypeString),
+			tb.ConditionParamSpec("paramname", params.ParamTypeString),
 		))
 
 	if err := c.Validate(context.Background()); err != nil {

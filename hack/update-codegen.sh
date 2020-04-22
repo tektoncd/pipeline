@@ -30,6 +30,7 @@ GOFLAGS="-mod=vendor"
 # This is separate from the pipeline package as resource are staying in v1alpha1 and they
 # need to be separated (at least in terms of go package) from the pipeline's packages to
 # not having dependency cycle.
+
 bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/tektoncd/pipeline/pkg/client/resource github.com/tektoncd/pipeline/pkg/apis \
   "resource:v1alpha1" \
@@ -55,6 +56,18 @@ ${GOPATH}/bin/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
 -i github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage
+
+${GOPATH}/bin/deepcopy-gen \
+  -v=8 \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boapis/results/v1beta1/zz_generated.deepcopy.goilerplate.go.txt \
+-i github.com/tektoncd/pipeline/pkg/apis/params/v1beta1
+
+${GOPATH}/bin/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+-i github.com/tektoncd/pipeline/pkg/apis/results/v1beta1
+
 
 # Knative Injection
 # This generates the knative injection packages for the resource package (v1alpha1).

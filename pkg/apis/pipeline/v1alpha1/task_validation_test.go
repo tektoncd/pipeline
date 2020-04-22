@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -102,7 +103,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "task",
 					Description: "param",
 					Default:     builder.ArrayOrString("default"),
@@ -115,9 +116,9 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "task",
-					Type:        v1alpha1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "param",
 					Default:     builder.ArrayOrString("default"),
 				}},
@@ -191,7 +192,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
 				}, {
 					Name: "foo-is-baz",
@@ -212,12 +213,12 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -236,12 +237,12 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -357,7 +358,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		StepTemplate *corev1.Container
 		Workspaces   []v1alpha1.WorkspaceDeclaration
 		// v1beta1
-		Params    []v1beta1.ParamSpec
+		Params    []params.ParamSpec
 		Resources *v1beta1.TaskResources
 	}
 	tests := []struct {
@@ -406,9 +407,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "validparam",
-					Type:        v1alpha1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "parameter",
 					Default:     builder.ArrayOrString("default"),
 				}, {
@@ -429,9 +430,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "task",
-					Type:        v1alpha1.ParamTypeArray,
+					Type:        params.ParamTypeArray,
 					Description: "param",
 					Default:     builder.ArrayOrString("default"),
 				}},
@@ -447,9 +448,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "task",
-					Type:        v1alpha1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "param",
 					Default:     builder.ArrayOrString("default", "array"),
 				}},
@@ -563,12 +564,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -591,12 +592,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -619,12 +620,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -647,12 +648,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}, {
 					Name: "foo-is-baz",
-					Type: v1alpha1.ParamTypeArray,
+					Type: params.ParamTypeArray,
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{
@@ -687,16 +688,16 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "baz",
-					Default: &v1alpha1.ArrayOrString{
-						Type:     v1alpha1.ParamTypeArray,
+					Default: &params.ArrayOrString{
+						Type:     params.ParamTypeArray,
 						ArrayVal: []string{"implied", "array", "type"},
 					},
 				}, {
 					Name: "foo-is-baz",
-					Default: &v1alpha1.ArrayOrString{
-						Type:     v1alpha1.ParamTypeArray,
+					Default: &params.ArrayOrString{
+						Type:     params.ParamTypeArray,
 						ArrayVal: []string{"implied", "array", "type"},
 					},
 				}},
@@ -745,7 +746,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "Inexistent param variable with existing",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Params: []v1alpha1.ParamSpec{
+				Params: []params.ParamSpec{
 					{
 						Name:        "foo",
 						Description: "param",
@@ -936,14 +937,14 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "v1beta1: params and deprecated inputs.params",
 		fields: fields{
 			Steps: validSteps,
-			Params: []v1beta1.ParamSpec{{
+			Params: []params.ParamSpec{{
 				Name: "param1",
-				Type: v1beta1.ParamTypeString,
+				Type: params.ParamTypeString,
 			}},
 			Inputs: &v1alpha1.Inputs{
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "param1",
-					Type: v1beta1.ParamTypeString,
+					Type: params.ParamTypeString,
 				}},
 			},
 		},

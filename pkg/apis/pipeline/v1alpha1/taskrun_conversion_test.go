@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,9 +70,9 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: params.ArrayOrString{StringVal: "baz"},
 				}},
 				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1beta1.TaskResourceBinding{{
@@ -124,9 +125,9 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: params.ArrayOrString{StringVal: "baz"},
 				}},
 				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1beta1.TaskResourceBinding{{
@@ -169,14 +170,14 @@ func TestTaskRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: params.ArrayOrString{StringVal: "baz"},
 				}},
 				Inputs: &TaskRunInputs{
-					Params: []Param{{
+					Params: []params.Param{{
 						Name:  "p2",
-						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
+						Value: params.ArrayOrString{StringVal: "bar"}},
 					},
 				},
 			},
@@ -315,9 +316,9 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: TaskRunSpec{
 				Inputs: &TaskRunInputs{
-					Params: []Param{{
+					Params: []params.Param{{
 						Name:  "p2",
-						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
+						Value: params.ArrayOrString{StringVal: "bar"}},
 					},
 				},
 			},
@@ -329,9 +330,9 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Generation: 1,
 			},
 			Spec: TaskRunSpec{
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p2",
-					Value: v1beta1.ArrayOrString{StringVal: "bar"}},
+					Value: params.ArrayOrString{StringVal: "bar"}},
 				},
 			},
 		},

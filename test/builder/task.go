@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -235,9 +236,9 @@ func VolumeSource(s corev1.VolumeSource) VolumeOp {
 }
 
 // TaskParam sets the Params to the TaskSpec
-func TaskParam(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) TaskSpecOp {
+func TaskParam(name string, pt params.ParamType, ops ...ParamSpecOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
-		ps := &v1alpha1.ParamSpec{Name: name, Type: pt}
+		ps := &params.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(ps)
 		}
@@ -383,9 +384,9 @@ func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType, op
 
 // InputsParamSpec adds a ParamSpec, with specified name and type, to the Inputs.
 // Any number of TaskParamSpec modifier can be passed to transform it.
-func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) InputsOp {
+func InputsParamSpec(name string, pt params.ParamType, ops ...ParamSpecOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		ps := &v1alpha1.ParamSpec{Name: name, Type: pt}
+		ps := &params.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(ps)
 		}
@@ -734,7 +735,7 @@ func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 func TaskRunParam(name, value string, additionalValues ...string) TaskRunSpecOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Params = append(spec.Params, v1alpha1.Param{
+		spec.Params = append(spec.Params, params.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})
@@ -799,7 +800,7 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.Param{
+		i.Params = append(i.Params, params.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})

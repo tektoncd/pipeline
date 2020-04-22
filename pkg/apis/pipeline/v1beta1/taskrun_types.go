@@ -21,6 +21,7 @@ import (
 	"time"
 
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +41,7 @@ var (
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []params.Param `json:"params,omitempty"`
 	// +optional
 	Resources *TaskRunResources `json:"resources,omitempty"`
 	// +optional
@@ -83,7 +84,7 @@ type TaskRunInputs struct {
 	// +optional
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []params.Param `json:"params,omitempty"`
 }
 
 // TaskResourceBinding points to the PipelineResource that

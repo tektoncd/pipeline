@@ -21,67 +21,82 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 )
 
 func TestNewResultReference(t *testing.T) {
 	type args struct {
-		param v1beta1.Param
+		param params.Param
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []*v1beta1.ResultRef
-		wantErr bool
+		name string
+		args args
+		want []*results.ResultRef
 	}{
 		{
 			name: "Test valid expression",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTask.results.sumResult)",
 					},
 				},
 			},
-			want: []*v1beta1.ResultRef{
+			want: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask",
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
+		}, {
+			name: "Test valid expression: substitution within string no spaces and another substitution",
+			args: args{
+				param: params.Param{
+					Name: "param",
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
+						StringVal: "$(params.image-registry)/someimage@$(tasks.sumTask.results.sumResult)",
+					},
+				},
+			},
+			want: []*results.ResultRef{
+				{
+					PipelineTask: "sumTask",
+					Result:       "sumResult",
+				},
+			},
 		}, {
 			name: "Test valid expression: substitution within string",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "sum-will-go-here -> $(tasks.sumTask.results.sumResult)",
 					},
 				},
 			},
-			want: []*v1beta1.ResultRef{
+			want: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask",
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
 			name: "Test valid expression: multiple substitution",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)",
 					},
 				},
 			},
-			want: []*v1beta1.ResultRef{
+			want: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask1",
 					Result:       "sumResult",
@@ -90,70 +105,66 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
 			name: "Test invalid expression: first separator typo",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(task.sumTasks.results.sumResult)",
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
 			name: "Test invalid expression: third separator typo",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTasks.result.sumResult)",
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
 			name: "Test invalid expression: param substitution shouldn't be considered result ref",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(params.paramName)",
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
 			name: "Test invalid expression: One bad and good result substitution",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "good -> $(tasks.sumTask1.results.sumResult) bad-> $(task.sumTask2.results.sumResult)",
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: []*results.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
+			expressions, ok := results.GetVarSubstitutionExpressionsForParam(tt.args.param)
 			if ok {
-				got, err := v1beta1.NewResultRefs(expressions)
-				if tt.wantErr != (err != nil) {
-					t.Errorf("TestNewResultReference/%s wantErr %v, error = %v", tt.name, tt.wantErr, err)
-					return
-				}
+				got := results.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
 					t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
 				}
@@ -164,25 +175,25 @@ func TestNewResultReference(t *testing.T) {
 
 func TestHasResultReference(t *testing.T) {
 	type args struct {
-		param v1beta1.Param
+		param params.Param
 	}
 	tests := []struct {
 		name    string
 		args    args
-		wantRef []*v1beta1.ResultRef
+		wantRef []*results.ResultRef
 	}{
 		{
 			name: "Test valid expression",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTask.results.sumResult)",
 					},
 				},
 			},
-			wantRef: []*v1beta1.ResultRef{
+			wantRef: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask",
 					Result:       "sumResult",
@@ -191,15 +202,15 @@ func TestHasResultReference(t *testing.T) {
 		}, {
 			name: "Test valid expression with dashes",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sum-task.results.sum-result)",
 					},
 				},
 			},
-			wantRef: []*v1beta1.ResultRef{
+			wantRef: []*results.ResultRef{
 				{
 					PipelineTask: "sum-task",
 					Result:       "sum-result",
@@ -208,10 +219,10 @@ func TestHasResultReference(t *testing.T) {
 		}, {
 			name: "Test invalid expression: param substitution shouldn't be considered result ref",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(params.paramName)",
 					},
 				},
@@ -220,15 +231,15 @@ func TestHasResultReference(t *testing.T) {
 		}, {
 			name: "Test valid expression in array",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:     v1beta1.ParamTypeArray,
+					Value: params.ArrayOrString{
+						Type:     params.ParamTypeArray,
 						ArrayVal: []string{"$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"},
 					},
 				},
 			},
-			wantRef: []*v1beta1.ResultRef{
+			wantRef: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask",
 					Result:       "sumResult",
@@ -241,15 +252,15 @@ func TestHasResultReference(t *testing.T) {
 		}, {
 			name: "Test valid expression in array - no ref in first element",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:     v1beta1.ParamTypeArray,
+					Value: params.ArrayOrString{
+						Type:     params.ParamTypeArray,
 						ArrayVal: []string{"1", "$(tasks.sumTask2.results.sumResult2)"},
 					},
 				},
 			},
-			wantRef: []*v1beta1.ResultRef{
+			wantRef: []*results.ResultRef{
 				{
 					PipelineTask: "sumTask2",
 					Result:       "sumResult2",
@@ -259,9 +270,9 @@ func TestHasResultReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
+			expressions, ok := results.GetVarSubstitutionExpressionsForParam(tt.args.param)
 			if ok {
-				got, _ := v1beta1.NewResultRefs(expressions)
+				got := results.NewResultRefs(expressions)
 				sort.Slice(got, func(i, j int) bool {
 					if got[i].PipelineTask > got[j].PipelineTask {
 						return false
@@ -281,7 +292,7 @@ func TestHasResultReference(t *testing.T) {
 
 func TestLooksLikeResultRef(t *testing.T) {
 	type args struct {
-		param v1beta1.Param
+		param params.Param
 	}
 	tests := []struct {
 		name string
@@ -291,10 +302,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		{
 			name: "test expression that is a result ref",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTasks.results.sumResult)",
 					},
 				},
@@ -303,10 +314,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: looks like result ref, but typo in 'task' separator",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(task.sumTasks.results.sumResult)",
 					},
 				},
@@ -315,10 +326,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: looks like result ref, but typo in 'results' separator",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTasks.result.sumResult)",
 					},
 				},
@@ -327,10 +338,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: missing 'task' separator",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(sumTasks.results.sumResult)",
 					},
 				},
@@ -339,10 +350,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: missing variable substitution",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "tasks.sumTasks.results.sumResult",
 					},
 				},
@@ -351,10 +362,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: param substitution shouldn't be considered result ref",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(params.someParam)",
 					},
 				},
@@ -363,10 +374,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: one good ref, one bad one should return true",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.sumTasks.results.sumResult) $(task.sumTasks.results.sumResult)",
 					},
 				},
@@ -375,10 +386,10 @@ func TestLooksLikeResultRef(t *testing.T) {
 		}, {
 			name: "test expression: inside array parameter",
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "param",
-					Value: v1beta1.ArrayOrString{
-						Type:     v1beta1.ParamTypeArray,
+					Value: params.ArrayOrString{
+						Type:     params.ParamTypeArray,
 						ArrayVal: []string{"$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"},
 					},
 				},
@@ -388,9 +399,9 @@ func TestLooksLikeResultRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
+			expressions, ok := results.GetVarSubstitutionExpressionsForParam(tt.args.param)
 			if ok {
-				if got := v1beta1.LooksLikeContainsResultRefs(expressions); got != tt.want {
+				if got := results.LooksLikeContainsResultRefs(expressions); got != tt.want {
 					t.Errorf("LooksLikeContainsResultRefs() = %v, want %v", got, tt.want)
 				}
 			} else if tt.want {

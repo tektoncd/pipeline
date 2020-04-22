@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -37,7 +38,7 @@ func TestCondition(t *testing.T) {
 			}),
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
 			tb.ConditionDescription("Test Condition"),
-			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
+			tb.ConditionParamSpec("param-1", params.ParamTypeString,
 				tb.ParamSpecDefault("default"),
 				tb.ParamSpecDescription("desc")),
 			tb.ConditionResource("git-resource", v1alpha1.PipelineResourceTypeGit),
@@ -62,12 +63,12 @@ func TestCondition(t *testing.T) {
 				},
 			},
 			Description: "Test Condition",
-			Params: []v1alpha1.ParamSpec{{
+			Params: []params.ParamSpec{{
 				Name:        "param-1",
-				Type:        v1alpha1.ParamTypeString,
+				Type:        params.ParamTypeString,
 				Description: "desc",
-				Default: &v1alpha1.ArrayOrString{
-					Type:      v1alpha1.ParamTypeString,
+				Default: &params.ArrayOrString{
+					Type:      params.ParamTypeString,
 					StringVal: "default",
 				}}},
 			Resources: []v1alpha1.ResourceDeclaration{{

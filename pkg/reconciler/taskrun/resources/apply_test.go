@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -248,10 +249,10 @@ var (
 
 	arrayTaskRun0Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name: "array-param",
-				Value: v1alpha1.ArrayOrString{
-					Type:     v1alpha1.ParamTypeArray,
+				Value: params.ArrayOrString{
+					Type:     params.ParamTypeArray,
 					ArrayVal: []string{},
 				}},
 			},
@@ -260,7 +261,7 @@ var (
 
 	arrayTaskRun1Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo"),
 			}},
@@ -269,7 +270,7 @@ var (
 
 	arrayTaskRun3Elements = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo", "bar", "third"),
 			}},
@@ -278,7 +279,7 @@ var (
 
 	arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo", "bar", "third"),
 			}, {
@@ -290,7 +291,7 @@ var (
 
 	arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
 			}, {
@@ -302,7 +303,7 @@ var (
 
 	arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "array-param1",
 				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
@@ -380,7 +381,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	type args struct {
 		ts *v1alpha1.TaskSpec
 		tr *v1alpha1.TaskRun
-		dp []v1alpha1.ParamSpec
+		dp []params.ParamSpec
 	}
 	tests := []struct {
 		name string
@@ -448,7 +449,7 @@ func TestApplyArrayParameters(t *testing.T) {
 		args: args{
 			ts: arrayParamTaskSpec,
 			tr: &v1alpha1.TaskRun{},
-			dp: []v1alpha1.ParamSpec{
+			dp: []params.ParamSpec{
 				{
 					Name:    "array-param",
 					Default: builder.ArrayOrString("defaulted", "value!"),
@@ -472,7 +473,7 @@ func TestApplyArrayParameters(t *testing.T) {
 func TestApplyParameters(t *testing.T) {
 	tr := &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "myimage",
 				Value: *builder.ArrayOrString("bar"),
 			}, {
@@ -481,7 +482,7 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}
-	dp := []v1alpha1.ParamSpec{{
+	dp := []params.ParamSpec{{
 		Name:    "something",
 		Default: builder.ArrayOrString("mydefault"),
 	}, {

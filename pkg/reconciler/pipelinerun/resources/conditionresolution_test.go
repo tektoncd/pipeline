@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -223,8 +224,8 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		cond: tb.Condition("bar", tb.ConditionSpec(
 			tb.ConditionSpecCheck("$(params.name)", "$(params.img)",
 				tb.WorkingDir("$(params.not.replaced)")),
-			tb.ConditionParamSpec("name", v1alpha1.ParamTypeString),
-			tb.ConditionParamSpec("img", v1alpha1.ParamTypeString),
+			tb.ConditionParamSpec("name", params.ParamTypeString),
+			tb.ConditionParamSpec("img", params.ParamTypeString),
 		)),
 		want: v1alpha1.TaskSpec{
 			TaskSpec: v1beta1.TaskSpec{
@@ -235,7 +236,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				}}},
 			},
 			Inputs: &v1alpha1.Inputs{
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "name",
 					Type: "string",
 				}, {

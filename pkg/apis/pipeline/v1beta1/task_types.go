@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -65,7 +66,7 @@ type TaskSpec struct {
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	Params []ParamSpec `json:"params,omitempty"`
+	Params []params.ParamSpec `json:"params,omitempty"`
 
 	// Description is a user-facing description of the task that may be
 	// used to populate a UI.

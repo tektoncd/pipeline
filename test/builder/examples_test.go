@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -83,7 +84,7 @@ func ExampleTaskRun() {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
+				tb.InputsParamSpec("myarg", params.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
 			tb.Step("myimage", tb.StepCommand("/mycmd"),
 				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),

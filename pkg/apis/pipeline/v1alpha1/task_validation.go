@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -243,7 +244,7 @@ func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
 	for _, p := range inputs.Params {
 		// Ensure param has a valid type.
 		validType := false
-		for _, allowedType := range AllParamTypes {
+		for _, allowedType := range params.AllParamTypes {
 			if p.Type == allowedType {
 				validType = true
 			}
@@ -267,13 +268,13 @@ func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
 	return nil
 }
 
-func validateInputParameterVariables(steps []Step, inputs *Inputs, params []v1beta1.ParamSpec) *apis.FieldError {
+func validateInputParameterVariables(steps []Step, inputs *Inputs, pp []params.ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
-	for _, p := range params {
+	for _, p := range pp {
 		parameterNames[p.Name] = struct{}{}
-		if p.Type == ParamTypeArray {
+		if p.Type == params.ParamTypeArray {
 			arrayParameterNames[p.Name] = struct{}{}
 		}
 	}
@@ -281,7 +282,7 @@ func validateInputParameterVariables(steps []Step, inputs *Inputs, params []v1be
 	if inputs != nil {
 		for _, p := range inputs.Params {
 			parameterNames[p.Name] = struct{}{}
-			if p.Type == ParamTypeArray {
+			if p.Type == params.ParamTypeArray {
 				arrayParameterNames[p.Name] = struct{}{}
 			}
 		}

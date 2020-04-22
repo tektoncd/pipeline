@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	corev1 "k8s.io/api/core/v1"
@@ -96,16 +97,16 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 		desc: "embedded taskSpec",
 		trs: &v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "param-name",
 				}},
 			},
 		},
 		want: &v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "param-name",
-					Type: v1beta1.ParamTypeString,
+					Type: params.ParamTypeString,
 				}},
 			},
 			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},

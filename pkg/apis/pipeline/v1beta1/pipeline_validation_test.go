@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,16 +242,16 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString,
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString,
 				}, {
-					Name: "foo-is-baz", Type: v1beta1.ParamTypeString,
+					Name: "foo-is-baz", Type: params.ParamTypeString,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{StringVal: "$(baz) and $(foo-is-baz)"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{StringVal: "$(baz) and $(foo-is-baz)"},
 					}},
 				}},
 			},
@@ -261,16 +262,16 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeArray, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"some", "default"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeArray, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"some", "default"}},
 				}, {
-					Name: "foo-is-baz", Type: v1beta1.ParamTypeArray,
+					Name: "foo-is-baz", Type: params.ParamTypeArray,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
 					}},
 				}},
 			},
@@ -281,16 +282,16 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeArray, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"some", "default"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeArray, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"some", "default"}},
 				}, {
-					Name: "foo-is-baz", Type: v1beta1.ParamTypeArray,
+					Name: "foo-is-baz", Type: params.ParamTypeArray,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
 					}},
 				}},
 			},
@@ -301,14 +302,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString,
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{StringVal: "$(input.workspace.$(baz))"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{StringVal: "$(input.workspace.$(baz))"},
 					}},
 				}},
 			},
@@ -500,8 +501,8 @@ func TestPipeline_Validate(t *testing.T) {
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
 					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.does-not-exist)"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(params.does-not-exist)"},
 					}},
 				}},
 			},
@@ -512,14 +513,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "foo", Type: v1beta1.ParamTypeString,
+				Params: []params.ParamSpec{{
+					Name: "foo", Type: params.ParamTypeString,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
 					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
 					}},
 				}},
 			},
@@ -530,7 +531,7 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name: "foo", Type: "invalidtype",
 				}},
 				Tasks: []v1beta1.PipelineTask{{
@@ -545,8 +546,8 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "foo", Type: v1beta1.ParamTypeArray, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "astring"},
+				Params: []params.ParamSpec{{
+					Name: "foo", Type: params.ParamTypeArray, Default: &params.ArrayOrString{Type: params.ParamTypeString, StringVal: "astring"},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
@@ -560,8 +561,8 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "foo", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				Params: []params.ParamSpec{{
+					Name: "foo", Type: params.ParamTypeString, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "foo",
@@ -575,14 +576,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.baz)"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(params.baz)"},
 					}},
 				}},
 			},
@@ -593,14 +594,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.baz[*])"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(params.baz[*])"},
 					}},
 				}},
 			},
@@ -611,14 +612,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
 					}},
 				}},
 			},
@@ -629,14 +630,14 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "baz", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+				Params: []params.ParamSpec{{
+					Name: "baz", Type: params.ParamTypeString, Default: &params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					Name:    "bar",
 					TaskRef: &v1beta1.TaskRef{Name: "bar-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
 					}},
 				}},
 			},
@@ -709,8 +710,8 @@ func TestPipeline_Validate(t *testing.T) {
 					Name: "a-task", TaskRef: &v1beta1.TaskRef{Name: "a-task"},
 				}, {
 					Name: "b-task", TaskRef: &v1beta1.TaskRef{Name: "b-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
 				}},
 			},
 		},
@@ -720,8 +721,8 @@ func TestPipeline_Validate(t *testing.T) {
 		p: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "foo", Type: v1beta1.ParamTypeString,
+				Params: []params.ParamSpec{{
+					Name: "foo", Type: params.ParamTypeString,
 				}},
 				Tasks: []v1beta1.PipelineTask{{
 					TaskSpec: &v1beta1.TaskSpec{
@@ -736,8 +737,8 @@ func TestPipeline_Validate(t *testing.T) {
 				}, {
 					Name:    "foo",
 					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
-					Params: []v1beta1.Param{{
-						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
+					Params: []params.Param{{
+						Name: "a-param", Value: params.ArrayOrString{Type: params.ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
 					}},
 				}},
 			},

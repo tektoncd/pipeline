@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -60,7 +61,7 @@ type ConditionSpec struct {
 	// Params is an optional set of parameters which must be supplied by the user when a Condition
 	// is evaluated
 	// +optional
-	Params []ParamSpec `json:"params,omitempty"`
+	Params []params.ParamSpec `json:"params,omitempty"`
 
 	// Resources is a list of the ConditionResources required to run the condition.
 	// +optional

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -605,11 +606,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 }
 
 func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
-	var results []v1beta1.PipelineRunResult
+	var rr []v1beta1.PipelineRunResult
 	stringReplacements := map[string]string{}
 
 	for _, resolvedResultRef := range resolvedResultRefs {
-		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
+		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", results.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, results.ResultResultPart, resolvedResultRef.ResultReference.Result)
 		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
 	}
 	for _, result := range pipelineSpec.Results {
@@ -617,12 +618,12 @@ func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRe
 		for k, v := range stringReplacements {
 			in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
 		}
-		results = append(results, v1beta1.PipelineRunResult{
+		rr = append(rr, v1beta1.PipelineRunResult{
 			Name:  result.Name,
 			Value: in,
 		})
 	}
-	return results
+	return rr
 }
 
 func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {

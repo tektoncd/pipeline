@@ -26,6 +26,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -38,7 +39,7 @@ func TestPipeline(t *testing.T) {
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
 		tb.PipelineDescription("Test Pipeline"),
-		tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value"), tb.ParamSpecDescription("default description")),
+		tb.PipelineParamSpec("first-param", params.ParamTypeString, tb.ParamSpecDefault("default-value"), tb.ParamSpecDescription("default description")),
 		tb.PipelineTask("foo", "banana",
 			tb.PipelineTaskParam("stringparam", "value"),
 			tb.PipelineTaskParam("arrayparam", "array", "value"),
@@ -82,16 +83,16 @@ func TestPipeline(t *testing.T) {
 				Type: "image",
 			}},
 			Description: "Test Pipeline",
-			Params: []v1alpha1.ParamSpec{{
+			Params: []params.ParamSpec{{
 				Name:        "first-param",
-				Type:        v1alpha1.ParamTypeString,
+				Type:        params.ParamTypeString,
 				Default:     tb.ArrayOrString("default-value"),
 				Description: "default description",
 			}},
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
 				TaskRef: &v1alpha1.TaskRef{Name: "banana"},
-				Params: []v1alpha1.Param{{
+				Params: []params.Param{{
 					Name:  "stringparam",
 					Value: *tb.ArrayOrString("value"),
 				}, {
@@ -100,9 +101,9 @@ func TestPipeline(t *testing.T) {
 				}},
 				Conditions: []v1alpha1.PipelineTaskCondition{{
 					ConditionRef: "some-condition-ref",
-					Params: []v1alpha1.Param{{
+					Params: []params.Param{{
 						Name: "param-name",
-						Value: v1alpha1.ArrayOrString{
+						Value: params.ArrayOrString{
 							Type:      "string",
 							StringVal: "param-value",
 						},
@@ -186,7 +187,7 @@ func TestPipelineRun(t *testing.T) {
 			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "first-param-string",
 				Value: *tb.ArrayOrString("first-value"),
 			}, {
@@ -253,7 +254,7 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "first-param-string",
 				Value: *tb.ArrayOrString("first-value"),
 			}, {
@@ -328,7 +329,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
-			Params: []v1alpha1.Param{{
+			Params: []params.Param{{
 				Name:  "first-param-string",
 				Value: *tb.ArrayOrString("first-value"),
 			}, {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	corev1 "k8s.io/api/core/v1"
@@ -124,7 +125,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		in: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
-					Params: []v1beta1.ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name: "foo",
 					}},
 				},
@@ -133,7 +134,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		want: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
-					Params: []v1beta1.ParamSpec{{
+					Params: []params.ParamSpec{{
 						Name: "foo",
 						Type: "string",
 					}},

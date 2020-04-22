@@ -19,6 +19,7 @@ package taskrun_test
 import (
 	"testing"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -50,7 +51,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 		tb.ResolvedTaskResourcesOutputs("optional-resource-to-provide", tb.PipelineResource("example-image",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
 		))
-	if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, rtr); err != nil {
+	if err := taskrun.ValidateResolvedTaskResources([]params.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
 }
@@ -58,10 +59,10 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
 		tb.Step("myimage", tb.StepCommand("mycmd")),
-		tb.TaskParam("foo", v1alpha1.ParamTypeString),
-		tb.TaskParam("bar", v1alpha1.ParamTypeString),
+		tb.TaskParam("foo", params.ParamTypeString),
+		tb.TaskParam("bar", params.ParamTypeString),
 	))
-	p := []v1alpha1.Param{{
+	p := []params.Param{{
 		Name:  "foo",
 		Value: *tb.ArrayOrString("somethinggood"),
 	}, {
@@ -77,14 +78,14 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	tcs := []struct {
 		name   string
 		rtr    *resources.ResolvedTaskResources
-		params []v1alpha1.Param
+		params []params.Param
 	}{{
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
 			tb.Step("myimage", tb.StepCommand("mycmd")),
-			tb.TaskInputs(tb.InputsParamSpec("foo", v1alpha1.ParamTypeString)),
+			tb.TaskInputs(tb.InputsParamSpec("foo", params.ParamTypeString)),
 		)),
-		params: []v1alpha1.Param{{
+		params: []params.Param{{
 			Name:  "foobar",
 			Value: *tb.ArrayOrString("somethingfun"),
 		}},
@@ -92,9 +93,9 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
 			tb.Step("myimage", tb.StepCommand("mycmd")),
-			tb.TaskInputs(tb.InputsParamSpec("foo", v1alpha1.ParamTypeString)),
+			tb.TaskInputs(tb.InputsParamSpec("foo", params.ParamTypeString)),
 		)),
-		params: []v1alpha1.Param{{
+		params: []params.Param{{
 			Name:  "foo",
 			Value: *tb.ArrayOrString("i am a real param"),
 		}, {
@@ -210,7 +211,7 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, tc.rtr); err == nil {
+			if err := taskrun.ValidateResolvedTaskResources([]params.Param{}, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})

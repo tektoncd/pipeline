@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
@@ -188,11 +189,11 @@ func validateSteps(steps []Step) *apis.FieldError {
 	return nil
 }
 
-func ValidateParameterTypes(params []ParamSpec) *apis.FieldError {
-	for _, p := range params {
+func ValidateParameterTypes(pp []params.ParamSpec) *apis.FieldError {
+	for _, p := range pp {
 		// Ensure param has a valid type.
 		validType := false
-		for _, allowedType := range AllParamTypes {
+		for _, allowedType := range params.AllParamTypes {
 			if p.Type == allowedType {
 				validType = true
 			}
@@ -216,13 +217,13 @@ func ValidateParameterTypes(params []ParamSpec) *apis.FieldError {
 	return nil
 }
 
-func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
+func ValidateParameterVariables(steps []Step, pp []params.ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
-	for _, p := range params {
+	for _, p := range pp {
 		parameterNames[p.Name] = struct{}{}
-		if p.Type == ParamTypeArray {
+		if p.Type == params.ParamTypeArray {
 			arrayParameterNames[p.Name] = struct{}{}
 		}
 	}

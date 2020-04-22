@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
@@ -105,7 +106,7 @@ func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis
 	return nil
 }
 
-func validateParameters(params []Param) *apis.FieldError {
+func validateParameters(params []params.Param) *apis.FieldError {
 	// Template must not duplicate parameter names.
 	seen := map[string]struct{}{}
 	for _, p := range params {

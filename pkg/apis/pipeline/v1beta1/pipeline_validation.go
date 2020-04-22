@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -248,14 +250,14 @@ func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []Pipeli
 	return nil
 }
 
-func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) *apis.FieldError {
+func validatePipelineParameterVariables(tasks []PipelineTask, pp []params.ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
-	for _, p := range params {
+	for _, p := range pp {
 		// Verify that p is a valid type.
 		validType := false
-		for _, allowedType := range AllParamTypes {
+		for _, allowedType := range params.AllParamTypes {
 			if p.Type == allowedType {
 				validType = true
 			}
@@ -278,7 +280,7 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 
 		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
 		parameterNames[p.Name] = struct{}{}
-		if p.Type == ParamTypeArray {
+		if p.Type == params.ParamTypeArray {
 			arrayParameterNames[p.Name] = struct{}{}
 		}
 	}
@@ -289,7 +291,7 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames map[string]struct{}, arrayParamNames map[string]struct{}) *apis.FieldError {
 	for _, task := range tasks {
 		for _, param := range task.Params {
-			if param.Value.Type == ParamTypeString {
+			if param.Value.Type == params.ParamTypeString {
 				if err := validatePipelineVariable(fmt.Sprintf("param[%s]", param.Name), param.Value.StringVal, prefix, paramNames); err != nil {
 					return err
 				}
@@ -327,12 +329,13 @@ func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]
 func validateParamResults(tasks []PipelineTask) error {
 	for _, task := range tasks {
 		for _, param := range task.Params {
-			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+			expressions, ok := results.GetVarSubstitutionExpressionsForParam(param)
 			if ok {
-				if LooksLikeContainsResultRefs(expressions) {
-					expressions = filter(expressions, looksLikeResultRef)
-					if _, err := NewResultRefs(expressions); err != nil {
-						return err
+				if results.LooksLikeContainsResultRefs(expressions) {
+					expressions = results.OnlyResults(expressions)
+					r := results.NewResultRefs(expressions)
+					if len(expressions) != len(r) {
+						return fmt.Errorf("mismatch between attempted results replacement %v and actual %v", expressions, r)
 					}
 				}
 			}
@@ -341,25 +344,16 @@ func validateParamResults(tasks []PipelineTask) error {
 	return nil
 }
 
-func filter(arr []string, cond func(string) bool) []string {
-	result := []string{}
-	for i := range arr {
-		if cond(arr[i]) {
-			result = append(result, arr[i])
-		}
-	}
-	return result
-}
-
 // validatePipelineResults ensure that task result variables are properly configured
-func validatePipelineResults(results []PipelineResult) error {
-	for _, result := range results {
-		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
+func validatePipelineResults(rr []results.PipelineResult) error {
+	for _, result := range rr {
+		expressions, ok := results.GetVarSubstitutionExpressionsForPipelineResult(result)
 		if ok {
-			if LooksLikeContainsResultRefs(expressions) {
-				expressions = filter(expressions, looksLikeResultRef)
-				if _, err := NewResultRefs(expressions); err != nil {
-					return err
+			if results.LooksLikeContainsResultRefs(expressions) {
+				expressions = results.OnlyResults(expressions)
+				r := results.NewResultRefs(expressions)
+				if len(expressions) != len(r) {
+					return fmt.Errorf("mismatch between attempted results replacement %v and actual %v", expressions, r)
 				}
 			}
 		}

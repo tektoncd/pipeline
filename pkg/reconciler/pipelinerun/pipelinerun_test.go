@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -114,9 +115,9 @@ func TestReconcile(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("best-image", "image"),
-				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
-				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
-				tb.PipelineParamSpec("bar", v1alpha1.ParamTypeString),
+				tb.PipelineParamSpec("pipeline-param", params.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", params.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineParamSpec("bar", params.ParamTypeString),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
@@ -151,7 +152,7 @@ func TestReconcile(t *testing.T) {
 		tb.Task("unit-test-task", tb.TaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString), tb.InputsParamSpec("templatedparam", v1alpha1.ParamTypeString),
+				tb.InputsParamSpec("foo", params.ParamTypeString), tb.InputsParamSpec("bar", params.ParamTypeString), tb.InputsParamSpec("templatedparam", params.ParamTypeString),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
@@ -166,7 +167,7 @@ func TestReconcile(t *testing.T) {
 		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString), tb.InputsParamSpec("templatedparam", v1alpha1.ParamTypeString),
+				tb.InputsParamSpec("foo", params.ParamTypeString), tb.InputsParamSpec("bar", params.ParamTypeString), tb.InputsParamSpec("templatedparam", params.ParamTypeString),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
@@ -376,9 +377,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1alpha1.Task{
 		tb.Task("a-task-that-exists", tb.TaskNamespace("foo")),
 		tb.Task("a-task-that-needs-params", tb.TaskSpec(
-			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeString))), tb.TaskNamespace("foo")),
+			tb.TaskInputs(tb.InputsParamSpec("some-param", params.ParamTypeString))), tb.TaskNamespace("foo")),
 		tb.Task("a-task-that-needs-array-params", tb.TaskSpec(
-			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeArray))), tb.TaskNamespace("foo")),
+			tb.TaskInputs(tb.InputsParamSpec("some-param", params.ParamTypeArray))), tb.TaskNamespace("foo")),
 		tb.Task("a-task-that-needs-a-resource", tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", "git")),
 		), tb.TaskNamespace("foo")),
@@ -397,7 +398,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineTask("some-task", "a-task-that-exists",
 				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
 		tb.Pipeline("a-pipeline-with-array-params", tb.PipelineNamespace("foo"), tb.PipelineSpec(
-			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
+			tb.PipelineParamSpec("some-param", params.ParamTypeArray),
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params"))),
 		tb.Pipeline("a-pipeline-with-missing-conditions", tb.PipelineNamespace("foo"), tb.PipelineSpec(tb.PipelineTask("some-task", "a-task-that-exists", tb.PipelineTaskCondition("condition-does-not-exist")))),
 	}
@@ -419,7 +420,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineTask("bad-t@$k", "b@d-t@$k"),
 		))),
 		tb.PipelineRun("embedded-pipeline-mismatching-param-type", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
-			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
+			tb.PipelineParamSpec("some-param", params.ParamTypeArray),
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params")),
 			tb.PipelineRunParam("some-param", "stringval"),
 		)),
@@ -1795,13 +1796,15 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 func TestReconcileWithTaskResults(t *testing.T) {
 	names.TestingSeed()
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineParamSpec("foo", params.ParamTypeString),
 		tb.PipelineTask("a-task", "a-task"),
 		tb.PipelineTask("b-task", "b-task",
-			tb.PipelineTaskParam("bParam", "$(tasks.a-task.results.aResult)"),
+			tb.PipelineTaskParam("bParam", "$(params.foo)/baz@$(tasks.a-task.results.A_RESULT)"),
 		),
 	))}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
 		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunParam("foo", "bar"),
 			tb.PipelineRunServiceAccountName("test-sa-0"),
 		),
 	)}
@@ -1809,7 +1812,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		tb.Task("a-task", tb.TaskNamespace("foo")),
 		tb.Task("b-task", tb.TaskNamespace("foo"),
 			tb.TaskSpec(
-				tb.TaskInputs(tb.InputsParamSpec("bParam", v1alpha1.ParamTypeString)),
+				tb.TaskInputs(tb.InputsParamSpec("bParam", params.ParamTypeString)),
 			),
 		),
 	}
@@ -1834,7 +1837,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 						Status: corev1.ConditionTrue,
 					},
 				),
-				tb.TaskRunResult("aResult", "aResultValue"),
+				tb.TaskRunResult("A_RESULT", "aResultValue"),
 			),
 		),
 	}
@@ -1870,7 +1873,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("b-task"),
 			tb.TaskRunServiceAccountName("test-sa-0"),
-			tb.TaskRunParam("bParam", "aResultValue"),
+			tb.TaskRunParam("bParam", "bar/baz@aResultValue"),
 		),
 	)
 	// Check that the expected TaskRun was created
@@ -1888,6 +1891,85 @@ func TestReconcileWithTaskResults(t *testing.T) {
 	actualTaskRun := actual.Items[0]
 	if d := cmp.Diff(&actualTaskRun, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, d)
+	}
+}
+
+func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
+	names.TestingSeed()
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunPipelineSpec(
+				tb.PipelineParamSpec("foo", params.ParamTypeString),
+				tb.PipelineTask("a-task", "a-task"),
+				tb.PipelineTask("b-task", "b-task",
+					tb.PipelineTaskParam("bParam", "$(params.foo)/baz@$(tasks.a-task.results.A_RESULT)"),
+				),
+			),
+			tb.PipelineRunParam("foo", "bar"),
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+	)}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task", tb.TaskNamespace("foo"),
+			tb.TaskSpec(
+				tb.TaskResults("A_RESULT", ""),
+			),
+		),
+		tb.Task("b-task", tb.TaskNamespace("foo"),
+			tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("bParam", params.ParamTypeString)),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Tasks:        ts,
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-different-service-accs")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-different-service-accs", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// Since b-task is dependent on a-task, via the results, only a-task should run
+	expectedTaskRunName := "test-pipeline-run-different-service-accs-a-task-9l9zj"
+	expectedTaskRun := tb.TaskRun(expectedTaskRunName,
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("a-task", tb.TaskRefKind(v1beta1.NamespacedTaskKind)),
+			tb.TaskRunServiceAccountName("test-sa-0"),
+		),
+	)
+	// Check that the expected TaskRun was created (only)
+	actual, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
 	}
 }
 
@@ -1911,7 +1993,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		tb.Task("a-task", tb.TaskNamespace("foo")),
 		tb.Task("b-task", tb.TaskNamespace("foo"),
 			tb.TaskSpec(
-				tb.TaskInputs(tb.InputsParamSpec("bParam", v1alpha1.ParamTypeString)),
+				tb.TaskInputs(tb.InputsParamSpec("bParam", params.ParamTypeString)),
 			),
 		),
 	}

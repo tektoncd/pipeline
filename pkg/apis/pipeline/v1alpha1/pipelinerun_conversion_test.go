@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,9 +74,9 @@ func TestPipelineRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: params.ArrayOrString{StringVal: "baz"},
 				}},
 				Resources: []PipelineResourceBinding{{
 					Name:        "i1",
@@ -133,9 +134,9 @@ func TestPipelineRunConversion(t *testing.T) {
 					SubPath:  "foo",
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				}},
-				Params: []Param{{
+				Params: []params.Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: params.ArrayOrString{StringVal: "baz"},
 				}},
 				Resources: []PipelineResourceBinding{{
 					Name:        "i1",

@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -46,8 +47,8 @@ func TestTask(t *testing.T) {
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
 			tb.InputsResource("optional_workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
-			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
-			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
+			tb.InputsParamSpec("param", params.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
+			tb.InputsParamSpec("array-param", params.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		),
 		tb.TaskOutputs(
 			tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage),
@@ -111,14 +112,14 @@ func TestTask(t *testing.T) {
 						TargetPath: "",
 						Optional:   true,
 					}}},
-				Params: []v1alpha1.ParamSpec{{
+				Params: []params.ParamSpec{{
 					Name:        "param",
-					Type:        v1alpha1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "mydesc",
 					Default:     tb.ArrayOrString("default"),
 				}, {
 					Name:        "array-param",
-					Type:        v1alpha1.ParamTypeString,
+					Type:        params.ParamTypeString,
 					Description: "desc",
 					Default:     tb.ArrayOrString("array", "values"),
 				}}},
@@ -249,7 +250,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					},
 					Paths: []string{"source-folder"},
 				}},
-				Params: []v1alpha1.Param{{
+				Params: []params.Param{{
 					Name:  "iparam",
 					Value: *tb.ArrayOrString("ivalue"),
 				}, {

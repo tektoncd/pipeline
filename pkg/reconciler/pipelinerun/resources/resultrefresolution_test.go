@@ -7,24 +7,24 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	results "github.com/tektoncd/pipeline/pkg/apis/results/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
+func TestExtractResultRefsForParam(t *testing.T) {
 	type fields struct {
 		pipelineRunState PipelineRunState
 	}
 	type args struct {
-		param v1beta1.Param
+		param params.Param
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    ResolvedResultRefs
-		wantErr bool
+		name   string
+		fields fields
+		args   args
+		want   ResolvedResultRefs
 	}{
 		{
 			name: "successful resolution: param not using result reference",
@@ -41,16 +41,15 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				},
 			},
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "explicitValueNoResultReference",
 					},
 				},
 			},
-			want:    nil,
-			wantErr: false,
+			want: nil,
 		},
 		{
 			name: "successful resolution: using result reference",
@@ -69,28 +68,27 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				},
 			},
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.aTask.results.aResult)",
 					},
 				},
 			},
 			want: ResolvedResultRefs{
 				{
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "aResultValue",
 					},
-					ResultReference: v1beta1.ResultRef{
+					ResultReference: results.ResultRef{
 						PipelineTask: "aTask",
 						Result:       "aResult",
 					},
 					FromTaskRun: "aTaskRun",
 				},
 			},
-			wantErr: false,
 		}, {
 			name: "successful resolution: using multiple result reference",
 			fields: fields{
@@ -117,38 +115,37 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				},
 			},
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.aTask.results.aResult) $(tasks.bTask.results.bResult)",
 					},
 				},
 			},
 			want: ResolvedResultRefs{
 				{
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "aResultValue",
 					},
-					ResultReference: v1beta1.ResultRef{
+					ResultReference: results.ResultRef{
 						PipelineTask: "aTask",
 						Result:       "aResult",
 					},
 					FromTaskRun: "aTaskRun",
 				}, {
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "bResultValue",
 					},
-					ResultReference: v1beta1.ResultRef{
+					ResultReference: results.ResultRef{
 						PipelineTask: "bTask",
 						Result:       "bResult",
 					},
 					FromTaskRun: "bTaskRun",
 				},
 			},
-			wantErr: false,
 		}, {
 			name: "successful resolution: duplicate result references",
 			fields: fields{
@@ -166,108 +163,43 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				},
 			},
 			args: args{
-				param: v1beta1.Param{
+				param: params.Param{
 					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "$(tasks.aTask.results.aResult) $(tasks.aTask.results.aResult)",
 					},
 				},
 			},
 			want: ResolvedResultRefs{
 				{
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "aResultValue",
 					},
-					ResultReference: v1beta1.ResultRef{
+					ResultReference: results.ResultRef{
 						PipelineTask: "aTask",
 						Result:       "aResult",
 					},
 					FromTaskRun: "aTaskRun",
 				},
 			},
-			wantErr: false,
-		}, {
-			name: "unsuccessful resolution: referenced result doesn't exist in referenced task",
-			fields: fields{
-				pipelineRunState: PipelineRunState{
-					{
-						TaskRunName: "aTaskRun",
-						TaskRun:     tb.TaskRun("aTaskRun"),
-						PipelineTask: &v1alpha1.PipelineTask{
-							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
-						},
-					},
-				},
-			},
-			args: args{
-				param: v1beta1.Param{
-					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "$(tasks.aTask.results.aResult)",
-					},
-				},
-			},
-			want:    nil,
-			wantErr: true,
-		}, {
-			name: "unsuccessful resolution: pipeline task missing",
-			fields: fields{
-				pipelineRunState: PipelineRunState{},
-			},
-			args: args{
-				param: v1beta1.Param{
-					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "$(tasks.aTask.results.aResult)",
-					},
-				},
-			},
-			want:    nil,
-			wantErr: true,
-		}, {
-			name: "unsuccessful resolution: task run missing",
-			fields: fields{
-				pipelineRunState: PipelineRunState{
-					{
-						PipelineTask: &v1alpha1.PipelineTask{
-							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
-						},
-					},
-				},
-			},
-			args: args{
-				param: v1beta1.Param{
-					Name: "targetParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "$(tasks.aTask.results.aResult)",
-					},
-				},
-			},
-			want:    nil,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Logf("test name: %s\n", tt.name)
 			got, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
 			// sort result ref based on task name to guarantee an certain order
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
+			if err != nil {
+				t.Fatalf("Didn't expect error when extracting result refs but got %v", err)
 			}
 			if len(tt.want) != len(got) {
 				t.Fatalf("incorrect number of refs, want %d, got %d", len(tt.want), len(got))
 			}
+			// TODO: use comparison function?
 			for _, rGot := range got {
 				foundMatch := false
 				for _, rWant := range tt.want {
@@ -278,6 +210,87 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				if !foundMatch {
 					t.Fatalf("Expected resolved refs:\n%s\n\nbut received:\n%s\n", resolvedSliceAsString(tt.want), resolvedSliceAsString(got))
 				}
+			}
+		})
+	}
+}
+
+func TestExtractResultRefsForParamErrs(t *testing.T) {
+	type fields struct {
+		pipelineRunState PipelineRunState
+	}
+	type args struct {
+		param params.Param
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{{
+		name: "unsuccessful resolution: referenced result doesn't exist in referenced task",
+		fields: fields{
+			pipelineRunState: PipelineRunState{
+				{
+					TaskRunName: "aTaskRun",
+					TaskRun:     tb.TaskRun("aTaskRun"),
+					PipelineTask: &v1alpha1.PipelineTask{
+						Name:    "aTask",
+						TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+					},
+				},
+			},
+		},
+		args: args{
+			param: params.Param{
+				Name: "targetParam",
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
+					StringVal: "$(tasks.aTask.results.aResult)",
+				},
+			},
+		},
+	}, {
+		name: "unsuccessful resolution: pipeline task missing",
+		fields: fields{
+			pipelineRunState: PipelineRunState{},
+		},
+		args: args{
+			param: params.Param{
+				Name: "targetParam",
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
+					StringVal: "$(tasks.aTask.results.aResult)",
+				},
+			},
+		},
+	}, {
+		name: "unsuccessful resolution: task run missing",
+		fields: fields{
+			pipelineRunState: PipelineRunState{
+				{
+					PipelineTask: &v1alpha1.PipelineTask{
+						Name:    "aTask",
+						TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+					},
+				},
+			},
+		},
+		args: args{
+			param: params.Param{
+				Name: "targetParam",
+				Value: params.ArrayOrString{
+					Type:      params.ParamTypeString,
+					StringVal: "$(tasks.aTask.results.aResult)",
+				},
+			},
+		},
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
+			if err == nil {
+				t.Fatalf("Expected error when extracting invalid results but got none")
 			}
 		})
 	}
@@ -310,11 +323,11 @@ func TestResolveResultRefs(t *testing.T) {
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
-				Params: []v1beta1.Param{
+				Params: []params.Param{
 					{
 						Name: "bParam",
-						Value: v1beta1.ArrayOrString{
-							Type:      v1beta1.ParamTypeString,
+						Value: params.ArrayOrString{
+							Type:      params.ParamTypeString,
 							StringVal: "$(tasks.aTask.results.aResult)",
 						},
 					},
@@ -339,11 +352,11 @@ func TestResolveResultRefs(t *testing.T) {
 			},
 			want: ResolvedResultRefs{
 				{
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
+					Value: params.ArrayOrString{
+						Type:      params.ParamTypeString,
 						StringVal: "aResultValue",
 					},
-					ResultReference: v1beta1.ResultRef{
+					ResultReference: results.ResultRef{
 						PipelineTask: "aTask",
 						Result:       "aResult",
 					},

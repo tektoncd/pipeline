@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
@@ -103,9 +104,9 @@ func ConditionSpecCheckScript(script string) ConditionSpecOp {
 
 // ConditionParamSpec adds a param, with specified name, to the Spec.
 // Any number of ParamSpec modifiers can be passed to transform it.
-func ConditionParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) ConditionSpecOp {
+func ConditionParamSpec(name string, pt params.ParamType, ops ...ParamSpecOp) ConditionSpecOp {
 	return func(ps *v1alpha1.ConditionSpec) {
-		pp := &v1alpha1.ParamSpec{Name: name, Type: pt}
+		pp := &params.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(pp)
 		}

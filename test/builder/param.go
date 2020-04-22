@@ -13,30 +13,32 @@ limitations under the License.
 
 package builder
 
-import "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+import (
+	params "github.com/tektoncd/pipeline/pkg/apis/params/v1beta1"
+)
 
 // ParamSpecOp is an operation which modify a ParamSpec struct.
-type ParamSpecOp func(*v1alpha1.ParamSpec)
+type ParamSpecOp func(*params.ParamSpec)
 
 // ArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on
 // how many inputs are given (>1 input will create an array, not string).
-func ArrayOrString(value string, additionalValues ...string) *v1alpha1.ArrayOrString {
+func ArrayOrString(value string, additionalValues ...string) *params.ArrayOrString {
 	if len(additionalValues) > 0 {
 		additionalValues = append([]string{value}, additionalValues...)
-		return &v1alpha1.ArrayOrString{
-			Type:     v1alpha1.ParamTypeArray,
+		return &params.ArrayOrString{
+			Type:     params.ParamTypeArray,
 			ArrayVal: additionalValues,
 		}
 	}
-	return &v1alpha1.ArrayOrString{
-		Type:      v1alpha1.ParamTypeString,
+	return &params.ArrayOrString{
+		Type:      params.ParamTypeString,
 		StringVal: value,
 	}
 }
 
 // ParamSpecDescription sets the description of a ParamSpec.
 func ParamSpecDescription(desc string) ParamSpecOp {
-	return func(ps *v1alpha1.ParamSpec) {
+	return func(ps *params.ParamSpec) {
 		ps.Description = desc
 	}
 }
@@ -44,7 +46,7 @@ func ParamSpecDescription(desc string) ParamSpecOp {
 // ParamSpecDefault sets the default value of a ParamSpec.
 func ParamSpecDefault(value string, additionalValues ...string) ParamSpecOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(ps *v1alpha1.ParamSpec) {
+	return func(ps *params.ParamSpec) {
 		ps.Default = arrayOrString
 	}
 }
