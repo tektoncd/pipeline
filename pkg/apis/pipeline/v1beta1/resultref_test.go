@@ -145,15 +145,16 @@ func TestNewResultReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
-			if ok {
-				got, err := v1beta1.NewResultRefs(expressions)
-				if tt.wantErr != (err != nil) {
-					t.Errorf("TestNewResultReference/%s wantErr %v, error = %v", tt.name, tt.wantErr, err)
-					return
-				}
-				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
-				}
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			got, err := v1beta1.NewResultRefs(expressions)
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestNewResultReference/%s wantErr %v, error = %v", tt.name, tt.wantErr, err)
+				return
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
 	}
@@ -257,20 +258,21 @@ func TestHasResultReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
-			if ok {
-				got, _ := v1beta1.NewResultRefs(expressions)
-				sort.Slice(got, func(i, j int) bool {
-					if got[i].PipelineTask > got[j].PipelineTask {
-						return false
-					}
-					if got[i].Result > got[j].Result {
-						return false
-					}
-					return true
-				})
-				if d := cmp.Diff(tt.wantRef, got); d != "" {
-					t.Errorf("TestHasResultReference/%s (-want, +got) = %v", tt.name, d)
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			got, _ := v1beta1.NewResultRefs(expressions)
+			sort.Slice(got, func(i, j int) bool {
+				if got[i].PipelineTask > got[j].PipelineTask {
+					return false
 				}
+				if got[i].Result > got[j].Result {
+					return false
+				}
+				return true
+			})
+			if d := cmp.Diff(tt.wantRef, got); d != "" {
+				t.Errorf("TestHasResultReference/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
 	}
