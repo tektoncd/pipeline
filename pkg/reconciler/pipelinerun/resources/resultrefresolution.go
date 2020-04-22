@@ -76,18 +76,16 @@ func extractResultRefsForPipelineResult(pipelineRunState PipelineRunState, resul
 }
 
 func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
-	if resultRefs, err := v1beta1.NewResultRefs(expressions); err == nil {
-		var resolvedResultRefs ResolvedResultRefs
-		for _, resultRef := range resultRefs {
-			resolvedResultRef, err := resolveResultRef(pipelineRunState, resultRef)
-			if err != nil {
-				return nil, err
-			}
-			resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
+	resultRefs := v1beta1.NewResultRefs(expressions)
+	var resolvedResultRefs ResolvedResultRefs
+	for _, resultRef := range resultRefs {
+		resolvedResultRef, err := resolveResultRef(pipelineRunState, resultRef)
+		if err != nil {
+			return nil, err
 		}
-		return removeDup(resolvedResultRefs), nil
+		resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
 	}
-	return nil, nil
+	return removeDup(resolvedResultRefs), nil
 }
 
 func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {

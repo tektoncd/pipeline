@@ -21,8 +21,6 @@ spec:
           script: |
             echo -n "suffix" > $(results.suffix.path)
     - name: do-something
-      runAfter:
-      - generate-suffix
       taskSpec:
         params:
         - name: arg
@@ -30,7 +28,7 @@ spec:
         - name: do-something
           image: alpine
           script: |
-            echo "$(params.arg)"
+            echo "$(params.arg)" | grep "prefix:suffix"
       params:
       - name: arg
         value: "$(params.prefix):$(tasks.generate-suffix.results.suffix)"
