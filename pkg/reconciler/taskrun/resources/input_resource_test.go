@@ -283,7 +283,7 @@ func setUp() {
 	}
 }
 
-func TestAddResourceToTask(t *testing.T) {
+func TestAddInputResourceToTask(t *testing.T) {
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
