@@ -157,6 +157,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	var merr error
 
 	if pr.IsDone() {
+		// We may be reading a version of the object that was stored at an older version
+		// and may not have had all of the assumed default specified.
+		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+
 		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return err
