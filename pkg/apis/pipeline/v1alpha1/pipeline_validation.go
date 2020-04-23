@@ -140,9 +140,12 @@ func validateGraph(tasks []PipelineTask) error {
 func validateParamResults(tasks []PipelineTask) error {
 	for _, task := range tasks {
 		for _, param := range task.Params {
-			if v1beta1.LooksLikeContainsResultRefs(param) {
-				if _, err := v1beta1.NewResultRefs(param); err != nil {
-					return err
+			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				if v1beta1.LooksLikeContainsResultRefs(expressions) {
+					if _, err := v1beta1.NewResultRefs(expressions); err != nil {
+						return err
+					}
 				}
 			}
 		}

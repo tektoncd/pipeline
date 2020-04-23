@@ -1,7 +1,24 @@
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resources
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -256,7 +273,11 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
-			got, err := extractResultRefsFromParam(tt.fields.pipelineRunState, tt.args.param)
+			got, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
+			// sort result ref based on task name to garantee an certain order
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -362,6 +383,9 @@ func TestResolveResultRefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ResolveResultRefs(tt.args.pipelineRunState, tt.args.targets)
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return

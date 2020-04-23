@@ -20,8 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
@@ -141,109 +139,4 @@ func NewArrayOrString(value string, values ...string) ArrayOrString {
 		Type:      ParamTypeString,
 		StringVal: value,
 	}
-}
-
-// ResultRef is a type that represents a reference to a task run result
-type ResultRef struct {
-	PipelineTask string
-	Result       string
-}
-
-const (
-	resultExpressionFormat = "tasks.<taskName>.results.<resultName>"
-	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
-	ResultTaskPart = "tasks"
-	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
-	ResultResultPart           = "results"
-	variableSubstitutionFormat = `\$\([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\)`
-)
-
-var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
-
-// NewResultRefs extracts all ResultReferences from param.
-// If the ResultReference can be extracted, they are returned. Otherwise an error is returned
-func NewResultRefs(param Param) ([]*ResultRef, error) {
-	substitutionExpressions, ok := getVarSubstitutionExpressions(param)
-	if !ok {
-		return nil, fmt.Errorf("Invalid result reference expression: must contain variable substitution %q", resultExpressionFormat)
-	}
-	var resultRefs []*ResultRef
-	for _, expression := range substitutionExpressions {
-		pipelineTask, result, err := parseExpression(expression)
-		if err != nil {
-			return nil, fmt.Errorf("Invalid result reference expression: %v", err)
-		}
-		resultRefs = append(resultRefs, &ResultRef{
-			PipelineTask: pipelineTask,
-			Result:       result,
-		})
-	}
-	return resultRefs, nil
-}
-
-// LooksLikeContainsResultRefs attempts to check if param looks like it contains any
-// result references.
-// This is useful if we want to make sure the param looks like a ResultReference before
-// performing strict validation
-func LooksLikeContainsResultRefs(param Param) bool {
-	extractedExpressions, ok := getVarSubstitutionExpressions(param)
-	if !ok {
-		return false
-	}
-	for _, expression := range extractedExpressions {
-		if looksLikeResultRef(expression) {
-			return true
-		}
-	}
-	return false
-}
-
-func looksLikeResultRef(expression string) bool {
-	return strings.HasPrefix(expression, "task") && strings.Contains(expression, ".result")
-}
-
-// getVarSubstitutionExpressions extracts all the value between "$(" and ")""
-func getVarSubstitutionExpressions(param Param) ([]string, bool) {
-	var allExpressions []string
-	switch param.Value.Type {
-	case ParamTypeArray:
-		// array type
-		for _, value := range param.Value.ArrayVal {
-			expressions := variableSubstitutionRegex.FindAllString(value, -1)
-			if expressions == nil {
-				continue
-			}
-			for _, expression := range expressions {
-				allExpressions = append(allExpressions, stripVarSubExpression(expression))
-			}
-		}
-		if len(allExpressions) == 0 {
-			return nil, false
-		}
-		return allExpressions, true
-	case ParamTypeString:
-		// string type
-		expressions := variableSubstitutionRegex.FindAllString(param.Value.StringVal, -1)
-		if expressions == nil {
-			return nil, false
-		}
-		for _, expression := range expressions {
-			allExpressions = append(allExpressions, stripVarSubExpression(expression))
-		}
-		return allExpressions, true
-	default:
-		return nil, false
-	}
-}
-
-func stripVarSubExpression(expression string) string {
-	return strings.TrimSuffix(strings.TrimPrefix(expression, "$("), ")")
-}
-
-func parseExpression(substitutionExpression string) (string, string, error) {
-	subExpressions := strings.Split(substitutionExpression, ".")
-	if len(subExpressions) != 4 || subExpressions[0] != ResultTaskPart || subExpressions[2] != ResultResultPart {
-		return "", "", fmt.Errorf("Must be of the form %q", resultExpressionFormat)
-	}
-	return subExpressions[1], subExpressions[3], nil
 }
