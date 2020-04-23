@@ -134,7 +134,7 @@ func AddInputResource(
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
 	if mountSecrets {
-		taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+		taskSpec.Volumes = appendNewSecretsVolumes(taskSpec.Volumes, as.GetSecretsVolumes()...)
 	}
 	return taskSpec, nil
 }

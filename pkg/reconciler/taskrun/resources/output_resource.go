@@ -104,7 +104,7 @@ func AddOutputResources(
 				needsPvc = true
 			}
 			taskSpec.Steps = append(taskSpec.Steps, newSteps...)
-			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+			taskSpec.Volumes = appendNewSecretsVolumes(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		}
 
 		// Allow the resource to mutate the task.
