@@ -80,6 +80,12 @@ spec:
           value: webhook-certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+        - name: MUTATING_WEBHOOK_NAME
+          value: webhook.pipeline.tekton.dev
+        - name: VALIDATION_WEBHOOK_NAME
+          value: validation.webhook.pipeline.tekton.dev
+        - name: CONFIG_WEBHOOK_NAME
+          value: config.webhook.pipeline.tekton.dev
         securityContext:
           allowPrivilegeEscalation: false
         ports:
