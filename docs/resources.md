@@ -1107,7 +1107,7 @@ They also present challenges from a documentation perspective:
 - Perhaps the one thing you can say about the `PipelineResource` CRD is that it can create
   side-effects for your `Tasks`.
 
-### Next steps
+### What's still missing
 
 So what are PipelineResources still good for?  We think we've identified some of the most important things:
 
