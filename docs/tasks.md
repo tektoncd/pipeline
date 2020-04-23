@@ -362,7 +362,7 @@ steps:
 
 ### Specifying `Workspaces`
 
-`Workspaces`[workspaces.md#declaring-workspaces-in-tasks] allow you to specify
+[`Workspaces`](workspaces.md#using-workspaces-in-tasks) allow you to specify
 one or more volumes that your `Task` requires during execution. For example:
 
 ```yaml
