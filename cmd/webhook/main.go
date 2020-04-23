@@ -60,6 +60,14 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
 }
 
+func defaultEnv(envVar string, defaultValue string) string {
+	envValue := os.Getenv(envVar)
+	if envValue == "" {
+		envValue = defaultValue
+	}
+	return envValue
+}
+
 func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// Decorate contexts with the current state of the config.
 	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
@@ -68,7 +76,7 @@ func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"webhook.pipeline.tekton.dev",
+		defaultEnv("MUTATING_WEBHOOK_NAME", "webhook.pipeline.tekton.dev"),
 
 		// The path on which to serve the webhook.
 		"/defaulting",
@@ -93,7 +101,7 @@ func newValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"validation.webhook.pipeline.tekton.dev",
+		defaultEnv("VALIDATION_WEBHOOK_NAME", "validation.webhook.pipeline.tekton.dev"),
 
 		// The path on which to serve the webhook.
 		"/resource-validation",
@@ -115,7 +123,7 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 	return configmaps.NewAdmissionController(ctx,
 
 		// Name of the configmap webhook.
-		"config.webhook.pipeline.tekton.dev",
+		defaultEnv("CONFIG_WEBHOOK_NAME", "config.webhook.pipeline.tekton.dev"),
 
 		// The path on which to serve the webhook.
 		"/config-validation",
