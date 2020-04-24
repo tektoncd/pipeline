@@ -82,7 +82,7 @@ if grep -qw "injection" <<<"${GENS}"; then
   # Clear old injection
   rm -rf ${OUTPUT_PKG}
 
-  ${GOPATH}/bin/injection-gen \
+  injection-gen \
     --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
     --versioned-clientset-package ${VERSIONED_CLIENTSET_PKG} \
     --external-versions-informers-package ${EXTERNAL_INFORMER_PKG} \
