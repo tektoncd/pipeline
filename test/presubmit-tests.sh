@@ -36,4 +36,7 @@ function post_build_tests() {
 
 # We use the default build, unit and integration test runners.
 
+echo "Changed files"
+list_changed_files
+
 main $@

@@ -73,4 +73,6 @@ func main() {
 		taskrun.NewController(images),
 		pipelinerun.NewController(images),
 	)
+
+	// Adding some comments here too
 }
