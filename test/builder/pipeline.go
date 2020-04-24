@@ -302,11 +302,12 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 	}
 }
 
-func PipelineTaskWorkspaceBinding(name, workspace string) PipelineTaskOp {
+func PipelineTaskWorkspaceBinding(name, workspace, subPath string) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
 		pt.Workspaces = append(pt.Workspaces, v1alpha1.WorkspacePipelineTaskBinding{
 			Name:      name,
 			Workspace: workspace,
+			SubPath:   subPath,
 		})
 	}
 }
@@ -619,10 +620,11 @@ func PipelineRunWorkspaceBindingEmptyDir(name string) PipelineRunSpecOp {
 }
 
 // PipelineRunWorkspaceBindingVolumeClaimTemplate adds an VolumeClaimTemplate Workspace to the workspaces of a pipelineRun spec.
-func PipelineRunWorkspaceBindingVolumeClaimTemplate(name string, claimName string) PipelineRunSpecOp {
+func PipelineRunWorkspaceBindingVolumeClaimTemplate(name string, claimName string, subPath string) PipelineRunSpecOp {
 	return func(spec *v1alpha1.PipelineRunSpec) {
 		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
-			Name: name,
+			Name:    name,
+			SubPath: subPath,
 			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: claimName,

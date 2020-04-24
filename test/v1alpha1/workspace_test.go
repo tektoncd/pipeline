@@ -105,7 +105,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 
 	pipeline := tb.Pipeline(pipelineName, tb.PipelineSpec(
 		tb.PipelineWorkspaceDeclaration("foo"),
-		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo")),
+		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo", "")),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
@@ -146,7 +146,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 
 	pipeline := tb.Pipeline(pipelineName, tb.PipelineSpec(
 		tb.PipelineWorkspaceDeclaration("foo"),
-		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo")),
+		tb.PipelineTask("task1", taskName, tb.PipelineTaskWorkspaceBinding("test", "foo", "")),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)

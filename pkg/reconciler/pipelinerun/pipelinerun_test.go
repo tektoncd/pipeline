@@ -1718,13 +1718,13 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 	claimName := "myclaim"
 	pipelineRunName := "test-pipeline-run"
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName)),
+		tb.PipelineTask("hello-world-1", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName, "")),
 		tb.PipelineTask("hello-world-2", "hello-world"),
 		tb.PipelineWorkspaceDeclaration(workspaceName),
 	))}
 
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(pipelineRunName, tb.PipelineRunNamespace("foo"),
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName, claimName))),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName, claimName, ""))),
 	}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
 
@@ -1785,6 +1785,120 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 				t.Fatalf("found taskRun workspace that is not PersistentVolumeClaim workspace. Did only expect PersistentVolumeClaims workspaces")
 			}
 		}
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
+// TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths tests that given a pipeline with volumeClaimTemplate workspace and
+// multiple instances of the same task, but using different subPaths in the volume - is seen as taskRuns with expected subPaths.
+func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
+	workspaceName := "ws1"
+	workspaceNameWithSubPath := "ws2"
+	subPath1 := "customdirectory"
+	subPath2 := "otherdirecory"
+	pipelineRunWsSubPath := "mypath"
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName, subPath1)),
+		tb.PipelineTask("hello-world-2", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName, subPath2)),
+		tb.PipelineTask("hello-world-3", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName, "")),
+		tb.PipelineTask("hello-world-4", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceNameWithSubPath, "")),
+		tb.PipelineTask("hello-world-5", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceNameWithSubPath, subPath1)),
+		tb.PipelineWorkspaceDeclaration(workspaceName, workspaceNameWithSubPath),
+	))}
+
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName, "myclaim", ""),
+			tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceNameWithSubPath, "myclaim", pipelineRunWsSubPath))),
+	}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	taskRuns, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
+	}
+
+	if len(taskRuns.Items) != 5 {
+		t.Fatalf("unexpected number of taskRuns found, expected 2, but found %d", len(taskRuns.Items))
+	}
+
+	hasSeenWorkspaceWithPipelineTaskSubPath1 := false
+	hasSeenWorkspaceWithPipelineTaskSubPath2 := false
+	hasSeenWorkspaceWithEmptyPipelineTaskSubPath := false
+	hasSeenWorkspaceWithRunSubPathAndEmptyPipelineTaskSubPath := false
+	hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 := false
+	for _, tr := range taskRuns.Items {
+		for _, ws := range tr.Spec.Workspaces {
+
+			if ws.PersistentVolumeClaim == nil {
+				t.Fatalf("found taskRun workspace that is not PersistentVolumeClaim workspace. Did only expect PersistentVolumeClaims workspaces")
+			}
+
+			if ws.SubPath == subPath1 {
+				hasSeenWorkspaceWithPipelineTaskSubPath1 = true
+			}
+
+			if ws.SubPath == subPath2 {
+				hasSeenWorkspaceWithPipelineTaskSubPath2 = true
+			}
+
+			if ws.SubPath == "" {
+				hasSeenWorkspaceWithEmptyPipelineTaskSubPath = true
+			}
+
+			if ws.SubPath == pipelineRunWsSubPath {
+				hasSeenWorkspaceWithRunSubPathAndEmptyPipelineTaskSubPath = true
+			}
+
+			if ws.SubPath == fmt.Sprintf("%s/%s", pipelineRunWsSubPath, subPath1) {
+				hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 = true
+			}
+		}
+	}
+
+	if !hasSeenWorkspaceWithPipelineTaskSubPath1 {
+		t.Fatalf("did not see a taskRun with a workspace using pipelineTask subPath1")
+	}
+
+	if !hasSeenWorkspaceWithPipelineTaskSubPath2 {
+		t.Fatalf("did not see a taskRun with a workspace using pipelineTask subPath2")
+	}
+
+	if !hasSeenWorkspaceWithEmptyPipelineTaskSubPath {
+		t.Fatalf("did not see a taskRun with a workspace using empty pipelineTask subPath")
+	}
+
+	if !hasSeenWorkspaceWithRunSubPathAndEmptyPipelineTaskSubPath {
+		t.Fatalf("did not see a taskRun with workspace using empty pipelineTask subPath and a subPath from pipelineRun")
+	}
+
+	if !hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 {
+		t.Fatalf("did not see a taskRun with workspace using pipelineTaks subPath1 and a subPath from pipelineRun")
 	}
 
 	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
