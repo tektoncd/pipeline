@@ -2042,3 +2042,31 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		t.Errorf("expected to see pipeline run results created. -want, +got: Diff %s", d)
 	}
 }
+
+func Test_storePipelineSpec(t *testing.T) {
+	ctx := context.Background()
+	pr := tb.PipelineRun("foo")
+
+	ps := tb.Pipeline("some-pipeline", tb.PipelineSpec(tb.PipelineDescription("foo-pipeline"))).Spec
+	want := &v1beta1.PipelineSpec{}
+	if err := ps.ConvertTo(ctx, want); err != nil {
+		t.Errorf("error converting to v1beta1: %v", err)
+	}
+
+	// The first time we set it, it should get copied.
+	if err := storePipelineSpec(ctx, pr, &ps); err != nil {
+		t.Errorf("storePipelineSpec() error = %v", err)
+	}
+	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	ps.Description = "new-pipeline"
+	// The next time, it should not get overwritten
+	if err := storePipelineSpec(ctx, pr, &ps); err != nil {
+		t.Errorf("storePipelineSpec() error = %v", err)
+	}
+	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
