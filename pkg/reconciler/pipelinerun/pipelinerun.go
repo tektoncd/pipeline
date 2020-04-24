@@ -359,6 +359,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
+	// Store the fetched PipelineSpec on the PipelineRun for auditing
+	if err := storePipelineSpec(ctx, pr, pipelineSpec); err != nil {
+		c.Logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+	}
+
 	// Propagate labels from Pipeline to PipelineRun.
 	if pr.ObjectMeta.Labels == nil {
 		pr.ObjectMeta.Labels = make(map[string]string, len(pipelineMeta.Labels)+1)
@@ -905,4 +910,13 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	cctr, err := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
 	cc := v1alpha1.ConditionCheck(*cctr)
 	return &cc, err
+}
+
+func storePipelineSpec(ctx context.Context, pr *v1alpha1.PipelineRun, ps *v1alpha1.PipelineSpec) error {
+	// Only store the PipelineSpec once, if it has never been set before.
+	if pr.Status.PipelineSpec == nil {
+		pr.Status.PipelineSpec = &v1beta1.PipelineSpec{}
+		return ps.ConvertTo(ctx, pr.Status.PipelineSpec)
+	}
+	return nil
 }

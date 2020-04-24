@@ -672,6 +672,11 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 		*out = make([]PipelineRunResult, len(*in))
 		copy(*out, *in)
 	}
+	if in.PipelineSpec != nil {
+		in, out := &in.PipelineSpec, &out.PipelineSpec
+		*out = new(PipelineSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

@@ -30,6 +30,11 @@ executed successfully or a failure occurs.
 **Note:** A `PipelineRun` automatically creates corresponding `TaskRuns` for every
 `Task` in your `Pipeline`.
 
+The `Status` field tracks the current state of a `PipelineRun`, and can be used to monitor
+progress.
+This field contains the status of every `TaskRun`, as well as the full `PipelineSpec` used
+to instantiate this `PipelineRun`, for full auditability.
+
 ## Configuring a `PipelineRun`
 
 A `PipelineRun` definition supports the following fields:

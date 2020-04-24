@@ -255,6 +255,9 @@ type PipelineRunStatusFields struct {
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
 	PipelineResults []PipelineRunResult `json:"pipelineResults,omitempty"`
+
+	// PipelineRunSpec contains the exact spec used to instantiate the run
+	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 }
 
 // PipelineRunResult used to describe the results of a pipeline
