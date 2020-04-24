@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -735,9 +736,9 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
 	for _, ws := range rprt.PipelineTask.Workspaces {
-		taskWorkspaceName, pipelineWorkspaceName := ws.Name, ws.Workspace
+		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pr.GetOwnerReference()))
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
@@ -750,22 +751,34 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
 // If the volume source is a volumeClaimTemplate, the template is applied and passed to TaskRun as a persistentVolumeClaim
-func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWorkspaceName string, owner metav1.OwnerReference) v1alpha1.WorkspaceBinding {
+func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1alpha1.WorkspaceBinding {
 	if wb.VolumeClaimTemplate == nil {
 		binding := *wb.DeepCopy()
 		binding.Name = taskWorkspaceName
+		binding.SubPath = combinedSubPath(wb.SubPath, pipelineTaskSubPath)
 		return binding
 	}
 
 	// apply template
 	binding := v1alpha1.WorkspaceBinding{
-		SubPath: wb.SubPath,
+		SubPath: combinedSubPath(wb.SubPath, pipelineTaskSubPath),
 		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
 		},
 	}
 	binding.Name = taskWorkspaceName
 	return binding
+}
+
+// combinedSubPath returns the combined value of the optional subPath from workspaceBinding and the optional
+// subPath from pipelineTask. If both is set, they are joined with a slash.
+func combinedSubPath(workspaceSubPath string, pipelineTaskSubPath string) string {
+	if workspaceSubPath == "" {
+		return pipelineTaskSubPath
+	} else if pipelineTaskSubPath == "" {
+		return workspaceSubPath
+	}
+	return filepath.Join(workspaceSubPath, pipelineTaskSubPath)
 }
 
 func addRetryHistory(tr *v1alpha1.TaskRun) {

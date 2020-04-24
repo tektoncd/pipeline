@@ -359,7 +359,7 @@ func TestPipeline_Validate(t *testing.T) {
 		p: tb.Pipeline("name", tb.PipelineSpec(
 			tb.PipelineWorkspaceDeclaration("foo"),
 			tb.PipelineTask("taskname", "taskref",
-				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", "pipelineWorkspaceName")),
+				tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", "pipelineWorkspaceName", "")),
 		)),
 		failureExpected: true,
 	}, {

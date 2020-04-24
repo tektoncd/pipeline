@@ -236,6 +236,10 @@ spec:
         - use-ws-from-pipeline # important: use-ws-from-pipeline writes to the workspace first
 ```
 
+Include a `subPath` in the workspace binding to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1beta1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
+
+The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a Workspace with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
+
 #### Specifying `Workspace` order in a `Pipeline`
 
 Sharing a `Workspace` between `Tasks` requires you to define the order in which those `Tasks`

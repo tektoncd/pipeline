@@ -46,7 +46,7 @@ func TestPipeline(t *testing.T) {
 				tb.PipelineTaskConditionParam("param-name", "param-value"),
 				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource", "bar", "never-gonna"),
 			),
-			tb.PipelineTaskWorkspaceBinding("task-workspace1", "workspace1"),
+			tb.PipelineTaskWorkspaceBinding("task-workspace1", "workspace1", ""),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
