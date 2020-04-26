@@ -65,6 +65,8 @@ spec:
           value: config-leader-election
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-pipelines-webhook
+        - name: WEBHOOK_SECRET_NAME
+          value: webhook-certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
         securityContext:
