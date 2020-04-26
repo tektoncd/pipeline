@@ -36,9 +36,12 @@ const (
 	ResultResultPart = "results"
 	// TODO(#2462) use one regex across all substitutions
 	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*\)`
+	// ResultNameFormat Constant used to define the the regex Result.Name should follow
+	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
 // If the ResultReference can be extracted, they are returned. Expressions which are not

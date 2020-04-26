@@ -59,6 +59,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		Steps        []v1beta1.Step
 		StepTemplate *corev1.Container
 		Workspaces   []v1beta1.WorkspaceDeclaration
+		Results      []v1beta1.TaskResult
 	}
 	tests := []struct {
 		name   string
@@ -249,6 +250,20 @@ func TestTaskSpecValidate(t *testing.T) {
 				MountPath:   "some/path",
 			}},
 		},
+	}, {
+		name: "valid result",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Description: "my great result",
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -258,6 +273,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
+				Results:      tt.fields.Results,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
@@ -276,6 +292,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Volumes      []corev1.Volume
 		StepTemplate *corev1.Container
 		Workspaces   []v1beta1.WorkspaceDeclaration
+		Results      []v1beta1.TaskResult
 	}
 	tests := []struct {
 		name          string
@@ -820,6 +837,20 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
 			Paths:   []string{"workspaces.mountpath"},
 		},
+	}, {
+		name: "result name not validate",
+		fields: fields{
+			Steps: validSteps,
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY^RESULT",
+				Description: "my great result",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid key name "MY^RESULT"`,
+			Paths:   []string{"results[0].name"},
+			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -830,6 +861,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Volumes:      tt.fields.Volumes,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
+				Results:      tt.fields.Results,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
