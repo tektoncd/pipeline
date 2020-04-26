@@ -130,6 +130,11 @@ func main() {
 		serviceName = "tekton-pipelines-webhook"
 	}
 
+	secretName := os.Getenv("WEBHOOK_SECRET_NAME")
+	if secretName == "" {
+		secretName = "webhook-certs" // #nosec
+	}
+
 	// Scope informers to the webhook's namespace instead of cluster-wide
 	ctx := injection.WithNamespaceScope(signals.NewContext(), system.GetNamespace())
 
@@ -137,7 +142,7 @@ func main() {
 	ctx = webhook.WithOptions(ctx, webhook.Options{
 		ServiceName: serviceName,
 		Port:        8443,
-		SecretName:  "webhook-certs",
+		SecretName:  secretName,
 	})
 
 	sharedmain.WebhookMainWithConfig(ctx, "webhook",
