@@ -29,4 +29,7 @@ func (c *Condition) SetDefaults(ctx context.Context) {
 }
 
 func (cs *ConditionSpec) SetDefaults(ctx context.Context) {
+	for i := range cs.Params {
+		cs.Params[i].SetDefaults(ctx)
+	}
 }
