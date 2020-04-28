@@ -17,6 +17,8 @@ kind: ClusterRole
 metadata:
   name: tekton-aggregate-view
   labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     rbac.authorization.k8s.io/aggregate-to-view: "true"
 rules:
 - apiGroups:

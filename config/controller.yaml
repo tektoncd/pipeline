@@ -18,25 +18,37 @@ metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: tekton-pipelines
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: "devel"
+    # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tekton-pipelines-controller
+      app.kubernetes.io/name: controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-pipelines
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
-        app: tekton-pipelines-controller
-        app.kubernetes.io/name: tekton-pipelines
+        app.kubernetes.io/name: controller
         app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: tekton-pipelines
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
         pipeline.tekton.dev/release: "devel"
+        # labels below are related to istio and should not be used for resource lookup
+        app: tekton-pipelines-controller
         version: "devel"
     spec:
       serviceAccountName: tekton-pipelines-controller
@@ -93,8 +105,15 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: tekton-pipelines-controller
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: tekton-pipelines
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: "devel"
+    # labels below are related to istio and should not be used for resource lookup
+    app: tekton-pipelines-controller
     version: "devel"
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
@@ -105,4 +124,7 @@ spec:
     protocol: TCP
     targetPort: 9090
   selector:
-    app: tekton-pipelines-controller
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines

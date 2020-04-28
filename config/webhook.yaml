@@ -21,26 +21,37 @@ metadata:
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
   labels:
-    app.kubernetes.io/name: tekton-pipelines
-    app.kubernetes.io/component: webhook-controller
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: tekton-pipelines
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: "devel"
+    # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tekton-pipelines-webhook
-      role: webhook
+      app.kubernetes.io/name: webhook
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-pipelines
   template:
     metadata:
       annotations:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
-        app: tekton-pipelines-webhook
-        role: webhook
-        app.kubernetes.io/name: tekton-pipelines
-        app.kubernetes.io/component: webhook-controller
+        app.kubernetes.io/name: webhook
+        app.kubernetes.io/component: webhook
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: tekton-pipelines
+        # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
         pipeline.tekton.dev/release: "devel"
+        # labels below are related to istio and should not be used for resource lookup
+        app: tekton-pipelines-webhook
         version: "devel"
     spec:
       serviceAccountName: tekton-pipelines-webhook
@@ -71,7 +82,6 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
-
         ports:
         - name: metrics
           containerPort: 9090
@@ -84,9 +94,15 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: tekton-pipelines-webhook
-    role: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: tekton-pipelines
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: devel
+    # labels below are related to istio and should not be used for resource lookup
+    app: tekton-pipelines-webhook
     version: "devel"
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
@@ -103,5 +119,7 @@ spec:
     port: 443
     targetPort: 8443
   selector:
-    app: tekton-pipelines-webhook
-    role: webhook
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines

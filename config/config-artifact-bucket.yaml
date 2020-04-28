@@ -17,6 +17,9 @@ kind: ConfigMap
 metadata:
   name: config-artifact-bucket
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 #  data:
 #    # location of the gcs bucket to be used for artifact storage
 #    location: "gs://bucket-name"

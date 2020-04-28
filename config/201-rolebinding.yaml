@@ -17,6 +17,10 @@ kind: RoleBinding
 metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 subjects:
   - kind: ServiceAccount
     name: tekton-pipelines-controller
@@ -31,6 +35,10 @@ kind: RoleBinding
 metadata:
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 subjects:
   - kind: ServiceAccount
     name: tekton-pipelines-webhook
