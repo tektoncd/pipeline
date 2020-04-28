@@ -609,6 +609,12 @@ func TestApplyWorkspaces(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
 				Value: "$(workspaces.myws.volume)",
+			}, {
+				Name:  "pvc-name",
+				Value: "$(workspaces.myws.claim)",
+			}, {
+				Name:  "non-pvc-name",
+				Value: "$(workspaces.otherws.claim)",
 			}},
 		},
 		Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -671,6 +677,8 @@ func TestApplyWorkspaces(t *testing.T) {
 	}}
 	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "ws-9l9zj"
+		spec.StepTemplate.Env[1].Value = "foo"
+		spec.StepTemplate.Env[2].Value = ""
 
 		spec.Steps[0].Name = "ws-9l9zj"
 		spec.Steps[0].Image = "ws-mz4c7"
