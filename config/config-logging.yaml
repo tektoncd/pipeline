@@ -17,6 +17,9 @@ kind: ConfigMap
 metadata:
   name: config-logging
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 data:
   # Common configuration for all knative codebase
   zap-logger-config: |

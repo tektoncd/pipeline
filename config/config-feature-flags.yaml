@@ -17,6 +17,9 @@ kind: ConfigMap
 metadata:
   name: feature-flags
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 data:
   # Setting this flag to "true" will prevent Tekton overriding your
   # Task container's $HOME environment variable.

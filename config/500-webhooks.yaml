@@ -18,6 +18,9 @@ metadata:
   name: webhook-certs
   namespace: tekton-pipelines
   labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: devel
 # The data is populated at install time.
 
@@ -27,6 +30,9 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: validation.webhook.pipeline.tekton.dev
   labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: devel
 webhooks:
 - admissionReviewVersions:
@@ -45,6 +51,9 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: webhook.pipeline.tekton.dev
   labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: devel
 webhooks:
 - admissionReviewVersions:
@@ -63,6 +72,9 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: config.webhook.pipeline.tekton.dev
   labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: devel
 webhooks:
 - admissionReviewVersions:
@@ -74,7 +86,6 @@ webhooks:
   failurePolicy: Fail
   sideEffects: None
   name: config.webhook.pipeline.tekton.dev
-  namespaceSelector:
-    matchExpressions:
-    - key: pipeline.tekton.dev/release
-      operator: Exists
+  objectSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: tekton-pipelines

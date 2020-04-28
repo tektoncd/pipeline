@@ -16,6 +16,10 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-pipelines-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 rules:
   - apiGroups: [""]
     # Namespace access is required because the controller timeout handling logic
@@ -45,6 +49,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   # This is the access that the controller needs on a per-namespace basis.
   name: tekton-pipelines-controller-tenant-access
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 rules:
   - apiGroups: [""]
     resources: ["pods", "pods/log", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims", "limitranges"]
@@ -62,6 +70,10 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-pipelines-webhook-cluster-access
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 rules:
   # The webhook needs to be able to list and update customresourcedefinitions,
   # mainly to update the webhook certificates.

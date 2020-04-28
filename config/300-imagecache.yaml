@@ -17,6 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: images.caching.internal.knative.dev
   labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
     knative.dev/crd-install: "true"
 spec:
   group: caching.internal.knative.dev
