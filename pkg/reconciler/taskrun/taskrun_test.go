@@ -297,9 +297,10 @@ func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) 
 				return fmt.Errorf("Expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
 			}
 		case <-timer.C:
-			if len(foundEvents) > len(wantEvents) {
-				return fmt.Errorf("Received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
+			if len(foundEvents) == len(wantEvents) {
+				return nil
 			}
+			return fmt.Errorf("Received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
 		}
 	}
 	return nil

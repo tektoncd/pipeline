@@ -67,6 +67,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
 			Logger:            logger,
+			Recorder:          controller.GetEventRecorder(ctx),
 		}
 
 		c := &Reconciler{

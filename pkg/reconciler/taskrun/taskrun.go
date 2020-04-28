@@ -384,7 +384,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
 	}
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
-		c.Logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
+		c.Logger.Errorf("Failed to create tracker for pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}
 
@@ -420,8 +420,8 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.Task
 		// cache may be stale and we don't want to overwrite a prior update
 		// to status with this stale state.
 		if _, err := c.updateStatus(tr); err != nil {
-			c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
-			return err
+			c.Logger.Warn("Failed to update TaskRun status", zap.Error(err))
+			return fmt.Errorf("failed to update TaskRun status: %s", err.Error())
 		}
 		updated = true
 	}
@@ -433,7 +433,7 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.Task
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, tr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-			return err
+			return fmt.Errorf("failed to update TaskRun labels/annotations: %s", err.Error())
 		}
 		updated = true
 	}
