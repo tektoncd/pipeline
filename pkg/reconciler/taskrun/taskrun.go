@@ -208,6 +208,19 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return multierror.Append(err, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
 }
 
+func (c *Reconciler) getTaskResolver(tr *v1alpha1.TaskRun) (*resources.LocalTaskRefResolver, v1alpha1.TaskKind) {
+	resolver := &resources.LocalTaskRefResolver{
+		Namespace:    tr.Namespace,
+		Tektonclient: c.PipelineClientSet,
+	}
+	kind := v1alpha1.NamespacedTaskKind
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
+		kind = v1alpha1.ClusterTaskKind
+	}
+	resolver.Kind = kind
+	return resolver, kind
+}
+
 // `prepare` fetches resources the taskrun depends on, runs validation and convertion
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
@@ -231,8 +244,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1alpha1.TaskRun) (*v1alph
 		return nil, nil, err
 	}
 
-	getTaskFunc, kind := c.getTaskFunc(tr)
-	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskFunc)
+	resolver, kind := c.getTaskResolver(tr)
+	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, resolver.GetTask)
 	if err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			tr.Status.MarkResourceNotConvertible(ce)
@@ -456,30 +469,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(tr.Namespace).Update(newTr)
 	}
 	return newTr, nil
-}
-
-func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind) {
-	var gtFunc resources.GetTask
-	kind := v1alpha1.NamespacedTaskKind
-	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.PipelineClientSet.TektonV1alpha1().ClusterTasks().Get(name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return t, nil
-		}
-		kind = v1alpha1.ClusterTaskKind
-	} else {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.PipelineClientSet.TektonV1alpha1().Tasks(tr.Namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return t, nil
-		}
-	}
-	return gtFunc, kind
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
