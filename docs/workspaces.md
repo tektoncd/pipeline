@@ -142,6 +142,20 @@ The entry must also include one `VolumeSource`. See [Using `VolumeSources` with 
 The following examples illustrate how to specify `Workspaces` in your `TaskRun` definition.
 For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
 
+In the example below, a template is provided for how a `PersistentVolumeClaim` should be created for a Task's workspace named `myworkspace`. When using `volumeClaimTemplate` a new `PersistentVolumeClaim` is created for each `TaskRun` and it allows the user to specify e.g. size and StorageClass for the volume.
+
+```yaml
+workspaces:
+- name: myworkspace
+  volumeClaimTemplate:
+    spec:
+      accessModes: 
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+```
+
 In the example below, an existing `PersistentVolumeClaim` called `mypvc` is used for a Task's `workspace`
 called `myworkspace`. It exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`:
 
