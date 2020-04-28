@@ -25,6 +25,7 @@ in `Tasks` and `Pipelines`.
 | `resources.outputs.<resource name>.path` | The path to the output resource's directory. |
 | `results.<result name>.path` | The path to the file where a Task's result should be written. |
 | `workspaces.<workspace name>.path` | The path to the mounted workspace. |
+| `workspaces.<workspace name>.claim` | The name of the PersistentVolumeClaim used as a volume source for the workspace or empty string if a volume source other than PersistentVolumeClaim was used. |
 | `workspaces.<workspace name>.volume` | The name of the volume populating the workspace. |
 | `credentials.path` | The path to the location of credentials written by the `creds-init` init container. |
 
