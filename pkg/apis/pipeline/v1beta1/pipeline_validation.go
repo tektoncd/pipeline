@@ -41,16 +41,18 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	return p.Spec.Validate(ctx)
 }
 
-func validateDeclaredResources(ps *PipelineSpec) error {
+// validateDeclaredResources ensures that the specified resources have unique names and
+// validates that all the resources referenced by pipeline tasks are declared in the pipeline
+func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []PipelineTask) error {
 	encountered := map[string]struct{}{}
-	for _, r := range ps.Resources {
+	for _, r := range resources {
 		if _, ok := encountered[r.Name]; ok {
 			return fmt.Errorf("resource with name %q appears more than once", r.Name)
 		}
 		encountered[r.Name] = struct{}{}
 	}
 	required := []string{}
-	for _, t := range ps.Tasks {
+	for _, t := range tasks {
 		if t.Resources != nil {
 			for _, input := range t.Resources.Inputs {
 				required = append(required, input.Resource)
@@ -67,8 +69,8 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 		}
 	}
 
-	provided := make([]string, 0, len(ps.Resources))
-	for _, resource := range ps.Resources {
+	provided := make([]string, 0, len(resources))
+	for _, resource := range resources {
 		provided = append(provided, resource.Name)
 	}
 	missing := list.DiffLeft(required, provided)
@@ -150,7 +152,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
 	// that aren't declared
-	if err := validateDeclaredResources(ps); err != nil {
+	if err := validateDeclaredResources(ps.Resources, ps.Tasks); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "spec.resources")
 	}
 
@@ -186,6 +188,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
+// validatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
+// taskRef or taskSpec, and in case of a pipeline task with taskRef, it has a reference to a valid task (task name)
 func validatePipelineTasks(ctx context.Context, tasks []PipelineTask) *apis.FieldError {
 	// Names cannot be duplicated
 	taskNames := map[string]struct{}{}
@@ -239,6 +243,8 @@ func validatePipelineTaskName(ctx context.Context, prefix string, i int, t Pipel
 	return nil
 }
 
+// validatePipelineWorkspaces validates the specified workspaces, ensuring having unique name without any empty string,
+// and validates that all the referenced workspaces (by pipeline tasks) are specified in the pipeline
 func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
 	wsTable := make(map[string]struct{})
@@ -267,6 +273,9 @@ func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []Pipeli
 	return nil
 }
 
+// validatePipelineParameterVariables validates parameters with those specified by each pipeline task,
+// (1) it validates the type of parameter is either string or array (2) parameter default value matches
+// with the type of that param (3) ensures that the referenced param variable is defined is part of the param declarations
 func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
@@ -342,7 +351,7 @@ func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]
 	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }
 
-// validateParamResults ensure that task result variables are properly configured
+// validateParamResults ensures that task result variables are properly configured
 func validateParamResults(tasks []PipelineTask) error {
 	for _, task := range tasks {
 		for _, param := range task.Params {
@@ -371,7 +380,7 @@ func filter(arr []string, cond func(string) bool) []string {
 	return result
 }
 
-// validatePipelineResults ensure that task result variables are properly configured
+// validatePipelineResults ensure that pipeline result variables are properly configured
 func validatePipelineResults(results []PipelineResult) error {
 	for _, result := range results {
 		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
