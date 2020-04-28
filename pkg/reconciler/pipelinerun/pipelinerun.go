@@ -230,17 +230,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return merr
 }
 
-func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipeline {
-	var gtFunc resources.GetPipeline = func(name string) (v1alpha1.PipelineInterface, error) {
-		p, err := c.pipelineLister.Pipelines(tr.Namespace).Get(name)
-		if err != nil {
-			return nil, err
-		}
-		return p, nil
-	}
-	return gtFunc
-}
-
 func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.PipelineRun) {
 	if err := pr.ConvertTo(ctx, &v1beta1.PipelineRun{}); err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
@@ -249,8 +238,12 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.Pip
 		return
 	}
 
-	getPipelineFunc := c.getPipelineFunc(pr)
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
+	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
+	resolver := &resources.LocalPipelineRefResolver{
+		Namespace:    pr.Namespace,
+		Tektonclient: c.PipelineClientSet,
+	}
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
 	if err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
@@ -341,8 +334,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
-	getPipelineFunc := c.getPipelineFunc(pr)
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
+	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
+	resolver := &resources.LocalPipelineRefResolver{
+		Namespace:    pr.Namespace,
+		Tektonclient: c.PipelineClientSet,
+	}
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
 	if err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
