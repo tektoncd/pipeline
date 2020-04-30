@@ -5,8 +5,7 @@ Thank you for your interest in contributing!
 **All contributors must comply with
 [the code of conduct](./code-of-conduct.md).**
 
-* The [OWNERS](OWNERS) of this repo are the [members of the Tekton governing board](goverance.md)
-  who will need to approve changes to the repo.
+* To become an [OWNER](OWNER), see the requirements at [tektoncd/community](https://github.com/tektoncd/community/blob/master/process.md#requirements)
 * This repo holds configuration for infrastructure that is used by projects in
   https://github.com/tektoncd.
 * [The README](README.md) describes components of this infrastructure and how to interact
