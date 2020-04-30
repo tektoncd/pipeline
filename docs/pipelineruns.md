@@ -242,7 +242,7 @@ point for the `Pod` in which the container images specified in your `Tasks` will
 customize the `Pod` confguration specifically for each `TaskRun`.
 
 In the following example, the `Task` defines a `volumeMount` object named `my-cache`. The `PipelineRun`
-provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as a non-root user.
+provisions this object for the `Task` using a `persistentVolumeClaim` and executes it as user 1001.
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -279,6 +279,7 @@ spec:
   podTemplate:
     securityContext:
       runAsNonRoot: true
+      runAsUser: 1001
     volumes:
     - name: my-cache
       persistentVolumeClaim:
