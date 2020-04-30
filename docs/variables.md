@@ -4,108 +4,107 @@ linkTitle: "Variable Substitutions"
 weight: 15
 ---
 -->
-# Variable Substitutions
+# Variable Substitutions Supported by `Tasks` and `Pipelines`
 
-This doc aggregates the complete set of variable substitions available
-in `Tasks` and `Pipelines`.
+This page documents the variable substitions supported by `Tasks` and `Pipelines`.
 
-## Variables Available in a Pipeline
-
-| Variable | Description |
-| -------- | ----------- |
-| `params.<param name>` | The value of the param at runtime. |
-| `tasks.<task name>.results.<result name>` | The value of a Task's result (**Note**: Affects Task ordering in a Pipeline!) |
-
-## Variables Available in a Task
+## Variables available in a `Pipeline`
 
 | Variable | Description |
 | -------- | ----------- |
-| `params.<param name>` | The value of the param at runtime. |
-| `resources.inputs.<resource name>.path` | The path to the input resource's directory. |
-| `resources.outputs.<resource name>.path` | The path to the output resource's directory. |
-| `results.<result name>.path` | The path to the file where a Task's result should be written. |
-| `workspaces.<workspace name>.path` | The path to the mounted workspace. |
-| `workspaces.<workspace name>.claim` | The name of the PersistentVolumeClaim used as a volume source for the workspace or empty string if a volume source other than PersistentVolumeClaim was used. |
-| `workspaces.<workspace name>.volume` | The name of the volume populating the workspace. |
-| `credentials.path` | The path to the location of credentials written by the `creds-init` init container. |
+| `params.<param name>` | The value of the parameter at runtime. |
+| `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 
-### PipelineResource Variables
-
-Each PipelineResource exposes its own set of variables. Below the variables are grouped by
-PipelineResource type. These are available in `Tasks`.
-
-Each variable is accessible via `resources.inputs.<resource name>.<variable name>` or
-`resources.outputs.<resource name>.<variable name>`.
-
-#### Git PipelineResource
+## Variables available in a `Task`
 
 | Variable | Description |
 | -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"git"` |
-| `url` | The URL to the Git repo |
-| `revision` | The revision to be checked out. |
-| `depth` | The integer value of the resource's `depth` param. |
-| `sslVerify` | The value of the resource's `sslVerify` param: `"true"` or `"false"`. |
-| `httpProxy` | The value of the resource's `httpProxy` param. |
-| `httpsProxy` | The value of the resource's `httpsProxy` param. |
-| `noProxy` | The value of the resource's `noProxy` param. |
+| `params.<param name>` | The value of the parameter at runtime. |
+| `resources.inputs.<resourceName>.path` | The path to the input resource's directory. |
+| `resources.outputs.<resourceName>.path` | The path to the output resource's directory. |
+| `results.<resultName>.path` | The path to the file where the `Task` writes its results data. |
+| `workspaces.<workspaceName>.path` | The path to the mounted `Workspace`. |
+| `workspaces.<workspaceName>.claim` | The name of the `PersistentVolumeClaim` specified as a volume source for the `Workspace`. Empty string for other volume types. |
+| `workspaces.<workspaceName>.volume` | The name of the volume populating the `Workspace`. |
+| `credentials.path` | The path to the credentials written by the `creds-init` init container. |
 
-#### PullRequest PipelineResource
+### `PipelineResource` variables available in a `Task`
 
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"pullRequest"` |
-| `url` | The URL pointing to the pull request. |
-| `provider` | `"github"` or `"gitlab"`. |
-| `insecure-skip-tls-verify` | The value of the resource's `insecure-skip-tls-verify` param: `"true"` or `"false"`. |
+Each supported type of `PipelineResource` specified within a `Task` exposes a unique set
+of variables. This section lists the variables exposed by each type. You can access a
+variable via `resources.inputs.<resourceName>.<variableName>` or
+`resources.outputs.<resourceName>.<variableName>`.
 
-#### Image PipelineResource
+#### Variables for the `Git` type
 
 | Variable | Description |
 | -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"image"` |
+| `name` | The name of the resource. |
+| `type` | Type value of `"git"`. |
+| `url` | The URL of the Git repository. |
+| `revision` | The revision to check out. |
+| `refspec` | The value of the resource's `refspec` parameter. |
+| `depth` | The integer value of the resource's `depth` parameter. |
+| `sslVerify` | The value of the resource's `sslVerify` parameter, either `"true"` or `"false"`. |
+| `httpProxy` | The value of the resource's `httpProxy` parameter. |
+| `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
+| `noProxy` | The value of the resource's `noProxy` parameter. |
+
+#### Variables for the `PullRequest` type
+
+| Variable | Description |
+| -------- | ----------- |
+| `name` | The name of the resource. |
+| `type` | Type value of `"pullRequest"`.|
+| `url` | The URL of the pull request. |
+| `provider` | Provider value, either `"github"` or `"gitlab"`. |
+| `insecure-skip-tls-verify` | The value of the resource's `insecure-skip-tls-verify` parameter, either `"true"` or `"false"`. |
+
+#### Variables for the `Image` type
+
+| Variable | Description |
+| -------- | ----------- |
+| `name` | The name of the resource. |
+| `type` | Type value of `"image"`. |
 | `url` | The complete path to the image. |
-| `digest` | The image's digest. |
+| `digest` | The digest of the image. |
 
-#### GCS PipelineResource
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"gcs"` |
-| `location` | The location of the blob storage. |
-
-#### BuildGCS PipelineResource
+#### Variables for the `GCS` type
 
 | Variable | Description |
 | -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"build-gcs"` |
-| `location` | The location of the blob storage. |
+| `name` | The name of the resource. |
+| `type` | Type value of `"gcs"`. |
+| `location` | The fully qualified address of the blob storage. |
 
-#### Cluster PipelineResource
+#### Variables for the  `BuildGCS` type
 
 | Variable | Description |
 | -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"cluster"` |
-| `url` | Host url of the master node. |
+| `name` | The name of the resource. |
+| `type` | Type value of `"build-gcs"`. |
+| `location` | The fully qualified address of the blob storage. |
+
+#### Variables for the `Cluster` type
+
+| Variable | Description |
+| -------- | ----------- |
+| `name` | The name of the resource. |
+| `type` | Type value of `"cluster"`. |
+| `url` | Host URL of the master node. |
 | `username` | The user with access to the cluster. |
-| `password` | The password to be used for clusters with basic auth. |
+| `password` | The password for the user specified in `username`. |
 | `namespace` | The namespace to target in the cluster. |
-| `token` | Bearer token. |
-| `insecure` | Whether TLS connection to server should be verified: `"true"` or `"false"`. |
-| `cadata` | Stringified PEM-encoded bytes typically read from a root certificates bundle. |
-| `clientKeyData` | Stringified PEM-encoded bytes from a client key file for TLS. |
-| `clientCertificateData` | Stringified PEM-encoded bytes from a client cert file for TLS. |
+| `token` | The bearer token. |
+| `insecure` | Whether to verify the TLS connection to the server, either `"true"` or `"false"`. |
+| `cadata` | Stringified PEM-encoded bytes from the relevant root certificate bundle. |
+| `clientKeyData` | Stringified PEM-encoded bytes from the client key file for TLS. |
+| `clientCertificateData` | Stringified PEM-encoded bytes from the client certificate file for TLS. |
 
-#### CloudEvent PipelineResource
+#### Variables for the `CloudEvent` type
 
 | Variable | Description |
 | -------- | ----------- |
-| `name` | The resource's name |
-| `type` | `"cloudEvent"` |
-| `target-uri` | The URI that will be hit with cloud event payloads. |
+| `name` | The name of the resource. |
+| `type` | Type value of `"cloudEvent"`. |
+| `target-uri` | The URI to hit with cloud event payloads. |
