@@ -872,6 +872,71 @@ log into the `Pod` and add a `Step` that pauses the `Task` at the desired stage.
 
 ```
 
+### Running Step Containers as a Non Root User
+
+All steps that do not require to be run as a root user should make use of TaskRun features to 
+designate the container for a step runs as a user without root permissions. As a best practice, 
+running containers as non root should be built into the container image to avoid any possibility 
+of the container being run as root. However, as a further measure of enforcing this practice, 
+steps can make use of a `securityContext` to specify how the container should run.
+
+An example of running Task steps as a non root user is shown below:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: show-non-root-steps
+spec:
+  steps:
+    # no securityContext specified so will use 
+    # securityContext from TaskRun podTemplate
+    - name: show-user-1001
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+    # securityContext specified so will run as  
+    # user 2000 instead of 1001
+    - name: show-user-2000
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+      securityContext:
+        runAsUser: 2000
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: show-non-root-steps-run-
+spec:
+  taskRef:
+    name: show-non-root-steps
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+```
+
+In the example above, the step `show-user-2000` specifies via a `securityContext` that the container 
+for the step should run as user 2000. A `securityContext` must still be specified via a TaskRun `podTemplate` 
+for this TaskRun to run in a Kubernetes environment that enforces running containers as non root as a requirement. 
+
+The `runAsNonRoot` property specified via the `podTemplate` above validates that steps part of this TaskRun are 
+running as non root users and will fail to start any step container that attempts to run as root. Only specifying 
+`runAsNonRoot: true` will not actually run containers as non root as the property simply validates that steps are not 
+running as root. It is the `runAsUser` property that is actually used to set the non root user ID for the container.
+
+If a step defines its own `securityContext`, it will be applied for the step container over the `securityContext` 
+specified at the pod level via the TaskRun `podTemplate`. 
+
+More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
+
+The example Task/TaskRun above can be found as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
+
 Except as otherwise noted, the contents of this page are licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/).
 Code samples are licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
