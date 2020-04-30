@@ -28,7 +28,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
-	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
+	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
 	go.opencensus.io v0.22.1
 	go.uber.org/atomic v1.5.1 // indirect

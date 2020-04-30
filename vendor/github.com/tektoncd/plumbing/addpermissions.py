@@ -15,6 +15,9 @@ to all GCP projects.
 
 This script requires the `gcloud` command line tool and the python
 `PyYaml` library.
+
+Example usage:
+  python3 addpermissions.py --users "andrea.frittoli@gmail.com, andrew.bayer@gmail.com, dlorenc@google.com, klewandowski@google.com, vdemeest@redhat.com, dibyajyoti@google.com, sbws@google.com"
 """
 import argparse
 import shlex
@@ -30,6 +33,7 @@ ROLES = (
   "roles/container.admin",
   "roles/iam.serviceAccountUser",
   "roles/storage.admin",
+  "roles/compute.storageAdmin",
   "roles/viewer",
 )
 KNOWN_PROJECTS = (
@@ -45,12 +49,13 @@ def gcloud_required() -> None:
     sys.exit(1)
 
 
-def add_to_all_projects(user: str, projects: List[str]) -> None:
-  for project in projects:
-    for role in ROLES:
-      subprocess.check_call(shlex.split(
-          "gcloud projects add-iam-policy-binding {} --member user:{} --role {}".format(project, user, role)
-      ))
+def add_to_all_projects(users: List[str], projects: List[str]) -> None:
+  for user in users:
+    for project in projects:
+      for role in ROLES:
+        subprocess.check_call(shlex.split(
+            "gcloud projects add-iam-policy-binding {} --member user:{} --role {}".format(project, user, role)
+        ))
 
 
 def parse_boskos_projects() -> List[str]:
@@ -64,12 +69,13 @@ def parse_boskos_projects() -> List[str]:
 if __name__ == '__main__':
   arg_parser = argparse.ArgumentParser(
       description="Give a user access to all plumbing resources")
-  arg_parser.add_argument("--user", type=str, required=True,
-                          help="The name of the user's account, usually their email address")
+  arg_parser.add_argument("--users", type=str, required=True,
+                          help="The names of the users' accounts, usually their email address, comma separated")
   args = arg_parser.parse_args()
 
   gcloud_required()
 
   boskos_projects = parse_boskos_projects()
-  add_to_all_projects(args.user, list(KNOWN_PROJECTS) + boskos_projects)
+
+  add_to_all_projects([u.strip() for u in args.users.split(",")], list(KNOWN_PROJECTS) + boskos_projects)
 
