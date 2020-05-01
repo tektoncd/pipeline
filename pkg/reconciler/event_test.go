@@ -17,6 +17,9 @@ limitations under the License.
 package reconciler
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,11 +31,10 @@ import (
 
 func TestEmitEvent(t *testing.T) {
 	testcases := []struct {
-		name          string
-		before        *apis.Condition
-		after         *apis.Condition
-		expectEvent   bool
-		expectedEvent string
+		name      string
+		before    *apis.Condition
+		after     *apis.Condition
+		wantEvent string
 	}{{
 		name: "unknown to true with message",
 		before: &apis.Condition{
@@ -44,8 +46,7 @@ func TestEmitEvent(t *testing.T) {
 			Status:  corev1.ConditionTrue,
 			Message: "all done",
 		},
-		expectEvent:   true,
-		expectedEvent: "Normal Succeeded all done",
+		wantEvent: "Normal Succeeded all done",
 	}, {
 		name: "true to true",
 		before: &apis.Condition{
@@ -58,8 +59,7 @@ func TestEmitEvent(t *testing.T) {
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now().Add(5 * time.Minute))},
 		},
-		expectEvent:   false,
-		expectedEvent: "",
+		wantEvent: "",
 	}, {
 		name: "false to false",
 		before: &apis.Condition{
@@ -70,8 +70,7 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 		},
-		expectEvent:   false,
-		expectedEvent: "",
+		wantEvent: "",
 	}, {
 		name: "unknown to unknown",
 		before: &apis.Condition{
@@ -86,8 +85,7 @@ func TestEmitEvent(t *testing.T) {
 			Reason:  "foo",
 			Message: "bar",
 		},
-		expectEvent:   true,
-		expectedEvent: "Normal foo bar",
+		wantEvent: "Normal foo bar",
 	}, {
 		name:  "true to nil",
 		after: nil,
@@ -95,8 +93,7 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		expectEvent:   false,
-		expectedEvent: "",
+		wantEvent: "",
 	}, {
 		name:   "nil to true",
 		before: nil,
@@ -104,8 +101,7 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		expectEvent:   true,
-		expectedEvent: "Normal Succeeded ",
+		wantEvent: "Normal Succeeded ",
 	}, {
 		name:   "nil to unknown with message",
 		before: nil,
@@ -114,8 +110,7 @@ func TestEmitEvent(t *testing.T) {
 			Status:  corev1.ConditionUnknown,
 			Message: "just starting",
 		},
-		expectEvent:   true,
-		expectedEvent: "Normal Started ",
+		wantEvent: "Normal Started ",
 	}, {
 		name: "unknown to false with message",
 		before: &apis.Condition{
@@ -127,8 +122,7 @@ func TestEmitEvent(t *testing.T) {
 			Status:  corev1.ConditionFalse,
 			Message: "really bad",
 		},
-		expectEvent:   true,
-		expectedEvent: "Warning Failed really bad",
+		wantEvent: "Warning Failed really bad",
 	}, {
 		name:   "nil to false",
 		before: nil,
@@ -136,34 +130,63 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 		},
-		expectEvent:   true,
-		expectedEvent: "Warning Failed ",
+		wantEvent: "Warning Failed ",
 	}}
 
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		EmitEvent(fr, ts.before, ts.after, tr)
-		timer := time.NewTimer(1 * time.Second)
 
-		select {
-		case event := <-fr.Events:
-			if event == "" {
-				// The fake recorder reported empty, it should not happen
-				t.Fatalf("Expected event but got empty for %s", ts.name)
-			}
-			if !ts.expectEvent {
-				// The fake recorder reported an event which we did not expect
-				t.Errorf("Unxpected event \"%s\" but got one for %s", event, ts.name)
-			}
-			if !(event == ts.expectedEvent) {
-				t.Errorf("Expected event \"%s\" but got \"%s\" instead for %s", ts.expectedEvent, event, ts.name)
-			}
-		case <-timer.C:
-			if ts.expectEvent {
-				// The fake recorder did not report, the timer timeout expired
-				t.Errorf("Expected event but got none for %s", ts.name)
-			}
+		err := checkEvents(t, fr, ts.name, ts.wantEvent)
+		if err != nil {
+			t.Errorf(err.Error())
 		}
 	}
+}
+
+func TestEmitErrorEvent(t *testing.T) {
+	testcases := []struct {
+		name      string
+		err       error
+		wantEvent string
+	}{{
+		name:      "with error",
+		err:       errors.New("something went wrong"),
+		wantEvent: "Warning Error something went wrong",
+	}, {
+		name:      "without error",
+		err:       nil,
+		wantEvent: "",
+	}}
+
+	for _, ts := range testcases {
+		fr := record.NewFakeRecorder(1)
+		tr := &corev1.Pod{}
+		EmitErrorEvent(fr, ts.err, tr)
+
+		err := checkEvents(t, fr, ts.name, ts.wantEvent)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	}
+}
+
+func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvent string) error {
+	t.Helper()
+	timer := time.NewTimer(1 * time.Second)
+	select {
+	case event := <-fr.Events:
+		if wantEvent == "" {
+			return fmt.Errorf("received event \"%s\" for %s but none expected", event, testName)
+		}
+		if !(strings.HasPrefix(event, wantEvent)) {
+			return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+		}
+	case <-timer.C:
+		if wantEvent != "" {
+			return fmt.Errorf("received no events for %s but %s expected", testName, wantEvent)
+		}
+	}
+	return nil
 }

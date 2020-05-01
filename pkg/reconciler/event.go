@@ -30,6 +30,8 @@ const (
 	EventReasonFailed = "Failed"
 	// EventReasonStarted is the reason set for events about the start of TaskRuns / PipelineRuns
 	EventReasonStarted = "Started"
+	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
+	EventReasonError = "Error"
 )
 
 // EmitEvent emits an event for object if afterCondition is different from beforeCondition
@@ -61,5 +63,12 @@ func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCon
 				c.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
 			}
 		}
+	}
+}
+
+// EmitErrorEvent emits a failure associated to an error
+func EmitErrorEvent(c record.EventRecorder, err error, object runtime.Object) {
+	if err != nil {
+		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
 }

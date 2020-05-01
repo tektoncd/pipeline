@@ -172,9 +172,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
 		err := c.failTaskRun(tr, v1beta1.TaskRunReasonCancelled, message)
-		after := tr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, before, after, tr)
-		return multierror.Append(err, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
+		return c.finishReconcileUpdateEmitEvents(tr, original, before, err)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
@@ -183,9 +181,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
 		err := c.failTaskRun(tr, podconvert.ReasonTimedOut, message)
-		after := tr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, before, after, tr)
-		return multierror.Append(err, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
+		return c.finishReconcileUpdateEmitEvents(tr, original, before, err)
 	}
 
 	// prepare fetches all required resources, validates them together with the
@@ -194,11 +190,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	taskSpec, rtr, err := c.prepare(ctx, tr)
 	if err != nil {
 		c.Logger.Errorf("TaskRun prepare error: %v", err.Error())
-		after := tr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, nil, after, tr)
 		// We only return an error if update failed, otherwise we don't want to
 		// reconcile an invalid TaskRun anymore
-		return c.updateStatusLabelsAndAnnotations(tr, original)
+		return c.finishReconcileUpdateEmitEvents(tr, original, nil, nil)
 	}
 
 	// Store the condition before reconcile
@@ -210,10 +204,15 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
 	}
 	// Emit events (only when ConditionSucceeded was changed)
-	after := tr.Status.GetCondition(apis.ConditionSucceeded)
-	reconciler.EmitEvent(c.Recorder, before, after, tr)
+	return c.finishReconcileUpdateEmitEvents(tr, original, before, err)
+}
 
-	return multierror.Append(err, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
+func (c *Reconciler) finishReconcileUpdateEmitEvents(tr, original *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
+	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	reconciler.EmitEvent(c.Recorder, beforeCondition, afterCondition, tr)
+	err := c.updateStatusLabelsAndAnnotations(tr, original)
+	reconciler.EmitErrorEvent(c.Recorder, err, tr)
+	return multierror.Append(previousError, err).ErrorOrNil()
 }
 
 func (c *Reconciler) getTaskResolver(tr *v1beta1.TaskRun) (*resources.LocalTaskRefResolver, v1beta1.TaskKind) {
