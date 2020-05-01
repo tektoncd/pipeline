@@ -20,6 +20,7 @@ package test
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -171,6 +172,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			wg.Wait()
 
 			matchKinds := map[string][]string{"PipelineRun": {"pear"}, "TaskRun": trName}
+			// Expected failure events: 1 for the pipelinerun cancel, 1 for each TaskRun
 			expectedNumberOfEvents := 1 + len(trName)
 			t.Logf("Making sure %d events were created from pipelinerun with kinds %v", expectedNumberOfEvents, matchKinds)
 			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Failed")
@@ -178,7 +180,14 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", expectedNumberOfEvents, len(events), events)
+				collectedEvents := ""
+				for i, event := range events {
+					collectedEvents += fmt.Sprintf("%#v", event)
+					if i < (len(events) - 1) {
+						collectedEvents += ", "
+					}
+				}
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", expectedNumberOfEvents, len(events), collectedEvents)
 			}
 		})
 	}
