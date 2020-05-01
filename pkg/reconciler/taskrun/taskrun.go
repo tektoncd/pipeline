@@ -110,7 +110,11 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetRunKey(), tr.CreationTimestamp, tr.Status.StartTime)
 			tr.Status.StartTime = &tr.CreationTimestamp
 		}
-		// Emit events
+		// Emit events. During the first reconcile the status of the TaskRun may change twice
+		// from not Started to Started and then to Running, so we need to sent the event here
+		// and at the end of 'Reconcile' again.
+		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
+		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		reconciler.EmitEvent(c.Recorder, nil, afterCondition, tr)
 	}

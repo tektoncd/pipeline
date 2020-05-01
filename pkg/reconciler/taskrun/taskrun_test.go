@@ -273,8 +273,11 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 }
 
 func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) error {
-	// We need a timer to handle the case in which we receive fewer events than
-	// we expect, so we only hit the timeout in case of failure of the test.
+	// The fake recorder runs in a go routine, so the timeout is here to avoid waiting
+	// on the channel forever if fewer than expected events are received.
+	// We only hit the timeout in case of failure of the test, so the actual value
+	// of the timeout is not so relevant, it's only used when tests are going to fail.
+	// on the channel forever if fewer than expected events are received
 	timer := time.NewTimer(1 * time.Second)
 	foundEvents := []string{}
 	for ii := 0; ii < len(wantEvents)+1; ii++ {
