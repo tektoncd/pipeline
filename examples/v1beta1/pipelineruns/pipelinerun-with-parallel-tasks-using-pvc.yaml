@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: writer
+  name: write-to-file
 spec:
   steps:
     - name: write
@@ -13,60 +13,51 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: read-both
+  name: read-two
 spec:
-  params:
-    - name: directory1
-      type: string
-    - name: directory2
-      type: string
   workspaces:
-    - name: local-ws
+    - name: ws-a
+    - name: ws-b
   steps:
     - name: read-1
       image: ubuntu
-      script: cat $(workspaces.local-ws.path)/$(params.directory1)/foo | grep bar
+      script: cat $(workspaces.ws-a.path)/foo | grep bar
     - name: read-2
       image: ubuntu
-      script: cat $(workspaces.local-ws.path)/$(params.directory2)/foo | grep bar
+      script: cat $(workspaces.ws-b.path)/foo | grep bar
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: pipeline-using-different-subpaths
+  name: pipeline-using-parallel-tasks
 spec:
   workspaces:
-    - name: ws
+    - name: ws-track-a
+    - name: ws-track-b
   tasks:
-    - name: writer-1
+    - name: parallel-writer-a
       taskRef:
-        name: writer
+        name: write-to-file
       workspaces:
         - name: task-ws
-          workspace: ws
-          subPath: dir-1
-    - name: writer-2
-      runAfter:
-        - writer-1
+          workspace: ws-track-a
+    - name: parallel-writer-b
       taskRef:
-        name: writer
+        name: write-to-file
       workspaces:
         - name: task-ws
-          workspace: ws
-          subPath: dir-2
+          workspace: ws-track-b
     - name: read-all
       runAfter:
-        - writer-2
-      params:
-        - name: directory1
-          value: dir-1
-        - name: directory2
-          value: dir-2
+        - parallel-writer-a
+        - parallel-writer-b
       taskRef:
-        name: read-both
+        name: read-two
       workspaces:
-        - name: local-ws
-          workspace: ws
+        - name: ws-a
+          workspace: ws-track-a
+        - name: ws-b
+          workspace: ws-track-b
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -74,9 +65,17 @@ metadata:
   generateName: pr-
 spec:
   pipelineRef:
-    name: pipeline-using-different-subpaths
+    name: pipeline-using-parallel-tasks
   workspaces:
-    - name: ws
+    - name: ws-track-a
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: ws-track-b
       volumeClaimTemplate:
         spec:
           accessModes:
