@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: ClusterTask
 metadata:
-  name: cluster-task-pipeline-4
+  name: cluster-task-pipeline-4-v1alpha1
 spec:
   steps:
   - name: task-two-step-one
@@ -17,7 +17,7 @@ spec:
   tasks:
   - name: cluster-task-pipeline-4
     taskRef:
-      name: cluster-task-pipeline-4
+      name: cluster-task-pipeline-4-v1alpha1
       kind: ClusterTask
 ---
 apiVersion: tekton.dev/v1alpha1

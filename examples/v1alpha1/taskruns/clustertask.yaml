@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: ClusterTask
 metadata:
-  name: clustertask
+  name: clustertask-v1alpha1
 spec:
   steps:
   - image: ubuntu
@@ -13,5 +13,5 @@ metadata:
   generateName: clustertask-
 spec:
   taskRef:
-    name: clustertask
+    name: clustertask-v1alpha1
     kind: ClusterTask

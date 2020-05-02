@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: ClusterTask
 metadata:
-  name: clustertask-with-optional-resources
+  name: clustertask-with-optional-resources-v1alpha1
 spec:
   inputs:
     resources:
@@ -31,5 +31,5 @@ metadata:
   name: clustertask-without-resources
 spec:
   taskRef:
-    name: clustertask-with-optional-resources
+    name: clustertask-with-optional-resources-v1alpha1
     kind: ClusterTask
