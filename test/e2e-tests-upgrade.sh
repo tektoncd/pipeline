@@ -51,15 +51,7 @@ failed=0
 go_test_e2e -timeout=20m ./test || failed=1
 
 # Run the post-integration tests.
-for test in taskrun pipelinerun; do
-  header "Running YAML e2e tests for ${test}s"
-  if ! run_yaml_tests ${test}; then
-    echo "ERROR: one or more YAML tests failed"
-    output_yaml_test_results ${test}
-    output_pods_logs ${test}
-    failed=1
-  fi
-done
+go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
 
 # Remove all the pipeline CRDs, and clean up the environment for next Scenario.
 uninstall_pipeline_crd
@@ -87,15 +79,7 @@ go_test_e2e -timeout=20m ./test || failed=1
 # Run the post-integration tests. We do not need to install the resources again, since
 # they are installed before the upgrade. We verify if they still work, after going through
 # the upgrade.
-for test in taskrun pipelinerun; do
-  header "Running YAML e2e tests for ${test}s"
-  if ! run_tests ${test}; then
-    echo "ERROR: one or more YAML tests failed"
-    output_yaml_test_results ${test}
-    output_pods_logs ${test}
-    failed=1
-  fi
-done
+go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
 
 (( failed )) && fail_test
 

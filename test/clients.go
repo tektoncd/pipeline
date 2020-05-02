@@ -54,6 +54,7 @@ type clients struct {
 	KubeClient *knativetest.KubeClient
 
 	PipelineClient         v1beta1.PipelineInterface
+	ClusterTaskClient      v1beta1.ClusterTaskInterface
 	TaskClient             v1beta1.TaskInterface
 	TaskRunClient          v1beta1.TaskRunInterface
 	PipelineRunClient      v1beta1.PipelineRunInterface
@@ -88,6 +89,7 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
 	c.PipelineClient = cs.TektonV1beta1().Pipelines(namespace)
+	c.ClusterTaskClient = cs.TektonV1beta1().ClusterTasks()
 	c.TaskClient = cs.TektonV1beta1().Tasks(namespace)
 	c.TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)

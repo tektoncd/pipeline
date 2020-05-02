@@ -1,4 +1,4 @@
-// +build e2e
+// +build e2e examples
 
 /*
 Copyright 2019 The Tekton Authors
