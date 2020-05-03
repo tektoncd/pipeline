@@ -42,8 +42,15 @@ func testGraph(t *testing.T) *dag.Graph {
 	}, {
 		Name: "b",
 	}, {
-		Name:     "w",
-		RunAfter: []string{"b", "y"},
+		Name: "w",
+		Params: []v1alpha1.Param{{
+			Name: "foo",
+			Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "$(tasks.y.results.bar)",
+			},
+		}},
+		RunAfter: []string{"b"},
 	}, {
 		Name:     "x",
 		RunAfter: []string{"a"},
@@ -654,6 +661,52 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{a, b, c, d, e, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE},
+		},
+	}
+	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))
+	if err != nil {
+		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
+	}
+	assertSameDAG(t, expectedDAG, g)
+}
+
+func TestBuild_ConditionsParamsFromTaskResults(t *testing.T) {
+	a := v1alpha1.PipelineTask{Name: "a"}
+	xDependsOnA := v1alpha1.PipelineTask{
+		Name: "x",
+		Conditions: []v1beta1.PipelineTaskCondition{{
+			ConditionRef: "cond",
+			Params: []v1alpha1.Param{
+				{
+					Name: "paramX",
+					Value: v1beta1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "$(tasks.a.results.resultA)",
+					},
+				},
+			},
+		},
+		},
+	}
+
+	//   a
+	//   |
+	//   x
+	nodeA := &dag.Node{Task: a}
+	nodeX := &dag.Node{Task: xDependsOnA}
+
+	nodeA.Next = []*dag.Node{nodeX}
+	nodeX.Prev = []*dag.Node{nodeA}
+	expectedDAG := &dag.Graph{
+		Nodes: map[string]*dag.Node{
+			"a": nodeA,
+			"x": nodeX,
+		},
+	}
+	p := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{a, xDependsOnA},
 		},
 	}
 	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))

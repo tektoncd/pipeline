@@ -31,12 +31,12 @@ func ExampleTask() {
 	// You can declare re-usable modifiers
 	myStep := tb.Step("myimage")
 	// … and use them in a Task definition
-	myTask := tb.Task("my-task", "namespace", tb.TaskSpec(
+	myTask := tb.Task("my-task", tb.TaskSpec(
 		tb.Step("myotherimage", tb.StepCommand("/mycmd")),
 		myStep,
 	))
 	// … and another one.
-	myOtherTask := tb.Task("my-other-task", "namespace",
+	myOtherTask := tb.Task("my-other-task",
 		tb.TaskSpec(myStep,
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
 		),
@@ -71,11 +71,11 @@ func ExampleClusterTask() {
 
 func ExampleTaskRun() {
 	// A simple definition, with a Task reference
-	myTaskRun := tb.TaskRun("my-taskrun", "namespace", tb.TaskRunSpec(
+	myTaskRun := tb.TaskRun("my-taskrun", tb.TaskRunSpec(
 		tb.TaskRunTaskRef("my-task"),
 	))
 	// … or a more complex one with inline TaskSpec
-	myTaskRunWithSpec := tb.TaskRun("my-taskrun-with-spec", "namespace", tb.TaskRunSpec(
+	myTaskRunWithSpec := tb.TaskRun("my-taskrun-with-spec", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
 			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("git-resource")),
@@ -106,7 +106,7 @@ func ExampleTaskRun() {
 }
 
 func ExamplePipeline() {
-	pipeline := tb.Pipeline("tomatoes", "namespace",
+	pipeline := tb.Pipeline("tomatoes",
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
 	expectedPipeline := &v1alpha1.Pipeline{
@@ -119,7 +119,7 @@ func ExamplePipeline() {
 }
 
 func ExamplePipelineRun() {
-	pipelineRun := tb.PipelineRun("pear", "namespace",
+	pipelineRun := tb.PipelineRun("pear",
 		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccountName("inexistent")),
 	)
 	expectedPipelineRun := &v1alpha1.PipelineRun{
@@ -132,10 +132,10 @@ func ExamplePipelineRun() {
 }
 
 func ExamplePipelineResource() {
-	gitResource := tb.PipelineResource("git-resource", "namespace", tb.PipelineResourceSpec(
+	gitResource := tb.PipelineResource("git-resource", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
-	imageResource := tb.PipelineResource("image-resource", "namespace", tb.PipelineResourceSpec(
+	imageResource := tb.PipelineResource("image-resource", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
 	))
 	expectedGitResource := v1alpha1.PipelineResource{

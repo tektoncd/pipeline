@@ -50,6 +50,10 @@ type Resource struct {
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
 	CAData []byte `json:"cadata"`
+	// ClientKeyData contains PEM-encoded data from a client key file for TLS.
+	ClientKeyData []byte `json:"clientKeyData"`
+	// ClientCertificateData contains PEM-encoded data from a client cert file for TLS.
+	ClientCertificateData []byte `json:"clientCertificateData"`
 	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []resource.SecretParam `json:"secrets"`
 
@@ -88,6 +92,16 @@ func NewResource(kubeconfigWriterImage string, r *resource.PipelineResource) (*R
 				sDec, _ := b64.StdEncoding.DecodeString(param.Value)
 				clusterResource.CAData = sDec
 			}
+		case strings.EqualFold(param.Name, "ClientKeyData"):
+			if param.Value != "" {
+				sDec, _ := b64.StdEncoding.DecodeString(param.Value)
+				clusterResource.ClientKeyData = sDec
+			}
+		case strings.EqualFold(param.Name, "ClientCertificateData"):
+			if param.Value != "" {
+				sDec, _ := b64.StdEncoding.DecodeString(param.Value)
+				clusterResource.ClientCertificateData = sDec
+			}
 		}
 	}
 	clusterResource.Secrets = r.Spec.SecretParams
@@ -123,16 +137,18 @@ func (s *Resource) GetURL() string {
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
-		"name":      s.Name,
-		"type":      s.Type,
-		"url":       s.URL,
-		"revision":  s.Revision,
-		"username":  s.Username,
-		"password":  s.Password,
-		"namespace": s.Namespace,
-		"token":     s.Token,
-		"insecure":  strconv.FormatBool(s.Insecure),
-		"cadata":    string(s.CAData),
+		"name":                  s.Name,
+		"type":                  s.Type,
+		"url":                   s.URL,
+		"revision":              s.Revision,
+		"username":              s.Username,
+		"password":              s.Password,
+		"namespace":             s.Namespace,
+		"token":                 s.Token,
+		"insecure":              strconv.FormatBool(s.Insecure),
+		"cadata":                string(s.CAData),
+		"clientKeyData":         string(s.ClientKeyData),
+		"clientCertificateData": string(s.ClientCertificateData),
 	}
 }
 

@@ -54,12 +54,19 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        # If you are changing these names, you will also need to update
+        # the webhook's Role in 200-role.yaml to include the new
+        # values in the "configmaps" "get" rule.
         - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
+        - name: CONFIG_LEADERELECTION_NAME
+          value: config-leader-election
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-pipelines-webhook
+        - name: WEBHOOK_SECRET_NAME
+          value: webhook-certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
         securityContext:

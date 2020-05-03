@@ -215,7 +215,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
 					Reason:  ReasonFailed,
-					Message: `"step-failure" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c step-failure`,
+					Message: `"step-failure" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c step-failure\n`,
 				}},
 			},
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
@@ -653,7 +653,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
 					Reason:  ReasonFailed,
-					Message: `"step-non-json" exited with code 1 (image: "image"); for logs run: kubectl -n foo logs pod -c step-non-json`,
+					Message: `"step-non-json" exited with code 1 (image: "image"); for logs run: kubectl -n foo logs pod -c step-non-json\n`,
 				}},
 			},
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{

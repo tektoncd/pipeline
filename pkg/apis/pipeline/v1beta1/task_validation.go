@@ -89,6 +89,20 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateResourcesVariables(ts.Steps, ts.Resources); err != nil {
 		return err
 	}
+
+	if err := ValidateResults(ts.Results); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateResults(results []TaskResult) *apis.FieldError {
+	for index, result := range results {
+		if !resultNameFormatRegex.MatchString(result.Name) {
+			return apis.ErrInvalidKeyName(result.Name, fmt.Sprintf("results[%d].name", index), fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
+		}
+	}
+
 	return nil
 }
 

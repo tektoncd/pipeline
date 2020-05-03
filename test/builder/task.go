@@ -94,11 +94,10 @@ var (
 
 // Task creates a Task with default values.
 // Any number of Task modifier can be passed to transform it.
-func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
+func Task(name string, ops ...TaskOp) *v1alpha1.Task {
 	t := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 		},
 	}
 
@@ -107,6 +106,16 @@ func Task(name, namespace string, ops ...TaskOp) *v1alpha1.Task {
 	}
 
 	return t
+}
+
+// TaskType sets the TypeMeta on the Task which is useful for making it serializable/deserializable.
+func TaskType() TaskOp {
+	return func(t *v1alpha1.Task) {
+		t.TypeMeta = metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "Task",
+		}
+	}
 }
 
 // ClusterTask creates a ClusterTask with default values.
@@ -123,6 +132,23 @@ func ClusterTask(name string, ops ...ClusterTaskOp) *v1alpha1.ClusterTask {
 	}
 
 	return t
+}
+
+// Useful when tests need to specify the namespace
+func TaskNamespace(namespace string) TaskOp {
+	return func(t *v1alpha1.Task) {
+		t.ObjectMeta.Namespace = namespace
+	}
+}
+
+// ClusterTaskType sets the TypeMeta on the ClusterTask which is useful for making it serializable/deserializable.
+func ClusterTaskType() ClusterTaskOp {
+	return func(t *v1alpha1.ClusterTask) {
+		t.TypeMeta = metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "ClusterTask",
+		}
+	}
 }
 
 // ClusterTaskSpec sets the specified spec of the cluster task.
@@ -389,10 +415,9 @@ func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) Inp
 
 // TaskRun creates a TaskRun with default values.
 // Any number of TaskRun modifier can be passed to transform it.
-func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
+func TaskRun(name string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   namespace,
 			Name:        name,
 			Annotations: map[string]string{},
 		},
@@ -403,6 +428,13 @@ func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	}
 
 	return tr
+}
+
+// Useful when tests need to specify the namespace
+func TaskRunNamespace(namespace string) TaskRunOp {
+	return func(t *v1alpha1.TaskRun) {
+		t.ObjectMeta.Namespace = namespace
+	}
 }
 
 // TaskRunStatus sets the TaskRunStatus to tshe TaskRun
@@ -889,6 +921,17 @@ func TaskRunWorkspacePVC(name, subPath, claimName string) TaskRunSpecOp {
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: claimName,
 			},
+		})
+	}
+}
+
+// TaskRunWorkspaceVolumeClaimTemplate adds a workspace binding with a VolumeClaimTemplate volume source.
+func TaskRunWorkspaceVolumeClaimTemplate(name, subPath string, volumeClaimTemplate *corev1.PersistentVolumeClaim) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:                name,
+			SubPath:             subPath,
+			VolumeClaimTemplate: volumeClaimTemplate,
 		})
 	}
 }

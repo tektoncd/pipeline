@@ -163,6 +163,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
 	}, {
+		name: "wrong taskrun cancel",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "taskrefname",
+			},
+			Status: "TaskRunCancell",
+		},
+		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled", "spec.status"),
+	}, {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{

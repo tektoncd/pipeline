@@ -54,7 +54,7 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	t.Logf("Creating cluster PipelineResource %s", resourceName)
-	if _, err := c.PipelineResourceClient.Create(getClusterResource(namespace, resourceName, secretName)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getClusterResource(resourceName, secretName)); err != nil {
 		t.Fatalf("Failed to create cluster Pipeline Resource `%s`: %s", resourceName, err)
 	}
 
@@ -74,8 +74,8 @@ func TestClusterResource(t *testing.T) {
 	}
 }
 
-func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(name, namespace, tb.PipelineResourceSpec(
+func getClusterResource(name, sname string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(name, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCluster,
 		tb.PipelineResourceSpecParam("Name", "helloworld-cluster"),
 		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),

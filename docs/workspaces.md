@@ -17,16 +17,18 @@ weight: 5
   - [Using `Workspaces` in `Pipelines`](#using-workspaces-in-pipelines)
     - [Specifying `Workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline)
     - [Specifying `Workspaces` in `PipelineRuns`](#specifying-workspaces-in-pipelineruns)
-    - [Example `PipelineRun` definitions using `Workspaces`](#example-pipelinerun-definitions-using-workspaces)
+    - [Example `PipelineRun` definition using `Workspaces`](#example-pipelinerun-definitions-using-workspaces)
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
+    - [Using `PersistentVolumeClaims` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource)
+    - [Using other types of `VolumeSources`](#using-other-types-of-volumesources)
 - [More examples](#more-examples)
 
 ## Overview
 
 `Workspaces` allow `Tasks` to declare parts of the filesystem that need to be provided
 at runtime by `TaskRuns`. A `TaskRun` can make these parts of the filesystem available
-in many ways: using a read-only `ConfigMap` or `Secret`, a `PersistentVolumeClaim`
-shared with other Tasks, or simply an `emptyDir` that is discarded when the `TaskRun`
+in many ways: using a read-only `ConfigMap` or `Secret`, an existing `PersistentVolumeClaim`
+shared with other Tasks, create a `PersistentVolumeClaim` from a provided `VolumeClaimTemplate`, or simply an `emptyDir` that is discarded when the `TaskRun`
 completes.
 
 `Workspaces` are similar to `Volumes` except that they allow a `Task` author 
@@ -118,6 +120,8 @@ The following variables make information about `Workspaces` available to `Tasks`
 
 - `$(workspaces.<name>.path)` - specifies the path to a `Workspace`
    where `<name>` is the name of the `Workspace`.
+- `$(workspaces.<name>.claim)` - specifies the name of the `PersistentVolumeClaim` used as a volume source for the `Workspace` 
+   where `<name>` is the name of the `Workspace`. If a volume source other than `PersistentVolumeClaim` is used, an empty string is returned.
 - `$(workspaces.<name>.volume)`- specifies the name of the `Volume`
    provided for a `Workspace` where `<name>` is the name of the `Workspace`.
 
@@ -141,6 +145,20 @@ The entry must also include one `VolumeSource`. See [Using `VolumeSources` with 
 
 The following examples illustrate how to specify `Workspaces` in your `TaskRun` definition.
 For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
+
+In the example below, a template is provided for how a `PersistentVolumeClaim` should be created for a Task's workspace named `myworkspace`. When using `volumeClaimTemplate` a new `PersistentVolumeClaim` is created for each `TaskRun` and it allows the user to specify e.g. size and StorageClass for the volume.
+
+```yaml
+workspaces:
+- name: myworkspace
+  volumeClaimTemplate:
+    spec:
+      accessModes: 
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+```
 
 In the example below, an existing `PersistentVolumeClaim` called `mypvc` is used for a Task's `workspace`
 called `myworkspace`. It exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`:
@@ -222,24 +240,36 @@ spec:
         - use-ws-from-pipeline # important: use-ws-from-pipeline writes to the workspace first
 ```
 
+Include a `subPath` in the workspace binding to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1beta1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
+
+The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a Workspace with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
+
 #### Specifying `Workspace` order in a `Pipeline`
 
 Sharing a `Workspace` between `Tasks` requires you to define the order in which those `Tasks`
 will be accessing that `Workspace` since different classes of storage have different limits
-for concurrent reads and writes. For example, a `PersistentVolumeClaim` might only allow a
-single `Task` writing to it at once.
+for concurrent reads and writes. For example, a `PersistentVolumeClaim` with
+[access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
+`ReadWriteOnce` only allow `Tasks` on the same node writing to it at once.
 
-**Warning:** You *must* ensure that this order is correct. Incorrectly ordering can result
-in a deadlock where multiple `Task` `Pods` are attempting to mount a `PersistentVolumeClaim`
-for writing at the same time, which would cause the `Tasks` to time out.
+Using parallel `Tasks` in a `Pipeline` will work with `PersistentVolumeClaims` configured with
+[access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
+`ReadWriteMany` or `ReadOnlyMany` but you must ensure that those are available for your storage class.
+When using `PersistentVolumeClaims` with access mode `ReadWriteOnce` for parallel `Tasks`, you can configure a
+workspace with it's own `PersistentVolumeClaim` for each parallel `Task`. See a full example of a 
+[Pipeline with parallel tasks using PersistentVolumeClaims](../examples/v1beta1/pipelineruns/pipelinerun-with-parallel-tasks-using-pvc.yaml).
 
-To define this order, use the `runAfter` field in your `Pipeline` definition. For more
+Use the `runAfter` field in your `Pipeline` definition to define when a `Task` should be executed. For more
 information, see the [`runAfter` documentation](pipelines.md#runAfter).
+
+**Warning:** You *must* ensure that this order is compatible with the configured access modes for your `PersistentVolumeClaim`.
+Parallel `Tasks` using the same `PersistentVolumeClaim` with access mode `ReadWriteOnce`, may execute on
+different nodes and be forced to execute sequentially which may cause `Tasks` to time out.
 
 #### Specifying `Workspaces` in `PipelineRuns`
 
 For a `PipelineRun` to execute a `Pipeline` that includes one or more `Workspaces`, it needs to
-bind the `Workspace` names to physical volumes using its own `workspaces` field. Each entry in
+bind the `Workspace` names to volumes using its own `workspaces` field. Each entry in
 this list must correspond to a `Workspace` declaration in the `Pipeline`. Each entry in the
 `workspaces` list must specify the following:
 
@@ -251,13 +281,68 @@ The entry must also include one `VolumeSource`. See [Using `VolumeSources` with 
 
 **Note:** If the `Workspaces` specified by a `Pipeline` are not provided at runtime by a `PipelineRun`, that `PipelineRun` will fail.
 
-#### Example `PipelineRun` definitions using `Workspaces`
+#### Example `PipelineRun` definition using `Workspaces`
 
-The examples below illustrate how to specify `Workspaces` in your `PipelineRuns`. For a more in-depth example, see the
-[`Workspaces` in `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) YAML sample.
+In the example below, a `volumeClaimTemplate` is provided for how a `PersistentVolumeClaim` should be created for a workspace named
+`myworkspace` declared in a `Pipeline`. When using `volumeClaimTemplate` a new `PersistentVolumeClaim` is created for 
+each `PipelineRun` and it allows the user to specify e.g. size and StorageClass for the volume.
 
-In the example below, an existing `PersistentVolumeClaim` named `mypvc` is used for a `Workspace`
-named `myworkspace` declared in a `Pipeline`. It exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`: 
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-
+spec:
+  pipelineRef:
+    name: example-pipeline
+  workspaces:
+    - name: myworkspace # this workspace name must be declared in the Pipeline
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi
+```
+
+For examples of using other types of volume sources, see [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces).
+For a more in-depth example, see the [`Workspaces` in `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) YAML sample.
+
+### Specifying `VolumeSources` in `Workspaces`
+
+You can only use a single type of `VolumeSource` per `Workspace` entry. The configuration
+options differ for each type. `Workspaces` support the following fields:
+
+#### Using `PersistentVolumeClaims` as `VolumeSource`
+
+`PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
+Beware that the [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
+configured for the `PersinstentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
+[Specifying `workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline) for more information about this.
+There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
+
+##### `volumeClaimTemplate`
+
+The `volumeClaimTemplate` is a template of a [`PersistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim),
+created for each `PipelineRun` or `TaskRun`. When the volume is created from a template in a `PipelineRun` or `TaskRun` 
+it will be deleted when the `PipelineRun` or `TaskRun` is deleted.
+
+```yaml
+workspaces:
+- name: myworkspace
+  volumeClaimTemplate:
+    spec:
+      accessModes: 
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+##### `persistentVolumeClaim`
+
+The `persistentVolumeClaim` field references an *existing* [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim). The example exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`
 
 ```yaml
 workspaces:
@@ -267,43 +352,21 @@ workspaces:
   subPath: my-subdir
 ```
 
-In the example below, a `ConfigMap` named `my-configmap` is used for a  `Workspace`
-named `myworkspace` declared in a `Pipeline`:
+#### Using other types of `VolumeSources`
 
-```yaml
-workspaces:
-- name: myworkspace
-  configmap:
-    name: my-configmap
-```
-
-In the example below, a `Secret` named `my-secret` is used for a `Workspace`
-named `myworkspace` declared in a `Pipeline`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  secret:
-    secretName: my-secret
-```
-
-### Specifying `VolumeSources` in `Workspaces`
-
-You can only use a single type of `VolumeSource` per `Workspace` entry. The configuration
-options differ for each type. `Workspaces` support the following fields:
-
-#### `emptyDir`
+##### `emptyDir`
 
 The `emptyDir` field references an [`emptyDir` volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) which holds
 a temporary directory that only lives as long as the `TaskRun` that invokes it. `emptyDir` volumes are **not** suitable for sharing data among `Tasks` within a `Pipeline`.
 However, they work well for single `TaskRuns` where the data stored in the `emptyDir` needs to be shared among the `Steps` of the `Task` and discarded after execution.
 
-#### `persistentVolumeClaim`
+```yaml
+workspaces:
+- name: myworkspace
+  emptyDir: {}
+```
 
-The `persistentVolumeClaim` field references a [`persistentVolumeClaim` volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim).
-`PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
-
-#### `configMap`
+##### `configMap`
 
 The `configMap` field references a [`configMap` volume](https://kubernetes.io/docs/concepts/storage/volumes/#configmap).
 Using a `configMap` as a `Workspace` has the following limitations:
@@ -312,7 +375,14 @@ Using a `configMap` as a `Workspace` has the following limitations:
 - The `configMap` you want to use as a `Workspace` must exist prior to submitting the `TaskRun`.
 - `configMaps` are [size-limited to 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L5042).
 
-#### `secret`
+```yaml
+workspaces:
+- name: myworkspace
+  configmap:
+    name: my-configmap
+```
+
+##### `secret`
 
 The `secret` field references a [`secret` volume](https://kubernetes.io/docs/concepts/storage/volumes/#secret).
 Using a `secret` volume has the following limitations:
@@ -320,6 +390,13 @@ Using a `secret` volume has the following limitations:
 - `secret` volume sources are always mounted as read-only. `Steps` cannot write to them and will error out if they try.
 - The `secret` you want to use as a `Workspace` must exist prior to submitting the `TaskRun`.
 - `secret` are [size-limited to 1MB](https://github.com/kubernetes/kubernetes/blob/f16bfb069a22241a5501f6fe530f5d4e2a82cf0e/pkg/apis/core/validation/validation.go#L5042).
+
+```yaml
+workspaces:
+- name: myworkspace
+  secret:
+    secretName: my-secret
+```
 
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
 a [pull request](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
@@ -330,3 +407,4 @@ See the following in-depth examples of configuring `Workspaces`:
 
 - [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml)
 - [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml)
+- [`Workspaces` from a volumeClaimTemplate in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspace-from-volumeclaimtemplate.yaml)

@@ -106,7 +106,7 @@ func GetLeaderElectionConfig(ctx context.Context) (*kle.Config, error) {
 	leaderElectionConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(kle.ConfigMapName(), metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return kle.NewConfigFromMap(nil)
+			return kle.NewConfigFromConfigMap(nil)
 		}
 
 		return nil, err
@@ -363,26 +363,10 @@ func WatchObservabilityConfigOrDie(ctx context.Context, cmw *configmap.InformedW
 	if _, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(metrics.ConfigMapName(),
 		metav1.GetOptions{}); err == nil {
 		cmw.Watch(metrics.ConfigMapName(),
-			metrics.ConfigMapWatcher(component, SecretFetcher(ctx), logger),
+			metrics.UpdateExporterFromConfigMap(component, logger),
 			profilingHandler.UpdateFromConfigMap)
 	} else if !apierrors.IsNotFound(err) {
 		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", metrics.ConfigMapName())
-	}
-}
-
-// SecretFetcher provides a helper function to fetch individual Kubernetes
-// Secrets (for example, a key for client-side TLS). Note that this is not
-// intended for high-volume usage; the current use is when establishing a
-// metrics client connection in WatchObservabilityConfigOrDie.
-func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
-	// NOTE: Do not use secrets.Get(ctx) here to get a SecretLister, as it will register
-	// a *global* SecretInformer and require cluster-level `secrets.list` permission,
-	// even if you scope down the Lister to a given namespace after requesting it. Instead,
-	// we package up a function from kubeclient.
-	// TODO(evankanderson): If this direct request to the apiserver on each TLS connection
-	// to the opencensus agent is too much load, switch to a cached Secret.
-	return func(name string) (*corev1.Secret, error) {
-		return kubeclient.Get(ctx).CoreV1().Secrets(system.Namespace()).Get(name, metav1.GetOptions{})
 	}
 }
 

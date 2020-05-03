@@ -256,11 +256,11 @@ import tb "github.com/tektoncd/pipeline/test/builder"
 
 func MyTest(t *testing.T){
     // Pipeline
-    pipeline := tb.Pipeline("tomatoes", "namespace",
+    pipeline := tb.Pipeline("tomatoes",
         tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
     )
     // … and PipelineRun
-    pipelineRun := tb.PipelineRun("pear", "namespace",
+    pipelineRun := tb.PipelineRun("pear",
         tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
     )
     // And do something with them

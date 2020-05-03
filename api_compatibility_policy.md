@@ -5,53 +5,57 @@ repo. Users should be able to build on the APIs in these projects with a clear
 idea of what they can rely on and what should be considered in progress and
 therefore likely to change.
 
-For these purposes the CRDs are divided into two groups:
-
-- [`TaskRun`, `Task`, and `ClusterTask`] - "more stable"
-- [`PipelineRun`, `Pipeline` and `PipelineResource`] - "less stable"
-
 The use of `alpha`, `beta` and `GA` in this document is meant to correspond
 roughly to
 [the kubernetes API deprecation policies](https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-a-flag-or-cli).
 
-## What does compatibility mean here
-
-This policy is about changes to the APIs of the
-[CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/),
-aka the spec of the CRD objects themselves.
-
-A backwards incompatible change would be a change that requires a user to update
-existing instances of these CRDs in clusters where they are deployed (after
-[automatic conversion is available](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definition-versioning/#webhook-conversion)
-this process may become less painful).
-
-The current process would look something like:
-
-1. Backup the instances
-1. Delete the instances
-1. Deploy the new type definitions
-1. Update the backups with the new spec
-1. Deploy the updated backups
-
-TODO(bobcatfish): This policy really _should_ include the entire API.
+## What is the API?
 
 The API is considered to consist of:
 
-- The spec if the CRDs
+- The structure of the CRDs including the `spec` and `status` sections, as well as:
+  - The ordering of the `steps` within the `status`
+  - The naming of the `step` containers within the `status`
+  - The labels propagated from `PipelineRuns` to `TaskRuns` and `TaskRuns` to `Pods`.
+- The structure of the [directories created in executing containers by Tekton](docs/tasks.md#reserved-directories)
 - The order that `PipelineResources` declared within a `Task` are applied in
+- The interfaces of the images that are built as part of Tekton Pipelines,
+  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/master/cmd) which are used as part of
+  [PipelineResources](docs/resources.md)
 
-### Getting to beta
+This policy is about changes to any of the above facets of the API.
 
-[This document](https://docs.google.com/document/d/1H8I2Rk4kLdQaR4mV0A71Qbk-1FxXFrmvisEAjLKT6H0/edit#)
-(visible to members of [the mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list))
-describes our plan to get to beta.
+A backwards incompatible change would be a change that requires a user to update
+existing instances of these CRDs in clusters where they are deployed and/or cause them
+to change their CRD definitions to account for changes in the above.
 
-#### Backwards compatible changes first
+## Alpha, Beta and GA
 
-At this point, any backwards incompatible changes must
-be introduced in a backwards compatible manner first, with a deprecation warning
-in the release notes, for at least one full release before the backward
-incompatible change is made.
+Some of our CRDs and features are considered alpha, some are beta, and we are working
+toward GA.
+
+The following CRDs are considered beta, though features may be introduced that are
+alpha:
+
+* `Task`
+* `TaskRun`
+* `ClusterTask`
+* `Pipeline`
+* `PipelineRun`
+
+We are following [the Kubernetes definitions of these stages](https://kubernetes.io/docs/reference/using-api/api-overview/#api-versioning)
+and we are following [the Kubernetes deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/).
+
+* Alpha:
+  * These features may be dropped at any time, though you will be given at least
+    one release worth of warning.
+* Beta:
+  * These features will not be dropped, though the details may change.
+  * Any [backwards incompatible changes](#backwards-incompatible-changes) must be
+    introduced in a backwards compatible manner first, with a deprecation warning
+    in the release notes and migration instructions.
+  * You will be given at least 9 months to migrate before a backward incompatible
+    change is made.
 
 ## Approving API changes
 
@@ -72,6 +76,5 @@ Backwards incompatible changes change the API, e.g. by removing fields from a CR
 spec. These changes will mean that folks using a previous version of the API will need
 to adjust their usage in order to use the new version.
 
-These changes must be made [in a backwards compatible manner first](#backwards-compatible-changes-first),
-and the changes must be approved by [more than half of the project OWNERS](OWNERS)
+These changes must be approved by [more than half of the project OWNERS](OWNERS)
 (i.e. 50% + 1).

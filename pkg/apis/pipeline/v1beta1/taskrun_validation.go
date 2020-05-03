@@ -72,6 +72,12 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if ts.Status != "" {
+		if ts.Status != TaskRunSpecStatusCancelled {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ts.Status, TaskRunSpecStatusCancelled), "spec.status")
+		}
+	}
+
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {

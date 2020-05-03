@@ -30,7 +30,7 @@ var (
 )
 
 const (
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	// PipelineResourceTypeGit indicates that this source is a Git repo.
 	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit
 
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.

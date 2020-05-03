@@ -64,7 +64,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			defer tearDown(t, c, namespace)
 
 			t.Logf("Creating Task in namespace %s", namespace)
-			task := tb.Task("banana", namespace, tb.TaskSpec(
+			task := tb.Task("banana", tb.TaskSpec(
 				tb.Step("ubuntu", tb.StepCommand("/bin/bash"), tb.StepArgs("-c", "sleep 5000")),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -72,14 +72,14 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 
 			t.Logf("Creating Pipeline in namespace %s", namespace)
-			pipeline := tb.Pipeline("tomatoes", namespace,
+			pipeline := tb.Pipeline("tomatoes",
 				tb.PipelineSpec(pipelineTask),
 			)
 			if _, err := c.PipelineClient.Create(pipeline); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 			}
 
-			pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
+			pipelineRun := tb.PipelineRun("pear", tb.PipelineRunSpec(pipeline.Name))
 
 			t.Logf("Creating PipelineRun in namespace %s", namespace)
 			if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {

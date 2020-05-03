@@ -18,6 +18,7 @@ package pod
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -730,6 +731,54 @@ script-heredoc-randomly-generated-78c5n
 				TerminationMessagePath: "/tekton/termination",
 			}},
 		},
+	}, {
+		desc: "using hostNetwork",
+		ts: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "use-my-hostNetwork",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
+						},
+					},
+				},
+			},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			PodTemplate: &v1alpha1.PodTemplate{
+				HostNetwork: true,
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			HostNetwork:    true,
+			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
+			Containers: []corev1.Container{{
+				Name:    "step-use-my-hostNetwork",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -813,14 +862,14 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data:       map[string]string{},
 		},
 		expected: true,
 	}, {
 		description: "Setting disable-home-env-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableHomeEnvKey: "false",
 			},
@@ -829,7 +878,7 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 	}, {
 		description: "Setting disable-home-env-overwrite to true should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableHomeEnvKey: "true",
 			},
@@ -847,6 +896,37 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 	}
 }
 
+func TestGetFeatureFlagsConfigName(t *testing.T) {
+	for _, tc := range []struct {
+		description         string
+		featureFlagEnvValue string
+		expected            string
+	}{{
+		description:         "Feature flags config value not set",
+		featureFlagEnvValue: "",
+		expected:            "feature-flags",
+	}, {
+		description:         "Feature flags config value set",
+		featureFlagEnvValue: "feature-flags-test",
+		expected:            "feature-flags-test",
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			original := os.Getenv("CONFIG_FEATURE_FLAGS_NAME")
+			defer t.Cleanup(func() {
+				os.Setenv("CONFIG_FEATURE_FLAGS_NAME", original)
+			})
+			if tc.featureFlagEnvValue != "" {
+				os.Setenv("CONFIG_FEATURE_FLAGS_NAME", tc.featureFlagEnvValue)
+			}
+			got := GetFeatureFlagsConfigName()
+			want := tc.expected
+			if got != want {
+				t.Errorf("GetFeatureFlagsConfigName() = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
 func TestShouldOverrideWorkingDir(t *testing.T) {
 	for _, tc := range []struct {
 		description string
@@ -855,14 +935,14 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data:       map[string]string{},
 		},
 		expected: true,
 	}, {
 		description: "Setting disable-working-directory-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableWorkingDirKey: "false",
 			},
@@ -871,7 +951,7 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 	}, {
 		description: "Setting disable-working-directory-overwrite to true should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableWorkingDirKey: "true",
 			},

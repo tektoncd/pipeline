@@ -58,12 +58,12 @@ func TestKanikoTaskRun(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitResource(namespace)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getGitResource()); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", repo)
-	if _, err := c.PipelineResourceClient.Create(getImageResource(namespace, repo)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getImageResource(repo)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
@@ -122,16 +122,16 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 }
 
-func getGitResource(namespace string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
+func getGitResource() *v1alpha1.PipelineResource {
+	return tb.PipelineResource(kanikoGitResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
 		tb.PipelineResourceSpecParam("Revision", revision),
 	))
 }
 
-func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoImageResourceName, namespace, tb.PipelineResourceSpec(
+func getImageResource(repo string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(kanikoImageResourceName, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage,
 		tb.PipelineResourceSpecParam("url", repo),
 	))

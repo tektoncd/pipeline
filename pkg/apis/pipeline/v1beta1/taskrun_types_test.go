@@ -151,6 +151,25 @@ func TestTaskRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestTaskRunHasVolumeClaimTemplate(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name: "my-workspace",
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc",
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{},
+				},
+			}},
+		},
+	}
+	if !tr.HasVolumeClaimTemplate() {
+		t.Fatal("Expected taskrun to have a volumeClaimTemplate workspace")
+	}
+}
+
 func TestTaskRunKey(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -239,6 +258,83 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 
 			if pipelineRun != test.expetectedPipelineRun {
 				t.Fatalf("Mismatch in pipelinerun: got %s expected %s", pipelineRun, test.expetectedPipelineRun)
+			}
+		})
+	}
+}
+
+func TestHasTimedOut(t *testing.T) {
+	// IsZero reports whether t represents the zero time instant, January 1, year 1, 00:00:00 UTC
+	zeroTime := time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+	testCases := []struct {
+		name           string
+		taskRun        *v1beta1.TaskRun
+		expectedStatus bool
+	}{{
+		name: "TaskRun not started",
+		taskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: zeroTime},
+				},
+			},
+		},
+		expectedStatus: false,
+	}, {
+		name: "TaskRun no timeout",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 0 * time.Minute,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Hour)},
+				},
+			},
+		},
+		expectedStatus: false,
+	}, {
+		name: "TaskRun timed out",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 10 * time.Second,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Second)},
+				},
+			},
+		},
+		expectedStatus: true,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.taskRun.HasTimedOut()
+			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
+				t.Fatalf("-want, +got: %v", d)
 			}
 		})
 	}

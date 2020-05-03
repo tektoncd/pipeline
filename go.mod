@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
-	cloud.google.com/go/storage v1.0.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.8 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go/v2 v2.0.0-preview8
@@ -29,7 +28,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
-	github.com/tektoncd/plumbing v0.0.0-20200217163359-cd0db6e567d2
+	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
 	go.opencensus.io v0.22.1
 	go.uber.org/atomic v1.5.1 // indirect
@@ -40,8 +39,7 @@ require (
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200214144324-88be01311a71 // indirect
-	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
-	google.golang.org/api v0.15.0
+	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/appengine v1.6.5 // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apiextensions-apiserver v0.17.3 // indirect
@@ -51,14 +49,14 @@ require (
 	k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c // indirect
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
-	knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
+	knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56
 )
 
 // Knative deps (release-0.13)
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
 	knative.dev/caching => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20200227193851-2fe8db300072
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56
 	knative.dev/pkg/vendor/github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 )
 

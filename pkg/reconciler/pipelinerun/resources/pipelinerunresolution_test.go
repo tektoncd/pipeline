@@ -38,10 +38,6 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-const (
-	namespace = "foo"
-)
-
 var pts = []v1alpha1.PipelineTask{{
 	Name:    "mytask1",
 	TaskRef: &v1alpha1.TaskRef{Name: "task"},
@@ -1086,7 +1082,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := tb.PipelineRun("somepipelinerun", "foo")
+			pr := tb.PipelineRun("somepipelinerun")
 			dag, err := DagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
@@ -1100,7 +1096,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings(t *testing.T) {
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingResourceSpec(
 			&v1alpha1.PipelineResourceSpec{
@@ -1112,7 +1108,7 @@ func TestGetResourcesFromBindings(t *testing.T) {
 			}),
 		),
 	))
-	r := tb.PipelineResource("sweet-resource", "namespace")
+	r := tb.PipelineResource("sweet-resource")
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
 		if name != "sweet-resource" {
 			return nil, fmt.Errorf("request for unexpected resource %s", name)
@@ -1147,7 +1143,7 @@ func TestGetResourcesFromBindings_Missing(t *testing.T) {
 	//	tb.PipelineDeclaredResource("git-resource", "git"),
 	//	tb.PipelineDeclaredResource("image-resource", "image"),
 	//))
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
@@ -1160,7 +1156,7 @@ func TestGetResourcesFromBindings_Missing(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
@@ -1175,7 +1171,7 @@ func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
 func TestResolvePipelineRun(t *testing.T) {
 	names.TestingSeed()
 
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 		tb.PipelineTask("mytask1", "task",
 			tb.PipelineTaskInputResource("input1", "git-resource"),
@@ -1358,14 +1354,14 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 		p    *v1alpha1.Pipeline
 	}{{
 		name: "input doesnt exist",
-		p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		p: tb.Pipeline("pipelines", tb.PipelineSpec(
 			tb.PipelineTask("mytask1", "task",
 				tb.PipelineTaskInputResource("input1", "git-resource"),
 			),
 		)),
 	}, {
 		name: "output doesnt exist",
-		p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		p: tb.Pipeline("pipelines", tb.PipelineSpec(
 			tb.PipelineTask("mytask1", "task",
 				tb.PipelineTaskOutputResource("input1", "git-resource"),
 			),
@@ -1398,7 +1394,7 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	names.TestingSeed()
 
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 		tb.PipelineTask("mytask-with-a-really-long-name-to-trigger-truncation", "task",
 			tb.PipelineTaskInputResource("input1", "git-resource"),
@@ -1462,7 +1458,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 
 func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	names.TestingSeed()
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 		tb.PipelineTask("mytask1", "task",
 			tb.PipelineTaskInputResource("required-input", "git-resource"),
@@ -1820,11 +1816,11 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 func TestResolvedConditionCheck_WithResources(t *testing.T) {
 	names.TestingSeed()
 
-	condition := tb.Condition("always-true", "foo", tb.ConditionSpec(
+	condition := tb.Condition("always-true", tb.ConditionSpec(
 		tb.ConditionResource("workspace", v1alpha1.PipelineResourceTypeGit),
 	))
 
-	gitResource := tb.PipelineResource("some-repo", "foo", tb.PipelineResourceSpec(
+	gitResource := tb.PipelineResource("some-repo", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit))
 
 	ptc := v1alpha1.PipelineTaskCondition{
@@ -1901,10 +1897,10 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 }
 
 func TestValidateResourceBindings(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 	))
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	err := ValidateResourceBindings(&p.Spec, pr)
@@ -1914,11 +1910,11 @@ func TestValidateResourceBindings(t *testing.T) {
 }
 
 func TestValidateResourceBindings_Missing(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 		tb.PipelineDeclaredResource("image-resource", "image"),
 	))
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	err := ValidateResourceBindings(&p.Spec, pr)
@@ -1928,10 +1924,10 @@ func TestValidateResourceBindings_Missing(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings_Extra(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 	))
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingRef("sweet-resource2")),
 	))
@@ -1942,13 +1938,25 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 }
 
 func TestValidateWorkspaceBindings(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
 		tb.PipelineWorkspaceDeclaration("foo"),
 	))
-	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunWorkspaceBindingEmptyDir("bar"),
 	))
 	if err := ValidateWorkspaceBindings(&p.Spec, pr); err == nil {
 		t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
+	}
+}
+
+func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
+	if !noneStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be before first taskrun")
+	}
+}
+
+func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
+	if oneStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be after first taskrun")
 	}
 }

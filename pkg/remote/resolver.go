@@ -1,12 +1,9 @@
 /*
 Copyright 2019 The Tekton Authors
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,22 +14,20 @@ limitations under the License.
 package remote
 
 import (
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Resolver will retrieve Tekton resources like Tasks from remote repositories like an OCI image repositories.
-type Resolver interface {
-	GetTask(taskName string) (*v1beta1.TaskSpec, error)
+// ResolvedObject is returned by Resolver.List representing a Tekton resource stored in a remote location.
+type ResolvedObject struct {
+	Kind       string
+	APIVersion string
+	Name       string
 }
 
-// TODO: Right now, there is only one resolver type. When more are added, this will need to be updated.
-func NewResolver(imageReference string, serviceAccountName string) Resolver {
-	return OCIResolver{
-		imageReference: imageReference,
-		keychainProvider: func() (authn.Keychain, error) {
-			return k8schain.NewInCluster(k8schain.Options{ServiceAccountName: serviceAccountName})
-		},
-	}
+// Resolver defines a generic API to retrieve Tekton resources from remote locations. It allows 2 principle operations:
+//   - List:     retrieve a flat set of Tekton objects in this remote location
+//   - Get:      retrieves a specific object with the given Kind and name.
+type Resolver interface {
+	List() ([]ResolvedObject, error)
+	Get(kind, name string) (runtime.Object, error)
 }

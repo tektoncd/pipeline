@@ -193,6 +193,14 @@ func setUp() {
 				Name: "CAdata",
 				// echo "my-ca-cert" | base64
 				Value: "bXktY2EtY2VydAo=",
+			}, {
+				Name: "clientKeyData",
+				// echo "my-ca-cert" | base64
+				Value: "Y2xpZW50LWtleS1kYXRh",
+			}, {
+				Name: "clientCertificateData",
+				// echo "my-ca-cert" | base64
+				Value: "Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=",
 			}},
 		},
 	}, {
@@ -275,7 +283,7 @@ func setUp() {
 	}
 }
 
-func TestAddResourceToTask(t *testing.T) {
+func TestAddInputResourceToTask(t *testing.T) {
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
@@ -834,7 +842,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 					Image:   "override-with-kubeconfig-writer:latest",
 					Command: []string{"/ko-app/kubeconfigwriter"},
 					Args: []string{
-						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
+						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
 					},
 				}}},
 				Resources: &v1beta1.TaskResources{
@@ -884,7 +892,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 					Image:   "override-with-kubeconfig-writer:latest",
 					Command: []string{"/ko-app/kubeconfigwriter"},
 					Args: []string{
-						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
+						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 					},
 					Env: []corev1.EnvVar{{
 						ValueFrom: &corev1.EnvVarSource{

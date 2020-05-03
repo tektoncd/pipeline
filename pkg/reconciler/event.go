@@ -17,20 +17,49 @@ package reconciler
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 )
 
-// EmitEvent emits success or failed event for object
-// if afterCondition is different from beforeCondition
+const (
+	// EventReasonSucceded is the reason set for events about successful completion of TaskRuns / PipelineRuns
+	EventReasonSucceded = "Succeeded"
+	// EventReasonFailed is the reason set for events about unsuccessful completion of TaskRuns / PipelineRuns
+	EventReasonFailed = "Failed"
+	// EventReasonStarted is the reason set for events about the start of TaskRuns / PipelineRuns
+	EventReasonStarted = "Started"
+)
+
+// EmitEvent emits an event for object if afterCondition is different from beforeCondition
+//
+// Status "ConditionUnknown":
+//   beforeCondition == nil, emit EventReasonStarted
+//   beforeCondition != nil, emit afterCondition.Reason
+//
+//  Status "ConditionTrue": emit EventReasonSucceded
+//  Status "ConditionFalse": emit EventReasonFailed
+//
 func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
-	if beforeCondition != afterCondition && afterCondition != nil {
-		// Create events when the obj result is in.
-		if afterCondition.Status == corev1.ConditionTrue {
-			c.Event(object, corev1.EventTypeNormal, "Succeeded", afterCondition.Message)
-		} else if afterCondition.Status == corev1.ConditionFalse {
-			c.Event(object, corev1.EventTypeWarning, "Failed", afterCondition.Message)
+	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
+		// If the condition changed, and the target condition is not empty, we send an event
+		switch afterCondition.Status {
+		case corev1.ConditionTrue:
+			c.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
+		case corev1.ConditionFalse:
+			c.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
+		case corev1.ConditionUnknown:
+			if beforeCondition == nil {
+				// If the condition changed, the status is "unknown", and there was no condition before,
+				// we emit the "Started event". We ignore further updates of the "unknown" status.
+				c.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
+			} else {
+				// If the condition changed, the status is "unknown", and there was a condition before,
+				// we emit an event that matches the reason and message of the condition.
+				// This is used for instance to signal the transition from "started" to "running"
+				c.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
+			}
 		}
 	}
 }

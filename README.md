@@ -30,7 +30,7 @@ Tekton Pipelines are **Typed**:
 - Jump in with [the tutorial!](docs/tutorial.md)
 - Take a look at our [roadmap](roadmap.md)
 
-*Note that starting from the 0.11 release of Tetkon, you need to have
+*Note that starting from the 0.11 release of Tekton, you need to have
 a cluster with **Kubernetes version 1.15 or later***.
 
 ### Read the docs
@@ -38,6 +38,9 @@ a cluster with **Kubernetes version 1.15 or later***.
 | Version | Docs | Examples |
 | ------- | ---- | -------- |
 | [HEAD](DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](/docs/README.md) | [Examples @ HEAD](/examples) |
+| [v0.12.0](https://github.com/tektoncd/pipeline/releases/tag/v0.12.0) | [Docs @ v0.12.0](https://github.com/tektoncd/pipeline/tree/v0.12.0/docs#tekton-pipelines) | [Examples @ v0.12.0](https://github.com/tektoncd/pipeline/tree/v0.12.0/examples#examples) |
+| [v0.11.3](https://github.com/tektoncd/pipeline/releases/tag/v0.11.3) | [Docs @ v0.11.3](https://github.com/tektoncd/pipeline/tree/v0.11.3/docs#tekton-pipelines) | [Examples @ v0.11.3](https://github.com/tektoncd/pipeline/tree/v0.11.3/examples#examples) |
+| [v0.11.2](https://github.com/tektoncd/pipeline/releases/tag/v0.11.2) | [Docs @ v0.11.2](https://github.com/tektoncd/pipeline/tree/v0.11.2/docs#tekton-pipelines) | [Examples @ v0.11.2](https://github.com/tektoncd/pipeline/tree/v0.11.2/examples#examples) |
 | [v0.11.1](https://github.com/tektoncd/pipeline/releases/tag/v0.11.1) | [Docs @ v0.11.1](https://github.com/tektoncd/pipeline/tree/v0.11.1/docs#tekton-pipelines) | [Examples @ v0.11.1](https://github.com/tektoncd/pipeline/tree/v0.11.1/examples#examples) |
 | [v0.11.0](https://github.com/tektoncd/pipeline/releases/tag/v0.11.0) | [Docs @ v0.11.0](https://github.com/tektoncd/pipeline/tree/v0.11.0/docs#tekton-pipelines) | [Examples @ v0.11.0](https://github.com/tektoncd/pipeline/tree/v0.11.0/examples#examples) |
 | [v0.11.0-rc4](https://github.com/tektoncd/pipeline/releases/tag/v0.11.0-rc4) | [Docs @ v0.11.0-rc4](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc4/docs#tekton-pipelines) | [Examples @ v0.11.0-rc4](https://github.com/tektoncd/pipeline/tree/v0.11.0-rc4/examples#examples) |

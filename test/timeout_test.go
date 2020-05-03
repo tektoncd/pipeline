@@ -302,7 +302,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	t.Logf("Waiting for PipelineRun %s with PipelineTask timeout in namespace %s to fail", pipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason(resources.ReasonFailed, pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
-		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for TaskRun from PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)

@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 
@@ -265,6 +266,46 @@ func TestUpload_UpdateStatus(t *testing.T) {
 
 	if diff := cmp.Diff(r, got); diff != "" {
 		t.Errorf("-want +got: %s", diff)
+	}
+}
+
+func TestUpload_Invalid_Status(t *testing.T) {
+	ctx := context.Background()
+	h, _ := newHandler(t)
+
+	r := defaultResource()
+	r.Statuses = []*scm.Status{
+		{
+			Label:  "Tekton",
+			Desc:   "Status with empty State field",
+			Target: "https://tekton.dev",
+		},
+		{
+			State:  scm.StateSuccess,
+			Desc:   "Status without label",
+			Target: "https://tekton.dev",
+		},
+	}
+
+	expectedErrors := []string{
+		"invalid status: \"State\" is empty or has invalid value: {unknown Tekton Status with empty State field https://tekton.dev}",
+		"invalid status: \"Label\" should not be empty: {success  Status without label https://tekton.dev}",
+	}
+	err := h.Upload(ctx, r)
+	if err == nil {
+		t.Fatal("expected errors, got nil")
+	}
+	merr, ok := err.(*multierror.Error)
+	if !ok {
+		t.Fatalf("expected error of type multierror, got %#v", merr)
+	}
+	if len(merr.Errors) != 2 {
+		t.Fatalf("expected 2 errors, got %d", len(merr.Errors))
+	}
+	for i, err := range merr.Errors {
+		if d := cmp.Diff(expectedErrors[i], err.Error()); d != "" {
+			t.Errorf("Upload status error diff -want, +got: %v", d)
+		}
 	}
 }
 

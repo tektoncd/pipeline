@@ -181,4 +181,8 @@ func TestTaskRunStatus(t *testing.T) {
 	if !strings.HasSuffix(taskrun.Status.Steps[0].ImageID, fqImageName) {
 		t.Fatalf("`ImageID: %s` does not end with `%s`", taskrun.Status.Steps[0].ImageID, fqImageName)
 	}
+
+	if d := cmp.Diff(taskrun.Status.TaskSpec, &task.Spec); d != "" {
+		t.Fatalf("-got, +want: %v", d)
+	}
 }

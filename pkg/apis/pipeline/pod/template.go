@@ -93,6 +93,9 @@ type Template struct {
 	// SchedulerName specifies the scheduler to be used to dispatch the Pod
 	// +optional
 	SchedulerName string `json:"schedulerName"`
+	// HostNetwork specifies whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork"`
 }
 
 func (tpl *Template) Equals(other *Template) bool {

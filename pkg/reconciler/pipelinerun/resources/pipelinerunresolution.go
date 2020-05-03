@@ -152,6 +152,16 @@ func (state PipelineRunState) IsDone() (isDone bool) {
 	return
 }
 
+// IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
+func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
+	for _, t := range state {
+		if t.TaskRun != nil {
+			return false
+		}
+	}
+	return true
+}
+
 // GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
 // list of candidateTasks which aren't yet indicated in state to be running.
 func (state PipelineRunState) GetNextTasks(candidateTasks map[string]struct{}) []*ResolvedPipelineRunTask {

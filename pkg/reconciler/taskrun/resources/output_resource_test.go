@@ -32,10 +32,10 @@ import (
 )
 
 var (
-	outputResources map[string]v1alpha1.PipelineResourceInterface
+	outputTestResources map[string]v1alpha1.PipelineResourceInterface
 )
 
-func outputResourceSetup() {
+func outputTestResourceSetup() {
 	logger, _ = logging.NewLogger("", "")
 
 	rs := []*v1alpha1.PipelineResource{{
@@ -86,6 +86,60 @@ func outputResourceSetup() {
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-gcs-bucket",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Location",
+				Value: "gs://some-bucket",
+			}, {
+				Name:  "Type",
+				Value: "gcs",
+			}, {
+				Name:  "dir",
+				Value: "true",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-gcs-bucket-2",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Location",
+				Value: "gs://some-bucket-2",
+			}, {
+				Name:  "Type",
+				Value: "gcs",
+			}, {
+				Name:  "dir",
+				Value: "true",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-gcs-bucket-3",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Location",
+				Value: "gs://some-bucket-3",
+			}, {
+				Name:  "Type",
+				Value: "gcs",
+			}, {
+				Name:  "dir",
+				Value: "true",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "source-image",
 			Namespace: "marshmallow",
 		},
@@ -94,12 +148,13 @@ func outputResourceSetup() {
 		},
 	}}
 
-	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
+	outputTestResources = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
 		ri, _ := resource.FromType(r, images)
-		outputResources[r.Name] = ri
+		outputTestResources[r.Name] = ri
 	}
 }
+
 func TestValidOutputResources(t *testing.T) {
 
 	for _, c := range []struct {
@@ -883,7 +938,7 @@ func TestValidOutputResources(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
-			outputResourceSetup()
+			outputTestResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
@@ -1073,7 +1128,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			outputResourceSetup()
+			outputTestResourceSetup()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
@@ -1298,7 +1353,7 @@ func TestInvalidOutputResources(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputResourceSetup()
+			outputTestResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			_, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
@@ -1308,15 +1363,15 @@ func TestInvalidOutputResources(t *testing.T) {
 	}
 }
 
-func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.PipelineResourceInterface {
+func resolveInputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.PipelineResourceInterface {
 	resolved := make(map[string]v1alpha1.PipelineResourceInterface)
 	if taskRun.Spec.Resources == nil {
 		return resolved
 	}
-	for _, r := range taskRun.Spec.Resources.Outputs {
+	for _, r := range taskRun.Spec.Resources.Inputs {
 		var i v1alpha1.PipelineResourceInterface
 		if name := r.ResourceRef.Name; name != "" {
-			i = outputResources[name]
+			i = outputTestResources[name]
 			resolved[r.Name] = i
 		} else if r.ResourceSpec != nil {
 			i, _ = resource.FromType(&v1alpha1.PipelineResource{
@@ -1329,4 +1384,407 @@ func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pipel
 		}
 	}
 	return resolved
+}
+
+func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.PipelineResourceInterface {
+	resolved := make(map[string]v1alpha1.PipelineResourceInterface)
+	if taskRun.Spec.Resources == nil {
+		return resolved
+	}
+	for _, r := range taskRun.Spec.Resources.Outputs {
+		var i v1alpha1.PipelineResourceInterface
+		if name := r.ResourceRef.Name; name != "" {
+			i = outputTestResources[name]
+			resolved[r.Name] = i
+		} else if r.ResourceSpec != nil {
+			i, _ = resource.FromType(&v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: r.Name,
+				},
+				Spec: *r.ResourceSpec,
+			}, images)
+			resolved[r.Name] = i
+		}
+	}
+	return resolved
+}
+
+// TestInputOutputBucketResources checks that gcs storage resources can be used as both inputs and
+// outputs in the same tasks if a artifact bucket configmap exists.
+func TestInputOutputBucketResources(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		desc        string
+		task        *v1alpha1.Task
+		taskRun     *v1alpha1.TaskRun
+		wantSteps   []v1alpha1.Step
+		wantVolumes []corev1.Volume
+	}{{
+		name: "storage resource as both input and output",
+		desc: "storage resource defined in both input and output with parents pipelinerun reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun-parent",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket",
+							},
+						},
+						Paths: []string{"pipeline-task-path"},
+					}},
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket",
+							},
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name:       "source-workspace",
+								Type:       "storage",
+								TargetPath: "faraway-disk",
+							}}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}},
+					},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-mssqb",
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
+			}},
+			{Container: corev1.Container{
+				Name:         "artifact-dest-mkdir-source-workspace-9l9zj",
+				Image:        "busybox",
+				Command:      []string{"mkdir", "-p", "/workspace/faraway-disk"},
+				VolumeMounts: nil,
+			}},
+			{Container: corev1.Container{
+				Name:    "artifact-copy-from-source-workspace-mz4c7",
+				Image:   "google/cloud-sdk",
+				Command: []string{"gsutil"},
+				Args: []string{
+					"cp",
+					"-P",
+					"-r",
+					"gs://fake-bucket/pipeline-task-path/*",
+					"/workspace/faraway-disk",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+						Value: "/var/bucketsecret/sname/key.json",
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-sname", MountPath: "/var/bucketsecret/sname"}},
+			}},
+			{Container: corev1.Container{
+				Name:         "upload-source-gcs-bucket-78c5n",
+				Image:        "google/cloud-sdk",
+				VolumeMounts: nil,
+				Command:      []string{"gsutil"},
+				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
+				Env:          nil,
+			}},
+		},
+		wantVolumes: []corev1.Volume{{
+			Name: "volume-bucket-sname",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			},
+		}},
+	}, {
+		name: "two storage resource inputs and one output",
+		desc: "two storage resources defined in input and one in output with parents pipelinerun reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun-parent",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket",
+							},
+						},
+						Paths: []string{"pipeline-task-path"},
+					}, {
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace-2",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket-2",
+							},
+						},
+						Paths: []string{"pipeline-task-path-2"},
+					}},
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace-3",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket-3",
+							},
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name:       "source-workspace",
+								Type:       "storage",
+								TargetPath: "faraway-disk",
+							}}, {
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name:       "source-workspace-2",
+								Type:       "storage",
+								TargetPath: "faraway-disk-2",
+							}}},
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace-3",
+								Type: "storage",
+							}}},
+					},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-3-6nl7g",
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace-3"},
+			}},
+			{Container: corev1.Container{
+				Name:         "artifact-dest-mkdir-source-workspace-mssqb",
+				Image:        "busybox",
+				Command:      []string{"mkdir", "-p", "/workspace/faraway-disk"},
+				VolumeMounts: nil,
+			}},
+			{Container: corev1.Container{
+				Name:    "artifact-copy-from-source-workspace-78c5n",
+				Image:   "google/cloud-sdk",
+				Command: []string{"gsutil"},
+				Args: []string{
+					"cp",
+					"-P",
+					"-r",
+					"gs://fake-bucket/pipeline-task-path/*",
+					"/workspace/faraway-disk",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+						Value: "/var/bucketsecret/sname/key.json",
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-sname", MountPath: "/var/bucketsecret/sname"}},
+			}},
+			{Container: corev1.Container{
+				Name:         "artifact-dest-mkdir-source-workspace-2-9l9zj",
+				Image:        "busybox",
+				VolumeMounts: nil,
+				Command:      []string{"mkdir", "-p", "/workspace/faraway-disk-2"},
+				Env:          nil,
+			}},
+			{Container: corev1.Container{
+				Name:    "artifact-copy-from-source-workspace-2-mz4c7",
+				Image:   "google/cloud-sdk",
+				Command: []string{"gsutil"},
+				Args:    []string{"cp", "-P", "-r", "gs://fake-bucket/pipeline-task-path-2/*", "/workspace/faraway-disk-2"},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+						Value: "/var/bucketsecret/sname/key.json",
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-sname", MountPath: "/var/bucketsecret/sname"}},
+			}}, {Container: corev1.Container{
+				Name:    "upload-source-gcs-bucket-3-j2tds",
+				Image:   "google/cloud-sdk",
+				Command: []string{"gsutil"},
+				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-3", "gs://some-bucket-3"},
+			}},
+		},
+		wantVolumes: []corev1.Volume{{
+			Name: "volume-bucket-sname",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			},
+		}},
+	}, {
+		name: "two storage resource outputs",
+		desc: "two storage resources defined in output with parents pipelinerun reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun-parent",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket",
+							},
+						},
+					}, {
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace-2",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-gcs-bucket-2",
+							},
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				TaskSpec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Outputs: []v1alpha1.TaskResource{{
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace",
+								Type: "storage",
+							}}, {
+							ResourceDeclaration: v1alpha1.ResourceDeclaration{
+								Name: "source-workspace-2",
+								Type: "storage",
+							}},
+						},
+					},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-2-mssqb",
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace-2"},
+			}},
+			{Container: corev1.Container{
+				Name:         "create-dir-source-workspace-9l9zj",
+				Image:        "busybox",
+				Command:      []string{"mkdir", "-p", "/workspace/output/source-workspace"},
+				VolumeMounts: nil,
+			}},
+			{Container: corev1.Container{
+				Name:    "upload-source-gcs-bucket-mz4c7",
+				Image:   "google/cloud-sdk",
+				Command: []string{"gsutil"},
+				Args: []string{
+					"rsync",
+					"-d",
+					"-r",
+					"/workspace/output/source-workspace",
+					"gs://some-bucket",
+				},
+			}},
+			{Container: corev1.Container{
+				Name:         "upload-source-gcs-bucket-2-78c5n",
+				Image:        "google/cloud-sdk",
+				VolumeMounts: nil,
+				Command:      []string{"gsutil"},
+				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-2", "gs://some-bucket-2"},
+				Env:          nil,
+			}},
+		},
+		wantVolumes: []corev1.Volume{{
+			Name: "volume-bucket-sname",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			},
+		}},
+	}} {
+		t.Run(c.name, func(t *testing.T) {
+			names.TestingSeed()
+			outputTestResourceSetup()
+			fakekubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "tekton-pipelines",
+						Name:      artifacts.GetBucketConfigName(),
+					},
+					Data: map[string]string{
+						artifacts.BucketLocationKey:              "gs://fake-bucket",
+						artifacts.BucketServiceAccountSecretName: "sname",
+						artifacts.BucketServiceAccountSecretKey:  "key.json",
+					},
+				},
+			)
+
+			inputs := resolveInputResources(c.taskRun)
+			ts, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, inputs, logger)
+			if err != nil {
+				t.Fatalf("Failed to declare input resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
+			}
+
+			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, ts, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			if err != nil {
+				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
+			}
+
+			if got != nil {
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
+				}
+				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
+					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
+				}
+			}
+		})
+	}
 }

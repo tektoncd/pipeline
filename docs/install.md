@@ -26,7 +26,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    ```bash
    #Example command for creating a cluster on GKE
    gcloud container clusters create $CLUSTER_NAME \
-     --zone=$CLUSTER_ZONE
+     --zone=$CLUSTER_ZONE --cluster-version=1.15.11-gke.5
    ```
 
 3. Grant `cluster-admin` permissions to the current user:
@@ -137,6 +137,8 @@ best suits your business needs. For example:
 
  - In some environments, creating a persistent volume could be slower than transferring files to/from a cloud storage bucket.
  - If the cluster is running in multiple zones, accessing a persistent volume could be unreliable.
+
+**Note:** To customize the names of the `ConfigMaps` for artifact persistence (e.g. to avoid collisions with other services), rename the `ConfigMap` and update the env value defined [controller.yaml](https://github.com/tektoncd/pipeline/blob/e153c6f2436130e95f6e814b4a792fb2599c57ef/config/controller.yaml#L66-L75).
 
 ### Configuring a persistent volume
 

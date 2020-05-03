@@ -10,6 +10,7 @@ weight: 1
 - [Configuring a `Task`](#configuring-a-task)
   - [`Task` vs. `ClusterTask`](#task-vs-clustertask)
   - [Defining `Steps`](#defining-steps)
+    - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
@@ -37,7 +38,7 @@ weight: 1
 ## Overview
 
 A `Task` is a collection of `Steps` that you
-define and arrange in a specific order of execution as part of your continuous integration flow. 
+define and arrange in a specific order of execution as part of your continuous integration flow.
 A `Task` executes as a Pod on your Kubernetes cluster. A `Task` is available within a specific
 namespace, while a `ClusterTask` is available across the entire cluster.
 
@@ -54,13 +55,13 @@ A `Task` declaration includes the following elements:
 A `Task` definition supports the following fields:
 
 - Required:
-  - [`apiVersion`][kubernetes-overview] - Specifies the API version. For example, 
-    `tekton.dev/v1beta`.
+  - [`apiVersion`][kubernetes-overview] - Specifies the API version. For example,
+    `tekton.dev/v1beta1`.
   - [`kind`][kubernetes-overview] - Identifies this resource object as a `Task` object.
   - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
     `Task` resource object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    this `Task` resource object. 
+    this `Task` resource object.
   - [`steps`](#defining-steps) - Specifies one or more container images to run in the `Task`.
 - Optional:
   - [`description`](#adding-a-description) - An informative description of the `Task`.
@@ -123,7 +124,7 @@ A `ClusterTask` behaves identically to a `Task` and therefore everything in this
 applies to both.
 
 **Note:** When using a `ClusterTask`, you must explicitly set the `kind` sub-field in the `taskRef` field to `ClusterTask`.
-          If not specified, the `kind` sub-field defaults to `Task.` 
+          If not specified, the `kind` sub-field defaults to `Task.`
 
 Below is an example of a Pipeline declaration that uses a `ClusterTask`:
 
@@ -151,7 +152,7 @@ which the `Steps` appear in this list is the order in which they will execute.
 
 The following requirements apply to each container image referenced in a `steps` field:
 
-- The container image must abide by the [container contract](./container-contract.md). 
+- The container image must abide by the [container contract](./container-contract.md).
 - Each container image runs to completion or until the first failure occurs.
 - The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
   specified, the minimums set through `LimitRanges` in that `Namespace`,
@@ -159,6 +160,18 @@ The following requirements apply to each container image referenced in a `steps`
   container images in the `Task.` This ensures that the Pod that executes the `Task`
   only requests enough resources to run a single container image in the `Task` rather
   than hoard resources for all container images in the `Task` at once.
+
+#### Reserved directories
+
+There are several directories that all `Tasks` run by Tekton will treat as special
+
+* `/workspace` - This directory is where [resources](#resources) and [workspaces](#workspaces)
+  are mounted. Paths to these are available to `Task` authors via [variable substitution](variables.md)
+* `/tekton` - This directory is used for Tekton specific functionality:
+    * `/tekton/results` is where [results](#results) are written to.
+      The path is available to `Task` authors via [`$(results.name.path)`](variables.md))
+    * There are other subfolders which are [implementation details of Tekton](developers/README.md#reserved-directories)
+      and **users should not rely on their specific behavior as it may change in the future**
 
 #### Running scripts within `Steps`
 
@@ -176,7 +189,7 @@ line will have the following default preamble prepended:
 set -xe
 ```
 
-You can override this default preamble by prepending a shebang that specifies the desired parser. 
+You can override this default preamble by prepending a shebang that specifies the desired parser.
 This parser must be present within that `Step's` container image.
 
 The example below executes a Bash script:
@@ -349,7 +362,7 @@ steps:
 
 ### Specifying `Workspaces`
 
-`Workspaces`[workspaces.md#declaring-workspaces-in-tasks] allow you to specify
+[`Workspaces`](workspaces.md#using-workspaces-in-tasks) allow you to specify
 one or more volumes that your `Task` requires during execution. For example:
 
 ```yaml
@@ -534,6 +547,8 @@ The `description` field is an optional field that allows you to add an informati
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
 
+Also see the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task).
+
 #### Substituting parameters and resources
 
 [`params`](#specifying-parameters) and [`resources`](#specifying-resources) attributes can replace
@@ -543,9 +558,9 @@ variable values as follows:
   ```shell
   $(params.<name>)
   ```
-- To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)  
+- To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)
 
-#### Substituting `Array' parameters
+#### Substituting `Array` parameters
 
 You can expand referenced paramters of type `array` using the star operator. To do so, add the operator (`[*]`)
 to the named parameter to insert the array elements in the spot of the reference string.
@@ -856,6 +871,71 @@ log into the `Pod` and add a `Step` that pauses the `Task` at the desired stage.
   args: ["sleep", "6000"]
 
 ```
+
+### Running Step Containers as a Non Root User
+
+All steps that do not require to be run as a root user should make use of TaskRun features to 
+designate the container for a step runs as a user without root permissions. As a best practice, 
+running containers as non root should be built into the container image to avoid any possibility 
+of the container being run as root. However, as a further measure of enforcing this practice, 
+steps can make use of a `securityContext` to specify how the container should run.
+
+An example of running Task steps as a non root user is shown below:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: show-non-root-steps
+spec:
+  steps:
+    # no securityContext specified so will use 
+    # securityContext from TaskRun podTemplate
+    - name: show-user-1001
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+    # securityContext specified so will run as  
+    # user 2000 instead of 1001
+    - name: show-user-2000
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+      securityContext:
+        runAsUser: 2000
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: show-non-root-steps-run-
+spec:
+  taskRef:
+    name: show-non-root-steps
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+```
+
+In the example above, the step `show-user-2000` specifies via a `securityContext` that the container 
+for the step should run as user 2000. A `securityContext` must still be specified via a TaskRun `podTemplate` 
+for this TaskRun to run in a Kubernetes environment that enforces running containers as non root as a requirement. 
+
+The `runAsNonRoot` property specified via the `podTemplate` above validates that steps part of this TaskRun are 
+running as non root users and will fail to start any step container that attempts to run as root. Only specifying 
+`runAsNonRoot: true` will not actually run containers as non root as the property simply validates that steps are not 
+running as root. It is the `runAsUser` property that is actually used to set the non root user ID for the container.
+
+If a step defines its own `securityContext`, it will be applied for the step container over the `securityContext` 
+specified at the pod level via the TaskRun `podTemplate`. 
+
+More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
+
+The example Task/TaskRun above can be found as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
 
 Except as otherwise noted, the contents of this page are licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/).

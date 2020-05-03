@@ -15,20 +15,17 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-pipelines-admin
+  name: tekton-pipelines-controller-cluster-access
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "namespaces", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims", "limitranges"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments/finalizers"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources: ["mutatingwebhookconfigurations", "validatingwebhookconfigurations"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+    # Namespace access is required because the controller timeout handling logic
+    # iterates over all namespaces and times out any PipelineRuns that have expired.
+    # Pod access is required because the taskrun controller wants to be updated when
+    # a Pod underlying a TaskRun changes state.
+    resources: ["namespaces", "pods"]
+    verbs: ["list", "watch"]
+    # Controller needs cluster access to all of the CRDs that it is responsible for
+    # managing.
   - apiGroups: ["tekton.dev"]
     resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "conditions"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
@@ -46,8 +43,31 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  # This is the access that the controller needs on a per-namespace basis.
+  name: tekton-pipelines-controller-tenant-access
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims", "limitranges"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+    # Unclear if this access is actually required.  Simply a hold-over from the previous
+    # incarnation of the controller's ClusterRole.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/finalizers"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: tekton-pipelines-webhook-cluster-access
 rules:
+  # The webhook needs to be able to list and update customresourcedefinitions,
+  # mainly to update the webhook certificates.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions", "customresourcedefinitions/status"]
+    verbs: ["get", "list", "update", "patch", "watch"]
   - apiGroups: ["admissionregistration.k8s.io"]
     # The webhook performs a reconciliation on these two resources and continuously
     # updates configuration.

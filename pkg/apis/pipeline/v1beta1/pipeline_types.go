@@ -152,6 +152,25 @@ func (pt PipelineTask) Deps() []string {
 		for _, rd := range cond.Resources {
 			deps = append(deps, rd.From...)
 		}
+		for _, param := range cond.Params {
+			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+			if ok {
+				resultRefs := NewResultRefs(expressions)
+				for _, resultRef := range resultRefs {
+					deps = append(deps, resultRef.PipelineTask)
+				}
+			}
+		}
+	}
+	// Add any dependents from task results
+	for _, param := range pt.Params {
+		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+		if ok {
+			resultRefs := NewResultRefs(expressions)
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
 	}
 	return deps
 }

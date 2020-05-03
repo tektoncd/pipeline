@@ -21,38 +21,45 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 )
 
 func TestEmitEvent(t *testing.T) {
 	testcases := []struct {
-		name        string
-		before      *apis.Condition
-		after       *apis.Condition
-		expectEvent bool
+		name          string
+		before        *apis.Condition
+		after         *apis.Condition
+		expectEvent   bool
+		expectedEvent string
 	}{{
-		name: "unknown to true",
+		name: "unknown to true with message",
 		before: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		},
 		after: &apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
+			Message: "all done",
 		},
-		expectEvent: true,
+		expectEvent:   true,
+		expectedEvent: "Normal Succeeded all done",
 	}, {
 		name: "true to true",
 		before: &apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
+			Type:               apis.ConditionSucceeded,
+			Status:             corev1.ConditionTrue,
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now())},
 		},
 		after: &apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
+			Type:               apis.ConditionSucceeded,
+			Status:             corev1.ConditionTrue,
+			LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now().Add(5 * time.Minute))},
 		},
-		expectEvent: false,
+		expectEvent:   false,
+		expectedEvent: "",
 	}, {
 		name: "false to false",
 		before: &apis.Condition{
@@ -63,7 +70,24 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 		},
-		expectEvent: false,
+		expectEvent:   false,
+		expectedEvent: "",
+	}, {
+		name: "unknown to unknown",
+		before: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  "",
+			Message: "",
+		},
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  "foo",
+			Message: "bar",
+		},
+		expectEvent:   true,
+		expectedEvent: "Normal foo bar",
 	}, {
 		name:  "true to nil",
 		after: nil,
@@ -71,7 +95,8 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		expectEvent: true,
+		expectEvent:   false,
+		expectedEvent: "",
 	}, {
 		name:   "nil to true",
 		before: nil,
@@ -79,7 +104,40 @@ func TestEmitEvent(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		expectEvent: true,
+		expectEvent:   true,
+		expectedEvent: "Normal Succeeded ",
+	}, {
+		name:   "nil to unknown with message",
+		before: nil,
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Message: "just starting",
+		},
+		expectEvent:   true,
+		expectedEvent: "Normal Started ",
+	}, {
+		name: "unknown to false with message",
+		before: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		},
+		after: &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: "really bad",
+		},
+		expectEvent:   true,
+		expectedEvent: "Warning Failed really bad",
+	}, {
+		name:   "nil to false",
+		before: nil,
+		after: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		},
+		expectEvent:   true,
+		expectedEvent: "Warning Failed ",
 	}}
 
 	for _, ts := range testcases {
@@ -90,12 +148,21 @@ func TestEmitEvent(t *testing.T) {
 
 		select {
 		case event := <-fr.Events:
-			if ts.expectEvent && event == "" {
-				t.Errorf("Expected event but got empty for %s", ts.name)
+			if event == "" {
+				// The fake recorder reported empty, it should not happen
+				t.Fatalf("Expected event but got empty for %s", ts.name)
+			}
+			if !ts.expectEvent {
+				// The fake recorder reported an event which we did not expect
+				t.Errorf("Unxpected event \"%s\" but got one for %s", event, ts.name)
+			}
+			if !(event == ts.expectedEvent) {
+				t.Errorf("Expected event \"%s\" but got \"%s\" instead for %s", ts.expectedEvent, event, ts.name)
 			}
 		case <-timer.C:
-			if !ts.expectEvent {
-				t.Errorf("Unexpected event but got for %s", ts.name)
+			if ts.expectEvent {
+				// The fake recorder did not report, the timer timeout expired
+				t.Errorf("Expected event but got none for %s", ts.name)
 			}
 		}
 	}

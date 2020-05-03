@@ -33,16 +33,16 @@ import (
 )
 
 var (
-	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
+	gitResource = tb.PipelineResource("git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
-	anotherGitResource = tb.PipelineResource("another-git-resource", "foo", tb.PipelineResourceSpec(
+	anotherGitResource = tb.PipelineResource("another-git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
 	))
 )
 
 func TestTask(t *testing.T) {
-	task := tb.Task("test-task", "foo", tb.TaskSpec(
+	task := tb.Task("test-task", tb.TaskType(), tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
 			tb.InputsResource("optional_workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
@@ -65,8 +65,12 @@ func TestTask(t *testing.T) {
 			tb.EnvVar("FRUIT", "BANANA"),
 		),
 		tb.TaskWorkspace("bread", "kind of bread", "/bread/path", false),
-	))
+	), tb.TaskNamespace("foo"))
 	expectedTask := &v1alpha1.Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "Task",
+		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
 		Spec: v1alpha1.TaskSpec{
 			TaskSpec: v1beta1.TaskSpec{
@@ -143,12 +147,16 @@ func TestTask(t *testing.T) {
 }
 
 func TestClusterTask(t *testing.T) {
-	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskSpec(
+	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType(), tb.ClusterTaskSpec(
 		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 	))
 	expectedTask := &v1alpha1.ClusterTask{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "ClusterTask",
+		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
 		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -167,7 +175,8 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 	var trueB = true
 	terminatedState := corev1.ContainerStateTerminated{Reason: "Completed"}
 
-	taskRun := tb.TaskRun("test-taskrun", "foo",
+	taskRun := tb.TaskRun("test-taskrun",
+		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test",
 			tb.OwnerReferenceAPIVersion("a1"),
 			tb.Controller, tb.BlockOwnerDeletion,
@@ -314,15 +323,17 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 }
 
 func TestTaskRunWithTaskSpec(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(
-			tb.Step("image", tb.StepCommand("/mycmd")),
-			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
-		),
-		tb.TaskRunServiceAccountName("sa"),
-		tb.TaskRunTimeout(2*time.Minute),
-		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
-	))
+	taskRun := tb.TaskRun("test-taskrun",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(
+				tb.Step("image", tb.StepCommand("/mycmd")),
+				tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
+			),
+			tb.TaskRunServiceAccountName("sa"),
+			tb.TaskRunTimeout(2*time.Minute),
+			tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
+		))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-taskrun", Namespace: "foo",
@@ -358,18 +369,20 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 }
 
 func TestTaskRunWithPodTemplate(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(
-			tb.Step("image", tb.StepCommand("/mycmd")),
-			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
-		),
-		tb.TaskRunServiceAccountName("sa"),
-		tb.TaskRunTimeout(2*time.Minute),
-		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
-		tb.TaskRunNodeSelector(map[string]string{
-			"label": "value",
-		}),
-	))
+	taskRun := tb.TaskRun("test-taskrun",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(
+				tb.Step("image", tb.StepCommand("/mycmd")),
+				tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
+			),
+			tb.TaskRunServiceAccountName("sa"),
+			tb.TaskRunTimeout(2*time.Minute),
+			tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
+			tb.TaskRunNodeSelector(map[string]string{
+				"label": "value",
+			}),
+		))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-taskrun", Namespace: "foo",
@@ -414,8 +427,8 @@ func TestResolvedTaskResources(t *testing.T) {
 		tb.ResolvedTaskResourcesTaskSpec(
 			tb.Step("image", tb.StepCommand("/mycmd")),
 		),
-		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", "baz")),
-		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", "quuz")),
+		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", tb.PipelineResourceNamespace("baz"))),
+		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", tb.PipelineResourceNamespace("quuz"))),
 	)
 	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{

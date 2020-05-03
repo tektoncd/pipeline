@@ -65,6 +65,12 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	if ps.Status != "" {
+		if ps.Status != PipelineRunSpecStatusCancelled {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ps.Status, PipelineRunSpecStatusCancelled), "spec.status")
+		}
+	}
+
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
 		for idx, ws := range ps.Workspaces {

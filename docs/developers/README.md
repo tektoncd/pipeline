@@ -143,16 +143,23 @@ with the binary and file(s) is mounted.
 If the image is a private registry, the service account should include an
 [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
 
-## Builder namespace on containers
+## Reserved directories
 
 The `/tekton/` directory is reserved on containers for internal usage. Examples
 of how this directory is used:
 
-- Task Results are written to `/tekton/results`
-- Various tools like the entrypoint are placed in `/tekton/tools`
-- The termination log message is written to `/tekton/termination`
-- Sequencing step containers is done using both `/tekton/downward/ready`
-and numbered files in `/tekton/tools`
+* `/workspace` - This directory is where [resources](#resources) and [workspaces](#workspaces)
+  are mounted.
+* `/tekton` - This directory is used for Tekton specific functionality:
+  * These folders are [part of the Tekton API](../api_compatibility_policy.md):
+    * `/tekton/results` is where [results](#results) are written to
+      (path available to `Task` authors via [`$(results.name.path)`](../variables.md))
+  * These folders are implementation details of Tekton and **users should not
+    rely on this specific behavior as it may change in the future**:
+    * `/tekton/tools` contains tools like the [entrypoint binary](#entrypoint-rewriting-and-step-ordering)
+    * `/tekton/termination` is where the eventual [termination log message](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#writing-and-reading-a-termination-message) is written to
+    * [Sequencing step containers](#entrypoint-rewriting-and-step-ordering)
+      is done using both `/tekton/downward/ready` and numbered files in `/tekton/tools`
 
 ## Handling of injected sidecars
 
@@ -332,3 +339,15 @@ tkn pipelinerun logs sum-and-multiply-pipeline-run-rgd9j -f -n default
 ```
 
 As you can see, you can define multiple tasks in the same pipeline and use the result of more than one task inside another task parameter. The substitution is only done inside `pipeline.spec.tasks[].params[]`. For a complete example demonstrating Task Results in a Pipeline, see the [pipelinerun example](../../examples/v1beta1/pipelineruns/task_results_example.yaml).
+
+## Support for running in multi-tenant configuration
+
+In order to support potential multi-tenant configurations the roles of the controller are split into two:
+
+    `tekton-pipelines-controller-cluster-access`: those permissions needed cluster-wide by the controller.
+    `tekton-pipelines-controller-tenant-access`: those permissions needed on a namespace-by-namespace basis.
+
+By default the roles are cluster-scoped for backwards-compatibility and ease-of-use. If you want to
+start running a multi-tenant service you are able to bind `tekton-pipelines-controller-tenant-access`
+using a `RoleBinding` instead of a `ClusterRoleBinding`, thereby limiting the access that the controller has to
+specific tenant namespaces.

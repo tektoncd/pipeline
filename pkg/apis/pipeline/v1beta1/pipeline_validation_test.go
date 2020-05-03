@@ -701,6 +701,48 @@ func TestPipeline_Validate(t *testing.T) {
 			},
 		},
 		failureExpected: true,
+	}, {
+		name: "task params results malformed variable substitution expression",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "name"}, Spec: v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "a-task", TaskRef: &v1beta1.TaskRef{Name: "a-task"},
+				}, {
+					Name: "b-task", TaskRef: &v1beta1.TaskRef{Name: "b-task"},
+					Params: []v1beta1.Param{{
+						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
+				}},
+			},
+		},
+		failureExpected: true,
+	}, {
+		name: "not defined parameter variable with defined",
+		p: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1beta1.PipelineSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name: "foo", Type: v1beta1.ParamTypeString,
+				}},
+				Tasks: []v1beta1.PipelineTask{{
+					TaskSpec: &v1beta1.TaskSpec{
+						Results: []v1beta1.TaskResult{{
+							Name: "output",
+						}},
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{Name: "foo", Image: "bar"},
+						}},
+					},
+					Name: "a-task",
+				}, {
+					Name:    "foo",
+					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
+					Params: []v1beta1.Param{{
+						Name: "a-param", Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
+					}},
+				}},
+			},
+		},
+		failureExpected: false,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

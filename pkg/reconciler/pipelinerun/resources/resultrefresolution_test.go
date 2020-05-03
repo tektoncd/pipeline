@@ -32,7 +32,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				pipelineRunState: PipelineRunState{
 					{
 						TaskRunName: "aTaskRun",
-						TaskRun:     tb.TaskRun("aTaskRun", "namespace"),
+						TaskRun:     tb.TaskRun("aTaskRun"),
 						PipelineTask: &v1alpha1.PipelineTask{
 							Name:    "aTask",
 							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
@@ -58,7 +58,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				pipelineRunState: PipelineRunState{
 					{
 						TaskRunName: "aTaskRun",
-						TaskRun: tb.TaskRun("aTaskRun", "namespace", tb.TaskRunStatus(
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
 						PipelineTask: &v1alpha1.PipelineTask{
@@ -97,7 +97,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				pipelineRunState: PipelineRunState{
 					{
 						TaskRunName: "aTaskRun",
-						TaskRun: tb.TaskRun("aTaskRun", "namespace", tb.TaskRunStatus(
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
 						PipelineTask: &v1alpha1.PipelineTask{
@@ -106,7 +106,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 						},
 					}, {
 						TaskRunName: "bTaskRun",
-						TaskRun: tb.TaskRun("bTaskRun", "namespace", tb.TaskRunStatus(
+						TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("bResult", "bResultValue"),
 						)),
 						PipelineTask: &v1alpha1.PipelineTask{
@@ -155,7 +155,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				pipelineRunState: PipelineRunState{
 					{
 						TaskRunName: "aTaskRun",
-						TaskRun: tb.TaskRun("aTaskRun", "namespace", tb.TaskRunStatus(
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
 						PipelineTask: &v1alpha1.PipelineTask{
@@ -194,7 +194,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 				pipelineRunState: PipelineRunState{
 					{
 						TaskRunName: "aTaskRun",
-						TaskRun:     tb.TaskRun("aTaskRun", "namespace"),
+						TaskRun:     tb.TaskRun("aTaskRun"),
 						PipelineTask: &v1alpha1.PipelineTask{
 							Name:    "aTask",
 							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
@@ -258,7 +258,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
 			got, err := extractResultRefsForParam(tt.fields.pipelineRunState, tt.args.param)
-			// sort result ref based on task name to garantee an certain order
+			// sort result ref based on task name to guarantee an certain order
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
@@ -299,7 +299,7 @@ func TestResolveResultRefs(t *testing.T) {
 	pipelineRunState := PipelineRunState{
 		{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", "namespace", tb.TaskRunStatus(
+			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 				tb.TaskRunResult("aResult", "aResultValue"),
 			)),
 			PipelineTask: &v1alpha1.PipelineTask{

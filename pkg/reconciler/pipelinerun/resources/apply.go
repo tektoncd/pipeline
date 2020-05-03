@@ -64,9 +64,17 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 
 	for _, resolvedPipelineRunTask := range targets {
-		pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-		pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
-		resolvedPipelineRunTask.PipelineTask = pipelineTask
+		// also make substitution for resolved condition checks
+		for _, resolvedConditionCheck := range resolvedPipelineRunTask.ResolvedConditionChecks {
+			pipelineTaskCondition := resolvedConditionCheck.PipelineTaskCondition.DeepCopy()
+			pipelineTaskCondition.Params = replaceParamValues(pipelineTaskCondition.Params, stringReplacements, nil)
+			resolvedConditionCheck.PipelineTaskCondition = pipelineTaskCondition
+		}
+		if resolvedPipelineRunTask.PipelineTask != nil {
+			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
+			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
+			resolvedPipelineRunTask.PipelineTask = pipelineTask
+		}
 	}
 }
 

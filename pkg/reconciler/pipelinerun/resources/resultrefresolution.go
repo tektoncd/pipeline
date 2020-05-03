@@ -76,18 +76,16 @@ func extractResultRefsForPipelineResult(pipelineRunState PipelineRunState, resul
 }
 
 func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
-	if resultRefs, err := v1beta1.NewResultRefs(expressions); err == nil {
-		var resolvedResultRefs ResolvedResultRefs
-		for _, resultRef := range resultRefs {
-			resolvedResultRef, err := resolveResultRef(pipelineRunState, resultRef)
-			if err != nil {
-				return nil, err
-			}
-			resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
+	resultRefs := v1beta1.NewResultRefs(expressions)
+	var resolvedResultRefs ResolvedResultRefs
+	for _, resultRef := range resultRefs {
+		resolvedResultRef, err := resolveResultRef(pipelineRunState, resultRef)
+		if err != nil {
+			return nil, err
 		}
-		return removeDup(resolvedResultRefs), nil
+		resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
 	}
-	return nil, nil
+	return removeDup(resolvedResultRefs), nil
 }
 
 func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
@@ -124,10 +122,29 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // convertParamsToResultRefs converts all params of the resolved pipeline run task
 func convertParamsToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
 	var resolvedParams ResolvedResultRefs
-	for _, param := range target.PipelineTask.Params {
+	for _, condition := range target.PipelineTask.Conditions {
+		condRefs, err := convertParams(condition.Params, pipelineRunState, condition.ConditionRef)
+		if err != nil {
+			return nil, err
+		}
+		resolvedParams = append(resolvedParams, condRefs...)
+	}
+
+	taskParamsRefs, err := convertParams(target.PipelineTask.Params, pipelineRunState, target.PipelineTask.Name)
+	if err != nil {
+		return nil, err
+	}
+	resolvedParams = append(resolvedParams, taskParamsRefs...)
+
+	return resolvedParams, nil
+}
+
+func convertParams(params []v1beta1.Param, pipelineRunState PipelineRunState, name string) (ResolvedResultRefs, error) {
+	var resolvedParams ResolvedResultRefs
+	for _, param := range params {
 		resolvedResultRefs, err := extractResultRefsForParam(pipelineRunState, param)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find result referenced by param %q in pipeline task %q: %w", param.Name, target.PipelineTask.Name, err)
+			return nil, fmt.Errorf("unable to find result referenced by param %q in %q: %w", param.Name, name, err)
 		}
 		if resolvedResultRefs != nil {
 			resolvedParams = append(resolvedParams, resolvedResultRefs...)

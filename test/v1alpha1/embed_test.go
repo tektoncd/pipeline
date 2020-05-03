@@ -45,7 +45,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(getEmbeddedTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})); err != nil {
+	if _, err := c.TaskClient.Create(getEmbeddedTask([]string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", embedTaskName, err)
 	}
 	if _, err := c.TaskRunClient.Create(getEmbeddedTaskRun(namespace)); err != nil {
@@ -61,8 +61,8 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	// completion of the TaskRun means the TaskRun did what it was intended.
 }
 
-func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
-	return tb.Task(embedTaskName, namespace,
+func getEmbeddedTask(args []string) *v1alpha1.Task {
+	return tb.Task(embedTaskName,
 		tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("ubuntu",
@@ -81,7 +81,8 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 			Value: "https://github.com/knative/docs",
 		}},
 	}
-	return tb.TaskRun(embedTaskRunName, namespace,
+	return tb.TaskRun(embedTaskRunName,
+		tb.TaskRunNamespace(namespace),
 		tb.TaskRunSpec(
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource("docs", tb.TaskResourceBindingResourceSpec(testSpec)),

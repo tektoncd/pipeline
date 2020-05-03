@@ -29,10 +29,9 @@ func TestNewResultReference(t *testing.T) {
 		param v1beta1.Param
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []*v1beta1.ResultRef
-		wantErr bool
+		name string
+		args args
+		want []*v1beta1.ResultRef
 	}{
 		{
 			name: "Test valid expression",
@@ -51,9 +50,8 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test valid expression: substitution within string",
+			name: "substitution within string",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -69,9 +67,8 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test valid expression: multiple substitution",
+			name: "multiple substitution",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -90,9 +87,28 @@ func TestNewResultReference(t *testing.T) {
 					Result:       "sumResult",
 				},
 			},
-			wantErr: false,
 		}, {
-			name: "Test invalid expression: first separator typo",
+			name: "multiple substitution with param",
+			args: args{
+				param: v1beta1.Param{
+					Name: "param",
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)",
+					},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				}, {
+					PipelineTask: "sumTask2",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "first separator typo",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -102,10 +118,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: third separator typo",
+			name: "third separator typo",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -115,10 +130,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: param substitution shouldn't be considered result ref",
+			name: "param substitution shouldn't be considered result ref",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -128,10 +142,9 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: nil,
 		}, {
-			name: "Test invalid expression: One bad and good result substitution",
+			name: "One bad and good result substitution",
 			args: args{
 				param: v1beta1.Param{
 					Name: "param",
@@ -141,19 +154,21 @@ func TestNewResultReference(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
-			if ok {
-				got, err := v1beta1.NewResultRefs(expressions)
-				if tt.wantErr != (err != nil) {
-					t.Errorf("TestNewResultReference/%s wantErr %v, error = %v", tt.name, tt.wantErr, err)
-					return
-				}
+			if !ok && tt.want != nil {
+				t.Fatalf("expected to find expressions but didn't find any")
+			} else {
+				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
 					t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
 				}
@@ -203,6 +218,23 @@ func TestHasResultReference(t *testing.T) {
 				{
 					PipelineTask: "sum-task",
 					Result:       "sum-result",
+				},
+			},
+		}, {
+			name: "Test valid expression with underscores",
+			args: args{
+				param: v1beta1.Param{
+					Name: "param",
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "$(tasks.sum-task.results.sum_result)",
+					},
+				},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sum-task",
+					Result:       "sum_result",
 				},
 			},
 		}, {
@@ -260,20 +292,21 @@ func TestHasResultReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(tt.args.param)
-			if ok {
-				got, _ := v1beta1.NewResultRefs(expressions)
-				sort.Slice(got, func(i, j int) bool {
-					if got[i].PipelineTask > got[j].PipelineTask {
-						return false
-					}
-					if got[i].Result > got[j].Result {
-						return false
-					}
-					return true
-				})
-				if d := cmp.Diff(tt.wantRef, got); d != "" {
-					t.Errorf("TestHasResultReference/%s (-want, +got) = %v", tt.name, d)
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			got := v1beta1.NewResultRefs(expressions)
+			sort.Slice(got, func(i, j int) bool {
+				if got[i].PipelineTask > got[j].PipelineTask {
+					return false
 				}
+				if got[i].Result > got[j].Result {
+					return false
+				}
+				return true
+			})
+			if d := cmp.Diff(tt.wantRef, got); d != "" {
+				t.Errorf("TestHasResultReference/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
 	}

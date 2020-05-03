@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -34,7 +36,7 @@ func TestApplyParameters(t *testing.T) {
 		expected *v1alpha1.Pipeline
 	}{{
 		name: "single parameter",
-		original: tb.Pipeline("test-pipeline", "foo",
+		original: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
@@ -43,10 +45,10 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("first-task-second-param", "$(params.second-param)"),
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
 				))),
-		run: tb.PipelineRun("test-pipeline-run", "foo",
+		run: tb.PipelineRun("test-pipeline-run",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("second-param", "second-value"))),
-		expected: tb.Pipeline("test-pipeline", "foo",
+		expected: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
@@ -57,7 +59,7 @@ func TestApplyParameters(t *testing.T) {
 				))),
 	}, {
 		name: "pipeline parameter nested inside task parameter",
-		original: tb.Pipeline("test-pipeline", "foo",
+		original: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
@@ -65,9 +67,9 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("first-task-first-param", "$(input.workspace.$(params.first-param))"),
 					tb.PipelineTaskParam("first-task-second-param", "$(input.workspace.$(params.second-param))"),
 				))),
-		run: tb.PipelineRun("test-pipeline-run", "foo",
+		run: tb.PipelineRun("test-pipeline-run",
 			tb.PipelineRunSpec("test-pipeline")),
-		expected: tb.Pipeline("test-pipeline", "foo",
+		expected: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
@@ -77,7 +79,7 @@ func TestApplyParameters(t *testing.T) {
 				))),
 	}, {
 		name: "parameters in task condition",
-		original: tb.Pipeline("test-pipeline", "foo",
+		original: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
@@ -87,10 +89,10 @@ func TestApplyParameters(t *testing.T) {
 						tb.PipelineTaskConditionParam("cond-second-param", "$(params.second-param)"),
 					),
 				))),
-		run: tb.PipelineRun("test-pipeline-run", "foo",
+		run: tb.PipelineRun("test-pipeline-run",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("second-param", "second-value"))),
-		expected: tb.Pipeline("test-pipeline", "foo",
+		expected: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
@@ -102,7 +104,7 @@ func TestApplyParameters(t *testing.T) {
 				))),
 	}, {
 		name: "array parameter",
-		original: tb.Pipeline("test-pipeline", "foo",
+		original: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault(
 					"default", "array", "value")),
@@ -114,11 +116,11 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
 					tb.PipelineTaskParam("first-task-fourth-param", "first", "$(params.fourth-param)"),
 				))),
-		run: tb.PipelineRun("test-pipeline-run", "foo",
+		run: tb.PipelineRun("test-pipeline-run",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("second-param", "second-value", "array"),
 				tb.PipelineRunParam("fourth-param", "fourth-value", "array"))),
-		expected: tb.Pipeline("test-pipeline", "foo",
+		expected: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault(
 					"default", "array", "value")),
@@ -281,6 +283,100 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
 			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
+				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
+			}
+		})
+	}
+}
+
+func TestApplyTaskResults_Conditions(t *testing.T) {
+	type args struct {
+		targets            PipelineRunState
+		resolvedResultRefs ResolvedResultRefs
+	}
+	tests := []struct {
+		name string
+		args args
+		want PipelineRunState
+	}{{
+		name: "Test result substitution in condition parameter",
+		args: args{
+			resolvedResultRefs: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+			targets: PipelineRunState{
+				{
+					ResolvedConditionChecks: TaskConditionCheckState{{
+						ConditionRegisterName: "always-true-0",
+						ConditionCheckName:    "test",
+						Condition: &v1alpha1.Condition{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "always-true",
+							},
+							Spec: v1alpha1.ConditionSpec{
+								Check: v1alpha1.Step{},
+							}},
+						ResolvedResources: map[string]*v1alpha1.PipelineResource{},
+						PipelineTaskCondition: &v1beta1.PipelineTaskCondition{
+							Params: []v1beta1.Param{
+								{
+									Name: "cParam",
+									Value: v1beta1.ArrayOrString{
+										Type:      v1beta1.ParamTypeString,
+										StringVal: "Result value --> $(tasks.aTask.results.aResult)",
+									},
+								},
+							},
+						},
+					},
+					},
+				},
+			},
+		},
+		want: PipelineRunState{
+			{
+				ResolvedConditionChecks: TaskConditionCheckState{{
+					ConditionRegisterName: "always-true-0",
+					ConditionCheckName:    "test",
+					Condition: &v1alpha1.Condition{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "always-true",
+						},
+						Spec: v1alpha1.ConditionSpec{
+							Check: v1alpha1.Step{},
+						}},
+					ResolvedResources: map[string]*v1alpha1.PipelineResource{},
+					PipelineTaskCondition: &v1beta1.PipelineTaskCondition{
+						Params: []v1beta1.Param{
+							{
+								Name: "cParam",
+								Value: v1beta1.ArrayOrString{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "Result value --> aResultValue",
+								},
+							},
+						},
+					},
+				},
+				},
+			},
+		},
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
+			if d := cmp.Diff(tt.args.targets[0].ResolvedConditionChecks, tt.want[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
 				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
 			}
 		})

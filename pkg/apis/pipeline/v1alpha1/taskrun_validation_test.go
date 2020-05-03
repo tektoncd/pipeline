@@ -38,11 +38,11 @@ func TestTaskRun_Invalid(t *testing.T) {
 		want *apis.FieldError
 	}{{
 		name: "invalid taskspec",
-		task: tb.TaskRun("taskmetaname", "default"),
+		task: tb.TaskRun("taskmetaname"),
 		want: apis.ErrMissingField("spec"),
 	}, {
 		name: "invalid taskrun metadata",
-		task: tb.TaskRun("task.name", "default"),
+		task: tb.TaskRun("task.name"),
 		want: &apis.FieldError{
 			Message: "Invalid resource name: special character . must not be present",
 			Paths:   []string{"metadata.name"},
@@ -59,7 +59,7 @@ func TestTaskRun_Invalid(t *testing.T) {
 }
 
 func TestTaskRun_Validate(t *testing.T) {
-	tr := tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+	tr := tb.TaskRun("taskname", tb.TaskRunSpec(
 		tb.TaskRunTaskRef("taskrefname"),
 	))
 	if err := tr.Validate(context.Background()); err != nil {
@@ -74,7 +74,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 		wantErr *apis.FieldError
 	}{{
 		name: "make sure WorkspaceBinding validation invoked",
-		tr: tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+		tr: tb.TaskRun("taskname", tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task"),
 			// When using PVC it's required that you provide a volume name
 			tb.TaskRunWorkspacePVC("workspace", "", ""),
@@ -82,7 +82,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 		wantErr: apis.ErrMissingField("workspace.persistentvolumeclaim.claimname"),
 	}, {
 		name: "bind same workspace twice",
-		tr: tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+		tr: tb.TaskRun("taskname", tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task"),
 			tb.TaskRunWorkspaceEmptyDir("workspace", ""),
 			tb.TaskRunWorkspaceEmptyDir("workspace", ""),

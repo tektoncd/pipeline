@@ -27,6 +27,7 @@ import (
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestCancelPipelineRun(t *testing.T) {
@@ -37,35 +38,35 @@ func TestCancelPipelineRun(t *testing.T) {
 		taskRuns      []*v1alpha1.TaskRun
 	}{{
 		name: "no-resolved-taskrun",
-		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", "foo",
+		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunCancelled,
 			),
 		),
 	}, {
 		name: "1-of-resolved-taskrun",
-		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", "foo",
+		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunCancelled,
 			),
 		),
 		pipelineState: []*resources.ResolvedPipelineRunTask{
-			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
+			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", tb.TaskRunNamespace("foo"))},
 			{TaskRunName: "t2"},
 		},
-		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", "foo")},
+		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo"))},
 	}, {
 		name: "resolved-taskruns",
-		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", "foo",
+		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunCancelled,
 			),
 		),
 		pipelineState: []*resources.ResolvedPipelineRunTask{
-			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
-			{TaskRunName: "t2", TaskRun: tb.TaskRun("t2", "foo")},
+			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", tb.TaskRunNamespace("foo"))},
+			{TaskRunName: "t2", TaskRun: tb.TaskRun("t2", tb.TaskRunNamespace("foo"))},
 		},
-		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", "foo"), tb.TaskRun("t2", "foo")},
+		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo")), tb.TaskRun("t2", tb.TaskRunNamespace("foo"))},
 	}}
 	for _, tc := range testCases {
 		tc := tc
@@ -78,7 +79,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)
-			err := cancelPipelineRun(tc.pipelineRun, tc.pipelineState, c.Pipeline)
+			err := cancelPipelineRun(logtesting.TestLogger(t), tc.pipelineRun, tc.pipelineState, c.Pipeline)
 			if err != nil {
 				t.Fatal(err)
 			}

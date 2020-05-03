@@ -38,10 +38,10 @@ type Resource struct {
 	Name string                        `json:"name"`
 	Type resource.PipelineResourceType `json:"type"`
 	URL  string                        `json:"url"`
-	// Git revision (branch, tag, commit SHA or ref) to clone.  See
-	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
-	// information.
+	// Git revision (branch, tag, commit SHA) to clone, and optionally the refspec to fetch from.
+	//See https://git-scm.com/docs/gitrevisions#_specifying_revisions for more information.
 	Revision   string `json:"revision"`
+	Refspec    string `json:"refspec"`
 	Submodules bool   `json:"submodules"`
 
 	Depth      uint   `json:"depth"`
@@ -71,6 +71,8 @@ func NewResource(gitImage string, r *resource.PipelineResource) (*Resource, erro
 			gitResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			gitResource.Revision = param.Value
+		case strings.EqualFold(param.Name, "Refspec"):
+			gitResource.Refspec = param.Value
 		case strings.EqualFold(param.Name, "Submodules"):
 			gitResource.Submodules = toBool(param.Value, true)
 		case strings.EqualFold(param.Name, "Depth"):
@@ -133,6 +135,8 @@ func (s *Resource) Replacements() map[string]string {
 		"type":       s.Type,
 		"url":        s.URL,
 		"revision":   s.Revision,
+		"refspec":    s.Refspec,
+		"submodules": strconv.FormatBool(s.Submodules),
 		"depth":      strconv.FormatUint(uint64(s.Depth), 10),
 		"sslVerify":  strconv.FormatBool(s.SSLVerify),
 		"httpProxy":  s.HTTPProxy,
@@ -149,6 +153,9 @@ func (s *Resource) GetInputTaskModifier(_ *v1alpha1.TaskSpec, path string) (v1al
 		"-path", path,
 	}
 
+	if s.Refspec != "" {
+		args = append(args, "-refspec", s.Refspec)
+	}
 	if !s.Submodules {
 		args = append(args, "-submodules=false")
 	}

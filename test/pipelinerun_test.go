@@ -33,6 +33,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	k8sres "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
@@ -70,7 +71,7 @@ func TestPipelineRun(t *testing.T) {
 				}
 			}
 
-			for _, res := range getFanInFanOutGitResources(namespace) {
+			for _, res := range getFanInFanOutGitResources() {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
 					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 				}
@@ -130,7 +131,7 @@ func TestPipelineRun(t *testing.T) {
 		name: "pipeline succeeds when task skipped due to failed condition",
 		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
-			cond := getFailingCondition(namespace)
+			cond := getFailingCondition()
 			if _, err := c.ConditionClient.Create(cond); err != nil {
 				t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 			}
@@ -156,6 +157,51 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun; 0 from taskrun since it should not be executed due to condition failing
 		expectedNumberOfEvents: 1,
 		pipelineRunFunc:        getConditionalPipelineRun,
+	}, {
+		name: "pipelinerun succeeds with LimitRange minimum in namespace",
+		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+			t.Helper()
+			if _, err := c.KubeClient.Kube.CoreV1().LimitRanges(namespace).Create(getLimitRange("prlimitrange", namespace, "100m", "99Mi", "100m")); err != nil {
+				t.Fatalf("Failed to create LimitRange `%s`: %s", "prlimitrange", err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
+				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
+				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
+			}
+
+			task := &v1beta1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
+				Spec: v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "path", Type: v1beta1.ParamTypeString,
+					}, {
+						Name: "dest", Type: v1beta1.ParamTypeString,
+					}},
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Name:    "config-docker",
+							Image:   "quay.io/rhpipeline/skopeo:alpine",
+							Command: []string{"skopeo"},
+							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
+						}},
+					},
+				},
+			}
+			if _, err := c.TaskClient.Create(task); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", fmt.Sprint("task", index), err)
+			}
+			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
+			}
+		},
+		expectedTaskRuns: []string{task1Name},
+		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 2,
+		pipelineRunFunc:        getHelloWorldPipelineRun,
 	}}
 
 	for i, td := range tds {
@@ -219,7 +265,14 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
 			if len(events) != td.expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
+				collectedEvents := ""
+				for i, event := range events {
+					collectedEvents += fmt.Sprintf("%#v", event)
+					if i < (len(events) - 1) {
+						collectedEvents += ", "
+					}
+				}
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
 			// Wait for up to 10 minutes and restart every second to check if
@@ -407,9 +460,9 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1beta1.Pipeline {
 	}
 }
 
-func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
+func getFanInFanOutGitResources() []*v1alpha1.PipelineResource {
 	return []*v1alpha1.PipelineResource{
-		tb.PipelineResource("kritis-resource-git", namespace, tb.PipelineResourceSpec(
+		tb.PipelineResource("kritis-resource-git", tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeGit,
 			tb.PipelineResourceSpecParam("Url", "https://github.com/grafeas/kritis"),
 			tb.PipelineResourceSpecParam("Revision", "master"),
@@ -670,8 +723,8 @@ func getPipelineWithFailingCondition(suffix int, namespace string) *v1beta1.Pipe
 	}
 }
 
-func getFailingCondition(namespace string) *v1alpha1.Condition {
-	return tb.Condition(cond1Name, namespace, tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
+func getFailingCondition() *v1alpha1.Condition {
+	return tb.Condition(cond1Name, tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
 		tb.Command("/bin/bash"), tb.Args("exit 1"))))
 }
 
@@ -685,6 +738,24 @@ func getConditionalPipelineRun(suffix int, namespace string) *v1beta1.PipelineRu
 		},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
+		},
+	}
+}
+
+func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemeralStorage string) *corev1.LimitRange {
+	return &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{
+				{
+					Type: corev1.LimitTypeContainer,
+					Min: corev1.ResourceList{
+						corev1.ResourceCPU:              k8sres.MustParse(resourceCPU),
+						corev1.ResourceMemory:           k8sres.MustParse(resourceMemory),
+						corev1.ResourceEphemeralStorage: k8sres.MustParse(resourceEphemeralStorage),
+					},
+				},
+			},
 		},
 	}
 }

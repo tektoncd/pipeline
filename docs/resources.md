@@ -19,6 +19,19 @@ For example:
     deployed in a cluster.
 -   A `Task`'s output can be a jar file to be uploaded to a storage bucket.
 
+> **Note**: PipelineResources have not been promoted to Beta in tandem with Pipeline's
+> other CRDs. This means that the level of support for `PipelineResources`
+> remains Alpha and there are effectively no guarantees about the type's future.
+> There remain a lot of known issues with the type that have caused Tekton's
+> developers to reassess it.
+>
+> For Beta-supported alternatives to PipelineResources see
+> [the v1alpha1 to v1beta1 migration guide](./migrating-v1alpha1-to-v1beta1.md#pipelineresources-and-catalog-tasks)
+> which lists each PipelineResource type and a suggested option for replacing it.
+>
+> For more information on why PipelineResources are remaining alpha [see the description
+> of their problems, along with next steps, below](#why-arent-pipelineresources-in-beta).
+
 --------------------------------------------------------------------------------
 
 -   [Syntax](#syntax)
@@ -37,6 +50,7 @@ For example:
         -   [GCS Storage Resource](#gcs-storage-resource)
         -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
     -   [Cloud Event Resource](#cloud-event-resource)
+-   [Why Aren't PipelineResources in Beta?](#why-arent-pipelineresources-in-beta)
 
 ## Syntax
 
@@ -313,19 +327,53 @@ Params that can be added are the following:
     change the repo, e.g. [to use a fork](#using-a-fork)
 1.  `revision`: Git [revision][git-rev] (branch, tag, commit SHA or ref) to
     clone. You can use this to control what commit [or branch](#using-a-branch)
-    is used. _If no revision is specified, the resource will default to `latest`
-    from `master`._
+    is used. [git checkout][git-checkout] is used to switch to the
+    revision, and will result in a detached HEAD in most cases. Use refspec
+    along with revision if you want to checkout a particular branch without a
+    detached HEAD. _If no revision is specified, the resource will default to `master`._
+1.  `refspec`: (Optional) specify a git [refspec][git-refspec] to pass to git-fetch.
+     Note that if this field is specified, it must specify all refs, branches, tags,
+     or commits required to checkout the specified `revision`. An additional fetch
+     will not be run to obtain the contents of the revision field. If no refspec
+     is specified, the value of the `revision` field will be fetched directly.
+     The refspec is useful in manipulating the repository in several cases:
+     * when the server does not support fetches via the commit SHA (i.e. does
+       not have `uploadpack.allowReachableSHA1InWant` enabled) and you want
+       to fetch and checkout a specific commit hash from a ref chain.
+     * when you want to fetch several other refs alongside your revision
+       (for instance, tags)
+     * when you want to checkout a specific branch, the revision and refspec
+       fields can work together to be able to set the destination of the incoming
+       branch and switch to the branch.
+
+        Examples:
+         - Check out a specified revision commit SHA1 after fetching ref (detached) <br>
+           &nbsp;&nbsp;`revision`: cb17eba165fe7973ef9afec20e7c6971565bd72f <br>
+           &nbsp;&nbsp;`refspec`: refs/smoke/myref <br>
+         - Fetch all tags alongside refs/heads/master and switch to the master branch
+           (not detached) <br>
+           &nbsp;&nbsp;`revision`: master <br>
+           &nbsp;&nbsp;`refspec`: "refs/tags/\*:refs/tags/\* +refs/heads/master:refs/heads/master"<br>
+         - Fetch the develop branch and switch to it (not detached) <br>
+           &nbsp;&nbsp;`revision`: develop <br>
+           &nbsp;&nbsp;`refspec`: refs/heads/develop:refs/heads/develop <br>
+         - Fetch refs/pull/1009/head into the master branch and switch to it (not detached) <br>
+           &nbsp;&nbsp;`revision`: master <br>
+           &nbsp;&nbsp;`refspec`: refs/pull/1009/head:refs/heads/master <br>
+
 1.  `submodules`: defines if the resource should initialize and fetch the
     submodules, value is either `true` or `false`. _If not specified, this will
     default to true_
 1.  `depth`: performs a [shallow clone][git-depth] where only the most recent
-    commit(s) will be fetched. If set to `'0'`, all commits will be fetched. _If
-    not specified, the default depth is 1._
+    commit(s) will be fetched. This setting also applies to submodules. If set to
+     `'0'`, all commits will be fetched. _If not specified, the default depth is 1._
 1.  `sslVerify`: defines if [http.sslVerify][git-http.sslVerify] should be set
     to `true` or `false` in the global git config. _Defaults to `true` if
     omitted._
 
 [git-rev]: https://git-scm.com/docs/gitrevisions#_specifying_revisions
+[git-checkout]: https://git-scm.com/docs/git-checkout
+[git-refspec]: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 [git-depth]: https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---depthltdepthgt
 [git-http.sslVerify]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify
 
@@ -648,10 +696,17 @@ The Cluster resource has the following parameters:
     certificate.
 -   `cadata` (required): holds PEM-encoded bytes (typically read from a root
     certificates bundle).
+-   `clientKeyData`: contains PEM-encoded data from a client key file 
+        for TLS 
+-   `clientCertificateData`: contains PEM-encoded data from a client cert file for TLS
+
 
 Note: Since only one authentication technique is allowed per user, either a
 `token` or a `password` should be provided, if both are provided, the `password`
 will be ignored.
+
+`clientKeyData` and `clientCertificateData` are only required if `token` or 
+`password` is not provided for authentication to cluster.
 
 The following example shows the syntax and structure of a `cluster` resource:
 
@@ -1006,6 +1061,74 @@ Data,
     }
   }
 ```
+
+## Why Aren't PipelineResources in Beta?
+
+The short answer is that they're not ready to be given a Beta level of support by Tekton's developers. The long answer is, well, longer:
+
+- Their behaviour can be opaque.
+
+    They're implemented as a mixture of injected Task Steps, volume configuration and type-specific code in Tekton
+    Pipeline's controller. This means errors from `PipelineResources` can manifest in quite a few different ways
+    and it's not always obvious whether an error directly relates to `PipelineResource` behaviour. This problem
+    is compounded by the fact that, while our docs explain each Resource type's "happy path", there never seems to
+    be enough info available to explain error cases sufficiently.
+
+- When they fail they're difficult to debug.
+
+    Several PipelineResources inject their own Steps before a `Task's` Steps. It's extremely difficult to manually
+    insert Steps before them to inspect the state of a container before they run.
+
+- There aren't enough of them.
+
+    The six types of existing PipelineResources only cover a tiny subset of the possible systems and side-effects we
+    want to support with Tekton Pipelines.
+
+- Adding extensibility to them makes them really similar to `Tasks`:
+    - User-definable `Steps`? This is what `Tasks` provide.
+    - User-definable params? Tasks already have these.
+    - User-definable "resource results"? `Tasks` have `Task` Results.
+    - Sharing data between Tasks using PVCs? `workspaces` provide this for `Tasks`.
+- They make `Tasks` less reusable.
+    - A `Task` has to choose the `type` of `PipelineResource` it will accept.
+    - If a `Task` accepts a `git` `PipelineResource` then it's not able to accept a `gcs` `PipelineResource` from a
+      `TaskRun` or `PipelineRun` even though both the `git` and `gcs` `PipelineResources` fetch files. They should
+      technically be interchangeable: all they do is write files from somewhere remote onto disk. Yet with the existing
+      `PipelineResources` implementation they aren't interchangeable.
+
+They also present challenges from a documentation perspective:
+
+- Their purpose is ambiguous and it's difficult to articulate what the CRD is precisely for.
+- Four of the types interact with external systems (git, pull-request, gcs, gcs-build).
+- Five of them write files to a Task's disk (git, pull-request, gcs, gcs-build, cluster).
+- One tells the Pipelines controller to emit CloudEvents to a specific endpoint (cloudEvent).
+- One writes config to disk for a `Task` to use (cluster).
+- One writes a digest in one `Task` and then reads it back in another `Task` (image).
+- Perhaps the one thing you can say about the `PipelineResource` CRD is that it can create
+  side-effects for your `Tasks`.
+
+### Next steps
+
+So what are PipelineResources still good for?  We think we've identified some of the most important things:
+
+1. You can augment `Task`-only workflows with `PipelineResources` that, without them, can only be done with `Pipelines`.
+    - For example, let's say you want to checkout a git repo for your Task to test. You have two options. First, you could use a `git` PipelineResource and add it directly to your test `Task`. Second, you could write a `Pipeline` that has a `git-clone` `Task` which checks out the code onto a PersistentVolumeClaim `workspace` and then passes that PVC `workspace` to your test `Task`. For a lot of users the second workflow is totally acceptable but for others it isn't. Some of the most noteable reasons we've heard are:
+      - Some users simply cannot allocate storage on their platform, meaning `PersistentVolumeClaims` are out of the question.
+      - Expanding a single `Task` workflow into a `Pipeline` is labor-intensive and feels unnecessary.
+2. Despite being difficult to explain the whole CRD clearly each individual `type` is relatively easy to explain.
+    - For example, users can build a pretty good "hunch" for what a `git` `PipelineResource` is without really reading any docs.
+3. Configuring CloudEvents to be emitted by the Tekton Pipelines controller.
+    - Work is ongoing to get notifications support into the Pipelines controller which should hopefully be able to replace the `cloudEvents` `PipelineResource`.
+
+For each of these there is some amount of ongoing work or discussion. It may be that
+`PipelineResources` can be redesigned to fix all of their problems or it could be
+that the best features of `PipelineResources` can be extracted for use everywhere in
+Tekton Pipelines. So given this state of affairs `PipelineResources` are being kept
+out of beta until those questions are resolved.
+
+For Beta-supported alternatives to PipelineResources see
+[the v1alpha1 to v1beta1 migration guide](./migrating-v1alpha1-to-v1beta1.md#pipelineresources-and-catalog-tasks)
+which lists each PipelineResource type and a suggested option for replacing it.
 
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),

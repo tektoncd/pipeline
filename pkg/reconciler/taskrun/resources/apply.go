@@ -62,9 +62,6 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 			arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.ArrayVal
 		}
 	}
-
-	fmt.Println("stringReplacements", stringReplacements)
-	fmt.Println("arrayReplacements", arrayReplacements)
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
 }
 
@@ -99,8 +96,9 @@ func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alph
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
-// ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to and the
-// volumes that wb are realized with in the task spec ts.
+// ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to, the
+// volumes that wb are realized with in the task spec ts and the PersistentVolumeClaim names for the
+// workspaces.
 func ApplyWorkspaces(spec *v1alpha1.TaskSpec, w []v1alpha1.WorkspaceDeclaration, wb []v1alpha1.WorkspaceBinding) *v1alpha1.TaskSpec {
 	stringReplacements := map[string]string{}
 
@@ -110,6 +108,13 @@ func ApplyWorkspaces(spec *v1alpha1.TaskSpec, w []v1alpha1.WorkspaceDeclaration,
 	v := workspace.GetVolumes(wb)
 	for name, vv := range v {
 		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vv.Name
+	}
+	for _, w := range wb {
+		if w.PersistentVolumeClaim != nil {
+			stringReplacements[fmt.Sprintf("workspaces.%s.claim", w.Name)] = w.PersistentVolumeClaim.ClaimName
+		} else {
+			stringReplacements[fmt.Sprintf("workspaces.%s.claim", w.Name)] = ""
+		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }

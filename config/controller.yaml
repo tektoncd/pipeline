@@ -44,16 +44,20 @@ spec:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
+          # These images are built on-demand by `ko resolve` and are replaced
+          # by image references by digest.
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
-          "-nop-image", "tianon/true",
-          "-shell-image", "busybox",
-          "-gsutil-image", "google/cloud-sdk",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+
+          # These images are pulled from Dockerhub, by digest, as of April 15, 2020.
+          "-nop-image", "tianon/true@sha256:009cce421096698832595ce039aa13fa44327d96beedb84282a69d3dbcf5a81b",
+          "-shell-image", "busybox@sha256:a2490cec4484ee6c1068ba3a05f89934010c85242f736280b35343483b2264b6",
+          "-gsutil-image", "google/cloud-sdk@sha256:6e8676464c7581b2dc824956b112a61c95e4144642bec035e6db38e3384cae2e",
         ]
         volumeMounts:
         - name: config-logging
@@ -63,6 +67,9 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        # If you are changing these names, you will also need to update
+        # the controller's Role in 200-role.yaml to include the new
+        # values in the "configmaps" "get" rule.
         - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
@@ -71,6 +78,10 @@ spec:
           value: config-artifact-bucket
         - name: CONFIG_ARTIFACT_PVC_NAME
           value: config-artifact-pvc
+        - name: CONFIG_FEATURE_FLAGS_NAME
+          value: feature-flags
+        - name: CONFIG_LEADERELECTION_NAME
+          value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
       volumes:

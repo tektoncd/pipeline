@@ -108,7 +108,7 @@ preferences. 1. Switch the proper `kubectl` config context: `bash kubectl config
 get-contexts # You should see docker-for-desktop in the previous command output
 kubectl config use-context docker-for-desktop` To setup a cluster with GKE:
 
-1.  [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/docs/install/Knative-with-GKE.md#before-you-begin)
+1.  [Install required tools and setup GCP project](https://knative.dev/v0.12-docs/install/knative-with-gke/)
     (You may find it useful to save the ID of the project in an environment
     variable (e.g. `PROJECT_ID`).
 

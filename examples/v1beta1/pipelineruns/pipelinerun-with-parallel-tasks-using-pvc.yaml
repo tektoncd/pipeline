@@ -1,0 +1,85 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: write-to-file
+spec:
+  steps:
+    - name: write
+      image: ubuntu
+      script: echo bar > $(workspaces.task-ws.path)/foo
+  workspaces:
+    - name: task-ws
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: read-two
+spec:
+  workspaces:
+    - name: ws-a
+    - name: ws-b
+  steps:
+    - name: read-1
+      image: ubuntu
+      script: cat $(workspaces.ws-a.path)/foo | grep bar
+    - name: read-2
+      image: ubuntu
+      script: cat $(workspaces.ws-b.path)/foo | grep bar
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-using-parallel-tasks
+spec:
+  workspaces:
+    - name: ws-track-a
+    - name: ws-track-b
+  tasks:
+    - name: parallel-writer-a
+      taskRef:
+        name: write-to-file
+      workspaces:
+        - name: task-ws
+          workspace: ws-track-a
+    - name: parallel-writer-b
+      taskRef:
+        name: write-to-file
+      workspaces:
+        - name: task-ws
+          workspace: ws-track-b
+    - name: read-all
+      runAfter:
+        - parallel-writer-a
+        - parallel-writer-b
+      taskRef:
+        name: read-two
+      workspaces:
+        - name: ws-a
+          workspace: ws-track-a
+        - name: ws-b
+          workspace: ws-track-b
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-
+spec:
+  pipelineRef:
+    name: pipeline-using-parallel-tasks
+  workspaces:
+    - name: ws-track-a
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    - name: ws-track-b
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

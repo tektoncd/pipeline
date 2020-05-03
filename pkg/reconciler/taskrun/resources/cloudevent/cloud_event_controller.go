@@ -66,8 +66,7 @@ func cloudEventDeliveryFromTargets(targets []string) []v1alpha1.CloudEventDelive
 }
 
 // SendCloudEvents is used by the TaskRun controller to send cloud events once
-// the TaskRun is complete. `tr` is used to obtain the list of targets but also
-// to construct the body of the
+// the TaskRun is complete. `tr` is used to obtain the list of targets
 func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.SugaredLogger) error {
 	logger = logger.With(zap.String("taskrun", tr.Name))
 

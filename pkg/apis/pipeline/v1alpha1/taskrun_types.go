@@ -18,12 +18,23 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
+)
+
+var (
+	taskRunGroupVersionKind = schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    pipeline.TaskRunControllerName,
+	}
 )
 
 // TaskRunSpec defines the desired state of TaskRun
@@ -68,6 +79,10 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = v1beta1.TaskRunSpecStatusCancelled
+
+	// TaskRunReasonCancelled indicates that the TaskRun has been cancelled
+	// because it was requested so by the user
+	TaskRunReasonCancelled = v1beta1.TaskRunSpecStatusCancelled
 )
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -165,6 +180,11 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 	}
 }
 
+// GetOwnerReference gets the task run as owner reference for any related objects
+func (tr *TaskRun) GetOwnerReference() metav1.OwnerReference {
+	return *metav1.NewControllerRef(tr, taskRunGroupVersionKind)
+}
+
 // GetPipelineRunPVCName for taskrun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
 	if tr == nil {
@@ -209,6 +229,28 @@ func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
 }
 
+// HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
+func (tr *TaskRun) HasTimedOut() bool {
+	if tr.Status.StartTime.IsZero() {
+		return false
+	}
+	timeout := tr.GetTimeout()
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := time.Since(tr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+func (tr *TaskRun) GetTimeout() time.Duration {
+	// Use the platform default is no timeout is set
+	if tr.Spec.Timeout == nil {
+		return apisconfig.DefaultTimeoutMinutes * time.Minute
+	}
+	return tr.Spec.Timeout.Duration
+}
+
 // GetRunKey return the taskrun key for timeout handler map
 func (tr *TaskRun) GetRunKey() string {
 	// The address of the pointer is a threadsafe unique identifier for the taskrun
@@ -227,4 +269,15 @@ func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
 	}
 
 	return false, "", ""
+}
+
+// HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is
+// used for creating PersistentVolumeClaims with an OwnerReference for each run
+func (tr *TaskRun) HasVolumeClaimTemplate() bool {
+	for _, ws := range tr.Spec.Workspaces {
+		if ws.VolumeClaimTemplate != nil {
+			return true
+		}
+	}
+	return false
 }

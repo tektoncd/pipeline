@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -62,6 +63,10 @@ const (
 	// ReasonCreateContainerConfigError indicates that the TaskRun failed to create a pod due to
 	// config error of container
 	ReasonCreateContainerConfigError = "CreateContainerConfigError"
+
+	// ReasonPodCreationFailed indicates that the reason for the current condition
+	// is that the creation of the pod backing the TaskRun failed
+	ReasonPodCreationFailed = "PodCreationFailed"
 
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the steps
 	// completed successfully
@@ -281,7 +286,8 @@ func getFailureMessage(pod *corev1.Pod) string {
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
 		if term != nil && term.ExitCode != 0 {
-			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
+			// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+			return fmt.Sprintf(`%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n`,
 				status.Name, term.ExitCode, status.ImageID,
 				pod.Namespace, pod.Name, status.Name)
 		}
@@ -376,7 +382,11 @@ type stepStateSorter struct {
 func (trt *stepStateSorter) constructTaskStepsSorter(taskSpecSteps []v1alpha1.Step) map[string]int {
 	sorter := make(map[string]int)
 	for index, step := range taskSpecSteps {
-		sorter[step.Name] = index
+		stepName := step.Name
+		if stepName == "" {
+			stepName = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("unnamed-%d", index))
+		}
+		sorter[stepName] = index
 	}
 	return sorter
 }
