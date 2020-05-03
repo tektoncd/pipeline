@@ -14,7 +14,7 @@ the latest release of Tekton on your Kubernetes cluster.
 
 ### Install Minikube
 If you would like to complete this tutorial on your local workstation, you will need Minikube.
-Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.50 or higher.
+Install [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) v1.15 or higher.
 
 ### Install Tekton CLI
 This getting started guide uses the Tekton CLI, tkn, so make sure to install that on your local machine.
