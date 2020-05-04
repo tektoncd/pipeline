@@ -98,6 +98,9 @@ const (
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
 	ReasonCouldntCancel = "PipelineRunCouldntCancel"
+	// ReasonInvalidTaskResultReference indicates a task result was declared
+	// but was not initialized by that task
+	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -514,8 +517,8 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineRunState, nextRprts)
 	if err != nil {
-		logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
 
