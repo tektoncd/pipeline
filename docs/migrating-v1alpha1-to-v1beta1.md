@@ -1,30 +1,36 @@
-# Migrating From v1alpha1 to v1beta1
+# Migrating From Tekton `v1alpha1` to Tekton `v1beta1`
 
-- [Migrating From v1alpha1 to v1beta1](#migrating-from-v1alpha1-to-v1beta1)
-  - [Inputs and Outputs](#inputs-and-outputs)
-    - [Input Params](#input-params)
-    - [Input and Output PipelineResources](#input-and-output-pipelineresources)
-  - [PipelineResources and Catalog Tasks](#pipelineresources-and-catalog-tasks)
-    - [Git Resource](#git-resource)
-    - [Pull Request Resource](#pull-request-resource)
-    - [Image Resource](#image-resource)
-    - [GCS Resource](#gcs-resource)
+- [Changes to fields](#changes-to-fields)
+- [Changes to input parameters](#changes-to-input-parameters)
+- [Changes to `PipelineResources`](#changes-to-pipelineresources)
+- [Replacing `PipelineResources` with `Tasks`](#replacing-pipelineresources-with-tasks)
+  - [Replacing a `git` resource](#replacing-a-git-resource)
+  - [Replacing a `pullrequest` resource](#replacing-a-pullrequest-resource)
+  - [Replacing a `gcs` resource](#replacing-a-gcs-resource)
+  - [Replacing an `image` resource](#replacing-an-image-resource)
 
-This doc describes the changes you'll need to make when converting your `Task`s,
-`Pipeline`s, `TaskRun`s, and `PipelineRun`s from the `v1alpha1` `apiVersion` to
-`v1beta1`.
+This document describes the differences between `v1alpha` Tekton entities and their
+`v1beta1` counterparts. It also describes how to replace the supported types of
+`PipelineResources` with `Tasks` from the Tekton Catalog of equivalent functionality.
 
-## Inputs and Outputs
+## Changes to fields
 
-The `spec.inputs` and `spec.outputs` fields in `Tasks` are removed in `v1beta1`.
-`spec.inputs.params` is moved to `spec.params`. `spec.inputs.resources` becomes
-`spec.resources.inputs` and `spec.outputs.resources` becomes `spec.resources.outputs`.
+In Tekton `v1beta`, the following fields have been changed:
 
-#### Input Params
+| Old field | New field |
+| --------- | ----------|
+| `spec.inputs.params` | `spec.params` |
+|  `spec.inputs.resources` | `spec.resources.inputs` |
+| `spec.outputs.resources` | `spec.resources.outputs` |
+| `spec.inputs` | Removed from `Tasks` |
+| `spec.outputs` | Removed from `Tasks` | 
 
-Params move from `spec.inputs.params` in v1alpha1 to just `spec.params` in v1beta1.
 
-Example v1alpha1 Params:
+## Changes to input parameters
+
+In Tekton `v1beta`, input parameters have been moved from `spec.inputs.params` to `spec.params`. 
+
+For example, consider the following `v1alpha1` parameters:
 
 ```yaml
 # Task.yaml (v1alpha1)
@@ -43,7 +49,7 @@ spec:
       value: https://example.com/foo.json
 ```
 
-Equivalent v1beta1 Params:
+The above parameters are now represented as follows in `v1beta1`:
 
 ```yaml
 # Task.yaml (v1beta1)
@@ -60,13 +66,13 @@ spec:
     value: https://example.com/foo.json
 ```
 
-#### Input and Output PipelineResources
+## Changes to `PipelineResources`
 
-In v1alpha1, `PipelineResources` were stored under `spec.inputs.resources` and
-`spec.outputs.resources`. In v1beta1 these change to `spec.resources.inputs` and
-`spec.resources.outputs`.
+In Tekton `v1beta`, `PipelineResources` have been moved from `spec.input.respources`
+and `spec.output.resources` to `spec.resources.inputs` and `spec.resources.outputs`,
+respectively.
 
-Example v1alpha1 PipelineResources:
+For example, consider the following `v1alpha1` definition:
 
 ```yaml
 # Task.yaml (v1alpha1)
@@ -102,7 +108,7 @@ spec:
           value: gcr.io/foo/bar
 ```
 
-Equivalent v1beta1 PipelineResources:
+The above definition becomes the following in `v1beta1`:
 
 ```yaml
 # Task.yaml (v1beta1)
@@ -136,42 +142,39 @@ spec:
           value: gcr.io/foo/bar
 ```
 
-## PipelineResources and Catalog Tasks
+## Replacing `PipelineResources` with `Tasks`
 
-PipelineResources are remaining in alpha while the other resource kinds are
-promoted to beta. This is part of a deliberate effort to migrate users away
-from PipelineResources onto a broader suite of reusable Tasks provided by
-the Tekton catalog.
+While Tekton Pipelines has advanced to beta, `PipelineResources` remain in alpha
+in a deliberate effort to migrate users away from `PipelineResources` and onto
+a broader suite of reusable `Tasks` in the Tekton Catalog.
 
-In the near-term `PipelineResources` will continue to be supported by Tekton.
-At some point the feature may well be deprecated and subsequently replaced.
+In the near term, Tekton continues to support `PipelineResources`; however, they
+will be eventually deprecated and removed from Tekton.
 
-To ease migration away from PipelineResources some types have an equivalent
-Task in the Catalog.
+You can replace the types of `PipelineResources` listed below with `Tasks` from the
+Tekton Catalog of equivalent functionality as described below.
 
-### Git Resource
+### Replacing a `git` resource
 
-The [`git-clone` Task in the Catalog](https://github.com/tektoncd/catalog/tree/v1beta1/git)
-provides an equivalent to the Git Resource.
+You can replace a `git` resource with the [`git-clone` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/git).
 
-### Pull Request Resource
+### Replacing a `pullrequest` resource
 
-The [`pullrequest` Task in the Catalog](https://github.com/tektoncd/catalog/tree/v1beta1/pullrequest)
-provides an equivalent to the PullRequest Resource.
+You can replace a `pullrequest` resource with the [`pullrequest` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/pullrequest).
 
-### Image Resource
+### Replacing a `gcs` resource
 
-The Image PipelineResource does not come with specific behaviour, it's simply a way to share
-a built image's digest with subsequent `Tasks` in a `Pipeline`. The same effect can be achieved
-using [`Task` results](./tasks.md#results) and [`Task` params](./tasks.md#parameters)
+You can replace a `gcs` resource with the [`gcs` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/gcs).
 
-For an example of how the Image PipelineResource can be replaced, see
-the [Kaniko Catalog Task](https://github.com/tektoncd/catalog/blob/v1beta1/kaniko/)
-which demonstrates writing the image digest to a result, and the
-[Buildah Catalog Task](https://github.com/tektoncd/catalog/blob/v1beta1/buildah/)
-which shows how to accept an image digest as a parameter.
+### Replacing an `image` resource
 
-### GCS Resource
+Since the `image` resource is simply a way to share the digest of a built image with subsequent
+`Tasks` in your `Pipeline`, you can use [`Task` results](tasks.md#storing-execution-results) to
+achieve equivalent functionality.
 
-The [`gcs` Tasks in the Catalog](https://github.com/tektoncd/catalog/tree/v1beta1/gcs) provide
-an equivalent to the GCS Resource.
+For examples of replacing an `image` resource, see the following Catalog `Tasks`:
+
+- The [Kaniko Catalog `Task`](https://github.com/tektoncd/catalog/blob/v1beta1/kaniko/)
+  illustrates how to write the digest of an image to a result.
+- The [Buildah Catalog `Task`](https://github.com/tektoncd/catalog/blob/v1beta1/buildah/)
+  illustrates how to accept an image digest as a parameter.
