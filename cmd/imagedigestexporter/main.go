@@ -24,7 +24,7 @@ import (
 	"knative.dev/pkg/logging"
 
 	"github.com/google/go-containerregistry/pkg/v1/layout"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 )
 
@@ -52,7 +52,7 @@ func main() {
 		logger.Fatalf("Error reading images array: %v", err)
 	}
 
-	output := []v1alpha1.PipelineResourceResult{}
+	output := []v1beta1.PipelineResourceResult{}
 	for _, imageResource := range imageResources {
 		ii, err := layout.ImageIndexFromPath(imageResource.OutputImageDir)
 		if err != nil {
@@ -63,10 +63,10 @@ func main() {
 		if err != nil {
 			logger.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
 		}
-		output = append(output, v1alpha1.PipelineResourceResult{
+		output = append(output, v1beta1.PipelineResourceResult{
 			Key:   "digest",
 			Value: digest.String(),
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: v1beta1.PipelineResourceRef{
 				Name: imageResource.Name,
 			},
 		})
