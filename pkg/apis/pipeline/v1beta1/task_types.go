@@ -21,6 +21,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// TaskRunResultType default task run result value
+	TaskRunResultType ResultType = "TaskRunResult"
+	// PipelineResourceResultType default pipeline result value
+	PipelineResourceResultType ResultType = "PipelineResourceResult"
+	// UnknownResultType default unknown result type value
+	UnknownResultType ResultType = ""
+)
+
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
