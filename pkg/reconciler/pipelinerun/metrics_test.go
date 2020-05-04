@@ -48,14 +48,14 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 
 	testData := []struct {
 		name              string
-		taskRun           *v1alpha1.PipelineRun
+		pipelineRun       *v1alpha1.PipelineRun
 		expectedTags      map[string]string
 		expectedCountTags map[string]string
 		expectedDuration  float64
 		expectedCount     int64
 	}{{
 		name: "for_succeeded_pipeline",
-		taskRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
+		pipelineRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
 			tb.PipelineRunSpec("pipeline-1"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStartTime(startTime),
@@ -78,7 +78,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedCount:    1,
 	}, {
 		name: "for_failed_pipeline",
-		taskRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
+		pipelineRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
 			tb.PipelineRunSpec("pipeline-1"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStartTime(startTime),
@@ -108,7 +108,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			metrics, err := NewRecorder()
 			assertErrIsNil(err, "Recorder initialization failed", t)
 
-			err = metrics.DurationAndCount(test.taskRun)
+			err = metrics.DurationAndCount(test.pipelineRun)
 			assertErrIsNil(err, "DurationAndCount recording recording got an error", t)
 			metricstest.CheckDistributionData(t, "pipelinerun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
 			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedCountTags, test.expectedCount)
