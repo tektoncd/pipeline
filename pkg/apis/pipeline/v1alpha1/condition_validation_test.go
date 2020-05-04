@@ -22,10 +22,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"knative.dev/pkg/apis"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	"knative.dev/pkg/apis"
 )
 
 func TestCondition_Validate(t *testing.T) {
@@ -71,6 +70,18 @@ func TestCondition_Invalidate(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "step 0 script cannot be used with command",
 			Paths:   []string{"Spec.Check.script"},
+		},
+	}, {
+		name: "condition with invalid check name",
+		cond: tb.Condition("cond",
+			tb.ConditionSpec(
+				tb.ConditionSpecCheck("Cname", "image", tb.Command("exit 0")),
+				tb.ConditionSpecCheckScript("echo foo"),
+			)),
+		expectedError: apis.FieldError{
+			Message: "invalid value \"Cname\"",
+			Paths:   []string{"Spec.Check.name"},
+			Details: "Condition check name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}}
 
