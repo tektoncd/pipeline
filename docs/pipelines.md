@@ -540,6 +540,13 @@ params:
     value: "$(tasks.checkout-source.results.commit)"
 ```
 
+**Note:** If `checkout-source` exits successfully without initializing `commit` `Result`,
+the receiving `Task` fails and causes the `Pipeline` to fail with `InvalidTaskResultReference`:
+
+```
+unable to find result referenced by param 'foo' in 'task';: Could not find result with name 'commit' for task run 'checkout-source'
+```
+
 In the snippet below, a `WhenExpression` is provided its value from the `exists` `Result` emitted by the
 `check-file` `Task`. Tekton will make sure that the `check-file` `Task` runs before this one.
 
