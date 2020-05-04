@@ -24,11 +24,11 @@ import (
 
 const (
 	// TaskRunResultType default task run result value
-	TaskRunResultType ResultType = "TaskRunResult"
+	TaskRunResultType ResultType = v1beta1.TaskRunResultType
 	// PipelineResourceResultType default pipeline result value
-	PipelineResourceResultType ResultType = "PipelineResourceResult"
+	PipelineResourceResultType ResultType = v1beta1.PipelineResourceResultType
 	// UnknownResultType default unknown result type value
-	UnknownResultType ResultType = ""
+	UnknownResultType ResultType = v1beta1.UnknownResultType
 )
 
 func (t *Task) TaskSpec() TaskSpec {

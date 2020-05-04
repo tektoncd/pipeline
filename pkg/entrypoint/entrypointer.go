@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 )
@@ -83,7 +83,7 @@ func (e Entrypointer) Go() error {
 	prod, _ := zap.NewProduction()
 	logger := prod.Sugar()
 
-	output := []v1alpha1.PipelineResourceResult{}
+	output := []v1beta1.PipelineResourceResult{}
 	defer func() {
 		if wErr := termination.WriteMessage(e.TerminationPath, output); wErr != nil {
 			logger.Fatalf("Error while writing message: %s", wErr)
@@ -96,7 +96,7 @@ func (e Entrypointer) Go() error {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
 			e.WritePostFile(e.PostFile, err)
-			output = append(output, v1alpha1.PipelineResourceResult{
+			output = append(output, v1beta1.PipelineResourceResult{
 				Key:   "StartedAt",
 				Value: time.Now().Format(time.RFC3339),
 			})
@@ -108,7 +108,7 @@ func (e Entrypointer) Go() error {
 	if e.Entrypoint != "" {
 		e.Args = append([]string{e.Entrypoint}, e.Args...)
 	}
-	output = append(output, v1alpha1.PipelineResourceResult{
+	output = append(output, v1beta1.PipelineResourceResult{
 		Key:   "StartedAt",
 		Value: time.Now().Format(time.RFC3339),
 	})
@@ -130,7 +130,7 @@ func (e Entrypointer) Go() error {
 }
 
 func (e Entrypointer) readResultsFromDisk() error {
-	output := []v1alpha1.PipelineResourceResult{}
+	output := []v1beta1.PipelineResourceResult{}
 	for _, resultFile := range e.Results {
 		if resultFile == "" {
 			continue
@@ -142,10 +142,10 @@ func (e Entrypointer) readResultsFromDisk() error {
 			return err
 		}
 		// if the file doesn't exist, ignore it
-		output = append(output, v1alpha1.PipelineResourceResult{
+		output = append(output, v1beta1.PipelineResourceResult{
 			Key:        resultFile,
 			Value:      string(fileContents),
-			ResultType: v1alpha1.TaskRunResultType,
+			ResultType: v1beta1.TaskRunResultType,
 		})
 	}
 	// push output to termination path
