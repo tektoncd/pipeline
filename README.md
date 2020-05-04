@@ -68,6 +68,9 @@ a cluster with **Kubernetes version 1.15 or later***.
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
 stability level of the API._
 
+_See [our Deprecations table](docs/deprecations.md) for features that have been
+deprecated and the earliest date they'll be removed._
+
 ## Migrating
 
 ### v1alpha1 to v1beta1
