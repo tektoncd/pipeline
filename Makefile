@@ -8,7 +8,8 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 			$(PKGS))
 BIN      = $(CURDIR)/.bin
 
-GOLANGCI_VERSION = v1.24.0
+GOLANGCI_VERSION = v1.25.0
+GOSEC_VERSION    = v2.3.0
 
 GO           = go
 TIMEOUT_UNIT = 5m
@@ -76,6 +77,9 @@ watch-test: | $(RAM) ; $(info $(M) watch and run tests) @ ## Watch and run tests
 watch-config: | $(KO) ; $(info $(M) watch and apply config) @ ## Watch and apply to the current cluster
 	$Q $(KO) apply --strict -W -f config
 
+## Linters configuration and targets
+# TODO(vdemeester) gofmt and goimports checks (run them with -w and make a diff)
+
 GOLINT = $(BIN)/golint
 $(BIN)/golint: PACKAGE=golang.org/x/lint/golint
 
@@ -83,17 +87,65 @@ $(BIN)/golint: PACKAGE=golang.org/x/lint/golint
 golint: | $(GOLINT) ; $(info $(M) running golint…) @ ## Run golint
 	$Q $(GOLINT) -set_exit_status $(PKGS)
 
-GOLANGCILINT= $(BIN)/golangci-lint
+.PHONY: vet
+vet: | ; $(info $(M) running go vet…) @ ## Run go vet
+	$Q go vet ./...
+
+INEFFASSIGN = $(BIN)/ineffassign
+$(BIN)/ineffassign: PACKAGE=github.com/gordonklaus/ineffassign
+
+.PHONY: ineffassign
+ineffassign: | $(INEFFASSIGN) ; $(info $(M) running static ineffassign…) @ ## Run ineffassign
+	$Q $(INEFFASSIGN) .
+
+STATICCHECK = $(BIN)/staticcheck
+$(BIN)/staticcheck: PACKAGE=honnef.co/go/tools/cmd/staticcheck
+
+.PHONY: staticcheck
+staticcheck: | $(STATICCHECK) ; $(info $(M) running static check…) @ ## Run staticcheck
+	$Q $(STATICCHECK) ./...
+
+DUPL = $(BIN)/dupl
+$(BIN)/dupl: PACKAGE=github.com/mibk/dupl
+
+.PHONY: dupl
+dupl: | $(DUPL) ; $(info $(M) running dupl…) ## Run dupl
+	$Q $(DUPL)
+
+ERRCHECK = $(BIN)/errcheck
+$(BIN)/errcheck: PACKAGE=github.com/kisielk/errcheck
+
+.PHONY: errcheck
+errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
+	$Q $(ERRCHECK) ./...
+
+GOLANGCILINT = $(BIN)/golangci-lint
 $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
 
 .PHONY: golangci-lint
-golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint) @ ## Run golangci-lint
+golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
 	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
+
+GOSEC = $(BIN)/gosec
+$(BIN)/gosec: ; $(info $(M) getting gosec $(GOSEC_VERSION))
+	@curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(BIN) $(GOSEC_VERSION)
+
+.PHONY: gosec
+gosec: | $(GOSEC) ; $(info $(M) running gosec…)
+	$Q $(GOSEC) ./...
+
+GOIMPORTS = $(BIN)/goimports
+$(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
+
+.PHONY: goimports
+goimports: | $(GOIMPORTS) ; $(info $(M) running goimports…) ## Run goimports
+	$Q $(GOIMPORTS) -l -e -w pkg cmd test
 
 .PHONY: fmt
 fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
 	$Q $(GO) fmt $(PKGS)
+
 # Misc
 
 .PHONY: clean
