@@ -78,3 +78,8 @@ to adjust their usage in order to use the new version.
 
 These changes must be approved by [more than half of the project OWNERS](OWNERS)
 (i.e. 50% + 1).
+
+## Deprecated Features
+
+Tekton Pipelines [maintains a list of features that have been deprecated](https://github.com/tektoncd/pipeline/tree/master/docs/deprecations.md)
+which includes the earliest date each feature will be removed.
