@@ -17,124 +17,71 @@ limitations under the License.
 package builder
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	v1beta1 "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 )
 
 // ContainerOp is an operation which modifies a Container struct.
-type ContainerOp func(*corev1.Container)
+// Deprecated: moved to internal/builder/v1alpha1
+type ContainerOp = v1beta1.ContainerOp
 
 // VolumeMountOp is an operation which modifies a VolumeMount struct.
-type VolumeMountOp func(*corev1.VolumeMount)
+// Deprecated: moved to internal/builder/v1alpha1
+type VolumeMountOp = v1beta1.VolumeMountOp
 
 // ResourceRequirementsOp is an operation which modifies a ResourceRequirements struct.
-type ResourceRequirementsOp func(*corev1.ResourceRequirements)
+// Deprecated: moved to internal/builder/v1alpha1
+type ResourceRequirementsOp = v1beta1.ResourceRequirementsOp
 
 // ResourceListOp is an operation which modifies a ResourceList struct.
-type ResourceListOp func(corev1.ResourceList)
+// Deprecated: moved to internal/builder/v1alpha1
+type ResourceListOp = v1beta1.ResourceListOp
 
-// Command sets the command to the Container (step in this case).
-func Command(args ...string) ContainerOp {
-	return func(container *corev1.Container) {
-		container.Command = args
-	}
-}
+var (
+	// Command sets the command to the Container (step in this case).
+	// Deprecated: moved to internal/builder/v1alpha1
+	Command = v1beta1.Command
 
-// Args sets the command arguments to the Container (step in this case).
-func Args(args ...string) ContainerOp {
-	return func(container *corev1.Container) {
-		container.Args = args
-	}
-}
+	// Args sets the command arguments to the Container (step in this case).
+	// Deprecated: moved to internal/builder/v1alpha1
+	Args = v1beta1.Args
 
-// EnvVar add an environment variable, with specified name and value, to the Container (step).
-func EnvVar(name, value string) ContainerOp {
-	return func(c *corev1.Container) {
-		c.Env = append(c.Env, corev1.EnvVar{
-			Name:  name,
-			Value: value,
-		})
-	}
-}
+	// EnvVar add an environment variable, with specified name and value, to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	EnvVar = v1beta1.EnvVar
 
-// WorkingDir sets the WorkingDir on the Container.
-func WorkingDir(workingDir string) ContainerOp {
-	return func(c *corev1.Container) {
-		c.WorkingDir = workingDir
-	}
-}
+	// WorkingDir sets the WorkingDir on the Container.
+	// Deprecated: moved to internal/builder/v1alpha1
+	WorkingDir = v1beta1.WorkingDir
 
-// VolumeMount add a VolumeMount to the Container (step).
-func VolumeMount(name, mountPath string, ops ...VolumeMountOp) ContainerOp {
-	return func(c *corev1.Container) {
-		mount := &corev1.VolumeMount{
-			Name:      name,
-			MountPath: mountPath,
-		}
-		for _, op := range ops {
-			op(mount)
-		}
-		c.VolumeMounts = append(c.VolumeMounts, *mount)
-	}
-}
+	// VolumeMount add a VolumeMount to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	VolumeMount = v1beta1.VolumeMount
 
-// Resources adds ResourceRequirements to the Container (step).
-func Resources(ops ...ResourceRequirementsOp) ContainerOp {
-	return func(c *corev1.Container) {
-		rr := &corev1.ResourceRequirements{}
-		for _, op := range ops {
-			op(rr)
-		}
-		c.Resources = *rr
-	}
-}
+	// Resources adds ResourceRequirements to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	Resources = v1beta1.Resources
 
-// Limits adds Limits to the ResourceRequirements.
-func Limits(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		limits := corev1.ResourceList{}
-		for _, op := range ops {
-			op(limits)
-		}
-		rr.Limits = limits
-	}
-}
+	// Limits adds Limits to the ResourceRequirements.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Limits = v1beta1.Limits
 
-// Requests adds Requests to the ResourceRequirements.
-func Requests(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		requests := corev1.ResourceList{}
-		for _, op := range ops {
-			op(requests)
-		}
-		rr.Requests = requests
-	}
-}
+	// Requests adds Requests to the ResourceRequirements.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Requests = v1beta1.Requests
 
-// CPU sets the CPU resource on the ResourceList.
-func CPU(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceCPU] = resource.MustParse(val)
-	}
-}
+	// CPU sets the CPU resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	CPU = v1beta1.CPU
 
-// Memory sets the memory resource on the ResourceList.
-func Memory(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceMemory] = resource.MustParse(val)
-	}
-}
+	// Memory sets the memory resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Memory = v1beta1.Memory
 
-// EphemeralStorage sets the ephemeral storage resource on the ResourceList.
-func EphemeralStorage(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceEphemeralStorage] = resource.MustParse(val)
-	}
-}
+	// EphemeralStorage sets the ephemeral storage resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	EphemeralStorage = v1beta1.EphemeralStorage
 
-// TerminationMessagePath sets the termination message path.
-func TerminationMessagePath(terminationMessagePath string) ContainerOp {
-	return func(c *corev1.Container) {
-		c.TerminationMessagePath = terminationMessagePath
-	}
-}
+	// TerminationMessagePath sets the termination message path.
+	// Deprecated: moved to internal/builder/v1alpha1
+	TerminationMessagePath = v1beta1.TerminationMessagePath
+)

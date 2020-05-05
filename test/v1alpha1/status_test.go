@@ -21,7 +21,7 @@ package test
 import (
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/test/builder"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	knativetest "knative.dev/pkg/test"
 )
 

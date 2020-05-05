@@ -14,136 +14,71 @@ limitations under the License.
 package builder
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	v1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 )
 
 // StepOp is an operation which modifies a Container struct.
-type StepOp func(*v1alpha1.Step)
+// Deprecated: moved to internal/builder/v1alpha1
+type StepOp = v1alpha1.StepOp
 
-// StepName sets the name of the step.
-func StepName(name string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.Name = name
-	}
-}
+var (
+	// StepName sets the name of the step.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepName = v1alpha1.StepName
 
-// StepCommand sets the command to the Container (step in this case).
-func StepCommand(args ...string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.Command = args
-	}
-}
+	// StepCommand sets the command to the Container (step in this case).
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepCommand = v1alpha1.StepCommand
 
-// StepSecurityContext sets the SecurityContext to the Step.
-func StepSecurityContext(context *corev1.SecurityContext) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.SecurityContext = context
-	}
-}
+	// StepSecurityContext sets the SecurityContext to the Step.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepSecurityContext = v1alpha1.StepSecurityContext
 
-// StepArgs sets the command arguments to the Container (step in this case).
-func StepArgs(args ...string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.Args = args
-	}
-}
+	// StepArgs sets the command arguments to the Container (step in this case).
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepArgs = v1alpha1.StepArgs
 
-// StepEnvVar add an environment variable, with specified name and value, to the Container (step).
-func StepEnvVar(name, value string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.Env = append(step.Env, corev1.EnvVar{
-			Name:  name,
-			Value: value,
-		})
-	}
-}
+	// StepEnvVar add an environment variable, with specified name and value, to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepEnvVar = v1alpha1.StepEnvVar
 
-// StepWorkingDir sets the WorkingDir on the Container.
-func StepWorkingDir(workingDir string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.WorkingDir = workingDir
-	}
-}
+	// StepWorkingDir sets the WorkingDir on the Container.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepWorkingDir = v1alpha1.StepWorkingDir
 
-// StepVolumeMount add a VolumeMount to the Container (step).
-func StepVolumeMount(name, mountPath string, ops ...VolumeMountOp) StepOp {
-	return func(step *v1alpha1.Step) {
-		mount := &corev1.VolumeMount{
-			Name:      name,
-			MountPath: mountPath,
-		}
-		for _, op := range ops {
-			op(mount)
-		}
-		step.VolumeMounts = append(step.VolumeMounts, *mount)
-	}
-}
+	// StepVolumeMount add a VolumeMount to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepVolumeMount = v1alpha1.StepVolumeMount
 
-func StepScript(script string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.Script = script
-	}
-}
+	// StepScript sets the script to the Step.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepScript = v1alpha1.StepScript
 
-// StepResources adds ResourceRequirements to the Container (step).
-func StepResources(ops ...ResourceRequirementsOp) StepOp {
-	return func(step *v1alpha1.Step) {
-		rr := &corev1.ResourceRequirements{}
-		for _, op := range ops {
-			op(rr)
-		}
-		step.Resources = *rr
-	}
-}
+	// StepResources adds ResourceRequirements to the Container (step).
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepResources = v1alpha1.StepResources
 
-// StepLimits adds Limits to the ResourceRequirements.
-func StepLimits(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		limits := corev1.ResourceList{}
-		for _, op := range ops {
-			op(limits)
-		}
-		rr.Limits = limits
-	}
-}
+	// StepLimits adds Limits to the ResourceRequirements.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepLimits = v1alpha1.StepLimits
 
-// StepRequests adds Requests to the ResourceRequirements.
-func StepRequests(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		requests := corev1.ResourceList{}
-		for _, op := range ops {
-			op(requests)
-		}
-		rr.Requests = requests
-	}
-}
+	// StepRequests adds Requests to the ResourceRequirements.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepRequests = v1alpha1.StepRequests
 
-// StepCPU sets the CPU resource on the ResourceList.
-func StepCPU(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceCPU] = resource.MustParse(val)
-	}
-}
+	// StepCPU sets the CPU resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepCPU = v1alpha1.StepCPU
 
-// StepMemory sets the memory resource on the ResourceList.
-func StepMemory(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceMemory] = resource.MustParse(val)
-	}
-}
+	// StepMemory sets the memory resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepMemory = v1alpha1.StepMemory
 
-// StepEphemeralStorage sets the ephemeral storage resource on the ResourceList.
-func StepEphemeralStorage(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceEphemeralStorage] = resource.MustParse(val)
-	}
-}
+	// StepEphemeralStorage sets the ephemeral storage resource on the ResourceList.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepEphemeralStorage = v1alpha1.StepEphemeralStorage
 
-// StepTerminationMessagePath sets the source of the termination message.
-func StepTerminationMessagePath(terminationMessagePath string) StepOp {
-	return func(step *v1alpha1.Step) {
-		step.TerminationMessagePath = terminationMessagePath
-	}
-}
+	// StepTerminationMessagePath sets the source of the termination message.
+	// Deprecated: moved to internal/builder/v1alpha1
+	StepTerminationMessagePath = v1alpha1.StepTerminationMessagePath
+)

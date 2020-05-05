@@ -17,175 +17,80 @@ limitations under the License.
 package builder
 
 import (
-	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1beta1 "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 )
 
 // PodOp is an operation which modifies a Pod struct.
-type PodOp func(*corev1.Pod)
+// Deprecated: moved to internal/builder/v1alpha1
+type PodOp = v1beta1.PodOp
 
 // PodSpecOp is an operation which modifies a PodSpec struct.
-type PodSpecOp func(*corev1.PodSpec)
+// Deprecated: moved to internal/builder/v1alpha1
+type PodSpecOp = v1beta1.PodSpecOp
 
 // PodStatusOp is an operation which modifies a PodStatus struct.
-type PodStatusOp func(status *corev1.PodStatus)
+// Deprecated: moved to internal/builder/v1alpha1
+type PodStatusOp = v1beta1.PodStatusOp
 
-// Pod creates a Pod with default values.
-// Any number of Pod modifiers can be passed to transform it.
-func Pod(name string, ops ...PodOp) *corev1.Pod {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Annotations: map[string]string{},
-		},
-	}
-	for _, op := range ops {
-		op(pod)
-	}
-	return pod
-}
+var (
+	// Pod creates a Pod with default values.
+	// Any number of Pod modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Pod = v1beta1.Pod
 
-// Useful when tests need to specify the namespace
-func PodNamespace(namespace string) PodOp {
-	return func(t *corev1.Pod) {
-		t.ObjectMeta.Namespace = namespace
-	}
-}
+	// PodNamespace sets the namespace on the Pod.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodNamespace = v1beta1.PodNamespace
 
-// PodLabel adds an annotation to the Pod.
-func PodAnnotation(key, value string) PodOp {
-	return func(pod *corev1.Pod) {
-		if pod.ObjectMeta.Annotations == nil {
-			pod.ObjectMeta.Annotations = map[string]string{}
-		}
-		pod.ObjectMeta.Annotations[key] = value
-	}
-}
+	// PodAnnotation adds an annotation to the Pod.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodAnnotation = v1beta1.PodAnnotation
 
-// PodLabel adds a label to the Pod.
-func PodLabel(key, value string) PodOp {
-	return func(pod *corev1.Pod) {
-		if pod.ObjectMeta.Labels == nil {
-			pod.ObjectMeta.Labels = map[string]string{}
-		}
-		pod.ObjectMeta.Labels[key] = value
-	}
-}
+	// PodLabel adds a label to the Pod.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodLabel = v1beta1.PodLabel
 
-// PodOwnerReference adds an OwnerReference, with specified kind and name, to the Pod.
-func PodOwnerReference(kind, name string, ops ...OwnerReferenceOp) PodOp {
-	trueB := true
-	return func(pod *corev1.Pod) {
-		o := &metav1.OwnerReference{
-			Kind:               kind,
-			Name:               name,
-			Controller:         &trueB,
-			BlockOwnerDeletion: &trueB,
-		}
-		for _, op := range ops {
-			op(o)
-		}
-		pod.ObjectMeta.OwnerReferences = append(pod.ObjectMeta.OwnerReferences, *o)
-	}
-}
+	// PodOwnerReference adds an OwnerReference, with specified kind and name, to the Pod.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodOwnerReference = v1beta1.PodOwnerReference
 
-// PodSpec creates a PodSpec with default values.
-// Any number of PodSpec modifiers can be passed to transform it.
-func PodSpec(ops ...PodSpecOp) PodOp {
-	return func(pod *corev1.Pod) {
-		podSpec := &pod.Spec
-		for _, op := range ops {
-			op(podSpec)
-		}
-		pod.Spec = *podSpec
-	}
-}
+	// PodSpec creates a PodSpec with default values.
+	// Any number of PodSpec modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodSpec = v1beta1.PodSpec
 
-// PodRestartPolicy sets the restart policy on the PodSpec.
-func PodRestartPolicy(restartPolicy corev1.RestartPolicy) PodSpecOp {
-	return func(spec *corev1.PodSpec) {
-		spec.RestartPolicy = restartPolicy
-	}
-}
+	// PodRestartPolicy sets the restart policy on the PodSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodRestartPolicy = v1beta1.PodRestartPolicy
 
-// PodServiceAccountName sets the service account on the PodSpec.
-func PodServiceAccountName(sa string) PodSpecOp {
-	return func(spec *corev1.PodSpec) {
-		spec.ServiceAccountName = sa
-	}
-}
+	// PodServiceAccountName sets the service account on the PodSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodServiceAccountName = v1beta1.PodServiceAccountName
 
-// PodContainer adds a Container, with the specified name and image, to the PodSpec.
-// Any number of Container modifiers can be passed to transform it.
-func PodContainer(name, image string, ops ...ContainerOp) PodSpecOp {
-	return func(spec *corev1.PodSpec) {
-		c := &corev1.Container{
-			Name:  name,
-			Image: image,
-			// By default, containers request zero resources. Ops
-			// can override this.
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:              resource.MustParse("0"),
-					corev1.ResourceMemory:           resource.MustParse("0"),
-					corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-				},
-			},
-		}
-		for _, op := range ops {
-			op(c)
-		}
-		spec.Containers = append(spec.Containers, *c)
-	}
-}
+	// PodContainer adds a Container, with the specified name and image, to the PodSpec.
+	// Any number of Container modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodContainer = v1beta1.PodContainer
 
-// PodInitContainer adds an InitContainer, with the specified name and image, to the PodSpec.
-// Any number of Container modifiers can be passed to transform it.
-func PodInitContainer(name, image string, ops ...ContainerOp) PodSpecOp {
-	return func(spec *corev1.PodSpec) {
-		c := &corev1.Container{
-			Name:  name,
-			Image: image,
-			Args:  []string{},
-		}
-		for _, op := range ops {
-			op(c)
-		}
-		spec.InitContainers = append(spec.InitContainers, *c)
-	}
-}
+	// PodInitContainer adds an InitContainer, with the specified name and image, to the PodSpec.
+	// Any number of Container modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodInitContainer = v1beta1.PodInitContainer
 
-// PodVolume sets the Volumes on the PodSpec.
-func PodVolumes(volumes ...corev1.Volume) PodSpecOp {
-	return func(spec *corev1.PodSpec) {
-		spec.Volumes = volumes
-	}
-}
+	// PodVolumes sets the Volumes on the PodSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodVolumes = v1beta1.PodVolumes
 
-// PodCreationTimestamp sets the creation time of the pod
-func PodCreationTimestamp(t time.Time) PodOp {
-	return func(p *corev1.Pod) {
-		p.CreationTimestamp = metav1.Time{Time: t}
-	}
-}
+	// PodCreationTimestamp sets the creation time of the pod
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodCreationTimestamp = v1beta1.PodCreationTimestamp
 
-// PodStatus creates a PodStatus with default values.
-// Any number of PodStatus modifiers can be passed to transform it.
-func PodStatus(ops ...PodStatusOp) PodOp {
-	return func(pod *corev1.Pod) {
-		podStatus := &pod.Status
-		for _, op := range ops {
-			op(podStatus)
-		}
-		pod.Status = *podStatus
-	}
-}
+	// PodStatus creates a PodStatus with default values.
+	// Any number of PodStatus modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodStatus = v1beta1.PodStatus
 
-func PodStatusConditions(cond corev1.PodCondition) PodStatusOp {
-	return func(status *corev1.PodStatus) {
-		status.Conditions = append(status.Conditions, cond)
-	}
-}
+	// PodStatusConditions adds a Conditions (set) to the Pod status.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PodStatusConditions = v1beta1.PodStatusConditions
+)

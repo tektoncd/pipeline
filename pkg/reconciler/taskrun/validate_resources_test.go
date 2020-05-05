@@ -19,10 +19,10 @@ package taskrun_test
 import (
 	"testing"
 
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {

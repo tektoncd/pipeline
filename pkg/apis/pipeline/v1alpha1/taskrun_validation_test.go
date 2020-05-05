@@ -22,10 +22,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/test/builder"
-	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -218,7 +217,7 @@ func TestInput_Validate(t *testing.T) {
 	i := v1alpha1.TaskRunInputs{
 		Params: []v1alpha1.Param{{
 			Name:  "name",
-			Value: *builder.ArrayOrString("value"),
+			Value: *tb.ArrayOrString("value"),
 		}},
 		Resources: []v1alpha1.TaskResourceBinding{{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
@@ -272,10 +271,10 @@ func TestInput_Invalid(t *testing.T) {
 			}},
 			Params: []v1alpha1.Param{{
 				Name:  "name",
-				Value: *builder.ArrayOrString("value"),
+				Value: *tb.ArrayOrString("value"),
 			}, {
 				Name:  "name",
-				Value: *builder.ArrayOrString("value"),
+				Value: *tb.ArrayOrString("value"),
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),

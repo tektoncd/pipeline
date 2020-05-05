@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestParamSpec_SetDefaults(t *testing.T) {
@@ -45,12 +45,12 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		name: "inferred type from default value",
 		before: &v1beta1.ParamSpec{
 			Name:    "parametername",
-			Default: builder.ArrayOrString("an", "array"),
+			Default: tb.ArrayOrString("an", "array"),
 		},
 		defaultsApplied: &v1beta1.ParamSpec{
 			Name:    "parametername",
 			Type:    v1beta1.ParamTypeArray,
-			Default: builder.ArrayOrString("an", "array"),
+			Default: tb.ArrayOrString("an", "array"),
 		},
 	}, {
 		name: "fully defined ParamSpec",
@@ -58,13 +58,13 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1beta1.ParamTypeArray,
 			Description: "a description",
-			Default:     builder.ArrayOrString("an", "array"),
+			Default:     tb.ArrayOrString("an", "array"),
 		},
 		defaultsApplied: &v1beta1.ParamSpec{
 			Name:        "parametername",
 			Type:        v1beta1.ParamTypeArray,
 			Description: "a description",
-			Default:     builder.ArrayOrString("an", "array"),
+			Default:     tb.ArrayOrString("an", "array"),
 		},
 	}}
 	for _, tc := range tests {
@@ -91,43 +91,43 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	}{{
 		name: "no replacements on array",
 		args: args{
-			input:              builder.ArrayOrString("an", "array"),
+			input:              tb.ArrayOrString("an", "array"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"sdf", "sdfsd"}},
 		},
-		expectedOutput: builder.ArrayOrString("an", "array"),
+		expectedOutput: tb.ArrayOrString("an", "array"),
 	}, {
 		name: "string replacements on string",
 		args: args{
-			input:              builder.ArrayOrString("astring$(some) asdf $(anotherkey)"),
+			input:              tb.ArrayOrString("astring$(some) asdf $(anotherkey)"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: builder.ArrayOrString("astringvalue asdf value"),
+		expectedOutput: tb.ArrayOrString("astringvalue asdf value"),
 	}, {
 		name: "single array replacement",
 		args: args{
-			input:              builder.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "array", "value", "lastvalue"),
+		expectedOutput: tb.ArrayOrString("firstvalue", "array", "value", "lastvalue"),
 	}, {
 		name: "multiple array replacement",
 		args: args{
-			input:              builder.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"),
+			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
+		expectedOutput: tb.ArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
 	}, {
 		name: "empty array replacement",
 		args: args{
-			input:              builder.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {}},
 		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "lastvalue"),
+		expectedOutput: tb.ArrayOrString("firstvalue", "lastvalue"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -148,8 +148,8 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 		input  string
 		result v1beta1.ArrayOrString
 	}{
-		{"{\"val\": \"123\"}", *builder.ArrayOrString("123")},
-		{"{\"val\": \"\"}", *builder.ArrayOrString("")},
+		{"{\"val\": \"123\"}", *tb.ArrayOrString("123")},
+		{"{\"val\": \"\"}", *tb.ArrayOrString("")},
 		{"{\"val\":[]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}}},
 		{"{\"val\":[\"oneelement\"]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"oneelement"}}},
 		{"{\"val\":[\"multiple\", \"elements\"]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}}},
@@ -171,9 +171,9 @@ func TestArrayOrString_MarshalJSON(t *testing.T) {
 		input  v1beta1.ArrayOrString
 		result string
 	}{
-		{*builder.ArrayOrString("123"), "{\"val\":\"123\"}"},
-		{*builder.ArrayOrString("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
-		{*builder.ArrayOrString("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
+		{*tb.ArrayOrString("123"), "{\"val\":\"123\"}"},
+		{*tb.ArrayOrString("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
+		{*tb.ArrayOrString("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
 	}
 
 	for _, c := range cases {

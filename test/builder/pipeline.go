@@ -17,620 +17,290 @@ limitations under the License.
 package builder
 
 import (
-	"time"
-
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+	v1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 )
 
 // PipelineOp is an operation which modify a Pipeline struct.
-type PipelineOp func(*v1alpha1.Pipeline)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineOp = v1alpha1.PipelineOp
 
 // PipelineSpecOp is an operation which modify a PipelineSpec struct.
-type PipelineSpecOp func(*v1alpha1.PipelineSpec)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineSpecOp = v1alpha1.PipelineSpecOp
 
 // PipelineTaskOp is an operation which modify a PipelineTask struct.
-type PipelineTaskOp func(*v1alpha1.PipelineTask)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineTaskOp = v1alpha1.PipelineTaskOp
 
 // PipelineRunOp is an operation which modify a PipelineRun struct.
-type PipelineRunOp func(*v1alpha1.PipelineRun)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineRunOp = v1alpha1.PipelineRunOp
 
 // PipelineRunSpecOp is an operation which modify a PipelineRunSpec struct.
-type PipelineRunSpecOp func(*v1alpha1.PipelineRunSpec)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineRunSpecOp = v1alpha1.PipelineRunSpecOp
 
 // PipelineResourceOp is an operation which modify a PipelineResource struct.
-type PipelineResourceOp func(*v1alpha1.PipelineResource)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineResourceOp = v1alpha1.PipelineResourceOp
 
 // PipelineResourceBindingOp is an operation which modify a PipelineResourceBinding struct.
-type PipelineResourceBindingOp func(*v1alpha1.PipelineResourceBinding)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineResourceBindingOp = v1alpha1.PipelineResourceBindingOp
 
 // PipelineResourceSpecOp is an operation which modify a PipelineResourceSpec struct.
-type PipelineResourceSpecOp func(*v1alpha1.PipelineResourceSpec)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineResourceSpecOp = v1alpha1.PipelineResourceSpecOp
 
 // PipelineTaskInputResourceOp is an operation which modifies a PipelineTaskInputResource.
-type PipelineTaskInputResourceOp func(*v1alpha1.PipelineTaskInputResource)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineTaskInputResourceOp = v1alpha1.PipelineTaskInputResourceOp
 
 // PipelineRunStatusOp is an operation which modifies a PipelineRunStatus
-type PipelineRunStatusOp func(*v1alpha1.PipelineRunStatus)
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineRunStatusOp = v1alpha1.PipelineRunStatusOp
 
 // PipelineTaskConditionOp is an operation which modifies a PipelineTaskCondition
-type PipelineTaskConditionOp func(condition *v1alpha1.PipelineTaskCondition)
-
-// Pipeline creates a Pipeline with default values.
-// Any number of Pipeline modifier can be passed to transform it.
-func Pipeline(name string, ops ...PipelineOp) *v1alpha1.Pipeline {
-	p := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-
-	for _, op := range ops {
-		op(p)
-	}
-
-	return p
-}
-
-// Useful when tests need to specify the namespace
-func PipelineNamespace(namespace string) PipelineOp {
-	return func(t *v1alpha1.Pipeline) {
-		t.ObjectMeta.Namespace = namespace
-	}
-}
-
-// PipelineSpec sets the PipelineSpec to the Pipeline.
-// Any number of PipelineSpec modifier can be passed to transform it.
-func PipelineSpec(ops ...PipelineSpecOp) PipelineOp {
-	return func(p *v1alpha1.Pipeline) {
-		ps := &p.Spec
-
-		for _, op := range ops {
-			op(ps)
-		}
-
-		p.Spec = *ps
-	}
-}
-
-// PipelineCreationTimestamp sets the creation time of the pipeline
-func PipelineCreationTimestamp(t time.Time) PipelineOp {
-	return func(p *v1alpha1.Pipeline) {
-		p.CreationTimestamp = metav1.Time{Time: t}
-	}
-}
-
-// PipelineDescription sets the description of the pipeline
-func PipelineDescription(desc string) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		ps.Description = desc
-	}
-}
-
-// PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
-func PipelineRunCancelled(spec *v1alpha1.PipelineRunSpec) {
-	spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
-}
-
-// PipelineDeclaredResource adds a resource declaration to the Pipeline Spec,
-// with the specified name and type.
-func PipelineDeclaredResource(name string, t v1alpha1.PipelineResourceType) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		r := v1alpha1.PipelineDeclaredResource{
-			Name: name,
-			Type: t,
-		}
-		ps.Resources = append(ps.Resources, r)
-	}
-}
-
-// PipelineParamSpec adds a param, with specified name and type, to the PipelineSpec.
-// Any number of PipelineParamSpec modifiers can be passed to transform it.
-func PipelineParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		pp := &v1alpha1.ParamSpec{Name: name, Type: pt}
-		for _, op := range ops {
-			op(pp)
-		}
-		ps.Params = append(ps.Params, *pp)
-	}
-}
-
-// PipelineTask adds a PipelineTask, with specified name and task name, to the PipelineSpec.
-// Any number of PipelineTask modifier can be passed to transform it.
-func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		pTask := &v1alpha1.PipelineTask{
-			Name: name,
-		}
-		if taskName != "" {
-			pTask.TaskRef = &v1alpha1.TaskRef{
-				Name: taskName,
-			}
-		}
-		for _, op := range ops {
-			op(pTask)
-		}
-		ps.Tasks = append(ps.Tasks, *pTask)
-	}
-}
-
-func PipelineResult(name, value, description string, ops ...PipelineOp) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		pResult := &v1beta1.PipelineResult{
-			Name:        name,
-			Value:       value,
-			Description: description,
-		}
-		ps.Results = append(ps.Results, *pResult)
-	}
-}
-
-func PipelineRunResult(name, value string) PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		pResult := &v1beta1.PipelineRunResult{
-			Name:  name,
-			Value: value,
-		}
-		s.PipelineResults = append(s.PipelineResults, *pResult)
-	}
-}
-
-func PipelineTaskSpec(spec *v1alpha1.TaskSpec) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.TaskSpec = spec
-	}
-}
-
-func Retries(retries int) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.Retries = retries
-	}
-}
-
-// RunAfter will update the provided Pipeline Task to indicate that it
-// should be run after the provided list of Pipeline Task names.
-func RunAfter(tasks ...string) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.RunAfter = tasks
-	}
-}
-
-// PipelineTaskRefKind sets the TaskKind to the PipelineTaskRef.
-func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.TaskRef.Kind = kind
-	}
-}
-
-// PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
-func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.Params = append(pt.Params, v1alpha1.Param{
-			Name:  name,
-			Value: *arrayOrString,
-		})
-	}
-}
-
-// From will update the provided PipelineTaskInputResource to indicate that it
-// should come from tasks.
-func From(tasks ...string) PipelineTaskInputResourceOp {
-	return func(r *v1alpha1.PipelineTaskInputResource) {
-		r.From = tasks
-	}
-}
-
-// PipelineTaskInputResource adds an input resource to the PipelineTask with the specified
-// name, pointing at the declared resource.
-// Any number of PipelineTaskInputResource modifies can be passed to transform it.
-func PipelineTaskInputResource(name, resource string, ops ...PipelineTaskInputResourceOp) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		r := v1alpha1.PipelineTaskInputResource{
-			Name:     name,
-			Resource: resource,
-		}
-		for _, op := range ops {
-			op(&r)
-		}
-		if pt.Resources == nil {
-			pt.Resources = &v1alpha1.PipelineTaskResources{}
-		}
-		pt.Resources.Inputs = append(pt.Resources.Inputs, r)
-	}
-}
-
-// PipelineTaskOutputResource adds an output resource to the PipelineTask with the specified
-// name, pointing at the declared resource.
-func PipelineTaskOutputResource(name, resource string) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		r := v1alpha1.PipelineTaskOutputResource{
-			Name:     name,
-			Resource: resource,
-		}
-		if pt.Resources == nil {
-			pt.Resources = &v1alpha1.PipelineTaskResources{}
-		}
-		pt.Resources.Outputs = append(pt.Resources.Outputs, r)
-	}
-}
-
-// PipelineTaskCondition adds a condition to the PipelineTask with the
-// specified conditionRef. Any number of PipelineTaskCondition modifiers can be passed
-// to transform it
-func PipelineTaskCondition(conditionRef string, ops ...PipelineTaskConditionOp) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		c := &v1alpha1.PipelineTaskCondition{
-			ConditionRef: conditionRef,
-		}
-		for _, op := range ops {
-			op(c)
-		}
-		pt.Conditions = append(pt.Conditions, *c)
-	}
-}
-
-// PipelineTaskConditionParam adds a parameter to a PipelineTaskCondition
-func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
-	return func(condition *v1alpha1.PipelineTaskCondition) {
-		if condition.Params == nil {
-			condition.Params = []v1alpha1.Param{}
-		}
-		condition.Params = append(condition.Params, v1alpha1.Param{
-			Name:  name,
-			Value: *ArrayOrString(val),
-		})
-	}
-}
-
-// PipelineTaskConditionResource adds a resource to a PipelineTaskCondition
-func PipelineTaskConditionResource(name, resource string, from ...string) PipelineTaskConditionOp {
-	return func(condition *v1alpha1.PipelineTaskCondition) {
-		if condition.Resources == nil {
-			condition.Resources = []v1alpha1.PipelineTaskInputResource{}
-		}
-		condition.Resources = append(condition.Resources, v1alpha1.PipelineTaskInputResource{
-			Name:     name,
-			Resource: resource,
-			From:     from,
-		})
-	}
-}
-
-func PipelineTaskWorkspaceBinding(name, workspace, subPath string) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.Workspaces = append(pt.Workspaces, v1alpha1.WorkspacePipelineTaskBinding{
-			Name:      name,
-			Workspace: workspace,
-			SubPath:   subPath,
-		})
-	}
-}
-
-// PipelineTaskTimeout sets the timeout for the PipelineTask.
-func PipelineTaskTimeout(duration time.Duration) PipelineTaskOp {
-	return func(pt *v1alpha1.PipelineTask) {
-		pt.Timeout = &metav1.Duration{Duration: duration}
-	}
-}
-
-// PipelineRun creates a PipelineRun with default values.
-// Any number of PipelineRun modifier can be passed to transform it.
-func PipelineRun(name string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
-	pr := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: v1alpha1.PipelineRunSpec{},
-	}
-
-	for _, op := range ops {
-		op(pr)
-	}
-
-	return pr
-}
-
-// Useful when tests need to specify the namespace
-func PipelineRunNamespace(namespace string) PipelineRunOp {
-	return func(t *v1alpha1.PipelineRun) {
-		t.ObjectMeta.Namespace = namespace
-	}
-}
-
-// PipelineRunSpec sets the PipelineRunSpec, references Pipeline with specified name, to the PipelineRun.
-// Any number of PipelineRunSpec modifier can be passed to transform it.
-func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
-	return func(pr *v1alpha1.PipelineRun) {
-		prs := &pr.Spec
-
-		prs.PipelineRef = &v1alpha1.PipelineRef{
-			Name: name,
-		}
-		// Set a default timeout
-		prs.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
-
-		for _, op := range ops {
-			op(prs)
-		}
-
-		pr.Spec = *prs
-	}
-}
-
-// PipelineRunLabels adds a label to the PipelineRun.
-func PipelineRunLabel(key, value string) PipelineRunOp {
-	return func(pr *v1alpha1.PipelineRun) {
-		if pr.ObjectMeta.Labels == nil {
-			pr.ObjectMeta.Labels = map[string]string{}
-		}
-		pr.ObjectMeta.Labels[key] = value
-	}
-}
-
-// PipelineRunAnnotations adds a annotation to the PipelineRun.
-func PipelineRunAnnotation(key, value string) PipelineRunOp {
-	return func(pr *v1alpha1.PipelineRun) {
-		if pr.ObjectMeta.Annotations == nil {
-			pr.ObjectMeta.Annotations = map[string]string{}
-		}
-		pr.ObjectMeta.Annotations[key] = value
-	}
-}
-
-// PipelineRunResourceBinding adds bindings from actual instances to a Pipeline's declared resources.
-func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		r := &v1alpha1.PipelineResourceBinding{
-			Name: name,
-		}
-		for _, op := range ops {
-			op(r)
-		}
-		prs.Resources = append(prs.Resources, *r)
-	}
-}
-
-// PipelineResourceBindingRef set the ResourceRef name to the Resource called Name.
-func PipelineResourceBindingRef(name string) PipelineResourceBindingOp {
-	return func(b *v1alpha1.PipelineResourceBinding) {
-		b.ResourceRef = &v1alpha1.PipelineResourceRef{
-			Name: name,
-		}
-	}
-}
-
-// PipelineResourceBindingResourceSpec set the PipelineResourceResourceSpec to the PipelineResourceBinding.
-func PipelineResourceBindingResourceSpec(spec *v1alpha1.PipelineResourceSpec) PipelineResourceBindingOp {
-	return func(b *v1alpha1.PipelineResourceBinding) {
-		b.ResourceSpec = spec
-	}
-}
-
-// PipelineRunServiceAccount sets the service account to the PipelineRunSpec.
-func PipelineRunServiceAccountName(sa string) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.ServiceAccountName = sa
-	}
-}
-
-// PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
-func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.ServiceAccountNames = append(prs.ServiceAccountNames, v1alpha1.PipelineRunSpecServiceAccountName{
-			TaskName:           taskName,
-			ServiceAccountName: sa,
-		})
-	}
-}
-
-// PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
-func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Params = append(prs.Params, v1alpha1.Param{
-			Name:  name,
-			Value: *arrayOrString,
-		})
-	}
-}
-
-// PipelineRunTimeout sets the timeout to the PipelineRunSpec.
-func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Timeout = &metav1.Duration{Duration: duration}
-	}
-}
-
-// PipelineRunNilTimeout sets the timeout to nil on the PipelineRunSpec
-func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
-	prs.Timeout = nil
-}
-
-// PipelineRunNodeSelector sets the Node selector to the PipelineRunSpec.
-func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		prs.PodTemplate.NodeSelector = values
-	}
-}
-
-// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
-func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		prs.PodTemplate.Tolerations = values
-	}
-}
-
-// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
-func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		prs.PodTemplate.Affinity = affinity
-	}
-}
-
-// PipelineRunPipelineSpec adds a PipelineSpec to the PipelineRunSpec.
-// Any number of PipelineSpec modifiers can be passed to transform it.
-func PipelineRunPipelineSpec(ops ...PipelineSpecOp) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		ps := &v1alpha1.PipelineSpec{}
-		prs.PipelineRef = nil
-		for _, op := range ops {
-			op(ps)
-		}
-		prs.PipelineSpec = ps
-	}
-}
-
-// PipelineRunStatus sets the PipelineRunStatus to the PipelineRun.
-// Any number of PipelineRunStatus modifier can be passed to transform it.
-func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
-	return func(pr *v1alpha1.PipelineRun) {
-		s := &v1alpha1.PipelineRunStatus{}
-		for _, op := range ops {
-			op(s)
-		}
-		pr.Status = *s
-	}
-}
-
-// PipelineRunStatusCondition adds a StatusCondition to the TaskRunStatus.
-func PipelineRunStatusCondition(condition apis.Condition) PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		s.Conditions = append(s.Conditions, condition)
-	}
-}
-
-// PipelineRunStartTime sets the start time to the PipelineRunStatus.
-func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		s.StartTime = &metav1.Time{Time: startTime}
-	}
-}
-
-// PipelineRunCompletionTime sets the completion time  to the PipelineRunStatus.
-func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		s.CompletionTime = &metav1.Time{Time: t}
-	}
-}
-
-// PipelineRunTaskRunsStatus sets the status of TaskRun to the PipelineRunStatus.
-func PipelineRunTaskRunsStatus(taskRunName string, status *v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
-	return func(s *v1alpha1.PipelineRunStatus) {
-		if s.TaskRuns == nil {
-			s.TaskRuns = make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
-		}
-		s.TaskRuns[taskRunName] = status
-	}
-}
-
-// PipelineResource creates a PipelineResource with default values.
-// Any number of PipelineResource modifier can be passed to transform it.
-func PipelineResource(name string, ops ...PipelineResourceOp) *v1alpha1.PipelineResource {
-	resource := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	for _, op := range ops {
-		op(resource)
-	}
-	return resource
-}
-
-// Useful when tests need to specify the namespace
-func PipelineResourceNamespace(namespace string) PipelineResourceOp {
-	return func(t *v1alpha1.PipelineResource) {
-		t.ObjectMeta.Namespace = namespace
-	}
-}
-
-// PipelineResourceSpec set the PipelineResourceSpec, with specified type, to the PipelineResource.
-// Any number of PipelineResourceSpec modifier can be passed to transform it.
-func PipelineResourceSpec(resourceType v1alpha1.PipelineResourceType, ops ...PipelineResourceSpecOp) PipelineResourceOp {
-	return func(r *v1alpha1.PipelineResource) {
-		spec := &r.Spec
-		spec.Type = resourceType
-		for _, op := range ops {
-			op(spec)
-		}
-		r.Spec = *spec
-	}
-}
-
-// PipelineResourceDescription sets the description of the pipeline resource
-func PipelineResourceDescription(desc string) PipelineResourceSpecOp {
-	return func(spec *v1alpha1.PipelineResourceSpec) {
-		spec.Description = desc
-	}
-}
-
-// PipelineResourceSpecParam adds a ResourceParam, with specified name and value, to the PipelineResourceSpec.
-func PipelineResourceSpecParam(name, value string) PipelineResourceSpecOp {
-	return func(spec *v1alpha1.PipelineResourceSpec) {
-		spec.Params = append(spec.Params, v1alpha1.ResourceParam{
-			Name:  name,
-			Value: value,
-		})
-	}
-}
-
-// PipelineResourceSpecSecretParam adds a SecretParam, with specified fieldname, secretKey and secretName, to the PipelineResourceSpec.
-func PipelineResourceSpecSecretParam(fieldname, secretName, secretKey string) PipelineResourceSpecOp {
-	return func(spec *v1alpha1.PipelineResourceSpec) {
-		spec.SecretParams = append(spec.SecretParams, v1alpha1.SecretParam{
-			FieldName:  fieldname,
-			SecretKey:  secretKey,
-			SecretName: secretName,
-		})
-	}
-}
-
-// PipelineWorkspaceDeclaration adds a Workspace to the workspaces listed in the pipeline spec.
-func PipelineWorkspaceDeclaration(names ...string) PipelineSpecOp {
-	return func(spec *v1alpha1.PipelineSpec) {
-		for _, name := range names {
-			spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspacePipelineDeclaration{Name: name})
-		}
-	}
-}
-
-// PipelineRunWorkspaceBindingEmptyDir adds an EmptyDir Workspace to the workspaces of a pipelinerun spec.
-func PipelineRunWorkspaceBindingEmptyDir(name string) PipelineRunSpecOp {
-	return func(spec *v1alpha1.PipelineRunSpec) {
-		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
-			Name:     name,
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		})
-	}
-}
-
-// PipelineRunWorkspaceBindingVolumeClaimTemplate adds an VolumeClaimTemplate Workspace to the workspaces of a pipelineRun spec.
-func PipelineRunWorkspaceBindingVolumeClaimTemplate(name string, claimName string, subPath string) PipelineRunSpecOp {
-	return func(spec *v1alpha1.PipelineRunSpec) {
-		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
-			Name:    name,
-			SubPath: subPath,
-			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: claimName,
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{},
-			},
-		})
-	}
-}
+// Deprecated: moved to internal/builder/v1alpha1
+type PipelineTaskConditionOp = v1alpha1.PipelineTaskConditionOp
+
+var (
+
+	// Pipeline creates a Pipeline with default values.
+	// Any number of Pipeline modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Pipeline = v1alpha1.Pipeline
+
+	// PipelineNamespace sets the namespace on the Pipeline
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineNamespace = v1alpha1.PipelineNamespace
+
+	// PipelineSpec sets the PipelineSpec to the Pipeline.
+	// Any number of PipelineSpec modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineSpec = v1alpha1.PipelineSpec
+
+	// PipelineCreationTimestamp sets the creation time of the pipeline
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineCreationTimestamp = v1alpha1.PipelineCreationTimestamp
+
+	// PipelineDescription sets the description of the pipeline
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineDescription = v1alpha1.PipelineDescription
+
+	// PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunCancelled = v1alpha1.PipelineRunCancelled
+
+	// PipelineDeclaredResource adds a resource declaration to the Pipeline Spec,
+	// with the specified name and type.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineDeclaredResource = v1alpha1.PipelineDeclaredResource
+
+	// PipelineParamSpec adds a param, with specified name and type, to the PipelineSpec.
+	// Any number of PipelineParamSpec modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineParamSpec = v1alpha1.PipelineParamSpec
+
+	// PipelineTask adds a PipelineTask, with specified name and task name, to the PipelineSpec.
+	// Any number of PipelineTask modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTask = v1alpha1.PipelineTask
+
+	// PipelineResult adds a PipelineResult, with specified name, value and description, to the PipelineSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResult = v1alpha1.PipelineResult
+
+	// PipelineRunResult adds a PipelineResultStatus, with specified name, value and description, to the PipelineRunStatusSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunResult = v1alpha1.PipelineRunResult
+
+	// PipelineTaskSpec sets the TaskSpec on a PipelineTask.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskSpec = v1alpha1.PipelineTaskSpec
+
+	// Retries sets the number of retries on a PipelineTask.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Retries = v1alpha1.Retries
+
+	// RunAfter will update the provided Pipeline Task to indicate that it
+	// should be run after the provided list of Pipeline Task names.
+	// Deprecated: moved to internal/builder/v1alpha1
+	RunAfter = v1alpha1.RunAfter
+
+	// PipelineTaskRefKind sets the TaskKind to the PipelineTaskRef.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskRefKind = v1alpha1.PipelineTaskRefKind
+
+	// PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskParam = v1alpha1.PipelineTaskParam
+
+	// From will update the provided PipelineTaskInputResource to indicate that it
+	// should come from tasks.
+	// Deprecated: moved to internal/builder/v1alpha1
+	From = v1alpha1.From
+
+	// PipelineTaskInputResource adds an input resource to the PipelineTask with the specified
+	// name, pointing at the declared resource.
+	// Any number of PipelineTaskInputResource modifies can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskInputResource = v1alpha1.PipelineTaskInputResource
+
+	// PipelineTaskOutputResource adds an output resource to the PipelineTask with the specified
+	// name, pointing at the declared resource.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskOutputResource = v1alpha1.PipelineTaskOutputResource
+
+	// PipelineTaskCondition adds a condition to the PipelineTask with the
+	// specified conditionRef. Any number of PipelineTaskCondition modifiers can be passed
+	// to transform it
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskCondition = v1alpha1.PipelineTaskCondition
+
+	// PipelineTaskConditionParam adds a parameter to a PipelineTaskCondition
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskConditionParam = v1alpha1.PipelineTaskConditionParam
+
+	// PipelineTaskConditionResource adds a resource to a PipelineTaskCondition
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskConditionResource = v1alpha1.PipelineTaskConditionResource
+
+	// PipelineTaskWorkspaceBinding adds a workspace with the specified name, workspace and subpath on a PipelineTask.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskWorkspaceBinding = v1alpha1.PipelineTaskWorkspaceBinding
+
+	// PipelineTaskTimeout sets the timeout for the PipelineTask.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineTaskTimeout = v1alpha1.PipelineTaskTimeout
+
+	// PipelineRun creates a PipelineRun with default values.
+	// Any number of PipelineRun modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRun = v1alpha1.PipelineRun
+
+	// PipelineRunNamespace sets the namespace on a PipelineRun.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunNamespace = v1alpha1.PipelineRunNamespace
+
+	// PipelineRunSpec sets the PipelineRunSpec, references Pipeline with specified name, to the PipelineRun.
+	// Any number of PipelineRunSpec modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunSpec = v1alpha1.PipelineRunSpec
+
+	// PipelineRunLabel adds a label to the PipelineRun.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunLabel = v1alpha1.PipelineRunLabel
+
+	// PipelineRunAnnotation adds a annotation to the PipelineRun.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunAnnotation = v1alpha1.PipelineRunAnnotation
+
+	// PipelineRunResourceBinding adds bindings from actual instances to a Pipeline's declared resources.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunResourceBinding = v1alpha1.PipelineRunResourceBinding
+
+	// PipelineResourceBindingRef set the ResourceRef name to the Resource called Name.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceBindingRef = v1alpha1.PipelineResourceBindingRef
+
+	// PipelineResourceBindingResourceSpec set the PipelineResourceResourceSpec to the PipelineResourceBinding.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceBindingResourceSpec = v1alpha1.PipelineResourceBindingResourceSpec
+
+	// PipelineRunServiceAccountName sets the service account to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunServiceAccountName = v1alpha1.PipelineRunServiceAccountName
+
+	// PipelineRunServiceAccountNameTask configures the service account for given Task in PipelineRun.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunServiceAccountNameTask = v1alpha1.PipelineRunServiceAccountNameTask
+
+	// PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunParam = v1alpha1.PipelineRunParam
+
+	// PipelineRunTimeout sets the timeout to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunTimeout = v1alpha1.PipelineRunTimeout
+
+	// PipelineRunNilTimeout sets the timeout to nil on the PipelineRunSpec
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunNilTimeout = v1alpha1.PipelineRunNilTimeout
+
+	// PipelineRunNodeSelector sets the Node selector to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunNodeSelector = v1alpha1.PipelineRunNodeSelector
+
+	// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunTolerations = v1alpha1.PipelineRunTolerations
+
+	// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunAffinity = v1alpha1.PipelineRunAffinity
+
+	// PipelineRunPipelineSpec adds a PipelineSpec to the PipelineRunSpec.
+	// Any number of PipelineSpec modifiers can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunPipelineSpec = v1alpha1.PipelineRunPipelineSpec
+
+	// PipelineRunStatus sets the PipelineRunStatus to the PipelineRun.
+	// Any number of PipelineRunStatus modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunStatus = v1alpha1.PipelineRunStatus
+
+	// PipelineRunStatusCondition adds a StatusCondition to the TaskRunStatus.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunStatusCondition = v1alpha1.PipelineRunStatusCondition
+
+	// PipelineRunStartTime sets the start time to the PipelineRunStatus.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunStartTime = v1alpha1.PipelineRunStartTime
+
+	// PipelineRunCompletionTime sets the completion time  to the PipelineRunStatus.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunCompletionTime = v1alpha1.PipelineRunCompletionTime
+
+	// PipelineRunTaskRunsStatus sets the status of TaskRun to the PipelineRunStatus.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunTaskRunsStatus = v1alpha1.PipelineRunTaskRunsStatus
+
+	// PipelineResource creates a PipelineResource with default values.
+	// Any number of PipelineResource modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResource = v1alpha1.PipelineResource
+
+	// PipelineResourceNamespace sets the namespace on a PipelineResource.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceNamespace = v1alpha1.PipelineResourceNamespace
+
+	// PipelineResourceSpec set the PipelineResourceSpec, with specified type, to the PipelineResource.
+	// Any number of PipelineResourceSpec modifier can be passed to transform it.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceSpec = v1alpha1.PipelineResourceSpec
+
+	// PipelineResourceDescription sets the description of the pipeline resource
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceDescription = v1alpha1.PipelineResourceDescription
+
+	// PipelineResourceSpecParam adds a ResourceParam, with specified name and value, to the PipelineResourceSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceSpecParam = v1alpha1.PipelineResourceSpecParam
+
+	// PipelineResourceSpecSecretParam adds a SecretParam, with specified fieldname, secretKey and secretName, to the PipelineResourceSpec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineResourceSpecSecretParam = v1alpha1.PipelineResourceSpecSecretParam
+
+	// PipelineWorkspaceDeclaration adds a Workspace to the workspaces listed in the pipeline spec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineWorkspaceDeclaration = v1alpha1.PipelineWorkspaceDeclaration
+
+	// PipelineRunWorkspaceBindingEmptyDir adds an EmptyDir Workspace to the workspaces of a pipelinerun spec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunWorkspaceBindingEmptyDir = v1alpha1.PipelineRunWorkspaceBindingEmptyDir
+
+	// PipelineRunWorkspaceBindingVolumeClaimTemplate adds an VolumeClaimTemplate Workspace to the workspaces of a pipelineRun spec.
+	// Deprecated: moved to internal/builder/v1alpha1
+	PipelineRunWorkspaceBindingVolumeClaimTemplate = v1alpha1.PipelineRunWorkspaceBindingVolumeClaimTemplate
+)

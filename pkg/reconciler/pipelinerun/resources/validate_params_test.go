@@ -19,8 +19,8 @@ package resources
 import (
 	"testing"
 
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestValidateParamTypesMatching_Valid(t *testing.T) {

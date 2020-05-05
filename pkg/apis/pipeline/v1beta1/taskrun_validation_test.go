@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -191,10 +191,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "name",
-				Value: *builder.ArrayOrString("value"),
+				Value: *tb.ArrayOrString("value"),
 			}, {
 				Name:  "name",
-				Value: *builder.ArrayOrString("value"),
+				Value: *tb.ArrayOrString("value"),
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
@@ -241,7 +241,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 0},
 			Params: []v1beta1.Param{{
 				Name:  "name",
-				Value: *builder.ArrayOrString("value"),
+				Value: *tb.ArrayOrString("value"),
 			}},
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{Container: corev1.Container{
