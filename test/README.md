@@ -201,12 +201,17 @@ TestTaskRun, use
 go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun
 ```
 
-### Running YAML tests
+### Running example YAML tests
 
-To run the YAML e2e tests, run the following command:
+To run the tests that exercise [the examples](../examples), you can run the tests
+with go. To run these tests, you must provide `go` with `-tags=examples`. The tests
+run against your current kubeconfig.
+
+
+For example:
 
 ```bash
-./test/e2e-tests-yaml.sh
+go test -v -count=1 -tags=examples -timeout 15m ./examples
 ```
 
 ### Running upgrade tests

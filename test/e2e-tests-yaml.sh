@@ -32,24 +32,8 @@ set +o pipefail
 install_pipeline_crd
 
 # Run the tests
-failed=0
-for version in v1alpha1 v1beta1; do
-  for test in taskrun pipelinerun; do
-    header "Running YAML e2e tests for ${version} ${test}s"
-    if ! run_yaml_tests ${version} ${test}; then
-      echo "ERROR: one or more YAML tests failed"
-      output_yaml_test_results ${test}
-      output_pods_logs ${test}
-      failed=1
-    fi
-  done
-  # Clean resources
-  delete_pipeline_resources
-  for res in services pods configmaps secrets serviceaccounts persistentvolumeclaims; do
-    kubectl delete --ignore-not-found=true ${res} --all
-  done
-done
-
+set -x
+failed=$(go test -v -count=1 -tags=examples -timeout 15m ./examples)
 (( failed )) && fail_test
 
 success
