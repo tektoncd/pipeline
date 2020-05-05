@@ -62,7 +62,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: pr-
+  generateName: pr-with-parallel-tasks-
 spec:
   pipelineRef:
     name: pipeline-using-parallel-tasks
