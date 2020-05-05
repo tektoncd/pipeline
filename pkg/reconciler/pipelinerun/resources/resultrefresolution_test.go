@@ -10,6 +10,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
@@ -366,7 +368,7 @@ func TestResolveResultRefs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveResultRefs(tt.args.pipelineRunState, tt.args.targets, nil)
+			got, err := ResolveResultRefs(tt.args.pipelineRunState, tt.args.targets)
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
@@ -374,6 +376,121 @@ func TestResolveResultRefs(t *testing.T) {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Fatalf("ResolveResultRef  -want, +got: %v", d)
+			}
+		})
+	}
+}
+
+func TestResolvePipelineResultRefs(t *testing.T) {
+	type args struct {
+		pipelineRunState PipelineRunState
+		pipelineResults  []v1beta1.PipelineResult
+	}
+	pipelineRunState := PipelineRunState{
+		{
+			TaskRunName: "aTaskRun",
+			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
+				tb.TaskRunResult("aResult", "aResultValue"),
+			)),
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name:    "aTask",
+				TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+			},
+		}, {
+			TaskRunName: "bTaskRun",
+			TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse})),
+			),
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+			},
+		}, {
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name:    "cTask",
+				TaskRef: &v1alpha1.TaskRef{Name: "cTask"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want ResolvedResultRefs
+	}{
+		{
+			name: "Test pipeline result from a successful task",
+			args: args{
+				pipelineRunState: pipelineRunState,
+				pipelineResults: []v1beta1.PipelineResult{
+					{
+						Name:        "from-a",
+						Value:       "$(tasks.aTask.results.aResult)",
+						Description: "a result from a",
+					},
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+		},
+		{
+			name: "Test results from a task that did not run and one and failed",
+			args: args{
+				pipelineRunState: pipelineRunState,
+				pipelineResults: []v1beta1.PipelineResult{
+					{
+						Name:        "from-a",
+						Value:       "$(tasks.aTask.results.aResult)",
+						Description: "a result from a",
+					},
+					{
+						Name:        "from-b",
+						Value:       "$(tasks.bTask.results.bResult)",
+						Description: "a result from b",
+					},
+					{
+						Name:        "from-c",
+						Value:       "$(tasks.cTask.results.cResult)",
+						Description: "a result from c",
+					},
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolvePipelineResultRefs(tt.args.pipelineRunState, tt.args.pipelineResults)
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Fatalf("ResolveResultRef  -want, +got: %v", d)
 			}
