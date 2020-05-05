@@ -318,7 +318,7 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.Pip
 				})
 			}
 		}
-		resolvedResultRefs, _ := resources.ResolveResultRefs(pipelineState, nil, pipelineSpec.Results)
+		resolvedResultRefs := resources.ResolvePipelineResultRefs(pipelineState, pipelineSpec.Results)
 		pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
 	}
 }
@@ -557,7 +557,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	nextRprts := pipelineState.GetNextTasks(candidateTasks)
-	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts, nil)
+	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
 	if err != nil {
 		c.Logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
 		pr.Status.SetCondition(&apis.Condition{
