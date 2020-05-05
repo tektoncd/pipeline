@@ -78,9 +78,6 @@ spec:
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): busybox # image should have shell in $PATH
       baseBuildOverrides:
         $(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
-          env:
-            - name: CGO_ENABLED
-              value: 1
           flags:
             - name: ldflags
               value: "-X $(inputs.params.pathToProject)/pkg/version.PipelineVersion=$(inputs.params.versionTag)"
