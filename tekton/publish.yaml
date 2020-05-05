@@ -104,8 +104,7 @@ spec:
     - "/workspace/output/bucket/previous/$(inputs.params.versionTag)/"
 
   - name: run-ko
-    # FIXME(vdemeester) use a tagged version once 0.2 is released
-    image: gcr.io/tekton-releases/dogfooding/ko:gcloud-latest
+    image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
     env:
     - name: KO_DOCKER_REPO
       value: $(inputs.params.imageRegistry)
