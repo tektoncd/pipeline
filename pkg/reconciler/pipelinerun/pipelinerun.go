@@ -158,9 +158,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// In case of reconcile errors, we store the error in a multierror, attempt
 	// to update, and return the original error combined with any update error
-	var merr error
+	var merr *multierror.Error
 
-	if pr.IsDone() {
+	switch {
+	case pr.IsDone():
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
@@ -181,7 +182,13 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 				c.Logger.Warnf("Failed to log the metrics : %v", err)
 			}
 		}(c.metrics)
-	} else {
+	case pr.IsCancelled():
+		// If the pipelinerun is cancelled, cancel tasks and update status
+		before := pr.Status.GetCondition(apis.ConditionSucceeded)
+		merr = multierror.Append(merr, cancelPipelineRun(c.Logger, pr, c.PipelineClientSet))
+		after := pr.Status.GetCondition(apis.ConditionSucceeded)
+		reconciler.EmitEvent(c.Recorder, before, after, pr)
+	default:
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "Failed to create tracker for TaskRuns for PipelineRun")
@@ -228,7 +235,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}(c.metrics)
 	}
 
-	return merr
+	return merr.ErrorOrNil()
 }
 
 func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.PipelineRun) {
@@ -525,15 +532,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			// update pr completed time
 			return nil
 		}
-	}
-
-	// If the pipelinerun is cancelled, cancel tasks and update status
-	if pr.IsCancelled() {
-		before := pr.Status.GetCondition(apis.ConditionSucceeded)
-		err := cancelPipelineRun(c.Logger, pr, pipelineState, c.PipelineClientSet)
-		after := pr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, before, after, pr)
-		return err
 	}
 
 	if pipelineState.IsBeforeFirstTaskRun() && pr.HasVolumeClaimTemplate() {

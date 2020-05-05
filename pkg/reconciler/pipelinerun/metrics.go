@@ -48,6 +48,7 @@ var (
 		stats.UnitDimensionless)
 )
 
+// Recorder holds keys for Tekton metrics
 type Recorder struct {
 	initialized bool
 
