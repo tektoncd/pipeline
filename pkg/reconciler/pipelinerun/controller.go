@@ -44,6 +44,7 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
+// NewController instantiates a new controller.Impl from knative.dev/pkg/controller
 func NewController(images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)

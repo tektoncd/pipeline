@@ -27,7 +27,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +34,7 @@ import (
 )
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
-func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask, clientSet clientset.Interface) error {
+func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1alpha1.PipelineRun, clientSet clientset.Interface) error {
 	pr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
@@ -45,23 +44,21 @@ func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1alpha1.PipelineRun, pipe
 	// update pr completed time
 	pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	errs := []string{}
-	for _, rprt := range pipelineState {
-		if rprt.TaskRun == nil {
-			// No taskrun yet, pass
-			continue
-		}
 
-		logger.Infof("cancelling TaskRun %s", rprt.TaskRunName)
+	// Use Patch to update the TaskRuns since the TaskRun controller may be operating on the
+	// TaskRuns at the same time and trying to update the entire object may cause a race
+	b, err := getCancelPatch()
+	if err != nil {
+		return fmt.Errorf("couldn't make patch to update TaskRun cancellation: %v", err)
+	}
 
-		// Use Patch to update the TaskRuns since the TaskRun controller may be operating on the
-		// TaskRuns at the same time and trying to update the entire object may cause a race
-		b, err := getCancelPatch()
-		if err != nil {
-			errs = append(errs, fmt.Errorf("couldn't make patch to update TaskRun cancellation: %v", err).Error())
-			continue
-		}
-		if _, err := clientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Patch(rprt.TaskRunName, types.JSONPatchType, b, ""); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", rprt.TaskRunName, err).Error())
+	// Loop over the TaskRuns in the PipelineRun status.
+	// If a TaskRun is not in the status yet we should not cancel it anyways.
+	for taskRunName := range pr.Status.TaskRuns {
+		logger.Infof("cancelling TaskRun %s", taskRunName)
+
+		if _, err := clientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Patch(taskRunName, types.JSONPatchType, b, ""); err != nil {
+			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
 	}
