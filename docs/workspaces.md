@@ -256,8 +256,7 @@ Using parallel `Tasks` in a `Pipeline` will work with `PersistentVolumeClaims` c
 [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
 `ReadWriteMany` or `ReadOnlyMany` but you must ensure that those are available for your storage class.
 When using `PersistentVolumeClaims` with access mode `ReadWriteOnce` for parallel `Tasks`, you can configure a
-workspace with it's own `PersistentVolumeClaim` for each parallel `Task`. See a full example of a 
-[Pipeline with parallel tasks using PersistentVolumeClaims](../examples/v1beta1/pipelineruns/pipelinerun-with-parallel-tasks-using-pvc.yaml).
+workspace with it's own `PersistentVolumeClaim` for each parallel `Task`.
 
 Use the `runAfter` field in your `Pipeline` definition to define when a `Task` should be executed. For more
 information, see the [`runAfter` documentation](pipelines.md#runAfter).
