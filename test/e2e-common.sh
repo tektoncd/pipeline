@@ -64,7 +64,7 @@ function dump_extra_cluster_state() {
 
 function validate_run() {
   local tests_finished=0
-  for i in {1..60}; do
+  for i in {1..90}; do
     local finished="$(kubectl get $1.tekton.dev --output=jsonpath='{.items[*].status.conditions[*].status}')"
     if [[ ! "$finished" == *"Unknown"* ]]; then
       tests_finished=1
