@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/test/builder"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"

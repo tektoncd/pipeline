@@ -20,10 +20,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestNewResource_Invalid(t *testing.T) {

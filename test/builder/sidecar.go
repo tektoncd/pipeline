@@ -14,54 +14,31 @@ limitations under the License.
 package builder
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
+	v1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 )
 
-// SidecarStateName sets the name of the Sidecar for the SidecarState.
-func SidecarStateName(name string) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.Name = name
-	}
-}
+var (
+	// SidecarStateName sets the name of the Sidecar for the SidecarState.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SidecarStateName = v1alpha1.SidecarStateName
 
-// SetSidecarStateImageID sets ImageID of Sidecar for SidecarState.
-func SidecarStateImageID(imageID string) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ImageID = imageID
-	}
-}
+	// SidecarStateImageID sets ImageID of Sidecar for SidecarState.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SidecarStateImageID = v1alpha1.SidecarStateImageID
 
-// SetSidecarStateImageID sets ImageID of Sidecar for SidecarState.
-func SidecarStateContainerName(containerName string) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ContainerName = containerName
-	}
-}
+	// SidecarStateContainerName sets ContainerName of Sidecar for SidecarState.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SidecarStateContainerName = v1alpha1.SidecarStateContainerName
 
-// SetSidecarStateTerminated sets Terminated state of a Sidecar.
-func SetSidecarStateTerminated(terminated corev1.ContainerStateTerminated) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ContainerState = corev1.ContainerState{
-			Terminated: &terminated,
-		}
-	}
-}
+	// SetSidecarStateTerminated sets Terminated state of a Sidecar.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SetSidecarStateTerminated = v1alpha1.SetSidecarStateTerminated
 
-// SetSidecarStateRunning sets Running state of a Sidecar.
-func SetSidecarStateRunning(running corev1.ContainerStateRunning) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ContainerState = corev1.ContainerState{
-			Running: &running,
-		}
-	}
-}
+	// SetSidecarStateRunning sets Running state of a Sidecar.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SetSidecarStateRunning = v1alpha1.SetSidecarStateRunning
 
-// SetSidecarStateWaiting sets Waiting state of a Sidecar.
-func SetSidecarStateWaiting(waiting corev1.ContainerStateWaiting) SidecarStateOp {
-	return func(s *v1alpha1.SidecarState) {
-		s.ContainerState = corev1.ContainerState{
-			Waiting: &waiting,
-		}
-	}
-}
+	// SetSidecarStateWaiting sets Waiting state of a Sidecar.
+	// Deprecated: moved to internal/builder/v1alpha1
+	SetSidecarStateWaiting = v1alpha1.SetSidecarStateWaiting
+)

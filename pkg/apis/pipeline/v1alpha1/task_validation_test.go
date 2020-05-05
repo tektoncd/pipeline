@@ -22,10 +22,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
@@ -105,7 +105,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Params: []v1alpha1.ParamSpec{{
 					Name:        "task",
 					Description: "param",
-					Default:     builder.ArrayOrString("default"),
+					Default:     tb.ArrayOrString("default"),
 				}},
 			},
 			Steps: validSteps,
@@ -119,7 +119,7 @@ func TestTaskSpecValidate(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "param",
-					Default:     builder.ArrayOrString("default"),
+					Default:     tb.ArrayOrString("default"),
 				}},
 			},
 			Steps: validSteps,
@@ -410,12 +410,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "validparam",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "parameter",
-					Default:     builder.ArrayOrString("default"),
+					Default:     tb.ArrayOrString("default"),
 				}, {
 					Name:        "param-with-invalid-type",
 					Type:        "invalidtype",
 					Description: "invalidtypedesc",
-					Default:     builder.ArrayOrString("default"),
+					Default:     tb.ArrayOrString("default"),
 				}},
 			},
 			Steps: validSteps,
@@ -433,7 +433,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeArray,
 					Description: "param",
-					Default:     builder.ArrayOrString("default"),
+					Default:     tb.ArrayOrString("default"),
 				}},
 			},
 			Steps: validSteps,
@@ -451,7 +451,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "param",
-					Default:     builder.ArrayOrString("default", "array"),
+					Default:     tb.ArrayOrString("default", "array"),
 				}},
 			},
 			Steps: validSteps,
@@ -749,7 +749,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 					{
 						Name:        "foo",
 						Description: "param",
-						Default:     builder.ArrayOrString("default"),
+						Default:     tb.ArrayOrString("default"),
 					},
 				},
 			},

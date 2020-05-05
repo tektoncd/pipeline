@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	tb "github.com/tektoncd/pipeline/test/builder"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 )
 
 func TestCreateImage(t *testing.T) {

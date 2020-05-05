@@ -17,15 +17,23 @@ limitations under the License.
 package builder
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1beta1 "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 )
 
 // OwnerReferenceOp is an operation which modifies an OwnerReference struct.
-type OwnerReferenceOp func(*metav1.OwnerReference)
+// Deprecated: moved to internal/builder/v1alpha1
+type OwnerReferenceOp = v1beta1.OwnerReferenceOp
 
-// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
-func OwnerReferenceAPIVersion(version string) OwnerReferenceOp {
-	return func(o *metav1.OwnerReference) {
-		o.APIVersion = version
-	}
-}
+var (
+	// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
+	// Deprecated: moved to internal/builder/v1alpha1
+	OwnerReferenceAPIVersion = v1beta1.OwnerReferenceAPIVersion
+
+	// Controller sets the Controller to the OwnerReference.
+	// Deprecated: moved to internal/builder/v1alpha1
+	Controller = v1beta1.Controller
+
+	// BlockOwnerDeletion sets the BlockOwnerDeletion to the OwnerReference.
+	// Deprecated: moved to internal/builder/v1alpha1
+	BlockOwnerDeletion = v1beta1.BlockOwnerDeletion
+)

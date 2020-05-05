@@ -20,12 +20,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +40,7 @@ var (
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "google/cloud-sdk",
-		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
+		BuildGCSFetcherImage:     "gcr.io/cloud-tbs/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
@@ -262,7 +262,7 @@ var (
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo"),
+				Value: *tb.ArrayOrString("foo"),
 			}},
 		},
 	}
@@ -271,7 +271,7 @@ var (
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo", "bar", "third"),
+				Value: *tb.ArrayOrString("foo", "bar", "third"),
 			}},
 		},
 	}
@@ -280,10 +280,10 @@ var (
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo", "bar", "third"),
+				Value: *tb.ArrayOrString("foo", "bar", "third"),
 			}, {
 				Name:  "another-array-param",
-				Value: *builder.ArrayOrString("part1", "part2"),
+				Value: *tb.ArrayOrString("part1", "part2"),
 			}},
 		},
 	}
@@ -292,10 +292,10 @@ var (
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "array-param",
-				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
+				Value: *tb.ArrayOrString("middlefirst", "middlesecond"),
 			}, {
 				Name:  "normal-param",
-				Value: *builder.ArrayOrString("foo"),
+				Value: *tb.ArrayOrString("foo"),
 			}},
 		},
 	}
@@ -304,16 +304,16 @@ var (
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "array-param1",
-				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *tb.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
+				Value: *tb.ArrayOrString("1-param2", "2-param2", "2-param3"),
 			}, {
 				Name:  "string-param1",
-				Value: *builder.ArrayOrString("foo"),
+				Value: *tb.ArrayOrString("foo"),
 			}, {
 				Name:  "string-param2",
-				Value: *builder.ArrayOrString("bar"),
+				Value: *tb.ArrayOrString("bar"),
 			}},
 		},
 	}
@@ -451,7 +451,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "array-param",
-					Default: builder.ArrayOrString("defaulted", "value!"),
+					Default: tb.ArrayOrString("defaulted", "value!"),
 				},
 			},
 		},
@@ -474,19 +474,19 @@ func TestApplyParameters(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "myimage",
-				Value: *builder.ArrayOrString("bar"),
+				Value: *tb.ArrayOrString("bar"),
 			}, {
 				Name:  "FOO",
-				Value: *builder.ArrayOrString("world"),
+				Value: *tb.ArrayOrString("world"),
 			}},
 		},
 	}
 	dp := []v1alpha1.ParamSpec{{
 		Name:    "something",
-		Default: builder.ArrayOrString("mydefault"),
+		Default: tb.ArrayOrString("mydefault"),
 	}, {
 		Name:    "somethingelse",
-		Default: builder.ArrayOrString(""),
+		Default: tb.ArrayOrString(""),
 	}}
 	want := applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"

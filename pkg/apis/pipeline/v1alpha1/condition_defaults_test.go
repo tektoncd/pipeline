@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestConditionSpec_SetDefaults(t *testing.T) {
@@ -42,7 +42,7 @@ func TestConditionSpec_SetDefaults(t *testing.T) {
 				Params: []v1alpha1.ParamSpec{
 					{
 						Name:    "test-1",
-						Default: builder.ArrayOrString("an", "array"),
+						Default: tb.ArrayOrString("an", "array"),
 					},
 				},
 			},
@@ -51,7 +51,7 @@ func TestConditionSpec_SetDefaults(t *testing.T) {
 					{
 						Name:    "test-1",
 						Type:    v1alpha1.ParamTypeArray,
-						Default: builder.ArrayOrString("an", "array"),
+						Default: tb.ArrayOrString("an", "array"),
 					},
 				},
 			},
@@ -62,11 +62,11 @@ func TestConditionSpec_SetDefaults(t *testing.T) {
 				Params: []v1alpha1.ParamSpec{
 					{
 						Name:    "test-1",
-						Default: builder.ArrayOrString("array"),
+						Default: tb.ArrayOrString("array"),
 					},
 					{
 						Name:    "test-2",
-						Default: builder.ArrayOrString("an", "array"),
+						Default: tb.ArrayOrString("an", "array"),
 					},
 				},
 			},
@@ -75,12 +75,12 @@ func TestConditionSpec_SetDefaults(t *testing.T) {
 					{
 						Name:    "test-1",
 						Type:    v1alpha1.ParamTypeString,
-						Default: builder.ArrayOrString("array"),
+						Default: tb.ArrayOrString("array"),
 					},
 					{
 						Name:    "test-2",
 						Type:    v1alpha1.ParamTypeArray,
-						Default: builder.ArrayOrString("an", "array"),
+						Default: tb.ArrayOrString("an", "array"),
 					},
 				},
 			},
