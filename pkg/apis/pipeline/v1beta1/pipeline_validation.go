@@ -43,7 +43,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 
 // validateDeclaredResources ensures that the specified resources have unique names and
 // validates that all the resources referenced by pipeline tasks are declared in the pipeline
-func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []PipelineTask) error {
+func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []PipelineTask, finalTasks []PipelineTask) error {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		if _, ok := encountered[r.Name]; ok {
@@ -65,6 +65,16 @@ func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []Pip
 		for _, condition := range t.Conditions {
 			for _, cr := range condition.Resources {
 				required = append(required, cr.Resource)
+			}
+		}
+	}
+	for _, t := range finalTasks {
+		if t.Resources != nil {
+			for _, input := range t.Resources.Inputs {
+				required = append(required, input.Resource)
+			}
+			for _, output := range t.Resources.Outputs {
+				required = append(required, output.Resource)
 			}
 		}
 	}
@@ -146,13 +156,13 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	// PipelineTask must have a valid unique label and at least one of taskRef or taskSpec should be specified
-	if err := validatePipelineTasks(ctx, ps.Tasks); err != nil {
+	if err := validatePipelineTasks(ctx, ps.Tasks, ps.Finally); err != nil {
 		return err
 	}
 
 	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
 	// that aren't declared
-	if err := validateDeclaredResources(ps.Resources, ps.Tasks); err != nil {
+	if err := validateDeclaredResources(ps.Resources, ps.Tasks, ps.Finally); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "spec.resources")
 	}
 
@@ -175,8 +185,12 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if err := validatePipelineParameterVariables(ps.Finally, ps.Params); err != nil {
+		return err
+	}
+
 	// Validate the pipeline's workspaces.
-	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks); err != nil {
+	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks, ps.Finally); err != nil {
 		return err
 	}
 
@@ -185,17 +199,30 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.tasks.params.value")
 	}
 
+	if err := validateTasksAndFinallySection(ps); err != nil {
+		return err
+	}
+
+	if err := validateFinalTasks(ps.Finally); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // validatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
 // taskRef or taskSpec, and in case of a pipeline task with taskRef, it has a reference to a valid task (task name)
-func validatePipelineTasks(ctx context.Context, tasks []PipelineTask) *apis.FieldError {
+func validatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	// Names cannot be duplicated
 	taskNames := map[string]struct{}{}
 	var err *apis.FieldError
 	for i, t := range tasks {
 		if err = validatePipelineTaskName(ctx, "spec.tasks", i, t, taskNames); err != nil {
+			return err
+		}
+	}
+	for i, t := range finalTasks {
+		if err = validatePipelineTaskName(ctx, "spec.finally", i, t, taskNames); err != nil {
 			return err
 		}
 	}
@@ -245,7 +272,7 @@ func validatePipelineTaskName(ctx context.Context, prefix string, i int, t Pipel
 
 // validatePipelineWorkspaces validates the specified workspaces, ensuring having unique name without any empty string,
 // and validates that all the referenced workspaces (by pipeline tasks) are specified in the pipeline
-func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) *apis.FieldError {
+func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
 	wsTable := make(map[string]struct{})
 	for i, ws := range wss {
@@ -260,12 +287,22 @@ func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []Pipeli
 
 	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's
 	// Workspaces list.
-	for ptIdx, pt := range pts {
-		for wsIdx, ws := range pt.Workspaces {
+	for i, pt := range pts {
+		for j, ws := range pt.Workspaces {
 			if _, ok := wsTable[ws.Workspace]; !ok {
 				return apis.ErrInvalidValue(
 					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
-					fmt.Sprintf("spec.tasks[%d].workspaces[%d]", ptIdx, wsIdx),
+					fmt.Sprintf("spec.tasks[%d].workspaces[%d]", i, j),
+				)
+			}
+		}
+	}
+	for i, t := range finalTasks {
+		for j, ws := range t.Workspaces {
+			if _, ok := wsTable[ws.Workspace]; !ok {
+				return apis.ErrInvalidValue(
+					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", t.Name, ws.Workspace),
+					fmt.Sprintf("spec.finally[%d].workspaces[%d]", i, j),
 				)
 			}
 		}
@@ -391,6 +428,65 @@ func validatePipelineResults(results []PipelineResult) error {
 				if len(expressions) != len(resultRefs) {
 					return fmt.Errorf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs)
 				}
+			}
+		}
+	}
+	return nil
+}
+
+func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
+	if len(ps.Finally) != 0 && len(ps.Tasks) == 0 {
+		return apis.ErrInvalidValue(fmt.Sprintf("spec.tasks is empty but spec.finally has %d tasks", len(ps.Finally)), "spec.finally")
+	}
+	return nil
+}
+
+func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
+	for _, f := range finalTasks {
+		if len(f.RunAfter) != 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "spec.finally")
+		}
+		if len(f.Conditions) != 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "spec.finally")
+		}
+	}
+
+	if err := validateTaskResultReferenceNotUsed(finalTasks); err != nil {
+		return err
+	}
+
+	if err := validateTasksInputFrom(finalTasks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateTaskResultReferenceNotUsed(tasks []PipelineTask) *apis.FieldError {
+	for _, t := range tasks {
+		for _, p := range t.Params {
+			expressions, ok := GetVarSubstitutionExpressionsForParam(p)
+			if ok {
+				if LooksLikeContainsResultRefs(expressions) {
+					return apis.ErrInvalidValue(fmt.Sprintf("no task result allowed under params,"+
+						"final task param %s has set task result as its value", p.Name), "spec.finally.task.params")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validateTasksInputFrom(tasks []PipelineTask) *apis.FieldError {
+	for _, t := range tasks {
+		inputResources := []PipelineTaskInputResource{}
+		if t.Resources != nil {
+			inputResources = append(inputResources, t.Resources.Inputs...)
+		}
+		for _, rd := range inputResources {
+			if len(rd.From) != 0 {
+				return apis.ErrDisallowedFields(fmt.Sprintf("no from allowed under inputs,"+
+					" final task %s has from specified", rd.Name), "spec.finally.task.resources.inputs")
 			}
 		}
 	}

@@ -42,13 +42,12 @@ func TestPipelineConversionBadType(t *testing.T) {
 	}
 }
 
-func TestPipelineConversion(t *testing.T) {
+func TestPipelineConversion_Success(t *testing.T) {
 	versions := []apis.Convertible{&v1beta1.Pipeline{}}
 
 	tests := []struct {
-		name    string
-		in      *Pipeline
-		wantErr bool
+		name string
+		in   *Pipeline
 	}{{
 		name: "simple conversion",
 		in: &Pipeline{
@@ -114,7 +113,38 @@ func TestPipelineConversion(t *testing.T) {
 				}},
 			},
 		},
-	}, {
+	}}
+
+	for _, test := range tests {
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ver := version
+				// convert v1alpha1 Pipeline to v1beta1 Pipeline
+				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+				}
+				got := &Pipeline{}
+				// converting it back to v1alpha1 pipeline and storing it in got variable to compare with original input
+				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				// compare origin input and roundtrip Pipeline i.e. v1alpha1 pipeline converted to v1beta1 and then converted back to v1alpha1
+				// this check is making sure that we do not end up with different object than what we started with
+				if d := cmp.Diff(test.in, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
+
+func TestPipelineConversion_Failure(t *testing.T) {
+	versions := []apis.Convertible{&v1beta1.Pipeline{}}
+
+	tests := []struct {
+		name string
+		in   *Pipeline
+	}{{
 		name: "simple conversion with task spec error",
 		in: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{
@@ -152,29 +182,76 @@ func TestPipelineConversion(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: true,
 	}}
-
 	for _, test := range tests {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
-					if !test.wantErr {
-						t.Errorf("ConvertTo() = %v", err)
-					}
-					return
+				if err := test.in.ConvertTo(context.Background(), ver); err == nil {
+					t.Errorf("Expected ConvertTo to fail but did not produce any error")
 				}
-				t.Logf("ConvertTo() = %#v", ver)
-				got := &Pipeline{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
-					t.Errorf("ConvertFrom() = %v", err)
-				}
-				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
+				return
 			})
 		}
 	}
+}
+
+func TestPipelineConversionFromWithFinally(t *testing.T) {
+	versions := []apis.Convertible{&v1beta1.Pipeline{}}
+	p := &Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "foo",
+			Namespace:  "bar",
+			Generation: 1,
+		},
+		Spec: PipelineSpec{
+			Tasks: []PipelineTask{{Name: "mytask", TaskRef: &TaskRef{Name: "task"}}},
+		},
+	}
+	for _, version := range versions {
+		t.Run("finally not available in v1alpha1", func(t *testing.T) {
+			ver := version
+			// convert v1alpha1 to v1beta1
+			if err := p.ConvertTo(context.Background(), ver); err != nil {
+				t.Errorf("ConvertTo() = %v", err)
+			}
+			// modify ver to introduce new field which causes failure to convert v1beta1 to v1alpha1
+			source := ver
+			source.(*v1beta1.Pipeline).Spec.Finally = []v1beta1.PipelineTask{{Name: "finaltask", TaskRef: &TaskRef{Name: "task"}}}
+			got := &Pipeline{}
+			if err := got.ConvertFrom(context.Background(), source); err != nil {
+				cce, ok := err.(*CannotConvertError)
+				// conversion error contains the field name which resulted in the failure and should be equal to "Finally" here
+				if ok && cce.Field == FinallyFieldName {
+					return
+				}
+				t.Errorf("ConvertFrom() should have failed")
+			}
+		})
+	}
+}
+
+func TestPipelineConversionFromBetaToAlphaWithFinally_Failure(t *testing.T) {
+	p := &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "foo",
+			Namespace:  "bar",
+			Generation: 1,
+		},
+		Spec: v1beta1.PipelineSpec{
+			Tasks:   []v1beta1.PipelineTask{{Name: "mytask", TaskRef: &TaskRef{Name: "task"}}},
+			Finally: []v1beta1.PipelineTask{{Name: "mytask", TaskRef: &TaskRef{Name: "task"}}},
+		},
+	}
+	t.Run("finally not available in v1alpha1", func(t *testing.T) {
+		got := &Pipeline{}
+		if err := got.ConvertFrom(context.Background(), p); err != nil {
+			cce, ok := err.(*CannotConvertError)
+			// conversion error (cce) contains the field name which resulted in the failure and should be equal to "finally" here
+			if ok && cce.Field == FinallyFieldName {
+				return
+			}
+			t.Errorf("ConvertFrom() should have failed")
+		}
+	})
 }
