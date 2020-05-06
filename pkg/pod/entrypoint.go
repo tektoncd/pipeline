@@ -88,9 +88,11 @@ var (
 // TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
 func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
-		Name:         "place-tools",
-		Image:        entrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
+		Name:  "place-tools",
+		Image: entrypointImage,
+		// Invoke the entrypoint binary in "cp mode" to copy itself
+		// into the correct location for later steps.
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
