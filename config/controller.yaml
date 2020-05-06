@@ -42,7 +42,7 @@ spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
-        image: ko://github.com/tektoncd/pipeline/cmd/controller
+        image: github.com/tektoncd/pipeline/cmd/controller
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
