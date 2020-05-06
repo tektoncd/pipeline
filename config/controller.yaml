@@ -46,13 +46,13 @@ spec:
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
-          "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
-          "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
-          "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
-          "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
-          "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
+          "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
           # These images are pulled from Dockerhub, by digest, as of April 15, 2020.
           "-nop-image", "tianon/true@sha256:009cce421096698832595ce039aa13fa44327d96beedb84282a69d3dbcf5a81b",
