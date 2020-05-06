@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -42,12 +43,44 @@ var (
 	waitPollingInterval = time.Second
 )
 
+func cp(src, dst string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	// Owner has permission to write and execute, and anybody has
+	// permission to execute.
+	d, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0311)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	return err
+}
+
 func main() {
 	// Add credential flags originally used in creds-init.
 	gitcreds.AddFlags(flag.CommandLine)
 	dockercreds.AddFlags(flag.CommandLine)
 
 	flag.Parse()
+
+	// If invoked in "cp mode" (`entrypoint cp <src> <dst>`), simply copy
+	// the src path to the dst path. This is used to place the entrypoint
+	// binary in the tools directory, without requiring the cp command to
+	// exist in the base image.
+	if len(flag.Args()) == 3 && flag.Args()[0] == "cp" {
+		src, dst := flag.Args()[1], flag.Args()[2]
+		if err := cp(src, dst); err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Copied", src, "to", dst)
+		return
+	}
 
 	// Copy creds-init credentials from secret volume mounts to /tekton/creds
 	// This is done to support the expansion of a variable, $(credentials.path), that

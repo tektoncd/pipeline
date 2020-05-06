@@ -220,7 +220,7 @@ var (
 
 	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
-			tb.Command("cp", "/ko-app/entrypoint", entrypointLocation),
+			tb.Command("/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation),
 			tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 			tb.Args(),
 		}
