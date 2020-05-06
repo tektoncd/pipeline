@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -40,7 +39,6 @@ import (
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -241,7 +239,7 @@ var (
 
 	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
-			tb.Command("cp", "/ko-app/entrypoint", entrypointLocation),
+			tb.Command("/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation),
 			tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 			tb.Args(),
 		}
