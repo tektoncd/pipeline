@@ -25,6 +25,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const FinallyFieldName = "finally"
+
 var _ apis.Convertible = (*Pipeline)(nil)
 
 // ConvertTo implements api.Convertible
@@ -51,6 +53,7 @@ func (source *PipelineSpec) ConvertTo(ctx context.Context, sink *v1beta1.Pipelin
 			}
 		}
 	}
+	sink.Finally = nil
 	return nil
 }
 
@@ -96,6 +99,10 @@ func (sink *PipelineSpec) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 				return err
 			}
 		}
+	}
+	// finally clause was introduced in v1beta1 and not available in v1alpha1
+	if len(source.Finally) > 0 {
+		return ConvertErrorf(FinallyFieldName, ConversionErrorFieldNotAvailableMsg)
 	}
 	return nil
 }

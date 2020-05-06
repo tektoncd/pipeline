@@ -21,6 +21,7 @@ weight: 3
   - [Configuring execution results at the `Pipeline` level](#configuring-execution-results-at-the-pipeline-level)
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
+  - [Adding `Finally` to the `Pipeline` (Preview)](#adding-finally-to-the-pipeline-preview)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -528,6 +529,34 @@ In particular:
 ## Adding a description
 
 The `description` field is an optional field and can be used to provide description of the `Pipeline`.
+
+## Adding `Finally` to the `Pipeline` (Preview)
+
+_Finally type is available in the `Pipeline` but functionality is in progress. Final tasks are can be specified and
+are validated but not executed yet._
+
+You can specify a list of one or more final tasks under `finally` section. Final tasks are guaranteed to be executed
+in parallel after all `PipelineTasks` under `tasks` have completed regardless of success or error. Final tasks are very
+similar to `PipelineTasks` under `tasks` section and follow the same syntax. Each final task must have a
+[valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) `name` and a [taskRef or
+taskSpec](taskruns.md#specifying-the-target-task). For example:
+
+```yaml
+spec:
+  tasks:
+    - name: tests
+      taskRef:
+        Name: integration-test
+  finally:
+    - name: cleanup-test
+      taskRef:
+        Name: cleanup
+```
+
+_[PR #2661](https://github.com/tektoncd/pipeline/pull/2661) is implementing this new functionality by adding support to enable
+final tasks along with workspaces and parameters. `PipelineRun` status is being updated to include execution status of
+final tasks i.e. `PipelineRun` status is set to success or failure depending on execution of `PipelineTasks`, this status
+remains same when all final tasks finishes successfully but is set to failure if any of the final tasks fail._
 
 ## Code examples
 
