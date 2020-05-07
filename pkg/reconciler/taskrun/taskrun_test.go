@@ -2496,6 +2496,7 @@ func Test_storeTaskSpec(t *testing.T) {
 	tr := tb.TaskRun("foo", tb.TaskRunSpec(tb.TaskRunTaskRef("foo-task")))
 
 	ts := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
+	ts1 := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("bar-task"))).Spec
 	want := &v1beta1.TaskSpec{}
 	if err := ts.ConvertTo(ctx, want); err != nil {
 		t.Errorf("error converting to v1beta1: %v", err)
@@ -2509,9 +2510,8 @@ func Test_storeTaskSpec(t *testing.T) {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	ts.Description = "new-task"
 	// The next time, it should not get overwritten
-	if err := storeTaskSpec(ctx, tr, &ts); err != nil {
+	if err := storeTaskSpec(ctx, tr, &ts1); err != nil {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
 	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {

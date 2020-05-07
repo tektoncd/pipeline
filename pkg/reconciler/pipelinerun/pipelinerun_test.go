@@ -2165,6 +2165,7 @@ func Test_storePipelineSpec(t *testing.T) {
 	pr := tb.PipelineRun("foo")
 
 	ps := tb.Pipeline("some-pipeline", tb.PipelineSpec(tb.PipelineDescription("foo-pipeline"))).Spec
+	ps1 := tb.Pipeline("some-pipeline", tb.PipelineSpec(tb.PipelineDescription("bar-pipeline"))).Spec
 	want := &v1beta1.PipelineSpec{}
 	if err := ps.ConvertTo(ctx, want); err != nil {
 		t.Errorf("error converting to v1beta1: %v", err)
@@ -2178,9 +2179,8 @@ func Test_storePipelineSpec(t *testing.T) {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	ps.Description = "new-pipeline"
 	// The next time, it should not get overwritten
-	if err := storePipelineSpec(ctx, pr, &ps); err != nil {
+	if err := storePipelineSpec(ctx, pr, &ps1); err != nil {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
 	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
