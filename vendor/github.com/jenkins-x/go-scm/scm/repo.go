@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+const (
+	// NoPermission means the user has no permission to access the repository
+	NoPermission = "none"
+	// ReadPermission means the user has read access to the repository
+	ReadPermission = "read"
+	// WritePermission means the user has write/push access to the repository
+	WritePermission = "write"
+	// AdminPermission means the user has full admin access to the repository
+	AdminPermission = "admin"
+)
+
 type (
 	// Repository represents a git repository.
 	Repository struct {
@@ -152,7 +163,7 @@ type (
 		IsCollaborator(ctx context.Context, repo, user string) (bool, *Response, error)
 
 		// ListCollaborators lists the collaborators on a repository
-		ListCollaborators(ctx context.Context, repo string) ([]User, *Response, error)
+		ListCollaborators(ctx context.Context, repo string, ops ListOptions) ([]User, *Response, error)
 
 		// FindUserPermission returns the user's permission level for a repo
 		FindUserPermission(ctx context.Context, repo string, user string) (string, *Response, error)

@@ -86,5 +86,29 @@ func encodePullRequestListOptions(opts scm.PullRequestListOptions) string {
 	} else if opts.Open {
 		params.Set("state", "opened")
 	}
+	if len(opts.Labels) > 0 {
+		params.Set("labels", strings.Join(opts.Labels, ","))
+	}
+	if opts.CreatedAfter != nil {
+		params.Set("created_after", opts.CreatedAfter.Format(scm.SearchTimeFormat))
+	}
+	if opts.CreatedBefore != nil {
+		params.Set("created_before", opts.CreatedBefore.Format(scm.SearchTimeFormat))
+	}
+	if opts.UpdatedAfter != nil {
+		params.Set("updated_after", opts.UpdatedAfter.Format(scm.SearchTimeFormat))
+	}
+	if opts.UpdatedBefore != nil {
+		params.Set("updated_before", opts.UpdatedBefore.Format(scm.SearchTimeFormat))
+	}
 	return params.Encode()
+}
+
+func gitlabStateToSCMState(glState string) string {
+	switch glState {
+	case "opened":
+		return "open"
+	default:
+		return "closed"
+	}
 }

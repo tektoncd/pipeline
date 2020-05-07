@@ -7,6 +7,7 @@ package scm
 import (
 	"errors"
 	"net/http"
+	"time"
 )
 
 type WebhookKind string
@@ -29,9 +30,12 @@ const (
 	WebhookKindPush                   WebhookKind = "push"
 	WebhookKindRelease                WebhookKind = "release"
 	WebhookKindRepository             WebhookKind = "repository"
+	WebhookKindReview                 WebhookKind = "review"
 	WebhookKindReviewCommentHook      WebhookKind = "review_comment"
+	WebhookKindStar                   WebhookKind = "star"
 	WebhookKindStatus                 WebhookKind = "status"
 	WebhookKindTag                    WebhookKind = "tag"
+	WebhookKindWatch                  WebhookKind = "watch"
 )
 
 var (
@@ -294,6 +298,22 @@ type (
 		Installation *InstallationRef
 	}
 
+	// WatchHook represents a watch event. This is currently GitHub-specific.
+	WatchHook struct {
+		Action       string
+		Repo         Repository
+		Sender       User
+		Installation *InstallationRef
+	}
+
+	// StarHook represents a star event. This is currently GitHub-specific.
+	StarHook struct {
+		Action    Action
+		StarredAt time.Time
+		Repo      Repository
+		Sender    User
+	}
+
 	// SecretFunc provides the Webhook parser with the
 	// secret key used to validate webhook authenticity.
 	SecretFunc func(webhook Webhook) (string, error)
@@ -317,6 +337,7 @@ func (h *IssueHook) Kind() WebhookKind                  { return WebhookKindIssu
 func (h *IssueCommentHook) Kind() WebhookKind           { return WebhookKindIssueComment }
 func (h *PullRequestHook) Kind() WebhookKind            { return WebhookKindPullRequest }
 func (h *PullRequestCommentHook) Kind() WebhookKind     { return WebhookKindPullRequestComment }
+func (h *ReviewHook) Kind() WebhookKind                 { return WebhookKindReview }
 func (h *ReviewCommentHook) Kind() WebhookKind          { return WebhookKindReviewCommentHook }
 func (h *InstallationHook) Kind() WebhookKind           { return WebhookKindInstallation }
 func (h *LabelHook) Kind() WebhookKind                  { return WebhookKindLabel }
@@ -328,6 +349,8 @@ func (h *ReleaseHook) Kind() WebhookKind                { return WebhookKindRele
 func (h *RepositoryHook) Kind() WebhookKind             { return WebhookKindRepository }
 func (h *ForkHook) Kind() WebhookKind                   { return WebhookKindFork }
 func (h *InstallationRepositoryHook) Kind() WebhookKind { return WebhookKindInstallationRepository }
+func (h *WatchHook) Kind() WebhookKind                  { return WebhookKindWatch }
+func (h *StarHook) Kind() WebhookKind                   { return WebhookKindStar }
 
 // Repository() defines the repository webhook and provides
 // a convenient way to get the associated repository without
@@ -343,6 +366,7 @@ func (h *IssueCommentHook) Repository() Repository       { return h.Repo }
 func (h *PullRequestHook) Repository() Repository        { return h.Repo }
 func (h *PullRequestCommentHook) Repository() Repository { return h.Repo }
 func (h *ReviewCommentHook) Repository() Repository      { return h.Repo }
+func (h *ReviewHook) Repository() Repository             { return h.Repo }
 func (h *LabelHook) Repository() Repository              { return h.Repo }
 func (h *StatusHook) Repository() Repository             { return h.Repo }
 func (h *CheckRunHook) Repository() Repository           { return h.Repo }
@@ -351,6 +375,8 @@ func (h *DeploymentStatusHook) Repository() Repository   { return h.Repo }
 func (h *ReleaseHook) Repository() Repository            { return h.Repo }
 func (h *RepositoryHook) Repository() Repository         { return h.Repo }
 func (h *ForkHook) Repository() Repository               { return h.Repo }
+func (h *WatchHook) Repository() Repository              { return h.Repo }
+func (h *StarHook) Repository() Repository               { return h.Repo }
 
 func (h *InstallationHook) Repository() Repository {
 	if len(h.Repos) > 0 {
@@ -377,6 +403,7 @@ func (h *IssueHook) GetInstallationRef() *InstallationRef              { return 
 func (h *IssueCommentHook) GetInstallationRef() *InstallationRef       { return h.Installation }
 func (h *PullRequestHook) GetInstallationRef() *InstallationRef        { return h.Installation }
 func (h *PullRequestCommentHook) GetInstallationRef() *InstallationRef { return h.Installation }
+func (h *ReviewHook) GetInstallationRef() *InstallationRef             { return h.Installation }
 func (h *ReviewCommentHook) GetInstallationRef() *InstallationRef      { return h.Installation }
 func (h *LabelHook) GetInstallationRef() *InstallationRef              { return h.Installation }
 func (h *StatusHook) GetInstallationRef() *InstallationRef             { return h.Installation }
@@ -386,6 +413,8 @@ func (h *DeploymentStatusHook) GetInstallationRef() *InstallationRef   { return 
 func (h *ReleaseHook) GetInstallationRef() *InstallationRef            { return h.Installation }
 func (h *RepositoryHook) GetInstallationRef() *InstallationRef         { return h.Installation }
 func (h *ForkHook) GetInstallationRef() *InstallationRef               { return h.Installation }
+func (h *WatchHook) GetInstallationRef() *InstallationRef              { return h.Installation }
+func (h *StarHook) GetInstallationRef() *InstallationRef               { return nil }
 
 func (h *InstallationHook) GetInstallationRef() *InstallationRef {
 	if h.Installation == nil {

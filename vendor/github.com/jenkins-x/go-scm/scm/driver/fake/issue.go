@@ -161,6 +161,10 @@ func (s *issueService) DeleteComment(ctx context.Context, repo string, number in
 	return nil, fmt.Errorf("could not find issue comment %d", id)
 }
 
+func (s *issueService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 func (s *issueService) Close(context.Context, string, int) (*scm.Response, error) {
 	panic("implement me")
 }

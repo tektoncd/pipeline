@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jenkins-x/go-scm/scm"
@@ -24,30 +25,123 @@ func (s *issueService) Search(context.Context, scm.SearchOptions) ([]*scm.Search
 }
 
 func (s *issueService) AssignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
-	panic("implement me")
+	issue, _, err := s.Find(ctx, repo, number)
+	if err != nil {
+		return nil, err
+	}
+
+	allAssignees := map[int]struct{}{}
+	for _, assignee := range issue.Assignees {
+		allAssignees[assignee.ID] = struct{}{}
+	}
+	for _, l := range logins {
+		u, _, err := s.client.Users.FindLogin(ctx, l)
+		if err != nil {
+			return nil, err
+		}
+		allAssignees[u.ID] = struct{}{}
+	}
+
+	var assigneeIDs []int
+	for i := range allAssignees {
+		assigneeIDs = append(assigneeIDs, i)
+	}
+
+	return s.setAssignees(ctx, repo, number, assigneeIDs)
+}
+
+func (s *issueService) setAssignees(ctx context.Context, repo string, number int, ids []int) (*scm.Response, error) {
+	in := &updateIssueOptions{
+		AssigneeIDs: ids,
+	}
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d", encode(repo), number)
+
+	return s.client.do(ctx, "PUT", path, in, nil)
 }
 
 func (s *issueService) UnassignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
-	panic("implement me")
+	issue, _, err := s.Find(ctx, repo, number)
+	if err != nil {
+		return nil, err
+	}
+	var assignees []int
+	for _, assignee := range issue.Assignees {
+		shouldKeep := true
+		for _, l := range logins {
+			if assignee.Login == l {
+				shouldKeep = false
+			}
+		}
+		if shouldKeep {
+			assignees = append(assignees, assignee.ID)
+		}
+	}
+
+	return s.setAssignees(ctx, repo, number, assignees)
 }
 
-func (s *issueService) ListEvents(context.Context, string, int, scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
-	panic("implement me")
+func (s *issueService) ListEvents(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(opts))
+	out := []*labelEvent{}
+	res, err := s.client.do(ctx, "GET", path, nil, &out)
+	return convertLabelEvents(out), res, err
 }
 
 func (s *issueService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
-	path := fmt.Sprintf("projects/%s/labels?%s", encode(repo), encodeListOptions(opts))
-	out := []*label{}
-	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	return convertLabelObjects(out), res, err
+	issue, issueResp, err := s.Find(ctx, repo, number)
+	if err != nil {
+		return nil, issueResp, err
+	}
+	var labels []*scm.Label
+	for _, l := range issue.Labels {
+		labels = append(labels, &scm.Label{
+			Name: l,
+		})
+	}
+	return labels, issueResp, err
 }
 
 func (s *issueService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	allLabels := map[string]struct{}{}
+	for _, l := range existingLabels {
+		allLabels[l.Name] = struct{}{}
+	}
+	allLabels[label] = struct{}{}
+
+	labelNames := []string{}
+	for l := range allLabels {
+		labelNames = append(labelNames, l)
+	}
+
+	return s.setLabels(ctx, repo, number, labelNames)
+}
+
+func (s *issueService) setLabels(ctx context.Context, repo string, number int, labels []string) (*scm.Response, error) {
+	in := url.Values{}
+	labelsStr := strings.Join(labels, ",")
+	in.Set("labels", labelsStr)
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d?%s", encode(repo), number, in.Encode())
+
+	return s.client.do(ctx, "PUT", path, nil, nil)
 }
 
 func (s *issueService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	labels := []string{}
+	for _, l := range existingLabels {
+		if l.Name != label {
+			labels = append(labels, l.Name)
+		}
+	}
+	return s.setLabels(ctx, repo, number, labels)
 }
 
 func (s *issueService) Find(ctx context.Context, repo string, number int) (*scm.Issue, *scm.Response, error) {
@@ -102,6 +196,14 @@ func (s *issueService) DeleteComment(ctx context.Context, repo string, number, i
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
+func (s *issueService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+	in := &updateNoteOptions{Body: input.Body}
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes/%d", encode(repo), number, id)
+	out := new(issueComment)
+	res, err := s.client.do(ctx, "PUT", path, in, out)
+	return convertIssueComment(out), res, err
+}
+
 func (s *issueService) Close(ctx context.Context, repo string, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/issues/%d?state_event=close", encode(repo), number)
 	res, err := s.client.do(ctx, "PUT", path, nil, nil)
@@ -120,6 +222,19 @@ func (s *issueService) Unlock(ctx context.Context, repo string, number int) (*sc
 	return res, err
 }
 
+type updateIssueOptions struct {
+	Title            *string    `json:"title,omitempty"`
+	Description      *string    `json:"description,omitempty"`
+	Confidential     *bool      `json:"confidential,omitempty"`
+	AssigneeIDs      []int      `json:"assignee_ids,omitempty"`
+	MilestoneID      *int       `json:"milestone_id,omitempty"`
+	Labels           []string   `json:"labels,omitempty"`
+	StateEvent       *string    `json:"state_event,omitempty"`
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
+	Weight           *int       `json:"weight,omitempty"`
+	DiscussionLocked *bool      `json:"discussion_locked,omitempty"`
+}
+
 type issue struct {
 	ID     int      `json:"id"`
 	Number int      `json:"iid"`
@@ -134,8 +249,19 @@ type issue struct {
 		Username string      `json:"username"`
 		Avatar   null.String `json:"avatar_url"`
 	} `json:"author"`
-	Created time.Time `json:"created_at"`
-	Updated time.Time `json:"updated_at"`
+	Assignee  *issueAssignee   `json:"assignee"`
+	Assignees []*issueAssignee `json:"assignees"`
+	Created   time.Time        `json:"created_at"`
+	Updated   time.Time        `json:"updated_at"`
+}
+
+type issueAssignee struct {
+	ID        int    `json:"id"`
+	State     string `json:"state"`
+	WebURL    string `json:"web_url"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	Username  string `json:"username"`
 }
 
 type issueComment struct {
@@ -155,7 +281,7 @@ type issueCommentInput struct {
 	Body string `json:"body"`
 }
 
-// helper function to convert from the gogs issue list to
+// helper function to convert from the gitlab issue list to
 // the common issue structure.
 func convertIssueList(from []*issue) []*scm.Issue {
 	to := []*scm.Issue{}
@@ -165,13 +291,14 @@ func convertIssueList(from []*issue) []*scm.Issue {
 	return to
 }
 
-// helper function to convert from the gogs issue structure to
+// helper function to convert from the gitlab issue structure to
 // the common issue structure.
 func convertIssue(from *issue) *scm.Issue {
 	return &scm.Issue{
 		Number: from.Number,
 		Title:  from.Title,
 		Body:   from.Desc,
+		State:  gitlabStateToSCMState(from.State),
 		Link:   from.Link,
 		Labels: from.Labels,
 		Locked: from.Locked,
@@ -181,12 +308,43 @@ func convertIssue(from *issue) *scm.Issue {
 			Login:  from.Author.Username,
 			Avatar: from.Author.Avatar.String,
 		},
-		Created: from.Created,
-		Updated: from.Updated,
+		Assignees: convertIssueAssignees(from.Assignee, from.Assignees),
+		Created:   from.Created,
+		Updated:   from.Updated,
 	}
 }
 
-// helper function to convert from the gogs issue comment list
+// helper function to convert from the gitlab issue assignee(s) to the common user structure.
+func convertIssueAssignees(from *issueAssignee, fromList []*issueAssignee) []scm.User {
+	users := make(map[int]scm.User)
+	if from != nil {
+		users[from.ID] = convertSingleIssueAssignee(from)
+	}
+	for _, a := range fromList {
+		if _, exists := users[a.ID]; !exists {
+			users[a.ID] = convertSingleIssueAssignee(a)
+		}
+	}
+
+	var userList []scm.User
+	for _, u := range users {
+		userList = append(userList, u)
+	}
+	return userList
+}
+
+// helper function to convert an individual gitlab issue assignee to a common user.
+func convertSingleIssueAssignee(from *issueAssignee) scm.User {
+	return scm.User{
+		ID:     from.ID,
+		Login:  from.Username,
+		Name:   from.Name,
+		Avatar: from.AvatarURL,
+		Link:   from.WebURL,
+	}
+}
+
+// helper function to convert from the gitlab issue comment list
 // to the common issue structure.
 func convertIssueCommentList(from []*issueComment) []*scm.Comment {
 	to := []*scm.Comment{}
@@ -196,7 +354,7 @@ func convertIssueCommentList(from []*issueComment) []*scm.Comment {
 	return to
 }
 
-// helper function to convert from the gogs issue comment to
+// helper function to convert from the gitlab issue comment to
 // the common issue comment structure.
 func convertIssueComment(from *issueComment) *scm.Comment {
 	return &scm.Comment{

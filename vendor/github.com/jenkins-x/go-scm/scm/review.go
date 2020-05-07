@@ -26,11 +26,11 @@ type (
 
 	// ReviewHook represents a review web hook
 	ReviewHook struct {
-		Action      Action
-		PullRequest PullRequest
-		Repo        Repository
-		Review      Review
-
+		Action       Action
+		PullRequest  PullRequest
+		Repo         Repository
+		Review       Review
+		Installation *InstallationRef
 		// GUID is included in the header of the request received by Github.
 		GUID string
 	}

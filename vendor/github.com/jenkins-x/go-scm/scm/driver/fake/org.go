@@ -31,12 +31,38 @@ func (s *organizationService) IsMember(ctx context.Context, org string, user str
 	panic("implement me")
 }
 
-func (s *organizationService) Find(context.Context, string) (*scm.Organization, *scm.Response, error) {
-	panic("implement me")
+func (s *organizationService) IsAdmin(ctx context.Context, org string, user string) (bool, *scm.Response, error) {
+	return user == "adminUser", &scm.Response{}, nil
+}
+
+func (s *organizationService) Find(ctx context.Context, name string) (*scm.Organization, *scm.Response, error) {
+	for _, org := range s.data.Organizations {
+		if org.Name == name {
+			return org, nil, nil
+		}
+	}
+	return nil, nil, scm.ErrNotFound
 }
 
 func (s *organizationService) List(context.Context, scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
-	panic("implement me")
+	orgs := s.data.Organizations
+	if orgs == nil {
+		// Return hardcoded organizations if none specified explicitly
+		for i := 0; i < 5; i++ {
+			org := scm.Organization{
+				ID:     i,
+				Name:   fmt.Sprintf("organisation%d", i),
+				Avatar: fmt.Sprintf("https://github.com/organisation%d.png", i),
+				Permissions: scm.Permissions{
+					true,
+					true,
+					true,
+				},
+			}
+			orgs = append(orgs, &org)
+		}
+	}
+	return orgs, &scm.Response{}, nil
 }
 
 func (s *organizationService) ListTeams(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
@@ -65,4 +91,8 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, teamID int, r
 		return []*scm.TeamMember{}, nil, nil
 	}
 	return members, nil, nil
+}
+
+func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
 }

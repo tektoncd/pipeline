@@ -7,10 +7,18 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/internal/null"
+	errors2 "k8s.io/apimachinery/pkg/util/errors"
+)
+
+var (
+	teamRe = regexp.MustCompile(`^(.*)/(.*)$`)
 )
 
 type pullService struct {
@@ -38,9 +46,9 @@ func (s *pullService) ListChanges(ctx context.Context, repo string, number int, 
 	return convertChangeList(out), res, err
 }
 
-func (s *pullService) Merge(ctx context.Context, repo string, number int) (*scm.Response, error) {
+func (s *pullService) Merge(ctx context.Context, repo string, number int, options *scm.PullRequestMergeOptions) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/merge", repo, number)
-	res, err := s.client.do(ctx, "PUT", path, nil, nil)
+	res, err := s.client.do(ctx, "PUT", path, encodePullRequestMergeOptions(options), nil)
 	return res, err
 }
 
@@ -63,6 +71,104 @@ func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRe
 	out := new(pr)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertPullRequest(out), res, err
+}
+
+func (s *pullService) RequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	_, resp, err := s.tryRequestReview(ctx, repo, number, logins)
+	// At least one invalid user. Try adding them individually.
+	if err != nil && resp != nil && resp.Status == http.StatusUnprocessableEntity {
+		missing := scm.MissingUsers{
+			Action: "request a PR review from",
+		}
+		for _, user := range logins {
+			_, resp, err = s.tryRequestReview(ctx, repo, number, []string{user})
+			if err != nil && resp != nil && resp.Status == http.StatusUnprocessableEntity {
+				missing.Users = append(missing.Users, user)
+			} else if err != nil {
+				return nil, fmt.Errorf("failed to add reviewer to PR. errmsg: %v", err)
+			}
+		}
+		if len(missing.Users) > 0 {
+			return nil, missing
+		}
+	}
+	return resp, err
+}
+
+func (s *pullService) UnrequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	body, err := prepareReviewersBody(logins, strings.Split(repo, "/")[0])
+	if err != nil {
+		return nil, err
+	}
+	if len(body.TeamReviewers) == 0 && len(body.Reviewers) == 0 {
+		return nil, nil
+	}
+	path := fmt.Sprintf("repos/%s/pulls/%d/requested_reviewers", repo, number)
+	out := new(pr)
+	res, err := s.client.do(ctx, "DELETE", path, body, out)
+	if err != nil {
+		return res, err
+	}
+	extras := scm.ExtraUsers{Action: "remove the PR review request for"}
+	for _, user := range out.RequestedReviewers {
+		found := false
+		for _, toDelete := range logins {
+			if NormLogin(user.Login) == NormLogin(toDelete) {
+				found = true
+				break
+			}
+		}
+		if found {
+			extras.Users = append(extras.Users, user.Login)
+		}
+	}
+	if len(extras.Users) > 0 {
+		return res, extras
+	}
+	return res, nil
+}
+
+func prepareReviewersBody(logins []string, org string) (prReviewers, error) {
+	body := prReviewers{}
+	var errors []error
+	for _, login := range logins {
+		mat := teamRe.FindStringSubmatch(login)
+		if mat == nil {
+			body.Reviewers = append(body.Reviewers, login)
+		} else if mat[1] == org {
+			body.TeamReviewers = append(body.TeamReviewers, mat[2])
+		} else {
+			errors = append(errors, fmt.Errorf("team %s is not part of %s org", login, org))
+		}
+	}
+
+	return body, errors2.NewAggregate(errors)
+}
+
+func (s *pullService) tryRequestReview(ctx context.Context, orgAndRepo string, number int, logins []string) (*scm.PullRequest, *scm.Response, error) {
+	body, err := prepareReviewersBody(logins, strings.Split(orgAndRepo, "/")[0])
+	if err != nil {
+		// At least one team not in org,
+		// let RequestReview handle retries and alerting for each login.
+		return nil, nil, err
+	}
+
+	out := new(pr)
+	path := fmt.Sprintf("repos/%s/pulls/%d/requested_reviewers", orgAndRepo, number)
+	res, err := s.client.do(ctx, "POST", path, body, out)
+	return convertPullRequest(out), res, err
+}
+
+type prReviewers struct {
+	Reviewers     []string `json:"reviewers,omitempty"`
+	TeamReviewers []string `json:"team_reviewers,omitempty"`
+}
+
+type pullRequestMergeRequest struct {
+	CommitMessage string `json:"commit_message,omitempty"`
+	CommitTitle   string `json:"commit_title,omitempty"`
+	MergeMethod   string `json:"merge_method,omitempty"`
+	SHA           string `json:"sha,omitempty"`
 }
 
 type prBranch struct {

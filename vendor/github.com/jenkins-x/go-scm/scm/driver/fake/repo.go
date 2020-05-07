@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -65,7 +66,7 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, login stri
 	return false, nil, nil
 }
 
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string) ([]scm.User, *scm.Response, error) {
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
 	f := s.data
 	result := make([]scm.User, 0, len(f.Collaborators))
 	for _, login := range f.Collaborators {
@@ -125,7 +126,7 @@ func (s *repositoryService) ListHooks(ctx context.Context, fullName string, opts
 
 func (s *repositoryService) CreateHook(ctx context.Context, fullName string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
 	hook := &scm.Hook{
-		ID:     "dummy",
+		ID:     fmt.Sprintf("%d", rand.Int()),
 		Name:   input.Name,
 		Target: input.Target,
 		Active: true,
@@ -134,10 +135,10 @@ func (s *repositoryService) CreateHook(ctx context.Context, fullName string, inp
 	return hook, nil, nil
 }
 
-func (s *repositoryService) DeleteHook(ctx context.Context, fullName string, hookName string) (*scm.Response, error) {
+func (s *repositoryService) DeleteHook(ctx context.Context, fullName string, hookID string) (*scm.Response, error) {
 	hooks := s.data.Hooks[fullName]
 	for i, h := range hooks {
-		if h.Name == hookName {
+		if h.ID == hookID {
 			hooks = append(hooks[0:i], hooks[i+1:]...)
 			s.data.Hooks[fullName] = hooks
 			break

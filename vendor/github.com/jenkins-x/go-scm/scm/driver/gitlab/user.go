@@ -42,6 +42,7 @@ func (s *userService) FindEmail(ctx context.Context) (string, *scm.Response, err
 }
 
 type user struct {
+	ID       int         `json:"id"`
 	Username string      `json:"username"`
 	Name     string      `json:"name"`
 	Email    null.String `json:"email"`
@@ -50,6 +51,7 @@ type user struct {
 
 func convertUser(from *user) *scm.User {
 	return &scm.User{
+		ID:     from.ID,
 		Avatar: from.Avatar,
 		Email:  from.Email.String,
 		Login:  from.Username,
