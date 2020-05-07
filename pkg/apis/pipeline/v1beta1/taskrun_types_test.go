@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -43,7 +44,7 @@ func TestTaskRun_GetBuildPodRef(t *testing.T) {
 		Namespace:  "testns",
 		Name:       "taskrunname",
 	}); d != "" {
-		t.Fatalf("taskrun build pod ref mismatch: %s", d)
+		t.Fatalf("taskrun build pod ref mismatch: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -334,7 +335,7 @@ func TestHasTimedOut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.taskRun.HasTimedOut()
 			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
-				t.Fatalf("-want, +got: %v", d)
+				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
 	}

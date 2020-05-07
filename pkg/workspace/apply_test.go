@@ -7,6 +7,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/workspace"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -187,7 +188,7 @@ func TestGetVolumes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			v := workspace.GetVolumes(tc.workspaces)
 			if d := cmp.Diff(tc.expectedVolumes, v); d != "" {
-				t.Errorf("Didn't get expected volumes from bindings (-want, +got): %s", d)
+				t.Errorf("Didn't get expected volumes from bindings %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -516,7 +517,7 @@ func TestApply(t *testing.T) {
 				t.Fatalf("Did not expect error but got %v", err)
 			}
 			if d := cmp.Diff(tc.expectedTaskSpec, *ts); d != "" {
-				t.Errorf("Didn't get expected TaskSpec modifications (-want, +got): %s", d)
+				t.Errorf("Didn't get expected TaskSpec modifications %s", diff.PrintWantGot(d))
 			}
 		})
 	}

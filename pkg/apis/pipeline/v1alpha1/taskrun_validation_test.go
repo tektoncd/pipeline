@@ -25,6 +25,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -51,7 +52,7 @@ func TestTaskRun_Invalid(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("TaskRun.Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRun.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -95,7 +96,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -159,7 +160,7 @@ func TestTaskRunSpec_Invalid(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.spec.Validate(context.Background())
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -322,7 +323,7 @@ func TestInput_Invalid(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.inputs.Validate(context.Background(), "spec.Inputs")
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("TaskRunInputs.Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRunInputs.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -383,7 +384,7 @@ func TestOutput_Invalid(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.outputs.Validate(context.Background(), "spec.Outputs")
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("TaskRunOutputs.Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRunOutputs.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}

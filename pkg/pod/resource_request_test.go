@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -208,7 +209,7 @@ func TestResolveResourceRequests_No_LimitRange(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			got := resolveResourceRequests(c.in, allZeroQty())
 			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff(-want, +got): %s", d)
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -338,7 +339,7 @@ func TestResolveResourceRequests_LimitRange(t *testing.T) {
 			},
 			)
 			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff(-want, +got): %s", d)
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

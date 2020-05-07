@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -947,10 +948,10 @@ func TestValidOutputResources(t *testing.T) {
 
 			if got != nil {
 				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
+					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
 				}
 				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
+					t.Fatalf("post build steps volumes mismatch %s", diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -1147,7 +1148,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			}
 			if got != nil {
 				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch (-want, got): %s", d)
+					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -1779,10 +1780,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 
 			if got != nil {
 				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
+					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
 				}
 				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
+					t.Fatalf("post build steps volumes mismatch %s", diff.PrintWantGot(d))
 				}
 			}
 		})

@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -122,7 +123,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 		t.Fatalf("Unexpected error creating BuildGCS resource: %s", err)
 	}
 	if d := cmp.Diff(expectedGCSResource, r); d != "" {
-		t.Errorf("Mismatch of BuildGCS resource: %s", d)
+		t.Errorf("Mismatch of BuildGCS resource: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -138,7 +139,7 @@ func TestBuildGCS_GetReplacements(t *testing.T) {
 		"location": "gs://fake-bucket",
 	}
 	if d := cmp.Diff(r.Replacements(), expectedReplacementMap); d != "" {
-		t.Errorf("BuildGCS Replacement map mismatch: %s", d)
+		t.Errorf("BuildGCS Replacement map mismatch: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -175,7 +176,7 @@ func TestBuildGCS_GetInputSteps(t *testing.T) {
 				t.Fatalf("GetDownloadSteps: %v", err)
 			}
 			if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
-				t.Errorf("Error mismatch between download steps: %s", d)
+				t.Errorf("Error mismatch between download steps: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

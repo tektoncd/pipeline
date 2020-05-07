@@ -24,6 +24,7 @@ import (
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -150,7 +151,7 @@ func TestNewClusterResource(t *testing.T) {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
 			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", d)
+				t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -194,6 +195,6 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 		t.Fatalf("GetDownloadSteps: %v", err)
 	}
 	if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
-		t.Errorf("Error mismatch between download steps: %s", d)
+		t.Errorf("Error mismatch between download steps: %s", diff.PrintWantGot(d))
 	}
 }

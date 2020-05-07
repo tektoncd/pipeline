@@ -24,6 +24,7 @@ import (
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestNewResource_Invalid(t *testing.T) {
@@ -69,7 +70,7 @@ func TestNewResource_Valid(t *testing.T) {
 		t.Fatalf("Unexpected error creating CloudEvent resource: %s", err)
 	}
 	if d := cmp.Diff(expectedResource, r); d != "" {
-		t.Errorf("Mismatch of CloudEvent resource: %s", d)
+		t.Errorf("Mismatch of CloudEvent resource %s", diff.PrintWantGot(d))
 	}
 }
 

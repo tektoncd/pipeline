@@ -25,6 +25,7 @@ import (
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/pullrequest"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -51,8 +52,8 @@ func TestPullRequest_NewResource(t *testing.T) {
 		PRImage:               "override-with-pr:latest",
 		InsecureSkipTLSVerify: false,
 	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Error(diff)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Error(diff.PrintWantGot(d))
 	}
 }
 
@@ -145,8 +146,8 @@ func TestPullRequest_GetDownloadSteps(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.out, got.GetStepsToPrepend()); diff != "" {
-				t.Error(diff)
+			if d := cmp.Diff(tc.out, got.GetStepsToPrepend()); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -162,8 +163,8 @@ func TestPullRequest_GetOutputSteps(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.out, got.GetStepsToAppend()); diff != "" {
-				t.Error(diff)
+			if d := cmp.Diff(tc.out, got.GetStepsToAppend()); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

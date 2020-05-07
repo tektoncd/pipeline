@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -373,11 +374,11 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 			if err := CleanupArtifactStorage(pipelinerun, fakekubeclient, logger); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			if diff := cmp.Diff(artifactStorage.GetType(), c.storagetype); diff != "" {
-				t.Fatalf("-want +got: %s", diff)
+			if d := cmp.Diff(artifactStorage.GetType(), c.storagetype); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
 			}
-			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage, quantityComparer); diff != "" {
-				t.Fatalf("-want +got: %s", diff)
+			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage, quantityComparer); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -579,8 +580,8 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 		ShellImage:            "busybox",
 	}
 
-	if diff := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); diff != "" {
-		t.Fatalf("-want +got: %s", diff)
+	if d := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
 
@@ -673,8 +674,8 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
 
-			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage); diff != "" {
-				t.Fatalf("-want +got: %s", diff)
+			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -693,8 +694,8 @@ func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 		ShellImage: "busybox",
 	}
 
-	if diff := cmp.Diff(pvc, expectedArtifactPVC); diff != "" {
-		t.Fatalf("-want +got: %s", diff)
+	if d := cmp.Diff(pvc, expectedArtifactPVC); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
 
@@ -729,8 +730,8 @@ func TestGetArtifactStorageWithPVCConfigMap(t *testing.T) {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
 
-			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage); diff != "" {
-				t.Fatalf("-want +got: %s", diff)
+			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
 	}

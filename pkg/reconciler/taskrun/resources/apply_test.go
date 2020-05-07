@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -463,7 +464,7 @@ func TestApplyArrayParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(got, tt.want); d != "" {
-				t.Errorf("ApplyParameters() got diff %s", d)
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -524,7 +525,7 @@ func TestApplyParameters(t *testing.T) {
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("ApplyParameters() got diff %s", d)
+		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -596,7 +597,7 @@ func TestApplyResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
-				t.Errorf("ApplyResources() -want, +got: %v", d)
+				t.Errorf("ApplyResources() %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -717,7 +718,7 @@ func TestApplyWorkspaces(t *testing.T) {
 	}}
 	got := resources.ApplyWorkspaces(ts, w, wb)
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("TestApplyWorkspaces() got diff %s", d)
+		t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -753,7 +754,7 @@ func TestTaskResults(t *testing.T) {
 	})
 	got := resources.ApplyTaskResults(ts)
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("ApplyTaskResults() got diff %s", d)
+		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -798,8 +799,8 @@ func TestApplyCredentialsPath(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyCredentialsPath(&tc.spec, tc.path)
-			if diff := cmp.Diff(&tc.want, got); diff != "" {
-				t.Errorf("(-want, +got): %s", diff)
+			if d := cmp.Diff(&tc.want, got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
 	}

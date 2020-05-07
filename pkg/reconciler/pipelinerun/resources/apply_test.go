@@ -26,6 +26,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestApplyParameters(t *testing.T) {
@@ -137,7 +138,7 @@ func TestApplyParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyParameters(&tt.original.Spec, tt.run)
 			if d := cmp.Diff(got, &tt.expected.Spec); d != "" {
-				t.Errorf("ApplyParameters() got diff %s", d)
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -210,7 +211,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
 			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
-				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
+				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -283,7 +284,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
 			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
-				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
+				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -377,7 +378,7 @@ func TestApplyTaskResults_Conditions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
 			if d := cmp.Diff(tt.args.targets[0].ResolvedConditionChecks, tt.want[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ApplyTaskResults()  -want, +got: %v", d)
+				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -100,7 +101,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.pr.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Errorf("PipelineRun.Validate/%s %s", ps.name, diff.PrintWantGot(d))
 			}
 		})
 	}

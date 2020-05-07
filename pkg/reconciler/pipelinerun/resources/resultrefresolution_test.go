@@ -10,6 +10,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
@@ -377,7 +378,7 @@ func TestResolveResultRefs(t *testing.T) {
 				return
 			}
 			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef  -want, +got: %v", d)
+				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -492,7 +493,7 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
 			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef  -want, +got: %v", d)
+				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 		})
 	}

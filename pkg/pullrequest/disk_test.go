@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jenkins-x/go-scm/scm"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestToDisk(t *testing.T) {
@@ -86,16 +87,16 @@ func TestToDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := cmp.Diff(pr, rsrc.PR); diff != "" {
-		t.Errorf("PullRequest: -want +got: %s", diff)
+	if d := cmp.Diff(pr, rsrc.PR); d != "" {
+		t.Errorf("PullRequest %s", diff.PrintWantGot(d))
 	}
 
 	// Check the refs
 	checkRef := func(name string, r scm.PullRequestBranch) {
 		actualRef := scm.PullRequestBranch{}
 		readAndUnmarshal(t, filepath.Join(d, name), &actualRef)
-		if diff := cmp.Diff(actualRef, r); diff != "" {
-			t.Errorf("Get PullRequest: -want +got: %s", diff)
+		if d := cmp.Diff(actualRef, r); d != "" {
+			t.Errorf("Get PullRequest %s", diff.PrintWantGot(d))
 		}
 	}
 	checkRef("head.json", rsrc.PR.Head)
@@ -118,8 +119,8 @@ func TestToDisk(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected status with ID: %s, not found: %v", s.Target, statuses)
 		}
-		if diff := cmp.Diff(actualStatus, *s); diff != "" {
-			t.Errorf("Get Status: -want +got: %s", diff)
+		if d := cmp.Diff(actualStatus, *s); d != "" {
+			t.Errorf("Get Status %s", diff.PrintWantGot(d))
 		}
 	}
 	// Check the labels
@@ -182,8 +183,8 @@ func TestToDisk(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected comment with ID: %d, not found: %v", c.ID, comments)
 		}
-		if diff := cmp.Diff(actualComment, *c); diff != "" {
-			t.Errorf("Get Comment: -want +got: %s", diff)
+		if d := cmp.Diff(actualComment, *c); d != "" {
+			t.Errorf("Get Comment %s", diff.PrintWantGot(d))
 		}
 	}
 	gotManifest, err = manifestFromDisk(filepath.Join(d, "comments", manifestPath))
@@ -237,11 +238,11 @@ func TestFromDiskWithoutComments(t *testing.T) {
 	}
 
 	// Check the refs
-	if diff := cmp.Diff(rsrc.PR.Base, base); diff != "" {
-		t.Errorf("Get Base: -want +got: %s", diff)
+	if d := cmp.Diff(rsrc.PR.Base, base); d != "" {
+		t.Errorf("Get Base %s", diff.PrintWantGot(d))
 	}
-	if diff := cmp.Diff(rsrc.PR.Head, head); diff != "" {
-		t.Errorf("Get Head: -want +got: %s", diff)
+	if d := cmp.Diff(rsrc.PR.Head, head); d != "" {
+		t.Errorf("Get Head %s", diff.PrintWantGot(d))
 	}
 
 }
@@ -346,14 +347,14 @@ func TestFromDisk(t *testing.T) {
 	}
 
 	// Check the refs
-	if diff := cmp.Diff(rsrc.PR.Base, base); diff != "" {
-		t.Errorf("Get Base: -want +got: %s", diff)
+	if d := cmp.Diff(rsrc.PR.Base, base); d != "" {
+		t.Errorf("Get Base %s", diff.PrintWantGot(d))
 	}
-	if diff := cmp.Diff(rsrc.PR.Head, head); diff != "" {
-		t.Errorf("Get Head: -want +got: %s", diff)
+	if d := cmp.Diff(rsrc.PR.Head, head); d != "" {
+		t.Errorf("Get Head %s", diff.PrintWantGot(d))
 	}
-	if diff := cmp.Diff(rsrc.PR.Sha, head.Sha); diff != "" {
-		t.Errorf("Get Sha: -want +got: %s", diff)
+	if d := cmp.Diff(rsrc.PR.Sha, head.Sha); d != "" {
+		t.Errorf("Get Sha %s", diff.PrintWantGot(d))
 	}
 
 	// Check the comments
@@ -365,16 +366,16 @@ func TestFromDisk(t *testing.T) {
 		Body: "plaincomment",
 	}
 	for _, c := range rsrc.Comments {
-		if diff := cmp.Diff(commentMap[c.ID], *c); diff != "" {
-			t.Errorf("Get comments: -want +got: %s", diff)
+		if d := cmp.Diff(commentMap[c.ID], *c); d != "" {
+			t.Errorf("Get comments %s", diff.PrintWantGot(d))
 		}
 	}
 	commentManifest := Manifest{}
 	for _, c := range comments {
 		commentManifest[strconv.Itoa(c.ID)] = true
 	}
-	if diff := cmp.Diff(commentManifest, rsrc.Manifests["comments"]); diff != "" {
-		t.Errorf("Comment manifest: -want + got: %s", diff)
+	if d := cmp.Diff(commentManifest, rsrc.Manifests["comments"]); d != "" {
+		t.Errorf("Comment manifest %s", diff.PrintWantGot(d))
 	}
 
 	// Check the labels
@@ -384,16 +385,16 @@ func TestFromDisk(t *testing.T) {
 	}
 	for _, l := range rsrc.PR.Labels {
 		key := url.QueryEscape(l.Name)
-		if diff := cmp.Diff(labelsMap[key], &l); diff != "" {
-			t.Errorf("Get labels: -want +got: %s", diff)
+		if d := cmp.Diff(labelsMap[key], &l); d != "" {
+			t.Errorf("Get labels %s", diff.PrintWantGot(d))
 		}
 	}
 	labelManifest := Manifest{}
 	for _, l := range labels {
 		labelManifest[l] = true
 	}
-	if diff := cmp.Diff(labelManifest, rsrc.Manifests["labels"]); diff != "" {
-		t.Errorf("Label manifest: -want + got: %s", diff)
+	if d := cmp.Diff(labelManifest, rsrc.Manifests["labels"]); d != "" {
+		t.Errorf("Label manifest %s", diff.PrintWantGot(d))
 	}
 
 	// Check the statuses
@@ -402,8 +403,8 @@ func TestFromDisk(t *testing.T) {
 		statusMap[s.Label] = s
 	}
 	for _, s := range rsrc.Statuses {
-		if diff := cmp.Diff(statusMap[s.Label], *s); diff != "" {
-			t.Errorf("Get status: -want +got: %s", diff)
+		if d := cmp.Diff(statusMap[s.Label], *s); d != "" {
+			t.Errorf("Get status %s", diff.PrintWantGot(d))
 		}
 	}
 }

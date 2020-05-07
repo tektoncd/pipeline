@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -729,7 +730,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				return y != nil
 			})
 			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
-				t.Errorf("Diff(-want, +got): %s", d)
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
 				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
@@ -879,7 +880,7 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 
 	want := []string{"hello", "exit", "world", "nop"}
 	if d := cmp.Diff(want, gotNames); d != "" {
-		t.Errorf("Unexpected step order (-want, +got): %s", d)
+		t.Errorf("Unexpected step order %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -918,7 +919,7 @@ func TestSortContainerStatuses(t *testing.T) {
 
 	want := []string{"my", "world", "hello"}
 	if d := cmp.Diff(want, gotNames); d != "" {
-		t.Errorf("Unexpected step order (-want, +got): %s", d)
+		t.Errorf("Unexpected step order %s", diff.PrintWantGot(d))
 	}
 
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -193,7 +194,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			}
 
 			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
-				t.Fatalf("post build steps mismatch: %s", d)
+				t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
 			}
 		})
 	}

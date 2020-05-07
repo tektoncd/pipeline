@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -827,7 +828,7 @@ script-heredoc-randomly-generated-78c5n
 			}
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff(-want, +got):\n%s", d)
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -850,7 +851,7 @@ func TestMakeLabels(t *testing.T) {
 		},
 	})
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff labels:\n%s", d)
+		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
 	}
 }
 

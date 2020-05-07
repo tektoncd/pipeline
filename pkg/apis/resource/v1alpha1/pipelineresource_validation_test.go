@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
 )
 
@@ -160,7 +161,7 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
 			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
-				t.Errorf("Didn't get expected error for %s (-want, +got) = %v", tt.name, d)
+				t.Errorf("Didn't get expected error for %s %s", tt.name, diff.PrintWantGot(d))
 			}
 		})
 	}

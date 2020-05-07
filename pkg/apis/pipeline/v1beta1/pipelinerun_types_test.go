@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -49,7 +50,7 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 
 	fooStatus := p.Status.GetCondition(foo.Type)
 	if d := cmp.Diff(fooStatus, foo, ignoreVolatileTime); d != "" {
-		t.Errorf("Unexpected pipeline run condition type; want %v got %v; diff %v", fooStatus, foo, d)
+		t.Errorf("Unexpected pipeline run condition type; diff %v", diff.PrintWantGot(d))
 	}
 
 	// Add a second condition.
@@ -58,7 +59,7 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 	barStatus := p.Status.GetCondition(bar.Type)
 
 	if d := cmp.Diff(barStatus, bar, ignoreVolatileTime); d != "" {
-		t.Fatalf("Unexpected pipeline run condition type; want %v got %v; diff %s", barStatus, bar, d)
+		t.Fatalf("Unexpected pipeline run condition type; diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -78,7 +79,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 	}
 
 	if d := cmp.Diff(p.GetTaskRunRef(), expectTaskRunRef); d != "" {
-		t.Fatalf("Taskrun reference mismatch; want %v got %v; diff %s", expectTaskRunRef, p.GetTaskRunRef(), d)
+		t.Fatalf("Taskrun reference mismatch; diff %s", diff.PrintWantGot(d))
 	}
 }
 

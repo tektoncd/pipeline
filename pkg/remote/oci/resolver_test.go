@@ -30,6 +30,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/test"
+	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -94,8 +95,8 @@ func TestOCIResolver(t *testing.T) {
 
 			// The contents of the image are in a specific order so we can expect this iteration to be consistent.
 			for idx, actual := range listActual {
-				if diff := cmp.Diff(actual, tc.listExpected[idx]); diff != "" {
-					t.Error(diff)
+				if d := cmp.Diff(actual, tc.listExpected[idx]); d != "" {
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 
@@ -105,8 +106,8 @@ func TestOCIResolver(t *testing.T) {
 					t.Fatalf("could not retrieve object from image: %#v", err)
 				}
 
-				if diff := cmp.Diff(actual, obj); diff != "" {
-					t.Error(diff)
+				if d := cmp.Diff(actual, obj); d != "" {
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 		})

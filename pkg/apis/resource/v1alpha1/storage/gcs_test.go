@@ -23,6 +23,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -104,7 +105,7 @@ func TestValidNewGCSResource(t *testing.T) {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
 	if d := cmp.Diff(expectedGCSResource, gcsRes); d != "" {
-		t.Errorf("Mismatch of GCS resource: %s", d)
+		t.Errorf("Mismatch of GCS resource %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -120,7 +121,7 @@ func TestGCSGetReplacements(t *testing.T) {
 		"location": "gs://fake-bucket",
 	}
 	if d := cmp.Diff(gcsResource.Replacements(), expectedReplacementMap); d != "" {
-		t.Errorf("GCS Replacement map mismatch: %s", d)
+		t.Errorf("GCS Replacement map mismatch %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -141,7 +142,7 @@ func TestGetParams(t *testing.T) {
 		FieldName:  "test-field-name",
 	}}
 	if d := cmp.Diff(gcsResource.GetSecretParams(), expectedSp); d != "" {
-		t.Errorf("Error mismatch on storage secret params: %s", d)
+		t.Errorf("Error mismatch on storage secret params %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -242,7 +243,7 @@ gsutil cp gs://some-bucket /workspace
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
 			if d := cmp.Diff(tc.wantSteps, gotSpec.GetStepsToPrepend()); d != "" {
-				t.Errorf("Diff(-want, +got): %s", d)
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -332,7 +333,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			}
 
 			if d := cmp.Diff(got.GetStepsToAppend(), tc.wantSteps); d != "" {
-				t.Errorf("Error mismatch between upload containers spec: %s", d)
+				t.Errorf("Error mismatch between upload containers spec %s", diff.PrintWantGot(d))
 			}
 		})
 	}
