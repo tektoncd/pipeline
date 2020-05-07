@@ -49,7 +49,15 @@ apply: | $(KO) ; $(info $(M) ko apply -f config/) @ ## Apply config to the curre
 
 .PHONY: resolve
 resolve: | $(KO) ; $(info $(M) ko resolve -f config/) @ ## Resolve config to the current cluster
-	$Q $(KO) resolve --push=false -f config
+	$Q $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f config
+
+.PHONY: generated
+generated: | vendor ; $(info $(M) update generated files) ## Update generated files
+	$Q ./hack/update-codegen.sh
+
+.PHONY: vendor
+vendor:
+	$Q ./hack/update-deps.sh
 
 ## Tests
 TEST_UNIT_TARGETS := test-unit-verbose test-unit-race
@@ -85,7 +93,7 @@ watch-test: | $(RAM) ; $(info $(M) watch and run tests) @ ## Watch and run tests
 
 .PHONY: watch-resolve
 watch-resolve: | $(KO) ; $(info $(M) watch and resolve config) @ ## Watch and build to the current cluster
-	$Q $(KO) resolve -W --push=false -f config 1>/dev/null
+	$Q $(KO) resolve -W --push=false --oci-layout-path=$(BIN)/oci -f config 1>/dev/null
 
 .PHONY: watch-config
 watch-config: | $(KO) ; $(info $(M) watch and apply config) @ ## Watch and apply to the current cluster
