@@ -25,7 +25,7 @@ require (
 	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
