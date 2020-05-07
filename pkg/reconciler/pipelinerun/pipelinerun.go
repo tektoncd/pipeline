@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
@@ -201,6 +203,14 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "Failed to create tracker for TaskRuns for PipelineRun")
+			return err
+		}
+
+		// Make sure that the PipelineRun status is in sync with the actual TaskRuns
+		err = c.updatePipelineRunStatusFromInformer(pr)
+		if err != nil {
+			// This should not fail. Return the error so we can re-try later.
+			c.Logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
 			return err
 		}
 
@@ -941,4 +951,97 @@ func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1
 		pr.Status.PipelineSpec = ps
 	}
 	return nil
+}
+
+func (c *Reconciler) updatePipelineRunStatusFromInformer(pr *v1beta1.PipelineRun) error {
+	pipelineRunLabels := getTaskrunLabels(pr, "")
+	taskRuns, err := c.taskRunLister.TaskRuns(pr.Namespace).List(labels.SelectorFromSet(pipelineRunLabels))
+	if err != nil {
+		c.Logger.Errorf("could not list TaskRuns %#v", err)
+		return err
+	}
+	pr.Status = updatePipelineRunStatusFromTaskRuns(c.Logger, pr.Name, pr.Status, taskRuns)
+	return nil
+}
+
+func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName string, prStatus v1beta1.PipelineRunStatus, trs []*v1beta1.TaskRun) v1beta1.PipelineRunStatus {
+	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
+	if trs == nil || len(trs) == 0 {
+		return prStatus
+	}
+	// Store a list of Condition TaskRuns for each PipelineTask (by name)
+	conditionTaskRuns := make(map[string][]*v1beta1.TaskRun)
+	// Map PipelineTask names to TaskRun names that were already in the status
+	taskRunByPipelineTask := make(map[string]string)
+	if prStatus.TaskRuns != nil {
+		for taskRunName, pipelineRunTaskRunStatus := range prStatus.TaskRuns {
+			taskRunByPipelineTask[pipelineRunTaskRunStatus.PipelineTaskName] = taskRunName
+		}
+	}
+	// Loop over all the TaskRuns associated to Tasks
+	for _, taskrun := range trs {
+		lbls := taskrun.GetLabels()
+		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
+		if _, ok := lbls[pipeline.GroupName+pipeline.ConditionCheckKey]; ok {
+			// Save condition for looping over them after this
+			if _, ok := conditionTaskRuns[pipelineTaskName]; !ok {
+				// If it's the first condition taskrun, initialise the slice
+				conditionTaskRuns[pipelineTaskName] = []*v1beta1.TaskRun{}
+			}
+			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], taskrun)
+			continue
+		}
+		if _, ok := prStatus.TaskRuns[taskrun.Name]; !ok {
+			// This taskrun was missing from the status.
+			// Add it without conditions, which are handled in the next loop
+			prStatus.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
+				PipelineTaskName: pipelineTaskName,
+				Status:           &taskrun.Status,
+				ConditionChecks:  nil,
+			}
+			// Since this was recovered now, add it to the map, or it might be overwritten
+			taskRunByPipelineTask[pipelineTaskName] = taskrun.Name
+		}
+	}
+	// Then loop by pipelinetask name over all the TaskRuns associated to Conditions
+	for pipelineTaskName, actualConditionTaskRuns := range conditionTaskRuns {
+		taskRunName, ok := taskRunByPipelineTask[pipelineTaskName]
+		if !ok {
+			// The pipelineTask associated to the conditions was not found in the pipelinerun
+			// status. This means that the conditions were orphaned, and never added to the
+			// status. In this case we need to generate a new TaskRun name, that will be used
+			// to run the TaskRun if the conditions are passed.
+			taskRunName = resources.GetTaskRunName(prStatus.TaskRuns, pipelineTaskName, prName)
+			prStatus.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+				PipelineTaskName: pipelineTaskName,
+				Status:           nil,
+				ConditionChecks:  nil,
+			}
+		}
+		// Build the map of condition checks for the taskrun
+		// If there were no other condition, initialise the map
+		conditionChecks := prStatus.TaskRuns[taskRunName].ConditionChecks
+		if conditionChecks == nil {
+			conditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
+		}
+		for i, foundTaskRun := range actualConditionTaskRuns {
+			lbls := foundTaskRun.GetLabels()
+			if _, ok := conditionChecks[foundTaskRun.Name]; !ok {
+				// The condition check was not found, so we need to add it
+				// We only add the condition name, the status can now be gathered by the
+				// normal reconcile process
+				if conditionName, ok := lbls[pipeline.GroupName+pipeline.ConditionNameKey]; ok {
+					conditionChecks[foundTaskRun.Name] = &v1beta1.PipelineRunConditionCheckStatus{
+						ConditionName: fmt.Sprintf("%s-%s", conditionName, strconv.Itoa(i)),
+					}
+				} else {
+					// The condition name label is missing, so we cannot recover this
+					logger.Warnf("found an orphaned condition taskrun %#v with missing %s label",
+						foundTaskRun, pipeline.ConditionNameKey)
+				}
+			}
+		}
+		prStatus.TaskRuns[taskRunName].ConditionChecks = conditionChecks
+	}
+	return prStatus
 }

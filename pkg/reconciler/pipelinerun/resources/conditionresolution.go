@@ -68,7 +68,7 @@ func (state TaskConditionCheckState) HasStarted() bool {
 	return hasStarted
 }
 
-// IsComplete returns true if the status for all conditionChecks for a task indicate that they are done
+// IsDone returns true if the status for all conditionChecks for a task indicate that they are done
 func (state TaskConditionCheckState) IsDone() bool {
 	if !state.HasStarted() {
 		return false
@@ -134,7 +134,7 @@ func convertParamTemplates(step *v1beta1.Step, params []v1beta1.ParamSpec) {
 	v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
-// ApplyResources applies the substitution from values in resources which are referenced
+// ApplyResourceSubstitution applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
 func ApplyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)

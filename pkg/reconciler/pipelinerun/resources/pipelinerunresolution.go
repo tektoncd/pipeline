@@ -317,7 +317,7 @@ func ResolvePipelineRun(
 
 		rprt := ResolvedPipelineRunTask{
 			PipelineTask: &pt,
-			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
+			TaskRunName:  GetTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
 		}
 
 		// Find the Task that this PipelineTask is using
@@ -394,8 +394,8 @@ func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunS
 	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", trName, conditionRegisterName))
 }
 
-// getTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
-func getTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName, prName string) string {
+// GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
+func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName, prName string) string {
 	for k, v := range taskRunsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
