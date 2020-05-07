@@ -42,6 +42,9 @@ const (
 
 	// ConditionCheckKey is used as the label identifier for a ConditionCheck
 	ConditionCheckKey = "/conditionCheck"
+
+	// ConditionNameKey is used as the label identifier for a Condition
+	ConditionNameKey = "/conditionName"
 )
 
 var (

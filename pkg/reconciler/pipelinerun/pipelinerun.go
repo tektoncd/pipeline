@@ -886,6 +886,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1alpha1.PipelineRun) (*v1al
 func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1alpha1.PipelineRun) (*v1alpha1.ConditionCheck, error) {
 	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
+	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
 
 	for key, value := range rcc.Condition.ObjectMeta.Labels {
 		labels[key] = value
