@@ -1,14 +1,8 @@
-run:
-  build-tags:
-  - e2e
-  skip-dirs:
-  - vendor
-  - pkg/client
-  timeout: 5m
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
 linters:
+  disable-all: true
   enable:
   - errcheck
   - gofmt
@@ -16,3 +10,22 @@ linters:
   - gosec
   - gocritic
   - golint
+output:
+  uniq-by-line: false
+issues:
+  exclude-rules:
+  - path: _test\.go
+    linters:
+    - errcheck
+    - gosec
+  max-issues-per-linter: 0
+  max-same-issues: 0
+run:
+  issues-exit-code: 1
+  build-tags:
+  - e2e
+  skip-dirs:
+  - vendor
+  - pkg/client
+  timeout: 10m
+  modules-download-mode: vendor
