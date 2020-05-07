@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -86,7 +87,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.pr.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Errorf("PipelineRun.Validate/%s %s", ps.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -187,7 +188,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.spec.Validate(context.Background())
 			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Errorf("PipelineRunSpec.Validate/%s %s", ps.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -213,7 +214,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			if err := ps.spec.Validate(context.Background()); err != nil {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, err)
+				t.Errorf("PipelineRunSpec.Validate/%s %v", ps.name, err)
 			}
 		})
 	}

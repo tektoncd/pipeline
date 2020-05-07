@@ -24,6 +24,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -284,7 +285,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			}
 
 			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf("TaskSpec generated from Condition is unexpected -want, +got: %v", d)
+				t.Errorf("TaskSpec generated from Condition is unexpected %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -304,6 +305,6 @@ func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(expected, rcc.ToTaskResourceBindings()); d != "" {
-		t.Errorf("Did not get expected task resouce binding from condition: %s", d)
+		t.Errorf("Did not get expected task resouce binding from condition %s", diff.PrintWantGot(d))
 	}
 }

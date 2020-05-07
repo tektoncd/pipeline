@@ -23,6 +23,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestCloudEventDeliveryFromTargets(t *testing.T) {
@@ -65,8 +66,8 @@ func TestCloudEventDeliveryFromTargets(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			gotCloudEvents := cloudEventDeliveryFromTargets(tc.targets)
-			if diff := cmp.Diff(tc.wantCloudEvents, gotCloudEvents); diff != "" {
-				t.Errorf("Wrong Cloud Events (-want +got) = %s", diff)
+			if d := cmp.Diff(tc.wantCloudEvents, gotCloudEvents); d != "" {
+				t.Errorf("Wrong Cloud Events %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -120,8 +121,8 @@ func TestSendCloudEvents(t *testing.T) {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			opts := GetCloudEventDeliveryCompareOptions()
-			if diff := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); diff != "" {
-				t.Errorf("Wrong Cloud Events Status (-want +got) = %s", diff)
+			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
+				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -168,8 +169,8 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				t.Fatalf("Unexpected success sending cloud events: %v", err)
 			}
 			opts := GetCloudEventDeliveryCompareOptions()
-			if diff := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); diff != "" {
-				t.Errorf("Wrong Cloud Events Status (-want +got) = %s", diff)
+			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
+				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -249,8 +250,8 @@ func TestInitializeCloudEvents(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			InitializeCloudEvents(tc.taskRun, tc.pipelineResources)
 			opts := GetCloudEventDeliveryCompareOptions()
-			if diff := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); diff != "" {
-				t.Errorf("Wrong Cloud Events Status (-want +got) = %s", diff)
+			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
+				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
 			}
 		})
 	}

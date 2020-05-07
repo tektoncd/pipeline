@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
 )
 
@@ -109,7 +110,7 @@ func TestValidateVariables(t *testing.T) {
 			got := substitution.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.locationName, tc.args.path, tc.args.vars)
 
 			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("ValidateVariable() error did not match expected error %s", d)
+				t.Errorf("ValidateVariable() error did not match expected error %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -170,7 +171,7 @@ func TestApplyReplacements(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actualOutput := substitution.ApplyReplacements(tt.args.input, tt.args.replacements)
 			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
-				t.Errorf("ApplyReplacements() output did not match expected value %s", d)
+				t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -230,7 +231,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actualOutput := substitution.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)
 			if d := cmp.Diff(actualOutput, tc.expectedOutput); d != "" {
-				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", d)
+				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}
 		})
 	}

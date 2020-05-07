@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -176,8 +177,8 @@ func TestTaskConversion(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if diff := cmp.Diff(test.in, got); diff != "" {
-					t.Errorf("roundtrip (-want, +got) = %v", diff)
+				if d := cmp.Diff(test.in, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 				}
 			})
 		}
@@ -313,8 +314,8 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if diff := cmp.Diff(test.want, got); diff != "" {
-					t.Errorf("roundtrip (-want, +got) = %v", diff)
+				if d := cmp.Diff(test.want, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 				}
 			})
 		}

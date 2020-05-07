@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestParseMessage(t *testing.T) {
@@ -73,7 +74,7 @@ func TestParseMessage(t *testing.T) {
 				t.Fatalf("ParseMessage: %v", err)
 			}
 			if d := cmp.Diff(c.want, got); d != "" {
-				t.Fatalf("ParseMessage(-want,+got): %s", d)
+				t.Fatalf("ParseMessage %s", diff.PrintWantGot(d))
 			}
 		})
 	}

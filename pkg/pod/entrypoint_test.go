@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -91,7 +92,7 @@ func TestOrderContainers(t *testing.T) {
 		t.Fatalf("orderContainers: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 
 	wantInit := corev1.Container{
@@ -101,7 +102,7 @@ func TestOrderContainers(t *testing.T) {
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff (-want, +got): %s", d)
+		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -175,7 +176,7 @@ func TestEntryPointResults(t *testing.T) {
 		t.Fatalf("orderContainers: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -213,7 +214,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		t.Fatalf("orderContainers: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
@@ -247,7 +248,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		t.Fatalf("orderContainers: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 }
 func TestUpdateReady(t *testing.T) {
@@ -304,7 +305,7 @@ func TestUpdateReady(t *testing.T) {
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantAnnotations, got.Annotations); d != "" {
-				t.Errorf("Annotations Diff(-want, +got): %s", d)
+				t.Errorf("Annotations Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -419,7 +420,7 @@ func TestStopSidecars(t *testing.T) {
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
-				t.Errorf("Containers Diff(-want, +got): %s", d)
+				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

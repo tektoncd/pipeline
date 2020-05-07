@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestConditionSpec_SetDefaults(t *testing.T) {
@@ -90,8 +91,8 @@ func TestConditionSpec_SetDefaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			tc.input.SetDefaults(ctx)
-			if diff := cmp.Diff(tc.output, tc.input); diff != "" {
-				t.Errorf("Mismatch of PipelineRunSpec: %s", diff)
+			if d := cmp.Diff(tc.output, tc.input); d != "" {
+				t.Errorf("Mismatch of PipelineRunSpec: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

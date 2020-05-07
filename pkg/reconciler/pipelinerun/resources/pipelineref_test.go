@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -74,8 +75,8 @@ func TestPipelineRef(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if diff := cmp.Diff(task, tc.expected); tc.expected != nil && diff != "" {
-				t.Error(diff)
+			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

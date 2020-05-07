@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -116,8 +117,8 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			ctx := context.Background()
 			tc.trs.SetDefaults(ctx)
 
-			if diff := cmp.Diff(tc.want, tc.trs); diff != "" {
-				t.Errorf("Mismatch of TaskRunSpec: %s", diff)
+			if d := cmp.Diff(tc.want, tc.trs); d != "" {
+				t.Errorf("Mismatch of TaskRunSpec: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -226,8 +227,8 @@ func TestTaskRunDefaulting(t *testing.T) {
 			}
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
-				t.Errorf("SetDefaults (-want, +got) = %v",
-					cmp.Diff(got, tc.want, ignoreUnexportedResources))
+				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
+				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
 			}
 		})
 	}

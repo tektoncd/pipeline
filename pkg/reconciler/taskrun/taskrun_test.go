@@ -36,6 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -465,11 +466,11 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
+				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
 			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Pod spec doesn't match, (-want, +got): %s", d)
+				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -1086,12 +1087,12 @@ func TestReconcile(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
+				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
 			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
 			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Pod spec doesn't match (-want, +got): %s", d)
+				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -1198,7 +1199,7 @@ func verifyTaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
 	// Add a nop in the end. This may be removed in future.
 	expectedStepOrder = append(expectedStepOrder, "nop")
 	if d := cmp.Diff(expectedStepOrder, actualStepOrder); d != "" {
-		t.Errorf("The status steps in TaksRun doesn't match the spec steps in Task (-want, +got): %s", d)
+		t.Errorf("The status steps in TaksRun doesn't match the spec steps in Task %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1396,7 +1397,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Reason:  "Running",
 		Message: "Not all Steps in the Task have finished executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
 
 	// update pod status and trigger reconcile : build is completed
@@ -1420,7 +1421,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Reason:  podconvert.ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Errorf("Did not get expected condition (-want, +got): %v", d)
+		t.Errorf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
 
 	wantEvents := []string{
@@ -1464,7 +1465,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 	if d := cmp.Diff(taskSt, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1505,7 +1506,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
 	}
 	if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
 
 	wantEvents := []string{
@@ -1611,7 +1612,7 @@ func TestReconcileTimeouts(t *testing.T) {
 		}
 		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
-			t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+			t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 		}
 		err = checkEvents(fr, tc.taskRun.Name, tc.wantEvents)
 		if !(err == nil) {
@@ -1859,8 +1860,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 			}
 			opts := cloudevent.GetCloudEventDeliveryCompareOptions()
 			t.Log(tr.Status.CloudEvents)
-			if diff := cmp.Diff(tc.wantCloudEvents, tr.Status.CloudEvents, opts...); diff != "" {
-				t.Errorf("Unexpected status of cloud events (-want +got) = %s", diff)
+			if d := cmp.Diff(tc.wantCloudEvents, tr.Status.CloudEvents, opts...); d != "" {
+				t.Errorf("Unexpected status of cloud events %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1900,7 +1901,7 @@ func TestUpdateTaskRunResourceResult(t *testing.T) {
 				t.Errorf("updateTaskRunResourceResult: %s", err)
 			}
 			if d := cmp.Diff(c.want, tr.Status.ResourcesResult); d != "" {
-				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1946,10 +1947,10 @@ func TestUpdateTaskRunResult(t *testing.T) {
 				t.Errorf("updateTaskRunResourceResult: %s", err)
 			}
 			if d := cmp.Diff(c.wantResults, tr.Status.TaskRunResults); d != "" {
-				t.Errorf("updateTaskRunResourceResult TaskRunResults (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult TaskRunResults %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(c.want, tr.Status.ResourcesResult); d != "" {
-				t.Errorf("updateTaskRunResourceResult ResourcesResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult ResourcesResult %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1994,10 +1995,10 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 				t.Errorf("updateTaskRunResourceResult: %s", err)
 			}
 			if d := cmp.Diff(c.wantResults, tr.Status.TaskRunResults); d != "" {
-				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(c.want, tr.Status.ResourcesResult); d != "" {
-				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2039,7 +2040,7 @@ func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 				t.Errorf("updateTaskRunResourceResult: %s", err)
 			}
 			if d := cmp.Diff(c.want, tr.Status.TaskRunResults); d != "" {
-				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2075,10 +2076,10 @@ func TestUpdateTaskRunResultWhenTaskFailed(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			if d := cmp.Diff(c.want, c.taskRunStatus.ResourcesResult); d != "" {
-				t.Errorf("updateTaskRunResourceResult resources (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult resources %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(c.wantResults, c.taskRunStatus.TaskRunResults); d != "" {
-				t.Errorf("updateTaskRunResourceResult results (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult results %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2115,7 +2116,7 @@ func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 				t.Error("Expected error, got nil")
 			}
 			if d := cmp.Diff(c.want, c.taskRunStatus.ResourcesResult); d != "" {
-				t.Errorf("updateTaskRunResourceResult (-want, +got): %s", d)
+				t.Errorf("updateTaskRunResourceResult %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2165,7 +2166,7 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 	}
 
 	if c := cmp.Diff(expected, getTaskRun.Status.Sidecars[0]); c != "" {
-		t.Errorf("TestReconcile_Single_SidecarState (-want, +got): %s", c)
+		t.Errorf("TestReconcile_Single_SidecarState %s", diff.PrintWantGot(c))
 	}
 }
 
@@ -2233,7 +2234,7 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 
 	for i, sc := range getTaskRun.Status.Sidecars {
 		if c := cmp.Diff(expected[i], sc); c != "" {
-			t.Errorf("TestReconcile_Multiple_SidecarStates sidecar%d (-want, +got): %s", i+1, c)
+			t.Errorf("TestReconcile_Multiple_SidecarStates sidecar%d %s", i+1, diff.PrintWantGot(c))
 		}
 	}
 }
@@ -2484,7 +2485,7 @@ func TestFailTaskRun(t *testing.T) {
 				t.Fatal(err)
 			}
 			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
-				t.Fatalf("-want, +got: %v", d)
+				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2507,7 +2508,7 @@ func Test_storeTaskSpec(t *testing.T) {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
 	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 
 	// The next time, it should not get overwritten
@@ -2515,6 +2516,6 @@ func Test_storeTaskSpec(t *testing.T) {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
 	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 }

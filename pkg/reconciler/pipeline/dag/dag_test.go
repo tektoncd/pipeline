@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -144,7 +145,7 @@ func TestGetSchedulable(t *testing.T) {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
 			if d := cmp.Diff(tasks, tc.expectedTasks, cmpopts.IgnoreFields(v1alpha1.PipelineTask{}, "RunAfter")); d != "" {
-				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, d)
+				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, diff.PrintWantGot(d))
 			}
 		})
 	}

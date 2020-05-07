@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -130,7 +131,7 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.expected, result, resourceQuantityCmp); d != "" {
-				t.Errorf("merged steps don't match, diff: %s", d)
+				t.Errorf("merged steps don't match, diff: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestExistingFile(t *testing.T) {
@@ -61,7 +62,7 @@ func TestExistingFile(t *testing.T) {
 	} else {
 		want := `[{"key":"key1","value":"hello","resourceRef":{}},{"key":"key2","value":"world","resourceRef":{}}]`
 		if d := cmp.Diff(want, string(fileContents)); d != "" {
-			t.Fatalf("Diff(-want, got): %s", d)
+			t.Fatalf("Diff %s", diff.PrintWantGot(d))
 		}
 	}
 }

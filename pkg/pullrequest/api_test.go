@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
+	"github.com/tektoncd/pipeline/test/diff"
 
 	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
@@ -112,8 +113,8 @@ func TestDownload(t *testing.T) {
 	}
 	populateManifest(want)
 
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Get PullRequest: -want +got: %s", diff)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Get PullRequest: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -163,8 +164,8 @@ func TestUpload_NewComment(t *testing.T) {
 
 	// Only compare comments since the resource manifest will change between
 	// downloads.
-	if diff := cmp.Diff(r.Comments, got.Comments); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -184,8 +185,8 @@ func TestUpload_DeleteComment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(r.Comments, got.Comments); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -218,8 +219,8 @@ func TestUpload_ManifestComment(t *testing.T) {
 		Author: scm.User{Login: "k8s-ci-robot"},
 	}}
 
-	if diff := cmp.Diff(r.Comments, got.Comments); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -243,8 +244,8 @@ func TestUpload_NewStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(r, got); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r, got); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -264,8 +265,8 @@ func TestUpload_UpdateStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(r, got); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r, got); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -304,7 +305,7 @@ func TestUpload_Invalid_Status(t *testing.T) {
 	}
 	for i, err := range merr.Errors {
 		if d := cmp.Diff(expectedErrors[i], err.Error()); d != "" {
-			t.Errorf("Upload status error diff -want, +got: %v", d)
+			t.Errorf("Upload status error diff %s", diff.PrintWantGot(d))
 		}
 	}
 }
@@ -325,8 +326,8 @@ func TestUpload_NewLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(r.PR, got.PR); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.PR, got.PR); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -346,8 +347,8 @@ func TestUpload_DeleteLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(r.PR, got.PR); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.PR, got.PR); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }
 
@@ -373,7 +374,7 @@ func TestUpload_ManifestLabel(t *testing.T) {
 	}
 	r.PR.Labels = append(r.PR.Labels, &scm.Label{Name: "z"})
 
-	if diff := cmp.Diff(r.PR, got.PR); diff != "" {
-		t.Errorf("-want +got: %s", diff)
+	if d := cmp.Diff(r.PR, got.PR); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
 	}
 }

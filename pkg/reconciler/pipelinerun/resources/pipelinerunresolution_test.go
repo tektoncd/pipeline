@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -677,7 +678,7 @@ func TestGetNextTasks(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.GetNextTasks(tc.candidates)
 			if d := cmp.Diff(next, tc.expectedNext); d != "" {
-				t.Errorf("Didn't get expected next Tasks: %v", d)
+				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -795,7 +796,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.GetNextTasks(tc.candidates)
 			if d := cmp.Diff(next, tc.expectedNext); d != "" {
-				t.Errorf("Didn't get expected next Tasks: %v", d)
+				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -927,12 +928,12 @@ func TestIsDone(t *testing.T) {
 
 			isDone := tc.state.IsDone()
 			if d := cmp.Diff(isDone, tc.expected); d != "" {
-				t.Errorf("Didn't get expected IsDone: %v", d)
+				t.Errorf("Didn't get expected IsDone %s", diff.PrintWantGot(d))
 			}
 			for i, pt := range tc.state {
 				isDone = pt.IsDone()
 				if d := cmp.Diff(isDone, tc.ptExpected[i]); d != "" {
-					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone: %v", d)
+					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone %s", diff.PrintWantGot(d))
 				}
 
 			}
@@ -970,7 +971,7 @@ func TestSuccessfulPipelineTaskNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			names := tc.state.SuccessfulPipelineTaskNames()
 			if d := cmp.Diff(names, tc.expectedNames); d != "" {
-				t.Errorf("Expected to get completed names %v but got something different: %v", tc.expectedNames, d)
+				t.Errorf("Expected to get completed names %v but got something different %s", tc.expectedNames, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1124,7 +1125,7 @@ func TestGetResourcesFromBindings(t *testing.T) {
 	if !ok {
 		t.Errorf("Missing expected resource git-resource: %v", m)
 	} else if d := cmp.Diff(r, r1); d != "" {
-		t.Errorf("Expected resources didn't match actual -want, +got: %v", d)
+		t.Errorf("Expected resources didn't match actual %s", diff.PrintWantGot(d))
 	}
 
 	r2, ok := m["image-resource"]
@@ -1264,7 +1265,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Errorf("Expected to get current pipeline state %v, but actual differed (-want, +got): %s", expectedState, d)
+		t.Errorf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
 	}
 }
 
@@ -1304,10 +1305,10 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		Outputs:  map[string]*v1alpha1.PipelineResource{},
 	}
 	if d := cmp.Diff(pipelineState[0].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed: %s", d)
+		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed %s", diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(pipelineState[1].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed: %s", d)
+		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1452,7 +1453,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
+		t.Fatalf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
 	}
 }
 
@@ -1507,7 +1508,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Errorf("Expected to get current pipeline state %v, but actual differed (-want, +got): %s", expectedState, d)
+		t.Errorf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
 	}
 }
 
@@ -1595,7 +1596,7 @@ func TestResolveConditionChecks(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ConditionChecks did not resolve as expected for case %s (-want, +got) : %s", tc.name, d)
+				t.Fatalf("ConditionChecks did not resolve as expected for case %s %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1688,7 +1689,7 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 			}
 
 			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ConditionChecks did not resolve as expected for case %s (-want, +got) : %s", tc.name, d)
+				t.Fatalf("ConditionChecks did not resolve as expected for case %s %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1809,7 +1810,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-		t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
+		t.Fatalf("ConditionChecks did not resolve as expected %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1889,7 +1890,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 					ResolvedResources:     tc.expected,
 				}}
 				if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-					t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
+					t.Fatalf("ConditionChecks did not resolve as expected %s", diff.PrintWantGot(d))
 				}
 			}
 		})

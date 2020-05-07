@@ -24,6 +24,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestNewImageResource_Invalid(t *testing.T) {
@@ -57,8 +58,8 @@ func TestNewImageResource_Valid(t *testing.T) {
 		t.Fatalf("Unexpected error creating Image resource: %s", err)
 	}
 
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Mismatch of Image resource: %s", diff)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Mismatch of Image resource: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -79,7 +80,7 @@ func TestImageResource_Replacements(t *testing.T) {
 
 	got := ir.Replacements()
 
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Mismatch of ImageResource Replacements: %s", diff)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Mismatch of ImageResource Replacements %s", diff.PrintWantGot(d))
 	}
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -41,7 +42,7 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 		Image: "step-2",
 	}}
 	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
@@ -68,7 +69,7 @@ func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 		Image: "step-2",
 	}}
 	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
@@ -102,11 +103,11 @@ func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
 		Image: "sidecar-1",
 	}}
 	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 
 	if d := cmp.Diff(wantSidecar, gotSidecars); d != "" {
-		t.Errorf("Diff (-want, +got): %s", d)
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
 
 	if gotInit != nil {
@@ -203,10 +204,10 @@ script-heredoc-randomly-generated-j2tds
 		},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff (-want, +got): %s", d)
+		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(want, gotSteps); d != "" {
-		t.Errorf("Containers Diff (-want, +got): %s", d)
+		t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 	}
 
 	if len(gotSidecars) != 0 {
@@ -294,13 +295,13 @@ sidecar-script-heredoc-randomly-generated-j2tds
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff (-want, +got): %s", d)
+		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(want, gotSteps); d != "" {
-		t.Errorf("Step Containers Diff (-want, +got): %s", d)
+		t.Errorf("Step Containers Diff %s", diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(wantSidecars, gotSidecars); d != "" {
-		t.Errorf("Sidecar Containers Diff (-want, +got): %s", d)
+		t.Errorf("Sidecar Containers Diff %s", diff.PrintWantGot(d))
 	}
 
 	if len(gotSidecars) != 1 {

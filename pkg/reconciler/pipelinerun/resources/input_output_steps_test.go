@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -124,7 +125,7 @@ func TestGetOutputSteps(t *testing.T) {
 			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName, pvcDir)
 			sort.SliceStable(postTasks, func(i, j int) bool { return postTasks[i].Name < postTasks[j].Name })
 			if d := cmp.Diff(postTasks, tc.expectedtaskOuputResources); d != "" {
-				t.Errorf("error comparing post steps: %s", d)
+				t.Errorf("error comparing post steps %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -266,7 +267,7 @@ func TestGetInputSteps(t *testing.T) {
 			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask.Resources.Inputs, pvcDir)
 			sort.SliceStable(taskInputResources, func(i, j int) bool { return taskInputResources[i].Name < taskInputResources[j].Name })
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources); d != "" {
-				t.Errorf("error comparing task resource inputs: %s", d)
+				t.Errorf("error comparing task resource inputs %s", diff.PrintWantGot(d))
 			}
 
 		})
@@ -348,9 +349,9 @@ func TestWrapSteps(t *testing.T) {
 	sort.SliceStable(expectedtaskOuputResources, func(i, j int) bool { return expectedtaskOuputResources[i].Name < expectedtaskOuputResources[j].Name })
 
 	if d := cmp.Diff(taskRunSpec.Resources.Inputs, expectedtaskInputResources, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
-		t.Errorf("error comparing input resources: %s", d)
+		t.Errorf("error comparing input resources %s", diff.PrintWantGot(d))
 	}
 	if d := cmp.Diff(taskRunSpec.Resources.Outputs, expectedtaskOuputResources, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
-		t.Errorf("error comparing output resources: %s", d)
+		t.Errorf("error comparing output resources %s", diff.PrintWantGot(d))
 	}
 }

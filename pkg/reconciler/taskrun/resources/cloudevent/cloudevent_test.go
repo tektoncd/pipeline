@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,19 +79,19 @@ func TestEventForTaskRun(t *testing.T) {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
 				wantSubject := taskRunName
-				if diff := cmp.Diff(wantSubject, got.Subject()); diff != "" {
-					t.Errorf("Wrong Event ID (-want +got) = %s", diff)
+				if d := cmp.Diff(wantSubject, got.Subject()); d != "" {
+					t.Errorf("Wrong Event ID %s", diff.PrintWantGot(d))
 				}
-				if diff := cmp.Diff(string(c.wantEventType), got.Type()); diff != "" {
-					t.Errorf("Wrong Event Type (-want +got) = %s", diff)
+				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
+					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
 				wantData := NewTektonCloudEventData(c.taskRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)
 				}
-				if diff := cmp.Diff(wantData, gotData); diff != "" {
-					t.Errorf("Wrong Event data (-want +got) = %s", diff)
+				if d := cmp.Diff(wantData, gotData); d != "" {
+					t.Errorf("Wrong Event data %s", diff.PrintWantGot(d))
 				}
 
 				if err := got.Validate(); err != nil {

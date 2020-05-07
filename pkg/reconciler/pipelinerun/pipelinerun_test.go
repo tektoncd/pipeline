@@ -33,6 +33,7 @@ import (
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -258,7 +259,7 @@ func TestReconcile(t *testing.T) {
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
 	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
@@ -355,7 +356,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1alpha1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -616,7 +617,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	pr.Status.InitializeConditions()
 	status := getTaskRunsStatus(pr, state)
 	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
 	}
 
 }
@@ -756,7 +757,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 				taskrunName: &tc.expectedStatus,
 			}
 			if d := cmp.Diff(status, expected, ignoreLastTransitionTime); d != "" {
-				t.Fatalf("Did not get expected status for %s : %s", tc.name, d)
+				t.Fatalf("Did not get expected status for %s %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -853,7 +854,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}
 
 	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1128,7 +1129,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	}
 
 	if d := cmp.Diff(actual, expected); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
 	}
 }
 
@@ -1210,7 +1211,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
 		if d := cmp.Diff(actual, expectedTaskRuns[i]); d != "" {
-			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], d)
+			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
 		}
 
 	}
@@ -1374,7 +1375,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 	)
 
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
@@ -1464,7 +1465,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if d := cmp.Diff(getTaskRunTimeout(tc.pr, tc.rprt), tc.expected); d != "" {
-				t.Errorf("Unexpected task run timeout. Diff %s", d)
+				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1549,7 +1550,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 
 	actual := []*v1alpha1.TaskRun{condCheck0, condCheck1}
 	if d := cmp.Diff(actual, expectedConditionChecks); d != "" {
-		t.Errorf("expected to see 2 ConditionCheck TaskRuns created. Diff %s", d)
+		t.Errorf("expected to see 2 ConditionCheck TaskRuns created. Diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -1669,7 +1670,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	)
 
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see ConditionCheck TaskRun %v created. Diff %s", expectedTaskRun, d)
+		t.Errorf("expected to see ConditionCheck TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
@@ -2004,7 +2005,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 	}
 	actualTaskRun := actual.Items[0]
 	if d := cmp.Diff(&actualTaskRun, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 }
 
@@ -2083,7 +2084,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 	}
 	actualTaskRun := actual.Items[0]
 	if d := cmp.Diff(expectedTaskRun, &actualTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
@@ -2156,7 +2157,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
 	if d := cmp.Diff(&pipelineRun, &prs[0]); d != "" {
-		t.Errorf("expected to see pipeline run results created. -want, +got: Diff %s", d)
+		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -2176,7 +2177,7 @@ func Test_storePipelineSpec(t *testing.T) {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
 	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 
 	// The next time, it should not get overwritten
@@ -2184,6 +2185,6 @@ func Test_storePipelineSpec(t *testing.T) {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
 	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf(diff.PrintWantGot(d))
 	}
 }

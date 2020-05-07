@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -962,7 +963,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 			}
 			if got != nil {
 				if d := cmp.Diff(got, c.want); d != "" {
-					t.Errorf("Diff:\n%s", d)
+					t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -1203,7 +1204,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
 			if d := cmp.Diff(c.want, got); d != "" {
-				t.Errorf("Didn't get expected Task spec (-want, +got): %s", d)
+				t.Errorf("Didn't get expected Task spec %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1445,7 +1446,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}
 			if d := cmp.Diff(c.want, got); d != "" {
-				t.Errorf("Didn't get expected TaskSpec (-want, +got): %s", d)
+				t.Errorf("Didn't get expected TaskSpec %s", diff.PrintWantGot(d))
 			}
 		})
 	}

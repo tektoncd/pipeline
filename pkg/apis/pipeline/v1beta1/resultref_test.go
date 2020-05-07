@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestNewResultReference(t *testing.T) {
@@ -170,7 +171,7 @@ func TestNewResultReference(t *testing.T) {
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s (-want, +got) = %v", tt.name, d)
+					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -306,7 +307,7 @@ func TestHasResultReference(t *testing.T) {
 				return true
 			})
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s (-want, +got) = %v", tt.name, d)
+				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
 			}
 		})
 	}
