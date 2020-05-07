@@ -732,6 +732,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
+					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -816,8 +817,12 @@ func TestReconcile(t *testing.T) {
 						"/workspace/workspace",
 					),
 					tb.WorkingDir(workspaceDir),
+					// Note: the duplication of HOME env var here is intentional: our pod builder
+					// adds it first and the git pipelineresource adds its own to ensure that HOME
+					// is set even when disable-home-env-overwrite feature flag is "true".
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
+					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -920,8 +925,12 @@ func TestReconcile(t *testing.T) {
 						"-path",
 						"/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
+					// Note: the duplication of HOME env var here is intentional: our pod builder
+					// adds it first and the git pipelineresource adds its own to ensure that HOME
+					// is set even when disable-home-env-overwrite feature flag is "true".
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
+					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),

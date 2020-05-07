@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
@@ -401,6 +402,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
@@ -438,6 +440,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
@@ -476,6 +479,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
@@ -514,6 +518,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
@@ -551,6 +556,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
@@ -587,6 +593,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
@@ -623,6 +630,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 			},
@@ -661,6 +669,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			WorkingDir: "/workspace",
 			Env: []corev1.EnvVar{
 				{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"},
+				{Name: "HOME", Value: pipeline.HomeDir},
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},

@@ -48,7 +48,7 @@ func TestMakePod(t *testing.T) {
 
 	implicitEnvVars := []corev1.EnvVar{{
 		Name:  "HOME",
-		Value: homeDir,
+		Value: pipeline.HomeDir,
 	}}
 	secretsVolumeMount := corev1.VolumeMount{
 		Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",

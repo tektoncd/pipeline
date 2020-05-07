@@ -169,6 +169,9 @@ func (s *Resource) GetInputTaskModifier(_ *v1beta1.TaskSpec, path string) (v1bet
 	env := []corev1.EnvVar{{
 		Name:  "TEKTON_RESOURCE_NAME",
 		Value: s.Name,
+	}, {
+		Name:  "HOME",
+		Value: pipeline.HomeDir,
 	}}
 
 	if len(s.HTTPProxy) != 0 {

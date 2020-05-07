@@ -42,8 +42,6 @@ func GetFeatureFlagsConfigName() string {
 }
 
 const (
-	homeDir = "/tekton/home"
-
 	// ResultsDir is the folder used by default to create the results file
 	ResultsDir = "/tekton/results"
 
@@ -69,7 +67,7 @@ var (
 		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
-		MountPath: homeDir,
+		MountPath: pipeline.HomeDir,
 	}, {
 		Name:      "tekton-internal-results",
 		MountPath: ResultsDir,
@@ -101,7 +99,7 @@ func MakePod(images pipeline.Images, taskRun *v1beta1.TaskRun, taskSpec v1beta1.
 	if overrideHomeEnv {
 		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
 			Name:  "HOME",
-			Value: homeDir,
+			Value: pipeline.HomeDir,
 		})
 	} else {
 		// Add the volume that creds-init will write to when

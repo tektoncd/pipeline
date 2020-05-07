@@ -19,6 +19,7 @@ package pod
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -120,7 +121,7 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 // with /tekton/home.
 func CredentialsPath(shouldOverrideHomeEnv bool) string {
 	if shouldOverrideHomeEnv {
-		return homeDir
+		return pipeline.HomeDir
 	}
 	return credsInitHomeDir
 }
