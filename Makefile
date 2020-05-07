@@ -35,13 +35,23 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 		|| ret=$$?; \
 	   rm -rf $$tmp ; exit $$ret
 
+FORCE:
+
+bin/%: cmd/% FORCE
+	$(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
+
 KO = $(BIN)/ko
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
 .PHONY: apply
 apply: | $(KO) ; $(info $(M) ko apply -f config/) @ ## Apply config to the current cluster
-	$Q $(KO) apply --strict -f config
+	$Q $(KO) apply -f config
 
+.PHONY: resolve
+resolve: | $(KO) ; $(info $(M) ko resolve -f config/) @ ## Resolve config to the current cluster
+	$Q $(KO) resolve --push=false -f config
+
+## Tests
 TEST_UNIT_TARGETS := test-unit-verbose test-unit-race
 test-unit-verbose: ARGS=-v
 test-unit-race:    ARGS=-race
@@ -73,9 +83,13 @@ $(BIN)/ram: PACKAGE=github.com/vdemeester/ram
 watch-test: | $(RAM) ; $(info $(M) watch and run tests) @ ## Watch and run tests
 	$Q $(RAM) -- -failfast
 
+.PHONY: watch-resolve
+watch-resolve: | $(KO) ; $(info $(M) watch and resolve config) @ ## Watch and build to the current cluster
+	$Q $(KO) resolve -W --push=false -f config 1>/dev/null
+
 .PHONY: watch-config
 watch-config: | $(KO) ; $(info $(M) watch and apply config) @ ## Watch and apply to the current cluster
-	$Q $(KO) apply --strict -W -f config
+	$Q $(KO) apply -W -f config
 
 ## Linters configuration and targets
 # TODO(vdemeester) gofmt and goimports checks (run them with -w and make a diff)

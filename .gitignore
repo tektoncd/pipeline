@@ -49,3 +49,4 @@ cmd/*/kodata/source.tar.gz
 # binaries
 test/pullrequest/pullrequest-init
 /.bin/
+/bin/
