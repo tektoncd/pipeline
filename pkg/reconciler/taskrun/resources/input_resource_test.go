@@ -370,7 +370,10 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -408,7 +411,10 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -453,14 +459,20 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}, {Container: corev1.Container{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: multipleGitInputs,
@@ -498,14 +510,17 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
 		},
 	}, {
-		desc: "set revision to provdided branch",
+		desc: "set revision to provided branch",
 		task: task,
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -536,7 +551,10 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -622,7 +640,10 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace", "-sslVerify=false"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-sslVerify-false"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-sslVerify-false"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -922,7 +943,10 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: optionalGitInputs,

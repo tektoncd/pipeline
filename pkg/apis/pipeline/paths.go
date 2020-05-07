@@ -21,4 +21,6 @@ const (
 	WorkspaceDir = "/workspace"
 	// DefaultResultPath is the path for task result
 	DefaultResultPath = "/tekton/results"
+	// HomeDir is the HOME directory of PipelineResources
+	HomeDir = "/tekton/home"
 )
