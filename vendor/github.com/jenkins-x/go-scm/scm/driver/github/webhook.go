@@ -65,7 +65,8 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parseDeploymentStatusHook(data)
 	case "fork":
 		hook, err = s.parseForkHook(data)
-	// case "issues":
+	case "issues":
+		hook, err = s.parseIssueHook(data)
 	case "issue_comment":
 		hook, err = s.parseIssueCommentHook(data)
 	case "installation", "integration_installation":
@@ -80,6 +81,8 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parsePushHook(data, guid)
 	case "pull_request":
 		hook, err = s.parsePullRequestHook(data, guid)
+	case "pull_request_review":
+		hook, err = s.parsePullRequestReviewHook(data, guid)
 	case "pull_request_review_comment":
 		hook, err = s.parsePullRequestReviewCommentHook(data)
 	case "release":
@@ -88,6 +91,8 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parseRepositoryHook(data)
 	case "status":
 		hook, err = s.parseStatusHook(data)
+	case "watch":
+		hook, err = s.parseWatchHook(data)
 	default:
 		log.WithField("Event", event).Warnf("unknown webhook")
 		return nil, scm.UnknownWebhook{event}
@@ -125,6 +130,26 @@ func (s *webhookService) parsePingHook(data []byte, guid string) (*scm.PingHook,
 	if to != nil {
 		to.GUID = guid
 	}
+	return to, err
+}
+
+func (s *webhookService) parsePullRequestReviewHook(data []byte, guid string) (*scm.ReviewHook, error) {
+	dst := new(pullRequestReviewHook)
+	err := json.Unmarshal(data, dst)
+	if err != nil {
+		return nil, err
+	}
+	to := convertPullRequestReviewHook(dst)
+	if to != nil {
+		to.GUID = guid
+	}
+	return to, err
+}
+
+func (s *webhookService) parseWatchHook(data []byte) (*scm.WatchHook, error) {
+	dst := new(watchHook)
+	err := json.Unmarshal(data, dst)
+	to := convertWatchHook(dst)
 	return to, err
 }
 
@@ -177,6 +202,16 @@ func (s *webhookService) parseCheckRunHook(data []byte) (scm.Webhook, error) {
 		return nil, err
 	}
 	to := convertCheckRunHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseStarHook(data []byte) (scm.Webhook, error) {
+	src := new(starHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertStarHook(src)
 	return to, err
 }
 
@@ -293,6 +328,8 @@ func (s *webhookService) parsePullRequestHook(data []byte, guid string) (scm.Web
 		dst.Action = scm.ActionReopen
 	case "synchronize":
 		dst.Action = scm.ActionSync
+	case "ready_for_review":
+		dst.Action = scm.ActionReadyForReview
 	}
 	return dst, nil
 }
@@ -304,6 +341,16 @@ func (s *webhookService) parsePullRequestReviewCommentHook(data []byte) (scm.Web
 		return nil, err
 	}
 	dst := convertPullRequestReviewCommentHook(src)
+	return dst, nil
+}
+
+func (s *webhookService) parseIssueHook(data []byte) (*scm.IssueHook, error) {
+	src := new(issueHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	dst := convertIssueHook(src)
 	return dst, nil
 }
 
@@ -358,6 +405,14 @@ type (
 		Installation *installationRef `json:"installation"`
 	}
 
+	// github watch payload
+	watchHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Installation *installationRef `json:"installation"`
+	}
+
 	// github check_run payload
 	checkRunHook struct {
 		Action       string           `json:"action"`
@@ -365,6 +420,14 @@ type (
 		Sender       user             `json:"sender"`
 		Label        label            `json:"label"`
 		Installation *installationRef `json:"installation"`
+	}
+
+	// github star repo payload
+	starHook struct {
+		Action     string     `json:"action"`
+		Repository repository `json:"repository"`
+		Sender     user       `json:"sender"`
+		StarredAt  time.Time  `json:"starred_at"`
 	}
 
 	// github check_suite payload
@@ -529,6 +592,15 @@ type (
 		Color       string `json:"color"`
 	}
 
+	pullRequestReviewHook struct {
+		Action       string           `json:"action"`
+		Review       review           `json:"review"`
+		PullRequest  pr               `json:"pull_request"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Installation *installationRef `json:"installation"`
+	}
+
 	pullRequestReviewCommentHook struct {
 		// Action see https://developer.github.com/v3/activity/events/types/#pullrequestreviewcommentevent
 		Action       string           `json:"action"`
@@ -536,6 +608,24 @@ type (
 		Repository   repository       `json:"repository"`
 		Comment      reviewComment    `json:"comment"`
 		Installation *installationRef `json:"installation"`
+	}
+
+	issueHook struct {
+		Action       string           `json:"action"`
+		Issue        issue            `json:"issue"`
+		Changes      *editChange      `json:"changes"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	editChange struct {
+		Title *struct {
+			From *string `json:"from,omitempty"`
+		} `json:"title,omitempty"`
+		Body *struct {
+			From *string `json:"from,omitempty"`
+		} `json:"body,omitempty"`
 	}
 
 	issueCommentHook struct {
@@ -547,7 +637,7 @@ type (
 		Installation *installationRef `json:"installation"`
 	}
 
-	// reviewComment describes a Pull Request review comment
+	// reviewComment describes a Pull Request d comment
 	reviewComment struct {
 		ID        int       `json:"id"`
 		ReviewID  int       `json:"pull_request_review_id"`
@@ -716,6 +806,15 @@ func convertPingHook(dst *pingHook) *scm.PingHook {
 	}
 }
 
+func convertWatchHook(dst *watchHook) *scm.WatchHook {
+	return &scm.WatchHook{
+		Action:       dst.Action,
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
 func convertCheckRunHook(dst *checkRunHook) *scm.CheckRunHook {
 	return &scm.CheckRunHook{
 		Action:       convertAction(dst.Action),
@@ -723,6 +822,15 @@ func convertCheckRunHook(dst *checkRunHook) *scm.CheckRunHook {
 		Sender:       *convertUser(&dst.Sender),
 		Label:        convertLabel(dst.Label),
 		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertStarHook(dst *starHook) *scm.StarHook {
+	return &scm.StarHook{
+		Action:    convertAction(dst.Action),
+		StarredAt: dst.StarredAt,
+		Repo:      *convertRepository(&dst.Repository),
+		Sender:    *convertUser(&dst.Sender),
 	}
 }
 
@@ -940,6 +1048,16 @@ func convertLabel(src label) scm.Label {
 	}
 }
 
+func convertPullRequestReviewHook(src *pullRequestReviewHook) *scm.ReviewHook {
+	return &scm.ReviewHook{
+		Action:       convertAction(src.Action),
+		PullRequest:  *convertPullRequest(&src.PullRequest),
+		Repo:         *convertRepository(&src.Repository),
+		Review:       *convertReview(&src.Review),
+		Installation: convertInstallationRef(src.Installation),
+	}
+}
+
 func convertPullRequestReviewCommentHook(src *pullRequestReviewCommentHook) *scm.PullRequestCommentHook {
 	return &scm.PullRequestCommentHook{
 		// Action        Action
@@ -960,17 +1078,15 @@ func convertPullRequestReviewCommentHook(src *pullRequestReviewCommentHook) *scm
 	}
 }
 
-/*
 func convertIssueHook(dst *issueHook) *scm.IssueHook {
 	return &scm.IssueHook{
-		Action: convertAction(dst.Action),
-		Issue:  *convertIssue(&dst.Issue),
-		Repo:   *convertRepository(&dst.Repository),
-		Sender: *convertUser(&dst.Sender),
-		Installation: convertInstallationRef(src.Installation),
+		Action:       convertAction(dst.Action),
+		Issue:        *convertIssue(&dst.Issue),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Installation: convertInstallationRef(dst.Installation),
 	}
 }
-*/
 
 func convertIssueCommentHook(dst *issueCommentHook) *scm.IssueCommentHook {
 	return &scm.IssueCommentHook{

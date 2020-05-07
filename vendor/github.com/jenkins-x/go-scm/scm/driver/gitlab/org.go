@@ -31,6 +31,11 @@ func (s *organizationService) IsMember(ctx context.Context, org string, user str
 	return member, res, err
 }
 
+func (s *organizationService) IsAdmin(ctx context.Context, org string, user string) (bool, *scm.Response, error) {
+	// TODO implement me
+	return false, nil, nil
+}
+
 func (s *organizationService) ListTeams(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
 	// TODO implement me
 	return nil, nil, nil
@@ -39,6 +44,18 @@ func (s *organizationService) ListTeams(ctx context.Context, org string, ops scm
 func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	// TODO implement me
 	return nil, nil, nil
+}
+
+func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+	users, res, err := s.ListMemberUsers(ctx, org)
+	if err != nil {
+		return nil, res, err
+	}
+	var members []*scm.TeamMember
+	for _, u := range users {
+		members = append(members, &scm.TeamMember{Login: u.Login})
+	}
+	return members, res, nil
 }
 
 func (s *organizationService) ListMemberUsers(ctx context.Context, org string) ([]scm.User, *scm.Response, error) {

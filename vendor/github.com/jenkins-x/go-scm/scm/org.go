@@ -11,10 +11,17 @@ import (
 type (
 	// Organization represents an organization account.
 	Organization struct {
-		Name   string
-		Avatar string
+		ID          int
+		Name        string
+		Avatar      string
+		Permissions Permissions
 	}
 
+	Permissions struct {
+		MembersCreatePrivate  bool
+		MembersCreatePublic   bool
+		MembersCreateInternal bool
+	}
 	// Team is a organizational team
 	Team struct {
 		ID          int
@@ -46,10 +53,16 @@ type (
 		// ListTeams returns the user organization list.
 		ListTeams(ctx context.Context, org string, ops ListOptions) ([]*Team, *Response, error)
 
-		// IsMember returns true if the user is a member of the organiation
+		// IsMember returns true if the user is a member of the organization
 		IsMember(ctx context.Context, org string, user string) (bool, *Response, error)
+
+		// IsAdmin returns true if the user is an admin of the organization
+		IsAdmin(ctx context.Context, org string, user string) (bool, *Response, error)
 
 		// ListTeamMembers lists the members of a team with a given role
 		ListTeamMembers(ctx context.Context, id int, role string, ops ListOptions) ([]*TeamMember, *Response, error)
+
+		// ListOrgMembers lists the members of the organization
+		ListOrgMembers(ctx context.Context, org string, ops ListOptions) ([]*TeamMember, *Response, error)
 	}
 )

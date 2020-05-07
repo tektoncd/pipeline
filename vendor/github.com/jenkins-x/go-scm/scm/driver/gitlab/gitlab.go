@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -120,4 +121,39 @@ type Error struct {
 
 func (e *Error) Error() string {
 	return e.Message
+}
+
+type updateNoteOptions struct {
+	Body string `json:"body"`
+}
+
+type labelEvent struct {
+	ID           int        `json:"id"`
+	Action       string     `json:"action"`
+	CreatedAt    *time.Time `json:"created_at"`
+	ResourceType string     `json:"resource_type"`
+	ResourceID   int        `json:"resource_id"`
+	User         user       `json:"user"`
+	Label        label      `json:"label"`
+}
+
+func convertLabelEvents(src []*labelEvent) []*scm.ListedIssueEvent {
+	var answer []*scm.ListedIssueEvent
+	for _, from := range src {
+		answer = append(answer, convertLabelEvent(from))
+	}
+	return answer
+}
+
+func convertLabelEvent(from *labelEvent) *scm.ListedIssueEvent {
+	event := "labeled"
+	if from.Action == "remove" {
+		event = "unlabeled"
+	}
+	return &scm.ListedIssueEvent{
+		Event:   event,
+		Actor:   *convertUser(&from.User),
+		Label:   *convertLabel(&from.Label),
+		Created: *from.CreatedAt,
+	}
 }

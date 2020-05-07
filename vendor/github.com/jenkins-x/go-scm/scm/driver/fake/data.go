@@ -25,6 +25,7 @@ type Data struct {
 	PullRequestsCreated        map[int]*scm.PullRequestInput
 	PullRequestID              int
 	CreateRepositories         []*scm.RepositoryInput
+	Organizations              []*scm.Organization
 	Repositories               []*scm.Repository
 	CurrentUser                scm.User
 	Users                      []*scm.User
@@ -102,5 +103,6 @@ func NewData() *Data {
 		CommentReactionsAdded:     []string{},
 		AssigneesAdded:            []string{},
 		UserPermissions:           map[string]map[string]string{},
+		Hooks:                     map[string][]*scm.Hook{},
 	}
 }

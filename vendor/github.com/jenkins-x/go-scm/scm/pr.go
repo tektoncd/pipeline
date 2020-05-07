@@ -62,10 +62,15 @@ type (
 	// PullRequestListOptions provides options for querying
 	// a list of repository merge requests.
 	PullRequestListOptions struct {
-		Page   int
-		Size   int
-		Open   bool
-		Closed bool
+		Page          int
+		Size          int
+		Open          bool
+		Closed        bool
+		Labels        []string
+		UpdatedAfter  *time.Time
+		UpdatedBefore *time.Time
+		CreatedAfter  *time.Time
+		CreatedBefore *time.Time
 	}
 
 	// PullRequestBranch contains information about a particular branch in a PR.
@@ -88,6 +93,15 @@ type (
 		Sha       string
 	}
 
+	// PullRequestMergeOptions lets you define how a pull request will be merged.
+	PullRequestMergeOptions struct {
+		CommitTitle string // Extra detail to append to automatic commit message. (Optional.)
+		SHA         string // SHA that pull request head must match to allow merge. (Optional.)
+
+		// The merge method to use. Possible values include: "merge", "squash", and "rebase" with the default being merge. (Optional.)
+		MergeMethod string
+	}
+
 	// PullRequestService provides access to pull request resources.
 	PullRequestService interface {
 		// Find returns the repository pull request by number.
@@ -108,8 +122,11 @@ type (
 		// ListLabels returns the labels on a pull request
 		ListLabels(context.Context, string, int, ListOptions) ([]*Label, *Response, error)
 
+		// ListEvents returns the events creating and removing the labels on an pull request
+		ListEvents(context.Context, string, int, ListOptions) ([]*ListedIssueEvent, *Response, error)
+
 		// Merge merges the repository pull request.
-		Merge(context.Context, string, int) (*Response, error)
+		Merge(context.Context, string, int, *PullRequestMergeOptions) (*Response, error)
 
 		// Close closes the repository pull request.
 		Close(context.Context, string, int) (*Response, error)
@@ -120,14 +137,29 @@ type (
 		// DeleteComment deletes an pull request comment.
 		DeleteComment(context.Context, string, int, int) (*Response, error)
 
+		// EditComment edits an existing pull request comment.
+		EditComment(context.Context, string, int, int, *CommentInput) (*Comment, *Response, error)
+
 		// AddLabel adds a label to a pull request.
 		AddLabel(ctx context.Context, repo string, number int, label string) (*Response, error)
 
 		// DeleteLabel deletes a label from a pull request
 		DeleteLabel(ctx context.Context, repo string, number int, label string) (*Response, error)
 
+		// AssignIssue assigns one or more  users to an issue
+		AssignIssue(ctx context.Context, repo string, number int, logins []string) (*Response, error)
+
+		// UnassignIssue removes the assignment of ne or more users on an issue
+		UnassignIssue(ctx context.Context, repo string, number int, logins []string) (*Response, error)
+
 		// Create creates a new pull request in a repo.
 		Create(context.Context, string, *PullRequestInput) (*PullRequest, *Response, error)
+
+		// RequestReview adds one or more users as a reviewer on a pull request.
+		RequestReview(ctx context.Context, repo string, number int, logins []string) (*Response, error)
+
+		// UnrequestReview removes one or more users as a reviewer on a pull request.
+		UnrequestReview(ctx context.Context, repo string, number int, logins []string) (*Response, error)
 	}
 )
 
@@ -149,9 +181,9 @@ func (pr *PullRequest) Repository() Repository {
 // ToMergeableState converts the given string to a mergeable state
 func ToMergeableState(text string) MergeableState {
 	switch strings.ToLower(text) {
-	case "clean", "mergeable":
+	case "clean", "mergeable", "can_be_merged":
 		return MergeableStateMergeable
-	case "conflict", "conflicting":
+	case "conflict", "conflicting", "cannot_be_merged":
 		return MergeableStateConflicting
 	default:
 		return MergeableStateUnknown

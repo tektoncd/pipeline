@@ -39,6 +39,19 @@ type permissions struct {
 	GroupAccess   access `json:"group_access"`
 }
 
+func accessLevelToString(level int) string {
+	switch level {
+	case 50:
+		return scm.AdminPermission
+	case 40, 30:
+		return scm.WritePermission
+	case 20, 10:
+		return scm.ReadPermission
+	default:
+		return scm.NoPermission
+	}
+}
+
 type access struct {
 	AccessLevel       int `json:"access_level"`
 	NotificationLevel int `json:"notification_level"`
@@ -67,24 +80,66 @@ type label struct {
 	Description string `json:"description"`
 }
 
+type member struct {
+	ID          int    `json:"id"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	State       string `json:"state"`
+	AccessLevel int    `json:"access_level"`
+	WebURL      string `json:"web_url"`
+	AvatarURL   string `json:"avatar_url"`
+	// Fields to be figured out later
+	// expires_at - a yyyy-mm-dd date
+	// group_saml_identity
+
+}
 type repositoryService struct {
 	client *wrapper
 }
 
 func (s *repositoryService) Create(context.Context, *scm.RepositoryInput) (*scm.Repository, *scm.Response, error) {
-	panic("implement me")
+	return nil, nil, scm.ErrNotSupported
 }
 
 func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref string) (*scm.CombinedStatus, *scm.Response, error) {
-	panic("implement me")
+	statuses, res, err := s.ListStatus(ctx, repo, ref, scm.ListOptions{})
+	if err != nil {
+		return nil, res, err
+	}
+
+	combinedState := scm.StateUnknown
+
+	for _, s := range statuses {
+		// If we've still got a default state, or the state of the current status is worse than the current state, set it.
+		if combinedState == scm.StateUnknown || combinedState > s.State {
+			combinedState = s.State
+		}
+	}
+
+	return &scm.CombinedStatus{
+		State:    combinedState,
+		Sha:      ref,
+		Statuses: statuses,
+	}, res, err
 }
 
 func (s *repositoryService) FindUserPermission(ctx context.Context, repo string, user string) (string, *scm.Response, error) {
-	panic("implement me")
+	path := fmt.Sprintf("api/v4/projects/%s/members/all", encode(repo))
+	out := []*member{}
+	res, err := s.client.do(ctx, "GET", path, nil, &out)
+	if err != nil {
+		return scm.NoPermission, res, err
+	}
+	for _, u := range out {
+		if u.Username == user {
+			return accessLevelToString(u.AccessLevel), res, nil
+		}
+	}
+	return scm.NoPermission, res, nil
 }
 
 func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user string) (bool, *scm.Response, error) {
-	users, resp, err := s.ListCollaborators(ctx, repo)
+	users, resp, err := s.ListCollaborators(ctx, repo, scm.ListOptions{})
 	if err != nil {
 		return false, resp, err
 	}
@@ -96,15 +151,18 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 	return false, resp, err
 }
 
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string) ([]scm.User, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/members/all", encode(repo))
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/members/all?%s", encode(repo), encodeListOptions(ops))
 	out := []*user{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertUserList(out), res, err
 }
 
-func (s *repositoryService) ListLabels(context.Context, string, scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
-	panic("implement me")
+func (s *repositoryService) ListLabels(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/labels?%s", encode(repo), encodeListOptions(opts))
+	out := []*label{}
+	res, err := s.client.do(ctx, "GET", path, nil, &out)
+	return convertLabelObjects(out), res, err
 }
 
 func (s *repositoryService) Find(ctx context.Context, repo string) (*scm.Repository, *scm.Response, error) {
@@ -136,11 +194,11 @@ func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*
 }
 
 func (s *repositoryService) ListOrganisation(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
-	panic("implement me")
+	return nil, nil, scm.ErrNotSupported
 }
 
 func (s *repositoryService) ListUser(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
-	panic("implement me")
+	return nil, nil, scm.ErrNotSupported
 }
 
 func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Hook, *scm.Response, error) {
@@ -197,6 +255,7 @@ func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, 
 	params.Set("state", convertFromState(input.State))
 	params.Set("name", input.Label)
 	params.Set("target_url", input.Target)
+	params.Set("description", input.Desc)
 	path := fmt.Sprintf("api/v4/projects/%s/statuses/%s?%s", encode(repo), ref, params.Encode())
 	out := new(status)
 	res, err := s.client.do(ctx, "POST", path, nil, out)
@@ -353,13 +412,18 @@ func convertPrivate(from string) bool {
 func convertLabelObjects(from []*label) []*scm.Label {
 	var labels []*scm.Label
 	for _, label := range from {
-		labels = append(labels, &scm.Label{
-			Name:        label.Name,
-			Description: label.Description,
-			Color:       label.Color,
-		})
+		labels = append(labels, convertLabel(label))
 	}
 	return labels
+}
+
+func convertLabel(from *label) *scm.Label {
+	return &scm.Label{
+		ID:          int64(from.ID),
+		Name:        from.Name,
+		Description: from.Description,
+		Color:       from.Color,
+	}
 }
 
 func canPush(proj *repository) bool {

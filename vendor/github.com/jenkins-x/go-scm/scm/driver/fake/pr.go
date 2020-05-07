@@ -36,7 +36,8 @@ func (s *pullService) List(context.Context, string, scm.PullRequestListOptions) 
 
 func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
 	f := s.data
-	return f.PullRequestChanges[number], nil, nil
+	returnStart, returnEnd := paginated(opts.Page, opts.Size, len(f.PullRequestChanges[number]))
+	return f.PullRequestChanges[number][returnStart:returnEnd], nil, nil
 }
 
 func (s *pullService) ListComments(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
@@ -58,6 +59,10 @@ func (s *pullService) ListLabels(ctx context.Context, repo string, number int, o
 		}
 	}
 	return la, nil, nil
+}
+
+func (s *pullService) ListEvents(context.Context, string, int, scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
 }
 
 func (s *pullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
@@ -90,7 +95,7 @@ func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, 
 	return nil, fmt.Errorf("cannot remove %v from %s/#%d", label, repo, number)
 }
 
-func (s *pullService) Merge(context.Context, string, int) (*scm.Response, error) {
+func (s *pullService) Merge(context.Context, string, int, *scm.PullRequestMergeOptions) (*scm.Response, error) {
 	panic("implement me")
 }
 
@@ -123,6 +128,26 @@ func (s *pullService) DeleteComment(ctx context.Context, repo string, number int
 		}
 	}
 	return nil, fmt.Errorf("could not find issue comment %d", id)
+}
+
+func (s *pullService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *pullService) AssignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	panic("implement me")
+}
+
+func (s *pullService) UnassignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	panic("implement me")
+}
+
+func (s *pullService) RequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
+func (s *pullService) UnrequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
 }
 
 func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {

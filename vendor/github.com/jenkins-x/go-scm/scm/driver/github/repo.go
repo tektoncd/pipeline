@@ -81,7 +81,7 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 		},
 	}
 	res, err := s.client.doRequest(ctx, req, nil, nil)
-	if err != nil {
+	if err != nil && res == nil {
 		return false, res, err
 	}
 	code := res.Status
@@ -98,10 +98,12 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 //
 // See 'IsCollaborator' for more details.
 // See https://developer.github.com/v3/repos/collaborators/
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string) ([]scm.User, *scm.Response, error) {
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
+	params := encodeListOptions(ops)
+
 	req := &scm.Request{
 		Method: http.MethodGet,
-		Path:   fmt.Sprintf("repos/%s/collaborators", repo),
+		Path:   fmt.Sprintf("repos/%s/collaborators?%s", repo, params),
 		Header: map[string][]string{
 			// This accept header enables the nested teams preview.
 			// https://developer.github.com/changes/2017-08-30-preview-nested-teams/
