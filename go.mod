@@ -30,7 +30,7 @@ require (
 	github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b // indirect
 	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 	github.com/vdemeester/k8s-pkg-credentialprovider v1.13.12-1 // indirect
-	go.opencensus.io v0.22.1
+	go.opencensus.io v0.22.3
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.13.0
