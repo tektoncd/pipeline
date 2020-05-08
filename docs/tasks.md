@@ -304,7 +304,7 @@ spec:
 ### Specifying `Resources`
 
 A `Task` definition can specify input and output resources supplied by
-a `[`PipelineResources`](resources.md#using-resources) entity.
+a [`PipelineResources`](resources.md#using-resources) entity.
 
 Use the `input` field to supply your `Task` with the context and/or data it needs to execute.
 If the output of your `Task` is also the input of the next `Task` that executes, you must
