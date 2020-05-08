@@ -61,6 +61,8 @@ const (
 	// ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a
 	// PipelineRun has provided an invalid binding.
 	ReasonInvalidWorkspaceBinding = "InvalidWorkspaceBindings"
+	// ReasonInvalidServiceAccountMapping indicates that PipelineRun.Spec.ServiceAccountNames defined with a wrong taskName
+	ReasonInvalidServiceAccountMapping = "InvalidServiceAccountMappings"
 	// ReasonParameterTypeMismatch indicates that the reason for the failure status is that
 	// parameter(s) declared in the PipelineRun do not have the some declared type as the
 	// parameters(s) declared in the Pipeline that they are supposed to override.
@@ -458,6 +460,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Reason: ReasonInvalidWorkspaceBinding,
 			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's Workspaces correctly: %s",
 				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pipelineMeta.Name), err),
+		})
+		return nil
+	}
+
+	// Ensure that the ServiceAccountNames defined correct.
+	if err := resources.ValidateServiceaccountMapping(pipelineSpec, pr); err != nil {
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonInvalidServiceAccountMapping,
+			Message: fmt.Sprintf("PipelineRun %s doesn't define ServiceAccountNames correctly: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
 		})
 		return nil
 	}

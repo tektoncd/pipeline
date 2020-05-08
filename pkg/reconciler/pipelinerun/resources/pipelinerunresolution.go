@@ -262,6 +262,21 @@ func ValidateWorkspaceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRu
 	return nil
 }
 
+// ValidateServiceaccountMapping validates that the ServiceAccountNames defined by a PipelineRun are not correct.
+func ValidateServiceaccountMapping(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) error {
+	pipelineTasks := make(map[string]string)
+	for _, task := range p.Tasks {
+		pipelineTasks[task.Name] = task.Name
+	}
+
+	for _, name := range pr.Spec.ServiceAccountNames {
+		if _, ok := pipelineTasks[name.TaskName]; !ok {
+			return fmt.Errorf("PipelineRun's ServiceAccountNames defined wrong taskName: %q, not existed in Pipeline", name.TaskName)
+		}
+	}
+	return nil
+}
+
 // TaskNotFoundError indicates that the resolution failed because a referenced Task couldn't be retrieved
 type TaskNotFoundError struct {
 	Name string
