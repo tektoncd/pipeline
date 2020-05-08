@@ -1949,6 +1949,19 @@ func TestValidateWorkspaceBindings(t *testing.T) {
 	}
 }
 
+func TestValidateServiceaccountMapping(t *testing.T) {
+	p := tb.Pipeline("pipelines", tb.PipelineSpec(
+		tb.PipelineTask("mytask1", "task",
+			tb.PipelineTaskInputResource("input1", "git-resource")),
+	))
+	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunServiceAccountNameTask("mytaskwrong", "default"),
+	))
+	if err := ValidateServiceaccountMapping(&p.Spec, pr); err == nil {
+		t.Fatalf("Expected error indicating `mytaskwrong` was not defined as `task` in Pipeline but got no error")
+	}
+}
+
 func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
 	if !noneStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be before first taskrun")
