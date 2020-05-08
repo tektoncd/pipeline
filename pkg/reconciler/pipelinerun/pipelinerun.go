@@ -600,7 +600,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	pr.Status.SetCondition(after)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
-	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
+	taskRunsStatus, err := getTaskRunsStatus(pr,
+		pipelineState,
+		func(name string) (*v1alpha1.TaskRun, error) {
+			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+		},
+	)
+	if err != nil {
+		c.Recorder.Eventf(pr, corev1.EventTypeWarning, "Update status failed", "Failed to update status for PipelineRun %s: %w", pr.Name, err)
+		return fmt.Errorf("error updating taskruns status for PipelineRun %s: %w", pr.Name, err)
+	}
+	pr.Status.TaskRuns = taskRunsStatus
+
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
@@ -626,7 +637,20 @@ func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRe
 	return results
 }
 
-func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {
+func getConditionTaskRunStatus(conditionCheck *resources.ResolvedConditionCheck, getTaskRun resources.GetTaskRun) (*v1alpha1.TaskRunStatus, error) {
+	taskRun, err := getTaskRun(conditionCheck.ConditionCheckName)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("error retrieving TaskRun %s: %w", conditionCheck.ConditionCheckName, err)
+		}
+	}
+	if taskRun != nil {
+		return &taskRun.Status, nil
+	}
+	return nil, nil
+}
+
+func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask, getTaskRun resources.GetTaskRun) (map[string]*v1alpha1.PipelineRunTaskRunStatus, error) {
 	status := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	for _, rprt := range state {
 		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
@@ -656,6 +680,18 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 				if c.ConditionCheck != nil {
 					cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
 				}
+
+				// Add the condition-generated taskrun to the pr status
+				trs, err := getConditionTaskRunStatus(c, getTaskRun)
+				if err != nil {
+					return nil, err
+				}
+
+				prctrs := &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: c.ConditionCheckName,
+					Status:           trs,
+				}
+				status[c.ConditionCheckName] = prctrs
 			}
 			prtrs.ConditionChecks = cStatus
 			if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
@@ -672,7 +708,7 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 		}
 		status[rprt.TaskRunName] = prtrs
 	}
-	return status
+	return status, nil
 }
 
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) error {

@@ -614,7 +614,15 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 	}}
 	pr.Status.InitializeConditions()
-	status := getTaskRunsStatus(pr, state)
+	status, err := getTaskRunsStatus(pr,
+		state,
+		func(name string) (*v1alpha1.TaskRun, error) {
+			return nil, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
@@ -708,35 +716,61 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 		},
 	}
 
+	conditionTaskRun := tb.TaskRun("condition-task-run", tb.TaskRunStatus(
+		tb.TaskRunStartTime(time.Now()),
+		tb.PodName("condition-task-run-pod"),
+	))
 	tcs := []struct {
 		name           string
 		rcc            resources.TaskConditionCheckState
-		expectedStatus v1alpha1.PipelineRunTaskRunStatus
+		expectedStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 	}{{
 		name: "success-condition-checks",
 		rcc:  resources.TaskConditionCheckState{&successrcc},
-		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
-			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
-				successrcc.ConditionCheck.Name: successConditionCheckStatus,
+		expectedStatus: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+			taskrunName: &v1alpha1.PipelineRunTaskRunStatus{
+				ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+					successrcc.ConditionCheck.Name: successConditionCheckStatus,
+				},
+			},
+			successConditionCheckName: &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: successConditionCheckName,
+				Status:           &conditionTaskRun.Status,
 			},
 		},
 	}, {
 		name: "failing-condition-checks",
 		rcc:  resources.TaskConditionCheckState{&failingrcc},
-		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
-			Status: &failedTaskRunStatus,
-			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
-				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+		expectedStatus: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+			taskrunName: &v1alpha1.PipelineRunTaskRunStatus{
+				Status: &failedTaskRunStatus,
+				ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+					failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+				},
+			},
+			failingConditionCheckName: &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: failingConditionCheckName,
+				Status:           &conditionTaskRun.Status,
 			},
 		},
 	}, {
 		name: "multiple-condition-checks",
 		rcc:  resources.TaskConditionCheckState{&successrcc, &failingrcc},
-		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
-			Status: &failedTaskRunStatus,
-			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
-				successrcc.ConditionCheck.Name: successConditionCheckStatus,
-				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+		expectedStatus: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+			taskrunName: &v1alpha1.PipelineRunTaskRunStatus{
+				Status: &failedTaskRunStatus,
+				ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+					successrcc.ConditionCheck.Name: successConditionCheckStatus,
+					failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+				},
+			},
+			successConditionCheckName: &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: successConditionCheckName,
+				Status:           &conditionTaskRun.Status,
+			},
+			failingConditionCheckName: &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: failingConditionCheckName,
+				Status:           &conditionTaskRun.Status,
 			},
 		},
 	}}
@@ -751,11 +785,16 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 				ResolvedConditionChecks: tc.rcc,
 			}}
 			pr.Status.InitializeConditions()
-			status := getTaskRunsStatus(pr, state)
-			expected := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				taskrunName: &tc.expectedStatus,
+			status, err := getTaskRunsStatus(pr,
+				state,
+				func(name string) (*v1alpha1.TaskRun, error) {
+					return conditionTaskRun, nil
+				},
+			)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
 			}
-			if d := cmp.Diff(status, expected, ignoreLastTransitionTime); d != "" {
+			if d := cmp.Diff(status, tc.expectedStatus, ignoreLastTransitionTime); d != "" {
 				t.Fatalf("Did not get expected status for %s : %s", tc.name, d)
 			}
 		})
