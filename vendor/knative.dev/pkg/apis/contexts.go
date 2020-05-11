@@ -198,3 +198,16 @@ func AllowDifferentNamespace(ctx context.Context) context.Context {
 func IsDifferentNamespaceAllowed(ctx context.Context) bool {
 	return ctx.Value(allowDifferentNamespace{}) != nil
 }
+
+// This is attached to contexts passed to webhook interfaces when the user has request DryRun mode.
+type isDryRun struct{}
+
+// WithDryRun is used to indicate that this call is in DryRun mode.
+func WithDryRun(ctx context.Context) context.Context {
+	return context.WithValue(ctx, isDryRun{}, struct{}{})
+}
+
+// IsDryRun indicates that this request is in DryRun mode.
+func IsDryRun(ctx context.Context) bool {
+	return ctx.Value(isDryRun{}) != nil
+}

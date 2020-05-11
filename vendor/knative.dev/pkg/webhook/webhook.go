@@ -25,10 +25,11 @@ import (
 
 	// Injection stuff
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	kubeinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory"
+	kubeinformerfactory "knative.dev/pkg/injection/clients/namespacedkube/informers/factory"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/logging"
@@ -58,12 +59,27 @@ type Options struct {
 	StatsReporter StatsReporter
 }
 
+// Operation is the verb being operated on
+// it is aliasde in Validation from the k8s admission package
+type Operation = admissionv1beta1.Operation
+
+// Operation types
+const (
+	Create  Operation = admissionv1beta1.Create
+	Update  Operation = admissionv1beta1.Update
+	Delete  Operation = admissionv1beta1.Delete
+	Connect Operation = admissionv1beta1.Connect
+)
+
 // Webhook implements the external webhook for validation of
 // resources and configuration.
 type Webhook struct {
 	Client  kubernetes.Interface
 	Options Options
 	Logger  *zap.SugaredLogger
+
+	// synced is function that is called when the informers have been synced.
+	synced context.CancelFunc
 
 	mux          http.ServeMux
 	secretlister corelisters.SecretLister
@@ -105,11 +121,14 @@ func New(
 		opts.StatsReporter = reporter
 	}
 
+	syncCtx, cancel := context.WithCancel(context.Background())
+
 	webhook = &Webhook{
 		Client:       client,
 		Options:      *opts,
 		secretlister: secretInformer.Lister(),
 		Logger:       logger,
+		synced:       cancel,
 	}
 
 	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -117,24 +136,29 @@ func New(
 	})
 
 	for _, controller := range controllers {
-		var handler http.Handler
-		var path string
-
 		switch c := controller.(type) {
 		case AdmissionController:
-			handler = admissionHandler(logger, opts.StatsReporter, c)
-			path = c.Path()
+			handler := admissionHandler(logger, opts.StatsReporter, c, syncCtx.Done())
+			webhook.mux.Handle(c.Path(), handler)
+
 		case ConversionController:
-			handler = conversionHandler(logger, opts.StatsReporter, c)
-			path = c.Path()
+			handler := conversionHandler(logger, opts.StatsReporter, c)
+			webhook.mux.Handle(c.Path(), handler)
+
 		default:
 			return nil, fmt.Errorf("unknown webhook controller type:  %T", controller)
 		}
 
-		webhook.mux.Handle(path, handler)
 	}
 
 	return
+}
+
+// InformersHaveSynced is called when the informers have all been synced, which allows any outstanding
+// admission webhooks through.
+func (wh *Webhook) InformersHaveSynced() {
+	wh.synced()
+	wh.Logger.Info("Informers have been synced, unblocking admission webhooks.")
 }
 
 // Run implements the admission controller run loop.

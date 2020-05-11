@@ -95,7 +95,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			if tags.NeedsDuckInjection() {
 				duckTypes = append(duckTypes, t)
 			}
-			if tags.NeedsReconciler() {
+			if tags.NeedsReconciler(t, customArgs) {
 				reconcilerTypes = append(reconcilerTypes, t)
 			}
 		}
@@ -154,7 +154,16 @@ func (t Tags) NeedsDuckInjection() bool {
 	return t.GenerateDuck
 }
 
-func (t Tags) NeedsReconciler() bool {
+func (t Tags) NeedsReconciler(kind *types.Type, args *informergenargs.CustomArgs) bool {
+	// Overrides
+	kinds := strings.Split(args.ForceKinds, ",")
+	for _, k := range kinds {
+		if kind.Name.Name == k {
+			klog.V(5).Infof("Kind %s was forced to generate reconciler.", k)
+			return true
+		}
+	}
+	// Normal
 	return t.GenerateReconciler
 }
 
@@ -170,6 +179,7 @@ func MustParseClientGenTags(lines []string) Tags {
 
 	_, genRec := values["genreconciler"]
 	_, genRecClass := values["genreconciler:class"]
+
 	// Generate Reconciler code if genreconciler OR genreconciler:class exist.
 	if genRec || genRecClass {
 		ret.GenerateReconciler = true
@@ -190,9 +200,10 @@ func extractReconcilerClassTag(t *types.Type) (string, bool) {
 	return "", false
 }
 
-// isInternal returns true if the tags for a member do not contain a json tag
-func isInternal(m types.Member) bool {
-	return !strings.Contains(m.Tags, "json")
+func isNonNamespaced(t *types.Type) bool {
+	comments := append(append([]string{}, t.SecondClosestCommentLines...), t.CommentLines...)
+	_, nonNamespaced := types.ExtractCommentTags("+", comments)["genclient:nonNamespaced"]
+	return nonNamespaced
 }
 
 func vendorless(p string) string {
@@ -406,6 +417,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 		t := t
 
 		reconcilerClass, hasReconcilerClass := extractReconcilerClassTag(t)
+		nonNamespaced := isNonNamespaced(t)
 
 		packagePath := filepath.Join(packagePath, strings.ToLower(t.Name.Name))
 
@@ -440,7 +452,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
 				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.NeedsReconciler()
+				return tags.NeedsReconciler(t, customArgs)
 			},
 		})
 
@@ -468,7 +480,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
 				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.NeedsReconciler()
+				return tags.NeedsReconciler(t, customArgs)
 			},
 		})
 
@@ -493,13 +505,14 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					groupVersion:       gv,
 					reconcilerClass:    reconcilerClass,
 					hasReconcilerClass: hasReconcilerClass,
+					nonNamespaced:      nonNamespaced,
 				})
 
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
 				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.NeedsReconciler()
+				return tags.NeedsReconciler(t, customArgs)
 			},
 		})
 
@@ -524,7 +537,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
 				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.NeedsReconciler()
+				return tags.NeedsReconciler(t, customArgs)
 			},
 		})
 	}

@@ -18,7 +18,8 @@ package testing
 
 import (
 	"context"
-	"testing"
+
+	"go.uber.org/zap/zaptest"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
@@ -29,14 +30,14 @@ import (
 )
 
 // SetupFakeContext sets up the the Context and the fake informers for the tests.
-func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
+func SetupFakeContext(t zaptest.TestingT) (context.Context, []controller.Informer) {
 	c, _, is := SetupFakeContextWithCancel(t)
 	return c, is
 }
 
 // SetupFakeContextWithCancel sets up the the Context and the fake informers for the tests
 // The provided context can be canceled using provided callback.
-func SetupFakeContextWithCancel(t *testing.T) (context.Context, context.CancelFunc, []controller.Informer) {
+func SetupFakeContextWithCancel(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
 	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
 	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})

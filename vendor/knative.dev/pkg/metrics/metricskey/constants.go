@@ -29,6 +29,12 @@ const (
 	// LabelNamespaceName is the label for immutable name of the namespace that the service is deployed
 	LabelNamespaceName = "namespace_name"
 
+	// ContainerName is the container for which the metric is reported.
+	ContainerName = "container_name"
+
+	// PodName is the name of the pod for which the metric is reported.
+	PodName = "pod_name"
+
 	// LabelResponseCode is the label for the HTTP response status code.
 	LabelResponseCode = "response_code"
 

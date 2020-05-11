@@ -60,6 +60,8 @@ const (
 	// OpenCensus is used to export to the OpenCensus Agent / Collector,
 	// which can send to many other services.
 	OpenCensus metricsBackend = "opencensus"
+	// None is used to export, well, nothing.
+	None metricsBackend = "none"
 
 	defaultBackendEnvName = "DEFAULT_METRICS_BACKEND"
 
@@ -85,6 +87,10 @@ type metricsConfig struct {
 	// recorder provides a hook for performing custom transformations before
 	// writing the metrics to the stats.RecordWithOptions interface.
 	recorder func(context.Context, []stats.Measurement, ...stats.Options) error
+
+	// secretFetcher provides access for fetching Kubernetes Secrets from an
+	// informer cache.
+	secretFetcher SecretFetcher
 
 	// ---- OpenCensus specific below ----
 	// collectorAddress is the address of the collector, if not `localhost:55678`
@@ -155,6 +161,10 @@ func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ro
 
 func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metricsConfig, error) {
 	var mc metricsConfig
+
+	// We don't check if this is `nil` right now, because this is a transition step.
+	// Eventually, this should be a startup check.
+	mc.secretFetcher = ops.Secrets
 
 	if ops.Domain == "" {
 		return nil, errors.New("metrics domain cannot be empty")

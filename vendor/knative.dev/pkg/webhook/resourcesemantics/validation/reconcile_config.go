@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors
+Copyright 2020 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,23 +17,18 @@ limitations under the License.
 package validation
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/markbates/inflect"
 	"go.uber.org/zap"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
@@ -44,13 +39,14 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var errMissingNewObject = errors.New("the new object may not be nil")
-
 // reconciler implements the AdmissionController for resources
 type reconciler struct {
-	name     string
-	path     string
-	handlers map[schema.GroupVersionKind]resourcesemantics.GenericCRD
+	webhook.StatelessAdmissionImpl
+
+	name      string
+	path      string
+	handlers  map[schema.GroupVersionKind]resourcesemantics.GenericCRD
+	callbacks map[schema.GroupVersionKind]Callback
 
 	withContext func(context.Context) context.Context
 
@@ -64,6 +60,12 @@ type reconciler struct {
 
 var _ controller.Reconciler = (*reconciler)(nil)
 var _ webhook.AdmissionController = (*reconciler)(nil)
+var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
+
+// Path implements AdmissionController
+func (ac *reconciler) Path() string {
+	return ac.path
+}
 
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
@@ -82,32 +84,6 @@ func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Reconcile the webhook configuration.
 	return ac.reconcileValidatingWebhook(ctx, caCert)
-}
-
-// Path implements AdmissionController
-func (ac *reconciler) Path() string {
-	return ac.path
-}
-
-// Admit implements AdmissionController
-func (ac *reconciler) Admit(ctx context.Context, request *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse {
-	if ac.withContext != nil {
-		ctx = ac.withContext(ctx)
-	}
-
-	logger := logging.FromContext(ctx)
-	switch request.Operation {
-	case admissionv1beta1.Create, admissionv1beta1.Update:
-	default:
-		logger.Infof("Unhandled webhook operation, letting it through %v", request.Operation)
-		return &admissionv1beta1.AdmissionResponse{Allowed: true}
-	}
-
-	if err := ac.validate(ctx, request); err != nil {
-		return webhook.MakeErrorStatus("validation failed: %v", err)
-	}
-
-	return &admissionv1beta1.AdmissionResponse{Allowed: true}
 }
 
 func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []byte) error {
@@ -176,84 +152,5 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 	} else {
 		logger.Info("Webhook is valid")
 	}
-	return nil
-}
-
-func (ac *reconciler) validate(ctx context.Context, req *admissionv1beta1.AdmissionRequest) error {
-	kind := req.Kind
-	newBytes := req.Object.Raw
-	oldBytes := req.OldObject.Raw
-	// Why, oh why are these different types...
-	gvk := schema.GroupVersionKind{
-		Group:   kind.Group,
-		Version: kind.Version,
-		Kind:    kind.Kind,
-	}
-
-	logger := logging.FromContext(ctx)
-	handler, ok := ac.handlers[gvk]
-	if !ok {
-		logger.Errorf("Unhandled kind: %v", gvk)
-		return fmt.Errorf("unhandled kind: %v", gvk)
-	}
-
-	// nil values denote absence of `old` (create) or `new` (delete) objects.
-	var oldObj, newObj resourcesemantics.GenericCRD
-
-	if len(newBytes) != 0 {
-		newObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if ac.disallowUnknownFields {
-			newDecoder.DisallowUnknownFields()
-		}
-		if err := newDecoder.Decode(&newObj); err != nil {
-			return fmt.Errorf("cannot decode incoming new object: %v", err)
-		}
-	}
-	if len(oldBytes) != 0 {
-		oldObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
-		if ac.disallowUnknownFields {
-			oldDecoder.DisallowUnknownFields()
-		}
-		if err := oldDecoder.Decode(&oldObj); err != nil {
-			return fmt.Errorf("cannot decode incoming old object: %v", err)
-		}
-	}
-
-	// Set up the context for defaulting and validation
-	if oldObj != nil {
-		if req.SubResource == "" {
-			ctx = apis.WithinUpdate(ctx, oldObj)
-		} else {
-			ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
-		}
-	} else {
-		ctx = apis.WithinCreate(ctx)
-	}
-	ctx = apis.WithUserInfo(ctx, &req.UserInfo)
-
-	// None of the validators will accept a nil value for newObj.
-	if newObj == nil {
-		return errMissingNewObject
-	}
-
-	if err := validate(ctx, newObj); err != nil {
-		logger.Errorw("Failed the resource specific validation", zap.Error(err))
-		// Return the error message as-is to give the validation callback
-		// discretion over (our portion of) the message that the user sees.
-		return err
-	}
-
-	return nil
-}
-
-// validate performs validation on the provided "new" CRD.
-func validate(ctx context.Context, new apis.Validatable) error {
-	// Can't just `return new.Validate()` because it doesn't properly nil-check.
-	if err := new.Validate(ctx); err != nil {
-		return err
-	}
-
 	return nil
 }

@@ -49,14 +49,14 @@ require (
 	k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c // indirect
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
-	knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56
+	knative.dev/pkg v0.0.0-20200410152005-2a1db869228c
 )
 
-// Knative deps (release-0.13)
+// Knative deps (release-0.14)
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
 	knative.dev/caching => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20200410152005-2a1db869228c
 	knative.dev/pkg/vendor/github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 )
 

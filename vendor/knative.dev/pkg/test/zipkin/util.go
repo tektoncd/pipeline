@@ -130,9 +130,17 @@ func CleanupZipkinTracingSetup(logf logging.FormatLogger) {
 // JSONTrace returns a trace for the given traceID. It will continually try to get the trace. If the
 // trace it gets has the expected number of spans, then it will be returned. If not, it will try
 // again. If it reaches timeout, then it returns everything it has so far with an error.
-func JSONTrace(traceID string, expected int, timeout time.Duration) (trace []model.SpanModel, err error) {
+func JSONTrace(traceID string, expected int, timeout time.Duration) ([]model.SpanModel, error) {
+	return JSONTracePred(traceID, timeout, func(trace []model.SpanModel) bool { return len(trace) == expected })
+}
+
+// JSONTracePred returns a trace for the given traceID. It will
+// continually try to get the trace until the trace spans satisfy the
+// predicate. If the timeout is reached then the last fetched trace
+// tree if available is returned along with an error.
+func JSONTracePred(traceID string, timeout time.Duration, pred func([]model.SpanModel) bool) (trace []model.SpanModel, err error) {
 	t := time.After(timeout)
-	for len(trace) != expected {
+	for !pred(trace) {
 		select {
 		case <-t:
 			return trace, &TimeoutError{

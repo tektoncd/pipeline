@@ -23,6 +23,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"k8s.io/klog"
 )
 
 const (
@@ -119,7 +121,7 @@ func InitializeMetricExporter(context string) {
 }
 
 func printFlags() {
-	flagList := make([]interface{}, 0)
+	var flagList []interface{}
 	flag.CommandLine.VisitAll(func(f *flag.Flag) {
 		flagList = append(flagList, f.Name, f.Value.String())
 	})
@@ -135,7 +137,7 @@ var (
 
 // InitializeLogger initializes logging for Knative tests.
 // It should be called prior to executing tests but after command-line flags have been processed.
-// Recommend doing it in a TestMain().
+// It is recommended doing it in the TestMain() function.
 func InitializeLogger() {
 	loggerInitializeOnce.Do(func() {
 		humanEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
@@ -158,6 +160,10 @@ func InitializeLogger() {
 
 		logger = zap.New(zapCore)
 		zap.ReplaceGlobals(logger) // Gets used by klog/glog proxy libraries
+
+		// Set klog/glog verbosities (works with and without proxy libraries)
+		klogLevel := klog.Level(0)
+		klogLevel.Set(strconv.Itoa(verbosity))
 
 		if verbosity > 2 {
 			printFlags()

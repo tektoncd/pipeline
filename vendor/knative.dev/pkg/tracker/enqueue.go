@@ -159,7 +159,7 @@ func (i *impl) TrackReference(ref Reference, obj interface{}) error {
 			// doesn't create problems:
 			//    foo, err := lister.Get(key)
 			//    // Later...
-			//    err := tracker.Track(fooRef, parent)
+			//    err := tracker.TrackReference(fooRef, parent)
 			// In this example, "Later" represents a window where "foo" may
 			// have changed or been created while the Track is not active.
 			// The simplest way of eliminating such a window is to call the
@@ -192,7 +192,7 @@ func (i *impl) TrackReference(ref Reference, obj interface{}) error {
 		// doesn't create problems:
 		//    foo, err := lister.Get(key)
 		//    // Later...
-		//    err := tracker.Track(fooRef, parent)
+		//    err := tracker.TrackReference(fooRef, parent)
 		// In this example, "Later" represents a window where "foo" may
 		// have changed or been created while the Track is not active.
 		// The simplest way of eliminating such a window is to call the
