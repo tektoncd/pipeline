@@ -85,7 +85,7 @@ test-yamls: ## Run yaml tests
 check tests: test-unit test-e2e test-yamls
 
 RAM = $(BIN)/ram
-$(BIN)/ram: PACKAGE=github.com/vdemeester/ram
+$(BIN)/ram: PACKAGE=go.sbr.pm/ram
 
 .PHONY: watch-test
 watch-test: | $(RAM) ; $(info $(M) watch and run tests) @ ## Watch and run tests
