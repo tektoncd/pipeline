@@ -142,7 +142,7 @@ func WaitForEndpointState(
 	desc string,
 	resolvable bool,
 	opts ...interface{}) (*spoof.Response, error) {
-	return WaitForEndpointStateWithTimeout(kubeClient, logf, url, inState, desc, resolvable, spoof.RequestTimeout, opts...)
+	return WaitForEndpointStateWithTimeout(kubeClient, logf, url, inState, desc, resolvable, Flags.SpoofRequestTimeout, opts...)
 }
 
 // WaitForEndpointStateWithTimeout will poll an endpoint until inState indicates the state is achieved

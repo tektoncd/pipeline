@@ -58,7 +58,7 @@ func conversionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Con
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, fmt.Sprintf("could encode response: %v", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 			return
 		}
 

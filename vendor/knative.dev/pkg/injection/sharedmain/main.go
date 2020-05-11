@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -89,15 +90,19 @@ func GetConfig(masterURL, kubeconfig string) (*rest.Config, error) {
 // or via reading a configMap from the API.
 // The context is expected to be initialized with injection.
 func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
-	loggingConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(logging.ConfigMapName(), metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return logging.NewConfigFromMap(nil)
-		} else {
-			return nil, err
-		}
+	var loggingConfigMap *corev1.ConfigMap
+	// These timeout and retry interval are set by heuristics.
+	// e.g. istio sidecar needs a few seconds to configure the pod network.
+	if err := wait.PollImmediate(1*time.Second, 5*time.Second, func() (bool, error) {
+		var err error
+		loggingConfigMap, err = kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(logging.ConfigMapName(), metav1.GetOptions{})
+		return err == nil || apierrors.IsNotFound(err), nil
+	}); err != nil {
+		return nil, err
 	}
-
+	if loggingConfigMap == nil {
+		return logging.NewConfigFromMap(nil)
+	}
 	return logging.NewConfigFromConfigMap(loggingConfigMap)
 }
 
@@ -232,6 +237,26 @@ func WebhookMainWithConfig(ctx context.Context, component string, cfg *rest.Conf
 	WatchLoggingConfigOrDie(ctx, cmw, logger, atomicLevel, component)
 	WatchObservabilityConfigOrDie(ctx, cmw, profilingHandler, logger, component)
 
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.Go(profilingServer.ListenAndServe)
+
+	// If we have one or more admission controllers, then start the webhook
+	// and pass them in.
+	var wh *webhook.Webhook
+	var err error
+	if len(webhooks) > 0 {
+		// Register webhook metrics
+		webhook.RegisterMetrics()
+
+		wh, err = webhook.New(ctx, webhooks)
+		if err != nil {
+			logger.Fatalw("Failed to create webhook", zap.Error(err))
+		}
+		eg.Go(func() error {
+			return wh.Run(ctx.Done())
+		})
+	}
+
 	logger.Info("Starting configuration manager...")
 	if err := cmw.Start(ctx.Done()); err != nil {
 		logger.Fatalw("Failed to start configuration manager", zap.Error(err))
@@ -240,26 +265,11 @@ func WebhookMainWithConfig(ctx context.Context, component string, cfg *rest.Conf
 	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
 		logger.Fatalw("Failed to start informers", zap.Error(err))
 	}
+	if wh != nil {
+		wh.InformersHaveSynced()
+	}
 	logger.Info("Starting controllers...")
 	go controller.StartAll(ctx.Done(), controllers...)
-
-	eg, egCtx := errgroup.WithContext(ctx)
-	eg.Go(profilingServer.ListenAndServe)
-
-	// If we have one or more admission controllers, then start the webhook
-	// and pass them in.
-	if len(webhooks) > 0 {
-		// Register webhook metrics
-		webhook.RegisterMetrics()
-
-		wh, err := webhook.New(ctx, webhooks)
-		if err != nil {
-			logger.Fatalw("Failed to create webhook", zap.Error(err))
-		}
-		eg.Go(func() error {
-			return wh.Run(ctx.Done())
-		})
-	}
 
 	// This will block until either a signal arrives or one of the grouped functions
 	// returns an error.
@@ -363,10 +373,26 @@ func WatchObservabilityConfigOrDie(ctx context.Context, cmw *configmap.InformedW
 	if _, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(metrics.ConfigMapName(),
 		metav1.GetOptions{}); err == nil {
 		cmw.Watch(metrics.ConfigMapName(),
-			metrics.UpdateExporterFromConfigMap(component, logger),
+			metrics.ConfigMapWatcher(component, SecretFetcher(ctx), logger),
 			profilingHandler.UpdateFromConfigMap)
 	} else if !apierrors.IsNotFound(err) {
 		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", metrics.ConfigMapName())
+	}
+}
+
+// SecretFetcher provides a helper function to fetch individual Kubernetes
+// Secrets (for example, a key for client-side TLS). Note that this is not
+// intended for high-volume usage; the current use is when establishing a
+// metrics client connection in WatchObservabilityConfigOrDie.
+func SecretFetcher(ctx context.Context) metrics.SecretFetcher {
+	// NOTE: Do not use secrets.Get(ctx) here to get a SecretLister, as it will register
+	// a *global* SecretInformer and require cluster-level `secrets.list` permission,
+	// even if you scope down the Lister to a given namespace after requesting it. Instead,
+	// we package up a function from kubeclient.
+	// TODO(evankanderson): If this direct request to the apiserver on each TLS connection
+	// to the opencensus agent is too much load, switch to a cached Secret.
+	return func(name string) (*corev1.Secret, error) {
+		return kubeclient.Get(ctx).CoreV1().Secrets(system.Namespace()).Get(name, metav1.GetOptions{})
 	}
 }
 

@@ -17,7 +17,6 @@ limitations under the License.
 package leaderelection
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -30,39 +29,39 @@ import (
 
 const ConfigMapNameEnv = "CONFIG_LEADERELECTION_NAME"
 
-var (
-	errEmptyLeaderElectionConfig = errors.New("empty leader election configuration")
-	validResourceLocks           = sets.NewString("leases", "configmaps", "endpoints")
-)
+var validResourceLocks = sets.NewString("leases", "configmaps", "endpoints")
 
 // NewConfigFromMap returns a Config for the given map, or an error.
 func NewConfigFromMap(data map[string]string) (*Config, error) {
-	config := &Config{
-		EnabledComponents: sets.NewString(),
-	}
+	config := defaultConfig()
 
-	if resourceLock := data["resourceLock"]; !validResourceLocks.Has(resourceLock) {
-		return nil, fmt.Errorf(`resourceLock: invalid value %q: valid values are "leases","configmaps","endpoints"`, resourceLock)
-	} else {
+	if resourceLock, ok := data["resourceLock"]; ok {
+		if !validResourceLocks.Has(resourceLock) {
+			return nil, fmt.Errorf(`resourceLock: invalid value %q: valid values are "leases","configmaps","endpoints"`, resourceLock)
+		}
 		config.ResourceLock = resourceLock
 	}
 
-	if leaseDuration, err := time.ParseDuration(data["leaseDuration"]); err != nil {
-		return nil, fmt.Errorf("leaseDuration: invalid duration: %q", data["leaseDuration"])
-	} else {
-		config.LeaseDuration = leaseDuration
-	}
-
-	if renewDeadline, err := time.ParseDuration(data["renewDeadline"]); err != nil {
-		return nil, fmt.Errorf("renewDeadline: invalid duration: %q", data["renewDeadline"])
-	} else {
-		config.RenewDeadline = renewDeadline
-	}
-
-	if retryPeriod, err := time.ParseDuration(data["retryPeriod"]); err != nil {
-		return nil, fmt.Errorf("retryPeriod: invalid duration: %q", data["retryPeriod"])
-	} else {
-		config.RetryPeriod = retryPeriod
+	for _, d := range []struct {
+		key string
+		val *time.Duration
+	}{{
+		"leaseDuration",
+		&config.LeaseDuration,
+	}, {
+		"renewDeadline",
+		&config.RenewDeadline,
+	}, {
+		"retryPeriod",
+		&config.RetryPeriod,
+	}} {
+		if v, ok := data[d.key]; ok {
+			dur, err := time.ParseDuration(v)
+			if err != nil {
+				return nil, fmt.Errorf("%s: invalid duration: %q", d.key, v)
+			}
+			*d.val = dur
+		}
 	}
 
 	// enabledComponents are not validated here, because they are dependent on
@@ -82,7 +81,6 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 		config := defaultConfig()
 		return config, nil
 	}
-
 	return NewConfigFromMap(configMap.Data)
 }
 
@@ -154,5 +152,5 @@ func UniqueID() (string, error) {
 		return "", err
 	}
 
-	return (id + "_" + string(uuid.NewUUID())), nil
+	return id + "_" + string(uuid.NewUUID()), nil
 }

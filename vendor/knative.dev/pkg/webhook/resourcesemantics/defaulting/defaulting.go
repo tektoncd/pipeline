@@ -50,6 +50,8 @@ var errMissingNewObject = errors.New("the new object may not be nil")
 
 // reconciler implements the AdmissionController for resources
 type reconciler struct {
+	webhook.StatelessAdmissionImpl
+
 	name     string
 	path     string
 	handlers map[schema.GroupVersionKind]resourcesemantics.GenericCRD
@@ -66,6 +68,7 @@ type reconciler struct {
 
 var _ controller.Reconciler = (*reconciler)(nil)
 var _ webhook.AdmissionController = (*reconciler)(nil)
+var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
 
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {

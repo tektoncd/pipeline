@@ -871,7 +871,7 @@ knative.dev/caching/pkg/apis/caching/v1alpha1
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/scheme
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1
-# knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56 => knative.dev/pkg v0.0.0-20200306230727-a56a6ea3fa56
+# knative.dev/pkg v0.0.0-20200410152005-2a1db869228c => knative.dev/pkg v0.0.0-20200410152005-2a1db869228c
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/v1
@@ -886,7 +886,6 @@ knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1beta1/mu
 knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1beta1/validatingwebhookconfiguration
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod
 knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake
-knative.dev/pkg/client/injection/kube/informers/core/v1/secret
 knative.dev/pkg/client/injection/kube/informers/factory
 knative.dev/pkg/client/injection/kube/informers/factory/fake
 knative.dev/pkg/codegen/cmd/injection-gen
@@ -895,6 +894,8 @@ knative.dev/pkg/codegen/cmd/injection-gen/generators
 knative.dev/pkg/configmap
 knative.dev/pkg/controller
 knative.dev/pkg/injection
+knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret
+knative.dev/pkg/injection/clients/namespacedkube/informers/factory
 knative.dev/pkg/injection/sharedmain
 knative.dev/pkg/kmeta
 knative.dev/pkg/kmp

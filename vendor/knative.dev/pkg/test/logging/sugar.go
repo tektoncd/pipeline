@@ -32,9 +32,6 @@ import (
 const (
 	_oddNumberErrMsg    = "Ignored key without a value."
 	_nonStringKeyErrMsg = "Ignored key-value pairs with non-string keys."
-	spewLevel1          = 2
-	spewLevel2          = 4
-	spewLevel3          = 6
 )
 
 var spewConfig *spew.ConfigState

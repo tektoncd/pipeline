@@ -315,7 +315,7 @@ func newTLogger(t *testing.T, verbosity int, dontFail bool) (*TLogger, func()) {
 		l:        log,
 		level:    verbosity,
 		t:        t,
-		errs:     make(map[string][]interface{}, 0),
+		errs:     make(map[string][]interface{}),
 		dontFail: dontFail,
 	}
 	return &tlogger, func() {

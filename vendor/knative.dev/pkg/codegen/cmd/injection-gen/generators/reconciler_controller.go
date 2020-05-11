@@ -154,7 +154,10 @@ const (
 	defaultControllerAgentName = "{{.type|lowercaseSingular}}-controller"
 	defaultFinalizerName       = "{{.type|allLowercasePlural}}.{{.group}}"
 	defaultQueueName           = "{{.type|allLowercasePlural}}"
-	{{if .hasClass}}classAnnotationKey = "{{ .class }}"{{end}}
+	{{if .hasClass}}
+	// ClassAnnotationKey points to the annotation for the class of this resource.
+	ClassAnnotationKey = "{{ .class }}"
+	{{end}}
 )
 
 // NewImpl returns a {{.controllerImpl|raw}} that handles queuing and feeding work from

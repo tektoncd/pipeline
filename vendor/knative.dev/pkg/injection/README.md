@@ -292,7 +292,7 @@ required = [
 
 ## Generated Reconciler Responsibilities
 
-The goal of generating the reconcilers is to provide the controller implementor
+The goal of generating the reconcilers is to provide the controller implementer
 a strongly typed interface, and ensure correct reconciler behaviour around
 status updates, Kubernetes event creation, and queue management.
 
@@ -317,8 +317,8 @@ Optionally, support for finalizers:
 ```
 
 - `ReconcileKind` is only called if the resource's deletion timestamp is empty.
-- `FinalizeKind` is optional, and if implemnted by the reconciler will be called
-  when the resource's deletion timestamp is set.
+- `FinalizeKind` is optional, and if implemented by the reconciler will be
+  called when the resource's deletion timestamp is set.
 
 The responsibility and consequences of using the generated
 `ReconcileKind(resource)` method are as follows:
@@ -397,7 +397,7 @@ kindreconciler "knative.dev/<repo>/pkg/client/injection/reconciler/<clientgroup>
 
 Controller related artifacts:
 
-- `NewImpl` - gets an injection based client and lister for <kind>, sets up
+- `NewImpl` - gets an injection based client and lister for `<kind>`, sets up
   Kubernetes Event recorders, and delegates to `controller.NewImpl` for queue
   management.
 
@@ -408,7 +408,7 @@ impl := reconciler.NewImpl(ctx, reconcilerInstance)
 Reconciler related artifacts:
 
 - `Interface` - defines the strongly typed interfaces to be implemented by a
-  controller reconciling <kind>.
+  controller reconciling `<kind>`.
 
 ```go
 // Check that our Reconciler implements Interface
@@ -416,7 +416,7 @@ var _ addressableservicereconciler.Interface = (*Reconciler)(nil)
 ```
 
 - `Finalizer` - defines the strongly typed interfaces to be implemented by a
-  controller finalizing <kind>.
+  controller finalizing `<kind>`.
 
 ```go
 // Check that our Reconciler implements Interface

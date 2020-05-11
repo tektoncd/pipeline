@@ -87,6 +87,18 @@ func (g *reconcilerControllerStubGenerator) GenerateType(c *generator.Context, t
 			Package: "knative.dev/pkg/configmap",
 			Name:    "Watcher",
 		}),
+		"classAnnotationKey": c.Universe.Variable(types.Name{
+			Package: g.reconcilerPkg,
+			Name:    "ClassAnnotationKey",
+		}),
+		"annotationFilterFunc": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/reconciler",
+			Name:    "AnnotationFilterFunc",
+		}),
+		"filterHandler": c.Universe.Type(types.Name{
+			Package: "k8s.io/client-go/tools/cache",
+			Name:    "FilteringResourceEventHandler",
+		}),
 	}
 
 	sw.Do(reconcilerControllerStub, m)
@@ -106,15 +118,27 @@ func NewController(
 
 	{{.type|lowercaseSingular}}Informer := {{.informerGet|raw}}(ctx)
 
+	{{if .hasClass}}
+	classValue := "default" // TODO: update this to the appropriate value.
+	classFilter := {{.annotationFilterFunc|raw}}({{.classAnnotationKey|raw}}, classValue, false /*allowUnset*/)
+	{{end}}
+
 	// TODO: setup additional informers here.
-	{{if .hasClass}}// TODO: pass in the expected value for the class annotation filter.{{end}}
+	{{if .hasClass}}// TODO: remember to use the classFilter from above to filter appropriately.{{end}}
 
 	r := &Reconciler{}
-	impl := {{.reconcilerNewImpl|raw}}(ctx, r{{if .hasClass}}, "default"{{end}})
+	impl := {{.reconcilerNewImpl|raw}}(ctx, r{{if .hasClass}}, classValue{{end}})
 
 	logger.Info("Setting up event handlers.")
 
+	{{if .hasClass}}
+	{{.type|lowercaseSingular}}Informer.Informer().AddEventHandler({{.filterHandler|raw}}{
+		FilterFunc: classFilter,
+		Handler:    controller.HandleAll(impl.Enqueue),
+	})
+	{{else}}
 	{{.type|lowercaseSingular}}Informer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+	{{end}}
 
 	// TODO: add additional informer event handlers here.
 

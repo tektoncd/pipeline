@@ -53,7 +53,7 @@ type ObservabilityConfig struct {
 	EnableProbeRequestLog bool
 
 	// RequestMetricsBackend specifies the request metrics destination, e.g. Prometheus,
-	// Stackdriver.
+	// Stackdriver. "None" disables all backends.
 	RequestMetricsBackend string
 
 	// EnableProfiling indicates whether it is allowed to retrieve runtime profiling data from

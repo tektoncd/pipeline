@@ -39,6 +39,14 @@ type AdmissionController interface {
 	Admit(context.Context, *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse
 }
 
+// StatelessAdmissionController is implemented by AdmissionControllers where Admit may be safely
+// called before informers have finished syncing.  This is implemented by inlining
+// StatelessAdmissionImpl in your Go type.
+type StatelessAdmissionController interface {
+	// A silly name that should avoid collisions.
+	ThisTypeDoesNotDependOnInformerState()
+}
+
 // MakeErrorStatus creates an 'BadRequest' error AdmissionResponse
 func MakeErrorStatus(reason string, args ...interface{}) *admissionv1beta1.AdmissionResponse {
 	result := apierrors.NewBadRequest(fmt.Sprintf(reason, args...)).Status()
@@ -48,8 +56,17 @@ func MakeErrorStatus(reason string, args ...interface{}) *admissionv1beta1.Admis
 	}
 }
 
-func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c AdmissionController) http.HandlerFunc {
+func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c AdmissionController, synced <-chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := c.(StatelessAdmissionController); ok {
+			// Stateless admission controllers do not require Informers to have
+			// finished syncing before Admit is called.
+		} else {
+			// Don't allow admission control requests through until we have been
+			// notified that informers have been synchronized.
+			<-synced
+		}
+
 		var ttStart = time.Now()
 		logger := rootLogger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
@@ -82,7 +99,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		response.Response.UID = review.Request.UID
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, fmt.Sprintf("could encode response: %v", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 			return
 		}
 
@@ -92,3 +109,8 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		}
 	}
 }
+
+// Inline this type to implement StatelessAdmissionController.
+type StatelessAdmissionImpl struct{}
+
+func (sai StatelessAdmissionImpl) ThisTypeDoesNotDependOnInformerState() {}

@@ -39,7 +39,8 @@ ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
 ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   ${GENCLIENT_PKG} knative.dev/pkg/apis/test \
   "example:v1alpha1" \
-  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+  --force-genreconciler-kinds "Foo"
 
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   ${GENCLIENT_PKG}/pub knative.dev/pkg/apis/test \
