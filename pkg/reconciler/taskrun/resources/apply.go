@@ -166,6 +166,19 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 		if v.PersistentVolumeClaim != nil {
 			spec.Volumes[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)
 		}
+		if v.Projected != nil {
+			for _, s := range spec.Volumes[i].Projected.Sources {
+				if s.ConfigMap != nil {
+					s.ConfigMap.Name = substitution.ApplyReplacements(s.ConfigMap.Name, stringReplacements)
+				}
+				if s.Secret != nil {
+					s.Secret.Name = substitution.ApplyReplacements(s.Secret.Name, stringReplacements)
+				}
+				if s.ServiceAccountToken != nil {
+					s.ServiceAccountToken.Audience = substitution.ApplyReplacements(s.ServiceAccountToken.Audience, stringReplacements)
+				}
+			}
+		}
 	}
 
 	// Apply variable substitution to the sidecar definitions

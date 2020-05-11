@@ -159,6 +159,27 @@ var (
 					ClaimName: "$(inputs.params.FOO)",
 				},
 			},
+		}, {
+			Name: "some-projected-volumes",
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{{
+						ConfigMap: &corev1.ConfigMapProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(inputs.params.FOO)",
+							},
+						},
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(inputs.params.FOO)",
+							},
+						},
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Audience: "$(inputs.params.FOO)",
+						},
+					}},
+				},
+			},
 		}},
 		Resources: &v1beta1.TaskResources{
 			Inputs: []v1beta1.TaskResource{{
@@ -515,6 +536,9 @@ func TestApplyParameters(t *testing.T) {
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
 		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
 		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].ConfigMap.Name = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].Secret.Name = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].ServiceAccountToken.Audience = "world"
 
 		spec.Sidecars[0].Container.Image = "bar"
 		spec.Sidecars[0].Container.Env[0].Value = "world"
