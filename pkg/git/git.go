@@ -169,7 +169,7 @@ func SubmoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	}
 	updateArgs := []string{"submodule", "update", "--recursive"}
 	if spec.Depth > 0 {
-		updateArgs = append(updateArgs, "--depth", fmt.Sprintf("--depth=%d", spec.Depth))
+		updateArgs = append(updateArgs, fmt.Sprintf("--depth=%d", spec.Depth))
 	}
 	if _, err := run(logger, "", updateArgs...); err != nil {
 		return err
