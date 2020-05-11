@@ -545,7 +545,7 @@ The `description` field is an optional field that allows you to add an informati
 
 `Tasks` allow you to substitute variable names for the following entities:
 
-- [Parameters and resources]](#substituting-parameters-and-resources)
+- [Parameters and resources](#substituting-parameters-and-resources)
 - [`Array` parameters](#substituting-array-parameters)
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
