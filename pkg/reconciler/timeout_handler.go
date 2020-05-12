@@ -184,17 +184,27 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientse
 	}
 }
 
-// CheckTimeouts function iterates through all namespaces and calls corresponding
-// taskrun/pipelinerun timeout functions
-func (t *TimeoutSet) CheckTimeouts(kubeclientset kubernetes.Interface, pipelineclientset clientset.Interface) {
-	namespaces, err := kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
-	if err != nil {
-		t.logger.Errorf("Can't get namespaces list: %s", err)
-		return
+// CheckTimeouts function iterates through a given namespace or all namespaces
+// (if empty string) and calls corresponding taskrun/pipelinerun timeout functions
+func (t *TimeoutSet) CheckTimeouts(namespace string, kubeclientset kubernetes.Interface, pipelineclientset clientset.Interface) {
+	// scoped namespace
+	namespaceNames := []string{namespace}
+	// all namespaces
+	if namespace == "" {
+		namespaces, err := kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+		if err != nil {
+			t.logger.Errorf("Can't get namespaces list: %s", err)
+			return
+		}
+		namespaceNames = make([]string, len(namespaces.Items))
+		for i, namespace := range namespaces.Items {
+			namespaceNames[i] = namespace.GetName()
+		}
 	}
-	for _, namespace := range namespaces.Items {
-		t.checkTaskRunTimeouts(namespace.GetName(), pipelineclientset)
-		t.checkPipelineRunTimeouts(namespace.GetName(), pipelineclientset)
+
+	for _, namespace := range namespaceNames {
+		t.checkTaskRunTimeouts(namespace, pipelineclientset)
+		t.checkPipelineRunTimeouts(namespace, pipelineclientset)
 	}
 }
 

@@ -70,7 +70,7 @@ func main() {
 		ImageDigestExporterImage: *imageDigestExporterImage,
 	}
 	sharedmain.MainWithContext(injection.WithNamespaceScope(signals.NewContext(), *namespace), ControllerLogKey,
-		taskrun.NewController(images),
-		pipelinerun.NewController(images),
+		taskrun.NewController(*namespace, images),
+		pipelinerun.NewController(*namespace, images),
 	)
 }

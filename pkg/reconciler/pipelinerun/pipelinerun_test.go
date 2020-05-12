@@ -49,6 +49,7 @@ import (
 )
 
 var (
+	namespace                = ""
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 	images                   = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
@@ -77,7 +78,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	ctx, cancel := context.WithCancel(ctx)
 	return test.Assets{
-		Controller: NewController(images)(ctx, configMapWatcher),
+		Controller: NewController(namespace, images)(ctx, configMapWatcher),
 		Clients:    c,
 	}, cancel
 }

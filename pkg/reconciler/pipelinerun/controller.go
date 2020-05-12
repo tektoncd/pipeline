@@ -45,7 +45,7 @@ const (
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(namespace string, images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
@@ -87,7 +87,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		impl := controller.NewImpl(c, c.Logger, pipeline.PipelineRunControllerName)
 
 		timeoutHandler.SetPipelineRunCallbackFunc(impl.Enqueue)
-		timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)
+		timeoutHandler.CheckTimeouts(namespace, kubeclientset, pipelineclientset)
 
 		c.Logger.Info("Setting up event handlers")
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
