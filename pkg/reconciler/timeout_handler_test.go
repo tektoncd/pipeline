@@ -178,8 +178,8 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 	))
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRunTimedout, taskRunTimedoutOtherNS},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRunTimedout, taskRunTimedoutOtherNS},
+		Tasks:    []*v1beta1.Task{simpleTask},
 		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
@@ -195,7 +195,7 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
-		trNew := tr.(*v1alpha1.TaskRun)
+		trNew := tr.(*v1beta1.TaskRun)
 		gotCallback.Store(trNew.Name, struct{}{})
 	}
 
@@ -204,7 +204,7 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 
 	for _, tc := range []struct {
 		name           string
-		taskRun        *v1alpha1.TaskRun
+		taskRun        *v1beta1.TaskRun
 		expectCallback bool
 	}{{
 		name:           "timedout",
