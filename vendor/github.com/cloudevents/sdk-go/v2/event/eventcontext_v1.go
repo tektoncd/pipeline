@@ -157,15 +157,15 @@ func (ec EventContextV1) AsV03() *EventContextV03 {
 	return &ret
 }
 
-// AsV04 implements EventContextConverter.AsV04
+// AsV1 implements EventContextConverter.AsV1
 func (ec EventContextV1) AsV1() *EventContextV1 {
 	return &ec
 }
 
 // Validate returns errors based on requirements from the CloudEvents spec.
-// For more details, see https://github.com/cloudevents/spec/blob/v1.0-rc1/spec.md.
-func (ec EventContextV1) Validate() error {
-	errors := []string(nil)
+// For more details, see https://github.com/cloudevents/spec/blob/v1.0/spec.md.
+func (ec EventContextV1) Validate() ValidationError {
+	errors := map[string]error{}
 
 	// id
 	// Type: String
@@ -175,7 +175,7 @@ func (ec EventContextV1) Validate() error {
 	//  MUST be unique within the scope of the producer
 	id := strings.TrimSpace(ec.ID)
 	if id == "" {
-		errors = append(errors, "id: MUST be a non-empty string")
+		errors["id"] = fmt.Errorf("MUST be a non-empty string")
 		// no way to test "MUST be unique within the scope of the producer"
 	}
 
@@ -187,7 +187,7 @@ func (ec EventContextV1) Validate() error {
 	//	An absolute URI is RECOMMENDED
 	source := strings.TrimSpace(ec.Source.String())
 	if source == "" {
-		errors = append(errors, "source: REQUIRED")
+		errors["source"] = fmt.Errorf("REQUIRED")
 	}
 
 	// type
@@ -198,7 +198,7 @@ func (ec EventContextV1) Validate() error {
 	//  SHOULD be prefixed with a reverse-DNS name. The prefixed domain dictates the organization which defines the semantics of this event type.
 	eventType := strings.TrimSpace(ec.Type)
 	if eventType == "" {
-		errors = append(errors, "type: MUST be a non-empty string")
+		errors["type"] = fmt.Errorf("MUST be a non-empty string")
 	}
 
 	// The following attributes are optional but still have validation.
@@ -211,11 +211,11 @@ func (ec EventContextV1) Validate() error {
 	if ec.DataContentType != nil {
 		dataContentType := strings.TrimSpace(*ec.DataContentType)
 		if dataContentType == "" {
-			errors = append(errors, "datacontenttype: if present, MUST adhere to the format specified in RFC 2046")
+			errors["datacontenttype"] = fmt.Errorf("if present, MUST adhere to the format specified in RFC 2046")
 		} else {
 			_, _, err := mime.ParseMediaType(dataContentType)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("datacontenttype: failed to parse RFC 2046 media type, %s", err.Error()))
+				errors["datacontenttype"] = fmt.Errorf("failed to parse RFC 2046 media type %w", err)
 			}
 		}
 	}
@@ -229,7 +229,7 @@ func (ec EventContextV1) Validate() error {
 		dataSchema := strings.TrimSpace(ec.DataSchema.String())
 		// empty string is not RFC 3986 compatible.
 		if dataSchema == "" {
-			errors = append(errors, "dataschema: if present, MUST adhere to the format specified in RFC 3986")
+			errors["dataschema"] = fmt.Errorf("if present, MUST adhere to the format specified in RFC 3986")
 		}
 	}
 
@@ -241,7 +241,7 @@ func (ec EventContextV1) Validate() error {
 	if ec.Subject != nil {
 		subject := strings.TrimSpace(*ec.Subject)
 		if subject == "" {
-			errors = append(errors, "subject: if present, MUST be a non-empty string")
+			errors["subject"] = fmt.Errorf("if present, MUST be a non-empty string")
 		}
 	}
 
@@ -253,7 +253,7 @@ func (ec EventContextV1) Validate() error {
 	// --> no need to test this, no way to set the time without it being valid.
 
 	if len(errors) > 0 {
-		return fmt.Errorf(strings.Join(errors, "\n"))
+		return errors
 	}
 	return nil
 }

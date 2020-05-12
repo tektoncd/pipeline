@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// EventWriter is the interface for reading through an event from attributes.
+// EventReader is the interface for reading through an event from attributes.
 type EventReader interface {
 	// SpecVersion returns event.Context.GetSpecVersion().
 	SpecVersion() string

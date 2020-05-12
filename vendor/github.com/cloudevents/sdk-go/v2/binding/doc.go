@@ -1,5 +1,3 @@
-package binding
-
 /*
 
 Package binding defines interfaces for protocol bindings.
@@ -35,7 +33,7 @@ The encoding process can be customized in order to mutate the final result with 
 A bunch of these are provided directly by the binding/transformer module.
 
 Usually binding.Message implementations can be encoded only one time, because the encoding process drain the message itself.
-In order to consume a message several times, the binding/buffering module provides several APIs to buffer the Message.
+In order to consume a message several times, the binding/buffering package provides several APIs to buffer the Message.
 
 A message can be converted to an event.Event using binding.ToEvent() method.
 An event.Event can be used as Message casting it to binding.EventMessage.
@@ -62,3 +60,4 @@ Transport
 A binding implementation providing Sender and Receiver implementations can be used as a Transport through the BindingTransport adapter.
 
 */
+package binding

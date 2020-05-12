@@ -1,10 +1,11 @@
-// Text codec converts []byte or string to string and vice-versa.
 package text
 
 import (
 	"context"
 	"fmt"
 )
+
+// Text codec converts []byte or string to string and vice-versa.
 
 func Decode(_ context.Context, in []byte, out interface{}) error {
 	p, _ := out.(*string)

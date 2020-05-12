@@ -1,8 +1,18 @@
 package binding
 
-import "context"
+import (
+	"context"
 
+	"github.com/cloudevents/sdk-go/v2/binding/spec"
+)
+
+// MessageReader defines the read-related portion of the Message interface.
+//
 // The ReadStructured and ReadBinary methods allows to perform an optimized encoding of a Message to a specific data structure.
+//
+// If MessageReader.ReadEncoding() can be equal to EncodingBinary, then the implementation of MessageReader
+// MUST also implement MessageMetadataReader.
+//
 // A Sender should try each method of interest and fall back to binding.ToEvent() if none are supported.
 // An out of the box algorithm is provided for writing a message: binding.Write().
 type MessageReader interface {
@@ -23,12 +33,30 @@ type MessageReader interface {
 	// ReadBinary transfers a binary-mode event to an BinaryWriter.
 	// It must return ErrNotBinary if message is not in binary mode.
 	//
+	// The implementation of ReadBinary must not control the lifecycle with BinaryWriter.Start() and BinaryWriter.End(),
+	// because the caller must control the lifecycle.
+	//
 	// Returns a different err if something wrong happened while trying to read the binary event
 	// In this case, the caller must Finish the message with appropriate error
 	//
 	// This allows Senders to avoid re-encoding messages that are
 	// already in suitable binary form.
 	ReadBinary(context.Context, BinaryWriter) error
+}
+
+// MessageMetadataReader defines how to read metadata from a binary/event message
+//
+// If a message implementing MessageReader is encoded as binary (MessageReader.ReadEncoding() == EncodingBinary)
+// or it's an EventMessage, then it's safe to assume that it also implements this interface
+type MessageMetadataReader interface {
+	// GetAttribute returns:
+	//
+	// * attribute, value: if the message contains an attribute of that attribute kind
+	// * attribute, nil: if the message spec version supports the attribute kind, but doesn't have any value
+	// * nil, nil: if the message spec version doesn't support the attribute kind
+	GetAttribute(attributeKind spec.Kind) (spec.Attribute, interface{})
+	// GetExtension returns the value of that extension, if any.
+	GetExtension(name string) interface{}
 }
 
 // Message is the interface to a binding-specific message containing an event.
@@ -90,10 +118,24 @@ type ExactlyOnceMessage interface {
 	Received(settle func(error))
 }
 
-// Message Wrapper interface is used to walk through a decorated Message and unwrap it.
+// MessageWrapper interface is used to walk through a decorated Message and unwrap it.
 type MessageWrapper interface {
 	Message
+	MessageMetadataReader
 
 	// Method to get the wrapped message
 	GetWrappedMessage() Message
+}
+
+func UnwrapMessage(message Message) Message {
+	m := message
+	for m != nil {
+		switch mt := m.(type) {
+		case MessageWrapper:
+			m = mt.GetWrappedMessage()
+		default:
+			return m
+		}
+	}
+	return m
 }

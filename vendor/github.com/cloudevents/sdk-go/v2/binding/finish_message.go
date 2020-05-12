@@ -1,8 +1,18 @@
 package binding
 
+import "github.com/cloudevents/sdk-go/v2/binding/spec"
+
 type finishMessage struct {
 	Message
 	finish func(error)
+}
+
+func (m *finishMessage) GetAttribute(k spec.Kind) (spec.Attribute, interface{}) {
+	return m.Message.(MessageMetadataReader).GetAttribute(k)
+}
+
+func (m *finishMessage) GetExtension(s string) interface{} {
+	return m.Message.(MessageMetadataReader).GetExtension(s)
 }
 
 func (m *finishMessage) GetWrappedMessage() Message {

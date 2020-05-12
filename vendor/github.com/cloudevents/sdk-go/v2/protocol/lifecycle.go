@@ -6,11 +6,13 @@ import (
 
 // Opener is the common interface for things that need to be opened.
 type Opener interface {
-	// Blocking call. Context is used to cancel.
+	// OpenInbound is a blocking call and ctx is used to stop the Inbound message Receiver/Responder.
+	// Closing the context won't close the Receiver/Responder, aka it won't invoke Close(ctx).
 	OpenInbound(ctx context.Context) error
 }
 
 // Closer is the common interface for things that can be closed.
+// After invoking Close(ctx), you cannot reuse the object you closed.
 type Closer interface {
 	Close(ctx context.Context) error
 }

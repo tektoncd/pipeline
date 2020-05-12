@@ -11,7 +11,7 @@ type ErrTransportMessageConversion struct {
 	message   string
 }
 
-// NewErrMessageEncodingUnknown makes a new ErrMessageEncodingUnknown.
+// NewErrTransportMessageConversion makes a new ErrTransportMessageConversion.
 func NewErrTransportMessageConversion(transport, message string, handled, fatal bool) *ErrTransportMessageConversion {
 	return &ErrTransportMessageConversion{
 		transport: transport,

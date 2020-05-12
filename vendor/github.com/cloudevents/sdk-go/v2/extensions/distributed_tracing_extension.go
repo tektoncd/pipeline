@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/cloudevents/sdk-go/v2/event"
 
 	"github.com/cloudevents/sdk-go/v2/types"
@@ -53,6 +54,41 @@ func GetDistributedTracingExtension(event event.Event) (DistributedTracingExtens
 		}
 	}
 	return DistributedTracingExtension{}, false
+}
+
+func (d *DistributedTracingExtension) ReadTransformer() binding.TransformerFunc {
+	return func(reader binding.MessageMetadataReader, writer binding.MessageMetadataWriter) error {
+		tp := reader.GetExtension(TraceParentExtension)
+		if tp != nil {
+			tpFormatted, err := types.Format(tp)
+			if err != nil {
+				return err
+			}
+			d.TraceParent = tpFormatted
+		}
+		ts := reader.GetExtension(TraceStateExtension)
+		if ts != nil {
+			tsFormatted, err := types.Format(ts)
+			if err != nil {
+				return err
+			}
+			d.TraceState = tsFormatted
+		}
+		return nil
+	}
+}
+
+func (d *DistributedTracingExtension) WriteTransformer() binding.TransformerFunc {
+	return func(reader binding.MessageMetadataReader, writer binding.MessageMetadataWriter) error {
+		err := writer.SetExtension(TraceParentExtension, d.TraceParent)
+		if err != nil {
+			return nil
+		}
+		if d.TraceState != "" {
+			return writer.SetExtension(TraceStateExtension, d.TraceState)
+		}
+		return nil
+	}
 }
 
 // FromSpanContext populates DistributedTracingExtension from a SpanContext.

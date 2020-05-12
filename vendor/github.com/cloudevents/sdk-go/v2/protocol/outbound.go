@@ -17,7 +17,9 @@ type Sender interface {
 	// expected acknowledgments (or errors) have been received, the Sender is
 	// no longer holding any state for the message.
 	// m.Finish() may be called during or after Send().
-	Send(ctx context.Context, m binding.Message) error
+	//
+	// transformers are applied when the message is written on the wire.
+	Send(ctx context.Context, m binding.Message, transformers ...binding.Transformer) error
 }
 
 // SendCloser is a Sender that can be closed.
@@ -32,7 +34,7 @@ type SendCloser interface {
 // request/response correlation.
 type Requester interface {
 	// Request sends m like Sender.Send() but also arranges to receive a response.
-	Request(ctx context.Context, m binding.Message) (binding.Message, error)
+	Request(ctx context.Context, m binding.Message, transformers ...binding.Transformer) (binding.Message, error)
 }
 
 // RequesterCloser is a Requester that can be closed.

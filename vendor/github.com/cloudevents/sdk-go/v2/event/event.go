@@ -24,7 +24,7 @@ const (
 
 func (e *Event) fieldError(field string, err error) {
 	if e.FieldErrors == nil {
-		e.FieldErrors = make(map[string]error, 0)
+		e.FieldErrors = make(map[string]error)
 	}
 	e.FieldErrors[field] = err
 }
@@ -47,7 +47,7 @@ func New(version ...string) Event {
 	return *e
 }
 
-// DEPRECATED: Access extensions directly via the e.Extensions() map.
+// ExtensionAs is deprecated: access extensions directly via the e.Extensions() map.
 // Use functions in the types package to convert extension values.
 // For example replace this:
 //
@@ -60,30 +60,6 @@ func New(version ...string) Event {
 //
 func (e Event) ExtensionAs(name string, obj interface{}) error {
 	return e.Context.ExtensionAs(name, obj)
-}
-
-// Validate performs a spec based validation on this event.
-// Validation is dependent on the spec version specified in the event context.
-func (e Event) Validate() error {
-	if e.Context == nil {
-		return fmt.Errorf("every event conforming to the CloudEvents specification MUST include a context")
-	}
-
-	if e.FieldErrors != nil {
-		errs := make([]string, 0)
-		for f, e := range e.FieldErrors {
-			errs = append(errs, fmt.Sprintf("%q: %s,", f, e))
-		}
-		if len(errs) > 0 {
-			return fmt.Errorf("previous field errors: [%s]", strings.Join(errs, "\n"))
-		}
-	}
-
-	if err := e.Context.Validate(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // String returns a pretty-printed representation of the Event.
