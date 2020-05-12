@@ -68,8 +68,10 @@ spec:
 
           # These images are pulled from Dockerhub, by digest, as of April 15, 2020.
           "-nop-image", "tianon/true@sha256:009cce421096698832595ce039aa13fa44327d96beedb84282a69d3dbcf5a81b",
-          "-shell-image", "busybox@sha256:a2490cec4484ee6c1068ba3a05f89934010c85242f736280b35343483b2264b6",
           "-gsutil-image", "google/cloud-sdk@sha256:6e8676464c7581b2dc824956b112a61c95e4144642bec035e6db38e3384cae2e",
+          # The shell image must be root in order to create directories and copy files to PVCs.
+          # As of April 17, 2020
+          "-shell-image", "gcr.io/distroless/base:debug@sha256:dac57423f6d9210198e1ac25de9f6d48753196a112aa2deb22f54e984cfd462d",
         ]
         volumeMounts:
         - name: config-logging

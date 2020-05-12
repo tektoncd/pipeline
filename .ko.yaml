@@ -1,7 +1,14 @@
+defaultBaseImage: gcr.io/distroless/static:nonroot
 baseImageOverrides:
+  # These base images run as root, which is needed for how they handle SSH credentials.
+  # They are produced from ./images/Dockerfile
   github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
-  github.com/tektoncd/pipeline/cmd/entrypoint: busybox  # image must have `cp` in $PATH
+  # GCS fetcher needs root due to workspace permissions
+  github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher: gcr.io/distroless/static:latest
+
+  # Our entrypoint image does not need root, it simply needs to be able to 'cp' the binary into a shared location.
+  github.com/tektoncd/pipeline/cmd/entrypoint: gcr.io/distroless/base:debug-nonroot
 baseBuildOverrides:
   github.com/tektoncd/pipeline/cmd/controller:
     flags:
