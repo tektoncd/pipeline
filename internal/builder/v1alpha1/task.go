@@ -653,6 +653,18 @@ func TaskRunLabel(key, value string) TaskRunOp {
 	}
 }
 
+// TaskRunAnnotations adds the specified annotations to the TaskRun.
+func TaskRunAnnotations(annotations map[string]string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = map[string]string{}
+		}
+		for key, value := range annotations {
+			tr.ObjectMeta.Annotations[key] = value
+		}
+	}
+}
+
 // TaskRunAnnotation adds an annotation with the specified key and value to the TaskRun.
 func TaskRunAnnotation(key, value string) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {

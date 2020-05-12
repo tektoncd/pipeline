@@ -1537,6 +1537,10 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 					"label-1": "value-1",
 					"label-2": "value-2",
 				}),
+			tbv1alpha1.ConditionAnnotations(
+				map[string]string{
+					"annotation-1": "value-1",
+				}),
 			tbv1alpha1.ConditionSpec(
 				tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
 			)),
@@ -1593,7 +1597,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	}
 	expectedConditionChecks := make([]*v1beta1.TaskRun, len(conditions))
 	for index, condition := range conditions {
-		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels)
+		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels, condition.Annotations)
 	}
 
 	// Check that the expected TaskRun was created
@@ -1729,7 +1733,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	}
 }
 
-func makeExpectedTr(condName, ccName string, labels map[string]string) *v1beta1.TaskRun {
+func makeExpectedTr(condName, ccName string, labels, annotations map[string]string) *v1beta1.TaskRun {
 	return tb.TaskRun(ccName,
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run",
@@ -1743,6 +1747,7 @@ func makeExpectedTr(condName, ccName string, labels map[string]string) *v1beta1.
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.ConditionNameKey, condName),
 		tb.TaskRunLabels(labels),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.TaskRunAnnotations(annotations),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
 				tb.Step("foo", tb.StepName("condition-check-"+condName), tb.StepArgs("bar")),
