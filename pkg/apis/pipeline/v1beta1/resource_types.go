@@ -138,6 +138,23 @@ type PipelineResourceRef struct {
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
+// PipelineResourceInterface interface to be implemented by different PipelineResource types
+type PipelineResourceInterface interface {
+	// GetName returns the name of this PipelineResource instance.
+	GetName() string
+	// GetType returns the type of this PipelineResource (often a super type, e.g. in the case of storage).
+	GetType() PipelineResourceType
+	// Replacements returns all the attributes that this PipelineResource has that
+	// can be used for variable replacement.
+	Replacements() map[string]string
+	// GetOutputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an output.
+	GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+	// GetInputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an input.
+	GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+}
+
 // TaskModifier is an interface to be implemented by different PipelineResources
 type TaskModifier interface {
 	GetStepsToPrepend() []Step

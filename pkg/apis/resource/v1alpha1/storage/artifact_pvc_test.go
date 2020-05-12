@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -35,7 +35,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
-	want := []v1alpha1.Step{{Container: corev1.Container{
+	want := []v1beta1.Step{{Container: corev1.Container{
 		Name:  "source-copy-workspace-9l9zj",
 		Image: "busybox",
 
@@ -55,7 +55,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
-	want := []v1alpha1.Step{{Container: corev1.Container{
+	want := []v1beta1.Step{{Container: corev1.Container{
 		Name:         "source-mkdir-workspace-9l9zj",
 		Image:        "busybox",
 		Command:      []string{"mkdir", "-p", "/workspace/destination"},
@@ -91,7 +91,7 @@ func TestPVCGetPvcMount(t *testing.T) {
 func TestPVCGetMakeStep(t *testing.T) {
 	names.TestingSeed()
 
-	want := v1alpha1.Step{Container: corev1.Container{
+	want := v1beta1.Step{Container: corev1.Container{
 		Name:    "create-dir-workspace-9l9zj",
 		Image:   "busybox",
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
@@ -106,7 +106,7 @@ func TestStorageBasePath(t *testing.T) {
 	pvc := storage.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
-	pipelinerun := &v1alpha1.PipelineRun{
+	pipelinerun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",

@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/test/diff"

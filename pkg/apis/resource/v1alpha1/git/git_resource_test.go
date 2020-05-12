@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -668,13 +668,13 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			ts := pipelinev1alpha1.TaskSpec{}
+			ts := v1beta1.TaskSpec{}
 			modifier, err := tc.gitResource.GetInputTaskModifier(&ts, "/test/test")
 			if err != nil {
 				t.Fatalf("Unexpected error getting GetDownloadTaskModifier: %s", err)
 			}
 
-			if d := cmp.Diff([]pipelinev1alpha1.Step{{Container: tc.want}}, modifier.GetStepsToPrepend()); d != "" {
+			if d := cmp.Diff([]v1beta1.Step{{Container: tc.want}}, modifier.GetStepsToPrepend()); d != "" {
 				t.Errorf("Mismatch of GitResource DownloadContainerSpec %s", diff.PrintWantGot(d))
 			}
 		})

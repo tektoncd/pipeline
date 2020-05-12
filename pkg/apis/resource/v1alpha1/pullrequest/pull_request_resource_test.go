@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/pullrequest"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -66,7 +66,7 @@ func TestPullRequest_NewResource_error(t *testing.T) {
 
 type testcase struct {
 	in  *pullrequest.Resource
-	out []pipelinev1alpha1.Step
+	out []v1beta1.Step
 }
 
 const workspace = "/workspace"
@@ -79,7 +79,7 @@ func containerTestCases(mode string) []testcase {
 			PRImage:               "override-with-pr:latest",
 			InsecureSkipTLSVerify: false,
 		},
-		out: []pipelinev1alpha1.Step{{Container: corev1.Container{
+		out: []v1beta1.Step{{Container: corev1.Container{
 			Name:       "pr-source-nocreds-9l9zj",
 			Image:      "override-with-pr:latest",
 			WorkingDir: pipeline.WorkspaceDir,
@@ -100,7 +100,7 @@ func containerTestCases(mode string) []testcase {
 			PRImage:  "override-with-pr:latest",
 			Provider: "github",
 		},
-		out: []pipelinev1alpha1.Step{{Container: corev1.Container{
+		out: []v1beta1.Step{{Container: corev1.Container{
 			Name:       "pr-source-creds-mz4c7",
 			Image:      "override-with-pr:latest",
 			WorkingDir: pipeline.WorkspaceDir,
@@ -125,7 +125,7 @@ func containerTestCases(mode string) []testcase {
 			PRImage:               "override-with-pr:latest",
 			InsecureSkipTLSVerify: true,
 		},
-		out: []pipelinev1alpha1.Step{{Container: corev1.Container{
+		out: []v1beta1.Step{{Container: corev1.Container{
 			Name:       "pr-source-nocreds-mssqb",
 			Image:      "override-with-pr:latest",
 			WorkingDir: pipeline.WorkspaceDir,
@@ -141,7 +141,7 @@ func TestPullRequest_GetDownloadSteps(t *testing.T) {
 
 	for _, tc := range containerTestCases("download") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			ts := pipelinev1alpha1.TaskSpec{}
+			ts := v1beta1.TaskSpec{}
 			got, err := tc.in.GetInputTaskModifier(&ts, workspace)
 			if err != nil {
 				t.Fatal(err)
@@ -158,7 +158,7 @@ func TestPullRequest_GetOutputSteps(t *testing.T) {
 
 	for _, tc := range containerTestCases("upload") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			ts := pipelinev1alpha1.TaskSpec{}
+			ts := v1beta1.TaskSpec{}
 			got, err := tc.in.GetOutputTaskModifier(&ts, workspace)
 			if err != nil {
 				t.Fatal(err)

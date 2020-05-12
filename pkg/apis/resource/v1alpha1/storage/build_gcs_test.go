@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -45,32 +46,32 @@ var images = pipeline.Images{
 func TestBuildGCSResource_Invalid(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
-		pipelineResource *v1alpha1.PipelineResource
+		pipelineResource *resourcev1alpha1.PipelineResource
 	}{{
 		name: "no location params",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-no-location-param", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("NotLocation", "doesntmatter"),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 		)),
 	}, {
 		name: "location param with empty value",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-empty-location-param", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("Location", ""),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 		)),
 	}, {
 		name: "no artifactType params",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-no-artifactType-param", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("Location", "gs://test"),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 		)),
 	}, {
 		name: "artifactType param with empty value",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-empty-artifactType-param", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("Location", "gs://test"),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 			tb.PipelineResourceSpecParam("ArtifactType", ""),
@@ -78,7 +79,7 @@ func TestBuildGCSResource_Invalid(t *testing.T) {
 	}, {
 		name: "artifactType param with invalid value",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-invalid-artifactType-param", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("Location", "gs://test"),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 			tb.PipelineResourceSpecParam("ArtifactType", "invalid-type"),
@@ -86,7 +87,7 @@ func TestBuildGCSResource_Invalid(t *testing.T) {
 	}, {
 		name: "artifactType param with secrets value",
 		pipelineResource: tb.PipelineResource("buildgcs-resource-with-invalid-artifactType-param-and-secrets", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
+			resourcev1alpha1.PipelineResourceTypeStorage,
 			tb.PipelineResourceSpecParam("Location", "gs://test"),
 			tb.PipelineResourceSpecParam("type", "build-gcs"),
 			tb.PipelineResourceSpecParam("ArtifactType", "invalid-type"),
@@ -104,7 +105,7 @@ func TestBuildGCSResource_Invalid(t *testing.T) {
 
 func TestNewBuildGCSResource_Valid(t *testing.T) {
 	pr := tb.PipelineResource("build-gcs-resource", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeStorage,
+		resourcev1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "Manifest"),
@@ -112,7 +113,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 	expectedGCSResource := &storage.BuildGCSResource{
 		Name:                 "build-gcs-resource",
 		Location:             "gs://fake-bucket",
-		Type:                 v1alpha1.PipelineResourceTypeStorage,
+		Type:                 resourcev1alpha1.PipelineResourceTypeStorage,
 		ArtifactType:         "Manifest",
 		ShellImage:           "busybox",
 		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
@@ -131,7 +132,7 @@ func TestBuildGCS_GetReplacements(t *testing.T) {
 	r := &storage.BuildGCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
-		Type:     v1alpha1.PipelineResourceTypeBuildGCS,
+		Type:     resourcev1alpha1.PipelineResourceTypeBuildGCS,
 	}
 	expectedReplacementMap := map[string]string{
 		"name":     "gcs-resource",
@@ -158,7 +159,7 @@ func TestBuildGCS_GetInputSteps(t *testing.T) {
 				ShellImage:           "busybox",
 				BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 			}
-			wantSteps := []v1alpha1.Step{{Container: corev1.Container{
+			wantSteps := []v1beta1.Step{{Container: corev1.Container{
 				Name:    "create-dir-gcs-valid-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace"},
@@ -170,7 +171,7 @@ func TestBuildGCS_GetInputSteps(t *testing.T) {
 			}}}
 			names.TestingSeed()
 
-			ts := v1alpha1.TaskSpec{}
+			ts := v1beta1.TaskSpec{}
 			got, err := resource.GetInputTaskModifier(&ts, "/workspace")
 			if err != nil {
 				t.Fatalf("GetDownloadSteps: %v", err)
@@ -184,7 +185,7 @@ func TestBuildGCS_GetInputSteps(t *testing.T) {
 
 func TestBuildGCS_InvalidArtifactType(t *testing.T) {
 	pr := tb.PipelineResource("build-gcs-resource", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeStorage,
+		resourcev1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "InVaLiD"),

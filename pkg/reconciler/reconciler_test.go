@@ -22,12 +22,12 @@ import (
 	"strings"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	test "github.com/tektoncd/pipeline/test/v1alpha1"
+	test "github.com/tektoncd/pipeline/test"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +38,7 @@ import (
 // Test case for providing recorder in the option
 func TestRecorderOptions(t *testing.T) {
 
-	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed",
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -47,10 +47,10 @@ func TestRecorderOptions(t *testing.T) {
 			Message: "All Tasks have completed executing",
 		})),
 	)}
-	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineSpec(
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hellow-world"),
 	))}
-	ts := []*v1alpha1.Task{tb.Task("hello-world")}
+	ts := []*v1beta1.Task{tb.Task("hello-world")}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,

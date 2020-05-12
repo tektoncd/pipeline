@@ -20,11 +20,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -46,161 +46,157 @@ var (
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
 
-	simpleTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1beta1.TaskSpec{
-			Sidecars: []v1alpha1.Sidecar{{
-				Container: corev1.Container{
-					Name:  "foo",
-					Image: "$(inputs.params.myimage)",
-					Env: []corev1.EnvVar{{
-						Name:  "foo",
-						Value: "$(inputs.params.FOO)",
-					}},
-				},
-			}},
-			StepTemplate: &corev1.Container{
+	simpleTaskSpec = &v1beta1.TaskSpec{
+		Sidecars: []v1beta1.Sidecar{{
+			Container: corev1.Container{
+				Name:  "foo",
+				Image: "$(inputs.params.myimage)",
 				Env: []corev1.EnvVar{{
-					Name:  "template-var",
+					Name:  "foo",
 					Value: "$(inputs.params.FOO)",
 				}},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+		}},
+		StepTemplate: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: "$(inputs.params.FOO)",
+			}},
+		},
+		Steps: []v1beta1.Step{{Container: corev1.Container{
+			Name:  "foo",
+			Image: "$(inputs.params.myimage)",
+		}}, {Container: corev1.Container{
+			Name:       "baz",
+			Image:      "bat",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "qux",
+			Image: "$(inputs.params.something)",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "$(inputs.params.myimage)",
+		}}, {Container: corev1.Container{
+			Name:       "baz",
+			Image:      "$(inputs.params.somethingelse)",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "qux",
+			Image: "quux",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "busybox:$(inputs.params.FOO)",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(inputs.params.FOO)",
+				MountPath: "path/to/$(inputs.params.FOO)",
+				SubPath:   "sub/$(inputs.params.FOO)/path",
+			}},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "busybox:$(inputs.params.FOO)",
+			Env: []corev1.EnvVar{{
 				Name:  "foo",
-				Image: "$(inputs.params.myimage)",
-			}}, {Container: corev1.Container{
-				Name:       "baz",
-				Image:      "bat",
-				WorkingDir: "$(inputs.resources.workspace.path)",
-				Args:       []string{"$(inputs.resources.workspace.url)"},
-			}}, {Container: corev1.Container{
-				Name:  "qux",
-				Image: "$(inputs.params.something)",
-				Args:  []string{"$(outputs.resources.imageToUse.url)"},
-			}}, {Container: corev1.Container{
-				Name:  "foo",
-				Image: "$(inputs.params.myimage)",
-			}}, {Container: corev1.Container{
-				Name:       "baz",
-				Image:      "$(inputs.params.somethingelse)",
-				WorkingDir: "$(inputs.resources.workspace.path)",
-				Args:       []string{"$(inputs.resources.workspace.url)"},
-			}}, {Container: corev1.Container{
-				Name:  "qux",
-				Image: "quux",
-				Args:  []string{"$(outputs.resources.imageToUse.url)"},
-			}}, {Container: corev1.Container{
-				Name:  "foo",
-				Image: "busybox:$(inputs.params.FOO)",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "$(inputs.params.FOO)",
-					MountPath: "path/to/$(inputs.params.FOO)",
-					SubPath:   "sub/$(inputs.params.FOO)/path",
-				}},
-			}}, {Container: corev1.Container{
-				Name:  "foo",
-				Image: "busybox:$(inputs.params.FOO)",
-				Env: []corev1.EnvVar{{
-					Name:  "foo",
-					Value: "value-$(inputs.params.FOO)",
-				}, {
-					Name: "bar",
-					ValueFrom: &corev1.EnvVarSource{
-						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
-							Key:                  "config-key-$(inputs.params.FOO)",
-						},
-					},
-				}, {
-					Name: "baz",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
-							Key:                  "secret-key-$(inputs.params.FOO)",
-						},
-					},
-				}},
-				EnvFrom: []corev1.EnvFromSource{{
-					Prefix: "prefix-0-$(inputs.params.FOO)",
-					ConfigMapRef: &corev1.ConfigMapEnvSource{
+				Value: "value-$(inputs.params.FOO)",
+			}, {
+				Name: "bar",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+						Key:                  "config-key-$(inputs.params.FOO)",
 					},
-				}, {
-					Prefix: "prefix-1-$(inputs.params.FOO)",
-					SecretRef: &corev1.SecretEnvSource{
+				},
+			}, {
+				Name: "baz",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
-					},
-				}},
-			}}, {Container: corev1.Container{
-				Name:  "outputs-resources-path-ab",
-				Image: "$(outputs.resources.imageToUse-ab.path)",
-			}}, {Container: corev1.Container{
-				Name:  "outputs-resources-path-re",
-				Image: "$(outputs.resources.imageToUse-re.path)",
-			}}},
-			Volumes: []corev1.Volume{{
-				Name: "$(inputs.params.FOO)",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "$(inputs.params.FOO)",
-						},
-					},
-				},
-			}, {
-				Name: "some-secret",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "$(inputs.params.FOO)",
-					},
-				},
-			}, {
-				Name: "some-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "$(inputs.params.FOO)",
+						Key:                  "secret-key-$(inputs.params.FOO)",
 					},
 				},
 			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1alpha1.TaskResource{{
-					ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name: "workspace",
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "prefix-0-$(inputs.params.FOO)",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+				},
+			}, {
+				Prefix: "prefix-1-$(inputs.params.FOO)",
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
+				},
+			}},
+		}}, {Container: corev1.Container{
+			Name:  "outputs-resources-path-ab",
+			Image: "$(outputs.resources.imageToUse-ab.path)",
+		}}, {Container: corev1.Container{
+			Name:  "outputs-resources-path-re",
+			Image: "$(outputs.resources.imageToUse-re.path)",
+		}}},
+		Volumes: []corev1.Volume{{
+			Name: "$(inputs.params.FOO)",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(inputs.params.FOO)",
 					},
-				}},
-				Outputs: []v1alpha1.TaskResource{{
-					ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name:       "imageToUse-ab",
-						TargetPath: "/foo/builtImage",
-					},
-				}, {
-					ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name:       "imageToUse-re",
-						TargetPath: "foo/builtImage",
-					},
-				}},
+				},
 			},
+		}, {
+			Name: "some-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "$(inputs.params.FOO)",
+				},
+			},
+		}, {
+			Name: "some-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "$(inputs.params.FOO)",
+				},
+			},
+		}},
+		Resources: &v1beta1.TaskResources{
+			Inputs: []v1beta1.TaskResource{{
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "workspace",
+				},
+			}},
+			Outputs: []v1beta1.TaskResource{{
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name:       "imageToUse-ab",
+					TargetPath: "/foo/builtImage",
+				},
+			}, {
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name:       "imageToUse-re",
+					TargetPath: "foo/builtImage",
+				},
+			}},
 		},
 	}
 
-	gcsTaskSpec = &v1alpha1.TaskSpec{
-		TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "foobar",
-				Image: "someImage",
-				Args:  []string{"$(outputs.resources.bucket.path)"},
-			}}},
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1alpha1.TaskResource{{
-					ResourceDeclaration: v1alpha1.ResourceDeclaration{
-						Name: "bucket",
-					},
-				}},
-			},
+	gcsTaskSpec = &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
+			Name:  "foobar",
+			Image: "someImage",
+			Args:  []string{"$(outputs.resources.bucket.path)"},
+		}}},
+		Resources: &v1beta1.TaskResources{
+			Outputs: []v1beta1.TaskResource{{
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "bucket",
+				},
+			}},
 		},
 	}
 
-	arrayParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+	arrayParamTaskSpec = &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
@@ -209,10 +205,10 @@ var (
 			Command: []string{"echo"},
 			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
 		}}},
-	}}
+	}
 
-	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+	arrayAndStringParamTaskSpec = &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
@@ -221,10 +217,10 @@ var (
 			Command: []string{"echo"},
 			Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
 		}}},
-	}}
+	}
 
-	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+	multipleArrayParamsTaskSpec = &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
@@ -233,10 +229,10 @@ var (
 			Command: []string{"cmd", "$(inputs.params.another-array-param)"},
 			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
 		}}},
-	}}
+	}
 
-	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+	multipleArrayAndStringsParamsTaskSpec = &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
 			Image: "image-$(inputs.params.string-param2)",
 		}}, {Container: corev1.Container{
@@ -245,41 +241,41 @@ var (
 			Command: []string{"cmd", "$(inputs.params.array-param1)"},
 			Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
 		}}},
-	}}
+	}
 
-	arrayTaskRun0Elements = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRun0Elements = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name: "array-param",
-				Value: v1alpha1.ArrayOrString{
-					Type:     v1alpha1.ParamTypeArray,
+				Value: v1beta1.ArrayOrString{
+					Type:     v1beta1.ParamTypeArray,
 					ArrayVal: []string{},
 				}},
 			},
 		},
 	}
 
-	arrayTaskRun1Elements = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRun1Elements = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "array-param",
 				Value: *tb.ArrayOrString("foo"),
 			}},
 		},
 	}
 
-	arrayTaskRun3Elements = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRun3Elements = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "array-param",
 				Value: *tb.ArrayOrString("foo", "bar", "third"),
 			}},
 		},
 	}
 
-	arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRunMultipleArrays = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "array-param",
 				Value: *tb.ArrayOrString("foo", "bar", "third"),
 			}, {
@@ -289,9 +285,9 @@ var (
 		},
 	}
 
-	arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRunWith1StringParam = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "array-param",
 				Value: *tb.ArrayOrString("middlefirst", "middlesecond"),
 			}, {
@@ -301,9 +297,9 @@ var (
 		},
 	}
 
-	arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	arrayTaskRunMultipleArraysAndStrings = &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "array-param1",
 				Value: *tb.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
@@ -319,48 +315,48 @@ var (
 		},
 	}
 
-	inputs = map[string]v1alpha1.PipelineResourceInterface{
+	inputs = map[string]v1beta1.PipelineResourceInterface{
 		"workspace": gitResource,
 	}
 
-	outputs = map[string]v1alpha1.PipelineResourceInterface{
+	outputs = map[string]v1beta1.PipelineResourceInterface{
 		"imageToUse": imageResource,
 		"bucket":     gcsResource,
 	}
 
-	gitResource, _ = resource.FromType(&v1alpha1.PipelineResource{
+	gitResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "git-resource",
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.ResourceParam{{
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "URL",
 				Value: "https://git-repo",
 			}},
 		},
 	}, images)
 
-	imageResource, _ = resource.FromType(&v1alpha1.PipelineResource{
+	imageResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "image-resource",
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeImage,
-			Params: []v1alpha1.ResourceParam{{
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeImage,
+			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "URL",
 				Value: "gcr.io/hans/sandwiches",
 			}},
 		},
 	}, images)
 
-	gcsResource, _ = resource.FromType(&v1alpha1.PipelineResource{
+	gcsResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "gcs-resource",
 		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeStorage,
-			Params: []v1alpha1.ResourceParam{{
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeStorage,
+			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "type",
 				Value: "gcs",
 			}, {
@@ -371,7 +367,7 @@ var (
 	}, images)
 )
 
-func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
+func applyMutation(ts *v1beta1.TaskSpec, f func(*v1beta1.TaskSpec)) *v1beta1.TaskSpec {
 	ts = ts.DeepCopy()
 	f(ts)
 	return ts
@@ -379,21 +375,21 @@ func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.
 
 func TestApplyArrayParameters(t *testing.T) {
 	type args struct {
-		ts *v1alpha1.TaskSpec
-		tr *v1alpha1.TaskRun
-		dp []v1alpha1.ParamSpec
+		ts *v1beta1.TaskSpec
+		tr *v1beta1.TaskRun
+		dp []v1beta1.ParamSpec
 	}
 	tests := []struct {
 		name string
 		args args
-		want *v1alpha1.TaskSpec
+		want *v1beta1.TaskSpec
 	}{{
 		name: "array parameter with 0 elements",
 		args: args{
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun0Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "last"}
 		}),
 	}, {
@@ -402,7 +398,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun1Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "foo", "last"}
 		}),
 	}, {
@@ -411,7 +407,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayParamTaskSpec,
 			tr: arrayTaskRun3Elements,
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
 		}),
 	}, {
@@ -420,7 +416,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: multipleArrayParamsTaskSpec,
 			tr: arrayTaskRunMultipleArrays,
 		},
-		want: applyMutation(multipleArrayParamsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(multipleArrayParamsTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Command = []string{"cmd", "part1", "part2"}
 			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
 		}),
@@ -430,7 +426,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: arrayAndStringParamTaskSpec,
 			tr: arrayTaskRunWith1StringParam,
 		},
-		want: applyMutation(arrayAndStringParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(arrayAndStringParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"foo", "second", "middlefirst", "middlesecond", "last"}
 		}),
 	}, {
@@ -439,7 +435,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			ts: multipleArrayAndStringsParamsTaskSpec,
 			tr: arrayTaskRunMultipleArraysAndStrings,
 		},
-		want: applyMutation(multipleArrayAndStringsParamsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(multipleArrayAndStringsParamsTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[0].Image = "image-bar"
 			spec.Steps[1].Command = []string{"cmd", "1-param1", "2-param1", "3-param1", "4-param1"}
 			spec.Steps[1].Args = []string{"1-param2", "2-param2", "2-param3", "second", "1-param1", "2-param1", "3-param1", "4-param1", "foo", "last"}
@@ -448,15 +444,15 @@ func TestApplyArrayParameters(t *testing.T) {
 		name: "default array parameter",
 		args: args{
 			ts: arrayParamTaskSpec,
-			tr: &v1alpha1.TaskRun{},
-			dp: []v1alpha1.ParamSpec{
+			tr: &v1beta1.TaskRun{},
+			dp: []v1beta1.ParamSpec{
 				{
 					Name:    "array-param",
 					Default: tb.ArrayOrString("defaulted", "value!"),
 				},
 			},
 		},
-		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "defaulted", "value!", "last"}
 		}),
 	}}
@@ -471,9 +467,9 @@ func TestApplyArrayParameters(t *testing.T) {
 }
 
 func TestApplyParameters(t *testing.T) {
-	tr := &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
 				Name:  "myimage",
 				Value: *tb.ArrayOrString("bar"),
 			}, {
@@ -482,14 +478,14 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}
-	dp := []v1alpha1.ParamSpec{{
+	dp := []v1beta1.ParamSpec{{
 		Name:    "something",
 		Default: tb.ArrayOrString("mydefault"),
 	}, {
 		Name:    "somethingelse",
 		Default: tb.ArrayOrString(""),
 	}}
-	want := applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
 
 		spec.Steps[0].Image = "bar"
@@ -531,22 +527,22 @@ func TestApplyParameters(t *testing.T) {
 
 func TestApplyResources(t *testing.T) {
 	type args struct {
-		ts   *v1alpha1.TaskSpec
-		r    map[string]v1alpha1.PipelineResourceInterface
+		ts   *v1beta1.TaskSpec
+		r    map[string]v1beta1.PipelineResourceInterface
 		rStr string
 	}
 	tests := []struct {
 		name string
 		args args
-		want *v1alpha1.TaskSpec
+		want *v1beta1.TaskSpec
 	}{{
 		name: "no replacements specified",
 		args: args{
 			ts:   simpleTaskSpec,
-			r:    make(map[string]v1alpha1.PipelineResourceInterface),
+			r:    make(map[string]v1beta1.PipelineResourceInterface),
 			rStr: "inputs",
 		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
 			spec.Steps[8].Image = "/foo/builtImage"
@@ -559,7 +555,7 @@ func TestApplyResources(t *testing.T) {
 			r:    inputs,
 			rStr: "inputs",
 		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[1].Args = []string{"https://git-repo"}
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
@@ -574,7 +570,7 @@ func TestApplyResources(t *testing.T) {
 			r:    outputs,
 			rStr: "outputs",
 		},
-		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
@@ -589,7 +585,7 @@ func TestApplyResources(t *testing.T) {
 			r:    outputs,
 			rStr: "outputs",
 		},
-		want: applyMutation(gcsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+		want: applyMutation(gcsTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[0].Args = []string{"/workspace/output/bucket"}
 		}),
 	}}
@@ -605,7 +601,7 @@ func TestApplyResources(t *testing.T) {
 
 func TestApplyWorkspaces(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+	ts := &v1beta1.TaskSpec{
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
@@ -618,7 +614,7 @@ func TestApplyWorkspaces(t *testing.T) {
 				Value: "$(workspaces.otherws.claim)",
 			}},
 		},
-		Steps: []v1alpha1.Step{{Container: corev1.Container{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:       "$(workspaces.myws.volume)",
 			Image:      "$(workspaces.otherws.volume)",
 			WorkingDir: "$(workspaces.otherws.volume)",
@@ -675,8 +671,8 @@ func TestApplyWorkspaces(t *testing.T) {
 				},
 			},
 		}},
-	}}
-	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
+	}
+	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "ws-9l9zj"
 		spec.StepTemplate.Env[1].Value = "foo"
 		spec.StepTemplate.Env[2].Value = ""
@@ -701,13 +697,13 @@ func TestApplyWorkspaces(t *testing.T) {
 		spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-9l9zj"
 		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-9l9zj"
 	})
-	w := []v1alpha1.WorkspaceDeclaration{{
+	w := []v1beta1.WorkspaceDeclaration{{
 		Name: "myws",
 	}, {
 		Name:      "otherws",
 		MountPath: "/foo",
 	}}
-	wb := []v1alpha1.WorkspaceBinding{{
+	wb := []v1beta1.WorkspaceBinding{{
 		Name: "myws",
 		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: "foo",
@@ -724,15 +720,15 @@ func TestApplyWorkspaces(t *testing.T) {
 
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ts := &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-		Results: []v1alpha1.TaskResult{{
+	ts := &v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
 			Name:        "current-date-unix-timestamp",
 			Description: "The current date in unix timestamp format",
 		}, {
 			Name:        "current-date-human-readable",
 			Description: "The current date in humand readable format"},
 		},
-		Steps: []v1alpha1.Step{{
+		Steps: []v1beta1.Step{{
 			Container: corev1.Container{
 				Name:  "print-date-unix-timestamp",
 				Image: "bash:latest",
@@ -746,8 +742,8 @@ func TestTaskResults(t *testing.T) {
 			},
 			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",
 		}},
-	}}
-	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
+	}
+	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
 		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current-date-unix-timestamp"
 		spec.Steps[0].Args[0] = "/tekton/results/current-date-unix-timestamp"
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
@@ -761,41 +757,41 @@ func TestTaskResults(t *testing.T) {
 func TestApplyCredentialsPath(t *testing.T) {
 	for _, tc := range []struct {
 		description string
-		spec        v1alpha1.TaskSpec
+		spec        v1beta1.TaskSpec
 		path        string
-		want        v1alpha1.TaskSpec
+		want        v1beta1.TaskSpec
 	}{{
 		description: "replacement in spec container",
-		spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
 					Command: []string{"cp"},
 					Args:    []string{"-R", "$(credentials.path)/", "$HOME"},
 				},
 			}},
-		}},
+		},
 		path: "/tekton/creds",
-		want: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
 					Command: []string{"cp"},
 					Args:    []string{"-R", "/tekton/creds/", "$HOME"},
 				},
 			}},
-		}},
+		},
 	}, {
 		description: "replacement in spec Script",
-		spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
 				Script: `cp -R "$(credentials.path)/" $HOME`,
 			}},
-		}},
+		},
 		path: "/tekton/home",
-		want: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
 				Script: `cp -R "/tekton/home/" $HOME`,
 			}},
-		}},
+		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyCredentialsPath(&tc.spec, tc.path)

@@ -42,13 +42,13 @@ type GetCondition func(string) (*v1alpha1.Condition, error)
 // has not been evaluated).
 type ResolvedConditionCheck struct {
 	ConditionRegisterName string
-	PipelineTaskCondition *v1alpha1.PipelineTaskCondition
+	PipelineTaskCondition *v1beta1.PipelineTaskCondition
 	ConditionCheckName    string
 	Condition             *v1alpha1.Condition
-	ConditionCheck        *v1alpha1.ConditionCheck
+	ConditionCheck        *v1beta1.ConditionCheck
 	// Resolved resources is a map of pipeline resources for this condition
 	// keyed by the bound resource name (i.e. the name used in PipelineTaskCondition.Resources)
-	ResolvedResources map[string]*v1alpha1.PipelineResource
+	ResolvedResources map[string]*resourcev1alpha1.PipelineResource
 
 	images pipeline.Images
 }
@@ -94,23 +94,21 @@ func (state TaskConditionCheckState) IsSuccess() bool {
 }
 
 // ConditionToTaskSpec creates a TaskSpec from a given Condition
-func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, error) {
+func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1beta1.TaskSpec, error) {
 	if rcc.Condition.Spec.Check.Name == "" {
 		rcc.Condition.Spec.Check.Name = unnamedCheckNamePrefix + rcc.Condition.Name
 	}
 
-	t := &v1alpha1.TaskSpec{
-		TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{rcc.Condition.Spec.Check},
-		},
-	}
-
-	t.Inputs = &v1alpha1.Inputs{
+	t := &v1beta1.TaskSpec{
+		Steps:  []v1beta1.Step{rcc.Condition.Spec.Check},
 		Params: rcc.Condition.Spec.Params,
 	}
 
 	for _, r := range rcc.Condition.Spec.Resources {
-		t.Inputs.Resources = append(t.Inputs.Resources, v1alpha1.TaskResource{
+		if t.Resources == nil {
+			t.Resources = &v1beta1.TaskResources{}
+		}
+		t.Resources.Inputs = append(t.Resources.Inputs, v1beta1.TaskResource{
 			ResourceDeclaration: r,
 		})
 	}
@@ -126,19 +124,19 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 }
 
 // convertParamTemplates replaces all instances of $(params.x) in the container to $(inputs.params.x) for each param name.
-func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
+func convertParamTemplates(step *v1beta1.Step, params []v1beta1.ParamSpec) {
 	replacements := make(map[string]string)
 	for _, p := range params {
 		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("$(inputs.params.%s)", p.Name)
-		v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
+		v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 	}
 
-	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
+	v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
 // ApplyResources applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
-func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration, images pipeline.Images) error {
+func ApplyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
@@ -149,15 +147,15 @@ func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string
 			for k, v := range r.Replacements() {
 				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, k)] = v
 			}
-			replacements[fmt.Sprintf("resources.%s.path", cr.Name)] = v1alpha1.InputResourcePath(cr)
+			replacements[fmt.Sprintf("resources.%s.path", cr.Name)] = v1beta1.InputResourcePath(cr)
 		}
 	}
-	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
+	v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 	return nil
 }
 
 // NewConditionCheckStatus creates a ConditionCheckStatus from a ConditionCheck
-func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.ConditionCheckStatus {
+func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1beta1.ConditionCheckStatus {
 	var checkStep corev1.ContainerState
 	trs := rcc.ConditionCheck.Status
 	for _, s := range trs.Steps {
@@ -167,9 +165,9 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.Condition
 		}
 	}
 
-	return &v1alpha1.ConditionCheckStatus{
+	return &v1beta1.ConditionCheckStatus{
 		Status: trs.Status,
-		ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
+		ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
 			PodName:        trs.PodName,
 			StartTime:      trs.StartTime,
 			CompletionTime: trs.CompletionTime,
@@ -178,22 +176,22 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.Condition
 	}
 }
 
-func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResourceBinding {
-	var trb []v1alpha1.TaskResourceBinding
+func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1beta1.TaskResourceBinding {
+	var trb []v1beta1.TaskResourceBinding
 
 	for name, r := range rcc.ResolvedResources {
-		tr := v1alpha1.TaskResourceBinding{
-			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+		tr := v1beta1.TaskResourceBinding{
+			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 				Name: name,
 			},
 		}
 		if r.SelfLink != "" {
-			tr.ResourceRef = &v1alpha1.PipelineResourceRef{
+			tr.ResourceRef = &v1beta1.PipelineResourceRef{
 				Name:       r.Name,
 				APIVersion: r.APIVersion,
 			}
 		} else if r.Spec.Type != "" {
-			tr.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+			tr.ResourceSpec = &resourcev1alpha1.PipelineResourceSpec{
 				Type:         r.Spec.Type,
 				Params:       r.Spec.Params,
 				SecretParams: r.Spec.SecretParams,

@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
@@ -33,7 +33,7 @@ import (
 // FromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
 // a PipelineResource in a pod.
-func FromType(r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1alpha1.PipelineResourceInterface, error) {
+func FromType(r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1beta1.PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case resourcev1alpha1.PipelineResourceTypeGit:
 		return git.NewResource(images.GitImage, r)

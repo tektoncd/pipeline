@@ -19,7 +19,7 @@ package resources
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,10 +32,10 @@ type LocalPipelineRefResolver struct {
 
 // GetPipeline will resolve a Pipeline from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Pipeline for any reason.
-func (l *LocalPipelineRefResolver) GetPipeline(name string) (v1alpha1.PipelineInterface, error) {
+func (l *LocalPipelineRefResolver) GetPipeline(name string) (v1beta1.PipelineInterface, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
 		return nil, fmt.Errorf("Must specify namespace to resolve reference to pipeline %s", name)
 	}
-	return l.Tektonclient.TektonV1alpha1().Pipelines(l.Namespace).Get(name, metav1.GetOptions{})
+	return l.Tektonclient.TektonV1beta1().Pipelines(l.Namespace).Get(name, metav1.GetOptions{})
 }

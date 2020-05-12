@@ -19,17 +19,17 @@ package resources
 import (
 	"path/filepath"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
 // GetOutputSteps will add the correct `path` to the output resources for pt
-func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, storageBasePath string) []v1alpha1.TaskResourceBinding {
-	var taskOutputResources []v1alpha1.TaskResourceBinding
+func GetOutputSteps(outputs map[string]*resourcev1alpha1.PipelineResource, taskName, storageBasePath string) []v1beta1.TaskResourceBinding {
+	var taskOutputResources []v1beta1.TaskResourceBinding
 
 	for name, outputResource := range outputs {
-		taskOutputResource := v1alpha1.TaskResourceBinding{
-			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+		taskOutputResource := v1beta1.TaskResourceBinding{
+			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 				Name: name,
 			},
 			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
@@ -37,12 +37,12 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 		// SelfLink is being checked there to determine if this PipelineResource is an instance that
 		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if outputResource.SelfLink != "" {
-			taskOutputResource.ResourceRef = &v1alpha1.PipelineResourceRef{
+			taskOutputResource.ResourceRef = &v1beta1.PipelineResourceRef{
 				Name:       outputResource.Name,
 				APIVersion: outputResource.APIVersion,
 			}
 		} else if outputResource.Spec.Type != "" {
-			taskOutputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+			taskOutputResource.ResourceSpec = &resourcev1alpha1.PipelineResourceSpec{
 				Type:         outputResource.Spec.Type,
 				Params:       outputResource.Spec.Params,
 				SecretParams: outputResource.Spec.SecretParams,
@@ -55,24 +55,24 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 
 // GetInputSteps will add the correct `path` to the input resources for pt. If the resources are provided by
 // a previous task, the correct `path` will be used so that the resource provided by that task will be used.
-func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, inputResources []v1alpha1.PipelineTaskInputResource, storageBasePath string) []v1alpha1.TaskResourceBinding {
-	var taskInputResources []v1alpha1.TaskResourceBinding
+func GetInputSteps(inputs map[string]*resourcev1alpha1.PipelineResource, inputResources []v1beta1.PipelineTaskInputResource, storageBasePath string) []v1beta1.TaskResourceBinding {
+	var taskInputResources []v1beta1.TaskResourceBinding
 
 	for name, inputResource := range inputs {
-		taskInputResource := v1alpha1.TaskResourceBinding{
-			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+		taskInputResource := v1beta1.TaskResourceBinding{
+			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 				Name: name,
 			},
 		}
 		// SelfLink is being checked there to determine if this PipelineResource is an instance that
 		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if inputResource.SelfLink != "" {
-			taskInputResource.ResourceRef = &v1alpha1.PipelineResourceRef{
+			taskInputResource.ResourceRef = &v1beta1.PipelineResourceRef{
 				Name:       inputResource.Name,
 				APIVersion: inputResource.APIVersion,
 			}
 		} else if inputResource.Spec.Type != "" {
-			taskInputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+			taskInputResource.ResourceSpec = &resourcev1alpha1.PipelineResourceSpec{
 				Type:         inputResource.Spec.Type,
 				Params:       inputResource.Spec.Params,
 				SecretParams: inputResource.Spec.SecretParams,
@@ -98,7 +98,7 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, inputResources 
 }
 
 // WrapSteps will add the correct `paths` to all of the inputs and outputs for pt
-func WrapSteps(tr *v1alpha1.TaskRunSpec, pt *v1alpha1.PipelineTask, inputs, outputs map[string]*v1alpha1.PipelineResource, storageBasePath string) {
+func WrapSteps(tr *v1beta1.TaskRunSpec, pt *v1beta1.PipelineTask, inputs, outputs map[string]*resourcev1alpha1.PipelineResource, storageBasePath string) {
 	if pt == nil {
 		return
 	}

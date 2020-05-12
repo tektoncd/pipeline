@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"knative.dev/pkg/apis"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // TektonEventType holds the types of cloud events sent by Tekton
@@ -54,11 +54,11 @@ type CEClient cloudevents.Client
 // a Tekton cloud event. It only includes a TaskRun for now. Using a type opens
 // the possibility for the future to add more data to the payload
 type TektonCloudEventData struct {
-	TaskRun *v1alpha1.TaskRun `json:"taskRun"`
+	TaskRun *v1beta1.TaskRun `json:"taskRun"`
 }
 
 // NewTektonCloudEventData returns a new instance of NewTektonCloudEventData
-func NewTektonCloudEventData(taskRun *v1alpha1.TaskRun) TektonCloudEventData {
+func NewTektonCloudEventData(taskRun *v1beta1.TaskRun) TektonCloudEventData {
 	return TektonCloudEventData{
 		TaskRun: taskRun,
 	}
@@ -66,7 +66,7 @@ func NewTektonCloudEventData(taskRun *v1alpha1.TaskRun) TektonCloudEventData {
 
 // EventForTaskRun will create a new event based on a TaskRun,
 // or return an error if not possible.
-func EventForTaskRun(taskRun *v1alpha1.TaskRun) (*cloudevents.Event, error) {
+func EventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
 	// Check if the TaskRun is defined
 	if taskRun == nil {
 		return nil, errors.New("Cannot send an event for an empty TaskRun")
@@ -98,15 +98,15 @@ func EventForTaskRun(taskRun *v1alpha1.TaskRun) (*cloudevents.Event, error) {
 // and compare a list of CloudEventDelivery
 func GetCloudEventDeliveryCompareOptions() []cmp.Option {
 	// Setup cmp options
-	cloudDeliveryStateCompare := func(x, y v1alpha1.CloudEventDeliveryState) bool {
+	cloudDeliveryStateCompare := func(x, y v1beta1.CloudEventDeliveryState) bool {
 		return cmp.Equal(x.Condition, y.Condition) && cmp.Equal(x.RetryCount, y.RetryCount)
 	}
-	less := func(x, y v1alpha1.CloudEventDelivery) bool {
+	less := func(x, y v1beta1.CloudEventDelivery) bool {
 		return strings.Compare(x.Target, y.Target) < 0 || (strings.Compare(x.Target, y.Target) == 0 && x.Status.SentAt.Before(y.Status.SentAt))
 	}
 	return []cmp.Option{
 		cmpopts.SortSlices(less),
-		cmp.Comparer(func(x, y v1alpha1.CloudEventDelivery) bool {
+		cmp.Comparer(func(x, y v1beta1.CloudEventDelivery) bool {
 			return (strings.Compare(x.Target, y.Target) == 0) && cloudDeliveryStateCompare(x.Status, y.Status)
 		}),
 	}

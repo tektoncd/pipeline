@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -419,42 +418,5 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
 		t.Fatalf("TaskRun diff -want, +got: %v", d)
-	}
-}
-
-func TestResolvedTaskResources(t *testing.T) {
-	resolvedTaskResources := tb.ResolvedTaskResources(
-		tb.ResolvedTaskResourcesTaskSpec(
-			tb.Step("image", tb.StepCommand("/mycmd")),
-		),
-		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", tb.PipelineResourceNamespace("baz"))),
-		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", tb.PipelineResourceNamespace("quuz"))),
-	)
-	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
-		TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Image:   "image",
-				Command: []string{"/mycmd"},
-			}}},
-		}},
-		Inputs: map[string]*v1alpha1.PipelineResource{
-			"foo": {
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "bar",
-					Namespace: "baz",
-				},
-			},
-		},
-		Outputs: map[string]*v1alpha1.PipelineResource{
-			"qux": {
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "quux",
-					Namespace: "quuz",
-				},
-			},
-		},
-	}
-	if d := cmp.Diff(expectedResolvedTaskResources, resolvedTaskResources); d != "" {
-		t.Fatalf("ResolvedTaskResources diff -want, +got: %v", d)
 	}
 }

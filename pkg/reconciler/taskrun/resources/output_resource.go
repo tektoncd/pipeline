@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
@@ -48,11 +48,11 @@ func AddOutputResources(
 	kubeclient kubernetes.Interface,
 	images pipeline.Images,
 	taskName string,
-	taskSpec *v1alpha1.TaskSpec,
-	taskRun *v1alpha1.TaskRun,
-	outputResources map[string]v1alpha1.PipelineResourceInterface,
+	taskSpec *v1beta1.TaskSpec,
+	taskRun *v1beta1.TaskRun,
+	outputResources map[string]v1beta1.PipelineResourceInterface,
 	logger *zap.SugaredLogger,
-) (*v1alpha1.TaskSpec, error) {
+) (*v1beta1.TaskSpec, error) {
 	if taskSpec == nil || taskSpec.Resources == nil || taskSpec.Resources.Outputs == nil {
 		return taskSpec, nil
 	}
@@ -94,11 +94,11 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{storage.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
+		mkdirSteps := []v1beta1.Step{storage.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
-		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
-			var newSteps []v1alpha1.Step
+		if v1beta1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+			var newSteps []v1beta1.Step
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
 				needsPvc = true
@@ -112,7 +112,7 @@ func AddOutputResources(
 		if err != nil {
 			return nil, err
 		}
-		if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+		if err := v1beta1.ApplyTaskModifier(taskSpec, modifier); err != nil {
 			return nil, fmt.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
 		}
 	}

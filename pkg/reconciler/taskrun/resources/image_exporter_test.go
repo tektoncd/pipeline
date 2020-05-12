@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -31,57 +31,55 @@ import (
 func TestAddOutputImageDigestExporter(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
-		task      *v1alpha1.Task
-		taskRun   *v1alpha1.TaskRun
-		wantSteps []v1alpha1.Step
+		task      *v1beta1.Task
+		taskRun   *v1beta1.TaskRun
+		wantSteps []v1beta1.Step
 	}{{
 		desc: "image resource declared as both input and output",
-		task: &v1alpha1.Task{
+		task: &v1beta1.Task{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "task1",
 				Namespace: "marshmallow",
 			},
-			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Name: "step1",
-					}}},
-					Resources: &v1beta1.TaskResources{
-						Inputs: []v1alpha1.TaskResource{{
-							ResourceDeclaration: v1alpha1.ResourceDeclaration{
-								Name: "source-image",
-								Type: "image",
-							},
-						}},
-						Outputs: []v1alpha1.TaskResource{{
-							ResourceDeclaration: v1alpha1.ResourceDeclaration{
-								Name: "source-image",
-								Type: "image",
-							},
-						}},
-					},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name: "step1",
+				}}},
+				Resources: &v1beta1.TaskResources{
+					Inputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
+					}},
+					Outputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
+					}},
 				},
 			},
 		},
-		taskRun: &v1alpha1.TaskRun{
+		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-taskrun-run-output-steps",
 				Namespace: "marshmallow",
 			},
-			Spec: v1alpha1.TaskRunSpec{
+			Spec: v1beta1.TaskRunSpec{
 				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+					Inputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1beta1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
 					}},
-					Outputs: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+					Outputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1beta1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -89,7 +87,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}, {Container: corev1.Container{
 			Name:    "image-digest-exporter-9l9zj",
@@ -99,54 +97,52 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 		}}},
 	}, {
 		desc: "image resource in task with multiple steps",
-		task: &v1alpha1.Task{
+		task: &v1beta1.Task{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "task1",
 				Namespace: "marshmallow",
 			},
-			Spec: v1alpha1.TaskSpec{
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Name: "step1",
-					}}, {Container: corev1.Container{
-						Name: "step2",
-					}}},
-					Resources: &v1beta1.TaskResources{
-						Inputs: []v1alpha1.TaskResource{{
-							ResourceDeclaration: v1alpha1.ResourceDeclaration{
-								Name: "source-image",
-								Type: "image",
-							},
-						}},
-						Outputs: []v1alpha1.TaskResource{{
-							ResourceDeclaration: v1alpha1.ResourceDeclaration{
-								Name: "source-image",
-								Type: "image",
-							},
-						}},
-					},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name: "step1",
+				}}, {Container: corev1.Container{
+					Name: "step2",
+				}}},
+				Resources: &v1beta1.TaskResources{
+					Inputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
+					}},
+					Outputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
+					}},
 				},
 			},
 		},
-		taskRun: &v1alpha1.TaskRun{
+		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-taskrun-run-output-steps",
 				Namespace: "marshmallow",
 			},
-			Spec: v1alpha1.TaskRunSpec{
+			Spec: v1beta1.TaskRunSpec{
 				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+					Inputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1beta1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
 					}},
-					Outputs: []v1alpha1.TaskResourceBinding{{
-						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+					Outputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: &v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1beta1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -154,7 +150,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name: "step1",
 		}}, {Container: corev1.Container{
 			Name: "step2",
@@ -167,15 +163,15 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			gr := func(n string) (*v1alpha1.PipelineResource, error) {
-				return &v1alpha1.PipelineResource{
+			gr := func(n string) (*resourcev1alpha1.PipelineResource, error) {
+				return &resourcev1alpha1.PipelineResource{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "source-image-1",
 						Namespace: "marshmallow",
 					},
-					Spec: v1alpha1.PipelineResourceSpec{
+					Spec: resourcev1alpha1.PipelineResourceSpec{
 						Type: "image",
-						Params: []v1alpha1.ResourceParam{{
+						Params: []v1beta1.ResourceParam{{
 							Name:  "url",
 							Value: "gcr.io/some-image-1",
 						}, {

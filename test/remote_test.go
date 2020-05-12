@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 )
 
 func TestCreateImage(t *testing.T) {
@@ -71,7 +71,7 @@ func TestCreateImage(t *testing.T) {
 	if diff := cmp.Diff(m.Layers[0].Annotations["cdf.tekton.image.kind"], "task"); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(m.Layers[0].Annotations["cdf.tekton.image.apiVersion"], "v1alpha1"); diff != "" {
+	if diff := cmp.Diff(m.Layers[0].Annotations["cdf.tekton.image.apiVersion"], "v1beta1"); diff != "" {
 		t.Error(diff)
 	}
 

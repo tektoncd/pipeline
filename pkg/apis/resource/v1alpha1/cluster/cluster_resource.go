@@ -23,7 +23,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -158,12 +158,12 @@ func (s Resource) String() string {
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *Resource) GetOutputTaskModifier(_ *v1alpha1.TaskSpec, _ string) (v1alpha1.TaskModifier, error) {
-	return &v1alpha1.InternalTaskModifier{}, nil
+func (s *Resource) GetOutputTaskModifier(_ *v1beta1.TaskSpec, _ string) (v1beta1.TaskModifier, error) {
+	return &v1beta1.InternalTaskModifier{}, nil
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *Resource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1alpha1.TaskModifier, error) {
+func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1beta1.TaskModifier, error) {
 	var envVars []corev1.EnvVar
 	for _, sec := range s.Secrets {
 		ev := corev1.EnvVar{
@@ -179,7 +179,7 @@ func (s *Resource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1a
 		}
 		envVars = append(envVars, ev)
 	}
-	step := v1alpha1.Step{Container: corev1.Container{
+	step := v1beta1.Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
 		Image:   s.KubeconfigWriterImage,
 		Command: []string{"/ko-app/kubeconfigwriter"},
@@ -188,7 +188,7 @@ func (s *Resource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1a
 		},
 		Env: envVars,
 	}}
-	return &v1alpha1.InternalTaskModifier{
-		StepsToPrepend: []v1alpha1.Step{step},
+	return &v1beta1.InternalTaskModifier{
+		StepsToPrepend: []v1beta1.Step{step},
 	}, nil
 }

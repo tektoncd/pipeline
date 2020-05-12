@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +34,7 @@ import (
 )
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
-func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1alpha1.PipelineRun, clientSet clientset.Interface) error {
+func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
 	errs := []string{}
 
 	// Use Patch to update the TaskRuns since the TaskRun controller may be operating on the
@@ -49,7 +49,7 @@ func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1alpha1.PipelineRun, clie
 	for taskRunName := range pr.Status.TaskRuns {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if _, err := clientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Patch(taskRunName, types.JSONPatchType, b, ""); err != nil {
+		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(taskRunName, types.JSONPatchType, b, ""); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
@@ -82,7 +82,7 @@ func getCancelPatch() ([]byte, error) {
 	patches := []jsonpatch.JsonPatchOperation{{
 		Operation: "add",
 		Path:      "/spec/status",
-		Value:     v1alpha1.TaskRunSpecStatusCancelled,
+		Value:     v1beta1.TaskRunSpecStatusCancelled,
 	}}
 	patchBytes, err := json.Marshal(patches)
 	if err != nil {

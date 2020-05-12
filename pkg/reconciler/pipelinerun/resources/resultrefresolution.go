@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -188,7 +187,7 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	}, nil
 }
 
-func getReferencedTaskRun(pipelineState PipelineRunState, reference *v1beta1.ResultRef) (*v1alpha1.TaskRun, error) {
+func getReferencedTaskRun(pipelineState PipelineRunState, reference *v1beta1.ResultRef) (*v1beta1.TaskRun, error) {
 	referencedPipelineTask := pipelineState.ToMap()[reference.PipelineTask]
 
 	if referencedPipelineTask == nil {
@@ -200,7 +199,7 @@ func getReferencedTaskRun(pipelineState PipelineRunState, reference *v1beta1.Res
 	return referencedPipelineTask.TaskRun, nil
 }
 
-func findTaskResultForParam(taskRun *v1alpha1.TaskRun, reference *v1beta1.ResultRef) (*v1alpha1.TaskRunResult, error) {
+func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (*v1beta1.TaskRunResult, error) {
 	results := taskRun.Status.TaskRunStatusFields.TaskRunResults
 	for _, result := range results {
 		if result.Name == reference.Result {

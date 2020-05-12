@@ -22,7 +22,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -47,7 +48,7 @@ var (
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
-	pipelinerun = &v1alpha1.PipelineRun{
+	pipelinerun = &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",
@@ -60,23 +61,23 @@ var (
 		return x.Cmp(y) == 0
 	})
 
-	pipelineWithTasksWithFrom = v1alpha1.Pipeline{
-		Spec: v1alpha1.PipelineSpec{
-			Resources: []v1alpha1.PipelineDeclaredResource{{
+	pipelineWithTasksWithFrom = v1beta1.Pipeline{
+		Spec: v1beta1.PipelineSpec{
+			Resources: []v1beta1.PipelineDeclaredResource{{
 				Name: "input1",
 				Type: "git",
 			}, {
 				Name: "output",
 				Type: "git",
 			}},
-			Tasks: []v1alpha1.PipelineTask{
+			Tasks: []v1beta1.PipelineTask{
 				{
 					Name: "task1",
-					TaskRef: &v1alpha1.TaskRef{
+					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+					Resources: &v1beta1.PipelineTaskResources{
+						Outputs: []v1beta1.PipelineTaskOutputResource{{
 							Name:     "foo",
 							Resource: "output",
 						}},
@@ -84,11 +85,11 @@ var (
 				},
 				{
 					Name: "task2",
-					TaskRef: &v1alpha1.TaskRef{
+					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
+					Resources: &v1beta1.PipelineTaskResources{
+						Inputs: []v1beta1.PipelineTaskInputResource{{
 							Name:     "foo",
 							Resource: "output",
 							From:     []string{"task1"},
@@ -250,7 +251,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		},
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location: "gs://fake-bucket",
-			Secrets: []v1alpha1.SecretParam{{
+			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "sakey",
 				SecretName: "secret1",
@@ -345,7 +346,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 			Location:    "s3://fake-bucket",
 			ShellImage:  "busybox",
 			GsutilImage: "google/cloud-sdk",
-			Secrets: []v1alpha1.SecretParam{{
+			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "BOTO_CONFIG",
 				SecretKey:  "sakey",
 				SecretName: "secret1",
@@ -388,24 +389,24 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	// This Pipeline has Tasks that use both inputs and outputs, but there is
 	// no link between the inputs and outputs, so no storage is needed
-	pipeline := &v1alpha1.Pipeline{
+	pipeline := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",
 		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{
 				{
 					Name: "task1",
-					TaskRef: &v1alpha1.TaskRef{
+					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
+					Resources: &v1beta1.PipelineTaskResources{
+						Inputs: []v1beta1.PipelineTaskInputResource{{
 							Name:     "input1",
 							Resource: "resource",
 						}},
-						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+						Outputs: []v1beta1.PipelineTaskOutputResource{{
 							Name:     "output",
 							Resource: "resource",
 						}},
@@ -413,15 +414,15 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 				},
 				{
 					Name: "task2",
-					TaskRef: &v1alpha1.TaskRef{
+					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
+					Resources: &v1beta1.PipelineTaskResources{
+						Inputs: []v1beta1.PipelineTaskInputResource{{
 							Name:     "input1",
 							Resource: "resource",
 						}},
-						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+						Outputs: []v1beta1.PipelineTaskOutputResource{{
 							Name:     "output",
 							Resource: "resource",
 						}},
@@ -430,13 +431,13 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 			},
 		},
 	}
-	pipelinerun := &v1alpha1.PipelineRun{
+	pipelinerun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pipelinerun",
 			Namespace: "namespace",
 		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
 				Name: "pipeline",
 			},
 		},
@@ -496,7 +497,7 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 }
 
 func TestCleanupArtifactStorage(t *testing.T) {
-	pipelinerun := &v1alpha1.PipelineRun{
+	pipelinerun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",
@@ -560,7 +561,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 }
 
 func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
-	pipelinerun := &v1alpha1.PipelineRun{
+	pipelinerun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pipelineruntest",
 			Namespace: "foo",
@@ -586,7 +587,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 }
 
 func TestGetArtifactStorageWithConfigMap(t *testing.T) {
-	pipelinerun := &v1alpha1.PipelineRun{
+	pipelinerun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",
@@ -612,7 +613,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		},
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location: "gs://fake-bucket",
-			Secrets: []v1alpha1.SecretParam{{
+			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "sakey",
 				SecretName: "secret1",
