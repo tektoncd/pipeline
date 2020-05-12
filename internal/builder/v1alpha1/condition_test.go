@@ -35,6 +35,11 @@ func TestCondition(t *testing.T) {
 				"label-1": "label-value-1",
 				"label-2": "label-value-2",
 			}),
+		tb.ConditionAnnotations(
+			map[string]string{
+				"annotation-1": "annotation-value-1",
+				"annotation-2": "annotation-value-2",
+			}),
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
 			tb.ConditionDescription("Test Condition"),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
@@ -52,6 +57,10 @@ func TestCondition(t *testing.T) {
 			Labels: map[string]string{
 				"label-1": "label-value-1",
 				"label-2": "label-value-2",
+			},
+			Annotations: map[string]string{
+				"annotation-1": "annotation-value-1",
+				"annotation-2": "annotation-value-2",
 			},
 		},
 		Spec: v1alpha1.ConditionSpec{

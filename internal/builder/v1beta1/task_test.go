@@ -179,6 +179,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 		),
 		tb.TaskRunLabels(map[string]string{"label-2": "label-value-2", "label-3": "label-value-3"}),
 		tb.TaskRunLabel("label", "label-value"),
+		tb.TaskRunAnnotations(map[string]string{"annotation-1": "annotation-value-1", "annotation-2": "annotation-value-2"}),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("task-output",
 				tb.TaskRefKind(v1beta1.ClusterTaskKind),
@@ -231,7 +232,10 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				"label-2": "label-value-2",
 				"label-3": "label-value-3",
 			},
-			Annotations: map[string]string{},
+			Annotations: map[string]string{
+				"annotation-1": "annotation-value-1",
+				"annotation-2": "annotation-value-2",
+			},
 		},
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{

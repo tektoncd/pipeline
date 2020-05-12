@@ -62,6 +62,18 @@ func ConditionLabels(labels map[string]string) ConditionOp {
 	}
 }
 
+// ConditionAnnotations sets the annotations on the condition.
+func ConditionAnnotations(annotations map[string]string) ConditionOp {
+	return func(Condition *v1alpha1.Condition) {
+		if Condition.ObjectMeta.Annotations == nil {
+			Condition.ObjectMeta.Annotations = map[string]string{}
+		}
+		for key, value := range annotations {
+			Condition.ObjectMeta.Annotations[key] = value
+		}
+	}
+}
+
 // ConditionSpec creates a ConditionSpec with default values.
 // Any number of ConditionSpec modifiers can be passed to transform it.
 func ConditionSpec(ops ...ConditionSpecOp) ConditionOp {

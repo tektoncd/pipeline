@@ -899,6 +899,13 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		labels[key] = value
 	}
 
+	// Propagate annotations from PipelineRun to TaskRun.
+	annotations := getTaskrunAnnotations(pr)
+
+	for key, value := range rcc.Condition.ObjectMeta.Annotations {
+		annotations[key] = value
+	}
+
 	taskSpec, err := rcc.ConditionToTaskSpec()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
@@ -910,7 +917,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 			Labels:          labels,
-			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
+			Annotations:     annotations,
 		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec:           taskSpec,
