@@ -1,3 +1,4 @@
+// Package v2 reexports a subset of the SDK v2 API.
 package v2
 
 // Package cloudevents alias' common functions and types to improve discoverability and reduce
@@ -95,10 +96,15 @@ var (
 	WithTimeNow          = client.WithTimeNow
 	WithTracePropagation = client.WithTracePropagation()
 
+	// Event Creation
+
+	NewEvent = event.New
+
 	// Results
 
-	ResultIs = protocol.ResultIs
-	ResultAs = protocol.ResultAs
+	NewResult = protocol.NewResult
+	ResultIs  = protocol.ResultIs
+	ResultAs  = protocol.ResultAs
 
 	// Receipt helpers
 
@@ -110,12 +116,10 @@ var (
 	IsACK  = protocol.IsACK
 	IsNACK = protocol.IsNACK
 
-	// Event Creation
+	// HTTP Results
 
-	NewEvent  = event.New
-	NewResult = protocol.NewResult
-
-	NewHTTPResult = http.NewResult
+	NewHTTPResult        = http.NewResult
+	NewHTTPRetriesResult = http.NewRetriesResult
 
 	// Message Creation
 
@@ -131,8 +135,12 @@ var (
 
 	// Context
 
-	ContextWithTarget      = context.WithTarget
-	TargetFromContext      = context.TargetFrom
+	ContextWithTarget                    = context.WithTarget
+	TargetFromContext                    = context.TargetFrom
+	ContextWithRetriesConstantBackoff    = context.WithRetriesConstantBackoff
+	ContextWithRetriesLinearBackoff      = context.WithRetriesLinearBackoff
+	ContextWithRetriesExponentialBackoff = context.WithRetriesExponentialBackoff
+
 	WithEncodingBinary     = binding.WithForceBinary
 	WithEncodingStructured = binding.WithForceStructured
 

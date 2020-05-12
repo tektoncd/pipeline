@@ -14,9 +14,9 @@ import (
 	"github.com/cloudevents/sdk-go/v2/types"
 )
 
-// Write out to the the provided httpResponseWriter with the message m.
+// WriteResponseWriter writes out to the the provided httpResponseWriter with the message m.
 // Using context you can tweak the encoding processing (more details on binding.Write documentation).
-func WriteResponseWriter(ctx context.Context, m binding.Message, status int, rw http.ResponseWriter, transformers ...binding.TransformerFactory) error {
+func WriteResponseWriter(ctx context.Context, m binding.Message, status int, rw http.ResponseWriter, transformers ...binding.Transformer) error {
 	if status < 200 || status >= 600 {
 		status = http.StatusOK
 	}
@@ -49,27 +49,30 @@ func (b *httpResponseWriter) Start(ctx context.Context) error {
 }
 
 func (b *httpResponseWriter) SetAttribute(attribute spec.Attribute, value interface{}) error {
+	mapping := attributeHeadersMapping[attribute.Name()]
+	if value == nil {
+		delete(b.rw.Header(), mapping)
+	}
+
 	// Http headers, everything is a string!
 	s, err := types.Format(value)
 	if err != nil {
 		return err
 	}
-
-	if attribute.Kind() == spec.DataContentType {
-		b.rw.Header().Add(ContentType, s)
-	} else {
-		b.rw.Header().Add(prefix+attribute.Name(), s)
-	}
+	b.rw.Header()[mapping] = append(b.rw.Header()[mapping], s)
 	return nil
 }
 
 func (b *httpResponseWriter) SetExtension(name string, value interface{}) error {
+	if value == nil {
+		delete(b.rw.Header(), extNameToHeaderName(name))
+	}
 	// Http headers, everything is a string!
 	s, err := types.Format(value)
 	if err != nil {
 		return err
 	}
-	b.rw.Header().Add(prefix+name, s)
+	b.rw.Header()[extNameToHeaderName(name)] = []string{s}
 	return nil
 }
 

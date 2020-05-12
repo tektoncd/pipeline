@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
 
 	"go.uber.org/zap"
@@ -47,7 +48,10 @@ type Client interface {
 // New produces a new client with the provided transport object and applied
 // client options.
 func New(obj interface{}, opts ...Option) (Client, error) {
-	c := &ceClient{}
+	c := &ceClient{
+		// Running runtime.GOMAXPROCS(0) doesn't update the value, just returns the current one
+		pollGoroutines: runtime.GOMAXPROCS(0),
+	}
 
 	if p, ok := obj.(protocol.Sender); ok {
 		c.sender = p
@@ -83,6 +87,7 @@ type ceClient struct {
 	invoker                   Invoker
 	receiverMu                sync.Mutex
 	eventDefaulterFns         []EventDefaulter
+	pollGoroutines            int
 }
 
 func (c *ceClient) applyOptions(opts ...Option) error {
@@ -185,6 +190,10 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 	}
 	c.invoker = invoker
 
+	if c.responder == nil && c.receiver == nil {
+		return errors.New("responder nor receiver set")
+	}
+
 	defer func() {
 		c.invoker = nil
 	}()
@@ -192,31 +201,43 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 	// Start the opener, if set.
 	if c.opener != nil {
 		go func() {
-			// TODO: handle error correctly here.
 			if err := c.opener.OpenInbound(ctx); err != nil {
-				panic(err)
+				cecontext.LoggerFrom(ctx).Errorf("Error while opening the inbound connection: %s", err)
 			}
 		}()
 	}
 
 	var msg binding.Message
 	var respFn protocol.ResponseFn
+
 	// Start Polling.
-	for {
-		if c.responder != nil {
-			msg, respFn, err = c.responder.Respond(ctx)
-		} else if c.receiver != nil {
-			msg, err = c.receiver.Receive(ctx)
-		} else {
-			return errors.New("responder nor receiver set")
-		}
+	wg := sync.WaitGroup{}
+	for i := 0; i < c.pollGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				if c.responder != nil {
+					msg, respFn, err = c.responder.Respond(ctx)
+				} else if c.receiver != nil {
+					msg, err = c.receiver.Receive(ctx)
+				}
 
-		if err == io.EOF { // Normal close
-			return nil
-		}
+				if err == io.EOF { // Normal close
+					return
+				}
 
-		if err := c.invoker.Invoke(ctx, msg, respFn); err != nil {
-			return err
-		}
+				if err != nil {
+					cecontext.LoggerFrom(ctx).Warnf("Error while receiving a message: %s", err)
+					continue
+				}
+
+				if err := c.invoker.Invoke(ctx, msg, respFn); err != nil {
+					cecontext.LoggerFrom(ctx).Warnf("Error while handling a message: %s", err)
+				}
+			}
+		}()
 	}
+	wg.Wait()
+	return nil
 }

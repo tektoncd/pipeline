@@ -16,7 +16,21 @@ const (
 	EncodingUnknown
 )
 
-// Error to specify that or the Message is not an event or it is encoded with an unknown encoding
+func (e Encoding) String() string {
+	switch e {
+	case EncodingBinary:
+		return "binary"
+	case EncodingStructured:
+		return "structured"
+	case EncodingEvent:
+		return "event"
+	case EncodingUnknown:
+		return "unknown"
+	}
+	return ""
+}
+
+// ErrUnknownEncoding specifies that the Message is not an event or it is encoded with an unknown encoding
 var ErrUnknownEncoding = errors.New("unknown Message encoding")
 
 // ErrNotStructured returned by Message.Structured for non-structured messages.

@@ -110,7 +110,7 @@ type EventContext interface {
 
 	// Validate the event based on the specifics of the CloudEvents spec version
 	// represented by this event context.
-	Validate() error
+	Validate() ValidationError
 
 	// Clone clones the event context.
 	Clone() EventContext

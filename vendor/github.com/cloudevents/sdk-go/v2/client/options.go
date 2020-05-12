@@ -71,3 +71,15 @@ func WithTracePropagation() Option {
 		return nil
 	}
 }
+
+// WithPollGoroutines configures how much goroutines should be used to
+// poll the Receiver/Responder/Protocol implementations.
+// Default value is GOMAXPROCS
+func WithPollGoroutines(pollGoroutines int) Option {
+	return func(i interface{}) error {
+		if c, ok := i.(*ceClient); ok {
+			c.pollGoroutines = pollGoroutines
+		}
+		return nil
+	}
+}

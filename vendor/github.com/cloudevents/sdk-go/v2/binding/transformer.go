@@ -1,73 +1,37 @@
 package binding
 
-import (
-	"github.com/cloudevents/sdk-go/v2/event"
-)
-
-// Implements a transformation process while transferring the event from the Message implementation
-// to the provided encoder
+// Transformer is an interface that implements a transformation
+// process while transferring the event from the Message
+// implementation to the provided encoder
 //
-// A transformer could optionally not provide an implementation for binary and/or structured encodings,
-// returning nil to the respective factory method.
-type TransformerFactory interface {
-	// Can return nil if the transformation doesn't support structured encoding directly
-	StructuredTransformer(writer StructuredWriter) StructuredWriter
-
-	// Can return nil if the transformation doesn't support binary encoding directly
-	BinaryTransformer(writer BinaryWriter) BinaryWriter
-
-	// Can return nil if the transformation doesn't support events
-	EventTransformer() EventTransformer
+// When a write function (binding.Write, binding.ToEvent, buffering.CopyMessage, etc.)
+// takes Transformer(s) as parameter, it eventually converts the message to a form
+// which correctly implements MessageMetadataReader, in order to guarantee that transformation
+// is applied
+type Transformer interface {
+	Transform(MessageMetadataReader, MessageMetadataWriter) error
 }
 
-// Utility type alias to manage multiple TransformerFactory
-type TransformerFactories []TransformerFactory
+// TransformerFunc is a type alias to implement a Transformer through a function pointer
+type TransformerFunc func(MessageMetadataReader, MessageMetadataWriter) error
 
-func (t TransformerFactories) StructuredTransformer(writer StructuredWriter) StructuredWriter {
-	if writer == nil {
-		return nil
-	}
-	res := writer
-	for _, b := range t {
-		if r := b.StructuredTransformer(res); r != nil {
-			res = r
-		} else {
-			return nil // Structured not supported!
+func (t TransformerFunc) Transform(r MessageMetadataReader, w MessageMetadataWriter) error {
+	return t(r, w)
+}
+
+var _ Transformer = (TransformerFunc)(nil)
+
+// Transformers is a utility alias to run several Transformer
+type Transformers []Transformer
+
+func (t Transformers) Transform(r MessageMetadataReader, w MessageMetadataWriter) error {
+	for _, transformer := range t {
+		err := transformer.Transform(r, w)
+		if err != nil {
+			return err
 		}
 	}
-	return res
+	return nil
 }
 
-func (t TransformerFactories) BinaryTransformer(writer BinaryWriter) BinaryWriter {
-	if writer == nil {
-		return nil
-	}
-	res := writer
-	for i := range t {
-		b := t[len(t)-i-1]
-		if r := b.BinaryTransformer(res); r != nil {
-			res = r
-		} else {
-			return nil // Binary not supported!
-		}
-	}
-	return res
-}
-
-func (t TransformerFactories) EventTransformer() EventTransformer {
-	return func(e *event.Event) error {
-		for _, b := range t {
-			f := b.EventTransformer()
-			if f != nil {
-				err := f(e)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-}
-
-// EventTransformer mutates the provided Event
-type EventTransformer func(*event.Event) error
+var _ Transformer = (Transformers)(nil)
