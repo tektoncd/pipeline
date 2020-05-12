@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -34,15 +34,15 @@ const (
 	taskRunName           = "faketaskrunname"
 )
 
-func getTaskRunByCondition(status corev1.ConditionStatus) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
+func getTaskRunByCondition(status corev1.ConditionStatus) *v1beta1.TaskRun {
+	return &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      taskRunName,
 			Namespace: "marshmallow",
 			SelfLink:  defaultEventSourceURI,
 		},
-		Spec: v1alpha1.TaskRunSpec{},
-		Status: v1alpha1.TaskRunStatus{
+		Spec: v1beta1.TaskRunSpec{},
+		Status: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
@@ -56,7 +56,7 @@ func getTaskRunByCondition(status corev1.ConditionStatus) *v1alpha1.TaskRun {
 func TestEventForTaskRun(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
-		taskRun       *v1alpha1.TaskRun
+		taskRun       *v1beta1.TaskRun
 		wantEventType TektonEventType
 	}{{
 		desc:          "send a cloud event with unknown status taskrun",

@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -43,19 +42,19 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
 		podStatus corev1.PodStatus
-		taskSpec  v1alpha1.TaskSpec
-		want      v1alpha1.TaskRunStatus
+		taskSpec  v1beta1.TaskSpec
+		want      v1beta1.TaskRunStatus
 	}{{
 		desc:      "empty",
 		podStatus: corev1.PodStatus{},
 
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -75,12 +74,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
@@ -88,7 +87,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:          "state-name",
 					ContainerName: "step-state-name",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -111,12 +110,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
@@ -125,7 +124,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-state-name",
 					ImageID:       "image-id",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -142,7 +141,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				ImageID: "image-id",
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -151,8 +150,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "All Steps have completed executing",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 0,
@@ -161,7 +160,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-step-push",
 					ImageID:       "image-id",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -177,19 +176,19 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
 					},
 					Name:          "running-step",
 					ContainerName: "step-running-step",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -210,7 +209,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -219,8 +218,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "\"step-failure\" exited with code 123 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-failure\n",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 123,
@@ -230,7 +229,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-failure",
 					ImageID:       "image-id",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -241,7 +240,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			Phase:   corev1.PodFailed,
 			Message: "boom",
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -250,9 +249,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "boom",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -272,7 +271,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				ImageID: "image-id",
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -281,8 +280,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "OOMKilled",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							Reason:   "OOMKilled",
@@ -292,7 +291,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-step-push",
 					ImageID:       "image-id",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -300,7 +299,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	}, {
 		desc:      "failure-unspecified",
 		podStatus: corev1.PodStatus{Phase: corev1.PodFailed},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -309,9 +308,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "build failed for unspecified reasons.",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -332,7 +331,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -341,8 +340,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: `build step "step-status-name" is pending with reason "i'm pending"`,
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Waiting: &corev1.ContainerStateWaiting{
 							Message: "i'm pending",
@@ -351,7 +350,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:          "status-name",
 					ContainerName: "step-status-name",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -364,7 +363,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Message: "the message",
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -373,9 +372,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: `pod status "the type":"Unknown"; message: "the message"`,
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -384,7 +383,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			Phase:   corev1.PodPending,
 			Message: "pod status message",
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -393,15 +392,15 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "pod status message",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
 		desc:      "pending-no-message",
 		podStatus: corev1.PodStatus{Phase: corev1.PodPending},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -410,9 +409,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "Pending",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -424,7 +423,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Message: "0/1 nodes are available: 1 Insufficient cpu.",
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -433,9 +432,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "TaskRun Pod exceeded available resources",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -450,7 +449,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -459,9 +458,9 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "Pending",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps:    []v1alpha1.StepState{},
-				Sidecars: []v1alpha1.SidecarState{},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
 	}, {
@@ -482,19 +481,19 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Ready: true,
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
 					},
 					Name:          "running-step",
 					ContainerName: "step-running-step",
 				}},
-				Sidecars: []v1alpha1.SidecarState{{
+				Sidecars: []v1beta1.SidecarState{{
 					ContainerState: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
 					},
@@ -528,12 +527,12 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Ready: true,
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Waiting: &corev1.ContainerStateWaiting{
 							Reason:  "PodInitializing",
@@ -543,7 +542,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Name:          "waiting-step",
 					ContainerName: "step-waiting-step",
 				}},
-				Sidecars: []v1alpha1.SidecarState{{
+				Sidecars: []v1beta1.SidecarState{{
 					ContainerState: corev1.ContainerState{
 						Waiting: &corev1.ContainerStateWaiting{
 							Reason:  "PodInitializing",
@@ -578,19 +577,19 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Ready: true,
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
 					},
 					Name:          "running-step",
 					ContainerName: "step-running-step",
 				}},
-				Sidecars: []v1alpha1.SidecarState{{
+				Sidecars: []v1beta1.SidecarState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 1,
@@ -606,8 +605,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		},
 	}, {
 		desc: "non-json-termination-message-with-steps-afterwards-shouldnt-panic",
-		taskSpec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+		taskSpec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name: "non-json",
 			}}, {Container: corev1.Container{
 				Name: "after-non-json",
@@ -616,7 +615,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}}, {Container: corev1.Container{
 				Name: "foo",
 			}}},
-		}},
+		},
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodFailed,
 			ContainerStatuses: []corev1.ContainerStatus{{
@@ -648,7 +647,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}},
 		},
-		want: v1alpha1.TaskRunStatus{
+		want: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
@@ -657,8 +656,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					Message: "\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n",
 				}},
 			},
-			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				Steps: []v1alpha1.StepState{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
 							ExitCode: 1,
@@ -687,7 +686,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-foo",
 					ImageID:       "image",
 				}},
-				Sidecars: []v1alpha1.SidecarState{},
+				Sidecars: []v1beta1.SidecarState{},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -704,13 +703,13 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Status: c.podStatus,
 			}
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
-			tr := v1alpha1.TaskRun{
+			tr := v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "task-run",
 					Namespace: "foo",
 				},
-				Status: v1alpha1.TaskRunStatus{
-					TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						StartTime: &metav1.Time{Time: startTime},
 					},
 				},
@@ -830,7 +829,7 @@ func TestSidecarsReady(t *testing.T) {
 }
 
 func TestSortTaskRunStepOrder(t *testing.T) {
-	steps := []v1alpha1.Step{{Container: corev1.Container{
+	steps := []v1beta1.Step{{Container: corev1.Container{
 		Name: "hello",
 	}}, {Container: corev1.Container{
 		Name: "exit",
@@ -838,7 +837,7 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 		Name: "world",
 	}}}
 
-	stepStates := []v1alpha1.StepState{{
+	stepStates := []v1beta1.StepState{{
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
 				ExitCode: 0,

@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -86,7 +86,7 @@ var (
 // method, using entrypoint_lookup.go.
 //
 // TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, steps []corev1.Container, results []v1alpha1.TaskResult) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:         "place-tools",
 		Image:        entrypointImage,
@@ -142,14 +142,14 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 	return initContainer, steps, nil
 }
 
-func resultArgument(steps []corev1.Container, results []v1alpha1.TaskResult) []string {
+func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
 	}
 	return []string{"-results", collectResultsName(results)}
 }
 
-func collectResultsName(results []v1alpha1.TaskResult) string {
+func collectResultsName(results []v1beta1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
 		resultNames = append(resultNames, r.Name)
@@ -214,7 +214,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 
 // IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
 // is still running.
-func IsSidecarStatusRunning(tr *v1alpha1.TaskRun) bool {
+func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	for _, sidecar := range tr.Status.Sidecars {
 		if sidecar.Terminated == nil {
 			return true

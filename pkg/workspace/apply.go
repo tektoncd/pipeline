@@ -3,7 +3,7 @@ package workspace
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -26,7 +26,7 @@ func (nvm nameVolumeMap) setVolumeSource(workspaceName string, volumeName string
 // GetVolumes will return a dictionary where the keys are the names of the workspaces bound in
 // wb and the value is the Volume to use. If the same Volume is bound twice, the resulting volumes
 // will both have the same name to prevent the same Volume from being attached to a pod twice.
-func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
+func GetVolumes(wb []v1beta1.WorkspaceBinding) map[string]corev1.Volume {
 	pvcs := map[string]corev1.Volume{}
 	v := make(nameVolumeMap)
 	for _, w := range wb {
@@ -55,7 +55,7 @@ func GetVolumes(wb []v1alpha1.WorkspaceBinding) map[string]corev1.Volume {
 	return v
 }
 
-func getDeclaredWorkspace(name string, w []v1alpha1.WorkspaceDeclaration) (*v1alpha1.WorkspaceDeclaration, error) {
+func getDeclaredWorkspace(name string, w []v1beta1.WorkspaceDeclaration) (*v1beta1.WorkspaceDeclaration, error) {
 	for _, workspace := range w {
 		if workspace.Name == name {
 			return &workspace, nil
@@ -68,7 +68,7 @@ func getDeclaredWorkspace(name string, w []v1alpha1.WorkspaceDeclaration) (*v1al
 // Apply will update the StepTemplate and Volumes declaration in ts so that the workspaces
 // specified through wb combined with the declared workspaces in ts will be available for
 // all containers in the resulting pod.
-func Apply(ts v1alpha1.TaskSpec, wb []v1alpha1.WorkspaceBinding) (*v1alpha1.TaskSpec, error) {
+func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding) (*v1beta1.TaskSpec, error) {
 	// If there are no bound workspaces, we don't need to do anything
 	if len(wb) == 0 {
 		return &ts, nil

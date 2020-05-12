@@ -27,8 +27,21 @@ import (
 
 var _ apis.Defaultable = (*TaskRun)(nil)
 
+const managedByLabelKey = "app.kubernetes.io/managed-by"
+
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
+	ctx = apis.WithinParent(ctx, tr.ObjectMeta)
 	tr.Spec.SetDefaults(ctx)
+
+	// If the TaskRun doesn't have a managed-by label, apply the default
+	// specified in the config.
+	cfg := config.FromContextOrDefaults(ctx)
+	if tr.ObjectMeta.Labels == nil {
+		tr.ObjectMeta.Labels = map[string]string{}
+	}
+	if _, found := tr.ObjectMeta.Labels[managedByLabelKey]; !found {
+		tr.ObjectMeta.Labels[managedByLabelKey] = cfg.Defaults.DefaultManagedByLabelValue
+	}
 }
 
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {

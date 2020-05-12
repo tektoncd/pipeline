@@ -19,7 +19,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -43,13 +43,13 @@ func (p *ArtifactPVC) GetType() string {
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage.
-func (p *ArtifactPVC) StorageBasePath(pr *v1alpha1.PipelineRun) string {
+func (p *ArtifactPVC) StorageBasePath(pr *v1beta1.PipelineRun) string {
 	return pvcDir
 }
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage.
-func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
-	return []v1alpha1.Step{{Container: corev1.Container{
+func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
+	return []v1beta1.Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image:   p.ShellImage,
 		Command: []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
@@ -57,8 +57,8 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage.
-func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
-	return []v1alpha1.Step{{Container: corev1.Container{
+func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
+	return []v1beta1.Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
 		Image:        p.ShellImage,
 		Command:      []string{"mkdir", "-p", destinationPath},

@@ -27,7 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -53,14 +53,14 @@ func TestOCIResolver(t *testing.T) {
 			objs: []runtime.Object{
 				tb.Task("simple-task", tb.TaskType()),
 			},
-			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1alpha1", Name: "simple-task"}},
+			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1beta1", Name: "simple-task"}},
 		},
 		{
 			name: "cluster-task",
 			objs: []runtime.Object{
 				tb.ClusterTask("simple-task", tb.ClusterTaskType()),
 			},
-			listExpected: []remote.ResolvedObject{{Kind: "clustertask", APIVersion: "v1alpha1", Name: "simple-task"}},
+			listExpected: []remote.ResolvedObject{{Kind: "clustertask", APIVersion: "v1beta1", Name: "simple-task"}},
 		},
 		{
 			name: "multiple-tasks",
@@ -69,8 +69,8 @@ func TestOCIResolver(t *testing.T) {
 				tb.Task("second-task", tb.TaskType()),
 			},
 			listExpected: []remote.ResolvedObject{
-				{Kind: "task", APIVersion: "v1alpha1", Name: "first-task"},
-				{Kind: "task", APIVersion: "v1alpha1", Name: "second-task"},
+				{Kind: "task", APIVersion: "v1beta1", Name: "first-task"},
+				{Kind: "task", APIVersion: "v1beta1", Name: "second-task"},
 			},
 		},
 	}

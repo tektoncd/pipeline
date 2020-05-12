@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -36,9 +35,9 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					{
 						TaskRunName: "aTaskRun",
 						TaskRun:     tb.TaskRun("aTaskRun"),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					},
 				},
@@ -64,9 +63,9 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					},
 				},
@@ -103,18 +102,18 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					}, {
 						TaskRunName: "bTaskRun",
 						TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("bResult", "bResultValue"),
 						)),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "bTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 						},
 					},
 				},
@@ -161,9 +160,9 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 							tb.TaskRunResult("aResult", "aResultValue"),
 						)),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					},
 				},
@@ -198,9 +197,9 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					{
 						TaskRunName: "aTaskRun",
 						TaskRun:     tb.TaskRun("aTaskRun"),
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					},
 				},
@@ -237,9 +236,9 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			fields: fields{
 				pipelineRunState: PipelineRunState{
 					{
-						PipelineTask: &v1alpha1.PipelineTask{
+						PipelineTask: &v1beta1.PipelineTask{
 							Name:    "aTask",
-							TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 						},
 					},
 				},
@@ -305,14 +304,14 @@ func TestResolveResultRefs(t *testing.T) {
 			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 				tb.TaskRunResult("aResult", "aResultValue"),
 			)),
-			PipelineTask: &v1alpha1.PipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
-				TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 			},
 		}, {
-			PipelineTask: &v1alpha1.PipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
-				TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Params: []v1beta1.Param{
 					{
 						Name: "bParam",
@@ -395,9 +394,9 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
 				tb.TaskRunResult("aResult", "aResultValue"),
 			)),
-			PipelineTask: &v1alpha1.PipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
-				TaskRef: &v1alpha1.TaskRef{Name: "aTask"},
+				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 			},
 		}, {
 			TaskRunName: "bTaskRun",
@@ -406,14 +405,14 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse})),
 			),
-			PipelineTask: &v1alpha1.PipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
-				TaskRef: &v1alpha1.TaskRef{Name: "bTask"},
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 			},
 		}, {
-			PipelineTask: &v1alpha1.PipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "cTask",
-				TaskRef: &v1alpha1.TaskRef{Name: "cTask"},
+				TaskRef: &v1beta1.TaskRef{Name: "cTask"},
 			},
 		},
 	}

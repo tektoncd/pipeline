@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -171,8 +171,8 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 	}
 
-	ts := pipelinev1alpha1.TaskSpec{}
-	wantSteps := []pipelinev1alpha1.Step{{Container: corev1.Container{
+	ts := v1beta1.TaskSpec{}
+	wantSteps := []v1beta1.Step{{Container: corev1.Container{
 		Name:    "kubeconfig-9l9zj",
 		Image:   "override-with-kubeconfig-writer:latest",
 		Command: []string{"/ko-app/kubeconfigwriter"},

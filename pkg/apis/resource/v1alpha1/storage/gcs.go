@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -109,7 +109,7 @@ func (s *GCSResource) Replacements() map[string]string {
 }
 
 // GetOutputTaskModifier returns the TaskModifier to be used when this resource is an output.
-func (s *GCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1alpha1.TaskModifier, error) {
+func (s *GCSResource) GetOutputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1beta1.TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
 		args = []string{"rsync", "-d", "-r", path, s.Location}
@@ -119,7 +119,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, path string) 
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	step := v1alpha1.Step{Container: corev1.Container{
+	step := v1beta1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        s.GsutilImage,
 		Command:      []string{"gsutil"},
@@ -130,14 +130,14 @@ func (s *GCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, path string) 
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &v1alpha1.InternalTaskModifier{
-		StepsToAppend: []v1alpha1.Step{step},
+	return &v1beta1.InternalTaskModifier{
+		StepsToAppend: []v1beta1.Step{step},
 		Volumes:       volumes,
 	}, nil
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *GCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (v1alpha1.TaskModifier, error) {
+func (s *GCSResource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1beta1.TaskModifier, error) {
 	if path == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
@@ -149,7 +149,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	steps := []v1alpha1.Step{
+	steps := []v1beta1.Step{
 		CreateDirStep(s.ShellImage, s.Name, path),
 		{
 			Script: script,
@@ -164,7 +164,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, path string) (
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &v1alpha1.InternalTaskModifier{
+	return &v1beta1.InternalTaskModifier{
 		StepsToPrepend: steps,
 		Volumes:        volumes,
 	}, nil

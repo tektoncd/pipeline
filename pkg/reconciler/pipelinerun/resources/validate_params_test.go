@@ -19,22 +19,22 @@ package resources
 import (
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 func TestValidateParamTypesMatching_Valid(t *testing.T) {
 	tcs := []struct {
 		name          string
-		p             *v1alpha1.Pipeline
-		pr            *v1alpha1.PipelineRun
+		p             *v1beta1.Pipeline
+		pr            *v1beta1.PipelineRun
 		errorExpected bool
 	}{{
 		name: "proper param types",
 		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1alpha1.ParamTypeArray))),
+			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
 		pr: tb.PipelineRun("a-pipelinerun", tb.PipelineRunSpec(
 			"test-pipeline",
 			tb.PipelineRunParam("correct-type-1", "somestring"),
@@ -49,9 +49,9 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 	}, {
 		name: "string-array mismatch",
 		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1alpha1.ParamTypeArray))),
+			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
 		pr: tb.PipelineRun("a-pipelinerun",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("correct-type-1", "somestring"),
@@ -61,9 +61,9 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 	}, {
 		name: "array-string mismatch",
 		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1alpha1.ParamTypeArray),
-			tb.PipelineParamSpec("correct-type-2", v1alpha1.ParamTypeArray))),
+			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeArray),
+			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
 		pr: tb.PipelineRun("a-pipelinerun",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("correct-type-1", "somestring"),
@@ -88,14 +88,14 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 	tcs := []struct {
 		name string
-		p    *v1alpha1.Pipeline
-		pr   *v1alpha1.PipelineRun
+		p    *v1beta1.Pipeline
+		pr   *v1beta1.PipelineRun
 	}{{
 		name: "string-array mismatch",
 		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1alpha1.ParamTypeArray))),
+			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
 		pr: tb.PipelineRun("a-pipelinerun",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("correct-type-1", "somestring"),
@@ -104,9 +104,9 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 	}, {
 		name: "array-string mismatch",
 		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1alpha1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1alpha1.ParamTypeArray),
-			tb.PipelineParamSpec("correct-type-2", v1alpha1.ParamTypeArray))),
+			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
+			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeArray),
+			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
 		pr: tb.PipelineRun("a-pipelinerun",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunParam("correct-type-1", "somestring"),

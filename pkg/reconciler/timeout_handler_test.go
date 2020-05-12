@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	test "github.com/tektoncd/pipeline/test/v1alpha1"
+	test "github.com/tektoncd/pipeline/test"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
@@ -87,8 +87,8 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	))
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRunTimedout, taskRunRunning, taskRunDone, taskRunCancelled, taskRunRunningNilTimeout},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRunTimedout, taskRunRunning, taskRunDone, taskRunCancelled, taskRunRunningNilTimeout},
+		Tasks:    []*v1beta1.Task{simpleTask},
 		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
@@ -104,7 +104,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
-		trNew := tr.(*v1alpha1.TaskRun)
+		trNew := tr.(*v1beta1.TaskRun)
 		gotCallback.Store(trNew.Name, struct{}{})
 	}
 
@@ -113,7 +113,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 
 	for _, tc := range []struct {
 		name           string
-		taskRun        *v1alpha1.TaskRun
+		taskRun        *v1beta1.TaskRun
 		expectCallback bool
 	}{{
 		name:           "timedout",
@@ -211,9 +211,9 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		),
 	)
 	d := test.Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{prTimeout, prRunning, prDone, prCancelled, prRunningNilTimeout},
-		Pipelines:    []*v1alpha1.Pipeline{simplePipeline},
-		Tasks:        []*v1alpha1.Task{ts},
+		PipelineRuns: []*v1beta1.PipelineRun{prTimeout, prRunning, prDone, prCancelled, prRunningNilTimeout},
+		Pipelines:    []*v1beta1.Pipeline{simplePipeline},
+		Tasks:        []*v1beta1.Task{ts},
 		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
@@ -230,7 +230,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 
 	gotCallback := sync.Map{}
 	f := func(pr interface{}) {
-		prNew := pr.(*v1alpha1.PipelineRun)
+		prNew := pr.(*v1beta1.PipelineRun)
 		gotCallback.Store(prNew.Name, struct{}{})
 	}
 
@@ -238,7 +238,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	th.CheckTimeouts(c.Kube, c.Pipeline)
 	for _, tc := range []struct {
 		name           string
-		pr             *v1alpha1.PipelineRun
+		pr             *v1beta1.PipelineRun
 		expectCallback bool
 	}{{
 		name:           "pr-running",
@@ -293,8 +293,8 @@ func TestWithNoFunc(t *testing.T) {
 	))
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRunRunning},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRunRunning},
+		Tasks:    []*v1beta1.Task{simpleTask},
 		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,

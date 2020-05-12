@@ -26,22 +26,20 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
+	test "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
-	test "github.com/tektoncd/pipeline/test/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,7 +59,7 @@ const (
 	clusterTaskNameLabelKey = pipeline.GroupName + pipeline.ClusterTaskLabelKey
 	taskRunNameLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	workspaceDir            = "/workspace"
-	currentAPIVersion       = "tekton.dev/v1alpha1"
+	currentAPIVersion       = "tekton.dev/v1beta1"
 )
 
 var (
@@ -114,23 +112,24 @@ var (
 	), tb.TaskNamespace("foo"))
 
 	outputTask = tb.Task("test-output-task", tb.TaskSpec(
-		simpleStep, tb.TaskInputs(
-			tb.InputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit),
-			tb.InputsResource(anotherGitResource.Name, v1alpha1.PipelineResourceTypeGit),
+		simpleStep, tb.TaskResources(
+			tb.TaskResourcesInput(gitResource.Name, resourcev1alpha1.PipelineResourceTypeGit),
+			tb.TaskResourcesInput(anotherGitResource.Name, resourcev1alpha1.PipelineResourceTypeGit),
 		),
-		tb.TaskOutputs(tb.OutputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskResources(tb.TaskResourcesOutput(gitResource.Name, resourcev1alpha1.PipelineResourceTypeGit)),
 	))
 
 	saTask = tb.Task("test-with-sa", tb.TaskSpec(tb.Step("foo", tb.StepName("sa-step"), tb.StepCommand("/mycmd"))), tb.TaskNamespace("foo"))
 
 	templatedTask = tb.Task("test-task-with-substitution", tb.TaskSpec(
-		tb.TaskInputs(
-			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-			tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString), tb.InputsParamSpec("myarghasdefault", v1alpha1.ParamTypeString, tb.ParamSpecDefault("dont see me")),
-			tb.InputsParamSpec("myarghasdefault2", v1alpha1.ParamTypeString, tb.ParamSpecDefault("thedefault")),
-			tb.InputsParamSpec("configmapname", v1alpha1.ParamTypeString),
+		tb.TaskParam("myarg", v1beta1.ParamTypeString),
+		tb.TaskParam("myarghasdefault", v1beta1.ParamTypeString, tb.ParamSpecDefault("dont see me")),
+		tb.TaskParam("myarghasdefault2", v1beta1.ParamTypeString, tb.ParamSpecDefault("thedefault")),
+		tb.TaskParam("configmapname", v1beta1.ParamTypeString),
+		tb.TaskResources(
+			tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
+			tb.TaskResourcesOutput("myimage", resourcev1alpha1.PipelineResourceTypeImage),
 		),
-		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-arg=$(inputs.params.myarg)",
 			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
@@ -150,26 +149,26 @@ var (
 	), tb.TaskNamespace("foo"))
 
 	twoOutputsTask = tb.Task("test-two-output-task", tb.TaskSpec(
-		simpleStep, tb.TaskOutputs(
-			tb.OutputsResource(cloudEventResource.Name, v1alpha1.PipelineResourceTypeCloudEvent),
-			tb.OutputsResource(anotherCloudEventResource.Name, v1alpha1.PipelineResourceTypeCloudEvent),
+		simpleStep, tb.TaskResources(
+			tb.TaskResourcesOutput(cloudEventResource.Name, resourcev1alpha1.PipelineResourceTypeCloudEvent),
+			tb.TaskResourcesOutput(anotherCloudEventResource.Name, resourcev1alpha1.PipelineResourceTypeCloudEvent),
 		),
 	), tb.TaskNamespace("foo"))
 
 	gitResource = tb.PipelineResource("git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
+		resourcev1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
 	anotherGitResource = tb.PipelineResource("another-git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
+		resourcev1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
 	))
 	imageResource = tb.PipelineResource("image-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
+		resourcev1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
 	))
 	cloudEventResource = tb.PipelineResource("cloud-event-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget1),
+		resourcev1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget1),
 	))
 	anotherCloudEventResource = tb.PipelineResource("another-cloud-event-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
+		resourcev1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
 	))
 
 	toolsVolume = corev1.Volume{
@@ -251,7 +250,7 @@ var (
 	}
 )
 
-func getRunName(tr *v1alpha1.TaskRun) string {
+func getRunName(tr *v1beta1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
@@ -312,10 +311,10 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunServiceAccountName("test-sa"),
 	))
-	taskruns := []*v1alpha1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
+	taskruns := []*v1beta1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	d := test.Data{
 		TaskRuns: taskruns,
-		Tasks:    []*v1alpha1.Task{simpleTask, saTask},
+		Tasks:    []*v1beta1.Task{simpleTask, saTask},
 	}
 
 	defaultSAName := "pipelines"
@@ -329,7 +328,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 
 	for _, tc := range []struct {
 		name    string
-		taskRun *v1alpha1.TaskRun
+		taskRun *v1beta1.TaskRun
 		wantPod *corev1.Pod
 	}{{
 		name:    "success",
@@ -444,7 +443,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Errorf("Invalid resource key: %v", err)
 			}
 
-			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -488,31 +487,29 @@ func TestReconcile(t *testing.T) {
 	))
 	taskRunSubstitution := tb.TaskRun("test-taskrun-substitution", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunInputs(
-			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsParam("myarghasdefault", "bar"),
-			tb.TaskRunInputsParam("configmapname", "configbar"),
-			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
+		tb.TaskRunParam("myarg", "foo"),
+		tb.TaskRunParam("myarghasdefault", "bar"),
+		tb.TaskRunParam("configmapname", "configbar"),
+		tb.TaskRunResources(
+			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
+			tb.TaskRunResourcesOutput("myimage", tb.TaskResourceBindingRef("image-resource")),
 		),
-		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.TaskResourceBindingRef("image-resource"))),
 	))
 	taskRunInputOutput := tb.TaskRun("test-taskrun-input-output",
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(outputTask.Name),
-			tb.TaskRunInputs(
-				tb.TaskRunInputsResource(gitResource.Name,
+			tb.TaskRunResources(
+				tb.TaskRunResourcesInput(gitResource.Name,
 					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
-				tb.TaskRunInputsResource(anotherGitResource.Name,
+				tb.TaskRunResourcesInput(anotherGitResource.Name,
 					tb.TaskResourceBindingRef(anotherGitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
-			),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(gitResource.Name,
+				tb.TaskRunResourcesOutput(gitResource.Name,
 					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
@@ -520,14 +517,14 @@ func TestReconcile(t *testing.T) {
 		),
 	)
 	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskspec", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunInputs(
-			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
+		tb.TaskRunParam("myarg", "foo"),
+		tb.TaskRunResources(
+			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
 		),
 		tb.TaskRunTaskSpec(
-			tb.TaskInputs(
-				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
+			tb.TaskParam("myarg", v1beta1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
+			tb.TaskResources(
+				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
 			),
 			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"),
 				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
@@ -536,10 +533,10 @@ func TestReconcile(t *testing.T) {
 	))
 
 	taskRunWithResourceSpecAndTaskSpec := tb.TaskRun("test-taskrun-with-resource-spec", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunInputs(
-			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeGit,
-				Params: []v1alpha1.ResourceParam{{
+		tb.TaskRunResources(
+			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingResourceSpec(&resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{{
 					Name:  "URL",
 					Value: "github.com/foo/bar.git",
 				}, {
@@ -549,15 +546,15 @@ func TestReconcile(t *testing.T) {
 			})),
 		),
 		tb.TaskRunTaskSpec(
-			tb.TaskInputs(
-				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+			tb.TaskResources(
+				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
 			tb.Step("ubuntu", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
 		),
 	))
 
 	taskRunWithClusterTask := tb.TaskRun("test-taskrun-with-cluster-task",
 		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1alpha1.ClusterTaskKind))),
+		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1beta1.ClusterTaskKind))),
 	)
 
 	taskRunWithLabels := tb.TaskRun("test-taskrun-with-labels",
@@ -589,7 +586,7 @@ func TestReconcile(t *testing.T) {
 		),
 	))
 
-	taskruns := []*v1alpha1.TaskRun{
+	taskruns := []*v1beta1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
@@ -599,13 +596,13 @@ func TestReconcile(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask},
-		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
-		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	for _, tc := range []struct {
 		name       string
-		taskRun    *v1alpha1.TaskRun
+		taskRun    *v1beta1.TaskRun
 		wantPod    *corev1.Pod
 		wantEvents []string
 	}{{
@@ -1065,7 +1062,7 @@ func TestReconcile(t *testing.T) {
 				t.Errorf("Invalid resource key: %v", err)
 			}
 
-			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -1111,8 +1108,8 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		tb.TaskRunTaskRef(simpleTask.Name),
 	))
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -1138,8 +1135,8 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	// spec steps of the Task any more. After Reconcile is called, we should see the order of status
 	// steps in TaksRun has been converted to the same one as in spec steps of the Task.
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{taskMultipleSteps},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{taskMultipleSteps},
 		Pods: []*corev1.Pod{{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "foo",
@@ -1187,7 +1184,7 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	verifyTaskRunStatusStep(t, taskRun)
 }
 
-func verifyTaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
+func verifyTaskRunStatusStep(t *testing.T, taskRun *v1beta1.TaskRun) {
 	actualStepOrder := []string{}
 	for _, state := range taskRun.Status.Steps {
 		actualStepOrder = append(actualStepOrder, state.Name)
@@ -1213,8 +1210,8 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 		),
 	)
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 		Pods: []*corev1.Pod{{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "foo",
@@ -1237,10 +1234,10 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 func TestReconcileInvalidTaskRuns(t *testing.T) {
 	noTaskRun := tb.TaskRun("notaskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef("notask")))
 	withWrongRef := tb.TaskRun("taskrun-with-wrong-ref", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef("taskrun-with-wrong-ref", tb.TaskRefKind(v1alpha1.ClusterTaskKind)),
+		tb.TaskRunTaskRef("taskrun-with-wrong-ref", tb.TaskRefKind(v1beta1.ClusterTaskKind)),
 	))
-	taskRuns := []*v1alpha1.TaskRun{noTaskRun, withWrongRef}
-	tasks := []*v1alpha1.Task{simpleTask}
+	taskRuns := []*v1beta1.TaskRun{noTaskRun, withWrongRef}
+	tasks := []*v1beta1.Task{simpleTask}
 
 	d := test.Data{
 		TaskRuns: taskRuns,
@@ -1249,7 +1246,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 	testcases := []struct {
 		name       string
-		taskRun    *v1alpha1.TaskRun
+		taskRun    *v1beta1.TaskRun
 		reason     string
 		wantEvents []string
 	}{{
@@ -1318,8 +1315,8 @@ func TestReconcilePodFetchError(t *testing.T) {
 		tb.TaskRunStatus(tb.PodName("will-not-be-found")),
 	)
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -1336,7 +1333,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 	}
 }
 
-func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error) {
+func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) {
 	// TODO(jasonhall): This avoids a circular dependency where
 	// getTaskRunController takes a test.Data which must be populated with
 	// a pod created from MakePod which requires a (fake) Kube client. When
@@ -1366,14 +1363,14 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
 	}
-	taskRun.Status = v1alpha1.TaskRunStatus{
-		TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+	taskRun.Status = v1beta1.TaskRunStatus{
+		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			PodName: pod.Name,
 		},
 	}
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 		Pods:     []*corev1.Pod{pod},
 	}
 
@@ -1387,7 +1384,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1411,7 +1408,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
-	newTr, err = clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err = clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
@@ -1446,10 +1443,10 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		tb.TaskRunTaskRef(simpleTask.Name),
 	), tb.TaskRunStatus(tb.StatusCondition(*taskSt)))
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{
+		TaskRuns: []*v1beta1.TaskRun{
 			taskRun,
 		},
-		Tasks: []*v1alpha1.Task{simpleTask},
+		Tasks: []*v1beta1.Task{simpleTask},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -1460,7 +1457,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1480,8 +1477,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 			Status: corev1.ConditionUnknown,
 		})))
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -1494,7 +1491,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1521,7 +1518,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
-		taskRun        *v1alpha1.TaskRun
+		taskRun        *v1beta1.TaskRun
 		expectedStatus *apis.Condition
 		wantEvents     []string
 	}
@@ -1593,8 +1590,8 @@ func TestReconcileTimeouts(t *testing.T) {
 
 	for _, tc := range testcases {
 		d := test.Data{
-			TaskRuns: []*v1alpha1.TaskRun{tc.taskRun},
-			Tasks:    []*v1alpha1.Task{simpleTask},
+			TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
+			Tasks:    []*v1beta1.Task{simpleTask},
 		}
 		testAssets, cancel := getTaskRunController(t, d)
 		defer cancel()
@@ -1606,7 +1603,7 @@ func TestReconcileTimeouts(t *testing.T) {
 		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 		}
-		newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+		newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
 		}
@@ -1632,8 +1629,8 @@ func TestHandlePodCreationError(t *testing.T) {
 		}),
 	))
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{simpleTask},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -1693,9 +1690,9 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 	)
@@ -1703,14 +1700,14 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
 		),
 	)
 	taskRunWithCESucceded := tb.TaskRun("test-taskrun-ce-succeeded",
@@ -1718,9 +1715,9 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSelfLink("/task/1234"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1728,8 +1725,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
 		),
 	)
 	taskRunWithCEFailed := tb.TaskRun("test-taskrun-ce-failed",
@@ -1737,9 +1734,9 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSelfLink("/task/1234"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1747,8 +1744,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
 		),
 	)
 	taskRunWithCESuccededOneAttempt := tb.TaskRun("test-taskrun-ce-succeeded-one-attempt",
@@ -1756,9 +1753,9 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSelfLink("/task/1234"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1766,11 +1763,11 @@ func TestReconcileCloudEvents(t *testing.T) {
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 0, v1beta1.CloudEventConditionUnknown),
 		),
 	)
-	taskruns := []*v1alpha1.TaskRun{
+	taskruns := []*v1beta1.TaskRun{
 		taskRunWithNoCEResources, taskRunWithTwoCEResourcesNoInit,
 		taskRunWithTwoCEResourcesInit, taskRunWithCESucceded, taskRunWithCEFailed,
 		taskRunWithCESuccededOneAttempt,
@@ -1778,14 +1775,14 @@ func TestReconcileCloudEvents(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, twoOutputsTask},
-		ClusterTasks:      []*v1alpha1.ClusterTask{},
-		PipelineResources: []*v1alpha1.PipelineResource{cloudEventResource, anotherCloudEventResource},
+		Tasks:             []*v1beta1.Task{simpleTask, twoOutputsTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{cloudEventResource, anotherCloudEventResource},
 	}
 	for _, tc := range []struct {
 		name            string
-		taskRun         *v1alpha1.TaskRun
-		wantCloudEvents []v1alpha1.CloudEventDelivery
+		taskRun         *v1beta1.TaskRun
+		wantCloudEvents []v1beta1.CloudEventDelivery
 	}{{
 		name:            "no-ce-resources",
 		taskRun:         taskRunWithNoCEResources,
@@ -1794,36 +1791,36 @@ func TestReconcileCloudEvents(t *testing.T) {
 		name:    "ce-resources-no-init",
 		taskRun: taskRunWithTwoCEResourcesNoInit,
 		wantCloudEvents: tb.TaskRun("want", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
 		)).Status.CloudEvents,
 	}, {
 		name:    "ce-resources-init",
 		taskRun: taskRunWithTwoCEResourcesInit,
 		wantCloudEvents: tb.TaskRun("want2", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
 		)).Status.CloudEvents,
 	}, {
 		name:    "ce-resources-init-task-successful",
 		taskRun: taskRunWithCESucceded,
 		wantCloudEvents: tb.TaskRun("want3", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionSent),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1alpha1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1beta1.CloudEventConditionSent),
 		)).Status.CloudEvents,
 	}, {
 		name:    "ce-resources-init-task-failed",
 		taskRun: taskRunWithCEFailed,
 		wantCloudEvents: tb.TaskRun("want4", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionSent),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1alpha1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1beta1.CloudEventConditionSent),
 		)).Status.CloudEvents,
 	}, {
 		name:    "ce-resources-init-task-successful-one-attempt",
 		taskRun: taskRunWithCESuccededOneAttempt,
 		wantCloudEvents: tb.TaskRun("want5", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 1, v1alpha1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 1, v1beta1.CloudEventConditionSent),
 		)).Status.CloudEvents,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1854,7 +1851,7 @@ func TestReconcileCloudEvents(t *testing.T) {
 				t.Errorf("Invalid resource key: %v", err)
 			}
 
-			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -1871,8 +1868,8 @@ func TestUpdateTaskRunResourceResult(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		want          []v1alpha1.PipelineResourceResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		want          []resourcev1alpha1.PipelineResourceResult
 	}{{
 		desc: "image resource updated",
 		podStatus: corev1.PodStatus{
@@ -1884,15 +1881,15 @@ func TestUpdateTaskRunResourceResult(t *testing.T) {
 				},
 			}},
 		},
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []resourcev1alpha1.PipelineResourceResult{{
 			Key:         "digest",
 			Value:       "sha256:1234",
-			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
+			ResourceRef: resourcev1alpha1.PipelineResourceRef{Name: "source-image"},
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			tr := &v1alpha1.TaskRun{}
+			tr := &v1beta1.TaskRun{}
 			tr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
@@ -1911,9 +1908,9 @@ func TestUpdateTaskRunResult(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		wantResults   []v1alpha1.TaskRunResult
-		want          []v1alpha1.PipelineResourceResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		wantResults   []v1beta1.TaskRunResult
+		want          []resourcev1alpha1.PipelineResourceResult
 	}{{
 		desc: "test result with pipeline result",
 		podStatus: corev1.PodStatus{
@@ -1925,20 +1922,20 @@ func TestUpdateTaskRunResult(t *testing.T) {
 				},
 			}},
 		},
-		wantResults: []v1alpha1.TaskRunResult{{
+		wantResults: []v1beta1.TaskRunResult{{
 			Name:  "resultName",
 			Value: "resultValue",
 		}},
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []resourcev1alpha1.PipelineResourceResult{{
 			Key:         "digest",
 			Value:       "sha256:1234",
-			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
+			ResourceRef: resourcev1alpha1.PipelineResourceRef{Name: "source-image"},
 			ResultType:  "PipelineResourceResult",
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			tr := &v1alpha1.TaskRun{}
+			tr := &v1beta1.TaskRun{}
 			tr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
@@ -1960,9 +1957,9 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		wantResults   []v1alpha1.TaskRunResult
-		want          []v1alpha1.PipelineResourceResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		wantResults   []v1beta1.TaskRunResult
+		want          []resourcev1alpha1.PipelineResourceResult
 	}{{
 		desc: "test result with pipeline result - no result type",
 		podStatus: corev1.PodStatus{
@@ -1974,19 +1971,19 @@ func TestUpdateTaskRunResult2(t *testing.T) {
 				},
 			}},
 		},
-		wantResults: []v1alpha1.TaskRunResult{{
+		wantResults: []v1beta1.TaskRunResult{{
 			Name:  "resultName",
 			Value: "resultValue",
 		}},
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []resourcev1alpha1.PipelineResourceResult{{
 			Key:         "digest",
 			Value:       "sha256:1234",
-			ResourceRef: v1alpha1.PipelineResourceRef{Name: "source-image"},
+			ResourceRef: resourcev1alpha1.PipelineResourceRef{Name: "source-image"},
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			tr := &v1alpha1.TaskRun{}
+			tr := &v1beta1.TaskRun{}
 			tr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
@@ -2008,8 +2005,8 @@ func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		want          []v1alpha1.TaskRunResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		want          []v1beta1.TaskRunResult
 	}{{
 		desc: "two test results",
 		podStatus: corev1.PodStatus{
@@ -2021,7 +2018,7 @@ func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 				},
 			}},
 		},
-		want: []v1alpha1.TaskRunResult{{
+		want: []v1beta1.TaskRunResult{{
 			Name:  "resultNameOne",
 			Value: "resultValueOne",
 		}, {
@@ -2031,7 +2028,7 @@ func TestUpdateTaskRunResultTwoResults(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			tr := &v1alpha1.TaskRun{}
+			tr := &v1beta1.TaskRun{}
 			tr.Status.SetCondition(&apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
@@ -2050,9 +2047,9 @@ func TestUpdateTaskRunResultWhenTaskFailed(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		wantResults   []v1alpha1.TaskRunResult
-		want          []v1alpha1.PipelineResourceResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		wantResults   []v1beta1.TaskRunResult
+		want          []resourcev1alpha1.PipelineResourceResult
 	}{{
 		desc: "update task results when task fails",
 		podStatus: corev1.PodStatus{
@@ -2064,7 +2061,7 @@ func TestUpdateTaskRunResultWhenTaskFailed(t *testing.T) {
 				},
 			}},
 		},
-		taskRunStatus: &v1alpha1.TaskRunStatus{
+		taskRunStatus: &v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
@@ -2089,8 +2086,8 @@ func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		podStatus     corev1.PodStatus
-		taskRunStatus *v1alpha1.TaskRunStatus
-		want          []v1alpha1.PipelineResourceResult
+		taskRunStatus *v1beta1.TaskRunStatus
+		want          []resourcev1alpha1.PipelineResourceResult
 	}{{
 		desc: "image resource exporter with malformed json output",
 		podStatus: corev1.PodStatus{
@@ -2102,7 +2099,7 @@ func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 				},
 			}},
 		},
-		taskRunStatus: &v1alpha1.TaskRunStatus{
+		taskRunStatus: &v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
@@ -2112,7 +2109,7 @@ func TestUpdateTaskRunResourceResult_Errors(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			if err := updateTaskRunResourceResult(&v1alpha1.TaskRun{Status: *c.taskRunStatus}, c.podStatus); err == nil {
+			if err := updateTaskRunResourceResult(&v1beta1.TaskRun{Status: *c.taskRunStatus}, c.podStatus); err == nil {
 				t.Error("Expected error, got nil")
 			}
 			if d := cmp.Diff(c.want, c.taskRunStatus.ResourcesResult); d != "" {
@@ -2139,8 +2136,8 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 	)
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{taskSidecar},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{taskSidecar},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -2151,12 +2148,12 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	getTaskRun, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 
-	expected := v1alpha1.SidecarState{
+	expected := v1beta1.SidecarState{
 		Name:          "sidecar",
 		ImageID:       "image-id",
 		ContainerName: "sidecar-sidecar",
@@ -2196,8 +2193,8 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 	)
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{taskMultipleSidecars},
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{taskMultipleSidecars},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -2208,12 +2205,12 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	getTaskRun, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 
-	expected := []v1alpha1.SidecarState{
+	expected := []v1beta1.SidecarState{
 		{
 			Name:          "sidecar1",
 			ImageID:       "image-id",
@@ -2250,8 +2247,8 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
 	))
 	d := test.Data{
-		Tasks:             []*v1alpha1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1alpha1.TaskRun{taskRun},
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
 		ClusterTasks:      nil,
 		PipelineResources: nil,
 	}
@@ -2264,7 +2261,7 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2289,17 +2286,17 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	}{{
 		desc: "Fail ResolveTaskResources",
 		d: test.Data{
-			Tasks: []*v1alpha1.Task{
+			Tasks: []*v1beta1.Task{
 				tb.Task("test-task-missing-resource",
 					tb.TaskSpec(
-						tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+						tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
 					), tb.TaskNamespace("foo")),
 			},
-			TaskRuns: []*v1alpha1.TaskRun{
+			TaskRuns: []*v1beta1.TaskRun{
 				tb.TaskRun("test-taskrun-missing-resource", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
 					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
-					tb.TaskRunInputs(
-						tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("git")),
+					tb.TaskRunResources(
+						tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("git")),
 					),
 				)),
 			},
@@ -2314,13 +2311,13 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	}, {
 		desc: "Fail ValidateResolvedTaskResources",
 		d: test.Data{
-			Tasks: []*v1alpha1.Task{
+			Tasks: []*v1beta1.Task{
 				tb.Task("test-task-missing-resource",
 					tb.TaskSpec(
-						tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+						tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
 					), tb.TaskNamespace("foo")),
 			},
-			TaskRuns: []*v1alpha1.TaskRun{
+			TaskRuns: []*v1beta1.TaskRun{
 				tb.TaskRun("test-taskrun-missing-resource", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
 					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
 				)),
@@ -2346,7 +2343,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 			}
 
-			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(tt.d.TaskRuns[0].Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(tt.d.TaskRuns[0].Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tt.d.TaskRuns[0].Name, err)
 			}
@@ -2384,8 +2381,8 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		}),
 	))
 	d := test.Data{
-		Tasks:             []*v1alpha1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1alpha1.TaskRun{taskRun},
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
 		ClusterTasks:      nil,
 		PipelineResources: nil,
 	}
@@ -2398,7 +2395,7 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	ttt, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2419,7 +2416,7 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 func TestFailTaskRun(t *testing.T) {
 	testCases := []struct {
 		name           string
-		taskRun        *v1alpha1.TaskRun
+		taskRun        *v1beta1.TaskRun
 		pod            *corev1.Pod
 		reason         string
 		message        string
@@ -2467,7 +2464,7 @@ func TestFailTaskRun(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				TaskRuns: []*v1alpha1.TaskRun{tc.taskRun},
+				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
 			}
 			if tc.pod != nil {
 				d.Pods = []*corev1.Pod{tc.pod}
@@ -2497,11 +2494,8 @@ func Test_storeTaskSpec(t *testing.T) {
 	tr := tb.TaskRun("foo", tb.TaskRunSpec(tb.TaskRunTaskRef("foo-task")))
 
 	ts := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
-	ts1 := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("bar-task"))).Spec
-	want := &v1beta1.TaskSpec{}
-	if err := ts.ConvertTo(ctx, want); err != nil {
-		t.Errorf("error converting to v1beta1: %v", err)
-	}
+	ts1 := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
+	want := ts.DeepCopy()
 
 	// The first time we set it, it should get copied.
 	if err := storeTaskSpec(ctx, tr, &ts); err != nil {

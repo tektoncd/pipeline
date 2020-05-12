@@ -31,7 +31,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -111,7 +112,7 @@ type Reconciler struct {
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
-	conditionLister   listers.ConditionLister
+	conditionLister   listersv1alpha1.ConditionLister
 	tracker           tracker.Interface
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
@@ -246,13 +247,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return merr.ErrorOrNil()
 }
 
-func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.PipelineRun) {
-	if err := pr.ConvertTo(ctx, &v1beta1.PipelineRun{}); err != nil {
-		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
-			pr.Status.MarkResourceNotConvertible(ce)
-		}
-		return
-	}
+func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun) {
 
 	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
 	resolver := &resources.LocalPipelineRefResolver{
@@ -290,13 +285,13 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.Pip
 		}
 		pipelineState, err := resources.ResolvePipelineRun(ctx,
 			*pr,
-			func(name string) (v1alpha1.TaskInterface, error) {
+			func(name string) (v1beta1.TaskInterface, error) {
 				return c.taskLister.Tasks(pr.Namespace).Get(name)
 			},
-			func(name string) (*v1alpha1.TaskRun, error) {
+			func(name string) (*v1beta1.TaskRun, error) {
 				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
 			},
-			func(name string) (v1alpha1.TaskInterface, error) {
+			func(name string) (v1beta1.TaskInterface, error) {
 				return c.clusterTaskLister.Get(name)
 			},
 			func(name string) (*v1alpha1.Condition, error) {
@@ -337,18 +332,10 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1alpha1.Pip
 		pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
 	}
 }
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-
-	if err := pr.ConvertTo(ctx, &v1beta1.PipelineRun{}); err != nil {
-		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
-			pr.Status.MarkResourceNotConvertible(ce)
-			return nil
-		}
-		return err
-	}
 
 	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
 	resolver := &resources.LocalPipelineRefResolver{
@@ -394,7 +381,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		pr.ObjectMeta.Annotations[key] = value
 	}
 
-	d, err := dag.Build(v1alpha1.PipelineTaskList(pipelineSpec.Tasks))
+	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks))
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
@@ -487,13 +474,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	pipelineState, err := resources.ResolvePipelineRun(ctx,
 		*pr,
-		func(name string) (v1alpha1.TaskInterface, error) {
+		func(name string) (v1beta1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
 		},
-		func(name string) (*v1alpha1.TaskRun, error) {
+		func(name string) (*v1beta1.TaskRun, error) {
 			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
 		},
-		func(name string) (v1alpha1.TaskInterface, error) {
+		func(name string) (v1beta1.TaskInterface, error) {
 			return c.clusterTaskLister.Get(name)
 		},
 		func(name string) (*v1alpha1.Condition, error) {
@@ -625,7 +612,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
+func getPipelineRunResults(pipelineSpec *v1beta1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
 	var results []v1beta1.PipelineRunResult
 	stringReplacements := map[string]string{}
 
@@ -646,19 +633,19 @@ func getPipelineRunResults(pipelineSpec *v1alpha1.PipelineSpec, resolvedResultRe
 	return results
 }
 
-func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {
-	status := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+func getTaskRunsStatus(pr *v1beta1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1beta1.PipelineRunTaskRunStatus {
+	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	for _, rprt := range state {
 		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
 
-		var prtrs *v1alpha1.PipelineRunTaskRunStatus
+		var prtrs *v1beta1.PipelineRunTaskRunStatus
 		if rprt.TaskRun != nil {
 			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
 		}
 		if prtrs == nil {
-			prtrs = &v1alpha1.PipelineRunTaskRunStatus{
+			prtrs = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: rprt.PipelineTask.Name,
 			}
 		}
@@ -668,9 +655,9 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 		}
 
 		if len(rprt.ResolvedConditionChecks) > 0 {
-			cStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+			cStatus := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
 			for _, c := range rprt.ResolvedConditionChecks {
-				cStatus[c.ConditionCheckName] = &v1alpha1.PipelineRunConditionCheckStatus{
+				cStatus[c.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
 					ConditionName: c.ConditionRegisterName,
 				}
 				if c.ConditionCheck != nil {
@@ -680,7 +667,7 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 			prtrs.ConditionChecks = cStatus
 			if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
 				if prtrs.Status == nil {
-					prtrs.Status = &v1alpha1.TaskRunStatus{}
+					prtrs.Status = &v1beta1.TaskRunStatus{}
 				}
 				prtrs.Status.SetCondition(&apis.Condition{
 					Type:    apis.ConditionSucceeded,
@@ -695,7 +682,7 @@ func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipe
 	return status
 }
 
-func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) error {
+func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	for taskRunName := range pr.Status.TaskRuns {
 		// TODO(dibyom): Add conditionCheck statuses here
 		prtrs := pr.Status.TaskRuns[taskRunName]
@@ -712,7 +699,7 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) erro
 	return nil
 }
 
-func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
 	if tr != nil {
 		//is a retry
@@ -722,10 +709,10 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		})
-		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(tr)
 	}
 
-	tr = &v1alpha1.TaskRun{
+	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
@@ -733,7 +720,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name),
 			Annotations:     getTaskrunAnnotations(pr),
 		},
-		Spec: v1alpha1.TaskRunSpec{
+		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Timeout:            getTaskRunTimeout(pr, rprt),
@@ -741,7 +728,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
-		tr.Spec.TaskRef = &v1alpha1.TaskRef{
+		tr.Spec.TaskRef = &v1beta1.TaskRef{
 			Name: rprt.ResolvedTaskResources.TaskName,
 			Kind: rprt.ResolvedTaskResources.Kind,
 		}
@@ -749,7 +736,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
 	}
 
-	pipelineRunWorkspaces := make(map[string]v1alpha1.WorkspaceBinding)
+	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
@@ -764,12 +751,12 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
 }
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
 // If the volume source is a volumeClaimTemplate, the template is applied and passed to TaskRun as a persistentVolumeClaim
-func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1alpha1.WorkspaceBinding {
+func taskWorkspaceByWorkspaceVolumeSource(wb v1beta1.WorkspaceBinding, taskWorkspaceName string, pipelineTaskSubPath string, owner metav1.OwnerReference) v1beta1.WorkspaceBinding {
 	if wb.VolumeClaimTemplate == nil {
 		binding := *wb.DeepCopy()
 		binding.Name = taskWorkspaceName
@@ -778,7 +765,7 @@ func taskWorkspaceByWorkspaceVolumeSource(wb v1alpha1.WorkspaceBinding, taskWork
 	}
 
 	// apply template
-	binding := v1alpha1.WorkspaceBinding{
+	binding := v1beta1.WorkspaceBinding{
 		SubPath: combinedSubPath(wb.SubPath, pipelineTaskSubPath),
 		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 			ClaimName: volumeclaim.GetPersistentVolumeClaimName(wb.VolumeClaimTemplate, wb, owner),
@@ -799,19 +786,19 @@ func combinedSubPath(workspaceSubPath string, pipelineTaskSubPath string) string
 	return filepath.Join(workspaceSubPath, pipelineTaskSubPath)
 }
 
-func addRetryHistory(tr *v1alpha1.TaskRun) {
+func addRetryHistory(tr *v1beta1.TaskRun) {
 	newStatus := *tr.Status.DeepCopy()
 	newStatus.RetriesStatus = nil
 	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, newStatus)
 }
 
-func clearStatus(tr *v1alpha1.TaskRun) {
+func clearStatus(tr *v1beta1.TaskRun) {
 	tr.Status.StartTime = nil
 	tr.Status.CompletionTime = nil
 	tr.Status.PodName = ""
 }
 
-func getTaskrunAnnotations(pr *v1alpha1.PipelineRun) map[string]string {
+func getTaskrunAnnotations(pr *v1beta1.PipelineRun) map[string]string {
 	// Propagate annotations from PipelineRun to TaskRun.
 	annotations := make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
 	for key, val := range pr.ObjectMeta.Annotations {
@@ -820,7 +807,7 @@ func getTaskrunAnnotations(pr *v1alpha1.PipelineRun) map[string]string {
 	return annotations
 }
 
-func getTaskrunLabels(pr *v1alpha1.PipelineRun, pipelineTaskName string) map[string]string {
+func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[string]string {
 	// Propagate labels from PipelineRun to TaskRun.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	for key, val := range pr.ObjectMeta.Labels {
@@ -833,7 +820,7 @@ func getTaskrunLabels(pr *v1alpha1.PipelineRun, pipelineTaskName string) map[str
 	return labels
 }
 
-func getTaskRunTimeout(pr *v1alpha1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+func getTaskRunTimeout(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
 	var timeout time.Duration
@@ -872,7 +859,7 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun, rprt *resources.ResolvedPipelin
 	return taskRunTimeout
 }
 
-func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
+func (c *Reconciler) updateStatus(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating status: %w", pr.Name, err)
@@ -885,12 +872,12 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status
-		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
 	}
 	return newPr, nil
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -898,12 +885,12 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1alpha1.PipelineRun) (*v1al
 	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
 		newPr.ObjectMeta.Labels = pr.ObjectMeta.Labels
 		newPr.ObjectMeta.Annotations = pr.ObjectMeta.Annotations
-		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
 }
 
-func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1alpha1.PipelineRun) (*v1alpha1.ConditionCheck, error) {
+func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
 	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
 	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
@@ -917,7 +904,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
 	}
 	serviceAccountName, podtemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
-	tr := &v1alpha1.TaskRun{
+	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
 			Namespace:       pr.Namespace,
@@ -925,7 +912,7 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			Labels:          labels,
 			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
 		},
-		Spec: v1alpha1.TaskRunSpec{
+		Spec: v1beta1.TaskRunSpec{
 			TaskSpec:           taskSpec,
 			ServiceAccountName: serviceAccountName,
 			Params:             rcc.PipelineTaskCondition.Params,
@@ -936,16 +923,15 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			PodTemplate: podtemplate,
 		}}
 
-	cctr, err := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
-	cc := v1alpha1.ConditionCheck(*cctr)
+	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
+	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
 }
 
-func storePipelineSpec(ctx context.Context, pr *v1alpha1.PipelineRun, ps *v1alpha1.PipelineSpec) error {
+func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
-		pr.Status.PipelineSpec = &v1beta1.PipelineSpec{}
-		return ps.ConvertTo(ctx, pr.Status.PipelineSpec)
+		pr.Status.PipelineSpec = ps
 	}
 	return nil
 }

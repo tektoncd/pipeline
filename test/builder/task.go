@@ -84,10 +84,6 @@ type TaskRunInputsOp = v1alpha1.TaskRunInputsOp
 // Deprecated: moved to internal/builder/v1alpha1
 type TaskRunOutputsOp = v1alpha1.TaskRunOutputsOp
 
-// ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
-// Deprecated: moved to internal/builder/v1alpha1
-type ResolvedTaskResourcesOp = v1alpha1.ResolvedTaskResourcesOp
-
 // StepStateOp is an operation which modifies a StepState struct.
 // Deprecated: moved to internal/builder/v1alpha1
 type StepStateOp = v1alpha1.StepStateOp
@@ -433,22 +429,4 @@ var (
 	// TaskRunWorkspaceVolumeClaimTemplate adds a workspace binding with a VolumeClaimTemplate volume source.
 	// Deprecated: moved to internal/builder/v1alpha1
 	TaskRunWorkspaceVolumeClaimTemplate = v1alpha1.TaskRunWorkspaceVolumeClaimTemplate
-
-	// ResolvedTaskResources creates a ResolvedTaskResources with default values.
-	// Any number of ResolvedTaskResources modifier can be passed to transform it.
-	// Deprecated: moved to internal/builder/v1alpha1
-	ResolvedTaskResources = v1alpha1.ResolvedTaskResources
-
-	// ResolvedTaskResourcesTaskSpec sets a TaskSpec to the ResolvedTaskResources.
-	// Any number of TaskSpec modifier can be passed to transform it.
-	// Deprecated: moved to internal/builder/v1alpha1
-	ResolvedTaskResourcesTaskSpec = v1alpha1.ResolvedTaskResourcesTaskSpec
-
-	// ResolvedTaskResourcesInputs adds an input PipelineResource, with specified name, to the ResolvedTaskResources.
-	// Deprecated: moved to internal/builder/v1alpha1
-	ResolvedTaskResourcesInputs = v1alpha1.ResolvedTaskResourcesInputs
-
-	// ResolvedTaskResourcesOutputs adds an output PipelineResource, with specified name, to the ResolvedTaskResources.
-	// Deprecated: moved to internal/builder/v1alpha1
-	ResolvedTaskResourcesOutputs = v1alpha1.ResolvedTaskResourcesOutputs
 )

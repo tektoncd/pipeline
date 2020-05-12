@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,7 +135,7 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 // describing the time at which the next attempt should be performed.
 // Additionally a boolean is returned indicating whether a backoff for the
 // TaskRun is already in progress.
-func (t *TimeoutSet) GetBackoff(tr *v1alpha1.TaskRun) (Backoff, bool) {
+func (t *TimeoutSet) GetBackoff(tr *v1beta1.TaskRun) (Backoff, bool) {
 	t.backoffsMut.Lock()
 	defer t.backoffsMut.Unlock()
 	b := t.backoffs[tr.GetRunKey()]
@@ -168,7 +168,7 @@ func backoffDuration(count uint, jf jitterFunc) time.Duration {
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
-	pipelineRuns, err := pipelineclientset.TektonV1alpha1().PipelineRuns(namespace).List(metav1.ListOptions{})
+	pipelineRuns, err := pipelineclientset.TektonV1beta1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
 		return
@@ -201,7 +201,7 @@ func (t *TimeoutSet) CheckTimeouts(kubeclientset kubernetes.Interface, pipelinec
 // checkTaskRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
-	taskruns, err := pipelineclientset.TektonV1alpha1().TaskRuns(namespace).List(metav1.ListOptions{})
+	taskruns, err := pipelineclientset.TektonV1beta1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
 		return
@@ -220,7 +220,7 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset cl
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
-func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
+func (t *TimeoutSet) WaitTaskRun(tr *v1beta1.TaskRun, startTime *metav1.Time) {
 	var timeout time.Duration
 	if tr.Spec.Timeout == nil {
 		timeout = config.DefaultTimeoutMinutes * time.Minute
@@ -233,7 +233,7 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
-func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1.Time) {
+func (t *TimeoutSet) WaitPipelineRun(pr *v1beta1.PipelineRun, startTime *metav1.Time) {
 	var timeout time.Duration
 	if pr.Spec.Timeout == nil {
 		timeout = config.DefaultTimeoutMinutes * time.Minute
@@ -264,7 +264,7 @@ func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime 
 // the lifetime of the TaskRun no resources are released after the timer
 // fires. It is the caller's responsibility to Release() the TaskRun when
 // work with it has completed.
-func (t *TimeoutSet) SetTaskRunTimer(tr *v1alpha1.TaskRun, d time.Duration) {
+func (t *TimeoutSet) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
 	callback := t.taskRunCallbackFunc
 	if callback == nil {
 		t.logger.Errorf("attempted to set a timer for %q but no task run callback has been assigned", tr.Name)

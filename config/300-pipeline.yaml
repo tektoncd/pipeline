@@ -36,10 +36,10 @@ spec:
   versions:
   - name: v1alpha1
     served: true
-    storage: true
+    storage: false
   - name: v1beta1
     served: true
-    storage: false
+    storage: true
   names:
     kind: Pipeline
     plural: pipelines

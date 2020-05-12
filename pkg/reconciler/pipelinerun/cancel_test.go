@@ -20,10 +20,10 @@ import (
 	"context"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	test "github.com/tektoncd/pipeline/test/v1alpha1"
+	"github.com/tektoncd/pipeline/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -32,15 +32,16 @@ import (
 func TestCancelPipelineRun(t *testing.T) {
 	testCases := []struct {
 		name        string
-		pipelineRun *v1alpha1.PipelineRun
-		taskRuns    []*v1alpha1.TaskRun
+		pipelineRun *v1beta1.PipelineRun
+		taskRuns    []*v1beta1.TaskRun
 	}{{
 		name: "no-resolved-taskrun",
-		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
-			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunCancelled,
-			),
-		),
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelled,
+			},
+		},
 	}, {
 		name: "1-taskrun",
 		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
@@ -48,11 +49,11 @@ func TestCancelPipelineRun(t *testing.T) {
 				tb.PipelineRunCancelled,
 			),
 			tb.PipelineRunStatus(
-				tb.PipelineRunTaskRunsStatus("t1", &v1alpha1.PipelineRunTaskRunStatus{
+				tb.PipelineRunTaskRunsStatus("t1", &v1beta1.PipelineRunTaskRunStatus{
 					PipelineTaskName: "task-1",
 				})),
 		),
-		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo"))},
+		taskRuns: []*v1beta1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo"))},
 	}, {
 		name: "multiple-taskruns",
 		pipelineRun: tb.PipelineRun("test-pipeline-run-cancelled", tb.PipelineRunNamespace("foo"),
@@ -61,17 +62,17 @@ func TestCancelPipelineRun(t *testing.T) {
 			),
 			tb.PipelineRunStatus(
 				tb.PipelineRunTaskRunsStatus(
-					"t1", &v1alpha1.PipelineRunTaskRunStatus{PipelineTaskName: "task-1"}),
+					"t1", &v1beta1.PipelineRunTaskRunStatus{PipelineTaskName: "task-1"}),
 				tb.PipelineRunTaskRunsStatus(
-					"t2", &v1alpha1.PipelineRunTaskRunStatus{PipelineTaskName: "task-2"})),
+					"t2", &v1beta1.PipelineRunTaskRunStatus{PipelineTaskName: "task-2"})),
 		),
-		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo")), tb.TaskRun("t2", tb.TaskRunNamespace("foo"))},
+		taskRuns: []*v1beta1.TaskRun{tb.TaskRun("t1", tb.TaskRunNamespace("foo")), tb.TaskRun("t2", tb.TaskRunNamespace("foo"))},
 	}}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				PipelineRuns: []*v1alpha1.PipelineRun{tc.pipelineRun},
+				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
@@ -87,12 +88,12 @@ func TestCancelPipelineRun(t *testing.T) {
 			if cond.IsTrue() {
 				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", cond)
 			}
-			l, err := c.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+			l, err := c.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, tr := range l.Items {
-				if tr.Spec.Status != v1alpha1.TaskRunSpecStatusCancelled {
+				if tr.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
 					t.Errorf("expected task %q to be marked as cancelled, was %q", tr.Name, tr.Spec.Status)
 				}
 			}

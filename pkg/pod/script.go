@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -50,7 +50,7 @@ var (
 // It does this by prepending a container that writes specified Script bodies
 // to executable files in a shared volumeMount, then produces Containers that
 // simply run those executable files.
-func convertScripts(shellImage string, steps []v1alpha1.Step, sidecars []v1alpha1.Sidecar) (*corev1.Container, []corev1.Container, []corev1.Container) {
+func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	placeScripts := false
 	placeScriptsInit := corev1.Container{
 		Name:         "place-scripts",
@@ -74,7 +74,7 @@ func convertScripts(shellImage string, steps []v1alpha1.Step, sidecars []v1alpha
 //
 // It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1alpha1.Step, initContainer *corev1.Container, placeScripts *bool, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		if s.Script == "" {

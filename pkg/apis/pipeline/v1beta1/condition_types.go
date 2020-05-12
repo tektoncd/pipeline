@@ -19,8 +19,31 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
+
+// ConditionCheck represents a single evaluation of a Condition step.
+type ConditionCheck TaskRun
+
+func NewConditionCheck(tr *TaskRun) *ConditionCheck {
+	if tr == nil {
+		return nil
+	}
+
+	cc := ConditionCheck(*tr)
+	return &cc
+}
+
+// IsDone returns true if the ConditionCheck's status indicates that it is done.
+func (cc *ConditionCheck) IsDone() bool {
+	return !cc.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+}
+
+// IsSuccessful returns true if the ConditionCheck's status indicates that it is done.
+func (cc *ConditionCheck) IsSuccessful() bool {
+	return cc.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+}
 
 // ConditionCheckStatus defines the observed state of ConditionCheck
 type ConditionCheckStatus struct {

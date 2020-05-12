@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -49,15 +49,15 @@ func (b *ArtifactBucket) GetType() string {
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
-func (b *ArtifactBucket) StorageBasePath(pr *v1alpha1.PipelineRun) string {
+func (b *ArtifactBucket) StorageBasePath(pr *v1beta1.PipelineRun) string {
 	return fmt.Sprintf("%s-%s-bucket", pr.Name, pr.Namespace)
 }
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
-func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
+func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []v1alpha1.Step{{Container: corev1.Container{
+	return []v1beta1.Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
 		Image:   b.ShellImage,
 		Command: []string{"mkdir", "-p", destinationPath},
@@ -72,10 +72,10 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
-func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step {
+func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []v1alpha1.Step{{Container: corev1.Container{
+	return []v1beta1.Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        b.GsutilImage,
 		Command:      []string{"gsutil"},

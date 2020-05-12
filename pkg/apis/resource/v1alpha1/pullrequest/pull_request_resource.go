@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -110,20 +110,20 @@ func (s *Resource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *Resource) GetInputTaskModifier(ts *pipelinev1alpha1.TaskSpec, sourcePath string) (pipelinev1alpha1.TaskModifier, error) {
-	return &pipelinev1alpha1.InternalTaskModifier{
+func (s *Resource) GetInputTaskModifier(ts *pipelinev1beta1.TaskSpec, sourcePath string) (pipelinev1beta1.TaskModifier, error) {
+	return &pipelinev1beta1.InternalTaskModifier{
 		StepsToPrepend: s.getSteps("download", sourcePath),
 	}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *Resource) GetOutputTaskModifier(ts *pipelinev1alpha1.TaskSpec, sourcePath string) (pipelinev1alpha1.TaskModifier, error) {
-	return &pipelinev1alpha1.InternalTaskModifier{
+func (s *Resource) GetOutputTaskModifier(ts *pipelinev1beta1.TaskSpec, sourcePath string) (pipelinev1beta1.TaskModifier, error) {
+	return &pipelinev1beta1.InternalTaskModifier{
 		StepsToAppend: s.getSteps("upload", sourcePath),
 	}, nil
 }
 
-func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1alpha1.Step {
+func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1beta1.Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 	if s.Provider != "" {
 		args = append(args, []string{"-provider", s.Provider}...)
@@ -150,7 +150,7 @@ func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1alpha1.S
 		}
 	}
 
-	return []pipelinev1alpha1.Step{{Container: corev1.Container{
+	return []pipelinev1beta1.Step{{Container: corev1.Container{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},

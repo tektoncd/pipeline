@@ -20,20 +20,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetPipeline is a function used to retrieve Pipelines.
-type GetPipeline func(string) (v1alpha1.PipelineInterface, error)
+type GetPipeline func(string) (v1beta1.PipelineInterface, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's
 // metadata and embedded PipelineSpec.
-func GetPipelineData(ctx context.Context, pipelineRun *v1alpha1.PipelineRun, getPipeline GetPipeline) (*metav1.ObjectMeta, *v1alpha1.PipelineSpec, error) {
+func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getPipeline GetPipeline) (*metav1.ObjectMeta, *v1beta1.PipelineSpec, error) {
 	pipelineMeta := metav1.ObjectMeta{}
-	pipelineSpec := v1alpha1.PipelineSpec{}
+	pipelineSpec := v1beta1.PipelineSpec{}
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
@@ -43,10 +42,6 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1alpha1.PipelineRun, get
 		}
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
-
-		if err := pipelineSpec.ConvertTo(ctx, &v1beta1.PipelineSpec{}); err != nil {
-			return nil, nil, err
-		}
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec

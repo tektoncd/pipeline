@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -120,7 +120,7 @@ func NewRecorder() (*Recorder, error) {
 // DurationAndCount logs the duration of PipelineRun execution and
 // count for number of PipelineRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(pr *v1alpha1.PipelineRun) error {
+func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
 	}

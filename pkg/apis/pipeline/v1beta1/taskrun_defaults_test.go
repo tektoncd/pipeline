@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 package v1beta1_test
 
 import (
@@ -134,6 +133,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 		name: "empty no context",
 		in:   &v1beta1.TaskRun{},
 		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1beta1.TaskRunSpec{
 				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
@@ -146,6 +148,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
 				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
@@ -159,6 +164,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
 				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
@@ -173,6 +181,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
 				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
@@ -198,6 +209,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
@@ -213,6 +227,144 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
 					"default-service-account": "tekton",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "TaskRun managed-by set in config",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "something-else"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
+				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes":        "5",
+					"default-managed-by-label-value": "something-else",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "TaskRun managed-by set in request and config (request wins)",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "user-specified"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "user-specified"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
+				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes":        "5",
+					"default-managed-by-label-value": "something-else",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "TaskRef pod template is coming from default config pod template",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef:            &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &v1beta1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "TaskRef pod template takes precedence over default config pod template",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+				PodTemplate: &v1beta1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef:            &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &v1beta1.PodTemplate{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
 				},
 			})
 			return s.ToContext(ctx)

@@ -35,7 +35,7 @@ func TestPipelineResource(t *testing.T) {
 		Spec: resource.PipelineResourceSpec{
 			Description: "test description",
 			Type:        v1beta1.PipelineResourceTypeGit,
-			Params: []v1beta1.ResourceParam{{
+			Params: []resource.ResourceParam{{
 				Name: "URL", Value: "https://foo.git",
 			}},
 		},

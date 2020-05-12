@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -75,9 +74,6 @@ type TaskRunInputsOp func(*v1alpha1.TaskRunInputs)
 
 // TaskRunOutputsOp is an operation which modify a TaskRunOutputs struct.
 type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
-
-// ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
-type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
 
 // StepStateOp is an operation which modifies a StepState struct.
 type StepStateOp func(*v1alpha1.StepState)
@@ -930,47 +926,5 @@ func TaskRunWorkspaceVolumeClaimTemplate(name, subPath string, volumeClaimTempla
 			SubPath:             subPath,
 			VolumeClaimTemplate: volumeClaimTemplate,
 		})
-	}
-}
-
-// ResolvedTaskResources creates a ResolvedTaskResources with default values.
-// Any number of ResolvedTaskResources modifier can be passed to transform it.
-func ResolvedTaskResources(ops ...ResolvedTaskResourcesOp) *resources.ResolvedTaskResources {
-	resources := &resources.ResolvedTaskResources{}
-	for _, op := range ops {
-		op(resources)
-	}
-	return resources
-}
-
-// ResolvedTaskResourcesTaskSpec sets a TaskSpec to the ResolvedTaskResources.
-// Any number of TaskSpec modifier can be passed to transform it.
-func ResolvedTaskResourcesTaskSpec(ops ...TaskSpecOp) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		spec := &v1alpha1.TaskSpec{}
-		for _, op := range ops {
-			op(spec)
-		}
-		r.TaskSpec = spec
-	}
-}
-
-// ResolvedTaskResourcesInputs adds an input PipelineResource, with specified name, to the ResolvedTaskResources.
-func ResolvedTaskResourcesInputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		if r.Inputs == nil {
-			r.Inputs = map[string]*v1alpha1.PipelineResource{}
-		}
-		r.Inputs[name] = resource
-	}
-}
-
-// ResolvedTaskResourcesOutputs adds an output PipelineResource, with specified name, to the ResolvedTaskResources.
-func ResolvedTaskResourcesOutputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
-	return func(r *resources.ResolvedTaskResources) {
-		if r.Outputs == nil {
-			r.Outputs = map[string]*v1alpha1.PipelineResource{}
-		}
-		r.Outputs[name] = resource
 	}
 }

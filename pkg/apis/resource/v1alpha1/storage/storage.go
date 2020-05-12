@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -38,14 +38,14 @@ const (
 // It adds a function to the PipelineResourceInterface for retrieving secrets that are usually
 // needed for storage PipelineResources.
 type PipelineStorageResourceInterface interface {
-	v1alpha1.PipelineResourceInterface
-	GetSecretParams() []v1alpha1.SecretParam
+	v1beta1.PipelineResourceInterface
+	GetSecretParams() []resource.SecretParam
 }
 
 // NewResource returns an instance of the requested storage subtype, which can be used
 // to add input and output steps and volumes to an executing pod.
 func NewResource(images pipeline.Images, r *resource.PipelineResource) (PipelineStorageResourceInterface, error) {
-	if r.Spec.Type != v1alpha1.PipelineResourceTypeStorage {
+	if r.Spec.Type != v1beta1.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 
@@ -64,7 +64,7 @@ func NewResource(images pipeline.Images, r *resource.PipelineResource) (Pipeline
 	return nil, fmt.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
-func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec v1alpha1.TaskSpec) []corev1.Volume {
+func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec v1beta1.TaskSpec) []corev1.Volume {
 	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
@@ -94,8 +94,8 @@ func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec v1alpha1.Task
 }
 
 // of the step will include name.
-func CreateDirStep(shellImage string, name, destinationPath string) v1alpha1.Step {
-	return v1alpha1.Step{Container: corev1.Container{
+func CreateDirStep(shellImage string, name, destinationPath string) v1beta1.Step {
+	return v1beta1.Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
 		Image:   shellImage,
 		Command: []string{"mkdir", "-p", destinationPath},

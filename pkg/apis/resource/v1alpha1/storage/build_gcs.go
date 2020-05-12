@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -129,14 +129,14 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns a TaskModifier that prepends a step to a Task to fetch the archive or manifest.
-func (s *BuildGCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, sourcePath string) (v1alpha1.TaskModifier, error) {
+func (s *BuildGCSResource) GetInputTaskModifier(ts *v1beta1.TaskSpec, sourcePath string) (v1beta1.TaskModifier, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if sourcePath != "" {
 		args = append(args, "--dest_dir", sourcePath)
 	}
 
-	steps := []v1alpha1.Step{
+	steps := []v1beta1.Step{
 		CreateDirStep(s.ShellImage, s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
@@ -147,15 +147,15 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *v1alpha1.TaskSpec, sourcePat
 
 	volumes := getStorageVolumeSpec(s, *ts)
 
-	return &v1alpha1.InternalTaskModifier{
+	return &v1beta1.InternalTaskModifier{
 		StepsToPrepend: steps,
 		Volumes:        volumes,
 	}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *BuildGCSResource) GetOutputTaskModifier(ts *v1alpha1.TaskSpec, sourcePath string) (v1alpha1.TaskModifier, error) {
-	return &v1alpha1.InternalTaskModifier{}, nil
+func (s *BuildGCSResource) GetOutputTaskModifier(ts *v1beta1.TaskSpec, sourcePath string) (v1beta1.TaskModifier, error) {
+	return &v1beta1.InternalTaskModifier{}, nil
 }
 
 func getArtifactType(val string) (GCSArtifactType, error) {

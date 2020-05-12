@@ -302,7 +302,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 		tb.PipelineRunResourceBinding("some-resource",
 			tb.PipelineResourceBindingResourceSpec(&resource.PipelineResourceSpec{
 				Type: v1beta1.PipelineResourceTypeGit,
-				Params: []v1beta1.ResourceParam{{
+				Params: []resource.ResourceParam{{
 					Name:  "url",
 					Value: "git",
 				}}})),
@@ -339,7 +339,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 				Name: "some-resource",
 				ResourceSpec: &resource.PipelineResourceSpec{
 					Type: v1beta1.PipelineResourceType("git"),
-					Params: []v1beta1.ResourceParam{{
+					Params: []resource.ResourceParam{{
 						Name:  "url",
 						Value: "git",
 					}},

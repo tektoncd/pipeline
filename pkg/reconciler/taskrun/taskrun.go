@@ -26,10 +26,10 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -216,14 +216,14 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return multierror.Append(err, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
 }
 
-func (c *Reconciler) getTaskResolver(tr *v1alpha1.TaskRun) (*resources.LocalTaskRefResolver, v1alpha1.TaskKind) {
+func (c *Reconciler) getTaskResolver(tr *v1beta1.TaskRun) (*resources.LocalTaskRefResolver, v1beta1.TaskKind) {
 	resolver := &resources.LocalTaskRefResolver{
 		Namespace:    tr.Namespace,
 		Tektonclient: c.PipelineClientSet,
 	}
-	kind := v1alpha1.NamespacedTaskKind
-	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
-		kind = v1alpha1.ClusterTaskKind
+	kind := v1beta1.NamespacedTaskKind
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1beta1.ClusterTaskKind {
+		kind = v1beta1.ClusterTaskKind
 	}
 	resolver.Kind = kind
 	return resolver, kind
@@ -239,18 +239,10 @@ func (c *Reconciler) getTaskResolver(tr *v1alpha1.TaskRun) (*resources.LocalTask
 // `prepare` returns spec and resources. In future we might store
 // them in the TaskRun.Status so we don't need to re-run `prepare` at every
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
-func (c *Reconciler) prepare(ctx context.Context, tr *v1alpha1.TaskRun) (*v1alpha1.TaskSpec, *resources.ResolvedTaskResources, error) {
+func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-
-	if err := tr.ConvertTo(ctx, &v1beta1.TaskRun{}); err != nil {
-		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
-			tr.Status.MarkResourceNotConvertible(ce)
-			return nil, nil, nil
-		}
-		return nil, nil, err
-	}
 
 	resolver, kind := c.getTaskResolver(tr)
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, resolver.GetTask)
@@ -320,7 +312,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1alpha1.TaskRun) (*v1alph
 	// FIXME(afrittoli) This resource specific logic will have to be replaced
 	// once we have a custom PipelineResource framework in place.
 	c.Logger.Infof("Cloud Events: %s", tr.Status.CloudEvents)
-	prs := make([]*v1alpha1.PipelineResource, 0, len(rtr.Outputs))
+	prs := make([]*resourcev1alpha1.PipelineResource, 0, len(rtr.Outputs))
 	for _, pr := range rtr.Outputs {
 		prs = append(prs, pr)
 	}
@@ -334,8 +326,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1alpha1.TaskRun) (*v1alph
 // It reports errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
-func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun,
-	taskSpec *v1alpha1.TaskSpec, rtr *resources.ResolvedTaskResources) error {
+func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
+	taskSpec *v1beta1.TaskSpec, rtr *resources.ResolvedTaskResources) error {
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
 	var err error
@@ -417,7 +409,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun,
 
 // Push changes (if any) to the TaskRun status, labels and annotations to
 // TaskRun definition in ectd
-func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.TaskRun) error {
+func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.TaskRun) error {
 	var updated bool
 
 	if !equality.Semantic.DeepEqual(original.Status, tr.Status) {
@@ -456,19 +448,19 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.Tas
 	return nil
 }
 
-func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) updateStatus(taskrun *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
 	newtaskrun, err := c.taskRunLister.TaskRuns(taskrun.Namespace).Get(taskrun.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting TaskRun %s when updating status: %w", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
-		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
 	}
 	return newtaskrun, nil
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
@@ -476,12 +468,12 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
 		newTr.ObjectMeta.Annotations = tr.ObjectMeta.Annotations
-		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(tr.Namespace).Update(newTr)
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(newTr)
 	}
 	return newTr, nil
 }
 
-func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
+func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) {
 	var msg string
 	if isExceededResourceQuotaError(err) {
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
@@ -514,7 +506,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 // If a pod is associated to the TaskRun, it stops it
 // failTaskRun function may return an error in case the pod could not be deleted
 // failTaskRun may update the local TaskRun status, but it won't push the updates to etcd
-func (c *Reconciler) failTaskRun(tr *v1alpha1.TaskRun, reason, message string) error {
+func (c *Reconciler) failTaskRun(tr *v1beta1.TaskRun, reason, message string) error {
 
 	c.Logger.Warn("stopping task run %q because of %q", tr.Name, reason)
 	tr.Status.MarkResourceFailed(reason, errors.New(message))
@@ -541,7 +533,7 @@ func (c *Reconciler) failTaskRun(tr *v1alpha1.TaskRun, reason, message string) e
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
 	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
@@ -573,7 +565,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	var defaults []v1alpha1.ParamSpec
+	var defaults []v1beta1.ParamSpec
 	if len(ts.Params) > 0 {
 		defaults = append(defaults, ts.Params...)
 	}
@@ -612,7 +604,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
-func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.PodStatus) error {
+func updateTaskRunResourceResult(taskRun *v1beta1.TaskRun, podStatus corev1.PodStatus) error {
 	if taskRun.IsSuccessful() {
 		for idx, cs := range podStatus.ContainerStatuses {
 			if cs.State.Terminated != nil {
@@ -630,18 +622,18 @@ func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, podStatus corev1.Pod
 	return nil
 }
 
-func getResults(results []v1alpha1.PipelineResourceResult) ([]v1alpha1.TaskRunResult, []v1alpha1.PipelineResourceResult) {
-	var taskResults []v1alpha1.TaskRunResult
-	var pipelineResourceResults []v1alpha1.PipelineResourceResult
+func getResults(results []v1beta1.PipelineResourceResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult) {
+	var taskResults []v1beta1.TaskRunResult
+	var pipelineResourceResults []v1beta1.PipelineResourceResult
 	for _, r := range results {
 		switch r.ResultType {
-		case v1alpha1.TaskRunResultType:
-			taskRunResult := v1alpha1.TaskRunResult{
+		case v1beta1.TaskRunResultType:
+			taskRunResult := v1beta1.TaskRunResult{
 				Name:  r.Key,
 				Value: r.Value,
 			}
 			taskResults = append(taskResults, taskRunResult)
-		case v1alpha1.PipelineResourceResultType:
+		case v1beta1.PipelineResourceResultType:
 			fallthrough
 		default:
 			pipelineResourceResults = append(pipelineResourceResults, r)
@@ -655,8 +647,8 @@ func isExceededResourceQuotaError(err error) bool {
 }
 
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
-	p := make(map[string]v1alpha1.PipelineResourceInterface)
+func resourceImplBinding(resources map[string]*resourcev1alpha1.PipelineResource, images pipeline.Images) (map[string]v1beta1.PipelineResourceInterface, error) {
+	p := make(map[string]v1beta1.PipelineResourceInterface)
 	for rName, r := range resources {
 		i, err := resource.FromType(r, images)
 		if err != nil {
@@ -668,7 +660,7 @@ func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images
 }
 
 // getLabelSelector get label of centain taskrun
-func getLabelSelector(tr *v1alpha1.TaskRun) string {
+func getLabelSelector(tr *v1beta1.TaskRun) string {
 	labels := []string{}
 	labelsMap := podconvert.MakeLabels(tr)
 	for key, value := range labelsMap {
@@ -679,8 +671,8 @@ func getLabelSelector(tr *v1alpha1.TaskRun) string {
 
 // updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
 // terminated by nop image
-func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconciler) error {
-	tr.Status.Sidecars = []v1alpha1.SidecarState{}
+func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1beta1.TaskRun, c *Reconciler) error {
+	tr.Status.Sidecars = []v1beta1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
 		if !podconvert.IsContainerStep(s.Name) {
 			var sidecarState corev1.ContainerState
@@ -702,7 +694,7 @@ func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconc
 				sidecarState = s.State
 			}
 
-			tr.Status.Sidecars = append(tr.Status.Sidecars, v1alpha1.SidecarState{
+			tr.Status.Sidecars = append(tr.Status.Sidecars, v1beta1.SidecarState{
 				ContainerState: *sidecarState.DeepCopy(),
 				Name:           podconvert.TrimSidecarPrefix(s.Name),
 				ContainerName:  s.Name,
@@ -715,8 +707,8 @@ func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1alpha1.TaskRun, c *Reconc
 }
 
 // apply VolumeClaimTemplates and return WorkspaceBindings were templates is translated to PersistentVolumeClaims
-func applyVolumeClaimTemplates(workspaceBindings []v1alpha1.WorkspaceBinding, owner metav1.OwnerReference) []v1alpha1.WorkspaceBinding {
-	taskRunWorkspaceBindings := make([]v1alpha1.WorkspaceBinding, 0)
+func applyVolumeClaimTemplates(workspaceBindings []v1beta1.WorkspaceBinding, owner metav1.OwnerReference) []v1beta1.WorkspaceBinding {
+	taskRunWorkspaceBindings := make([]v1beta1.WorkspaceBinding, 0)
 	for _, wb := range workspaceBindings {
 		if wb.VolumeClaimTemplate == nil {
 			taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, wb)
@@ -724,7 +716,7 @@ func applyVolumeClaimTemplates(workspaceBindings []v1alpha1.WorkspaceBinding, ow
 		}
 
 		// apply template
-		b := v1alpha1.WorkspaceBinding{
+		b := v1beta1.WorkspaceBinding{
 			Name:    wb.Name,
 			SubPath: wb.SubPath,
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -736,11 +728,10 @@ func applyVolumeClaimTemplates(workspaceBindings []v1alpha1.WorkspaceBinding, ow
 	return taskRunWorkspaceBindings
 }
 
-func storeTaskSpec(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec) error {
+func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
-		tr.Status.TaskSpec = &v1beta1.TaskSpec{}
-		return ts.ConvertTo(ctx, tr.Status.TaskSpec)
+		tr.Status.TaskSpec = ts
 	}
 	return nil
 }

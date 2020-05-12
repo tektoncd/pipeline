@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake"
+	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	pipelineinformers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
+	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/metrics/metricstest"
@@ -36,7 +36,7 @@ import (
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
 
-	durationCountError := metrics.DurationAndCount(&v1alpha1.PipelineRun{})
+	durationCountError := metrics.DurationAndCount(&v1beta1.PipelineRun{})
 	prCountError := metrics.RunningPipelineRuns(nil)
 
 	assertErrNotNil(durationCountError, "DurationAndCount recording expected to return error but got nil", t)
@@ -48,7 +48,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 
 	testData := []struct {
 		name              string
-		pipelineRun       *v1alpha1.PipelineRun
+		pipelineRun       *v1beta1.PipelineRun
 		expectedTags      map[string]string
 		expectedCountTags map[string]string
 		expectedDuration  float64
@@ -135,7 +135,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 
 }
 
-func addPipelineRun(informer alpha1.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
+func addPipelineRun(informer pipelineinformers.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
 	t.Helper()
 
 	err := informer.Informer().GetIndexer().Add(tb.PipelineRun(run, tb.PipelineRunNamespace(ns),

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
@@ -81,11 +81,11 @@ func (s *Resource) Replacements() map[string]string {
 }
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
-func (s *Resource) GetInputTaskModifier(_ *v1alpha1.TaskSpec, _ string) (v1alpha1.TaskModifier, error) {
-	return &v1alpha1.InternalTaskModifier{}, nil
+func (s *Resource) GetInputTaskModifier(_ *v1beta1.TaskSpec, _ string) (v1beta1.TaskModifier, error) {
+	return &v1beta1.InternalTaskModifier{}, nil
 }
 
 // GetOutputTaskModifier returns a No-op TaskModifier.
-func (s *Resource) GetOutputTaskModifier(_ *v1alpha1.TaskSpec, _ string) (v1alpha1.TaskModifier, error) {
-	return &v1alpha1.InternalTaskModifier{}, nil
+func (s *Resource) GetOutputTaskModifier(_ *v1beta1.TaskSpec, _ string) (v1beta1.TaskModifier, error) {
+	return &v1beta1.InternalTaskModifier{}, nil
 }

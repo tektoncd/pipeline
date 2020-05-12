@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 )
 
 // ValidateBindings will return an error if the bound workspaces in wb don't satisfy the declared
 // workspaces in w.
-func ValidateBindings(w []v1alpha1.WorkspaceDeclaration, wb []v1alpha1.WorkspaceBinding) error {
+func ValidateBindings(w []v1beta1.WorkspaceDeclaration, wb []v1beta1.WorkspaceBinding) error {
 	// This will also be validated at webhook time but in case the webhook isn't invoked for some
 	// reason we'll invoke the same validation here.
 	for _, b := range wb {
