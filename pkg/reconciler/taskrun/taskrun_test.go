@@ -63,7 +63,8 @@ const (
 )
 
 var (
-	images = pipeline.Images{
+	namespace = "" // all namespaces
+	images    = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "tianon/true",
 		GitImage:                 "override-with-git:latest",
@@ -267,7 +268,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.Assets{
-		Controller: NewController(images)(ctx, configMapWatcher),
+		Controller: NewController(namespace, images)(ctx, configMapWatcher),
 		Clients:    c,
 	}, cancel
 }
