@@ -1,0 +1,205 @@
+# This example shows how both sequential and parallel Tasks can share data
+# using a PersistentVolumeClaim as a workspace. The TaskRun pods that share
+# workspace will be scheduled to the same Node in your cluster with an
+# Affinity Assistant (unless it is disabled). The REPORTER task does not
+# use a workspace so it does not get affinity to the Affinity Assistant
+# and can be scheduled to any Node. If multiple concurrent PipelineRuns are
+# executed, their Affinity Assistant pods will repel eachother to different
+# Nodes in a Best Effort fashion.
+#
+# A PipelineRun will pass a message parameter to the Pipeline in this example.
+# The STARTER task will write the message to a file in the workspace. The UPPER
+# and LOWER tasks will execute in parallel and process the message written by
+# the STARTER, and transform it to upper case and lower case. The REPORTER task
+# is will use the Task Result from the UPPER task and print it - it is intended
+# to mimic a Task that sends data to an external service and shows a Task that
+# doesn't use a workspace. The VALIDATOR task will validate the result from
+# UPPER and LOWER.
+#
+# Use the runAfter property in a Pipeline to configure that a task depend on
+# another task. Output can be shared both via Task Result (e.g. like REPORTER task)
+# or via files in a workspace.
+#
+#             -- (upper) -- (reporter)
+#           /                         \
+#  (starter)                           (validator)
+#           \                         /
+#             -- (lower) ------------
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: parallel-pipeline
+spec:
+  params:
+    - name: message
+      type: string
+
+  workspaces:
+    - name: ws
+
+  tasks:
+    - name: starter          # Tasks that does not declare a runAfter property
+      taskRef:               # will start execution immediately
+        name: persist-param
+      params:
+        - name: message
+          value: $(params.message)
+      workspaces:
+        - name: task-ws
+          workspace: ws
+          subPath: init
+
+    - name: upper
+      runAfter:               # Note the use of runAfter here to declare that this task
+        - starter             # depends on a previous task
+      taskRef:
+        name: to-upper
+      params:
+        - name: input-path
+          value: init/message
+      workspaces:
+        - name: w
+          workspace: ws
+
+    - name: lower
+      runAfter:
+        - starter
+      taskRef:
+        name: to-lower
+      params:
+        - name: input-path
+          value: init/message
+      workspaces:
+        - name: w
+          workspace: ws
+
+    - name: reporter          # This task does not use workspace and may be scheduled to
+      runAfter:               # any Node in the cluster.
+        - upper
+      taskRef:
+        name: result-reporter
+      params:
+        - name: result-to-report
+          value: $(tasks.upper.results.message)  # A result from a previous task is used as param
+
+    - name: validator         # This task validate the output from upper and lower Task
+      runAfter:               # It does not strictly depend on the reporter Task
+        - reporter            # But you may want to skip this task if the reporter Task fail
+        - lower
+      taskRef:
+        name: validator
+      workspaces:
+        - name: files
+          workspace: ws
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: persist-param
+spec:
+  params:
+    - name: message
+      type: string
+  results:
+    - name: message
+      description: A result message
+  steps:
+    - name: write
+      image: ubuntu
+      script: echo $(params.message) | tee $(workspaces.task-ws.path)/message $(results.message.path)
+  workspaces:
+    - name: task-ws
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: to-upper
+spec:
+  description: |
+    This task read and process a file from the workspace and write the result
+    both to a file in the workspace and as a Task Result.
+  params:
+    - name: input-path
+      type: string
+  results:
+    - name: message
+      description: Input message in upper case
+  steps:
+    - name: to-upper
+      image: ubuntu
+      script: cat $(workspaces.w.path)/$(params.input-path) | tr '[:lower:]' '[:upper:]' | tee $(workspaces.w.path)/upper $(results.message.path)
+  workspaces:
+    - name: w
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: to-lower
+spec:
+  description: |
+    This task read and process a file from the workspace and write the result
+    both to a file in the workspace and as a Task Result
+  params:
+    - name: input-path
+      type: string
+  results:
+    - name: message
+      description: Input message in lower case
+  steps:
+    - name: to-lower
+      image: ubuntu
+      script: cat $(workspaces.w.path)/$(params.input-path) | tr '[:upper:]' '[:lower:]' | tee $(workspaces.w.path)/lower $(results.message.path)
+  workspaces:
+    - name: w
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: result-reporter
+spec:
+  description: |
+    This task is supposed to mimic a service that post data from the Pipeline,
+    e.g. to an remote HTTP service or a Slack notification.
+  params:
+    - name: result-to-report
+      type: string
+  steps:
+    - name: report-result
+      image: ubuntu
+      script: echo $(params.result-to-report)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: validator
+spec:
+  steps:
+    - name: validate-upper
+      image: ubuntu
+      script: cat $(workspaces.files.path)/upper | grep HELLO\ TEKTON
+    - name: validate-lower
+      image: ubuntu
+      script: cat $(workspaces.files.path)/lower | grep hello\ tekton
+  workspaces:
+    - name: files
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: parallel-pipelinerun-
+spec:
+  params:
+    - name: message
+      value: Hello Tekton
+  pipelineRef:
+    name: parallel-pipeline
+  workspaces:
+    - name: ws
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

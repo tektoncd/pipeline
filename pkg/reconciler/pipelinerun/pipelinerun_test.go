@@ -41,6 +41,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1775,6 +1776,119 @@ func ensurePVCCreated(t *testing.T, clients test.Clients, name, namespace string
 	}
 	if !pvcCreated {
 		t.Errorf("Expected to see volume resource PVC created but didn't")
+	}
+}
+
+// TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
+// an Affinity Assistant StatefulSet is created for each PVC workspace and
+// that the Affinity Assistant names is propagated to TaskRuns.
+func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
+	workspaceName := "ws1"
+	workspaceName2 := "ws2"
+	emptyDirWorkspace := "emptyDirWorkspace"
+	pipelineRunName := "test-pipeline-run"
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName, "")),
+		tb.PipelineTask("hello-world-2", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", workspaceName2, "")),
+		tb.PipelineTask("hello-world-3", "hello-world", tb.PipelineTaskWorkspaceBinding("taskWorkspaceName", emptyDirWorkspace, "")),
+		tb.PipelineWorkspaceDeclaration(workspaceName, workspaceName2, emptyDirWorkspace),
+	))}
+
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun(pipelineRunName, tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName, "myclaim", ""),
+			tb.PipelineRunWorkspaceBindingVolumeClaimTemplate(workspaceName2, "myclaim2", ""),
+			tb.PipelineRunWorkspaceBindingEmptyDir(emptyDirWorkspace),
+		)),
+	}
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected StatefulSet was created
+	stsNames := make([]string, 0)
+	for _, a := range clients.Kube.Actions() {
+		if ca, ok := a.(ktesting.CreateAction); ok {
+			obj := ca.GetObject()
+			if sts, ok := obj.(*appsv1.StatefulSet); ok {
+				stsNames = append(stsNames, sts.Name)
+			}
+		}
+	}
+
+	if len(stsNames) != 2 {
+		t.Fatalf("expected one StatefulSet created. %d was created", len(stsNames))
+	}
+
+	expectedAffinityAssistantName1 := fmt.Sprintf("%s-%s", workspaceName, pipelineRunName)
+	expectedAffinityAssistantName2 := fmt.Sprintf("%s-%s", workspaceName2, pipelineRunName)
+	expectedStsName1 := affinityAssistantStatefulSetNamePrefix + expectedAffinityAssistantName1
+	expectedStsName2 := affinityAssistantStatefulSetNamePrefix + expectedAffinityAssistantName2
+	expectedAffinityAssistantStsNames := make(map[string]bool)
+	expectedAffinityAssistantStsNames[expectedStsName1] = true
+	expectedAffinityAssistantStsNames[expectedStsName2] = true
+	for _, stsName := range stsNames {
+		_, found := expectedAffinityAssistantStsNames[stsName]
+		if !found {
+			t.Errorf("unexpected StatefulSet created, named %s", stsName)
+		}
+	}
+
+	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
+	}
+
+	if len(taskRuns.Items) != 3 {
+		t.Errorf("expected two TaskRuns created. %d was created", len(taskRuns.Items))
+	}
+
+	taskRunsWithPropagatedAffinityAssistantName := 0
+	for _, tr := range taskRuns.Items {
+		for _, ws := range tr.Spec.Workspaces {
+			propagatedAffinityAssistantName := tr.Annotations["pipeline.tekton.dev/affinity-assistant"]
+			if ws.PersistentVolumeClaim != nil {
+
+				if propagatedAffinityAssistantName != expectedAffinityAssistantName1 && propagatedAffinityAssistantName != expectedAffinityAssistantName2 {
+					t.Fatalf("found taskRun with PVC workspace, but with unexpected AffinityAssistantAnnotation value; expected %s or %s, got %s", expectedAffinityAssistantName1, expectedAffinityAssistantName2, propagatedAffinityAssistantName)
+				}
+				taskRunsWithPropagatedAffinityAssistantName++
+			}
+
+			if ws.PersistentVolumeClaim == nil {
+				if propagatedAffinityAssistantName != "" {
+					t.Fatalf("found taskRun workspace that is not PVC workspace, but with unexpected AffinityAssistantAnnotation; expected NO AffinityAssistantAnnotation, got %s", propagatedAffinityAssistantName)
+				}
+			}
+		}
+	}
+
+	if taskRunsWithPropagatedAffinityAssistantName != 2 {
+		t.Errorf("expected only one of two TaskRuns to have Affinity Assistant affinity. %d was detected", taskRunsWithPropagatedAffinityAssistantName)
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 }
 

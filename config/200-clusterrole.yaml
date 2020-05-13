@@ -60,7 +60,7 @@ rules:
     # Unclear if this access is actually required.  Simply a hold-over from the previous
     # incarnation of the controller's ClusterRole.
   - apiGroups: ["apps"]
-    resources: ["deployments"]
+    resources: ["deployments", "statefulsets"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments/finalizers"]

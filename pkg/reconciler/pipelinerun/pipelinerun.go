@@ -42,6 +42,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -181,6 +182,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.updatePipelineResults(ctx, pr)
 		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
+			return err
+		}
+		if err := c.cleanupAffinityAssistants(pr); err != nil {
+			c.Logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
 			return err
 		}
 		c.timeoutHandler.Release(pr)
@@ -552,18 +557,35 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		}
 	}
 
-	if pipelineState.IsBeforeFirstTaskRun() && pr.HasVolumeClaimTemplate() {
-		// create workspace PVC from template
-		if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
-			c.Logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
-			pr.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
-				Message: fmt.Sprintf("Failed to create PVC for PipelineRun %s Workspaces correctly: %s",
-					fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
-			})
-			return nil
+	if pipelineState.IsBeforeFirstTaskRun() {
+		if pr.HasVolumeClaimTemplate() {
+			// create workspace PVC from template
+			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
+				c.Logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
+				pr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: volumeclaim.ReasonCouldntCreateWorkspacePVC,
+					Message: fmt.Sprintf("Failed to create PVC for PipelineRun %s Workspaces correctly: %s",
+						fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+				})
+				return nil
+			}
+		}
+
+		if !c.isAffinityAssistantDisabled() {
+			// create Affinity Assistant (StatefulSet) so that taskRun pods that share workspace PVC achieve Node Affinity
+			if err = c.createAffinityAssistants(pr.Spec.Workspaces, pr, pr.Namespace); err != nil {
+				c.Logger.Errorf("Failed to create affinity assistant StatefulSet for PipelineRun %s: %v", pr.Name, err)
+				pr.Status.SetCondition(&apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: ReasonCouldntCreateAffinityAssistantStatefulSet,
+					Message: fmt.Sprintf("Failed to create StatefulSet for PipelineRun %s correctly: %s",
+						fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+				})
+				return nil
+			}
 		}
 	}
 
@@ -747,6 +769,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
 	}
 
+	var pipelinePVCWorkspaceName string
 	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
@@ -754,10 +777,17 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
 		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
+			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
+				pipelinePVCWorkspaceName = pipelineWorkspaceName
+			}
 			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
 		} else {
 			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
 		}
+	}
+
+	if !c.isAffinityAssistantDisabled() && pipelinePVCWorkspaceName != "" {
+		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.GetOwnerReference())
 	}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)

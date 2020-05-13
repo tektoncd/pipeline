@@ -268,6 +268,19 @@ file lists the keys you can customize along with their default values.
 
 To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` as follows:
 
+- `disable-affinity-assistant` - set this flag to disable the [Affinity Assistant](./workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
+  that is used to provide Node Affinity for `TaskRun` pods that share workspace volume. 
+  The Affinity Assistant pods may be incompatible with NodeSelector and other affinity rules
+  configured for `TaskRun` pods.
+
+  **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
+  that require substantial amount of processing which can slow down scheduling in large clusters
+  significantly. We do not recommend using them in clusters larger than several hundred nodes
+
+  **Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
+  node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
+  are missing the specified `topologyKey` label, it can lead to unintended behavior.
+
 - `disable-home-env-overwrite` - set this flag to `true` to prevent Tekton
 from overriding the `$HOME` environment variable for the containers executing your `Steps`.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).

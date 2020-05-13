@@ -58,6 +58,8 @@ The following labels are added to resources automatically:
   reference a `ClusterTask` will also receive `tekton.dev/task`.
 - `tekton.dev/taskRun` is added to `Pods`, and contains the name of the
   `TaskRun` that created the `Pod`.
+- `app.kubernetes.io/instance` and `app.kubernetes.io/component` is added to 
+  Affinity Assistant `StatefulSets` and `Pods`. These are used for Pod Affinity for TaskRuns.
 
 ## Examples
 

@@ -75,6 +75,7 @@ func TestMakePod(t *testing.T) {
 	for _, c := range []struct {
 		desc            string
 		trs             v1beta1.TaskRunSpec
+		trAnnotation    map[string]string
 		ts              v1beta1.TaskSpec
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
@@ -775,7 +776,66 @@ script-heredoc-randomly-generated-78c5n
 				TerminationMessagePath: "/tekton/termination",
 			}},
 		},
-	}} {
+	}, {
+		desc: "with a propagated Affinity Assistant name - expect proper affinity",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Name:    "name",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+		},
+		trAnnotation: map[string]string{
+			"pipeline.tekton.dev/affinity-assistant": "random-name-123",
+		},
+		trs: v1beta1.TaskRunSpec{
+			PodTemplate: &v1beta1.PodTemplate{},
+		},
+		want: &corev1.PodSpec{
+			Affinity: &corev1.Affinity{
+				PodAffinity: &corev1.PodAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app.kubernetes.io/instance":  "random-name-123",
+								"app.kubernetes.io/component": "affinity-assistant",
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					}},
+				},
+			},
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			HostNetwork:    false,
+			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+		}}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(
@@ -800,12 +860,19 @@ script-heredoc-randomly-generated-78c5n
 					},
 				},
 			)
+			var trAnnotations map[string]string
+			if c.trAnnotation == nil {
+				trAnnotations = map[string]string{
+					ReleaseAnnotation: ReleaseAnnotationValue,
+				}
+			} else {
+				trAnnotations = c.trAnnotation
+				trAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "taskrun-name",
-					Annotations: map[string]string{
-						ReleaseAnnotation: ReleaseAnnotationValue,
-					},
+					Name:        "taskrun-name",
+					Annotations: trAnnotations,
 				},
 				Spec: c.trs,
 			}
