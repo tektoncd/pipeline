@@ -15,7 +15,7 @@ weight: 5
     - [Mapping `Workspaces` in `Tasks` to `TaskRuns`](#mapping-workspaces-in-tasks-to-taskruns)
     - [Examples of `TaskRun` definition using `Workspaces`](#examples-of-taskrun-definition-using-workspaces)
   - [Using `Workspaces` in `Pipelines`](#using-workspaces-in-pipelines)
-    - [Specifying `Workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline)
+    - [Affinity Assistant and specifying `Workspace` order in a `Pipeline`](#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
     - [Specifying `Workspaces` in `PipelineRuns`](#specifying-workspaces-in-pipelineruns)
     - [Example `PipelineRun` definition using `Workspaces`](#example-pipelinerun-definition-using-workspaces)
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
@@ -89,7 +89,8 @@ To configure one or more `Workspaces` in a `Task`, add a `workspaces` list with 
   
 Note the following:
   
-- A `Task` definition can include as many `Workspaces` as it needs. 
+- A `Task` definition can include as many `Workspaces` as it needs. It is recommended that `Tasks` use
+  **at most** one _writable_ `Workspace`.
 - A `readOnly` `Workspace` will have its volume mounted as read-only. Attempting to write
   to a `readOnly` `Workspace` will result in errors and failed `TaskRuns`.
 - `mountPath` can be either absolute or relative. Absolute paths start with `/` and relative paths
@@ -204,26 +205,27 @@ Include a `subPath` in the workspace binding to mount different parts of the sam
 
 The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a Workspace with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
 
-#### Specifying `Workspace` order in a `Pipeline`
+#### Affinity Assistant and specifying `Workspace` order in a `Pipeline`
 
 Sharing a `Workspace` between `Tasks` requires you to define the order in which those `Tasks`
-will be accessing that `Workspace` since different classes of storage have different limits
-for concurrent reads and writes. For example, a `PersistentVolumeClaim` with
-[access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-`ReadWriteOnce` only allow `Tasks` on the same node writing to it at once.
+write to or read from that `Workspace`. Use the `runAfter` field in your `Pipeline` definition
+to define when a `Task` should be executed. For more information, see the [`runAfter` documentation](pipelines.md#runAfter).
 
-Using parallel `Tasks` in a `Pipeline` will work with `PersistentVolumeClaims` configured with
-[access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-`ReadWriteMany` or `ReadOnlyMany` but you must ensure that those are available for your storage class.
-When using `PersistentVolumeClaims` with access mode `ReadWriteOnce` for parallel `Tasks`, you can configure a
-workspace with it's own `PersistentVolumeClaim` for each parallel `Task`.
+When a `PersistentVolumeClaim` is used as volume source for a `Workspace` in a `PipelineRun`,
+an Affinity Assistant will be created. The Affinity Assistant acts as a placeholder for `TaskRun` pods
+sharing the same `Workspace`. All `TaskRun` pods within the `PipelineRun` that share the `Workspace`
+will be scheduled to the same Node as the Affinity Assistant pod. This means that Affinity Assistant is incompatible
+with e.g. NodeSelectors or other affinity rules configured for the `TaskRun` pods. The Affinity Assistant
+is deleted when the `PipelineRun` is completed. The Affinity Assistant can be disabled by setting the
+[disable-affinity-assistant](install.md#customizing-basic-execution-parameters) feature gate.
 
-Use the `runAfter` field in your `Pipeline` definition to define when a `Task` should be executed. For more
-information, see the [`runAfter` documentation](pipelines.md#runAfter).
+**Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
+that require substantial amount of processing which can slow down scheduling in large clusters
+significantly. We do not recommend using them in clusters larger than several hundred nodes
 
-**Warning:** You *must* ensure that this order is compatible with the configured access modes for your `PersistentVolumeClaim`.
-Parallel `Tasks` using the same `PersistentVolumeClaim` with access mode `ReadWriteOnce`, may execute on
-different nodes and be forced to execute sequentially which may cause `Tasks` to time out.
+**Note:** Pod anti-affinity requires nodes to be consistently labelled, in other words every
+node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
+are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
 #### Specifying `Workspaces` in `PipelineRuns`
 

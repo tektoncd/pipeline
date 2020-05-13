@@ -363,7 +363,8 @@ steps:
 ### Specifying `Workspaces`
 
 [`Workspaces`](workspaces.md#using-workspaces-in-tasks) allow you to specify
-one or more volumes that your `Task` requires during execution. For example:
+one or more volumes that your `Task` requires during execution. It is recommended that `Tasks` uses **at most**
+one writeable `Workspace`. For example:
 
 ```yaml
 spec:
