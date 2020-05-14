@@ -49,6 +49,7 @@ for version in v1alpha1 v1beta1; do
     kubectl delete --ignore-not-found=true ${res} --all
   done
 done
+(( failed )) || dump_cluster_state
 
 (( failed )) && fail_test
 
