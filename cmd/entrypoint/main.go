@@ -27,6 +27,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/termination"
 )
 
 var (
@@ -65,6 +66,9 @@ func main() {
 		switch t := err.(type) {
 		case skipError:
 			log.Print("Skipping step because a previous step failed")
+			os.Exit(1)
+		case termination.MessageLengthError:
+			log.Print(err.Error())
 			os.Exit(1)
 		case *exec.ExitError:
 			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go

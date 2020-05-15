@@ -423,16 +423,16 @@ spec:
 The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)
 or [at the `Pipeline` level](./pipelines.md#configuring-execution-results-at-the-pipeline-level).
 
-**Note:** The maximum size of a `Task's` results is limited by the container termination log feature of Kubernetes,
+**Note:** The maximum size of a `Task's` results is limited by the container termination message feature of Kubernetes,
 as results are passed back to the controller via this mechanism. At present, the limit is
-["2048 bytes or 80 lines, whichever is smaller."](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
-Results are written to the termination log encoded as JSON objects and Tekton uses those objects
+["4096 bytes"](https://github.com/kubernetes/kubernetes/blob/96e13de777a9eb57f87889072b68ac40467209ac/pkg/kubelet/container/runtime.go#L632).
+Results are written to the termination message encoded as JSON objects and Tekton uses those objects
 to pass additional information to the controller. As such, `Task` results are best suited for holding
 small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, and so on.
 
 If your `Task` writes a large number of small results, you can work around this limitation
-by writing each result from a separate `Step` so that each `Step` has its own termination log.
-However, for results larger than a kilobyte, use a [`Workspace`](#specifying-workspaces) to
+by writing each result from a separate `Step` so that each `Step` has its own termination message.
+About size limitation, there is validation for it, will raise exception: `Termination message is above max allowed size 4096, caused by large task result`. Since Tekton also uses the termination message for some internal information, so the real available size will less than 4096 bytes. For results larger than a kilobyte, use a [`Workspace`](#specifying-workspaces) to
 shuttle data between `Tasks` within a `Pipeline`.
 
 ### Specifying `Volumes`
