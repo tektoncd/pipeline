@@ -27,14 +27,24 @@ import (
 )
 
 func TestStoreLoadWithContext(t *testing.T) {
-	store := NewStore(logtesting.TestLogger(t))
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
+	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
+
+	expectedDefaults, _ := NewDefaultsFromConfigMap(defaultConfig)
+	expectedFeatures, _ := NewFeatureFlagsFromConfigMap(featuresConfig)
+
+	expected := &Config{
+		Defaults:     expectedDefaults,
+		FeatureFlags: expectedFeatures,
+	}
+
+	store := NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(defaultConfig)
+	store.OnConfigChanged(featuresConfig)
 
 	config := FromContext(store.ToContext(context.Background()))
 
-	expected, _ := NewDefaultsFromConfigMap(defaultConfig)
-	if d := cmp.Diff(config.Defaults, expected); d != "" {
-		t.Errorf("Unexpected default config %s", diff.PrintWantGot(d))
+	if d := cmp.Diff(config, expected); d != "" {
+		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
 	}
 }

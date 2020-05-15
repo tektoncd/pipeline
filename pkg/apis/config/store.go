@@ -27,7 +27,8 @@ type cfgKey struct{}
 // Config holds the collection of configurations that we attach to contexts.
 // +k8s:deepcopy-gen=false
 type Config struct {
-	Defaults *Defaults
+	Defaults     *Defaults
+	FeatureFlags *FeatureFlags
 }
 
 // FromContext extracts a Config from the provided context.
@@ -46,8 +47,10 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		return cfg
 	}
 	defaults, _ := NewDefaultsFromMap(map[string]string{})
+	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
 	return &Config{
-		Defaults: defaults,
+		Defaults:     defaults,
+		FeatureFlags: featureFlags,
 	}
 }
 
@@ -67,10 +70,11 @@ type Store struct {
 func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value interface{})) *Store {
 	store := &Store{
 		UntypedStore: configmap.NewUntypedStore(
-			"defaults",
+			"defaults/features",
 			logger,
 			configmap.Constructors{
-				GetDefaultsConfigName(): NewDefaultsFromConfigMap,
+				GetDefaultsConfigName():     NewDefaultsFromConfigMap,
+				GetFeatureFlagsConfigName(): NewFeatureFlagsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -86,7 +90,17 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 
 // Load creates a Config from the current config state of the Store.
 func (s *Store) Load() *Config {
+	defaults := s.UntypedLoad(GetDefaultsConfigName())
+	if defaults == nil {
+		defaults, _ = NewDefaultsFromMap(map[string]string{})
+	}
+	featureFlags := s.UntypedLoad(GetFeatureFlagsConfigName())
+	if featureFlags == nil {
+		featureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+	}
+
 	return &Config{
-		Defaults: s.UntypedLoad(GetDefaultsConfigName()).(*Defaults).DeepCopy(),
+		Defaults:     defaults.(*Defaults).DeepCopy(),
+		FeatureFlags: featureFlags.(*FeatureFlags).DeepCopy(),
 	}
 }
