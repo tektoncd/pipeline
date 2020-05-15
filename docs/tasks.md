@@ -419,6 +419,9 @@ spec:
         date | tee /tekton/results/current-date-human-readable
 ```
 
+The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)
+or [at the `Pipeline` level](./pipelines.md#configuring-execution-results-at-the-pipeline-level).
+
 **Note:** The maximum size of a `Task's` results is limited by the container termination log feature of Kubernetes,
 as results are passed back to the controller via this mechanism. At present, the limit is
 ["2048 bytes or 80 lines, whichever is smaller."](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
