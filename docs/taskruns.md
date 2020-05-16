@@ -152,7 +152,7 @@ spec:
 
 You can specify a [`Pod` template](podtemplates.md) configuration that will serve as the configuration starting
 point for the `Pod` in which the container images specified in your `Task` will execute. This allows you to
-customize the `Pod` confguration specifically for that `TaskRun`.
+customize the `Pod` configuration specifically for that `TaskRun`.
 
 In the following example, the `Task` specifies a `volumeMount` (`my-cache`) object, also provided by the `TaskRun`,
 using a `PersistentVolumeClaim` volume. A specific scheduler is also configured in the  `SchedulerName` field. 
@@ -184,7 +184,6 @@ spec:
     name: mytask
   podTemplate:
     schedulerName: volcano
-    hostNetwork: true
     securityContext:
       runAsNonRoot: true
       runAsUser: 1001
