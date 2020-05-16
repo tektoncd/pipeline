@@ -11,13 +11,13 @@ weight: 5
   - [`Workspaces` in `Pipelines` and `PipelineRuns`](#workspaces-in-pipelines-and-pipelineruns)
 - [Configuring `Workspaces`](#configuring-workspaces)
   - [Using `Workspaces` in `Tasks`](#using-workspaces-in-tasks)
-    - [Using `Workspace` variables in `TaskRuns`](#using-workspace-variables-in-taskruns)
+    - [Using `Workspace` variables in `Tasks`](#using-workspace-variables-in-tasks)
     - [Mapping `Workspaces` in `Tasks` to `TaskRuns`](#mapping-workspaces-in-tasks-to-taskruns)
-    - [Examples of `TaskRun` definitions using `Workspaces`](#examples-of-taskrun-definitions-using-workspaces)
+    - [Examples of `TaskRun` definition using `Workspaces`](#examples-of-taskrun-definition-using-workspaces)
   - [Using `Workspaces` in `Pipelines`](#using-workspaces-in-pipelines)
     - [Specifying `Workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline)
     - [Specifying `Workspaces` in `PipelineRuns`](#specifying-workspaces-in-pipelineruns)
-    - [Example `PipelineRun` definition using `Workspaces`](#example-pipelinerun-definitions-using-workspaces)
+    - [Example `PipelineRun` definition using `Workspaces`](#example-pipelinerun-definition-using-workspaces)
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
     - [Using `PersistentVolumeClaims` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource)
     - [Using other types of `VolumeSources`](#using-other-types-of-volumesources)
@@ -141,66 +141,26 @@ The entry must also include one `VolumeSource`. See [Using `VolumeSources` with 
 - The `Workspaces` declared in a `Task` must be available when executing the associated `TaskRun`.
   Otherwise, the `TaskRun` will fail.
 
-#### Examples of `TaskRun` definitions using `Workspaces`
+#### Examples of `TaskRun` definition using `Workspaces`
 
-The following examples illustrate how to specify `Workspaces` in your `TaskRun` definition.
-For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
-
-In the example below, a template is provided for how a `PersistentVolumeClaim` should be created for a Task's workspace named `myworkspace`. When using `volumeClaimTemplate` a new `PersistentVolumeClaim` is created for each `TaskRun` and it allows the user to specify e.g. size and StorageClass for the volume.
-
-```yaml
-workspaces:
-- name: myworkspace
-  volumeClaimTemplate:
-    spec:
-      accessModes: 
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
-```
-
-In the example below, an existing `PersistentVolumeClaim` called `mypvc` is used for a Task's `workspace`
-called `myworkspace`. It exposes only the subdirectory `my-subdir` from that `PersistentVolumeClaim`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  persistentVolumeClaim:
-    claimName: mypvc
-  subPath: my-subdir
-```
-
-In the example below, an [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+The following example illustrate how to specify `Workspaces` in your `TaskRun` definition,
+an [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
 is provided for a Task's `workspace` called `myworkspace`:
 
 ```yaml
-workspaces:
-- name: myworkspace
-  emptyDir: {}
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: example-taskrun-
+spec:
+  taskRef:
+    name: example-task
+  workspaces:
+    - name: myworkspace # this workspace name must be declared in the Task
+      emptyDir: {}      # emptyDir volumes can be used for TaskRuns, but consider using a PersistentVolumeClaim for PipelineRuns
 ```
-
-In the example below, a `ConfigMap` named `my-configmap` is used for a `Workspace` 
-named `myworkspace` declared inside a `Task`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  configmap:
-    name: my-configmap
-```
-
-In this example, a `Secret` named `my-secret` is used for a `Workspace` 
-named `myworkspace` declared inside a `Task`:
-
-```yaml
-workspaces:
-- name: myworkspace
-  secret:
-    secretName: my-secret
-```
-
-For a more in-depth example, see [workspace.yaml](../examples/v1beta1/taskruns/workspace.yaml).
+For examples of using other types of volume sources, see [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces).
+For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
 
 ### Using `Workspaces` in `Pipelines`
 
@@ -290,7 +250,7 @@ each `PipelineRun` and it allows the user to specify e.g. size and StorageClass 
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: pr-
+  generateName: example-pipelinerun-
 spec:
   pipelineRef:
     name: example-pipeline
