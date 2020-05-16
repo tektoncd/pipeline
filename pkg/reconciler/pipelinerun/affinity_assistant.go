@@ -17,14 +17,14 @@ limitations under the License.
 package pipelinerun
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -217,10 +217,7 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 // be created for each PipelineRun that use workspaces with PersistentVolumeClaims
 // as volume source. The default behaviour is to enable the Affinity Assistant to
 // provide Node Affinity for TaskRuns that share a PVC workspace.
-func (c *Reconciler) isAffinityAssistantDisabled() bool {
-	configMap, err := c.KubeClientSet.CoreV1().ConfigMaps(system.GetNamespace()).Get(pod.GetFeatureFlagsConfigName(), metav1.GetOptions{})
-	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureFlagDisableAffinityAssistantKey] == "true" {
-		return true
-	}
-	return false
+func (c *Reconciler) isAffinityAssistantDisabled(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.DisableAffinityAssistant
 }

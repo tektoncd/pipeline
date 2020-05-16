@@ -17,12 +17,13 @@ limitations under the License.
 package pipelinerun
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -30,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 // TestCreateAndDeleteOfAffinityAssistant tests to create and delete an Affinity Assistant
@@ -142,14 +144,14 @@ func TestDisableAffinityAssistant(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-affinity-assistant flag should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: pod.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data:       map[string]string{},
 		},
 		expected: false,
 	}, {
 		description: "Setting disable-affinity-assistant to false should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: pod.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableAffinityAssistantKey: "false",
 			},
@@ -158,7 +160,7 @@ func TestDisableAffinityAssistant(t *testing.T) {
 	}, {
 		description: "Setting disable-affinity-assistant to true should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: pod.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
 			Data: map[string]string{
 				featureFlagDisableAffinityAssistantKey: "true",
 			},
@@ -175,7 +177,9 @@ func TestDisableAffinityAssistant(t *testing.T) {
 					Logger: zap.NewExample().Sugar(),
 				},
 			}
-			if result := c.isAffinityAssistantDisabled(); result != tc.expected {
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(tc.configMap)
+			if result := c.isAffinityAssistantDisabled(store.ToContext(context.Background())); result != tc.expected {
 				t.Errorf("Expected %t Received %t", tc.expected, result)
 			}
 		})
