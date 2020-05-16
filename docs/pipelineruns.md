@@ -353,13 +353,6 @@ spec:
   status: "PipelineRunCancelled"
 ```
 
----
-
-Except as otherwise noted, the content of this page is licensed under the
-[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
-and code samples are licensed under the
-[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
-
 ## Specifying task run specs
 
 Specifies a list of  `PipelineRunTaskSpec` which contains `TaskServiceAccountName`,`TaskPodTemplate` and `TaskName`. Mapping the specs to the corresponding `Task` based upon the `TaskName` a PipelineTask will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` overwriting the pipeline wide [`ServiceAccountName`](#service-account)  and [`podTemplate`](#pod-template) configuration, for example:
@@ -380,3 +373,10 @@ spec:
 ```
 
 If used with this `Pipeline`,  `build-task` will use the task specific pod template (where `nodeSelector` has `disktype` equal to `ssd`). 
+
+---
+
+Except as otherwise noted, the content of this page is licensed under the
+[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
+and code samples are licensed under the
+[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).

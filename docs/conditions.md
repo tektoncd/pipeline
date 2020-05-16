@@ -8,8 +8,6 @@ weight: 11
 
 This document defines `Conditions` and their capabilities.
 
----
-
 - [Syntax](#syntax)
   - [Check](#check)
   - [Parameters](#parameters)
