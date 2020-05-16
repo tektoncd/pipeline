@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -103,6 +104,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
+		c.configStore = config.NewStore(c.Logger.Named("config-store"))
+		c.configStore.WatchConfigs(cmw)
 		return impl
 	}
 }

@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/tracker"
 )
@@ -57,6 +58,11 @@ const (
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
 )
+
+type configStore interface {
+	ToContext(ctx context.Context) context.Context
+	WatchConfigs(w configmap.Watcher)
+}
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -73,6 +79,7 @@ type Reconciler struct {
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+	configStore       configStore
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -89,6 +96,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
+
+	ctx = c.configStore.ToContext(ctx)
 
 	// Get the Task Run resource with this namespace/name
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
@@ -376,7 +385,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
 
-		pod, err = c.createPod(tr, rtr)
+		pod, err = c.createPod(ctx, tr, rtr)
 		if err != nil {
 			c.handlePodCreationError(tr, err)
 			return nil
@@ -544,7 +553,7 @@ func (c *Reconciler) failTaskRun(tr *v1beta1.TaskRun, reason, message string) er
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
 	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
@@ -600,12 +609,12 @@ func (c *Reconciler) createPod(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskR
 	}
 
 	// Check if the HOME env var of every Step should be set to /tekton/home.
-	shouldOverrideHomeEnv := podconvert.ShouldOverrideHomeEnv(c.KubeClientSet)
+	shouldOverrideHomeEnv := podconvert.ShouldOverrideHomeEnv(ctx)
 
 	// Apply creds-init path substitutions.
 	ts = resources.ApplyCredentialsPath(ts, podconvert.CredentialsPath(shouldOverrideHomeEnv))
 
-	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache, shouldOverrideHomeEnv)
+	pod, err := podconvert.MakePod(ctx, c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache, shouldOverrideHomeEnv)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

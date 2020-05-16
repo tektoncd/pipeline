@@ -41,6 +41,7 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
 	"knative.dev/pkg/controller"
 )
@@ -57,6 +58,7 @@ type Data struct {
 	Conditions        []*v1alpha1.Condition
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace
+	ConfigMaps        []*corev1.ConfigMap
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -76,6 +78,7 @@ type Informers struct {
 	PipelineResource resourceinformersv1alpha1.PipelineResourceInformer
 	Condition        informersv1alpha1.ConditionInformer
 	Pod              coreinformers.PodInformer
+	ConfigMap        coreinformers.ConfigMapInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -104,6 +107,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		PipelineResource: fakeresourceinformer.Get(ctx),
 		Condition:        fakeconditioninformer.Get(ctx),
 		Pod:              fakepodinformer.Get(ctx),
+		ConfigMap:        fakeconfigmapinformer.Get(ctx),
 	}
 
 	for _, pr := range d.PipelineRuns {
@@ -181,6 +185,14 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, n := range d.Namespaces {
 		n := n.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Kube.CoreV1().Namespaces().Create(n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, cm := range d.ConfigMaps {
+		if err := i.ConfigMap.Informer().GetIndexer().Add(cm); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Kube.CoreV1().ConfigMaps(cm.Namespace).Create(cm); err != nil {
 			t.Fatal(err)
 		}
 	}

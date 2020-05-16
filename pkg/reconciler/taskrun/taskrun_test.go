@@ -209,6 +209,12 @@ var (
 			},
 		},
 	}
+	credsVolume = corev1.Volume{
+		Name: "tekton-creds-init-home",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
+		},
+	}
 
 	getMkdirResourceContainer = func(name, dir, suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
@@ -255,6 +261,30 @@ func getRunName(tr *v1beta1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
+func ensureConfigurationConfigMapsExist(d *test.Data) {
+	var defaultsExists, featureFlagsExists bool
+	for _, cm := range d.ConfigMaps {
+		if cm.Name == config.GetDefaultsConfigName() {
+			defaultsExists = true
+		}
+		if cm.Name == config.GetFeatureFlagsConfigName() {
+			featureFlagsExists = true
+		}
+	}
+	if !defaultsExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !featureFlagsExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+}
+
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
@@ -265,13 +295,25 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		SendSuccessfully: true,
 	}
 	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
+	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+
+	controller := NewController(namespace, images)(ctx, configMapWatcher)
+
+	stopCh := make(chan struct{})
+	if err := configMapWatcher.Start(stopCh); err != nil {
+		t.Fatalf("error starting configmap watcher: %v", err)
+	}
+
 	return test.Assets{
-		Controller: NewController(namespace, images)(ctx, configMapWatcher),
-		Clients:    c,
-		Informers:  informers,
-	}, cancel
+			Controller: controller,
+			Clients:    c,
+			Informers:  informers,
+		}, func() {
+			close(stopCh)
+			cancel()
+		}
 }
 
 func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) error {
@@ -314,20 +356,21 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		tb.TaskRunServiceAccountName("test-sa"),
 	))
 	taskruns := []*v1beta1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
+	defaultSAName := "pipelines"
 	d := test.Data{
 		TaskRuns: taskruns,
 		Tasks:    []*v1beta1.Task{simpleTask, saTask},
-	}
-
-	defaultSAName := "pipelines"
-	defaultCfg := &config.Config{
-		Defaults: &config.Defaults{
-			DefaultServiceAccount:      defaultSAName,
-			DefaultTimeoutMinutes:      60,
-			DefaultManagedByLabelValue: "tekton-pipelines",
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+				Data: map[string]string{
+					"default-service-account":        defaultSAName,
+					"default-timeout-minutes":        "60",
+					"default-managed-by-label-value": "tekton-pipelines",
+				},
+			},
 		},
 	}
-
 	for _, tc := range []struct {
 		name    string
 		taskRun *v1beta1.TaskRun
@@ -432,8 +475,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ctx := config.ToContext(context.Background(), defaultCfg)
-			if err := c.Reconciler.Reconcile(ctx, getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -480,6 +522,186 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}
 }
 
+// TestReconcile_FeatureFlags tests taskruns with and without feature flags set
+// to ensure the 'feature-flags' config map can be used to disable the
+// corresponding behavior.
+func TestReconcile_FeatureFlags(t *testing.T) {
+	taskWithEnvVar := tb.Task("test-task-with-env-var",
+		tb.TaskSpec(tb.Step("foo",
+			tb.StepName("simple-step"), tb.StepCommand("/mycmd"), tb.StepEnvVar("foo", "bar"),
+		)),
+		tb.TaskNamespace("foo"),
+	)
+	taskRunWithDisableHomeEnv := tb.TaskRun("test-taskrun-run-home-env",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunSpec(tb.TaskRunTaskRef(taskWithEnvVar.Name)),
+	)
+	taskRunWithDisableWorkingDirOverwrite := tb.TaskRun("test-taskrun-run-working-dir",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
+	)
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRunWithDisableHomeEnv, taskRunWithDisableWorkingDirOverwrite},
+		Tasks:    []*v1beta1.Task{simpleTask, taskWithEnvVar},
+	}
+	for _, tc := range []struct {
+		name        string
+		taskRun     *v1beta1.TaskRun
+		featureFlag string
+		wantPod     *corev1.Pod
+	}{{
+		name:        "disable-home-env-overwrite",
+		taskRun:     taskRunWithDisableHomeEnv,
+		featureFlag: "disable-home-env-overwrite",
+		wantPod: tb.Pod("test-taskrun-run-home-env-pod-abcde",
+			tb.PodNamespace("foo"),
+			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskNameLabelKey, "test-task-with-env-var"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-home-env"),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-run-home-env",
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, credsVolume, toolsVolume, downwardVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"/mycmd",
+						"--",
+					),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("foo", "bar"),
+					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
+					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
+					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
+					tb.VolumeMount("tekton-creds-init-home", "/tekton/creds"),
+					tb.TerminationMessagePath("/tekton/termination"),
+				),
+			),
+		),
+	}, {
+		name:        "disable-working-dir-overwrite",
+		taskRun:     taskRunWithDisableWorkingDirOverwrite,
+		featureFlag: "disable-working-directory-overwrite",
+		wantPod: tb.Pod("test-taskrun-run-working-dir-pod-abcde",
+			tb.PodNamespace("foo"),
+			tb.PodAnnotation(podconvert.ReleaseAnnotation, podconvert.ReleaseAnnotationValue),
+			tb.PodLabel(taskNameLabelKey, "test-task"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-working-dir"),
+			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-run-working-dir",
+				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"/mycmd",
+						"--",
+					),
+					tb.EnvVar("HOME", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
+					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
+					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
+					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
+					tb.TerminationMessagePath("/tekton/termination"),
+				),
+			),
+		),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+			d.ConfigMaps = []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+					Data: map[string]string{
+						tc.featureFlag: "true",
+					},
+				},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			saName := tc.taskRun.Spec.ServiceAccountName
+			if saName == "" {
+				saName = "default"
+			}
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: tc.taskRun.Namespace,
+				},
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the kubeclient, got none")
+			}
+
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != podconvert.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
+			}
+
+			if tr.Status.PodName == "" {
+				t.Fatalf("Reconcile didn't set pod name")
+			}
+
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build pod: %v", err)
+			}
+
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+		})
+	}
+}
 func TestReconcile(t *testing.T) {
 	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -1306,8 +1528,8 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 			// Check actions and events
 			actions := clients.Kube.Actions()
-			if len(actions) != 1 || actions[0].Matches("namespaces", "list") {
-				t.Errorf("expected one action (list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
+			if len(actions) != 3 || actions[0].Matches("namespaces", "list") {
+				t.Errorf("expected 3 actions (first: list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
 			}
 
 			err = checkEvents(fr, tc.name, tc.wantEvents)
@@ -1377,7 +1599,7 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 		return nil, err
 	}
 
-	return podconvert.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache, true)
+	return podconvert.MakePod(context.Background(), images, taskRun, task.Spec, kubeclient, entrypointCache, true)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
