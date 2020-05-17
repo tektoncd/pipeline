@@ -15,7 +15,7 @@ weight: 3
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
-    - [Specifying execution `Conditions`](#specifying-execution-conditions)
+    - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
     - [Configuring execution results at the `Task` level](#configuring-execution-results-at-the-task-level)
   - [Configuring execution results at the `Pipeline` level](#configuring-execution-results-at-the-pipeline-level)
@@ -55,8 +55,8 @@ A `Pipeline` definition supports the following fields:
         should execute after one or more other `Tasks` without output linking.
       - [`retries`](#using-the-retries-parameter) - Specifies the number of times to retry the
         execution of a `Task` after a failure. Does not apply to execution cancellations.
-      - [`conditions`](#specifying-execution-conditions) - Specifies `Conditions` that only allow a `Task`
-        to execute if they evaluate to `true`.
+      - [`conditions`](#guard-task-execution-using-conditions) - Specifies `Conditions` that only allow a `Task`
+        to execute if they successfully evaluate.
       - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails. 
   - [`results`](#configuring-execution-results-at-the-pipeline-level) - Specifies the location to which
     the `Pipeline` emits its execution results.
@@ -312,32 +312,44 @@ tasks:
       name: build-push
 ```
 
-### Specifying execution `Conditions`
+### Guard `Task` execution using `Conditions`
 
-Sometimes you will need to run tasks only when some conditions are true. The `conditions` field
-allows you to list a series of references to [`Conditions`](./conditions.md) that are run before the task
-is run. If all of the conditions evaluate to true, the task is run. If any of the conditions are false,
-the Task is not run. Its status.ConditionSucceeded is set to False with the reason set to  `ConditionCheckFailed`.
-However, unlike regular task failures, condition failures do not automatically fail the entire pipeline
-run -- other tasks that are not dependent on the task (via `from` or `runAfter`) are still run.
+To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
+the `conditions` field. The `conditions` field allows you to list a series of references to
+[`Condition`](./conditions.md) resources. The declared `Conditions` are run before the `Task` is run.
+If all of the conditions successfully evaluate, the `Task` is run. If any of the conditions fails,
+the `Task` is not run and the `TaskRun` status field `ConditionSucceeded` is set to `False` with the
+reason set to `ConditionCheckFailed`.
+
+In this example, `is-master-branch` refers to a [Condition](conditions.md) resource. The `deploy`
+task will only be executed if the condition successfully evaluates.
 
 ```yaml
 tasks:
-  - name: conditional-task
-    taskRef:
-      name: build-push
+  - name: deploy-if-branch-is-master
     conditions:
-      - conditionRef: my-condition
+      - conditionRef: is-master-branch
         params:
-          - name: my-param
+          - name: branch-name
             value: my-value
-        resources:
-          - name: workspace
-            resource: source-repo
+    taskRef:
+      name: deploy
 ```
 
-In this example, `my-condition` refers to a [Condition](conditions.md) custom resource. The `build-push`
-task will only be executed if the condition evaluates to true.
+Unlike regular task failures, condition failures do not automatically fail the entire `PipelineRun` -- 
+other tasks that are **not dependent** on the `Task` (via `from` or `runAfter`) are still run.
+
+In this example, `(task C)` has a `condition` set to _guard_ its execution. If the condition
+is **not** successfully evaluated, task `(task D)` will not be run, but all other tasks in the pipeline
+that not depend on `(task C)` will be executed and the `PipelineRun` will successfully complete.
+ 
+  ```
+         (task B) — (task E)
+       / 
+   (task A) 
+       \
+         (guarded task C) — (task D)
+  ```
 
 Resources in conditions can also use the [`from`](#using-the-from-parameter) field to indicate that they
 expect the output of a previous task as input. As with regular Pipeline Tasks, using `from`
