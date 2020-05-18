@@ -181,6 +181,18 @@ var (
 					}},
 				},
 			},
+		}, {
+			Name: "some-csi",
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					VolumeAttributes: map[string]string{
+						"secretProviderClass": "$(inputs.params.FOO)",
+					},
+					NodePublishSecretRef: &corev1.LocalObjectReference{
+						Name: "$(inputs.params.FOO)",
+					},
+				},
+			},
 		}},
 		Resources: &v1beta1.TaskResources{
 			Inputs: []v1beta1.TaskResource{{
@@ -540,6 +552,8 @@ func TestApplyParameters(t *testing.T) {
 		spec.Volumes[3].VolumeSource.Projected.Sources[0].ConfigMap.Name = "world"
 		spec.Volumes[3].VolumeSource.Projected.Sources[0].Secret.Name = "world"
 		spec.Volumes[3].VolumeSource.Projected.Sources[0].ServiceAccountToken.Audience = "world"
+		spec.Volumes[4].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "world"
+		spec.Volumes[4].VolumeSource.CSI.NodePublishSecretRef.Name = "world"
 
 		spec.Sidecars[0].Container.Image = "bar"
 		spec.Sidecars[0].Container.Env[0].Value = "world"

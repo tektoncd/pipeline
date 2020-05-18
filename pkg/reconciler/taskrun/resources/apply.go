@@ -191,6 +191,16 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 				}
 			}
 		}
+		if v.CSI != nil {
+			if v.CSI.NodePublishSecretRef != nil {
+				spec.Volumes[i].CSI.NodePublishSecretRef.Name = substitution.ApplyReplacements(v.CSI.NodePublishSecretRef.Name, stringReplacements)
+			}
+			if v.CSI.VolumeAttributes != nil {
+				for key, value := range v.CSI.VolumeAttributes {
+					spec.Volumes[i].CSI.VolumeAttributes[key] = substitution.ApplyReplacements(value, stringReplacements)
+				}
+			}
+		}
 	}
 
 	// Apply variable substitution to the sidecar definitions
