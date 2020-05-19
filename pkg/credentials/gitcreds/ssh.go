@@ -73,8 +73,8 @@ func (dc *sshGitConfig) Set(value string) error {
 	return nil
 }
 
-func (dc *sshGitConfig) Write() error {
-	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
+func (dc *sshGitConfig) Write(directory string) error {
+	sshDir := filepath.Join(directory, ".ssh")
 	if err := os.MkdirAll(sshDir, os.ModePerm); err != nil {
 		return err
 	}
