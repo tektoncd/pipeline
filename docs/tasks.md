@@ -427,7 +427,7 @@ as results are passed back to the controller via this mechanism. At present, the
 ["2048 bytes or 80 lines, whichever is smaller."](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
 Results are written to the termination log encoded as JSON objects and Tekton uses those objects
 to pass additional information to the controller. As such, `Task` results are best suited for holding
-small amounts of data, such as commit SHAs, branch names, ephemeral space names, and so on.
+small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, and so on.
 
 If your `Task` writes a large number of small results, you can work around this limitation
 by writing each result from a separate `Step` so that each `Step` has its own termination log.
