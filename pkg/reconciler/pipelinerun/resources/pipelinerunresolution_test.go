@@ -1080,7 +1080,7 @@ func TestIsSkipped(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		expected: false,
+		expected: true,
 	}, {
 		name:     "tasks-parent-cancelled",
 		taskName: "mytask7",
@@ -1099,7 +1099,7 @@ func TestIsSkipped(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		expected: false,
+		expected: true,
 	}, {
 		name:     "tasks-grandparent-failed",
 		taskName: "mytask10",
@@ -1129,7 +1129,7 @@ func TestIsSkipped(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		expected: false,
+		expected: true,
 	}, {
 		name:     "tasks-parents-failed-passed",
 		taskName: "mytask8",
@@ -1155,7 +1155,33 @@ func TestIsSkipped(t *testing.T) {
 				TaskSpec: &task.Spec,
 			},
 		}},
-		expected: false,
+		expected: true,
+	}, {
+		name:     "task-failed-pipeline-stopping",
+		taskName: "mytask7",
+		state: PipelineRunState{{
+			PipelineTask: &pts[0],
+			TaskRunName:  "pipelinerun-mytask1",
+			TaskRun:      makeFailed(trs[0]),
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[5],
+			TaskRunName:  "pipelinerun-mytask2",
+			TaskRun:      makeStarted(trs[1]),
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[6], // mytask7 runAfter mytask6
+			TaskRunName:  "pipelinerun-mytask3",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: true,
 	}}
 
 	for _, tc := range tcs {
@@ -1169,7 +1195,7 @@ func TestIsSkipped(t *testing.T) {
 			if rprt == nil {
 				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
 			}
-			isSkipped := isSkipped(rprt, stateMap, dag)
+			isSkipped := rprt.IsSkipped(tc.state, dag)
 			if d := cmp.Diff(isSkipped, tc.expected); d != "" {
 				t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
 			}
@@ -1197,7 +1223,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 	}, {
 		name:          "one-task-failed",
 		state:         oneFailedState,
-		expectedNames: []string{},
+		expectedNames: []string{pts[1].Name},
 	}, {
 		name:          "all-finished",
 		state:         allFinishedState,
@@ -1300,6 +1326,9 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		PipelineTask: &pts[0],
 		TaskRun:      makeFailed(trs[0]),
 	}}
+
+	var taskMultipleFailuresOneCancel = taskMultipleFailuresSkipRunning
+	taskMultipleFailuresOneCancel = append(taskMultipleFailuresOneCancel, cancelledTask[0])
 
 	var taskNotRunningWithSuccesfulParentsOneFailed = PipelineRunState{{
 		TaskRunName:             "task0taskrun",
@@ -1439,7 +1468,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedStatus:    corev1.ConditionFalse,
 		expectedCancelled: 1,
 	}, {
-		name:               "task with multiple failures; one cancelled",
+		name:               "task with multiple failures",
 		state:              taskMultipleFailuresSkipRunning,
 		expectedReason:     v1beta1.PipelineRunReasonStopping.String(),
 		expectedStatus:     corev1.ConditionUnknown,
@@ -1447,6 +1476,16 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedFailed:     1,
 		expectedIncomplete: 1,
 		expectedCancelled:  0,
+		expectedSkipped:    0,
+	}, {
+		name:               "task with multiple failures; one cancelled",
+		state:              taskMultipleFailuresOneCancel,
+		expectedReason:     v1beta1.PipelineRunReasonStopping.String(),
+		expectedStatus:     corev1.ConditionUnknown,
+		expectedSucceeded:  1,
+		expectedFailed:     1,
+		expectedIncomplete: 1,
+		expectedCancelled:  1,
 		expectedSkipped:    0,
 	}, {
 		name:              "task not started with passed parent; one failed",
