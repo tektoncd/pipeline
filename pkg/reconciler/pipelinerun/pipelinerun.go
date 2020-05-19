@@ -293,6 +293,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return controller.NewPermanentError(err)
 	}
 
+	// build DAG with a list of final tasks, this DAG is used later to identify
+	// if a task in PipelineRunState is final task or not
+	// the finally section is optional and might not exist
+	// dfinally holds an empty Graph in the absence of finally clause
+	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Finally))
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.MarkFailed(ReasonInvalidGraph,
+			"PipelineRun %s's Pipeline DAG is invalid for finally clause: %s",
+			pr.Namespace, pr.Name, err)
+		return controller.NewPermanentError(err)
+	}
+
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonFailedValidation,
@@ -355,6 +368,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
 
+	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
+	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
+	// pipelineState is instantiated and updated on every reconcile cycle
 	pipelineState, err := resources.ResolvePipelineRun(ctx,
 		*pr,
 		func(name string) (v1beta1.TaskInterface, error) {
@@ -369,7 +385,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		func(name string) (*v1alpha1.Condition, error) {
 			return c.conditionLister.Conditions(pr.Namespace).Get(name)
 		},
-		pipelineSpec.Tasks, providedResources,
+		append(pipelineSpec.Tasks, pipelineSpec.Finally...), providedResources,
 	)
 
 	if err != nil {
@@ -436,16 +452,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return controller.NewPermanentError(err)
 	}
 
-	// When the pipeline run is stopping, we don't schedule any new task and only
-	// wait for all running tasks to complete and report their status
-	if !pipelineState.IsStopping() {
-		err = c.runNextSchedulableTask(ctx, pr, d, pipelineState, as)
-		if err != nil {
-			return err
-		}
+	if err := c.runNextSchedulableTask(ctx, pr, d, dfinally, pipelineState, as); err != nil {
+		return err
 	}
 
-	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d)
+	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d, dfinally)
 	switch after.Status {
 	case corev1.ConditionTrue:
 		pr.Status.MarkSucceeded(after.Reason, after.Message)
@@ -463,18 +474,31 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 
 // runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
 // pipeline run state, and starts them
-func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, d *dag.Graph, pipelineState resources.PipelineRunState, as artifacts.ArtifactStorageInterface) error {
+// after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
+func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, d *dag.Graph, dfinally *dag.Graph, pipelineState resources.PipelineRunState, as artifacts.ArtifactStorageInterface) error {
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 
-	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
-	if err != nil {
-		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
-		return controller.NewPermanentError(err)
+	var nextRprts []*resources.ResolvedPipelineRunTask
+
+	// when pipeline run is stopping, do not schedule any new task and only
+	// wait for all running tasks to complete and report their status
+	if !pipelineState.IsStopping(d) {
+		// candidateTasks is initialized to DAG root nodes to start pipeline execution
+		// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
+		candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulOrSkippedDAGTasks(d)...)
+		if err != nil {
+			logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
+			return controller.NewPermanentError(err)
+		}
+		// nextRprts holds a list of pipeline tasks which should be executed next
+		nextRprts = pipelineState.GetNextTasks(candidateTasks)
 	}
 
-	nextRprts := pipelineState.GetNextTasks(candidateTasks)
+	// GetFinalTasks only returns tasks when a DAG is complete
+	nextRprts = append(nextRprts, pipelineState.GetFinalTasks(d, dfinally)...)
+
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
 	if err != nil {
 		logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)

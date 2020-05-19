@@ -153,6 +153,25 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// FinalTask adds a final PipelineTask, with specified name and task name, to the PipelineSpec.
+// Any number of PipelineTask modifier can be passed to transform it.
+func FinalPipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
+	return func(ps *v1beta1.PipelineSpec) {
+		pTask := &v1beta1.PipelineTask{
+			Name: name,
+		}
+		if taskName != "" {
+			pTask.TaskRef = &v1beta1.TaskRef{
+				Name: taskName,
+			}
+		}
+		for _, op := range ops {
+			op(pTask)
+		}
+		ps.Finally = append(ps.Finally, *pTask)
+	}
+}
+
 // PipelineResult adds a PipelineResult, with specified name, value and description, to the PipelineSpec.
 func PipelineResult(name, value, description string, ops ...PipelineOp) PipelineSpecOp {
 	return func(ps *v1beta1.PipelineSpec) {

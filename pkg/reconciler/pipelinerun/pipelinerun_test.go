@@ -36,7 +36,7 @@ import (
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
-	test "github.com/tektoncd/pipeline/test"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
@@ -449,7 +449,12 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.PipelineRun("pipeline-invalid-dag-graph", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
 			tb.PipelineTask("dag-task-1", "dag-task-1", tb.RunAfter("dag-task-1")),
 		))),
+		tb.PipelineRun("pipeline-invalid-final-graph", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("dag-task-1", "taskName"),
+			tb.FinalPipelineTask("final-task-1", "taskName"),
+			tb.FinalPipelineTask("final-task-1", "taskName")))),
 	}
+
 	d := test.Data{
 		Tasks:        ts,
 		Pipelines:    ps,
@@ -526,6 +531,11 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		}, {
 			name:           "invalid-pipeline-with-invalid-dag-graph",
 			pipelineRun:    prs[12],
+			reason:         ReasonInvalidGraph,
+			permanentError: true,
+		}, {
+			name:           "invalid-pipeline-with-invalid-final-tasks-graph",
+			pipelineRun:    prs[13],
 			reason:         ReasonInvalidGraph,
 			permanentError: true,
 		},
@@ -3061,5 +3071,426 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestReconcilePipeline_FinalTasks(t *testing.T) {
+	tests := []struct {
+		name                     string
+		pipelineRunName          string
+		prs                      []*v1beta1.PipelineRun
+		ps                       []*v1beta1.Pipeline
+		ts                       []*v1beta1.Task
+		trs                      []*v1beta1.TaskRun
+		expectedTaskRuns         map[string]*v1beta1.PipelineRunTaskRunStatus
+		pipelineRunStatusUnknown bool
+		pipelineRunStatusFalse   bool
+	}{{
+		// pipeline run should result in error when a dag task is executed and resulted in failure but final task is executed successfully
+
+		// pipelineRunName - "pipeline-run-dag-task-failing"
+		// pipelineName - "pipeline-dag-task-failing"
+		// pipelineTasks - "dag-task-1" and "final-task-1"
+		// taskRunNames - "task-run-dag-task" and "task-run-final-task"
+		// taskName - "hello-world"
+
+		name: "Test 01 - Pipeline run should result in error when a dag task fails but final task is executed successfully.",
+
+		pipelineRunName: "pipeline-run-dag-task-failing",
+
+		prs: getPipelineRun(
+			"pipeline-run-dag-task-failing",
+			"pipeline-dag-task-failing",
+			corev1.ConditionFalse,
+			v1beta1.PipelineRunReasonFailed.String(),
+			"Tasks Completed: 2 (Failed: 1, Cancelled 0), Skipped: 0",
+			map[string]string{
+				"dag-task-1":   "task-run-dag-task",
+				"final-task-1": "task-run-final-task",
+			},
+		),
+
+		ps: getPipeline(
+			"pipeline-dag-task-failing",
+			[]tb.PipelineSpecOp{
+				tb.PipelineTask("dag-task-1", "hello-world"),
+				tb.FinalPipelineTask("final-task-1", "hello-world"),
+			},
+		),
+
+		ts: []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))},
+
+		trs: []*v1beta1.TaskRun{
+			getTaskRun(
+				"task-run-dag-task",
+				"pipeline-run-dag-task-failing",
+				"pipeline-dag-task-failing",
+				"dag-task-1",
+				corev1.ConditionFalse,
+			),
+			getTaskRun(
+				"task-run-final-task",
+				"pipeline-run-dag-task-failing",
+				"pipeline-dag-task-failing",
+				"final-task-1",
+				"",
+			),
+		},
+
+		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task-run-dag-task":   getTaskRunStatus("dag-task-1", corev1.ConditionFalse),
+			"task-run-final-task": getTaskRunStatus("final-task-1", ""),
+		},
+
+		pipelineRunStatusFalse: true,
+	}, {
+
+		// pipeline run should result in error when a dag task is successful but the final task fails
+
+		// pipelineRunName - "pipeline-run-with-dag-successful-but-final-failing"
+		// pipelineName - "pipeline-with-dag-successful-but-final-failing"
+		// pipelineTasks - "dag-task-1" and "final-task-1"
+		// taskRunNames - "task-run-dag-task" and "task-run-final-task"
+		// taskName - "hello-world"
+
+		name: "Test 02 - Pipeline run should result in error when a dag task is successful but final task fails.",
+
+		pipelineRunName: "pipeline-run-with-dag-successful-but-final-failing",
+
+		prs: getPipelineRun(
+			"pipeline-run-with-dag-successful-but-final-failing",
+			"pipeline-with-dag-successful-but-final-failing",
+			corev1.ConditionFalse,
+			v1beta1.PipelineRunReasonFailed.String(),
+			"Tasks Completed: 2 (Failed: 1, Cancelled 0), Skipped: 0",
+			map[string]string{
+				"dag-task-1":   "task-run-dag-task",
+				"final-task-1": "task-run-final-task",
+			},
+		),
+
+		ps: getPipeline(
+			"pipeline-with-dag-successful-but-final-failing",
+			[]tb.PipelineSpecOp{
+				tb.PipelineTask("dag-task-1", "hello-world"),
+				tb.FinalPipelineTask("final-task-1", "hello-world"),
+			},
+		),
+
+		ts: []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))},
+
+		trs: []*v1beta1.TaskRun{
+			getTaskRun(
+				"task-run-dag-task",
+				"pipeline-run-with-dag-successful-but-final-failing",
+				"pipeline-with-dag-successful-but-final-failing",
+				"dag-task-1",
+				"",
+			),
+			getTaskRun(
+				"task-run-final-task",
+				"pipeline-run-with-dag-successful-but-final-failing",
+				"pipeline-with-dag-successful-but-final-failing",
+				"final-task-1",
+				corev1.ConditionFalse,
+			),
+		},
+
+		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task-run-dag-task":   getTaskRunStatus("dag-task-1", ""),
+			"task-run-final-task": getTaskRunStatus("final-task-1", corev1.ConditionFalse),
+		},
+
+		pipelineRunStatusFalse: true,
+	}, {
+
+		// pipeline run should result in error when a dag task and final task both are executed and resulted in failure
+
+		// pipelineRunName - "pipeline-run-with-dag-and-final-failing"
+		// pipelineName - "pipeline-with-dag-and-final-failing"
+		// pipelineTasks - "dag-task-1" and "final-task-1"
+		// taskRunNames - "task-run-dag-task" and "task-run-final-task"
+		// taskName - "hello-world"
+
+		name: "Test 03 - Pipeline run should result in error when both dag task and final task fail.",
+
+		pipelineRunName: "pipeline-run-with-dag-and-final-failing",
+
+		prs: getPipelineRun(
+			"pipeline-run-with-dag-and-final-failing",
+			"pipeline-with-dag-and-final-failing",
+			corev1.ConditionFalse,
+			v1beta1.PipelineRunReasonFailed.String(),
+			"Tasks Completed: 2 (Failed: 2, Cancelled 0), Skipped: 0",
+			map[string]string{
+				"dag-task-1":   "task-run-dag-task",
+				"final-task-1": "task-run-final-task",
+			},
+		),
+
+		ps: getPipeline(
+			"pipeline-with-dag-and-final-failing",
+			[]tb.PipelineSpecOp{
+				tb.PipelineTask("dag-task-1", "hello-world"),
+				tb.FinalPipelineTask("final-task-1", "hello-world"),
+			},
+		),
+
+		ts: []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))},
+
+		trs: []*v1beta1.TaskRun{
+			getTaskRun(
+				"task-run-dag-task",
+				"pipeline-run-with-dag-and-final-failing",
+				"pipeline-with-dag-and-final-failing",
+				"dag-task-1",
+				corev1.ConditionFalse,
+			),
+			getTaskRun(
+				"task-run-final-task",
+				"pipeline-run-with-dag-and-final-failing",
+				"pipeline-with-dag-and-final-failing",
+				"final-task-1",
+				corev1.ConditionFalse,
+			),
+		},
+
+		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task-run-dag-task":   getTaskRunStatus("dag-task-1", corev1.ConditionFalse),
+			"task-run-final-task": getTaskRunStatus("final-task-1", corev1.ConditionFalse),
+		},
+
+		pipelineRunStatusFalse: true,
+	}, {
+
+		// pipeline run should not schedule final tasks until dag tasks are done i.e.
+		// dag task 1 fails but dag task 2 is still running, pipeline run should not schedule and create task run for final task
+
+		// pipelineRunName - "pipeline-run-with-dag-running"
+		// pipelineName - "pipeline-with-dag-running"
+		// pipelineTasks - "dag-task-1", "dag-task-2" and "final-task-1"
+		// taskRunNames - "task-run-dag-task-1" and "task-run-dag-task-2" - no task run for final task
+		// taskName - "hello-world"
+
+		name: "Test 04 - Pipeline run should not schedule final tasks while dag tasks are still running.",
+
+		pipelineRunName: "pipeline-run-with-dag-running",
+
+		prs: getPipelineRun(
+			"pipeline-run-with-dag-running",
+			"pipeline-with-dag-running",
+			corev1.ConditionUnknown,
+			v1beta1.PipelineRunReasonRunning.String(),
+			"Tasks Completed: 1 (Failed: 1, Cancelled 0), Incomplete: 2, Skipped: 0",
+			map[string]string{
+				"dag-task-1": "task-run-dag-task-1",
+				"dag-task-2": "task-run-dag-task-2",
+			},
+		),
+
+		ps: getPipeline(
+			"pipeline-with-dag-running",
+			[]tb.PipelineSpecOp{
+				tb.PipelineTask("dag-task-1", "hello-world"),
+				tb.PipelineTask("dag-task-2", "hello-world"),
+				tb.FinalPipelineTask("final-task-1", "hello-world"),
+			},
+		),
+
+		ts: []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))},
+
+		trs: []*v1beta1.TaskRun{
+			getTaskRun(
+				"task-run-dag-task-1",
+				"pipeline-run-with-dag-running",
+				"pipeline-with-dag-running",
+				"dag-task-1",
+				corev1.ConditionFalse,
+			),
+			getTaskRun(
+				"task-run-dag-task-2",
+				"pipeline-run-with-dag-running",
+				"pipeline-with-dag-running",
+				"dag-task-2",
+				corev1.ConditionUnknown,
+			),
+		},
+
+		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task-run-dag-task-1": getTaskRunStatus("dag-task-1", corev1.ConditionFalse),
+			"task-run-dag-task-2": getTaskRunStatus("dag-task-2", corev1.ConditionUnknown),
+		},
+
+		pipelineRunStatusUnknown: true,
+	}, {
+
+		// pipeline run should not schedule final tasks until dag tasks are done i.e.
+		// dag task is still running and no other dag task available to schedule,
+		// pipeline run should not schedule and create task run for final task
+
+		// pipelineRunName - "pipeline-run-dag-task-running"
+		// pipelineName - "pipeline-dag-task-running"
+		// pipelineTasks - "dag-task-1" and "final-task-1"
+		// taskRunNames - "task-run-dag-task-1" - no task run for final task
+		// taskName - "hello-world"
+
+		name: "Test 05 - Pipeline run should not schedule final tasks while dag tasks are still running and no other dag task available to schedule.",
+
+		pipelineRunName: "pipeline-run-dag-task-running",
+
+		prs: getPipelineRun(
+			"pipeline-run-dag-task-running",
+			"pipeline-dag-task-running",
+			corev1.ConditionUnknown,
+			v1beta1.PipelineRunReasonRunning.String(),
+			"Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0",
+			map[string]string{
+				"dag-task-1": "task-run-dag-task-1",
+			},
+		),
+
+		ps: getPipeline(
+			"pipeline-dag-task-running",
+			[]tb.PipelineSpecOp{
+				tb.PipelineTask("dag-task-1", "hello-world"),
+				tb.FinalPipelineTask("final-task-1", "hello-world"),
+			},
+		),
+
+		ts: []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))},
+
+		trs: []*v1beta1.TaskRun{
+			getTaskRun(
+				"task-run-dag-task-1",
+				"pipeline-run-dag-task-running",
+				"pipeline-dag-task-running",
+				"dag-task-1",
+				corev1.ConditionUnknown,
+			),
+		},
+
+		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task-run-dag-task-1": getTaskRunStatus("dag-task-1", corev1.ConditionUnknown),
+		},
+
+		pipelineRunStatusUnknown: true,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: tt.prs,
+				Pipelines:    tt.ps,
+				Tasks:        tt.ts,
+				TaskRuns:     tt.trs,
+			}
+
+			testAssets, cancel := getPipelineRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			if err := c.Reconciler.Reconcile(context.Background(), "foo/"+tt.pipelineRunName); err != nil {
+				t.Fatalf("Error reconciling for %s: %s", tt.name, err)
+			}
+
+			actual := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+			if actual == nil {
+				t.Errorf("Expected a PipelineRun to be updated, but it wasn't for %s", tt.name)
+			}
+
+			actions := clients.Pipeline.Actions()
+			for _, action := range actions {
+				if action != nil {
+					resource := action.GetResource().Resource
+					if resource == "taskruns" {
+						t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did for %s", tt.name)
+					}
+				}
+			}
+
+			// Check that the PipelineRun was reconciled correctly
+			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(tt.pipelineRunName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting completed reconciled run out of fake client for %s: %s", tt.name, err)
+			}
+
+			if tt.pipelineRunStatusFalse {
+				// This PipelineRun should still be failed and the status should reflect that
+				if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+					t.Errorf("Expected PipelineRun status to be failed, but was %v for %s",
+						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
+				}
+			} else if tt.pipelineRunStatusUnknown {
+				// This PipelineRun should still be running and the status should reflect that
+				if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+					t.Errorf("Expected PipelineRun status to be unknown (running), but was %v for %s",
+						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
+				}
+			}
+
+			if d := cmp.Diff(reconciledRun.Status.TaskRuns, tt.expectedTaskRuns); d != "" {
+				t.Fatalf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: %s", tt.name, d)
+			}
+
+		})
+	}
+}
+
+func getPipelineRun(pr, p string, status corev1.ConditionStatus, reason string, m string, tr map[string]string) []*v1beta1.PipelineRun {
+	var op []tb.PipelineRunStatusOp
+	for k, v := range tr {
+		op = append(op, tb.PipelineRunTaskRunsStatus(v,
+			&v1beta1.PipelineRunTaskRunStatus{PipelineTaskName: k, Status: &v1beta1.TaskRunStatus{}}),
+		)
+	}
+	op = append(op, tb.PipelineRunStatusCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  status,
+		Reason:  reason,
+		Message: m,
+	}))
+	prs := []*v1beta1.PipelineRun{
+		tb.PipelineRun(pr,
+			tb.PipelineRunNamespace("foo"),
+			tb.PipelineRunSpec(p, tb.PipelineRunServiceAccountName("test-sa")),
+			tb.PipelineRunStatus(op...),
+		),
+	}
+	return prs
+}
+
+func getPipeline(p string, t []tb.PipelineSpecOp) []*v1beta1.Pipeline {
+	ps := []*v1beta1.Pipeline{tb.Pipeline(p, tb.PipelineNamespace("foo"), tb.PipelineSpec(t...))}
+	return ps
+}
+
+func getTaskRun(tr, pr, p, t string, status corev1.ConditionStatus) *v1beta1.TaskRun {
+	return tb.TaskRun(tr,
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("pipelineRun", pr),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, p),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, pr),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, t),
+		tb.TaskRunSpec(tb.TaskRunTaskRef(t)),
+		tb.TaskRunStatus(
+			tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: status,
+			}),
+		),
+	)
+}
+
+func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1beta1.PipelineRunTaskRunStatus {
+	return &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: t,
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{
+					{Type: apis.ConditionSucceeded, Status: status},
+				},
+			},
+		},
 	}
 }
