@@ -393,3 +393,38 @@ func TestPipelineRunWithPipelineSpec(t *testing.T) {
 		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
 	}
 }
+
+func TestPipelineRunWithFinalTask(t *testing.T) {
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+		tb.PipelineTask("dag-task", "some-task"),
+		tb.FinalPipelineTask("final-task", "some-task")),
+		tb.PipelineRunServiceAccountName("sa"),
+	))
+
+	expectedPipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: nil,
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "dag-task",
+					TaskRef: &v1beta1.TaskRef{Name: "some-task"},
+				}},
+				Finally: []v1beta1.PipelineTask{{
+					Name:    "final-task",
+					TaskRef: &v1beta1.TaskRef{Name: "some-task"},
+				}},
+			},
+			ServiceAccountName: "sa",
+			Timeout:            &metav1.Duration{Duration: 1 * time.Hour},
+		},
+	}
+
+	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
+	}
+
+}

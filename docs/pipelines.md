@@ -21,7 +21,7 @@ weight: 3
   - [Configuring execution results at the `Pipeline` level](#configuring-execution-results-at-the-pipeline-level)
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
-  - [Adding `Finally` to the `Pipeline` (Preview)](#adding-finally-to-the-pipeline-preview)
+  - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -530,10 +530,7 @@ In particular:
 
 The `description` field is an optional field and can be used to provide description of the `Pipeline`.
 
-## Adding `Finally` to the `Pipeline` (Preview)
-
-_Finally type is available in the `Pipeline` but functionality is in progress. Final tasks are can be specified and
-are validated but not executed yet._
+## Adding `Finally` to the `Pipeline`
 
 You can specify a list of one or more final tasks under `finally` section. Final tasks are guaranteed to be executed
 in parallel after all `PipelineTasks` under `tasks` have completed regardless of success or error. Final tasks are very
@@ -553,10 +550,186 @@ spec:
         Name: cleanup
 ```
 
-_[PR #2661](https://github.com/tektoncd/pipeline/pull/2661) is implementing this new functionality by adding support to enable
-final tasks along with workspaces and parameters. `PipelineRun` status is being updated to include execution status of
-final tasks i.e. `PipelineRun` status is set to success or failure depending on execution of `PipelineTasks`, this status
-remains same when all final tasks finishes successfully but is set to failure if any of the final tasks fail._
+### Specifying `Workspaces` in Final Tasks
+
+Finally tasks can specify [workspaces](workspaces.md) which `PipelineTasks` might have utilized
+e.g. a mount point for credentials held in Secrets. To support that requirement, you can specify one or more
+`Workspaces` in the `workspaces` field for the final tasks similar to `tasks`.
+
+```yaml
+spec:
+  resources:
+    - name: app-git
+      type: git
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: clone-app-source
+      taskRef:
+        name: clone-app-repo-to-workspace
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+      resources:
+        inputs:
+          - name: app-git
+            resource: app-git
+  finally:
+    - name: cleanup-workspace
+      taskRef:
+        name: cleanup-workspace
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+```
+
+### Specifying `Parameters` in Final Tasks
+
+Similar to `tasks`, you can specify [`Parameters`](tasks.md#specifying-parameters) in final tasks:
+
+```yaml
+spec:
+  tasks:
+    - name: tests
+      taskRef:
+        Name: integration-test
+  finally:
+    - name: report-results
+      taskRef:
+        Name: report-results
+      params:
+        - name: url
+          value: "someURL"
+```
+
+### `PipelineRun` Status with `finally`
+
+With `finally`, `PipelineRun` status is calculated based on `PipelineTasks` under `tasks` section and final tasks.
+
+Without `finally`:
+
+| `PipelineTasks` under `tasks` | `PipelineRun` status | Reason |
+| ----------------------------- | -------------------- | ------ |
+| all `PipelineTasks` successful | `true` | `Succeeded` |
+| one or more `PipelineTasks` [skipped](conditions.md) and rest successful | `true` | `Completed` |
+| single failure of `PipelineTask` | `false` | `failed` |
+
+With `finally`:
+
+| `PipelineTasks` under `tasks` | Final Tasks | `PipelineRun` status | Reason |
+| ----------------------------- | ----------- | -------------------- | ------ |
+| all `PipelineTask` successful | all final tasks successful | `true` | `Succeeded` |
+| all `PipelineTask` successful | one or more failure of final tasks | `false` | `Failed` |
+| one or more `PipelineTask` [skipped](conditions.md) and rest successful | all final tasks successful | `true` | `Completed` |
+| one or more `PipelineTask` [skipped](conditions.md) and rest successful | one or more failure of final tasks | `false` | `Failed` |
+| single failure of `PipelineTask` | all final tasks successful | `false` | `failed` |
+| single failure of `PipelineTask` | one or more failure of final tasks | `false` | `failed` |
+
+Overall, `PipelineRun` state transitioning is explained below for respective scenarios:
+
+* All `PipelineTask` and final tasks are successful: `Started` -> `Running` -> `Succeeded`
+* At least one `PipelineTask` skipped and rest successful:  `Started` -> `Running` -> `Completed`
+* One `PipelineTask` failed / one or more final tasks failed: `Started` -> `Running` -> `Failed`
+
+Please refer to the [table](pipelineruns.md#monitoring-execution-status) under Monitoring Execution Status to learn about
+what kind of events are triggered based on the `Pipelinerun` status.
+
+### Known Limitations
+
+### Specifying `Resources` in Final Tasks
+
+Similar to `tasks`, you can use [PipelineResources](#specifying-resources) as inputs and outputs for
+final tasks in the Pipeline. The only difference here is, final tasks with an input resource can not have a `from` clause
+like a `PipelineTask` from `tasks` section. For example:
+
+```yaml
+spec:
+  tasks:
+    - name: tests
+      taskRef:
+        Name: integration-test
+      resources:
+        inputs:
+          - name: source
+            resource: tektoncd-pipeline-repo
+        outputs:
+          - name: workspace
+            resource: my-repo
+  finally:
+    - name: clear-workspace
+      taskRef:
+        Name: clear-workspace
+      resources:
+        inputs:
+          - name: workspace
+            resource: my-repo
+            from: #invalid
+              - tests
+```
+
+### Cannot configure the Final Task execution order
+
+It's not possible to configure or modify the execution order of the final tasks. Unlike `Tasks` in a `Pipeline`,
+all final tasks run simultaneously and start executing once all `PipelineTasks` under `tasks` have settled which means
+no `runAfter` can be specified in final tasks.
+
+### Cannot specify execution `Conditions` in Final Tasks
+
+`Tasks` in a `Pipeline` can be configured to run only if some conditions are satisfied using `conditions`. But the
+final tasks are guaranteed to be executed after all `PipelineTasks` therefore no `conditions` can be specified in
+final tasks.
+
+#### Cannot configure `Task` execution results with `finally`
+
+Final tasks can not be configured to consume `Results` of `PipelineTask` from `tasks` section i.e. the following
+example is not supported right now but we are working on adding support for the same (tracked in issue
+[#2557](https://github.com/tektoncd/pipeline/issues/2557)).
+
+```yaml
+spec:
+  tasks:
+    - name: count-comments-before
+      taskRef:
+        Name: count-comments
+    - name: add-comment
+      taskRef:
+        Name: add-comment
+    - name: count-comments-after
+      taskRef:
+        Name: count-comments
+  finally:
+    - name: check-count
+      taskRef:
+        Name: check-count
+      params:
+        - name: before-count
+          value: $(tasks.count-comments-before.results.count) #invalid
+        - name: after-count
+          value: $(tasks.count-comments-after.results.count) #invalid
+```
+
+#### Cannot configure `Pipeline` result with `finally`
+
+Final tasks can emit `Results` but results emitted from the final tasks can not be configured in the
+[Pipeline Results](#configuring-execution-results-at-the-pipeline-level). We are working on adding support for this
+(tracked in issue [#2710](https://github.com/tektoncd/pipeline/issues/2710)).
+
+```yaml
+  results:
+    - name: comment-count-validate
+      value: $(finally.check-count.results.comment-count-validate)
+```
+
+In this example, `PipelineResults` is set to:
+
+```
+"pipelineResults": [
+  {
+    "name": "comment-count-validate",
+    "value": "$(finally.check-count.results.comment-count-validate)"
+  }
+],
+```
 
 ## Code examples
 
