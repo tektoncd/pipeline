@@ -157,6 +157,8 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 	return m
 }
 
+// IsDone returns true when all pipeline tasks have respective taskRun created and
+// that taskRun has either succeeded or failed after all possible retry attempts
 func (state PipelineRunState) IsDone() (isDone bool) {
 	isDone = true
 	for _, t := range state {
@@ -216,6 +218,60 @@ func (state PipelineRunState) SuccessfulPipelineTaskNames() []string {
 		}
 	}
 	return done
+}
+
+// isDAGTasksDone returns true if all DAG tasks are done executing,
+// DAG tasks could have failed/succeeded/skipped
+func (state PipelineRunState) isDAGTasksDone(d *dag.Graph) (isDone bool) {
+	isDone = true
+	for _, t := range state {
+		if _, ok := d.Nodes[t.PipelineTask.Name]; ok {
+			if t.TaskRun == nil {
+				// this task might have skipped if taskRun is nil
+				// continue and ignore if this task was skipped
+				// skipped task is considered part of done
+				if isSkipped(t, state.ToMap(), d) {
+					continue
+				}
+				return false
+			}
+			isDone = isDone && t.IsDone()
+			if !isDone {
+				return
+			}
+		}
+	}
+	return
+}
+
+// isDAGTaskFailed return true if any single DAG task results in failure
+func (state PipelineRunState) isDAGTaskFailed(d *dag.Graph) bool {
+	for _, t := range state {
+		if _, ok := d.Nodes[t.PipelineTask.Name]; ok {
+			if t.IsFailure() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// GetFinalTasks returns a list of final tasks without any taskRun associated with it
+// GetFinalTasks returns final tasks only when all DAG tasks have finished executing successfully or skipped or
+// any one DAG task resulted in failure
+func (state PipelineRunState) GetFinalTasks(d *dag.Graph, dfinally *dag.Graph) []*ResolvedPipelineRunTask {
+	tasks := []*ResolvedPipelineRunTask{}
+	// check either pipeline has finished executing all DAG pipelineTasks
+	// or any one of the DAG pipelineTask has failed
+	if state.isDAGTaskFailed(d) || state.isDAGTasksDone(d) {
+		// return list of tasks with all final tasks
+		for _, t := range state {
+			if _, ok := dfinally.Nodes[t.PipelineTask.Name]; ok && t.TaskRun == nil {
+				tasks = append(tasks, t)
+			}
+		}
+	}
+	return tasks
 }
 
 // GetTaskRun is a function that will retrieve the TaskRun name.
@@ -407,10 +463,15 @@ func getTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
+// GetPipelineConditionStatus iterates over pipelineState to determine whether a pipeline was success or failure or hasn't finished executing
+// GetPipelineConditionStatus returns failure if it finds one failed taskRun
+// GetPipelineConditionStatus validates combination of the pipeline tasks with successful taskRuns and skipped pipeline tasks,
+// against total number of pipeline tasks to return success
+// A pipeline task is considered skipped if its condition results in failure or one of its parent has skipped
 func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *dag.Graph) *apis.Condition {
 	// We have 4 different states here:
 	// 1. Timed out -> Failed
-	// 2. Any one TaskRun has failed - >Failed. This should change with #1020 and #1023
+	// 2. Any one TaskRun has failed -> Failed. This should change with #1020 and #1023
 	// 3. All tasks are done or are skipped (i.e. condition check failed).-> Success
 	// 4. A Task or Condition is running right now  or there are things left to run -> Running
 	if pr.IsTimedOut() {
@@ -423,6 +484,8 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 	}
 
 	// A single failed task mean we fail the pipeline
+	// this failure status is still maintained with final tasks and reported as is after final tasks are finished executing
+	// if no failure is discovered in DAG tasks, but any one of the final tasks fail, results in overall pipeline failure
 	for _, rprt := range state {
 		if rprt.IsCancelled() {
 			logger.Infof("TaskRun %s is cancelled, so PipelineRun %s is cancelled", rprt.TaskRunName, pr.Name)
@@ -505,11 +568,14 @@ func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipel
 
 	// Recursively look at parent tasks to see if they have been skipped,
 	// if any of the parents have been skipped, skip as well
-	node := d.Nodes[rprt.PipelineTask.Name]
-	for _, p := range node.Prev {
-		skip := isSkipped(stateMap[p.Task.HashKey()], stateMap, d)
-		if skip {
-			return true
+	// we could be iterating over final tasks here which are not part of DAG graph
+	// check before accessing DAG node, if it exists
+	if node, ok := d.Nodes[rprt.PipelineTask.Name]; ok {
+		for _, p := range node.Prev {
+			skip := isSkipped(stateMap[p.Task.HashKey()], stateMap, d)
+			if skip {
+				return true
+			}
 		}
 	}
 	return false

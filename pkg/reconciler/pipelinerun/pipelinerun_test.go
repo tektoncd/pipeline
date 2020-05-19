@@ -35,7 +35,7 @@ import (
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
-	test "github.com/tektoncd/pipeline/test"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -427,7 +427,26 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params")),
 			tb.PipelineRunParam("some-param", "stringval"),
 		)),
+		tb.PipelineRun("pipeline-invalid-dag-graph", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("dag-task-1", "dag-task-1", tb.RunAfter("dag-task-1")),
+		))),
 	}
+
+	prs = append(prs, &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline-invalid-final-graph", Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{
+					{Name: "dag-task-1", TaskRef: &v1beta1.TaskRef{Name: "taskName"}},
+				},
+				Finally: []v1beta1.PipelineTask{
+					{Name: "final-task-1", TaskRef: &v1beta1.TaskRef{Name: "taskName"}},
+					{Name: "final-task-1", TaskRef: &v1beta1.TaskRef{Name: "taskName"}},
+				},
+			},
+		},
+	})
+
 	d := test.Data{
 		Tasks:        ts,
 		Pipelines:    ps,
@@ -484,6 +503,14 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-embedded-pipeline-mismatching-parameter-types",
 			pipelineRun: prs[10],
 			reason:      ReasonParameterTypeMismatch,
+		}, {
+			name:        "invalid-pipeline-with-invalid-dag-graph",
+			pipelineRun: prs[11],
+			reason:      ReasonInvalidGraph,
+		}, {
+			name:        "invalid-pipeline-with-invalid-final-tasks-graph",
+			pipelineRun: prs[12],
+			reason:      ReasonInvalidGraph,
 		},
 	}
 
@@ -2243,5 +2270,494 @@ func Test_storePipelineSpec(t *testing.T) {
 	}
 	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
+	}
+}
+
+// this test validates pipeline with finally, pipeline run should result in error
+// when a dag task is executed and resulted in failure but final task is executed successfully
+func TestReconcilePipelineRunWithFinallyWithDAGTaskFailure(t *testing.T) {
+	pipelineRunName := "final-pipeline-run-with-dag-task-failing"
+	pipelineName := "final-pipeline-with-dag-task-failing"
+	taskRunName := pipelineRunName + "dag-task"
+	finalTaskRunName := pipelineRunName + "final-task"
+	taskName := "hello-world"
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName, Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: pipelineName,
+			},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonFailed,
+					Message: "TaskRun dag-task-1 has failed",
+				}},
+			},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+					taskRunName: {
+						PipelineTaskName: "dag-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+					finalTaskRunName: {
+						PipelineTaskName: "final-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+				},
+			},
+		},
+	}}
+
+	ps := []*v1beta1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: "foo"},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "dag-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Name: "final-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+		},
+	}}
+
+	ts := []*v1beta1.Task{{ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: "foo"}}}
+
+	trs := []*v1beta1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{Name: finalTaskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}}},
+		},
+	}}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/"+pipelineRunName); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) != 2 {
+		t.Fatalf("Expected client to have updated the PipelineRun status (PipelineRunTaskRunStatus), but it did not")
+	}
+
+	actual := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	if actual == nil {
+		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
+	}
+
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource == "taskruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did")
+			}
+		}
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be failed and the status should reflect that
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be failed, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "dag-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+	expectedTaskRunsStatus[finalTaskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "final-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+		},
+	}
+	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+	}
+}
+
+// this test validates pipeline with finally, pipeline run should result in error
+// when a dag task is executed successfully but final task is executed and resulted in failure
+func TestReconcilePipelineRunWithFinallyWithFinalTaskFailure(t *testing.T) {
+	pipelineRunName := "final-pipeline-run-with-dag-passing-but-final-failing"
+	pipelineName := "final-pipeline-with-dag-passing-but-final-failing"
+	taskRunName := pipelineRunName + "dag-task"
+	finalTaskRunName := pipelineRunName + "final-task"
+	taskName := "hello-world"
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName, Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: pipelineName,
+			},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonFailed,
+					Message: "TaskRun final-task-1 has failed",
+				}},
+			},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+					taskRunName: {
+						PipelineTaskName: "dag-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+					finalTaskRunName: {
+						PipelineTaskName: "final-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+				},
+			},
+		},
+	}}
+
+	ps := []*v1beta1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: "foo"},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "dag-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Name: "final-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+		},
+	}}
+
+	ts := []*v1beta1.Task{{ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: "foo"}}}
+
+	trs := []*v1beta1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{Name: finalTaskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}}},
+		},
+	}}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/"+pipelineRunName); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) != 2 {
+		t.Fatalf("Expected client to have updated the PipelineRun status (PipelineRunTaskRunStatus), but it did not")
+	}
+
+	actual := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	if actual == nil {
+		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
+	}
+
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource == "taskruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did")
+			}
+		}
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be failed and the status should reflect that
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be failed, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "dag-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+		},
+	}
+	expectedTaskRunsStatus[finalTaskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "final-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+	}
+}
+
+// this test validates pipeline with finally, pipeline run should result in error
+// when a dag task and final task both are executed and resulted in failure
+func TestReconcilePipelineRunWithFinallyWithDAGAndFinalTaskFailure(t *testing.T) {
+	pipelineRunName := "final-pipeline-run-with-dag-and-final-failing"
+	pipelineName := "final-pipeline-with-dag-and-final-failing"
+	taskRunName := pipelineRunName + "dag-task"
+	finalTaskRunName := pipelineRunName + "final-task"
+	taskName := "hello-world"
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName, Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: pipelineName,
+			},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonFailed,
+					Message: "TaskRun dag-task-1 has failed",
+				}},
+			},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+					taskRunName: {
+						PipelineTaskName: "dag-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+					finalTaskRunName: {
+						PipelineTaskName: "final-task-1",
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+				},
+			},
+		},
+	}}
+
+	ps := []*v1beta1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: "foo"},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "dag-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Name: "final-task-1",
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskName,
+				},
+			}},
+		},
+	}}
+
+	ts := []*v1beta1.Task{{ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: "foo"}}}
+
+	trs := []*v1beta1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{Name: finalTaskRunName, Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{Kind: "pipelineRun", Name: pipelineRunName}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pipelineRunName,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pipelineName,
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: taskName},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}}},
+		},
+	}}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/"+pipelineRunName); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) != 2 {
+		t.Fatalf("Expected client to have updated the PipelineRun status (PipelineRunTaskRunStatus), but it did not")
+	}
+
+	actual := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	if actual == nil {
+		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
+	}
+
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource == "taskruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the PipelineRun, but it did")
+			}
+		}
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be failed and the status should reflect that
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be failed, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "dag-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+	expectedTaskRunsStatus[finalTaskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "final-task-1",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
 }

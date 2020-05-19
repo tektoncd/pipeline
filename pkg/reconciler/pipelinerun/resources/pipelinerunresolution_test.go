@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -160,7 +161,7 @@ func makeFailed(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 }
 
 func withCancelled(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
-	tr.Status.Conditions[0].Reason = "TaskRunCancelled"
+	tr.Status.Conditions[0].Reason = v1beta1.TaskRunSpecStatusCancelled
 	return tr
 }
 
@@ -985,6 +986,23 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
+	var cancelledTask = PipelineRunState{{
+		PipelineTask: &pts[3], // 1 retry needed
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1beta1.TaskRunSpecStatusCancelled,
+				}}},
+			},
+		},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
 	tcs := []struct {
 		name           string
 		state          []*ResolvedPipelineRunTask
@@ -1077,6 +1095,10 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		name:           "task with grand parents; one not run yet",
 		state:          taskWithGrandParentsOneNotRunState,
 		expectedStatus: corev1.ConditionUnknown,
+	}, {
+		name:           "cancelled task should result in cancelled pipeline",
+		state:          cancelledTask,
+		expectedStatus: corev1.ConditionFalse,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1090,6 +1112,29 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				t.Fatalf("Expected to get status %s but got %s for state %v", tc.expectedStatus, c.Status, tc.state)
 			}
 		})
+	}
+}
+
+// pipeline should result in timeout if its runtime exceeds its spec.Timeout based on its status.Timeout
+func TestGetPipelineConditionStatusForPipelineTimeouts(t *testing.T) {
+	dag, err := DagFromState(oneFinishedState)
+	if err != nil {
+		t.Fatalf("Unexpected error while buildig DAG for state %v: %v", oneFinishedState, err)
+	}
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-tasks-started"},
+		Spec: v1beta1.PipelineRunSpec{
+			Timeout: &metav1.Duration{Duration: 1 * time.Minute},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now().Add(-2 * time.Minute)},
+			},
+		},
+	}
+	c := GetPipelineConditionStatus(pr, oneFinishedState, zap.NewNop().Sugar(), dag)
+	if c.Status != corev1.ConditionFalse && c.Reason != ReasonTimedOut {
+		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
 }
 
@@ -1969,5 +2014,133 @@ func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
 func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
 	if oneStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be after first taskrun")
+	}
+}
+
+func TestPipelineRunState_GetFinalTasks(t *testing.T) {
+	tcs := []struct {
+		name               string
+		state              PipelineRunState
+		DAGTasks           []v1beta1.PipelineTask
+		finalTasks         []v1beta1.PipelineTask
+		expectedFinalTasks []*ResolvedPipelineRunTask
+	}{{
+		name: "all dag tasks started executing and finished successfully -" +
+			" no final tasks should be returned since pipeline didnt have any final tasks",
+		state:              oneStartedState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[1]},
+		finalTasks:         []v1beta1.PipelineTask{},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}, {
+		name:               "none of the dag tasks started executing yet - no final tasks should be returned",
+		state:              noneStartedState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}, {
+		name:               "one dag task started executing but not finished - no final tasks should be returned",
+		state:              oneStartedState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}, {
+		name: "pipeline with one dag task started executing and task finished successfully -" +
+			" all final tasks should be returned",
+		state:              oneFinishedState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{oneFinishedState[1]},
+	}, {
+		name:               "one dag task started executing and resulted in failure - all final tasks should be returned",
+		state:              oneFailedState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{oneFinishedState[1]},
+	}, {
+		name: "pipeline with one conditional task - dag task condition has started evaluating but" +
+			" not finished - no final tasks should be returned",
+		state:              append(conditionCheckStartedState, noneStartedState[0]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
+		finalTasks:         []v1beta1.PipelineTask{pts[0]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}, {
+		name: "pipeline with one conditional task - dag task condition was successful but task not" +
+			" started yet - no final tasks should be returned",
+		state:              append(conditionCheckSuccessNoTaskStartedState, noneStartedState[0]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
+		finalTasks:         []v1beta1.PipelineTask{pts[0]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}, {
+		name: "pipeline with one conditional task - dag task condition failed so task was skipped -" +
+			" final tasks should be returned",
+		state:              append(conditionCheckFailedWithNoOtherTasksState, noneStartedState[0]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
+		finalTasks:         []v1beta1.PipelineTask{pts[0]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[0]},
+	}, {
+		name: "dag task condition failed so task was skipped and rest of the dag tasks finished -" +
+			" final tasks should be returned",
+		state:              append(conditionCheckFailedWithOthersPassedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task condition failed so task was skipped and rest of the dag task failed -" +
+			" final tasks should be returned",
+		state:              append(conditionCheckFailedWithOthersFailedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task condition failed so task was skipped along with its dependent task -" +
+			" final tasks should be returned",
+		state:              append(taskWithParentSkippedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[6]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task condition failed so task was skipped along with all dependent tasks -" +
+			" final tasks should be returned",
+		state:              append(taskWithMultipleParentsSkippedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task succeeded - next dag task condition failed so task was skipped along with all" +
+			" dependent tasks - final tasks should be returned",
+		state:              append(taskWithGrandParentSkippedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task succeeded - next dag task condition succeeded but task failed -" +
+			" not executing rest of the dag tasks - final tasks should be returned",
+		state:              append(taskWithGrandParentsOneFailedState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{noneStartedState[1]},
+	}, {
+		name: "dag task succeeded - next dag task condition succeeded but task not finished -" +
+			" not started executing rest of the dag tasks - no final tasks should be returned",
+		state:              append(taskWithGrandParentsOneNotRunState, noneStartedState[1]),
+		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: []*ResolvedPipelineRunTask{},
+	}}
+	for _, tc := range tcs {
+		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks))
+		if err != nil {
+			t.Fatalf("Unexpected error while buildig DAG for pipelineTasks %v: %v", tc.DAGTasks, err)
+		}
+		finalGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks))
+		if err != nil {
+			t.Fatalf("Unexpected error while buildig DAG for final pipelineTasks %v: %v", tc.finalTasks, err)
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			next := tc.state.GetFinalTasks(dagGraph, finalGraph)
+			if d := cmp.Diff(next, tc.expectedFinalTasks); d != "" {
+				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }

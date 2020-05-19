@@ -394,6 +394,23 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return nil
 	}
 
+	// build DAG with a list of final tasks, this DAG is used later to identify
+	// if a task from PipelineRunState is one of the tasks specified under finally section
+	// the finally section is optional and might not be specified
+	// in case this section is not specified, dfinally holds an empty Graph
+	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Finally))
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonInvalidGraph,
+			Message: fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+		})
+		return nil
+	}
+
 	if err := pipelineSpec.Validate(ctx); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
@@ -472,6 +489,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
 
+	// pipelineState holds a list of pipeline tasks with resolved conditions and pipeline resources
+	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
+	// pipelineState is instantiated on every reconcile cycle
 	pipelineState, err := resources.ResolvePipelineRun(ctx,
 		*pr,
 		func(name string) (v1beta1.TaskInterface, error) {
@@ -486,7 +506,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		func(name string) (*v1alpha1.Condition, error) {
 			return c.conditionLister.Conditions(pr.Namespace).Get(name)
 		},
-		pipelineSpec.Tasks, providedResources,
+		append(pipelineSpec.Tasks, pipelineSpec.Finally...), providedResources,
 	)
 
 	if err != nil {
@@ -556,12 +576,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		}
 	}
 
+	// candidateTasks contains a list of pipeline tasks that can be scheduled next
+	// This list of candidates is derived based on the successfully finished tasks
+	// A task is considered as candidate if its all parents have finished executing successfully
+	// candidateTasks are initialized with all root/s of DAG tasks
 	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
 	if err != nil {
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
 
+	// GetNextTasks returns a list of tasks which should be executed next and is derived based on candidateTasks
+	// GetNextTasks returns a list of candidates for which pipelineState does not have any taskRun or a list of
+	// failed tasks which haven't exhausted their retries
+	// Pipeline execution continues until GetNextTasks does not return any new pipeline task to execute
 	nextRprts := pipelineState.GetNextTasks(candidateTasks)
+	// GetFinalTasks returns a list of final tasks without any taskRun associated with it
+	// GetFinalTasks returns final tasks only when all DAG tasks have finished executing successfully or
+	// executing any one DAG task resulted in failure
+	nextRprts = append(nextRprts, pipelineState.GetFinalTasks(d, dfinally)...)
+
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
 	if err != nil {
 		c.Logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
