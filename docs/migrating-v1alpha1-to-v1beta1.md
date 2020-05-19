@@ -178,3 +178,7 @@ For examples of replacing an `image` resource, see the following Catalog `Tasks`
   illustrates how to write the digest of an image to a result.
 - The [Buildah Catalog `Task`](https://github.com/tektoncd/catalog/blob/v1beta1/buildah/)
   illustrates how to accept an image digest as a parameter.
+
+### Replacing a `cluster` resource
+
+You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/kubeconfig-creator).
