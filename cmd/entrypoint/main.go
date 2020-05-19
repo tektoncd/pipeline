@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/credentials"
+	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
+	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/termination"
 )
@@ -41,7 +43,21 @@ var (
 )
 
 func main() {
+	// Add credential flags originally used in creds-init.
+	gitcreds.AddFlags(flag.CommandLine)
+	dockercreds.AddFlags(flag.CommandLine)
+
 	flag.Parse()
+
+	// Copy creds-init credentials from secret volume mounts to /tekton/creds
+	// This is done to support the expansion of a variable, $(credentials.path), that
+	// resolves to a single place with all the stored credentials.
+	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
+	for _, c := range builders {
+		if err := c.Write("/tekton/creds"); err != nil {
+			log.Printf("Error initializing credentials: %s", err)
+		}
+	}
 
 	e := entrypoint.Entrypointer{
 		Entrypoint:      *ep,
@@ -56,7 +72,7 @@ func main() {
 		Results:         strings.Split(*results, ","),
 	}
 
-	// Copy any creds injected by creds-init into the $HOME directory of the current
+	// Copy any creds injected by the controller into the $HOME directory of the current
 	// user so that they're discoverable by git / ssh.
 	if err := credentials.CopyCredsToHome(credentials.CredsInitCredentials); err != nil {
 		log.Printf("non-fatal error copying credentials: %q", err)

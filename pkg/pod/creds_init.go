@@ -29,48 +29,38 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const homeEnvVar = "HOME"
-const credsInitHomeMountName = "tekton-creds-init-home"
-const credsInitHomeDir = "/tekton/creds"
+const credsInitHomeMountPrefix = "tekton-creds-init-home"
 
-var credsInitHomeVolume = corev1.Volume{
-	Name: credsInitHomeMountName,
-	VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
-		Medium: corev1.StorageMediumMemory,
-	}},
-}
-
-var credsInitHomeVolumeMount = corev1.VolumeMount{
-	Name:      credsInitHomeMountName,
-	MountPath: credsInitHomeDir,
-}
-
-// credsInit returns an init container that initializes credentials based on
-// annotated secrets available to the service account.
+// credsInit reads secrets available to the given service account and
+// searches for annotations matching a specific format (documented in
+// docs/auth.md). Matching secrets are turned into Volumes for the Pod
+// and VolumeMounts to be given to each Step. Additionally, a list of
+// entrypointer arguments are returned, each with a meaning specific to
+// the credential type it describes: git credentials expect one set of
+// args while docker credentials expect another.
 //
-// If no such secrets are found, it returns a nil container, and no creds init
-// process is necessary.
-//
-// If it finds secrets, it also returns a set of Volumes to attach to the Pod
-// to provide those secrets to this initialization.
-func credsInit(credsImage string, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
+// Any errors encountered during this process are returned to the
+// caller. If no matching annotated secrets are found, nil lists with a
+// nil error are returned.
+func credsInit(serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
 
 	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 
+	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		matched := false
@@ -100,63 +90,25 @@ func credsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 
 	if len(args) == 0 {
 		// There are no creds to initialize.
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
-	env := ensureCredsInitHomeEnv(implicitEnvVars)
-
-	return &corev1.Container{
-		Name:         "credential-initializer",
-		Image:        credsImage,
-		Command:      []string{"/ko-app/creds-init"},
-		Args:         args,
-		Env:          env,
-		VolumeMounts: volumeMounts,
-	}, volumes, nil
+	return args, volumes, volumeMounts, nil
 }
 
-// CredentialsPath returns a string path to the location that the creds-init
-// helper binary will write its credentials to. The only argument is a boolean
-// true if Tekton will overwrite Steps' default HOME environment variable
-// with /tekton/home.
-func CredentialsPath(shouldOverrideHomeEnv bool) string {
-	if shouldOverrideHomeEnv {
-		return pipeline.HomeDir
+// getCredsInitVolume returns a Volume and VolumeMount for /tekton/creds. Each call
+// will return a new volume and volume mount with randomized name.
+func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
+	name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(credsInitHomeMountPrefix)
+	v := corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
+			Medium: corev1.StorageMediumMemory,
+		}},
 	}
-	return credsInitHomeDir
-}
-
-// ensureCredsInitHomeEnv ensures that creds-init always has its HOME environment
-// variable set to /tekton/creds unless it's already been explicitly set to
-// something else.
-//
-// We do this because Tekton's HOME override is being deprecated:
-// creds-init doesn't know the HOME directories of every Step in
-// the Task, and may not even be able to tell this in advance because
-// of randomized container UIDs like those of OpenShift. So, instead,
-// creds-init writes credentials to a single known location (/tekton/creds)
-// and leaves it up to the user's Steps to put those credentials in the
-// correct place.
-func ensureCredsInitHomeEnv(existingEnvVars []corev1.EnvVar) []corev1.EnvVar {
-	env := []corev1.EnvVar{}
-	setHome := true
-	for _, e := range existingEnvVars {
-		if e.Name == homeEnvVar {
-			setHome = false
-		}
-		env = append(env, e)
+	vm := corev1.VolumeMount{
+		Name:      name,
+		MountPath: pipeline.CredsDir,
 	}
-	if setHome {
-		env = append(env, corev1.EnvVar{
-			Name:  homeEnvVar,
-			Value: credsInitHomeDir,
-		})
-	}
-	return env
-}
-
-// getCredsInitVolume returns the Volume and VolumeMount configuration needed
-// to mount the creds-init volume in Steps.
-func getCredsInitVolume(volumes []corev1.Volume) (corev1.Volume, corev1.VolumeMount) {
-	return credsInitHomeVolume, credsInitHomeVolumeMount
+	return v, vm
 }

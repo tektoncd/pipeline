@@ -36,16 +36,17 @@ var (
 	sshConfig   sshGitConfig
 )
 
+// AddFlags adds CLI flags that gitcreds supports to a given flag.FlagSet.
+func AddFlags(flagSet *flag.FlagSet) {
+	flags(flagSet)
+}
+
 func flags(fs *flag.FlagSet) {
 	basicConfig = basicGitConfig{entries: make(map[string]basicEntry)}
 	fs.Var(&basicConfig, basicAuthFlag, "List of secret=url pairs.")
 
 	sshConfig = sshGitConfig{entries: make(map[string][]sshEntry)}
 	fs.Var(&sshConfig, sshFlag, "List of secret=url pairs.")
-}
-
-func init() {
-	flags(flag.CommandLine)
 }
 
 type gitConfigBuilder struct{}
@@ -76,9 +77,9 @@ func (*gitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	return flags
 }
 
-func (*gitConfigBuilder) Write() error {
-	if err := basicConfig.Write(); err != nil {
+func (*gitConfigBuilder) Write(directory string) error {
+	if err := basicConfig.Write(directory); err != nil {
 		return err
 	}
-	return sshConfig.Write()
+	return sshConfig.Write(directory)
 }

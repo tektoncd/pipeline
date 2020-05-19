@@ -26,14 +26,11 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
-	// credsPath is the path where creds-init will store credentials
-	// when HOME is not being explicitly set to /tekton/home.
-	credsPath = "/tekton/creds"
-
 	// credsDirPermissions are the persmission bits assigned to the directories
 	// copied out of the /tekton/creds and into a Step's HOME.
 	credsDirPermissions = 0700
@@ -57,8 +54,8 @@ type Builder interface {
 	// length 0 or greater) of applicable domains.
 	MatchingAnnotations(*corev1.Secret) []string
 
-	// Write writes the credentials to the correct location.
-	Write() error
+	// Write writes the credentials to the provided directory.
+	Write(string) error
 }
 
 // VolumeName returns the full path to the secret, inside the VolumePath.
@@ -84,7 +81,7 @@ func SortAnnotations(secrets map[string]string, annotationPrefix string) []strin
 // copy is given as an arg, for example, []string{".docker", ".ssh"}. A missing
 // /tekton/creds directory is not considered an error.
 func CopyCredsToHome(credPaths []string) error {
-	if info, err := os.Stat(credsPath); err != nil || !info.IsDir() {
+	if info, err := os.Stat(pipeline.CredsDir); err != nil || !info.IsDir() {
 		return nil
 	}
 
@@ -94,11 +91,11 @@ func CopyCredsToHome(credPaths []string) error {
 	}
 
 	for _, cred := range credPaths {
-		source := filepath.Join(credsPath, cred)
+		source := filepath.Join(pipeline.CredsDir, cred)
 		destination := filepath.Join(homepath, cred)
 		err := tryCopyCred(source, destination)
 		if err != nil {
-			log.Printf("unsuccessful cred copy: %q from %q to %q: %v", cred, credsPath, homepath, err)
+			log.Printf("unsuccessful cred copy: %q from %q to %q: %v", cred, pipeline.CredsDir, homepath, err)
 		}
 	}
 	return nil

@@ -45,7 +45,7 @@ func TestBasicFlagHandling(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	flags(fs)
+	AddFlags(fs)
 	err := fs.Parse([]string{
 		"-basic-git=foo=https://github.com",
 	})
@@ -54,7 +54,7 @@ func TestBasicFlagHandling(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(); err != nil {
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
@@ -108,7 +108,7 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	flags(fs)
+	AddFlags(fs)
 	err := fs.Parse([]string{
 		"-basic-git=foo=https://github.com",
 		"-basic-git=bar=https://gitlab.com",
@@ -118,7 +118,7 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(); err != nil {
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
@@ -201,7 +201,7 @@ func TestSSHFlagHandling(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	flags(fs)
+	AddFlags(fs)
 	err := fs.Parse([]string{
 		"-ssh-git=foo=github.com",
 	})
@@ -210,7 +210,7 @@ func TestSSHFlagHandling(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(); err != nil {
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
@@ -282,7 +282,7 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	flags(fs)
+	AddFlags(fs)
 	err := fs.Parse([]string{
 		// Two secrets target github.com, and both will end up in the
 		// ssh config.
@@ -295,7 +295,7 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(); err != nil {
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
