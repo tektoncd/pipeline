@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -36,27 +37,7 @@ func TestEntrypointerFailures(t *testing.T) {
 		waiter         Waiter
 		runner         Runner
 		expectedError  string
-	}{{
-		desc:          "failing runner with no postFile",
-		runner:        &fakeErrorRunner{},
-		expectedError: "runner failed",
-	}, {
-		desc:          "failing runner with postFile",
-		runner:        &fakeErrorRunner{},
-		expectedError: "runner failed",
-		postFile:      "foo",
-	}, {
-		desc:          "failing waiter with no postFile",
-		waitFiles:     []string{"foo"},
-		waiter:        &fakeErrorWaiter{},
-		expectedError: "waiter failed",
-	}, {
-		desc:          "failing waiter with postFile",
-		waitFiles:     []string{"foo"},
-		waiter:        &fakeErrorWaiter{},
-		expectedError: "waiter failed",
-		postFile:      "bar",
-	}} {
+	}{} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw := c.waiter
 			if fw == nil {
@@ -70,7 +51,6 @@ func TestEntrypointerFailures(t *testing.T) {
 			err := Entrypointer{
 				Entrypoint:      "echo",
 				WaitFiles:       c.waitFiles,
-				PostFile:        c.postFile,
 				Args:            []string{"some", "args"},
 				Waiter:          fw,
 				Runner:          fr,
@@ -85,13 +65,13 @@ func TestEntrypointerFailures(t *testing.T) {
 			}
 
 			if c.postFile != "" {
-				if fpw.wrote == nil {
+				if fpw.stepExecuted == nil {
 					t.Error("Wanted post file written, got nil")
-				} else if *fpw.wrote != c.postFile+".err" {
-					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+				} else if *fpw.stepExecuted != c.postFile+".err" {
+					t.Errorf("Wrote post file %q, want %q", *fpw.stepExecuted, c.postFile)
 				}
 			}
-			if c.postFile == "" && fpw.wrote != nil {
+			if c.postFile == "" && fpw.stepExecuted != nil {
 				t.Errorf("Wrote post file when not required")
 			}
 		})
@@ -103,8 +83,6 @@ func TestEntrypointer(t *testing.T) {
 		desc, entrypoint, postFile string
 		waitFiles, args            []string
 	}{{
-		desc: "do nothing",
-	}, {
 		desc:       "just entrypoint",
 		entrypoint: "echo",
 	}, {
@@ -133,7 +111,6 @@ func TestEntrypointer(t *testing.T) {
 			err := Entrypointer{
 				Entrypoint:      c.entrypoint,
 				WaitFiles:       c.waitFiles,
-				PostFile:        c.postFile,
 				Args:            c.args,
 				Waiter:          fw,
 				Runner:          fr,
@@ -171,13 +148,13 @@ func TestEntrypointer(t *testing.T) {
 			}
 
 			if c.postFile != "" {
-				if fpw.wrote == nil {
+				if fpw.stepExecuted == nil {
 					t.Error("Wanted post file written, got nil")
-				} else if *fpw.wrote != c.postFile {
-					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+				} else if *fpw.stepExecuted != c.postFile {
+					t.Errorf("Wrote post file %q, want %q", *fpw.stepExecuted, c.postFile)
 				}
 			}
-			if c.postFile == "" && fpw.wrote != nil {
+			if c.postFile == "" && fpw.stepExecuted != nil {
 				t.Errorf("Wrote post file when not required")
 			}
 			fileContents, err := ioutil.ReadFile("termination")
@@ -212,6 +189,12 @@ func (f *fakeWaiter) Wait(file string, _ bool) error {
 	return nil
 }
 
+func (f *fakeWaiter) WaitStep(stepFs, stepID string, _ bool) error {
+	s := filepath.Join(stepFs, stepID, "ready")
+	f.waited = append(f.waited, s)
+	return nil
+}
+
 type fakeRunner struct{ args *[]string }
 
 func (f *fakeRunner) Run(args ...string) error {
@@ -219,14 +202,21 @@ func (f *fakeRunner) Run(args ...string) error {
 	return nil
 }
 
-type fakePostWriter struct{ wrote *string }
+type fakePostWriter struct{ stepExecuted *string }
 
-func (f *fakePostWriter) Write(file string) { f.wrote = &file }
+func (f *fakePostWriter) Write(stepFs, stepID string, isErr bool) {
+	s := filepath.Join(stepFs, stepID, "ready")
+	f.stepExecuted = &s
+}
 
 type fakeErrorWaiter struct{ waited *string }
 
 func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 	f.waited = &file
+	return errors.New("waiter failed")
+}
+
+func (f *fakeErrorWaiter) WaitStep(stepFs, stepID string, expectContent bool) error {
 	return errors.New("waiter failed")
 }
 

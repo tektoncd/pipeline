@@ -106,15 +106,17 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 				// First step waits for the Downward volume file.
 				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
-				// Start next step.
-				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				// First step.
+				"-step_fs", mountPoint,
+				"-step_id", fmt.Sprintf("%d", i),
 				"-termination_path", terminationPath,
 			}
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
-				"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
-				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				"-step_fs", mountPoint,
+				"-step_id", fmt.Sprintf("%d", i),
+				"-wait_step", fmt.Sprintf("%d", i-1),
 				"-termination_path", terminationPath,
 			}
 		}

@@ -17,7 +17,6 @@ limitations under the License.
 package entrypoint
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -36,15 +35,21 @@ type Entrypointer struct {
 	Entrypoint string
 	// Args are the original specified args, if any.
 	Args []string
+	// StepFs is the filesystem containing all the steps and their information
+	StepFs string
+	// StepID is the step number running in the entrypoint
+	StepID string
+	// StepAgent handles step related instructions
+	StepAgent StepAgent
+	// WaitSteps is the set of steps to wait on for execution. If empty
+	// execution begins immediately
+	WaitSteps []string
 	// WaitFiles is the set of files to wait for. If empty, execution
 	// begins immediately.
 	WaitFiles []string
 	// WaitFileContent indicates the WaitFile should have non-zero size
 	// before continuing with execution.
 	WaitFileContent bool
-	// PostFile is the file to write when complete. If not specified, no
-	// file is written.
-	PostFile string
 
 	// Termination path is the path of a file to write the starting time of this endpopint
 	TerminationPath string
@@ -60,10 +65,17 @@ type Entrypointer struct {
 	Results []string
 }
 
+// StepAgent handles step related instructions
+type StepAgent interface {
+	// Init handles step related instructions
+	Init(stepFs, stepID string)
+}
+
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
 	// Wait blocks until the specified file exists.
 	Wait(file string, expectContent bool) error
+	WaitStep(stepFs, stepID string, expectContent bool) error
 }
 
 // Runner encapsulates running commands.
@@ -74,7 +86,7 @@ type Runner interface {
 // PostWriter encapsulates writing a file when complete.
 type PostWriter interface {
 	// Write writes to the path when complete.
-	Write(file string)
+	Write(stepFs, stepID string, isErr bool)
 }
 
 // Go optionally waits for a file, runs the command, and writes a
@@ -91,11 +103,19 @@ func (e Entrypointer) Go() error {
 		_ = logger.Sync()
 	}()
 
+	e.StepAgent.Init(e.StepFs, e.StepID)
+
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
+			return err
+		}
+	}
+
+	for _, s := range e.WaitSteps {
+		if err := e.Waiter.WaitStep(e.StepFs, s, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
-			e.WritePostFile(e.PostFile, err)
+			e.WritePostFile(e.StepFs, e.StepID, err)
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:   "StartedAt",
 				Value: time.Now().Format(time.RFC3339),
@@ -116,7 +136,7 @@ func (e Entrypointer) Go() error {
 	err := e.Runner.Run(e.Args...)
 
 	// Write the post file *no matter what*
-	e.WritePostFile(e.PostFile, err)
+	e.WritePostFile(e.StepFs, e.StepID, err)
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
@@ -158,11 +178,12 @@ func (e Entrypointer) readResultsFromDisk() error {
 }
 
 // WritePostFile write the postfile
-func (e Entrypointer) WritePostFile(postFile string, err error) {
-	if err != nil && postFile != "" {
-		postFile = fmt.Sprintf("%s.err", postFile)
+func (e Entrypointer) WritePostFile(stepFs, stepID string, err error) {
+	isErr := false
+	if err != nil && stepID != "" {
+		isErr = true
 	}
-	if postFile != "" {
-		e.PostWriter.Write(postFile)
+	if stepID != "" {
+		e.PostWriter.Write(stepFs, stepID, isErr)
 	}
 }

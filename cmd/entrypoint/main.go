@@ -31,9 +31,11 @@ import (
 
 var (
 	ep                  = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	stepID              = flag.String("step_id", "", "Current step in progress")
+	stepFs              = flag.String("step_fs", "", "Parent Dir managing all the steps")
+	waitSteps           = flag.String("wait_step", "", "Comma-separated list of steps to wait for")
 	waitFiles           = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
 	waitFileContent     = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
-	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	waitPollingInterval = time.Second
@@ -44,9 +46,12 @@ func main() {
 
 	e := entrypoint.Entrypointer{
 		Entrypoint:      *ep,
+		StepID:          *stepID,
+		StepFs:          *stepFs,
+		StepAgent:       &realStepAgent{},
+		WaitSteps:       strings.Split(*waitSteps, ","),
 		WaitFiles:       strings.Split(*waitFiles, ","),
 		WaitFileContent: *waitFileContent,
-		PostFile:        *postFile,
 		TerminationPath: *terminationPath,
 		Args:            flag.Args(),
 		Waiter:          &realWaiter{},

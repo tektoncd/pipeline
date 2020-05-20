@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
@@ -35,6 +36,25 @@ func (*realWaiter) Wait(file string, expectContent bool) error {
 			return fmt.Errorf("waiting for %q: %w", file, err)
 		}
 		if _, err := os.Stat(file + ".err"); err == nil {
+			return skipError("error file present, bail and skip the step")
+		}
+	}
+}
+
+func (*realWaiter) WaitStep(stepFs, stepID string, expectContent bool) error {
+	stepLocation := filepath.Join(stepFs, stepID, "ready")
+	if stepID == "" {
+		return nil
+	}
+	for ; ; time.Sleep(waitPollingInterval) {
+		if info, err := os.Stat(stepLocation); err == nil {
+			if !expectContent || info.Size() > 0 {
+				return nil
+			}
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("waiting for %q: %w", stepLocation, err)
+		}
+		if _, err := os.Stat(stepLocation + ".err"); err == nil {
 			return skipError("error file present, bail and skip the step")
 		}
 	}
