@@ -828,6 +828,51 @@ script-heredoc-randomly-generated-78c5n
 			}},
 		},
 	}, {
+		desc: "setting image pull secret",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:    "image-pull",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+		},
+		trs: v1beta1.TaskRunSpec{
+			PodTemplate: &v1alpha1.PodTemplate{
+				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Volumes:        append(implicitVolumes, toolsVolume, downwardVolume),
+			Containers: []corev1.Container{{
+				Name:    "step-image-pull",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
+		}}, {
 		desc: "using hostNetwork",
 		ts: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{

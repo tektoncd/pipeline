@@ -57,6 +57,7 @@ The current fields supported are:
   to use when dispatching the Pod. This can be used when workloads of specific types need specific schedulers,
   e.g.: If you are using volcano.sh for Machine Learning Workloads, you can pass the schedulerName and have Tasks be 
   dispatched by the volcano.sh scheduler.
+- `imagePullSecret` the name of the [`secret`](https://kubernetes.io/docs/concepts/configuration/secret/) used when [pulling the image if specified](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/). 
 - `hostNetwork`: set this to `true` if the host network namespace should be used.
   Defaults to `false`.
 
