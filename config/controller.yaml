@@ -66,12 +66,13 @@ spec:
           "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
-          # These images are pulled from Dockerhub, by digest, as of April 15, 2020.
-          "-nop-image", "tianon/true@sha256:009cce421096698832595ce039aa13fa44327d96beedb84282a69d3dbcf5a81b",
-          "-gsutil-image", "google/cloud-sdk@sha256:6e8676464c7581b2dc824956b112a61c95e4144642bec035e6db38e3384cae2e",
+          # These images are pulled from Dockerhub, by digest, as of May 19, 2020.
+          "-nop-image", "tianon/true@sha256:183cb5fd54142948ad88cc986a217465cfe8786cfdd89b1ed1fc49825da413a7",
+          # This is google/cloud-sdk:293.0.0-slim
+          "-gsutil-image", "google/cloud-sdk@sha256:37654ada9b7afbc32828b537030e85de672a9dd468ac5c92a36da1e203a98def",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # As of April 17, 2020
-          "-shell-image", "gcr.io/distroless/base:debug@sha256:dac57423f6d9210198e1ac25de9f6d48753196a112aa2deb22f54e984cfd462d",
+          # As of May 19, 2020
+          "-shell-image", "gcr.io/distroless/base:debug@sha256:f79e093f9ba639c957ee857b1ad57ae5046c328998bf8f72b30081db4d8edbe4",
         ]
         volumeMounts:
         - name: config-logging
