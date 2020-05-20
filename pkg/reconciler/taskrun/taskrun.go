@@ -34,8 +34,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -116,7 +117,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, nil, afterCondition, tr)
+		events.EmitEvent(c.Recorder, nil, afterCondition, tr)
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -209,9 +210,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(tr, original *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	reconciler.EmitEvent(c.Recorder, beforeCondition, afterCondition, tr)
+	events.EmitEvent(c.Recorder, beforeCondition, afterCondition, tr)
 	err := c.updateStatusLabelsAndAnnotations(tr, original)
-	reconciler.EmitErrorEvent(c.Recorder, err, tr)
+	events.EmitErrorEvent(c.Recorder, err, tr)
 	return multierror.Append(previousError, err).ErrorOrNil()
 }
 

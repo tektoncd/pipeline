@@ -32,7 +32,7 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
 	test "github.com/tektoncd/pipeline/test"
