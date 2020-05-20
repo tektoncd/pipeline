@@ -50,10 +50,7 @@ var (
 
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
-
-// Temporarily disable this test to be able to merge a fix to the helm chart
-// The test will be re-enabled in https://github.com/tektoncd/pipeline/pull/2654
-func _TestHelmDeployPipelineRun(t *testing.T) {
+func TestHelmDeployPipelineRun(t *testing.T) {
 	repo := ensureDockerRepo(t)
 	c, namespace := setup(t)
 	setupClusterBindingForHelm(c, t, namespace)
