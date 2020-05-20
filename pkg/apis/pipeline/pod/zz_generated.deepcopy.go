@@ -88,6 +88,11 @@ func (in *Template) DeepCopyInto(out *Template) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ImagePullSecrets != nil {
+		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

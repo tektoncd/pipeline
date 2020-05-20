@@ -273,6 +273,7 @@ func MakePod(images pipeline.Images, taskRun *v1beta1.TaskRun, taskSpec v1beta1.
 			DNSConfig:                    podTemplate.DNSConfig,
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
 			PriorityClassName:            priorityClassName,
+			ImagePullSecrets:             podTemplate.ImagePullSecrets,
 		},
 	}, nil
 }
