@@ -37,6 +37,7 @@ import (
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
@@ -198,7 +199,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		before := pr.Status.GetCondition(apis.ConditionSucceeded)
 		merr = multierror.Append(merr, cancelPipelineRun(c.Logger, pr, c.PipelineClientSet))
 		after := pr.Status.GetCondition(apis.ConditionSucceeded)
-		reconciler.EmitEvent(c.Recorder, before, after, pr)
+		events.EmitEvent(c.Recorder, before, after, pr)
 	default:
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
@@ -615,7 +616,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 	after := resources.GetPipelineConditionStatus(pr, pipelineState, c.Logger, d)
 	pr.Status.SetCondition(after)
-	reconciler.EmitEvent(c.Recorder, before, after, pr)
+	events.EmitEvent(c.Recorder, before, after, pr)
 
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
