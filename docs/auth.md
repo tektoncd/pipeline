@@ -108,6 +108,21 @@ When the `Run` executes, before steps execute, a `~/.ssh/config` will be
 generated containing the key configured in the `Secret`. This key is then used
 to authenticate when retrieving any `PipelineResources`.
 
+### Using SSH authentication in your own `git` `Tasks`
+
+The SSH credentials described above can be used when invoking `git` commands
+directly in your own Task's Steps. However, a Step will first need to symlink
+`/tekton/home/.ssh` to its user home directory (e.g. `/root/.ssh` when the
+Step's container runs as `root`).
+
+This is required because while Tekton does set the $HOME environment variable
+to `/tekton/home` by default, `ssh` ignores that environment variable and only
+considers the user's home as that described in `/etc/passwd`.
+
+**Note:** This additional symlink is not required if you are using the
+[`git-clone` catalog Task](https://github.com/tektoncd/catalog/tree/v1beta1/git)
+or Git PipelineResource.
+
 ## Basic authentication (Git)
 
 1. Define a `Secret` containing the username and password that the `Run` should
