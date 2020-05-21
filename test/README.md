@@ -13,6 +13,23 @@ go test ./...
 go test -v -count=1 -tags=e2e -timeout=20m ./test
 ```
 
+* [Unit tests](#unit-tests)
+  * [Unit testing controllers](#unit-testing-controllers)
+* [End to end tests](#end-to-end-tests)
+  * [Setup](#setup)
+  * [Running](#running)
+  * [Flags](#flags)
+  * [Running specific test cases](#running-specific-test-cases)
+  * [Running example yaml tests](#running-example-yaml-tests)
+  * [Running upgrade tests](#running-upgrade-tests)
+  * [Adding integration tests](#adding-integration-tests)
+    * [Create Tekton objects](#create-tekton-objects)
+    * [Get access to client objects](#get-access-to-client-objects)
+    * [Generate random names](#generate-random-names)
+    * [Poll pipeline resources](#poll-pipeline-resources)
+* [Presubmit tests](#presubmit-tests)
+  * [Running presubmit integration tests](#running-presubmit-integration-tests)
+
 ## Unit tests
 
 Unit tests live side by side with the code they are testing and can be run with:
