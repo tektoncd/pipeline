@@ -180,9 +180,24 @@ type TaskRunResult struct {
 	Value string `json:"value"`
 }
 
+// GetTypeMeta returns the task run type meta
+func (tr *TaskRun) GetTypeMeta() *metav1.TypeMeta {
+	return &tr.TypeMeta
+}
+
+// GetObjectMeta returns the task run type meta
+func (tr *TaskRun) GetObjectMeta() *metav1.ObjectMeta {
+	return &tr.ObjectMeta
+}
+
 // GetOwnerReference gets the task run as owner reference for any related objects
 func (tr *TaskRun) GetOwnerReference() metav1.OwnerReference {
 	return *metav1.NewControllerRef(tr, taskRunGroupVersionKind)
+}
+
+// GetStatus returns the task run status as a RunsToCompletionStatus
+func (tr *TaskRun) GetStatus() RunsToCompletionStatus {
+	return &tr.Status
 }
 
 // GetCondition returns the Condition matching the given type.

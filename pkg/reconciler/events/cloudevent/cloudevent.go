@@ -35,12 +35,32 @@ import (
 type TektonEventType string
 
 const (
+	// TektonTaskRunStartedV1 is sent for TaskRuns with "ConditionSucceeded" "Unknown"
+	// the first time they are picked up by the reconciler
+	TektonTaskRunStartedV1 TektonEventType = "dev.tekton.event.taskrun.started.v1"
+	// TektonTaskRunRunningV1 is sent for TaskRuns with "ConditionSucceeded" "Unknown"
+	// once the TaskRun is validated and Pod created
+	TektonTaskRunRunningV1 TektonEventType = "dev.tekton.event.taskrun.running.v1"
 	// TektonTaskRunUnknownV1 is sent for TaskRuns with "ConditionSucceeded" "Unknown"
-	TektonTaskRunUnknownV1 TektonEventType = "dev.tekton.event.task.unknown.v1"
+	// It can be used as a confirmation that the TaskRun is still running.
+	TektonTaskRunUnknownV1 TektonEventType = "dev.tekton.event.taskrun.unknown.v1"
 	// TektonTaskRunSuccessfulV1 is sent for TaskRuns with "ConditionSucceeded" "True"
-	TektonTaskRunSuccessfulV1 TektonEventType = "dev.tekton.event.task.successful.v1"
+	TektonTaskRunSuccessfulV1 TektonEventType = "dev.tekton.event.taskrun.successful.v1"
 	// TektonTaskRunFailedV1 is sent for TaskRuns with "ConditionSucceeded" "False"
-	TektonTaskRunFailedV1 TektonEventType = "dev.tekton.event.task.failed.v1"
+	TektonTaskRunFailedV1 TektonEventType = "dev.tekton.event.taskrun.failed.v1"
+	// TektonPipelineRunStartedV1 is sent for PipelineRuns with "ConditionSucceeded" "Unknown"
+	// the first time they are picked up by the reconciler
+	TektonPipelineRunStartedV1 TektonEventType = "dev.tekton.event.pipelinerun.started.v1"
+	// TektonPipelineRunRunningV1 is sent for PipelineRuns with "ConditionSucceeded" "Unknown"
+	// once the PipelineRun is validated and Pod created
+	TektonPipelineRunRunningV1 TektonEventType = "dev.tekton.event.pipelinerun.running.v1"
+	// TektonPipelineRunUnknownV1 is sent for PipelineRuns with "ConditionSucceeded" "Unknown"
+	// It can be used as a confirmation that the PipelineRun is still running.
+	TektonPipelineRunUnknownV1 TektonEventType = "dev.tekton.event.pipelinerun.unknown.v1"
+	// TektonPipelineRunSuccessfulV1 is sent for PipelineRuns with "ConditionSucceeded" "True"
+	TektonPipelineRunSuccessfulV1 TektonEventType = "dev.tekton.event.pipelinerun.successful.v1"
+	// TektonPipelineRunFailedV1 is sent for PipelineRuns with "ConditionSucceeded" "False"
+	TektonPipelineRunFailedV1 TektonEventType = "dev.tekton.event.pipelinerun.failed.v1"
 )
 
 func (t TektonEventType) String() string {
@@ -51,17 +71,41 @@ func (t TektonEventType) String() string {
 type CEClient cloudevents.Client
 
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
-// a Tekton cloud event. It only includes a TaskRun for now. Using a type opens
-// the possibility for the future to add more data to the payload
+// a Tekton cloud event. It can include a PipelineRun or a PipelineRun
 type TektonCloudEventData struct {
-	TaskRun *v1beta1.TaskRun `json:"taskRun"`
+	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
+	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
 }
 
 // NewTektonCloudEventData returns a new instance of NewTektonCloudEventData
-func NewTektonCloudEventData(taskRun *v1beta1.TaskRun) TektonCloudEventData {
-	return TektonCloudEventData{
-		TaskRun: taskRun,
+func NewTektonCloudEventData(runObject v1beta1.RunsToCompletion) TektonCloudEventData {
+	tektonCloudEventData := TektonCloudEventData{}
+	switch runObject.(type) {
+	case *v1beta1.TaskRun:
+		tektonCloudEventData.TaskRun = runObject.(*v1beta1.TaskRun)
+	case *v1beta1.PipelineRun:
+		tektonCloudEventData.PipelineRun = runObject.(*v1beta1.PipelineRun)
 	}
+	return tektonCloudEventData
+}
+
+// EventForRunsToCompletion creates a new event based for a RunsToCompletion,
+// or return an error if not possible.
+func EventForRunsToCompletion(runObject v1beta1.RunsToCompletion) (*cloudevents.Event, error) {
+	event := cloudevents.NewEvent()
+	event.SetID(uuid.New().String())
+	event.SetSubject(runObject.GetObjectMeta().Name)
+	event.SetSource(runObject.GetObjectMeta().SelfLink) // TODO: SelfLink is deprecated https://github.com/tektoncd/pipeline/issues/2676
+	eventType, err := getEventType(runObject)
+	if err != nil {
+		return nil, err
+	}
+	event.SetType(eventType.String())
+
+	if err := event.SetData(cloudevents.ApplicationJSON, NewTektonCloudEventData(runObject)); err != nil {
+		return nil, err
+	}
+	return &event, nil
 }
 
 // EventForTaskRun will create a new event based on a TaskRun,
@@ -71,27 +115,52 @@ func EventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
 	if taskRun == nil {
 		return nil, errors.New("Cannot send an event for an empty TaskRun")
 	}
-	event := cloudevents.NewEvent()
-	event.SetID(uuid.New().String())
-	event.SetSubject(taskRun.ObjectMeta.Name)
-	event.SetSource(taskRun.ObjectMeta.SelfLink) // TODO: SelfLink is deprecated
+	return EventForRunsToCompletion(taskRun)
+}
 
-	c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+// EventForPipelineRun will create a new event based on a TaskRun,
+// or return an error if not possible.
+func EventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, error) {
+	// Check if the TaskRun is defined
+	if pipelineRun == nil {
+		return nil, errors.New("Cannot send an event for an empty PipelineRun")
+	}
+	return EventForRunsToCompletion(pipelineRun)
+}
+
+func getEventType(runObject v1beta1.RunsToCompletion) (*TektonEventType, error) {
+	c := runObject.GetStatus().GetCondition(apis.ConditionSucceeded)
+	t := runObject.GetTypeMeta()
+	var eventType TektonEventType
 	switch {
 	case c.IsUnknown():
-		event.SetType(TektonTaskRunUnknownV1.String())
+		// TBD We should have different event types here, e.g. started, running
+		// That requires having either knowledge about the previous condition or
+		// TaskRun and PipelineRun using dedicated "Reasons" or "Conditions"
+		switch t.Kind {
+		case "TaskRun":
+			eventType = TektonTaskRunUnknownV1
+		case "PipelineRun":
+			eventType = TektonPipelineRunUnknownV1
+		}
 	case c.IsFalse():
-		event.SetType(TektonTaskRunFailedV1.String())
+		switch t.Kind {
+		case "TaskRun":
+			eventType = TektonTaskRunFailedV1
+		case "PipelineRun":
+			eventType = TektonPipelineRunFailedV1
+		}
 	case c.IsTrue():
-		event.SetType(TektonTaskRunSuccessfulV1.String())
+		switch t.Kind {
+		case "TaskRun":
+			eventType = TektonTaskRunSuccessfulV1
+		case "PipelineRun":
+			eventType = TektonPipelineRunSuccessfulV1
+		}
 	default:
 		return nil, fmt.Errorf("unknown condition for in TaskRun.Status %s", c.Status)
 	}
-
-	if err := event.SetData(cloudevents.ApplicationJSON, NewTektonCloudEventData(taskRun)); err != nil {
-		return nil, err
-	}
-	return &event, nil
+	return &eventType, nil
 }
 
 // GetCloudEventDeliveryCompareOptions returns compare options to sort

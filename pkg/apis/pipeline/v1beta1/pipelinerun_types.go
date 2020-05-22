@@ -73,6 +73,21 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 	}
 }
 
+// GetTypeMeta returns the task run type meta
+func (pr *PipelineRun) GetTypeMeta() *metav1.TypeMeta {
+	return &pr.TypeMeta
+}
+
+// GetObjectMeta returns the task run type meta
+func (pr *PipelineRun) GetObjectMeta() *metav1.ObjectMeta {
+	return &pr.ObjectMeta
+}
+
+// GetStatus returns the task run status as a RunsToCompletionStatus
+func (pr *PipelineRun) GetStatus() RunsToCompletionStatus {
+	return &pr.Status
+}
+
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() metav1.OwnerReference {
 	return *metav1.NewControllerRef(pr, groupVersionKind)
@@ -101,6 +116,11 @@ func (pr *PipelineRun) GetRunKey() string {
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
 func (pr *PipelineRun) IsTimedOut() bool {
+	return pr.HasTimedOut()
+}
+
+// HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
+func (pr *PipelineRun) HasTimedOut() bool {
 	pipelineTimeout := pr.Spec.Timeout
 	startTime := pr.Status.StartTime
 
