@@ -1034,7 +1034,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunCancelled,
 		),
-		// The reconciler uses the presense of this TaskRun in the status to determine that a TaskRun
+		// The reconciler uses the presence of this TaskRun in the status to determine that a TaskRun
 		// is already running. The TaskRun will not be retrieved at all so we do not need to seed one.
 		tb.PipelineRunStatus(
 			tb.PipelineRunTaskRunsStatus(prName+ptName, &v1alpha1.PipelineRunTaskRunStatus{
@@ -1072,7 +1072,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
 	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
 	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to still be running since the TaskRun could not be cancelled but succeded condition is %v", condition.Status)
+		t.Errorf("Expected PipelineRun to still be running since the TaskRun could not be cancelled but succeeded condition is %v", condition.Status)
 	}
 	if condition.Reason != ReasonCouldntCancel {
 		t.Errorf("Expected PipelineRun condition to indicate the cancellation failed but reason was %s", condition.Reason)

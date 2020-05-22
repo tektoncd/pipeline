@@ -229,7 +229,7 @@ func (c *Reconciler) getTaskResolver(tr *v1beta1.TaskRun) (*resources.LocalTaskR
 	return resolver, kind
 }
 
-// `prepare` fetches resources the taskrun depends on, runs validation and convertion
+// `prepare` fetches resources the taskrun depends on, runs validation and conversion
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
