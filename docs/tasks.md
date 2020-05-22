@@ -169,7 +169,7 @@ There are several directories that all `Tasks` run by Tekton will treat as speci
   are mounted. Paths to these are available to `Task` authors via [variable substitution](variables.md)
 * `/tekton` - This directory is used for Tekton specific functionality:
     * `/tekton/results` is where [results](#results) are written to.
-      The path is available to `Task` authors via [`$(results.name.path)`](variables.md))
+      The path is available to `Task` authors via [`$(results.name.path)`](variables.md)
     * There are other subfolders which are [implementation details of Tekton](developers/README.md#reserved-directories)
       and **users should not rely on their specific behavior as it may change in the future**
 
@@ -248,6 +248,7 @@ You can specify parameters, such as compilation flags or artifact names, that yo
  `Parameters` are passed to the `Task` from its corresponding `TaskRun`.
 
 Parameter names:
+
 - Must only contain alphanumeric characters, hyphens (`-`), and underscores (`_`).
 - Must begin with a letter or an underscore (`_`).
 
@@ -545,7 +546,7 @@ The `description` field is an optional field that allows you to add an informati
 
 `Tasks` allow you to substitute variable names for the following entities:
 
-- [Parameters and resources]](#substituting-parameters-and-resources)
+- [Parameters and resources](#substituting-parameters-and-resources)
 - [`Array` parameters](#substituting-array-parameters)
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
