@@ -54,17 +54,17 @@ spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
-        image: github.com/tektoncd/pipeline/cmd/controller
+        image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
-          "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
-          "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
-          "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
-          "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
-          "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
+          "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
+          "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
+          "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
           # This image is used as a placeholder pod, the Affinity Assistant
           # TODO(#2640) We may want to create a custom, minimal binary
