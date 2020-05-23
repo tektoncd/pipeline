@@ -1530,6 +1530,84 @@ func TestGetTaskRunTimeout(t *testing.T) {
 	}
 }
 
+// TestReconcileAndPropagateCustomPipelineTaskRunSpec tests that custom PipelineTaskRunSpec declared
+// in PipelineRun is propagated to created TaskRuns
+func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+	))}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun(prName, tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineTaskRunSpecs([]v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName:       "hello-world-1",
+				TaskServiceAccountName: "custom-sa",
+				TaskPodTemplate: &v1beta1.PodTemplate{
+					NodeSelector: map[string]string{
+						"workloadtype": "tekton",
+					},
+				},
+			}}),
+		),
+	)}
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/"+prName)
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+	}
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-hello-world-1-9l9zj",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline-run"),
+		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("hello-world"),
+			tb.TaskRunServiceAccountName("custom-sa"),
+			tb.TaskRunPodTemplate(&v1beta1.PodTemplate{
+				NodeSelector: map[string]string{
+					"workloadtype": "tekton",
+				},
+			}),
+		),
+	)
+
+	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+		t.Errorf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+}
+
 func TestReconcileWithConditionChecks(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"

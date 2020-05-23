@@ -428,6 +428,13 @@ func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
 	}
 }
 
+// PipelineTaskRunSpec adds customs TaskRunSpecs
+func PipelineTaskRunSpecs(taskRunSpecs []v1beta1.PipelineTaskRunSpec) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		prs.TaskRunSpecs = taskRunSpecs
+	}
+}
+
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)

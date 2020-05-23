@@ -760,6 +760,13 @@ func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
 	}
 }
 
+// TaskRunPodTemplate add a custom PodTemplate to the TaskRun
+func TaskRunPodTemplate(podTemplate *v1beta1.PodTemplate) TaskRunSpecOp {
+	return func(spec *v1beta1.TaskRunSpec) {
+		spec.PodTemplate = podTemplate
+	}
+}
+
 // TaskRunWorkspaceEmptyDir adds a workspace binding to an empty dir volume source.
 func TaskRunWorkspaceEmptyDir(name, subPath string) TaskRunSpecOp {
 	return func(spec *v1beta1.TaskRunSpec) {
