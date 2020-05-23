@@ -13,8 +13,8 @@ weight: 4
   - [Speciying `Parameters`](#specifying-parameters)
   - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
   - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
-  - [Specifying `TaskRunSpecs`](#specifying-task-run-specs)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
+  - [Specifying `TaskRunSpecs`](#specifying-taskrunspecs)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
   - [Configuring a failure timeout](#configuring-a-failure-timeout)
@@ -290,7 +290,32 @@ spec:
         claimName: my-volume-claim
 ```
 
-## Specifying `Workspaces`
+### Specifying taskRunSpecs
+
+Specifies a list of `PipelineTaskRunSpec` which contains `TaskServiceAccountName`, `TaskPodTemplate`
+and `PipelineTaskName`. Mapping the specs to the corresponding `Task` based upon the `TaskName` a PipelineTask
+will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` overwriting the pipeline
+wide `ServiceAccountName`  and [`podTemplate`](./podtemplates.md) configuration,
+for example:
+
+```yaml
+spec:
+   podTemplate:
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 3000
+  taskRunSpecs:
+    - pipelineTaskName: build-task
+      taskServiceAccountName: sa-for-build
+      taskPodTemplate:
+        nodeSelector:
+          disktype: ssd
+```
+
+If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`). 
+
+### Specifying `Workspaces`
 
 If your `Pipeline` specifies one or more `Workspaces`, you must map those `Workspaces` to
 the corresponding physical volumes in your `PipelineRun` definition. For example, you
@@ -352,27 +377,6 @@ spec:
   # […]
   status: "PipelineRunCancelled"
 ```
-
-## Specifying task run specs
-
-Specifies a list of  `PipelineRunTaskSpec` which contains `TaskServiceAccountName`,`TaskPodTemplate` and `TaskName`. Mapping the specs to the corresponding `Task` based upon the `TaskName` a PipelineTask will run with the configured  `TaskServiceAccountName` and `TaskPodTemplate` overwriting the pipeline wide [`ServiceAccountName`](#service-account)  and [`podTemplate`](#pod-template) configuration, for example:
-
-```yaml
-spec:
-   podTemplate:
-    securityContext:
-      runAsUser: 1000
-      runAsGroup: 2000
-      fsGroup: 3000
-  taskRunSpecs:
-    - taskName: build-task
-      taskServiceAccountName: sa-for-build
-      taskPodTemplate:
-        nodeSelector:
-          disktype: ssd
-```
-
-If used with this `Pipeline`,  `build-task` will use the task specific pod template (where `nodeSelector` has `disktype` equal to `ssd`). 
 
 ---
 
