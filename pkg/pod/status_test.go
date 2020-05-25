@@ -36,7 +36,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 	conditionRunning := apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
-		Reason:  ReasonRunning,
+		Reason:  v1beta1.TaskRunReasonRunning.String(),
 		Message: "Not all Steps in the Task have finished executing",
 	}
 	for _, c := range []struct {
@@ -146,7 +146,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionTrue,
-					Reason:  ReasonSucceeded,
+					Reason:  v1beta1.TaskRunReasonSuccessful.String(),
 					Message: "All Steps have completed executing",
 				}},
 			},
@@ -214,7 +214,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  v1beta1.TaskRunReasonFailed.String(),
 					Message: "\"step-failure\" exited with code 123 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-failure\n",
 				}},
 			},
@@ -245,7 +245,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  v1beta1.TaskRunReasonFailed.String(),
 					Message: "boom",
 				}},
 			},
@@ -276,7 +276,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  v1beta1.TaskRunReasonFailed.String(),
 					Message: "OOMKilled",
 				}},
 			},
@@ -304,7 +304,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  v1beta1.TaskRunReasonFailed.String(),
 					Message: "build failed for unspecified reasons.",
 				}},
 			},
@@ -652,7 +652,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  v1beta1.TaskRunReasonFailed.String(),
 					Message: "\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n",
 				}},
 			},

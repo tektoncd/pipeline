@@ -25,6 +25,8 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestCloudEventDeliveryFromTargets(t *testing.T) {
@@ -88,6 +90,11 @@ func TestSendCloudEvents(t *testing.T) {
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),
 			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "somethingelse",
+				}),
 				tb.TaskRunCloudEvent("http//notattemptedunknown", "", 0, v1beta1.CloudEventConditionUnknown),
 				tb.TaskRunCloudEvent("http//notattemptedfailed", "somehow", 0, v1beta1.CloudEventConditionFailed),
 				tb.TaskRunCloudEvent("http//notattemptedsucceeded", "", 0, v1beta1.CloudEventConditionSent),
@@ -102,6 +109,11 @@ func TestSendCloudEvents(t *testing.T) {
 				tb.TaskRunTaskRef("fakeTaskName"),
 			),
 			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "somethingelse",
+				}),
 				tb.TaskRunCloudEvent("http//notattemptedunknown", "", 1, v1beta1.CloudEventConditionSent),
 				tb.TaskRunCloudEvent("http//notattemptedfailed", "somehow", 0, v1beta1.CloudEventConditionFailed),
 				tb.TaskRunCloudEvent("http//notattemptedsucceeded", "", 0, v1beta1.CloudEventConditionSent),
@@ -145,6 +157,11 @@ func TestSendCloudEventsErrors(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunCloudEvent("http//sink1", "", 0, v1beta1.CloudEventConditionUnknown),
 				tb.TaskRunCloudEvent("http//sink2", "", 0, v1beta1.CloudEventConditionUnknown),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "somethingelse",
+				}),
 			),
 		),
 		wantTaskRun: tb.TaskRun("test-taskrun-multiple-cloudeventdelivery",
@@ -156,6 +173,11 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				// Error message is not checked in the Diff below
 				tb.TaskRunCloudEvent("http//sink1", "", 1, v1beta1.CloudEventConditionFailed),
 				tb.TaskRunCloudEvent("http//sink2", "", 1, v1beta1.CloudEventConditionFailed),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "somethingelse",
+				}),
 			),
 		),
 	}}

@@ -155,7 +155,7 @@ point for the `Pod` in which the container images specified in your `Task` will 
 customize the `Pod` configuration specifically for that `TaskRun`.
 
 In the following example, the `Task` specifies a `volumeMount` (`my-cache`) object, also provided by the `TaskRun`,
-using a `PersistentVolumeClaim` volume. A specific scheduler is also configured in the  `SchedulerName` field. 
+using a `PersistentVolumeClaim` volume. A specific scheduler is also configured in the  `SchedulerName` field.
 The `Pod` executes with regular (non-root) user permissions.
 
 ```yaml
@@ -281,7 +281,7 @@ For more information, see [`ServiceAccount`](auth.md).
 ## Monitoring execution status
 
 As your `TaskRun` executes, its `status` field accumulates information on the execution of each `Step`
-as well as the `TaskRun` as a whole. This information includes start and stop times, exit codes, the 
+as well as the `TaskRun` as a whole. This information includes start and stop times, exit codes, the
 fully-qualified name of the container image, and the corresponding digest.
 
 **Note:** If any `Pods` have been [`OOMKilled`](https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/)
@@ -310,6 +310,23 @@ steps:
     reason: Completed
     startedAt: "2019-08-12T18:22:54Z"
   ```
+
+The following tables shows how to read the overall status of a `TaskRun`:
+
+`status`|`reason`|`completionTime` is set|Description
+:-------|:-------|:---------------------:|--------------:
+Unknown|Started|No|The TaskRun has just been picked up by the controller.
+Unknown|Pending|No|The TaskRun is waiting on a Pod in status Pending.
+Unknown|Running|No|The TaskRun has been validate and started to perform its work.
+Unknown|TaskRunCancelled|No|The user requested the TaskRun to be cancelled. Cancellation has not be done yet.
+True|Succeeded|Yes|The TaskRun completed successfully.
+False|Failed|Yes|The TaskRun failed because one of the steps failed.
+False|\[Error message\]|No|The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
+False|\[Error message\]|Yes|The TaskRun failed with a permanent error (usually validation).
+False|TaskRunCancelled|Yes|The TaskRun was cancelled successfully.
+False|TaskRunTimeout|Yes|The TaskRun timed out.
+
+When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 
 ### Monitoring `Steps`
 

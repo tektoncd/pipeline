@@ -94,10 +94,6 @@ const (
 
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
-
-	// Event reasons
-	eventReasonFailed    = "PipelineRunFailed"
-	eventReasonSucceeded = "PipelineRunSucceeded"
 )
 
 type configStore interface {
@@ -187,7 +183,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	default:
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
-			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "Failed to create tracker for TaskRuns for PipelineRun")
+			c.Recorder.Event(pr, corev1.EventTypeWarning, v1beta1.PipelineRunReasonFailed.String(), "Failed to create tracker for TaskRuns for PipelineRun")
 			return err
 		}
 
@@ -212,7 +208,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update labels/annotations")
+			c.Recorder.Event(pr, corev1.EventTypeWarning, "Error", "PipelineRun failed to update labels/annotations")
 			return multierror.Append(merr, err)
 		}
 	}
@@ -388,7 +384,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 
 	if pipelineState.IsDone() && pr.IsDone() {
 		c.timeoutHandler.Release(pr)
-		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
+		c.Recorder.Event(pr, corev1.EventTypeNormal, v1beta1.PipelineRunReasonSuccessful.String(), "PipelineRun completed successfully.")
 		return nil
 	}
 

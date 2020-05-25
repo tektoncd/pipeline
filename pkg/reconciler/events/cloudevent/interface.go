@@ -14,29 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package cloudevent
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
-// RunsToCompletionStatus is implemented by TaskRun.Status and PipelineRun.Status
-type RunsToCompletionStatus interface {
-	GetCondition(t apis.ConditionType) *apis.Condition
-	InitializeConditions()
-	SetCondition(newCond *apis.Condition)
-}
+// objectWithCondition is implemented by TaskRun and PipelineRun
+type objectWithCondition interface {
 
-// RunsToCompletion is implemented by TaskRun and PipelineRun
-type RunsToCompletion interface {
-	GetTypeMeta() *metav1.TypeMeta
-	GetObjectMeta() *metav1.ObjectMeta
-	GetOwnerReference() metav1.OwnerReference
-	GetStatus() RunsToCompletionStatus
-	IsDone() bool
-	HasStarted() bool
-	IsCancelled() bool
-	HasTimedOut() bool
-	GetRunKey() string
+	// ObjectMetaAccessor requires a GetObjectMeta that returns the ObjectMeta
+	metav1.ObjectMetaAccessor
+
+	// GetStatusCondition returns a ConditionAccessor for the status of the RunsToCompletion
+	GetStatusCondition() apis.ConditionAccessor
 }

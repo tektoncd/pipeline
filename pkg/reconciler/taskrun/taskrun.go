@@ -192,7 +192,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	if tr.HasTimedOut() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
-		err := c.failTaskRun(tr, podconvert.ReasonTimedOut, message)
+		err := c.failTaskRun(tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(tr, original, before, err)
 	}
 
@@ -513,9 +513,9 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) {
 // If a pod is associated to the TaskRun, it stops it
 // failTaskRun function may return an error in case the pod could not be deleted
 // failTaskRun may update the local TaskRun status, but it won't push the updates to etcd
-func (c *Reconciler) failTaskRun(tr *v1beta1.TaskRun, reason, message string) error {
+func (c *Reconciler) failTaskRun(tr *v1beta1.TaskRun, reason v1beta1.TaskRunReason, message string) error {
 
-	c.Logger.Warn("stopping task run %q because of %q", tr.Name, reason)
+	c.Logger.Warn("stopping task run %q because of %q", tr.Name, reason.String())
 	tr.Status.MarkResourceFailed(reason, errors.New(message))
 
 	// update tr completed time

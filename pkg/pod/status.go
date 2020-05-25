@@ -45,13 +45,6 @@ const (
 	// that taskrun failed runtime validation
 	ReasonFailedValidation = "TaskRunValidationFailed"
 
-	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
-	// is just starting to be reconciled
-	ReasonRunning = "Running"
-
-	// ReasonTimedOut indicates that the TaskRun has taken longer than its configured timeout
-	ReasonTimedOut = "TaskRunTimeout"
-
 	// ReasonExceededResourceQuota indicates that the TaskRun failed to create a pod due to
 	// a ResourceQuota in the namespace
 	ReasonExceededResourceQuota = "ExceededResourceQuota"
@@ -68,12 +61,9 @@ const (
 	// is that the creation of the pod backing the TaskRun failed
 	ReasonPodCreationFailed = "PodCreationFailed"
 
-	// ReasonSucceeded indicates that the reason for the finished status is that all of the steps
-	// completed successfully
-	ReasonSucceeded = "Succeeded"
-
-	// ReasonFailed indicates that the reason for the failure status is unknown or that one of the steps failed
-	ReasonFailed = "Failed"
+	// ReasonPending indicates that the pod is in corev1.Pending, and the reason is not
+	// ReasonExceededNodeResources or IsPodHitConfigError
+	ReasonPending = "Pending"
 
 	//timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
@@ -114,7 +104,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 		trs.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonRunning,
+			Reason:  v1beta1.TaskRunReasonRunning.String(),
 			Message: "Not all Steps in the Task have finished executing",
 		})
 	}
@@ -197,14 +187,14 @@ func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 		trs.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailed,
+			Reason:  v1beta1.TaskRunReasonFailed.String(),
 			Message: msg,
 		})
 	} else {
 		trs.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
-			Reason:  ReasonSucceeded,
+			Reason:  v1beta1.TaskRunReasonSuccessful.String(),
 			Message: "All Steps have completed executing",
 		})
 	}
@@ -219,7 +209,7 @@ func updateIncompleteTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 		trs.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonRunning,
+			Reason:  v1beta1.TaskRunReasonRunning.String(),
 			Message: "Not all Steps in the Task have finished executing",
 		})
 	case corev1.PodPending:
@@ -232,7 +222,7 @@ func updateIncompleteTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 			reason = ReasonCreateContainerConfigError
 			msg = getWaitingMessage(pod)
 		default:
-			reason = "Pending"
+			reason = ReasonPending
 			msg = getWaitingMessage(pod)
 		}
 		trs.SetCondition(&apis.Condition{
