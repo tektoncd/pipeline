@@ -10,25 +10,25 @@
   - [Replacing a `cluster` resource](#replacing-a-cluster-resource)
 - [Changes to `PipelineResources`](#changes-to-pipelineresources)
 
-This document describes the differences between `v1alpha` Tekton entities and their
+This document describes the differences between `v1alpha1` Tekton entities and their
 `v1beta1` counterparts. It also describes how to replace the supported types of
 `PipelineResources` with `Tasks` from the Tekton Catalog of equivalent functionality.
 
 ## Changes to fields
 
-In Tekton `v1beta`, the following fields have been changed:
+In Tekton `v1beta1`, the following fields have been changed:
 
 | Old field | New field |
 | --------- | ----------|
 | `spec.inputs.params` | [`spec.params`](#changes-to-input-parameters) |
 | `spec.inputs` | Removed from `Tasks` |
-| `spec.outputs` | Removed from `Tasks` | 
+| `spec.outputs` | Removed from `Tasks` |
 | `spec.inputs.resources` | [`spec.resources.inputs`](#changes-to-pipelineresources) |
 | `spec.outputs.resources` | [`spec.resources.outputs`](#changes-to-pipelineresources) |
 
 ## Changes to input parameters
 
-In Tekton `v1beta`, input parameters have been moved from `spec.inputs.params` to `spec.params`. 
+In Tekton `v1beta1`, input parameters have been moved from `spec.inputs.params` to `spec.params`.
 
 For example, consider the following `v1alpha1` parameters:
 
@@ -124,7 +124,7 @@ spec:
 To do the same thing with the `git` catalog `Task` and the kaniko `Task` you will need to combine them in a
 `Pipeline`.
 
-For exmaple this Pipeline uses the Kaniko and `git` catalog Tasks:
+For example this Pipeline uses the Kaniko and `git` catalog Tasks:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -205,7 +205,7 @@ You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Tas
 
 ## Changes to PipelineResources
 
-In Tekton `v1beta`, `PipelineResources` have been moved from `spec.input.respources`
+In Tekton `v1beta1`, `PipelineResources` have been moved from `spec.input.respources`
 and `spec.output.resources` to `spec.resources.inputs` and `spec.resources.outputs`,
 respectively.
 
