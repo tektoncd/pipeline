@@ -18,6 +18,7 @@ weight: 4
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
   - [Configuring a failure timeout](#configuring-a-failure-timeout)
+- [Monitoring execution status](#monitoring-execution-status)
 - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
 - [Events](events.md#pipelineruns)
 
@@ -361,6 +362,71 @@ The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `PipelineRuns`
 that do not have an idividual timeout set will fail immediately upon encountering an error.
+
+## Monitoring execution status
+
+As your `PipelineRun` executes, its `status` field accumulates information on the execution of each `TaskRun`
+as well as the `PipelineRun` as a whole. This information includes the name of the pipeline `Task` associated
+to a `TaskRun`, the complete [status of the `TaskrRun`](taskruns.md#monitoring-execution-status) and details
+about `Conditions` that may be associated to a `TaskRun`.
+
+The following example shows an extract from the `status` field of a `PipelineRun` that has executed successfully:
+
+```yaml
+completionTime: "2020-05-04T02:19:14Z"
+conditions:
+- lastTransitionTime: "2020-05-04T02:19:14Z"
+  message: 'Tasks Completed: 4, Skipped: 0'
+  reason: Succeeded
+  status: "True"
+  type: Succeeded
+startTime: "2020-05-04T02:00:11Z"
+taskRuns:
+  triggers-release-nightly-frwmw-build-ng2qk:
+    pipelineTaskName: build
+    status:
+      completionTime: "2020-05-04T02:10:49Z"
+      conditions:
+      - lastTransitionTime: "2020-05-04T02:10:49Z"
+        message: All Steps have completed executing
+        reason: Succeeded
+        status: "True"
+        type: Succeeded
+      podName: triggers-release-nightly-frwmw-build-ng2qk-pod-8vj99
+      resourcesResult:
+      - key: commit
+        resourceRef:
+          name: git-source-triggers-frwmw
+        value: 9ab5a1234166a89db352afa28f499d596ebb48db
+      startTime: "2020-05-04T02:05:07Z"
+      steps:
+      - container: step-build
+        imageID: docker-pullable://golang@sha256:a90f2671330831830e229c3554ce118009681ef88af659cd98bfafd13d5594f9
+        name: build
+        terminated:
+          containerID: docker://6b6471f501f59dbb7849f5cdde200f4eeb64302b862a27af68821a7fb2c25860
+          exitCode: 0
+          finishedAt: "2020-05-04T02:10:45Z"
+          reason: Completed
+          startedAt: "2020-05-04T02:06:24Z"
+  ```
+
+The following tables shows how to read the overall status of a `PipelineRun`:
+
+`status`|`reason`|`completionTime` is set|Description
+:-------|:-------|:---------------------:|--------------:
+Unknown|Started|No|The `PipelineRun` has just been picked up by the controller.
+Unknown|Running|No|The `PipelineRun` has been validate and started to perform its work.
+Unknown|PipelineRunCancelled|No|The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
+True|Succeeded|Yes|The `PipelineRun` completed successfully.
+True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
+False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
+False|\[Error message\]|No|The `PipelineRun` encountered an non-permanent error, but it's still running and it may ultimately succeed.
+False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
+False|PipelineRunCancelled|Yes|The `PipelineRun` was cancelled successfully.
+False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
+
+When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 
 ## Cancelling a `PipelineRun`
 

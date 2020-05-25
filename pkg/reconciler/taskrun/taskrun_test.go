@@ -495,8 +495,8 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != podconvert.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 			}
 
 			if tr.Status.PodName == "" {
@@ -676,8 +676,8 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != podconvert.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 			}
 
 			if tr.Status.PodName == "" {
@@ -1303,8 +1303,8 @@ func TestReconcile(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != podconvert.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 			}
 
 			if tr.Status.PodName == "" {
@@ -1637,7 +1637,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if d := cmp.Diff(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
-		Reason:  "Running",
+		Reason:  v1beta1.TaskRunReasonRunning.String(),
 		Message: "Not all Steps in the Task have finished executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
@@ -1666,7 +1666,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if d := cmp.Diff(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  podconvert.ReasonSucceeded,
+		Reason:  v1beta1.TaskRunReasonSuccessful.String(),
 		Message: "All Steps have completed executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Errorf("Did not get expected condition %s", diff.PrintWantGot(d))
@@ -2685,7 +2685,7 @@ func TestFailTaskRun(t *testing.T) {
 		name           string
 		taskRun        *v1beta1.TaskRun
 		pod            *corev1.Pod
-		reason         string
+		reason         v1beta1.TaskRunReason
 		message        string
 		expectedStatus apis.Condition
 	}{{

@@ -340,3 +340,37 @@ func TestHasTimedOut(t *testing.T) {
 		})
 	}
 }
+
+func TestInitializeTaskRunConditions(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-name",
+			Namespace: "test-ns",
+		},
+	}
+	tr.Status.InitializeConditions()
+
+	if tr.Status.StartTime.IsZero() {
+		t.Fatalf("TaskRun StartTime not initialized correctly")
+	}
+
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1beta1.TaskRunReasonStarted.String() {
+		t.Fatalf("TaskRun initialize reason should be %s, got %s instead", v1beta1.TaskRunReasonStarted.String(), condition.Reason)
+	}
+
+	// Change the reason before we initialize again
+	tr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  "not just started",
+		Message: "hello",
+	})
+
+	tr.Status.InitializeConditions()
+
+	newCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if newCondition.Reason != "not just started" {
+		t.Fatalf("PipelineRun initialize reset the condition reason to %s", newCondition.Reason)
+	}
+}

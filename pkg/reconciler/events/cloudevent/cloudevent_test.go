@@ -35,7 +35,7 @@ const (
 	pipelineRunName       = "fakepipelinerunname"
 )
 
-func getTaskRunByCondition(status corev1.ConditionStatus) *v1beta1.TaskRun {
+func getTaskRunByCondition(status corev1.ConditionStatus, reason string) *v1beta1.TaskRun {
 	return &v1beta1.TaskRun{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TaskRun",
@@ -52,13 +52,14 @@ func getTaskRunByCondition(status corev1.ConditionStatus) *v1beta1.TaskRun {
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: status,
+					Reason: reason,
 				}},
 			},
 		},
 	}
 }
 
-func getPipelineRunByCondition(status corev1.ConditionStatus) *v1beta1.PipelineRun {
+func getPipelineRunByCondition(status corev1.ConditionStatus, reason string) *v1beta1.PipelineRun {
 	return &v1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -75,6 +76,7 @@ func getPipelineRunByCondition(status corev1.ConditionStatus) *v1beta1.PipelineR
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: status,
+					Reason: reason,
 				}},
 			},
 		},
@@ -87,17 +89,25 @@ func TestEventForTaskRun(t *testing.T) {
 		taskRun       *v1beta1.TaskRun
 		wantEventType TektonEventType
 	}{{
+		desc:          "send a cloud event when a taskrun starts",
+		taskRun:       getTaskRunByCondition(corev1.ConditionUnknown, v1beta1.TaskRunReasonStarted.String()),
+		wantEventType: TaskRunStartedEventV1,
+	}, {
+		desc:          "send a cloud event when a taskrun starts running",
+		taskRun:       getTaskRunByCondition(corev1.ConditionUnknown, v1beta1.TaskRunReasonRunning.String()),
+		wantEventType: TaskRunRunningEventV1,
+	}, {
 		desc:          "send a cloud event with unknown status taskrun",
-		taskRun:       getTaskRunByCondition(corev1.ConditionUnknown),
-		wantEventType: TektonTaskRunUnknownV1,
+		taskRun:       getTaskRunByCondition(corev1.ConditionUnknown, "doesn't matter"),
+		wantEventType: TaskRunUnknownEventV1,
+	}, {
+		desc:          "send a cloud event with failed status taskrun",
+		taskRun:       getTaskRunByCondition(corev1.ConditionFalse, "meh"),
+		wantEventType: TaskRunFailedEventV1,
 	}, {
 		desc:          "send a cloud event with successful status taskrun",
-		taskRun:       getTaskRunByCondition(corev1.ConditionTrue),
-		wantEventType: TektonTaskRunSuccessfulV1,
-	}, {
-		desc:          "send a cloud event with unknown status taskrun",
-		taskRun:       getTaskRunByCondition(corev1.ConditionFalse),
-		wantEventType: TektonTaskRunFailedV1,
+		taskRun:       getTaskRunByCondition(corev1.ConditionTrue, "yay"),
+		wantEventType: TaskRunSuccessfulEventV1,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -136,17 +146,25 @@ func TestEventForPipelineRun(t *testing.T) {
 		pipelineRun   *v1beta1.PipelineRun
 		wantEventType TektonEventType
 	}{{
-		desc:          "send a cloud event with unknown status taskrun",
-		pipelineRun:   getPipelineRunByCondition(corev1.ConditionUnknown),
-		wantEventType: TektonPipelineRunUnknownV1,
+		desc:          "send a cloud event with unknown status pipelinerun, just started",
+		pipelineRun:   getPipelineRunByCondition(corev1.ConditionUnknown, v1beta1.PipelineRunReasonStarted.String()),
+		wantEventType: PipelineRunStartedEventV1,
 	}, {
-		desc:          "send a cloud event with successful status taskrun",
-		pipelineRun:   getPipelineRunByCondition(corev1.ConditionTrue),
-		wantEventType: TektonPipelineRunSuccessfulV1,
+		desc:          "send a cloud event with unknown status pipelinerun, just started running",
+		pipelineRun:   getPipelineRunByCondition(corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String()),
+		wantEventType: PipelineRunRunningEventV1,
 	}, {
-		desc:          "send a cloud event with unknown status taskrun",
-		pipelineRun:   getPipelineRunByCondition(corev1.ConditionFalse),
-		wantEventType: TektonPipelineRunFailedV1,
+		desc:          "send a cloud event with unknown status pipelinerun",
+		pipelineRun:   getPipelineRunByCondition(corev1.ConditionUnknown, "doesn't matter"),
+		wantEventType: PipelineRunUnknownEventV1,
+	}, {
+		desc:          "send a cloud event with successful status pipelinerun",
+		pipelineRun:   getPipelineRunByCondition(corev1.ConditionTrue, "yay"),
+		wantEventType: PipelineRunSuccessfulEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status pipelinerun",
+		pipelineRun:   getPipelineRunByCondition(corev1.ConditionFalse, "meh"),
+		wantEventType: PipelineRunFailedEventV1,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

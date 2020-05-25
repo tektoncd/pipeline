@@ -25,7 +25,6 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	test "github.com/tektoncd/pipeline/test"
 	"go.uber.org/zap"
@@ -43,7 +42,7 @@ func TestRecorderOptions(t *testing.T) {
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
-			Reason:  resources.ReasonSucceeded,
+			Reason:  v1beta1.PipelineRunReasonSuccessful.String(),
 			Message: "All Tasks have completed executing",
 		})),
 	)}

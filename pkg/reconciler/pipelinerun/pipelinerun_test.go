@@ -279,8 +279,8 @@ func TestReconcile(t *testing.T) {
 	if condition == nil || condition.Status != corev1.ConditionUnknown {
 		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
 	}
-	if condition != nil && condition.Reason != resources.ReasonRunning {
-		t.Errorf("Expected reason %q but was %s", resources.ReasonRunning, condition.Reason)
+	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
+		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
 	}
 
 	if len(reconciledRun.Status.TaskRuns) != 2 {
@@ -786,7 +786,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
-			Reason:  resources.ReasonSucceeded,
+			Reason:  v1beta1.PipelineRunReasonSuccessful.String(),
 			Message: "All Tasks have completed executing",
 		}),
 			tb.PipelineRunTaskRunsStatus(taskRunName, &v1beta1.PipelineRunTaskRunStatus{
@@ -971,7 +971,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	}
 
 	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != resources.ReasonTimedOut {
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
 		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
@@ -1733,7 +1733,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  resources.ReasonRunning,
+			Reason:  v1beta1.PipelineRunReasonRunning.String(),
 			Message: "Not all Tasks in the Pipeline have finished executing",
 		}), tb.PipelineRunTaskRunsStatus(pipelineRunName+"task-1", &v1beta1.PipelineRunTaskRunStatus{
 			PipelineTaskName: "task-1",
@@ -2394,7 +2394,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 			tb.PipelineRunStatusCondition(apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionTrue,
-				Reason:  resources.ReasonSucceeded,
+				Reason:  v1beta1.PipelineRunReasonSuccessful.String(),
 				Message: "All Tasks have completed executing",
 			}),
 			tb.PipelineRunTaskRunsStatus(trs[0].Name, &v1beta1.PipelineRunTaskRunStatus{

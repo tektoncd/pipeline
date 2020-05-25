@@ -83,7 +83,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 	}
 }
 
-func TestInitializeConditions(t *testing.T) {
+func TestInitializePipelineRunConditions(t *testing.T) {
 	p := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
@@ -100,11 +100,28 @@ func TestInitializeConditions(t *testing.T) {
 		t.Fatalf("PipelineRun StartTime not initialized correctly")
 	}
 
+	condition := p.Status.GetCondition(apis.ConditionSucceeded)
+	if condition.Reason != v1beta1.PipelineRunReasonStarted.String() {
+		t.Fatalf("PipelineRun initialize reason should be %s, got %s instead", v1beta1.PipelineRunReasonStarted.String(), condition.Reason)
+	}
 	p.Status.TaskRuns["fooTask"] = &v1beta1.PipelineRunTaskRunStatus{}
+
+	// Change the reason before we initialize again
+	p.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  "not just started",
+		Message: "hello",
+	})
 
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun status getting reset")
+	}
+
+	newCondition := p.Status.GetCondition(apis.ConditionSucceeded)
+	if newCondition.Reason != "not just started" {
+		t.Fatalf("PipelineRun initialize reset the condition reason to %s", newCondition.Reason)
 	}
 }
 

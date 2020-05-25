@@ -37,28 +37,6 @@ import (
 )
 
 const (
-	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
-	// is just starting to be reconciled
-	ReasonRunning = "Running"
-
-	// ReasonFailed indicates that the reason for the failure status is that one of the TaskRuns failed
-	ReasonFailed = "Failed"
-
-	// ReasonCancelled indicates that the reason for the cancelled status is that one of the TaskRuns cancelled
-	ReasonCancelled = "Cancelled"
-
-	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
-	// completed successfully
-	ReasonSucceeded = "Succeeded"
-
-	// ReasonCompleted indicates that the reason for the finished status is that all of the TaskRuns
-	// completed successfully but with some conditions checking failed
-	ReasonCompleted = "Completed"
-
-	// ReasonTimedOut indicates that the PipelineRun has taken longer than its configured
-	// timeout
-	ReasonTimedOut = "PipelineRunTimeout"
-
 	// ReasonConditionCheckFailed indicates that the reason for the failure status is that the
 	// condition check associated to the pipeline task evaluated to false
 	ReasonConditionCheckFailed = "ConditionCheckFailed"
@@ -74,6 +52,7 @@ func (e *TaskNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
 }
 
+// ConditionNotFoundError is used to track failures to the
 type ConditionNotFoundError struct {
 	Name string
 	Msg  string
@@ -145,7 +124,7 @@ func (t ResolvedPipelineRunTask) IsCancelled() bool {
 		return false
 	}
 
-	return c.IsFalse() && c.Reason == v1beta1.TaskRunSpecStatusCancelled
+	return c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
 }
 
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
@@ -192,7 +171,7 @@ func (state PipelineRunState) GetNextTasks(candidateTasks map[string]struct{}) [
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
 			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if status != nil && status.IsFalse() {
-				if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunSpecStatusCancelled || status.Reason == ReasonConditionCheckFailed) {
+				if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
 					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
 						tasks = append(tasks, t)
 					}
@@ -417,7 +396,7 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  ReasonTimedOut,
+			Reason:  v1beta1.PipelineRunReasonTimedOut.String(),
 			Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.Spec.Timeout.Duration.String()),
 		}
 	}
@@ -429,7 +408,7 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 			return &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
-				Reason:  ReasonCancelled,
+				Reason:  v1beta1.PipelineRunReasonCancelled.String(),
 				Message: fmt.Sprintf("TaskRun %s has cancelled", rprt.TaskRun.Name),
 			}
 		}
@@ -439,7 +418,7 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 			return &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
-				Reason:  ReasonFailed,
+				Reason:  v1beta1.PipelineRunReasonFailed.String(),
 				Message: fmt.Sprintf("TaskRun %s has failed", rprt.TaskRun.Name),
 			}
 		}
@@ -463,9 +442,9 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 
 	if reflect.DeepEqual(allTasks, successOrSkipTasks) {
 		logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", pr.Name)
-		reason := ReasonSucceeded
+		reason := v1beta1.PipelineRunReasonSuccessful.String()
 		if skipTasks != 0 {
-			reason = ReasonCompleted
+			reason = v1beta1.PipelineRunReasonCompleted.String()
 		}
 
 		return &apis.Condition{
@@ -481,7 +460,7 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 	return &apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
-		Reason:  ReasonRunning,
+		Reason:  v1beta1.PipelineRunReasonRunning.String(),
 		Message: fmt.Sprintf("Tasks Completed: %d, Incomplete: %d, Skipped: %d", len(successOrSkipTasks)-skipTasks, len(allTasks)-len(successOrSkipTasks), skipTasks),
 	}
 }

@@ -26,7 +26,6 @@ import (
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -95,7 +94,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason(resources.ReasonTimedOut, pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason("PipelineRunTimeout", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -230,7 +229,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s with PipelineTask timeout in namespace %s to fail", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason(resources.ReasonFailed, pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason("Failed", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 

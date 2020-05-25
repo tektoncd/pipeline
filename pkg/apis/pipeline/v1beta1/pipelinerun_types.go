@@ -73,18 +73,8 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 	}
 }
 
-// GetTypeMeta returns the task run type meta
-func (pr *PipelineRun) GetTypeMeta() *metav1.TypeMeta {
-	return &pr.TypeMeta
-}
-
-// GetObjectMeta returns the task run type meta
-func (pr *PipelineRun) GetObjectMeta() *metav1.ObjectMeta {
-	return &pr.ObjectMeta
-}
-
-// GetStatus returns the task run status as a RunsToCompletionStatus
-func (pr *PipelineRun) GetStatus() RunsToCompletionStatus {
+// GetStatusCondition returns the task run status as a ConditionAccessor
+func (pr *PipelineRun) GetStatusCondition() apis.ConditionAccessor {
 	return &pr.Status
 }
 
@@ -221,6 +211,32 @@ type PipelineRunStatus struct {
 	PipelineRunStatusFields `json:",inline"`
 }
 
+// PipelineRunReason represents a reason for the pipeline run "Succeeded" condition
+type PipelineRunReason string
+
+const (
+	// PipelineRunReasonStarted is the reason set when the PipelineRun has just started
+	PipelineRunReasonStarted PipelineRunReason = "Started"
+	// PipelineRunReasonRunning is the reason set when the PipelineRun is running
+	PipelineRunReasonRunning PipelineRunReason = "Running"
+	// PipelineRunReasonSuccessful is the reason set when the PipelineRun completed successfully
+	PipelineRunReasonSuccessful PipelineRunReason = "Succeeded"
+	// PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks
+	PipelineRunReasonCompleted PipelineRunReason = "Completed"
+	// PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure
+	PipelineRunReasonFailed PipelineRunReason = "Failed"
+	// PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user
+	// This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
+	// This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed
+	PipelineRunReasonCancelled PipelineRunReason = "Cancelled"
+	// PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out
+	PipelineRunReasonTimedOut PipelineRunReason = "PipelineRunTimeout"
+)
+
+func (t PipelineRunReason) String() string {
+	return string(t)
+}
+
 var pipelineRunCondSet = apis.NewBatchConditionSet()
 
 // GetCondition returns the Condition matching the given type.
@@ -231,13 +247,22 @@ func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition 
 // InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
 // and set the started time to the current time
 func (pr *PipelineRunStatus) InitializeConditions() {
+	started := false
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
 	}
 	if pr.StartTime.IsZero() {
 		pr.StartTime = &metav1.Time{Time: time.Now()}
+		started = true
 	}
-	pipelineRunCondSet.Manage(pr).InitializeConditions()
+	conditionManager := pipelineRunCondSet.Manage(pr)
+	conditionManager.InitializeConditions()
+	// Ensure the started reason is set for the "Succeeded" condition
+	if started {
+		initialCondition := conditionManager.GetCondition(apis.ConditionSucceeded)
+		initialCondition.Reason = PipelineRunReasonStarted.String()
+		conditionManager.SetCondition(*initialCondition)
+	}
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
