@@ -12,6 +12,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
@@ -385,35 +386,54 @@ func TestResolveResultRefs(t *testing.T) {
 
 func TestResolvePipelineResultRefs(t *testing.T) {
 	type args struct {
-		pipelineRunState PipelineRunState
-		pipelineResults  []v1beta1.PipelineResult
+		status          v1beta1.PipelineRunStatus
+		pipelineResults []v1beta1.PipelineResult
 	}
-	pipelineRunState := PipelineRunState{
-		{
-			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.TaskRunResult("aResult", "aResultValue"),
-			)),
-			PipelineTask: &v1beta1.PipelineTask{
-				Name:    "aTask",
-				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
-			},
-		}, {
-			TaskRunName: "bTaskRun",
-			TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(apis.Condition{
+	taskrunStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{}
+	taskrunStatus["aTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "aTask",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionFalse})),
-			),
-			PipelineTask: &v1beta1.PipelineTask{
-				Name:    "bTask",
-				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+					Status: corev1.ConditionTrue,
+				}},
 			},
-		}, {
-			PipelineTask: &v1beta1.PipelineTask{
-				Name:    "cTask",
-				TaskRef: &v1beta1.TaskRef{Name: "cTask"},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunResults: []v1beta1.TaskRunResult{
+					{
+						Name:  "aResult",
+						Value: "aResultValue",
+					},
+				},
 			},
+		},
+	}
+	taskrunStatus["bTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "bTask",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+	}
+	taskrunStatus["cTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "cTask",
+		Status: &v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}},
+			},
+		},
+	}
+	status := v1beta1.PipelineRunStatus{
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			TaskRuns: taskrunStatus,
 		},
 	}
 
@@ -425,7 +445,7 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 		{
 			name: "Test pipeline result from a successful task",
 			args: args{
-				pipelineRunState: pipelineRunState,
+				status: status,
 				pipelineResults: []v1beta1.PipelineResult{
 					{
 						Name:        "from-a",
@@ -451,7 +471,7 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 		{
 			name: "Test results from a task that did not run and one and failed",
 			args: args{
-				pipelineRunState: pipelineRunState,
+				status: status,
 				pipelineResults: []v1beta1.PipelineResult{
 					{
 						Name:        "from-a",
@@ -487,7 +507,7 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ResolvePipelineResultRefs(tt.args.pipelineRunState, tt.args.pipelineResults)
+			got := ResolvePipelineResultRefs(tt.args.status, tt.args.pipelineResults)
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
