@@ -272,7 +272,7 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.Pipe
 		Namespace:    pr.Namespace,
 		Tektonclient: c.PipelineClientSet,
 	}
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
+	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
 	if err != nil {
 		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
 			pr.Status.MarkResourceNotConvertible(ce)
@@ -284,52 +284,8 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.Pipe
 			pr.Namespace, pr.Name, err)
 		return
 	}
-	if pipelineSpec.Results != nil && len(pipelineSpec.Results) != 0 {
-		providedResources, err := resources.GetResourcesFromBindings(
-			pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
-		if err != nil {
-			// This Run has failed, so we need to mark it as failed and stop reconciling it
-			pr.Status.MarkFailed(ReasonCouldntGetResource,
-				"PipelineRun %s/%s can't be Run; it tries to bind Resources that don't exist: %s",
-				pipelineMeta.Namespace, pr.Name, err)
-			return
-		}
-		pipelineState, err := resources.ResolvePipelineRun(ctx,
-			*pr,
-			func(name string) (v1beta1.TaskInterface, error) {
-				return c.taskLister.Tasks(pr.Namespace).Get(name)
-			},
-			func(name string) (*v1beta1.TaskRun, error) {
-				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
-			},
-			func(name string) (v1beta1.TaskInterface, error) {
-				return c.clusterTaskLister.Get(name)
-			},
-			func(name string) (*v1alpha1.Condition, error) {
-				return c.conditionLister.Conditions(pr.Namespace).Get(name)
-			},
-			pipelineSpec.Tasks, providedResources,
-		)
-		if err != nil {
-			// This Run has failed, so we need to mark it as failed and stop reconciling it
-			switch err := err.(type) {
-			case *resources.TaskNotFoundError:
-				pr.Status.MarkFailed(ReasonCouldntGetTask,
-					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
-					pipelineMeta.Namespace, pipelineMeta.Name, err)
-			case *resources.ConditionNotFoundError:
-				pr.Status.MarkFailed(ReasonCouldntGetCondition,
-					"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist: %s",
-					pipelineMeta.Namespace, pr.Name, err)
-			default:
-				pr.Status.MarkFailed(ReasonFailedValidation,
-					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
-					pipelineMeta.Namespace, pr.Name, err)
-			}
-		}
-		resolvedResultRefs := resources.ResolvePipelineResultRefs(pipelineState, pipelineSpec.Results)
-		pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
-	}
+	resolvedResultRefs := resources.ResolvePipelineResultRefs(pr.Status, pipelineSpec.Results)
+	pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
 }
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	// We may be reading a version of the object that was stored at an older version
