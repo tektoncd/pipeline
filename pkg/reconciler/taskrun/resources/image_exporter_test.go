@@ -93,7 +93,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Name:    "image-digest-exporter-9l9zj",
 			Image:   "override-with-imagedigest-exporter-image:latest",
 			Command: []string{"/ko-app/imagedigestexporter"},
-			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
+			Args:    []string{"-images", "[{\"name\":\"source-image\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
 		}}},
 	}, {
 		desc: "image resource in task with multiple steps",
@@ -158,7 +158,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Name:    "image-digest-exporter-9l9zj",
 			Image:   "override-with-imagedigest-exporter-image:latest",
 			Command: []string{"/ko-app/imagedigestexporter"},
-			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
+			Args:    []string{"-images", "[{\"name\":\"source-image\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
 		}}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {

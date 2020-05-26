@@ -46,7 +46,7 @@ func TestNewResource_Invalid(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := cloudevent.NewResource(tc.pipelineResource)
+			_, err := cloudevent.NewResource("test-resource", tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating CloudEvent resource")
 			}
@@ -60,12 +60,12 @@ func TestNewResource_Valid(t *testing.T) {
 		tb.PipelineResourceSpecParam("TargetURI", "http://fake-sink"),
 	))
 	expectedResource := &cloudevent.Resource{
-		Name:      "cloud-event-resource-uri",
+		Name:      "test-resource",
 		TargetURI: "http://fake-sink",
 		Type:      resourcev1alpha1.PipelineResourceTypeCloudEvent,
 	}
 
-	r, err := cloudevent.NewResource(pr)
+	r, err := cloudevent.NewResource("test-resource", pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating CloudEvent resource: %s", err)
 	}

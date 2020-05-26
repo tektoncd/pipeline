@@ -65,6 +65,7 @@ func main() {
 			ResourceRef: v1beta1.PipelineResourceRef{
 				Name: resourceName,
 			},
+			ResourceName: resourceName,
 		},
 	}
 

@@ -38,13 +38,13 @@ func TestPullRequest_NewResource(t *testing.T) {
 		tb.PipelineResourceSpecParam("provider", "github"),
 		tb.PipelineResourceSpecSecretParam("authToken", "test-secret-key", "test-secret-name"),
 	))
-	got, err := pullrequest.NewResource("override-with-pr:latest", pr)
+	got, err := pullrequest.NewResource("test-resource", "override-with-pr:latest", pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}
 
 	want := &pullrequest.Resource{
-		Name:                  pr.Name,
+		Name:                  "test-resource",
 		Type:                  resourcev1alpha1.PipelineResourceTypePullRequest,
 		URL:                   url,
 		Provider:              "github",
@@ -59,7 +59,7 @@ func TestPullRequest_NewResource(t *testing.T) {
 
 func TestPullRequest_NewResource_error(t *testing.T) {
 	pr := tb.PipelineResource("foo", tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit))
-	if _, err := pullrequest.NewResource("override-with-pr:latest", pr); err == nil {
+	if _, err := pullrequest.NewResource("test-resource", "override-with-pr:latest", pr); err == nil {
 		t.Error("NewPullRequestResource() want error, got nil")
 	}
 }

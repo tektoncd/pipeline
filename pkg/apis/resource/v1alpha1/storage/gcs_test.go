@@ -71,7 +71,7 @@ func TestInvalidNewStorageResource(t *testing.T) {
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := storage.NewResource(images, tc.pipelineResource)
+			_, err := storage.NewResource("test-resource", images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating GCS resource")
 			}
@@ -88,7 +88,7 @@ func TestValidNewGCSResource(t *testing.T) {
 		tb.PipelineResourceSpecSecretParam("GOOGLE_APPLICATION_CREDENTIALS", "secretName", "secretKey"),
 	))
 	expectedGCSResource := &storage.GCSResource{
-		Name:     "gcs-resource",
+		Name:     "test-resource",
 		Location: "gs://fake-bucket",
 		Type:     resourcev1alpha1.PipelineResourceTypeStorage,
 		TypeDir:  true,
@@ -101,7 +101,7 @@ func TestValidNewGCSResource(t *testing.T) {
 		GsutilImage: "google/cloud-sdk",
 	}
 
-	gcsRes, err := storage.NewGCSResource(images, pr)
+	gcsRes, err := storage.NewGCSResource("test-resource", images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
@@ -133,7 +133,7 @@ func TestGetParams(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "gcs"),
 		tb.PipelineResourceSpecSecretParam("test-field-name", "test-secret-name", "test-secret-key"),
 	))
-	gcsResource, err := storage.NewResource(images, pr)
+	gcsResource, err := storage.NewResource("test-resource", images, pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}

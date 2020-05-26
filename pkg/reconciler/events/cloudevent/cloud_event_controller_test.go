@@ -271,7 +271,11 @@ func TestInitializeCloudEvents(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			InitializeCloudEvents(tc.taskRun, tc.pipelineResources)
+			prMap := map[string]*resourcev1alpha1.PipelineResource{}
+			for _, pr := range tc.pipelineResources {
+				prMap[pr.Name] = pr
+			}
+			InitializeCloudEvents(tc.taskRun, prMap)
 			opts := GetCloudEventDeliveryCompareOptions()
 			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
 				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))

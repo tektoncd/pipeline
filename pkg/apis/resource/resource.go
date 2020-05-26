@@ -33,20 +33,20 @@ import (
 // FromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
 // a PipelineResource in a pod.
-func FromType(r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1beta1.PipelineResourceInterface, error) {
+func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1beta1.PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case resourcev1alpha1.PipelineResourceTypeGit:
-		return git.NewResource(images.GitImage, r)
+		return git.NewResource(name, images.GitImage, r)
 	case resourcev1alpha1.PipelineResourceTypeImage:
-		return image.NewResource(r)
+		return image.NewResource(name, r)
 	case resourcev1alpha1.PipelineResourceTypeCluster:
-		return cluster.NewResource(images.KubeconfigWriterImage, r)
+		return cluster.NewResource(name, images.KubeconfigWriterImage, images.ShellImage, r)
 	case resourcev1alpha1.PipelineResourceTypeStorage:
-		return storage.NewResource(images, r)
+		return storage.NewResource(name, images, r)
 	case resourcev1alpha1.PipelineResourceTypePullRequest:
-		return pullrequest.NewResource(images.PRImage, r)
+		return pullrequest.NewResource(name, images.PRImage, r)
 	case resourcev1alpha1.PipelineResourceTypeCloudEvent:
-		return cloudevent.NewResource(r)
+		return cloudevent.NewResource(name, r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

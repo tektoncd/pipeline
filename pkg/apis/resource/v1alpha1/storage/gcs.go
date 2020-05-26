@@ -53,7 +53,7 @@ type GCSResource struct {
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
-func NewGCSResource(images pipeline.Images, r *resourcev1alpha1.PipelineResource) (*GCSResource, error) {
+func NewGCSResource(name string, images pipeline.Images, r *resourcev1alpha1.PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -76,7 +76,7 @@ func NewGCSResource(images pipeline.Images, r *resourcev1alpha1.PipelineResource
 		return nil, fmt.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
-		Name:        r.Name,
+		Name:        name,
 		Type:        r.Spec.Type,
 		Location:    location,
 		TypeDir:     dir,

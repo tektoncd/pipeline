@@ -20,9 +20,11 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -58,17 +60,23 @@ type Resource struct {
 	Secrets []resource.SecretParam `json:"secrets"`
 
 	KubeconfigWriterImage string `json:"-"`
+	ShellImage            string `json:"-"`
+
+	// Temporary field to hold the old, legacy value for name. See #2694
+	LegacyName string `json:"-"`
 }
 
 // NewResource create a new k8s cluster resource to pass to a pipeline task
-func NewResource(kubeconfigWriterImage string, r *resource.PipelineResource) (*Resource, error) {
+func NewResource(name string, kubeconfigWriterImage, shellImage string, r *resource.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeCluster {
 		return nil, fmt.Errorf("cluster.Resource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	clusterResource := Resource{
 		Type:                  r.Spec.Type,
 		KubeconfigWriterImage: kubeconfigWriterImage,
-		Name:                  r.Name,
+		ShellImage:            shellImage,
+		Name:                  name,
+		LegacyName:            r.Name,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -189,6 +197,21 @@ func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1be
 		Env: envVars,
 	}}
 	return &v1beta1.InternalTaskModifier{
-		StepsToPrepend: []v1beta1.Step{step},
+		StepsToPrepend: []v1beta1.Step{
+			step,
+			// See #2694.
+			linkDirStep(s.ShellImage, s.Name, s.LegacyName),
+		},
 	}, nil
+}
+
+// See #2694
+func linkDirStep(shellImage string, name, legacyName string) v1beta1.Step {
+	srcPath := filepath.Join(pipeline.WorkspaceDir, name)
+	dstPath := filepath.Join(pipeline.WorkspaceDir, legacyName)
+	return v1beta1.Step{Container: corev1.Container{
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("ln-dir-%s", strings.ToLower(name))),
+		Image:   shellImage,
+		Command: []string{"ln", "-s", srcPath, dstPath},
+	}}
 }

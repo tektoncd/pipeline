@@ -123,7 +123,7 @@ func getClusterResourceTask(namespace, name, configName string) *v1beta1.Task {
 				Name:    "check-file-existence",
 				Image:   "ubuntu",
 				Command: []string{"cat"},
-				Args:    []string{"/workspace/helloworld-cluster/kubeconfig"},
+				Args:    []string{"$(resources.inputs.target-cluster.path)/kubeconfig"},
 			}}, {Container: corev1.Container{
 				Name:    "check-config-data",
 				Image:   "ubuntu",
@@ -137,12 +137,23 @@ func getClusterResourceTask(namespace, name, configName string) *v1beta1.Task {
 				Name:    "check-contents",
 				Image:   "ubuntu",
 				Command: []string{"bash"},
+				Args:    []string{"-c", "cmp -b $(resources.inputs.target-cluster.path)/kubeconfig /config/test.data"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "config-vol",
+					MountPath: "/config",
+				}},
+			}}, {Container: corev1.Container{
+				// See #2694
+				Name:    "check-legacy-contents",
+				Image:   "ubuntu",
+				Command: []string{"bash"},
 				Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "config-vol",
 					MountPath: "/config",
 				}},
-			}}},
+			}},
+			},
 		},
 	}
 }
@@ -176,13 +187,13 @@ clusters:
 - cluster:
     certificate-authority-data: WTJFdFkyVnlkQW89
     server: https://1.1.1.1
-  name: helloworld-cluster
+  name: target-cluster
 contexts:
 - context:
-    cluster: helloworld-cluster
+    cluster: target-cluster
     user: test-user
-  name: helloworld-cluster
-current-context: helloworld-cluster
+  name: target-cluster
+current-context: target-cluster
 kind: Config
 preferences: {}
 users:

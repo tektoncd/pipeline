@@ -280,7 +280,7 @@ func setUp() {
 	}}
 	inputResourceInterfaces = make(map[string]v1beta1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := resource.FromType(r, images)
+		ri, _ := resource.FromType(r.Name, r, images)
 		inputResourceInterfaces[r.Name] = ri
 	}
 }
@@ -841,14 +841,25 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "kubeconfig-9l9zj",
-				Image:   "override-with-kubeconfig-writer:latest",
-				Command: []string{"/ko-app/kubeconfigwriter"},
-				Args: []string{
-					"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Name:    "kubeconfig-9l9zj",
+						Image:   "override-with-kubeconfig-writer:latest",
+						Command: []string{"/ko-app/kubeconfigwriter"},
+						Args: []string{
+							"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
+						},
+					},
 				},
-			}}},
+				{
+					Container: corev1.Container{
+						Name:    "ln-dir-cluster3-mz4c7",
+						Image:   "busybox",
+						Command: []string{"ln", "-s", "/workspace/cluster3", "/workspace/cluster3"},
+					},
+				},
+			},
 			Resources: &v1beta1.TaskResources{
 				Inputs: clusterInputs,
 			},
@@ -889,25 +900,36 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "kubeconfig-9l9zj",
-				Image:   "override-with-kubeconfig-writer:latest",
-				Command: []string{"/ko-app/kubeconfigwriter"},
-				Args: []string{
-					"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
-				},
-				Env: []corev1.EnvVar{{
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "secret1",
-							},
-							Key: "cadatakey",
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Name:    "kubeconfig-9l9zj",
+						Image:   "override-with-kubeconfig-writer:latest",
+						Command: []string{"/ko-app/kubeconfigwriter"},
+						Args: []string{
+							"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 						},
+						Env: []corev1.EnvVar{{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "secret1",
+									},
+									Key: "cadatakey",
+								},
+							},
+							Name: "CADATA",
+						}},
 					},
-					Name: "CADATA",
-				}},
-			}}},
+				},
+				{
+					Container: corev1.Container{
+						Name:    "ln-dir-cluster2-mz4c7",
+						Image:   "busybox",
+						Command: []string{"ln", "-s", "/workspace/cluster2", "/workspace/cluster2"},
+					},
+				},
+			},
 			Resources: &v1beta1.TaskResources{
 				Inputs: clusterInputs,
 			},
@@ -1453,7 +1475,7 @@ func mockResolveTaskResources(taskRun *v1beta1.TaskRun) map[string]v1beta1.Pipel
 			i = inputResourceInterfaces[r.ResourceRef.Name]
 			resolved[r.Name] = i
 		case r.ResourceSpec != nil:
-			i, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+			i, _ = resource.FromType(r.Name, &resourcev1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
 				},

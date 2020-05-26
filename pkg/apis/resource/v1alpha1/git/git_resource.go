@@ -53,12 +53,12 @@ type Resource struct {
 }
 
 // NewResource creates a new git resource to pass to a Task
-func NewResource(gitImage string, r *resource.PipelineResource) (*Resource, error) {
+func NewResource(name, gitImage string, r *resource.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeGit {
 		return nil, fmt.Errorf("git.Resource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := Resource{
-		Name:       r.Name,
+		Name:       name,
 		Type:       r.Spec.Type,
 		GitImage:   gitImage,
 		Submodules: true,
