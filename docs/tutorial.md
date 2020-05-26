@@ -155,7 +155,7 @@ The [`git` resource](resources.md#git-resource) specifies a git repository with
 a specific revision from which the `Task` will pull the source code:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineResource
 metadata:
   name: skaffold-git
@@ -171,7 +171,7 @@ spec:
 The [`image` resource](resources.md#image-resource) specifies the repository to which the image built by the `Task` will be pushed:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
