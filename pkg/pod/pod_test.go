@@ -24,7 +24,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -41,11 +43,13 @@ var (
 		CredsImage:      "override-with-creds:latest",
 		ShellImage:      "busybox",
 	}
+
+	ignoreReleaseAnnotation = func(k string, v string) bool {
+		return k == ReleaseAnnotation
+	}
 )
 
 func TestMakePod(t *testing.T) {
-	names.TestingSeed()
-
 	implicitEnvVars := []corev1.EnvVar{{
 		Name:  "HOME",
 		Value: pipeline.HomeDir,
@@ -58,14 +62,12 @@ func TestMakePod(t *testing.T) {
 		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	}
-
 	placeToolsInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
 		Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
-
 	runtimeClassName := "gvisor"
 	automountServiceAccountToken := false
 	dnsPolicy := corev1.DNSNone
@@ -77,6 +79,7 @@ func TestMakePod(t *testing.T) {
 		trs             v1beta1.TaskRunSpec
 		trAnnotation    map[string]string
 		ts              v1beta1.TaskSpec
+		featureFlags    map[string]string
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
 	}{{
@@ -114,6 +117,48 @@ func TestMakePod(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+		},
+	}, {
+		desc: "simple with running-in-environment-with-injected-sidecar set to false",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		featureFlags: map[string]string{
+			featureInjectedSidecar: "false",
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+		},
+		wantAnnotations: map[string]string{
+			readyAnnotation: readyAnnotationValue,
 		},
 	}, {
 		desc: "with service account",
@@ -472,6 +517,58 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume),
+		},
+	}, {
+		desc: "sidecar container with enable-ready-annotation-on-pod-create",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "primary-name",
+				Image:   "primary-image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+			Sidecars: []v1alpha1.Sidecar{{
+				Container: corev1.Container{
+					Name:  "sc-name",
+					Image: "sidecar-image",
+				},
+			}},
+		},
+		featureFlags: map[string]string{
+			featureFlagSetReadyAnnotationOnPodCreate: "true",
+		},
+		wantAnnotations: map[string]string{}, // no ready annotations on pod create since sidecars are present
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-primary-name",
+				Image:   "primary-image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}, {
+				Name:  "sidecar-sc-name",
+				Image: "sidecar-image",
+				Resources: corev1.ResourceRequirements{
+					Requests: nil,
+				},
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "resource request",
@@ -839,6 +936,10 @@ script-heredoc-randomly-generated-78c5n
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: featureFlagConfigMapName, Namespace: system.GetNamespace()},
+					Data:       c.featureFlags,
+				},
 				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
 				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account", Namespace: "default"},
 					Secrets: []corev1.ObjectReference{{
@@ -891,6 +992,12 @@ script-heredoc-randomly-generated-78c5n
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+
+			if c.wantAnnotations != nil {
+				if d := cmp.Diff(c.wantAnnotations, got.ObjectMeta.Annotations, cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)); d != "" {
+					t.Errorf("Annotation Diff(-want, +got):\n%s", d)
+				}
 			}
 		})
 	}
@@ -1027,6 +1134,85 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 			)
 			if result := shouldOverrideWorkingDir(kubeclient); result != tc.expected {
 				t.Errorf("Expected %t Received %t", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
+	sd := v1beta1.Sidecar{
+		Container: corev1.Container{
+			Name: "a-sidecar",
+		},
+	}
+	tcs := []struct {
+		description string
+		sidecars    []v1beta1.Sidecar
+		configMap   *corev1.ConfigMap
+		expected    bool
+	}{{
+		description: "Default behavior with sidecars present: Ready annotation not set on pod create",
+		sidecars:    []v1beta1.Sidecar{sd},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		},
+		expected: false,
+	}, {
+		description: "Default behavior with no sidecars present: Ready annotation not set on pod create",
+		sidecars:    []v1beta1.Sidecar{},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		},
+		expected: false,
+	}, {
+		description: "Setting running-in-environment-with-injected-sidecars to true with sidecars present results in false",
+		sidecars:    []v1beta1.Sidecar{sd},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureInjectedSidecar: "true",
+			},
+		},
+		expected: false,
+	}, {
+		description: "Setting running-in-environment-with-injected-sidecars to true with no sidecars present results in false",
+		sidecars:    []v1beta1.Sidecar{},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureInjectedSidecar: "true",
+			},
+		},
+		expected: false,
+	}, {
+		description: "Setting running-in-environment-with-injected-sidecars to false with sidecars present results in false",
+		sidecars:    []v1beta1.Sidecar{sd},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureInjectedSidecar: "false",
+			},
+		},
+		expected: false,
+	}, {
+		description: "Setting running-in-environment-with-injected-sidecars to false with no sidecars present results in true",
+		sidecars:    []v1beta1.Sidecar{},
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				featureInjectedSidecar: "false",
+			},
+		},
+		expected: true,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.description, func(t *testing.T) {
+			kubclient := fakek8s.NewSimpleClientset(tc.configMap)
+			if result := shouldAddReadyAnnotationOnPodCreate(tc.sidecars, kubclient); result != tc.expected {
+				t.Errorf("expected: %t Recieved: %t", tc.expected, result)
 			}
 		})
 	}

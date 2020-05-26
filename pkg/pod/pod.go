@@ -46,8 +46,11 @@ const (
 	// ResultsDir is the folder used by default to create the results file
 	ResultsDir = "/tekton/results"
 
-	featureFlagDisableHomeEnvKey    = "disable-home-env-overwrite"
-	featureFlagDisableWorkingDirKey = "disable-working-directory-overwrite"
+	featureInjectedSidecar                   = "running-in-environment-with-injected-sidecars"
+	featureFlagDisableHomeEnvKey             = "disable-home-env-overwrite"
+	featureFlagDisableWorkingDirKey          = "disable-working-directory-overwrite"
+	featureFlagConfigMapName                 = "feature-flags"
+	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 
 	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
@@ -250,6 +253,10 @@ func MakePod(images pipeline.Images, taskRun *v1beta1.TaskRun, taskSpec v1beta1.
 	podAnnotations := taskRun.Annotations
 	podAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
 
+	if shouldAddReadyAnnotationOnPodCreate(taskSpec.Sidecars, kubeclient) {
+		podAnnotations[readyAnnotation] = readyAnnotationValue
+	}
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -381,4 +388,22 @@ func shouldOverrideWorkingDir(kubeclient kubernetes.Interface) bool {
 		return false
 	}
 	return true
+}
+
+// shouldAddReadyAnnotationonPodCreate returns a bool indicating whether the
+// controller should add the `Ready` annotation when creating the Pod. We cannot
+// add the annotation if Tekton is running in a cluster with injected sidecars
+// or if the Task specifies any sidecars.
+func shouldAddReadyAnnotationOnPodCreate(sidecars []v1beta1.Sidecar, kubeclient kubernetes.Interface) bool {
+	// If the TaskRun has sidecars, we cannot set the READY annotation early
+	if len(sidecars) > 0 {
+		return false
+	}
+	// If the TaskRun has no sidecars, check if we are running in a cluster where sidecars can be injected by other
+	// controllers.
+	configMap, err := kubeclient.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err == nil && configMap != nil && configMap.Data != nil && configMap.Data[featureInjectedSidecar] == "false" {
+		return true
+	}
+	return false
 }

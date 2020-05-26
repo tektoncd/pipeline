@@ -41,3 +41,11 @@ data:
   # See https://github.com/tektoncd/pipeline/issues/1836 for more
   # info.
   disable-working-directory-overwrite: "false"
+  # This option should be set to false when Pipelines is running in a
+  # cluster that does not use injected sidecars such as Istio. Setting
+  # it to false should decrease the time it takes for a TaskRun to start
+  # running. For clusters that use injected sidecars, setting this
+  # option to false can lead to unexpected behavior.
+  #
+  # See https://github.com/tektoncd/pipeline/issues/2080 for more info.
+  running-in-environment-with-injected-sidecars: "true"
