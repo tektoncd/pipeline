@@ -103,6 +103,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
 
+		c.Logger.Info("Setting up SAR client")
+		c.sarClient = c.KubeClientSet.AuthorizationV1()
+
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterGroupKind(v1beta1.Kind("TaskRun")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),

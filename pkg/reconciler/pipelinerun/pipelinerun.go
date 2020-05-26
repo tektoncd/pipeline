@@ -49,6 +49,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -117,6 +118,7 @@ type Reconciler struct {
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+	sarClient         authorizationclient.SubjectAccessReviewsGetter
 }
 
 var (
@@ -361,6 +363,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 			return c.conditionLister.Conditions(pr.Namespace).Get(name)
 		},
 		pipelineSpec.Tasks, providedResources,
+		c.sarClient,
 	)
 
 	if err != nil {

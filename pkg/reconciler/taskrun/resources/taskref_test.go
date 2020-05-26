@@ -20,7 +20,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -30,12 +33,20 @@ import (
 )
 
 func TestTaskRef(t *testing.T) {
+	var acceptReactorFunc, denyReactorFunc ktesting.ReactionFunc
+	acceptReactorFunc = func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, &authorizationv1.SubjectAccessReview{Status: authorizationv1.SubjectAccessReviewStatus{Allowed: true}}, nil
+	}
+	denyReactorFunc = func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, &authorizationv1.SubjectAccessReview{Status: authorizationv1.SubjectAccessReviewStatus{Allowed: false}}, nil
+	}
 	testcases := []struct {
 		name     string
 		tasks    []runtime.Object
 		ref      *v1alpha1.TaskRef
 		expected runtime.Object
 		wantErr  bool
+		reactor  ktesting.ReactionFunc
 	}{
 		{
 			name: "local-task",
@@ -48,6 +59,7 @@ func TestTaskRef(t *testing.T) {
 			},
 			expected: tb.Task("simple", tb.TaskNamespace("default")),
 			wantErr:  false,
+			reactor:  acceptReactorFunc,
 		},
 		{
 			name: "local-clustertask",
@@ -61,6 +73,21 @@ func TestTaskRef(t *testing.T) {
 			},
 			expected: tb.ClusterTask("cluster-task"),
 			wantErr:  false,
+			reactor:  acceptReactorFunc,
+		},
+		{
+			name: "local-clustertask-not-allowed",
+			tasks: []runtime.Object{
+				tb.ClusterTask("cluster-task"),
+				tb.ClusterTask("dummy-task"),
+			},
+			ref: &v1alpha1.TaskRef{
+				Name: "cluster-task",
+				Kind: "ClusterTask",
+			},
+			expected: nil,
+			wantErr:  true,
+			reactor:  denyReactorFunc,
 		},
 		{
 			name:  "task-not-found",
@@ -70,17 +97,23 @@ func TestTaskRef(t *testing.T) {
 			},
 			expected: nil,
 			wantErr:  true,
+			reactor:  acceptReactorFunc,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			tektonclient := fake.NewSimpleClientset(tc.tasks...)
+			sarclient := fakekubeclientset.NewSimpleClientset()
+			sarclient.PrependReactor("create", "subjectaccessreviews", tc.reactor)
 
 			lc := &resources.LocalTaskRefResolver{
 				Namespace:    "default",
 				Kind:         tc.ref.Kind,
+				TaskRunName:  tc.ref.Name,
+				TaskRunSA:    "default",
 				Tektonclient: tektonclient,
+				SarClient:    sarclient.AuthorizationV1(),
 			}
 
 			task, err := lc.GetTask(tc.ref.Name)

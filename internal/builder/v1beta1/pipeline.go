@@ -153,6 +153,26 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// PipelineClusterTask adds a PipelineTask, with specified name and task name, with kind ClusterTask, to the PipelineSpec.
+// Any number of PipelineTask modifier can be passed to transform it.
+func PipelineClusterTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
+	return func(ps *v1beta1.PipelineSpec) {
+		pTask := &v1beta1.PipelineTask{
+			Name: name,
+		}
+		if taskName != "" {
+			pTask.TaskRef = &v1beta1.TaskRef{
+				Name: taskName,
+				Kind: v1beta1.ClusterTaskKind,
+			}
+		}
+		for _, op := range ops {
+			op(pTask)
+		}
+		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
 // PipelineResult adds a PipelineResult, with specified name, value and description, to the PipelineSpec.
 func PipelineResult(name, value, description string, ops ...PipelineOp) PipelineSpecOp {
 	return func(ps *v1beta1.PipelineSpec) {

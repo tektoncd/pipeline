@@ -143,6 +143,15 @@ spec:
       params: ....
 ```
 
+**Note:** Access to cluster scoped resources like `ClusterTask` is not assumed to exist for every
+namespace in a cluster.  The Tekton controller will make sure the `ServiceAccount` associated with
+every `TaskRun` or `PipelineRun` (if no `ServiceAccount` is specified, `default` is used) that references a `ClusterTask`
+has sufficient permissions as defined by Kubernetes "Rules Based Access Control" 
+or ["RBAC"](https://kubernetes.io/docs/reference/access-authn-authz/authorization/)
+to get the `ClusterTask`.  See the `Role` and `RoleBinding` named `tekton-view-clustertask` defined 
+in the `config` directory of this repository for an example of how the `default` `ServiceAccount`
+in the `tekton-pipelines` namespace is given this permission.
+
 ### Defining `Steps`
 
 A `Step` is a reference to a container image that executes a specific tool on a

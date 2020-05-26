@@ -105,6 +105,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		go metrics.ReportRunningPipelineRuns(ctx, pipelineRunInformer.Lister())
 
+		c.Logger.Info("Setting up SAR client")
+		c.sarClient = c.KubeClientSet.AuthorizationV1()
+
 		return impl
 	}
 }

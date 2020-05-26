@@ -767,6 +767,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1beta1.ClusterTaskKind))),
 	)
+	taskRunWithClusterTask.Spec.ServiceAccountName = "default"
 
 	taskRunWithLabels := tb.TaskRun("test-taskrun-with-labels",
 		tb.TaskRunNamespace("foo"),
@@ -1072,6 +1073,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName("default"),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
@@ -1505,8 +1507,21 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 			// Check actions and events
 			actions := clients.Kube.Actions()
-			if len(actions) != 3 || actions[0].Matches("namespaces", "list") {
-				t.Errorf("expected 3 actions (first: list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
+			numActions := 0
+			foundNamesapceList := false
+			for _, action := range actions {
+				switch {
+				case action.Matches("list", "namespaces"):
+					foundNamesapceList = true
+					numActions++
+				case action.Matches("create", "subjectaccessreviews"):
+					continue
+				default:
+					numActions++
+				}
+			}
+			if numActions != 3 || !foundNamesapceList { //} actions[0].Matches("namespaces", "list") {
+				t.Errorf("expected one action (list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
 			}
 
 			err = checkEvents(testAssets.Recorder, tc.name, tc.wantEvents)

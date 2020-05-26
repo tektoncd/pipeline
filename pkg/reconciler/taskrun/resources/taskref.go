@@ -20,21 +20,42 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/authorization"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+
+	authorizationv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1"
 )
 
 // LocalTaskRefResolver uses the current cluster to resolve a task reference.
 type LocalTaskRefResolver struct {
 	Namespace    string
 	Kind         v1beta1.TaskKind
+	TaskRunName  string
+	TaskRunSA    string
 	Tektonclient clientset.Interface
+	SarClient    authorizationclient.SubjectAccessReviewsGetter
 }
 
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
 func (l *LocalTaskRefResolver) GetTask(name string) (v1beta1.TaskInterface, error) {
 	if l.Kind == v1beta1.ClusterTaskKind {
+		saToUse := "default"
+		if len(l.TaskRunSA) > 0 {
+			saToUse = l.TaskRunSA
+		}
+		if err := authorization.AuthorizeSAR(l.SarClient.SubjectAccessReviews(), saToUse, l.Namespace, &authorizationv1.ResourceAttributes{
+			Verb:      "get",
+			Group:     "tekton.dev",
+			Namespace: l.Namespace,
+			Name:      l.TaskRunName,
+			Resource:  "clustertasks",
+		}); err != nil {
+			return nil, err
+		}
+
 		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err

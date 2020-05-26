@@ -46,6 +46,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -78,6 +79,7 @@ type Reconciler struct {
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
 	configStore       configStore
+	sarClient         authorizationclient.SubjectAccessReviewsGetter
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -207,6 +209,9 @@ func (c *Reconciler) getTaskResolver(tr *v1beta1.TaskRun) (*resources.LocalTaskR
 	resolver := &resources.LocalTaskRefResolver{
 		Namespace:    tr.Namespace,
 		Tektonclient: c.PipelineClientSet,
+		SarClient:    c.sarClient,
+		TaskRunSA:    tr.Spec.ServiceAccountName,
+		TaskRunName:  tr.Name,
 	}
 	kind := v1beta1.NamespacedTaskKind
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1beta1.ClusterTaskKind {

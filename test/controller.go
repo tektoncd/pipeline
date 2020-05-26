@@ -41,6 +41,7 @@ import (
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"go.uber.org/zap"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -77,6 +78,7 @@ type Clients struct {
 	Resource    *fakeresourceclientset.Clientset
 	Kube        *fakekubeclientset.Clientset
 	CloudEvents cloudeventclient.CEClient
+	Sar         *fakekubeclientset.Clientset
 }
 
 // Informers holds references to informers which are useful for reconciler tests.
@@ -243,6 +245,9 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	}
 	c.Pipeline.ClearActions()
 	c.Kube.ClearActions()
+	c.Kube.PrependReactor("create", "subjectaccessreviews", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, &authorizationv1.SubjectAccessReview{Status: authorizationv1.SubjectAccessReviewStatus{Allowed: true}}, nil
+	})
 	return c, i
 }
 

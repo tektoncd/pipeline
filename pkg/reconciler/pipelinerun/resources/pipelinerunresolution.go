@@ -23,12 +23,15 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	authorizationclient "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/authorization"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -288,6 +291,7 @@ func ResolvePipelineRun(
 	getCondition GetCondition,
 	tasks []v1beta1.PipelineTask,
 	providedResources map[string]*resourcev1alpha1.PipelineResource,
+	sarClient authorizationclient.SubjectAccessReviewsGetter,
 ) (PipelineRunState, error) {
 
 	state := []*ResolvedPipelineRunTask{}
@@ -310,6 +314,19 @@ func ResolvePipelineRun(
 
 		if pt.TaskRef != nil {
 			if pt.TaskRef.Kind == v1beta1.ClusterTaskKind {
+				saToUse := "default"
+				if len(pipelineRun.Spec.ServiceAccountName) > 0 {
+					saToUse = pipelineRun.Spec.ServiceAccountName
+				}
+				if err := authorization.AuthorizeSAR(sarClient.SubjectAccessReviews(), saToUse, pipelineRun.Namespace, &authorizationv1.ResourceAttributes{
+					Verb:      "get",
+					Group:     "tekton.dev",
+					Namespace: pipelineRun.Namespace,
+					Name:      pt.TaskRef.Name,
+					Resource:  "clustertasks",
+				}); err != nil {
+					return nil, err
+				}
 				t, err = getClusterTask(pt.TaskRef.Name)
 			} else {
 				t, err = getTask(pt.TaskRef.Name)
