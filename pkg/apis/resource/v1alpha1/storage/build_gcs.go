@@ -71,7 +71,7 @@ type BuildGCSResource struct {
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task.
-func NewBuildGCSResource(images pipeline.Images, r *resource.PipelineResource) (*BuildGCSResource, error) {
+func NewBuildGCSResource(name string, images pipeline.Images, r *resource.PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -99,7 +99,7 @@ func NewBuildGCSResource(images pipeline.Images, r *resource.PipelineResource) (
 		return nil, fmt.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
-		Name:                 r.Name,
+		Name:                 name,
 		Type:                 r.Spec.Type,
 		Location:             location,
 		ArtifactType:         aType,

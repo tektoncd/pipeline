@@ -44,7 +44,7 @@ type PipelineStorageResourceInterface interface {
 
 // NewResource returns an instance of the requested storage subtype, which can be used
 // to add input and output steps and volumes to an executing pod.
-func NewResource(images pipeline.Images, r *resource.PipelineResource) (PipelineStorageResourceInterface, error) {
+func NewResource(name string, images pipeline.Images, r *resource.PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != v1beta1.PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -53,9 +53,9 @@ func NewResource(images pipeline.Images, r *resource.PipelineResource) (Pipeline
 		if strings.EqualFold(param.Name, "type") {
 			switch {
 			case strings.EqualFold(param.Value, string(resource.PipelineResourceTypeGCS)):
-				return NewGCSResource(images, r)
+				return NewGCSResource(name, images, r)
 			case strings.EqualFold(param.Value, string(resource.PipelineResourceTypeBuildGCS)):
-				return NewBuildGCSResource(images, r)
+				return NewBuildGCSResource(name, images, r)
 			default:
 				return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}

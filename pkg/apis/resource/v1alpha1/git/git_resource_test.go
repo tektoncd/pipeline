@@ -31,7 +31,7 @@ import (
 )
 
 func TestNewGitResource_Invalid(t *testing.T) {
-	if _, err := git.NewResource("override-with-git:latest", tb.PipelineResource("git-resource", tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGCS))); err == nil {
+	if _, err := git.NewResource("test-resource", "override-with-git:latest", tb.PipelineResource("git-resource", tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGCS))); err == nil {
 		t.Error("Expected error creating Git resource")
 	}
 }
@@ -50,7 +50,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -65,13 +65,13 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Revision",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "master",
@@ -86,14 +86,14 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With Refspec",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Refspec", "refs/changes/22/222134"),
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "master",
@@ -108,13 +108,13 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Refspec",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "master",
@@ -129,14 +129,14 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With Submodules",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -151,7 +151,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Submodules",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -159,7 +159,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -174,7 +174,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With positive depth",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -182,7 +182,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -197,7 +197,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With zero depth",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -205,7 +205,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -220,7 +220,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without SSLVerify",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -229,7 +229,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -244,7 +244,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With HTTPProxy",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -253,7 +253,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -268,7 +268,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With HTTPSProxy",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -277,7 +277,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -292,7 +292,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With NOProxy",
-		pipelineResource: tb.PipelineResource("git-resource",
+		pipelineResource: tb.PipelineResource("test-resource",
 			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 				tb.PipelineResourceSpecParam("Revision", "test"),
@@ -301,7 +301,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 			),
 		),
 		want: &git.Resource{
-			Name:       "git-resource",
+			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
 			URL:        "git@github.com:test/test.git",
 			Revision:   "test",
@@ -316,7 +316,7 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got, err := git.NewResource("override-with-git:latest", tc.pipelineResource)
+			got, err := git.NewResource("test-resource", "override-with-git:latest", tc.pipelineResource)
 			if err != nil {
 				t.Fatalf("Unexpected error creating Git resource: %s", err)
 			}

@@ -96,7 +96,7 @@ func TestBuildGCSResource_Invalid(t *testing.T) {
 		)),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := storage.NewResource(images, tc.pipelineResource)
+			_, err := storage.NewResource("test-resource", images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating BuildGCS resource")
 			}
@@ -112,7 +112,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 		tb.PipelineResourceSpecParam("ArtifactType", "Manifest"),
 	))
 	expectedGCSResource := &storage.BuildGCSResource{
-		Name:                 "build-gcs-resource",
+		Name:                 "test-resource",
 		Location:             "gs://fake-bucket",
 		Type:                 resourcev1alpha1.PipelineResourceTypeStorage,
 		ArtifactType:         "Manifest",
@@ -120,7 +120,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 
-	r, err := storage.NewBuildGCSResource(images, pr)
+	r, err := storage.NewBuildGCSResource("test-resource", images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating BuildGCS resource: %s", err)
 	}
@@ -191,7 +191,7 @@ func TestBuildGCS_InvalidArtifactType(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "InVaLiD"),
 	))
-	if _, err := storage.NewBuildGCSResource(images, pr); err == nil {
+	if _, err := storage.NewBuildGCSResource("test-resource", images, pr); err == nil {
 		t.Error("NewBuildGCSResource: expected error")
 	}
 }

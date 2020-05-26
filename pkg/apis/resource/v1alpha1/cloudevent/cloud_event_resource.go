@@ -35,7 +35,7 @@ type Resource struct {
 }
 
 // NewResource creates a new CloudEvent resource to pass to a Task
-func NewResource(r *resource.PipelineResource) (*Resource, error) {
+func NewResource(name string, r *resource.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resource.PipelineResourceTypeCloudEvent {
 		return nil, fmt.Errorf("cloudevent.Resource: Cannot create a Cloud Event resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -55,7 +55,7 @@ func NewResource(r *resource.PipelineResource) (*Resource, error) {
 		return nil, fmt.Errorf("cloudevent.Resource: Need URI to be specified in order to create a CloudEvent resource %s", r.Name)
 	}
 	return &Resource{
-		Name:      r.Name,
+		Name:      name,
 		Type:      r.Spec.Type,
 		TargetURI: targetURI,
 	}, nil

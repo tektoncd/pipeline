@@ -140,7 +140,7 @@ func ApplyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
-			r, err := resource.FromType(rSpec, images)
+			r, err := resource.FromType(cr.Name, rSpec, images)
 			if err != nil {
 				return fmt.Errorf("error trying to create resource: %w", err)
 			}

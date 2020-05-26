@@ -303,11 +303,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// FIXME(afrittoli) This resource specific logic will have to be replaced
 	// once we have a custom PipelineResource framework in place.
 	logger.Infof("Cloud Events: %s", tr.Status.CloudEvents)
-	prs := make([]*resourcev1alpha1.PipelineResource, 0, len(rtr.Outputs))
-	for _, pr := range rtr.Outputs {
-		prs = append(prs, pr)
-	}
-	cloudevent.InitializeCloudEvents(tr, prs)
+	cloudevent.InitializeCloudEvents(tr, rtr.Outputs)
 
 	return taskSpec, rtr, nil
 }
@@ -620,7 +616,7 @@ func isExceededResourceQuotaError(err error) bool {
 func resourceImplBinding(resources map[string]*resourcev1alpha1.PipelineResource, images pipeline.Images) (map[string]v1beta1.PipelineResourceInterface, error) {
 	p := make(map[string]v1beta1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := resource.FromType(r, images)
+		i, err := resource.FromType(rName, r, images)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}

@@ -28,9 +28,9 @@ import (
 )
 
 func TestNewImageResource_Invalid(t *testing.T) {
-	r := tb.PipelineResource("git-resource", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
+	r := tb.PipelineResource("test-resource", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 
-	_, err := image.NewResource(r)
+	_, err := image.NewResource("test-resource", r)
 	if err == nil {
 		t.Error("Expected error creating Image resource")
 	}
@@ -53,7 +53,7 @@ func TestNewImageResource_Valid(t *testing.T) {
 		),
 	)
 
-	got, err := image.NewResource(r)
+	got, err := image.NewResource("image-resource", r)
 	if err != nil {
 		t.Fatalf("Unexpected error creating Image resource: %s", err)
 	}

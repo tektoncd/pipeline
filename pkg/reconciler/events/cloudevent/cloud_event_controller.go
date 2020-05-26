@@ -31,13 +31,13 @@ import (
 
 // InitializeCloudEvents initializes the CloudEvents part of the
 // TaskRunStatus from a slice of PipelineResources
-func InitializeCloudEvents(tr *v1beta1.TaskRun, prs []*resource.PipelineResource) {
+func InitializeCloudEvents(tr *v1beta1.TaskRun, prs map[string]*resource.PipelineResource) {
 	// If there are no cloud event resources, this check will run on every reconcile
 	if len(tr.Status.CloudEvents) == 0 {
 		var targets []string
-		for _, output := range prs {
+		for name, output := range prs {
 			if output.Spec.Type == resource.PipelineResourceTypeCloudEvent {
-				cer, _ := cloudevent.NewResource(output)
+				cer, _ := cloudevent.NewResource(name, output)
 				targets = append(targets, cer.TargetURI)
 			}
 		}

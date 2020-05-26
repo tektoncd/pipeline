@@ -35,12 +35,12 @@ type Resource struct {
 }
 
 // NewResource creates a new ImageResource from a PipelineResourcev1alpha1.
-func NewResource(r *resourcev1alpha1.PipelineResource) (*Resource, error) {
+func NewResource(name string, r *resourcev1alpha1.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypeImage {
 		return nil, fmt.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	ir := &Resource{
-		Name: r.Name,
+		Name: name,
 		Type: resourcev1alpha1.PipelineResourceTypeImage,
 	}
 

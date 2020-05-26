@@ -54,12 +54,12 @@ type Resource struct {
 }
 
 // NewResource create a new git resource to pass to a Task
-func NewResource(prImage string, r *resourcev1alpha1.PipelineResource) (*Resource, error) {
+func NewResource(name, prImage string, r *resourcev1alpha1.PipelineResource) (*Resource, error) {
 	if r.Spec.Type != resourcev1alpha1.PipelineResourceTypePullRequest {
 		return nil, fmt.Errorf("cannot create a PR resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	prResource := Resource{
-		Name:                  r.Name,
+		Name:                  name,
 		Type:                  r.Spec.Type,
 		Secrets:               r.Spec.SecretParams,
 		PRImage:               prImage,

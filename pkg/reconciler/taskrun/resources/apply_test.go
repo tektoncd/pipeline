@@ -346,7 +346,7 @@ var (
 		"bucket":     gcsResource,
 	}
 
-	gitResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+	gitResource, _ = resource.FromType("git-resource", &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "git-resource",
 		},
@@ -359,7 +359,7 @@ var (
 		},
 	}, images)
 
-	imageResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+	imageResource, _ = resource.FromType("image-resource", &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "image-resource",
 		},
@@ -372,7 +372,7 @@ var (
 		},
 	}, images)
 
-	gcsResource, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+	gcsResource, _ = resource.FromType("gcs-resource", &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "gcs-resource",
 		},

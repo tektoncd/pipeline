@@ -151,7 +151,7 @@ func outputTestResourceSetup() {
 
 	outputTestResources = make(map[string]v1beta1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := resource.FromType(r, images)
+		ri, _ := resource.FromType(r.Name, r, images)
 		outputTestResources[r.Name] = ri
 	}
 }
@@ -1335,7 +1335,7 @@ func resolveInputResources(taskRun *v1beta1.TaskRun) map[string]v1beta1.Pipeline
 			i = outputTestResources[name]
 			resolved[r.Name] = i
 		} else if r.ResourceSpec != nil {
-			i, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+			i, _ = resource.FromType(name, &resourcev1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
 				},
@@ -1358,7 +1358,7 @@ func resolveOutputResources(taskRun *v1beta1.TaskRun) map[string]v1beta1.Pipelin
 			i = outputTestResources[name]
 			resolved[r.Name] = i
 		} else if r.ResourceSpec != nil {
-			i, _ = resource.FromType(&resourcev1alpha1.PipelineResource{
+			i, _ = resource.FromType(r.Name, &resourcev1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
 				},
