@@ -910,7 +910,7 @@ func TestSortContainerStatuses(t *testing.T) {
 			},
 		},
 	}
-	sortContainerStatuses(&samplePod)
+	SortContainerStatuses(&samplePod)
 	var gotNames []string
 	for _, status := range samplePod.Status.ContainerStatuses {
 		gotNames = append(gotNames, status.Name)

@@ -6,7 +6,7 @@ weight: 10
 -->
 # Resources labelling
 
-Tekton applications sometines need to find resources belonging to other applications (dashboard
+Tekton applications sometimes need to find resources belonging to other applications (dashboard
 needs to talk to pipelines and triggers, triggers needs to talk to pipelines, etc.).
 
 In order to facilitate identifying resources that belong to an application, the following

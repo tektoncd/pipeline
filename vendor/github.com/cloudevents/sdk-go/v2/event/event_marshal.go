@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	errors2 "github.com/pkg/errors"
-
 	"github.com/cloudevents/sdk-go/v2/observability"
 )
 
@@ -205,7 +203,7 @@ func (e *Event) JsonDecodeV03(body []byte, raw map[string]json.RawMessage) error
 				return err
 			}
 			if err := ec.SetExtension(k, tmp); err != nil {
-				return errors2.Wrap(err, "Cannot set extension with key "+k)
+				return fmt.Errorf("%w: Cannot set extension with key %s", err, k)
 			}
 		}
 	}
@@ -282,7 +280,7 @@ func (e *Event) JsonDecodeV1(body []byte, raw map[string]json.RawMessage) error 
 				return err
 			}
 			if err := ec.SetExtension(k, tmp); err != nil {
-				return errors2.Wrap(err, "Cannot set extension with key "+k)
+				return fmt.Errorf("%w: Cannot set extension with key %s", err, k)
 			}
 		}
 	}

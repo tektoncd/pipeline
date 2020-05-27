@@ -290,9 +290,6 @@ func (mi *MediaInfo) UploadRequest(reqHeaders http.Header, body io.Reader) (newB
 		fb := readerFunc(body)
 		fm := readerFunc(media)
 		combined, ctype := CombineBodyMedia(body, "application/json", media, mi.mType)
-		toCleanup := []io.Closer{
-			combined,
-		}
 		if fb != nil && fm != nil {
 			getBody = func() (io.ReadCloser, error) {
 				rb := ioutil.NopCloser(fb())
@@ -302,16 +299,10 @@ func (mi *MediaInfo) UploadRequest(reqHeaders http.Header, body io.Reader) (newB
 					mimeBoundary = params["boundary"]
 				}
 				r, _ := combineBodyMedia(rb, "application/json", rm, mi.mType, mimeBoundary)
-				toCleanup = append(toCleanup, r)
 				return r, nil
 			}
 		}
-		cleanup = func() {
-			for _, closer := range toCleanup {
-				_ = closer.Close()
-			}
-
-		}
+		cleanup = func() { combined.Close() }
 		reqHeaders.Set("Content-Type", ctype)
 		body = combined
 	}

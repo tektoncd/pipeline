@@ -121,3 +121,89 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateExpectedParametersProvided_Valid(t *testing.T) {
+	tcs := []struct {
+		name          string
+		pp            []v1beta1.ParamSpec
+		prp           []v1beta1.Param
+	}{{
+		name: "expected string params provided",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "expected-string-param",
+				Type: v1beta1.ParamTypeString,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "expected-string-param",
+				Value: *tb.ArrayOrString("somestring"),
+			},
+		},
+	}, {
+		name: "expected array params provided",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "expected-string-param",
+				Type: v1beta1.ParamTypeString,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "expected-string-param",
+				Value: *tb.ArrayOrString("another", "array"),
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateExpectedParametersProvided(tc.pp, tc.prp); err != nil {
+				t.Errorf("Didn't expect to see error when validating valid PipelineRun parameters but got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateExpectedParametersProvided_Invalid(t *testing.T) {
+	tcs := []struct {
+		name string
+		pp   []v1beta1.ParamSpec
+		prp  []v1beta1.Param
+	}{{
+		name: "expected string param missing",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "expected-string-param",
+				Type: v1beta1.ParamTypeString,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "another-string-param",
+				Value: *tb.ArrayOrString("anotherstring"),
+			},
+		},
+	}, {
+		name: "expected array param missing",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "expected-array-param",
+				Type: v1beta1.ParamTypeArray,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "another-array-param",
+				Value: *tb.ArrayOrString("anotherstring"),
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateExpectedParametersProvided(tc.pp, tc.prp); err == nil {
+				t.Errorf("Expected to see error when validating invalid PipelineRun parameters but saw none")
+			}
+		})
+	}
+}

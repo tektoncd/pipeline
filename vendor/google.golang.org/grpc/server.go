@@ -130,7 +130,6 @@ type serverOptions struct {
 	readBufferSize        int
 	connectionTimeout     time.Duration
 	maxHeaderListSize     *uint32
-	headerTableSize       *uint32
 }
 
 var defaultServerOptions = serverOptions{
@@ -344,8 +343,8 @@ func StatsHandler(h stats.Handler) ServerOption {
 // unknown service handler. The provided method is a bidi-streaming RPC service
 // handler that will be invoked instead of returning the "unimplemented" gRPC
 // error whenever a request is received for an unregistered service or method.
-// The handling function and stream interceptor (if set) have full access to
-// the ServerStream, including its Context.
+// The handling function has full access to the Context of the request and the
+// stream, and the invocation bypasses interceptors.
 func UnknownServiceHandler(streamHandler StreamHandler) ServerOption {
 	return newFuncServerOption(func(o *serverOptions) {
 		o.unknownStreamDesc = &StreamDesc{
@@ -375,16 +374,6 @@ func ConnectionTimeout(d time.Duration) ServerOption {
 func MaxHeaderListSize(s uint32) ServerOption {
 	return newFuncServerOption(func(o *serverOptions) {
 		o.maxHeaderListSize = &s
-	})
-}
-
-// HeaderTableSize returns a ServerOption that sets the size of dynamic
-// header table for stream.
-//
-// This API is EXPERIMENTAL.
-func HeaderTableSize(s uint32) ServerOption {
-	return newFuncServerOption(func(o *serverOptions) {
-		o.headerTableSize = &s
 	})
 }
 
@@ -697,7 +686,6 @@ func (s *Server) newHTTP2Transport(c net.Conn, authInfo credentials.AuthInfo) tr
 		ReadBufferSize:        s.opts.readBufferSize,
 		ChannelzParentID:      s.channelzID,
 		MaxHeaderListSize:     s.opts.maxHeaderListSize,
-		HeaderTableSize:       s.opts.headerTableSize,
 	}
 	st, err := transport.NewServerTransport("http2", c, config)
 	if err != nil {
@@ -865,58 +853,41 @@ func (s *Server) sendResponse(t transport.ServerTransport, stream *transport.Str
 }
 
 func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, md *MethodDesc, trInfo *traceInfo) (err error) {
-	sh := s.opts.statsHandler
-	if sh != nil || trInfo != nil || channelz.IsOn() {
-		if channelz.IsOn() {
-			s.incrCallsStarted()
-		}
-		var statsBegin *stats.Begin
-		if sh != nil {
-			beginTime := time.Now()
-			statsBegin = &stats.Begin{
-				BeginTime: beginTime,
-			}
-			sh.HandleRPC(stream.Context(), statsBegin)
-		}
-		if trInfo != nil {
-			trInfo.tr.LazyLog(&trInfo.firstLine, false)
-		}
-		// The deferred error handling for tracing, stats handler and channelz are
-		// combined into one function to reduce stack usage -- a defer takes ~56-64
-		// bytes on the stack, so overflowing the stack will require a stack
-		// re-allocation, which is expensive.
-		//
-		// To maintain behavior similar to separate deferred statements, statements
-		// should be executed in the reverse order. That is, tracing first, stats
-		// handler second, and channelz last. Note that panics *within* defers will
-		// lead to different behavior, but that's an acceptable compromise; that
-		// would be undefined behavior territory anyway.
+	if channelz.IsOn() {
+		s.incrCallsStarted()
 		defer func() {
-			if trInfo != nil {
-				if err != nil && err != io.EOF {
-					trInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
-					trInfo.tr.SetError()
-				}
-				trInfo.tr.Finish()
+			if err != nil && err != io.EOF {
+				s.incrCallsFailed()
+			} else {
+				s.incrCallsSucceeded()
 			}
-
-			if sh != nil {
-				end := &stats.End{
-					BeginTime: statsBegin.BeginTime,
-					EndTime:   time.Now(),
-				}
-				if err != nil && err != io.EOF {
-					end.Error = toRPCErr(err)
-				}
-				sh.HandleRPC(stream.Context(), end)
+		}()
+	}
+	sh := s.opts.statsHandler
+	if sh != nil {
+		beginTime := time.Now()
+		begin := &stats.Begin{
+			BeginTime: beginTime,
+		}
+		sh.HandleRPC(stream.Context(), begin)
+		defer func() {
+			end := &stats.End{
+				BeginTime: beginTime,
+				EndTime:   time.Now(),
 			}
-
-			if channelz.IsOn() {
-				if err != nil && err != io.EOF {
-					s.incrCallsFailed()
-				} else {
-					s.incrCallsSucceeded()
-				}
+			if err != nil && err != io.EOF {
+				end.Error = toRPCErr(err)
+			}
+			sh.HandleRPC(stream.Context(), end)
+		}()
+	}
+	if trInfo != nil {
+		defer trInfo.tr.Finish()
+		trInfo.tr.LazyLog(&trInfo.firstLine, false)
+		defer func() {
+			if err != nil && err != io.EOF {
+				trInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
+				trInfo.tr.SetError()
 			}
 		}()
 	}
@@ -1116,15 +1087,31 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, sd *StreamDesc, trInfo *traceInfo) (err error) {
 	if channelz.IsOn() {
 		s.incrCallsStarted()
+		defer func() {
+			if err != nil && err != io.EOF {
+				s.incrCallsFailed()
+			} else {
+				s.incrCallsSucceeded()
+			}
+		}()
 	}
 	sh := s.opts.statsHandler
-	var statsBegin *stats.Begin
 	if sh != nil {
 		beginTime := time.Now()
-		statsBegin = &stats.Begin{
+		begin := &stats.Begin{
 			BeginTime: beginTime,
 		}
-		sh.HandleRPC(stream.Context(), statsBegin)
+		sh.HandleRPC(stream.Context(), begin)
+		defer func() {
+			end := &stats.End{
+				BeginTime: beginTime,
+				EndTime:   time.Now(),
+			}
+			if err != nil && err != io.EOF {
+				end.Error = toRPCErr(err)
+			}
+			sh.HandleRPC(stream.Context(), end)
+		}()
 	}
 	ctx := NewContextWithServerTransportStream(stream.Context(), stream)
 	ss := &serverStream{
@@ -1137,41 +1124,6 @@ func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transp
 		maxSendMessageSize:    s.opts.maxSendMessageSize,
 		trInfo:                trInfo,
 		statsHandler:          sh,
-	}
-
-	if sh != nil || trInfo != nil || channelz.IsOn() {
-		// See comment in processUnaryRPC on defers.
-		defer func() {
-			if trInfo != nil {
-				ss.mu.Lock()
-				if err != nil && err != io.EOF {
-					ss.trInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
-					ss.trInfo.tr.SetError()
-				}
-				ss.trInfo.tr.Finish()
-				ss.trInfo.tr = nil
-				ss.mu.Unlock()
-			}
-
-			if sh != nil {
-				end := &stats.End{
-					BeginTime: statsBegin.BeginTime,
-					EndTime:   time.Now(),
-				}
-				if err != nil && err != io.EOF {
-					end.Error = toRPCErr(err)
-				}
-				sh.HandleRPC(stream.Context(), end)
-			}
-
-			if channelz.IsOn() {
-				if err != nil && err != io.EOF {
-					s.incrCallsFailed()
-				} else {
-					s.incrCallsSucceeded()
-				}
-			}
-		}()
 	}
 
 	ss.binlog = binarylog.GetMethodLogger(stream.Method())
@@ -1227,6 +1179,16 @@ func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transp
 
 	if trInfo != nil {
 		trInfo.tr.LazyLog(&trInfo.firstLine, false)
+		defer func() {
+			ss.mu.Lock()
+			if err != nil && err != io.EOF {
+				ss.trInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
+				ss.trInfo.tr.SetError()
+			}
+			ss.trInfo.tr.Finish()
+			ss.trInfo.tr = nil
+			ss.mu.Unlock()
+		}()
 	}
 	var appErr error
 	var server interface{}

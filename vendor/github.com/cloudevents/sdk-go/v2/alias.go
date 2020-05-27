@@ -161,9 +161,12 @@ var (
 	WithShutdownTimeout = http.WithShutdownTimeout
 	//WithEncoding           = http.WithEncoding
 	//WithStructuredEncoding = http.WithStructuredEncoding // TODO: expose new way
-	WithPort         = http.WithPort
-	WithPath         = http.WithPath
-	WithMiddleware   = http.WithMiddleware
-	WithListener     = http.WithListener
-	WithRoundTripper = http.WithRoundTripper
+	WithPort                      = http.WithPort
+	WithPath                      = http.WithPath
+	WithMiddleware                = http.WithMiddleware
+	WithListener                  = http.WithListener
+	WithRoundTripper              = http.WithRoundTripper
+	WithGetHandlerFunc            = http.WithGetHandlerFunc
+	WithOptionsHandlerFunc        = http.WithOptionsHandlerFunc
+	WithDefaultOptionsHandlerFunc = http.WithDefaultOptionsHandlerFunc
 )

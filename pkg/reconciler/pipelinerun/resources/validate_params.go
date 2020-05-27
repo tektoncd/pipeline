@@ -19,22 +19,23 @@ package resources
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
 func ValidateParamTypesMatching(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
-	// Build a map of parameter names/types declared in p.
-	paramTypes := make(map[string]v1beta1.ParamType)
-	for _, param := range p.Params {
-		paramTypes[param.Name] = param.Type
+	// Build a map of parameter names/types declared in pr.
+	providedParams := make(map[string]v1beta1.ParamType)
+	for _, param := range pr.Spec.Params {
+		providedParams[param.Name] = param.Value.Type
 	}
 
-	// Build a list of parameter names from pr that have mismatching types with the map created above.
-	var wrongTypeParamNames []string
-	for _, param := range pr.Spec.Params {
-		if paramType, ok := paramTypes[param.Name]; ok {
-			if param.Value.Type != paramType {
+	// Build a list of parameter names from p that have mismatching types from corresponding types from p.
+	var wrongTypeParamNames []string 
+	for _, param := range p.Params {
+		if paramType, ok := providedParams[param.Name]; ok {
+			if paramType != param.Type {
 				wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 			}
 		}
@@ -43,6 +44,30 @@ func ValidateParamTypesMatching(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun
 	// Return an error with the misconfigured parameters' names, or return nil if there are none.
 	if len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames)
+	}
+	return nil
+}
+
+// ValidateExpectedParametersProvided validates that all the parameters expected by the Pipeline are provided by the PipelineRun. 
+// Extra Parameters are allowed, the Pipeline will use the Parameters it needs and ignore the other Parameters. 
+func ValidateExpectedParametersProvided(pipelineParameters []v1beta1.ParamSpec, pipelineRunParameters []v1beta1.Param) error {
+	// Build a list of parameter names declared in pr.
+	var providedParams []string
+	for _, param := range pipelineRunParameters {
+		providedParams = append(providedParams, param.Name)
+	}
+
+	var requiredParams []string
+	for _, param := range pipelineParameters {
+		requiredParams = append(requiredParams, param.Name)
+	}
+
+	// Build a list of parameter names in p that are missing from pr.
+	missingParams := list.DiffLeft(requiredParams, providedParams)
+
+	// Return an error with the missing parameters' names, or return nil if there are none.
+	if len(missingParams) != 0 {
+		return fmt.Errorf("pipeline run missing parameters: %s", missingParams) 
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package multierror
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -69,3 +70,134 @@ func TestErrorWrappedErrors(t *testing.T) {
 		t.Fatalf("bad: %s", multi.WrappedErrors())
 	}
 }
+
+func TestErrorUnwrap(t *testing.T) {
+	t.Run("with errors", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			errors.New("bar"),
+			errors.New("baz"),
+		}}
+
+		var current error = err
+		for i := 0; i < len(err.Errors); i++ {
+			current = errors.Unwrap(current)
+			if !errors.Is(current, err.Errors[i]) {
+				t.Fatal("should be next value")
+			}
+		}
+
+		if errors.Unwrap(current) != nil {
+			t.Fatal("should be nil at the end")
+		}
+	})
+
+	t.Run("with no errors", func(t *testing.T) {
+		err := &Error{Errors: nil}
+		if errors.Unwrap(err) != nil {
+			t.Fatal("should be nil")
+		}
+	})
+
+	t.Run("with nil multierror", func(t *testing.T) {
+		var err *Error
+		if errors.Unwrap(err) != nil {
+			t.Fatal("should be nil")
+		}
+	})
+}
+
+func TestErrorIs(t *testing.T) {
+	errBar := errors.New("bar")
+
+	t.Run("with errBar", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			errBar,
+			errors.New("baz"),
+		}}
+
+		if !errors.Is(err, errBar) {
+			t.Fatal("should be true")
+		}
+	})
+
+	t.Run("with errBar wrapped by fmt.Errorf", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			fmt.Errorf("errorf: %w", errBar),
+			errors.New("baz"),
+		}}
+
+		if !errors.Is(err, errBar) {
+			t.Fatal("should be true")
+		}
+	})
+
+	t.Run("without errBar", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			errors.New("baz"),
+		}}
+
+		if errors.Is(err, errBar) {
+			t.Fatal("should be false")
+		}
+	})
+}
+
+func TestErrorAs(t *testing.T) {
+	match := &nestedError{}
+
+	t.Run("with the value", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			match,
+			errors.New("baz"),
+		}}
+
+		var target *nestedError
+		if !errors.As(err, &target) {
+			t.Fatal("should be true")
+		}
+		if target == nil {
+			t.Fatal("target should not be nil")
+		}
+	})
+
+	t.Run("with the value wrapped by fmt.Errorf", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			fmt.Errorf("errorf: %w", match),
+			errors.New("baz"),
+		}}
+
+		var target *nestedError
+		if !errors.As(err, &target) {
+			t.Fatal("should be true")
+		}
+		if target == nil {
+			t.Fatal("target should not be nil")
+		}
+	})
+
+	t.Run("without the value", func(t *testing.T) {
+		err := &Error{Errors: []error{
+			errors.New("foo"),
+			errors.New("baz"),
+		}}
+
+		var target *nestedError
+		if errors.As(err, &target) {
+			t.Fatal("should be false")
+		}
+		if target != nil {
+			t.Fatal("target should be nil")
+		}
+	})
+}
+
+// nestedError implements error and is used for tests.
+type nestedError struct{}
+
+func (*nestedError) Error() string { return "" }

@@ -16,9 +16,11 @@ limitations under the License.
 package termination
 
 import (
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -64,5 +66,24 @@ func TestExistingFile(t *testing.T) {
 		if d := cmp.Diff(want, string(fileContents)); d != "" {
 			t.Fatalf("Diff %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestMaxSizeFile(t *testing.T) {
+	value := strings.Repeat("a", 4096)
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "tempFile")
+	if err != nil {
+		log.Fatal("Cannot create temporary file", err)
+	}
+	// Remember to clean up the file afterwards
+	defer os.Remove(tmpFile.Name())
+
+	output := []v1alpha1.PipelineResourceResult{{
+		Key:   "key1",
+		Value: value,
+	}}
+
+	if err := WriteMessage(tmpFile.Name(), output); !errors.Is(err, aboveMax) {
+		t.Fatalf("Expected MessageLengthError, receved: %v", err)
 	}
 }

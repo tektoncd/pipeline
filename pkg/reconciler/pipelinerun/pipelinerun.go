@@ -80,6 +80,9 @@ const (
 	// ReasonCouldntGetCondition indicates that the reason for the failure status is that the
 	// associated Pipeline's Conditions couldn't all be retrieved
 	ReasonCouldntGetCondition = "CouldntGetCondition"
+	// ParameterMissing indicates that the reason for the failure status is that the
+	// associated PipelineRun didn't provide all the required parameters
+	ParameterMissing = "ParameterMissing"
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
@@ -439,6 +442,20 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
 		})
 		return nil
+	}
+
+	err = resources.ValidateExpectedParametersProvided(pipelineSpec.Params, pr.Spec.Params)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ParameterMissing,
+			Message: fmt.Sprintf("PipelineRun %s parameters is missing some parameters expected by Pipeline %s's parameters: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pipelineMeta.Name), err),
+		})
+		return nil
+
 	}
 
 	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
