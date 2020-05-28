@@ -15,7 +15,7 @@ weight: 1
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
-  - [Storing execution results](#storing-execution-results)
+  - [Emitting `results`](#emitting-results)
   - [Specifying `Volumes`](#specifying-volumes)
   - [Specifying a `Step` template](#specifying-a-step-template)
   - [Specifying `Sidecars`](#specifying-sidecars)
@@ -71,7 +71,7 @@ A `Task` definition supports the following fields:
     - [`inputs`](#specifying-resources) - Specifies the resources ingested by the `Task`.
     - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
-  - [`results`](#storing-execution-results) - Specifies the file to which the `Tasks` writes its execution results.
+  - [`results`](#emitting-results) - Specifies the file to which the `Tasks` writes its execution results.
   - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
   - [`stepTemplate`](#specifying-a-step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
   - [`sidecars`](#specifying-sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task.
@@ -384,7 +384,7 @@ spec:
 For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
 and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml) example YAML file.
 
-### Storing execution results
+### Emitting results
 
 Use the `results` field to specify one or more files in which the `Task` stores its execution results. These files are
 stored in the `/tekton/results` directory. This directory is created automatically at execution time if at least one file
