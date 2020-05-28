@@ -138,7 +138,7 @@ func TestApplyParameters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyParameters(&tt.original.Spec, tt.run)
-			if d := cmp.Diff(got, &tt.expected.Spec); d != "" {
+			if d := cmp.Diff(&tt.expected.Spec, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -211,7 +211,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
+			if d := cmp.Diff(tt.want, tt.args.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
@@ -284,7 +284,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.args.targets, tt.want); d != "" {
+			if d := cmp.Diff(tt.want, tt.args.targets); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
@@ -378,7 +378,7 @@ func TestApplyTaskResults_Conditions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.args.targets[0].ResolvedConditionChecks, tt.want[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
+			if d := cmp.Diff(tt.want[0].ResolvedConditionChecks, tt.args.targets[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
 				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
 			}
 		})
