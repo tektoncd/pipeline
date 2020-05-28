@@ -480,7 +480,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
-			if d := cmp.Diff(got, tt.want); d != "" {
+			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -544,7 +544,7 @@ func TestApplyParameters(t *testing.T) {
 		spec.Sidecars[0].Container.Env[0].Value = "world"
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
-	if d := cmp.Diff(got, want); d != "" {
+	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -616,7 +616,7 @@ func TestApplyResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
-			if d := cmp.Diff(got, tt.want); d != "" {
+			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyResources() %s", diff.PrintWantGot(d))
 			}
 		})
@@ -737,7 +737,7 @@ func TestApplyWorkspaces(t *testing.T) {
 		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	}}
 	got := resources.ApplyWorkspaces(ts, w, wb)
-	if d := cmp.Diff(got, want); d != "" {
+	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -773,7 +773,7 @@ func TestTaskResults(t *testing.T) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 	})
 	got := resources.ApplyTaskResults(ts)
-	if d := cmp.Diff(got, want); d != "" {
+	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
 	}
 }
