@@ -488,7 +488,7 @@ func (cs *clientStream) shouldRetry(err error) error {
 	pushback := 0
 	hasPushback := false
 	if cs.attempt.s != nil {
-		if !cs.attempt.s.TrailersOnly() {
+		if to, toErr := cs.attempt.s.TrailersOnly(); toErr != nil || !to {
 			return err
 		}
 

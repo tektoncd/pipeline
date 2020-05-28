@@ -171,7 +171,7 @@ func TestLRUContains(t *testing.T) {
 	}
 }
 
-// test that Contains doesn't update recent-ness
+// test that ContainsOrAdd doesn't update recent-ness
 func TestLRUContainsOrAdd(t *testing.T) {
 	l, err := New(2)
 	if err != nil {
@@ -186,6 +186,39 @@ func TestLRUContainsOrAdd(t *testing.T) {
 	}
 	if evict {
 		t.Errorf("nothing should be evicted here")
+	}
+
+	l.Add(3, 3)
+	contains, evict = l.ContainsOrAdd(1, 1)
+	if contains {
+		t.Errorf("1 should not have been contained")
+	}
+	if !evict {
+		t.Errorf("an eviction should have occurred")
+	}
+	if !l.Contains(1) {
+		t.Errorf("now 1 should be contained")
+	}
+}
+
+// test that PeekOrAdd doesn't update recent-ness
+func TestLRUPeekOrAdd(t *testing.T) {
+	l, err := New(2)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	l.Add(1, 1)
+	l.Add(2, 2)
+	previous, contains, evict := l.PeekOrAdd(1, 1)
+	if !contains {
+		t.Errorf("1 should be contained")
+	}
+	if evict {
+		t.Errorf("nothing should be evicted here")
+	}
+	if previous != 1 {
+		t.Errorf("previous is not equal to 1")
 	}
 
 	l.Add(3, 3)

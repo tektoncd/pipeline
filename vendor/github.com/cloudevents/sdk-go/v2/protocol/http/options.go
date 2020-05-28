@@ -80,16 +80,14 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 
 func checkListen(t *Protocol, prefix string) error {
 	switch {
-	case t.Port != nil:
-		return fmt.Errorf("%v port already set", prefix)
-	case t.listener != nil:
-		return fmt.Errorf("%v listener already set", prefix)
+	case t.listener.Load() != nil:
+		return fmt.Errorf("error setting %v: listener already set", prefix)
 	}
 	return nil
 }
 
 // WithPort sets the listening port for StartReceiver.
-// Only one of WithListener  or WithPort is allowed.
+// Only one of WithListener or WithPort is allowed.
 func WithPort(port int) Option {
 	return func(t *Protocol) error {
 		if t == nil {
@@ -101,7 +99,7 @@ func WithPort(port int) Option {
 		if err := checkListen(t, "http port option"); err != nil {
 			return err
 		}
-		t.setPort(port)
+		t.Port = port
 		return nil
 	}
 }
@@ -113,12 +111,11 @@ func WithListener(l net.Listener) Option {
 		if t == nil {
 			return fmt.Errorf("http listener option can not set nil protocol")
 		}
-		if err := checkListen(t, "http port option"); err != nil {
+		if err := checkListen(t, "http listener"); err != nil {
 			return err
 		}
-		t.listener = l
-		_, err := t.listen()
-		return err
+		t.listener.Store(l)
+		return nil
 	}
 }
 
@@ -192,6 +189,49 @@ func WithClient(client nethttp.Client) Option {
 			return fmt.Errorf("client option can not set nil protocol")
 		}
 		p.Client = &client
+		return nil
+	}
+}
+
+// WithGetHandlerFunc sets the http GET handler func
+func WithGetHandlerFunc(fn nethttp.HandlerFunc) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http GET handler func can not set nil protocol")
+		}
+		p.GetHandlerFn = fn
+		return nil
+	}
+}
+
+// WithOptionsHandlerFunc sets the http OPTIONS handler func
+func WithOptionsHandlerFunc(fn nethttp.HandlerFunc) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http OPTIONS handler func can not set nil protocol")
+		}
+		p.OptionsHandlerFn = fn
+		return nil
+	}
+}
+
+// WithDefaultOptionsHandlerFunc sets the options handler to be the built in handler and configures the options.
+// methods: the supported methods reported to OPTIONS caller.
+// rate: the rate limit reported to OPTIONS caller.
+// origins: the prefix of the accepted origins, or "*".
+// callback: preform the callback to ACK the OPTIONS request.
+func WithDefaultOptionsHandlerFunc(methods []string, rate int, origins []string, callback bool) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http OPTIONS handler func can not set nil protocol")
+		}
+		p.OptionsHandlerFn = p.DeleteHandlerFn
+		p.WebhookConfig = &WebhookConfig{
+			AllowedMethods:  methods,
+			AllowedRate:     &rate,
+			AllowedOrigins:  origins,
+			AutoACKCallback: callback,
+		}
 		return nil
 	}
 }
