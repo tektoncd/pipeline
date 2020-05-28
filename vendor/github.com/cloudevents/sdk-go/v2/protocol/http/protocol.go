@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cloudevents/sdk-go/v2/binding"
@@ -35,14 +35,24 @@ type Protocol struct {
 	Client          *http.Client
 	incoming        chan msgErr
 
+	// OptionsHandlerFn handles the OPTIONS method requests and is intended to
+	// implement the abuse protection spec:
+	// https://github.com/cloudevents/spec/blob/v1.0/http-webhook.md#4-abuse-protection
+	OptionsHandlerFn http.HandlerFunc
+	WebhookConfig    *WebhookConfig
+
+	GetHandlerFn    http.HandlerFunc
+	DeleteHandlerFn http.HandlerFunc
+
 	// To support Opener:
 
 	// ShutdownTimeout defines the timeout given to the http.Server when calling Shutdown.
 	// If nil, DefaultShutdownTimeout is used.
 	ShutdownTimeout time.Duration
 
-	// Port is the port to bind the receiver to. Defaults to 8080.
-	Port *int
+	// Port is the port configured to bind the receiver to. Defaults to 8080.
+	// If you want to know the effective port you're listening to, use GetListeningPort()
+	Port int
 	// Path is the path to bind the receiver to. Defaults to "/".
 	Path string
 
@@ -50,8 +60,9 @@ type Protocol struct {
 	reMu sync.Mutex
 	// Handler is the handler the http Server will use. Use this to reuse the
 	// http server. If nil, the Protocol will create a one.
-	Handler           *http.ServeMux
-	listener          net.Listener
+	Handler *http.ServeMux
+
+	listener          atomic.Value
 	roundTripper      http.RoundTripper
 	server            *http.Server
 	handlerRegistered bool
@@ -61,6 +72,7 @@ type Protocol struct {
 func New(opts ...Option) (*Protocol, error) {
 	p := &Protocol{
 		incoming: make(chan msgErr),
+		Port:     -1,
 	}
 	if err := p.applyOptions(opts...); err != nil {
 		return nil, err
@@ -223,9 +235,38 @@ func (p *Protocol) Respond(ctx context.Context) (binding.Message, protocol.Respo
 // ServeHTTP implements http.Handler.
 // Blocks until ResponseFn is invoked.
 func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// Filter the GET style methods:
+	switch req.Method {
+	case http.MethodOptions:
+		if p.OptionsHandlerFn == nil {
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		p.OptionsHandlerFn(rw, req)
+		return
+
+	case http.MethodGet:
+		if p.GetHandlerFn == nil {
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		p.GetHandlerFn(rw, req)
+		return
+
+	case http.MethodDelete:
+		if p.DeleteHandlerFn == nil {
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		p.DeleteHandlerFn(rw, req)
+		return
+	}
+
 	m := NewMessageFromHttpRequest(req)
 	if m == nil {
+		// Should never get here unless ServeHTTP is called directly.
 		p.incoming <- msgErr{msg: nil, err: binding.ErrUnknownEncoding}
+		rw.WriteHeader(http.StatusBadRequest)
 		return // if there was no message, return.
 	}
 

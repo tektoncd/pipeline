@@ -40,5 +40,5 @@ func (e *Result) Is(target error) bool {
 // Error returns the string that is formed by using the format string with the
 // provided args.
 func (e *Result) Error() string {
-	return fmt.Sprintf("%d: %s", e.StatusCode, fmt.Sprintf(e.Format, e.Args...))
+	return fmt.Sprintf("%d: %v", e.StatusCode, fmt.Errorf(e.Format, e.Args...))
 }
