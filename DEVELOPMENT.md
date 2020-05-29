@@ -77,7 +77,7 @@ You must install these tools:
 1.  [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
     built in
 1.  [`git`](https://help.github.com/articles/set-up-git/): For source control
-1.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.1 or
+1.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or
     higher is required for `pipeline` to work correctly.
 1.  [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
     interacting with your kube cluster
