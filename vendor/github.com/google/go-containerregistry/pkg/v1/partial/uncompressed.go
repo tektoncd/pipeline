@@ -89,7 +89,7 @@ func UncompressedToLayer(ul UncompressedLayer) (v1.Layer, error) {
 // UncompressedImageCore represents the bare minimum interface a natively
 // uncompressed image must implement for us to produce a v1.Image
 type UncompressedImageCore interface {
-	imageCore
+	ImageCore
 
 	// LayerByDiffID is a variation on the v1.Image method, which returns
 	// an UncompressedLayer instead.

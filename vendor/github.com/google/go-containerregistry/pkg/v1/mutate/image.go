@@ -120,8 +120,12 @@ func (i *image) compute() error {
 
 	// With OCI media types, this should not be set, see discussion:
 	// https://github.com/opencontainers/image-spec/pull/795
-	if i.mediaType != nil && strings.Contains(string(*i.mediaType), types.OCIVendorPrefix) {
-		manifest.MediaType = ""
+	if i.mediaType != nil {
+		if strings.Contains(string(*i.mediaType), types.OCIVendorPrefix) {
+			manifest.MediaType = ""
+		} else if strings.Contains(string(*i.mediaType), types.DockerVendorPrefix) {
+			manifest.MediaType = *i.mediaType
+		}
 	}
 
 	i.configFile = configFile

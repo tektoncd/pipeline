@@ -1,5 +1,7 @@
 # `authn`
 
+[![GoDoc](https://godoc.org/github.com/google/go-containerregistry/pkg/authn?status.svg)](https://godoc.org/github.com/google/go-containerregistry/pkg/authn)
+
 This README outlines how we acquire and use credentials when interacting with a registry.
 
 As much as possible, we attempt to emulate docker's authentication behavior and configuration so that this library "just works" if you've already configured credentials that work with docker; however, when things don't work, a basic understanding of what's going on can help with debugging.

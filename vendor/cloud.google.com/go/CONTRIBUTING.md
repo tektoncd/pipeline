@@ -1,5 +1,9 @@
 # Contributing
 
+1. [File an issue](https://github.com/googleapis/google-cloud-go/issues/new/choose).
+   The issue will be used to discuss the bug or feature and should be created
+   before sending a CL.
+
 1. [Install Go](https://golang.org/dl/).
     1. Ensure that your `GOBIN` directory (by default `$(go env GOPATH)/bin`)
     is in your `PATH`.
@@ -10,8 +14,8 @@
 1. Sign one of the
 [contributor license agreements](#contributor-license-agreements) below.
 
-1. Run `GO111MODULE=off go get golang.org/x/review/git-codereview` to install
-the code reviewing tool.
+1. Run `go get golang.org/x/review/git-codereview && go install golang.org/x/review/git-codereview`
+to install the code reviewing tool.
 
     1. Ensure it's working by running `git codereview` (check your `PATH` if
     not).
@@ -23,7 +27,7 @@ the code reviewing tool.
         * Should you run into issues with the `git-codereview` tool, please note
         that all error messages will assume that you have set up these aliases.
 
-1. Change to a directory of your choosing and clone the repo.b
+1. Change to a directory of your choosing and clone the repo.
 
     ```
     cd ~/code
@@ -96,7 +100,7 @@ change:
 
 1. Finally, add reviewers to your CL when it's ready for review. Reviewers will
 not be added automatically. If you're not sure who to add for your code review,
-add deklerk@, tbp@, cbro@, and codyoss@.
+add tbp@, cbro@, and codyoss@.
 
 
 ## Integration Tests

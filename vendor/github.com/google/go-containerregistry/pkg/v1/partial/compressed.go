@@ -76,7 +76,7 @@ func CompressedToLayer(ul CompressedLayer) (v1.Layer, error) {
 // CompressedImageCore represents the base minimum interface a natively
 // compressed image must implement for us to produce a v1.Image.
 type CompressedImageCore interface {
-	imageCore
+	ImageCore
 
 	// RawManifest returns the serialized bytes of the manifest.
 	RawManifest() ([]byte, error)

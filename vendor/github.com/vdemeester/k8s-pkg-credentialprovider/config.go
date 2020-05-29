@@ -19,7 +19,9 @@ package credentialprovider
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,6 +30,10 @@ import (
 	"sync"
 
 	"k8s.io/klog"
+)
+
+const (
+	maxReadLength = 10 * 1 << 20 // 10MB
 )
 
 // DockerConfigJson represents ~/.docker/config.json file info
@@ -54,7 +60,7 @@ var (
 	preferredPathLock sync.Mutex
 	preferredPath     = ""
 	workingDirPath    = ""
-	homeDirPath       = os.Getenv("HOME")
+	homeDirPath, _    = os.UserHomeDir()
 	rootDirPath       = "/"
 	homeJsonDirPath   = filepath.Join(homeDirPath, ".docker")
 	rootJsonDirPath   = filepath.Join(rootDirPath, ".docker")
@@ -195,9 +201,14 @@ func ReadUrl(url string, client *http.Client, header *http.Header) (body []byte,
 		}
 	}
 
-	contents, err := ioutil.ReadAll(resp.Body)
+	limitedReader := &io.LimitedReader{R: resp.Body, N: maxReadLength}
+	contents, err := ioutil.ReadAll(limitedReader)
 	if err != nil {
 		return nil, err
+	}
+
+	if limitedReader.N <= 0 {
+		return nil, errors.New("the read limit is reached")
 	}
 
 	return contents, nil
@@ -271,7 +282,19 @@ func (ident DockerConfigEntry) MarshalJSON() ([]byte, error) {
 // decodeDockerConfigFieldAuth deserializes the "auth" field from dockercfg into a
 // username and a password. The format of the auth field is base64(<username>:<password>).
 func decodeDockerConfigFieldAuth(field string) (username, password string, err error) {
-	decoded, err := base64.StdEncoding.DecodeString(field)
+
+	var decoded []byte
+
+	// StdEncoding can only decode padded string
+	// RawStdEncoding can only decode unpadded string
+	if strings.HasSuffix(strings.TrimSpace(field), "=") {
+		// decode padded data
+		decoded, err = base64.StdEncoding.DecodeString(field)
+	} else {
+		// decode unpadded data
+		decoded, err = base64.RawStdEncoding.DecodeString(field)
+	}
+
 	if err != nil {
 		return
 	}
