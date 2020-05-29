@@ -24,7 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
@@ -288,6 +290,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
+		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
@@ -396,6 +404,39 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	}
 
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))
+	return nil
+}
+
+func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, taskSpec *v1beta1.TaskSpec) error {
+	configMap := config.FromContextOrDefaults(ctx)
+	defaults := configMap.Defaults
+	if defaults.DefaultTaskRunWorkspaceBinding != "" {
+		var defaultWS v1beta1.WorkspaceBinding
+		if err := yaml.Unmarshal([]byte(defaults.DefaultTaskRunWorkspaceBinding), &defaultWS); err != nil {
+			return fmt.Errorf("failed to unmarshal %v", defaults.DefaultTaskRunWorkspaceBinding)
+		}
+		workspaceBindings := map[string]v1beta1.WorkspaceBinding{}
+		for _, tsWorkspace := range taskSpec.Workspaces {
+			workspaceBindings[tsWorkspace.Name] = v1beta1.WorkspaceBinding{
+				Name:                  tsWorkspace.Name,
+				SubPath:               defaultWS.SubPath,
+				VolumeClaimTemplate:   defaultWS.VolumeClaimTemplate,
+				PersistentVolumeClaim: defaultWS.PersistentVolumeClaim,
+				EmptyDir:              defaultWS.EmptyDir,
+				ConfigMap:             defaultWS.ConfigMap,
+				Secret:                defaultWS.Secret,
+			}
+		}
+
+		for _, trWorkspace := range tr.Spec.Workspaces {
+			workspaceBindings[trWorkspace.Name] = trWorkspace
+		}
+
+		tr.Spec.Workspaces = []v1beta1.WorkspaceBinding{}
+		for _, wsBinding := range workspaceBindings {
+			tr.Spec.Workspaces = append(tr.Spec.Workspaces, wsBinding)
+		}
+	}
 	return nil
 }
 

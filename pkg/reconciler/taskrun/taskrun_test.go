@@ -2727,6 +2727,106 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 	}
 }
 
+// TestReconcileValidDefaultWorkspace tests a reconcile of a TaskRun that does
+// not include a Workspace that the Task is expecting and it uses the default Workspace instead.
+func TestReconcileValidDefaultWorkspace(t *testing.T) {
+	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
+		tb.TaskSpec(
+			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
+			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
+		))
+	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	d := test.Data{
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+
+	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			"default-task-run-workspace-binding": "emptyDir: {}",
+		},
+	})
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	for _, c := range tr.Status.Conditions {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+			t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+		}
+	}
+}
+
+// TestReconcileInvalidDefaultWorkspace tests a reconcile of a TaskRun that does
+// not include a Workspace that the Task is expecting, and gets an error updating
+// the TaskRun with an invalid default workspace.
+func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
+	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
+		tb.TaskSpec(
+			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
+			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
+		))
+	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	d := test.Data{
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+
+	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			"default-task-run-workspace-binding": "emptyDir == {}",
+		},
+	})
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+		t.Errorf("Expected error reconciling invalid TaskRun due to invalid workspace but got %v", err)
+	}
+}
+
 func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	for _, tt := range []struct {
 		desc             string

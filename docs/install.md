@@ -265,6 +265,7 @@ The example below customizes the following:
 - the default `app.kubernetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
 - the default Pod template to include a node selector to select the node where the Pod will be scheduled by default.
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
+- the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide
 
 ```yaml
 apiVersion: v1
@@ -278,6 +279,8 @@ data:
     nodeSelector:
       kops.k8s.io/instancegroup: build-instance-group
   default-managed-by-label-value: "my-tekton-installation"
+  default-task-run-workspace-binding: 
+    emptyDir: {}
 ```
 
 **Note:** The `_example` key in the provided [config-defaults.yaml](./../config/config-defaults.yaml)

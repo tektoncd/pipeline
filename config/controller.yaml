@@ -84,6 +84,8 @@ spec:
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.
+        - name: CONFIG_DEFAULTS_NAME
+          value: config-defaults
         - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
