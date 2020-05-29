@@ -245,7 +245,7 @@ func validatePipelineTaskName(ctx context.Context, prefix string, i int, t Pipel
 
 // validatePipelineWorkspaces validates the specified workspaces, ensuring having unique name without any empty string,
 // and validates that all the referenced workspaces (by pipeline tasks) are specified in the pipeline
-func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []PipelineTask) *apis.FieldError {
+func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
 	wsTable := make(map[string]struct{})
 	for i, ws := range wss {

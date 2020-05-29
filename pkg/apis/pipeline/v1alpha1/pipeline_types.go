@@ -39,7 +39,7 @@ type PipelineSpec struct {
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
-	Workspaces []WorkspacePipelineDeclaration `json:"workspaces,omitempty"`
+	Workspaces []PipelineWorkspaceDeclaration `json:"workspaces,omitempty"`
 	// Results are values that this pipeline can output once run
 	// +optional
 	Results []PipelineResult `json:"results,omitempty"`

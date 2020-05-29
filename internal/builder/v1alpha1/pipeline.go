@@ -609,7 +609,7 @@ func PipelineResourceSpecSecretParam(fieldname, secretName, secretKey string) Pi
 func PipelineWorkspaceDeclaration(names ...string) PipelineSpecOp {
 	return func(spec *v1alpha1.PipelineSpec) {
 		for _, name := range names {
-			spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspacePipelineDeclaration{Name: name})
+			spec.Workspaces = append(spec.Workspaces, v1alpha1.PipelineWorkspaceDeclaration{Name: name})
 		}
 	}
 }

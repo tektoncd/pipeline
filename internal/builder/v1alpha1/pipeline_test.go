@@ -145,7 +145,7 @@ func TestPipeline(t *testing.T) {
 					}}},
 				}},
 			}},
-			Workspaces: []v1alpha1.WorkspacePipelineDeclaration{{
+			Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{
 				Name: "workspace1",
 			}},
 		},

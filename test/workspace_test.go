@@ -135,7 +135,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 	pipeline := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
-			Workspaces: []v1beta1.WorkspacePipelineDeclaration{{
+			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
 				Name: "foo",
 			}},
 			Tasks: []v1beta1.PipelineTask{{
@@ -204,7 +204,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	pipeline := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
-			Workspaces: []v1beta1.WorkspacePipelineDeclaration{{
+			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
 				Name: "foo",
 			}},
 			Tasks: []v1beta1.PipelineTask{{

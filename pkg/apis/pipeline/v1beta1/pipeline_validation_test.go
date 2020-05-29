@@ -85,7 +85,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 						StringVal: "pipeline-default",
 					},
 				}},
-				Workspaces: []WorkspacePipelineDeclaration{{
+				Workspaces: []PipelineWorkspaceDeclaration{{
 					Name:        "shared-workspace",
 					Description: "this is my shared workspace",
 				}},
@@ -978,11 +978,11 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 func TestValidatePipelineWorkspaces_Success(t *testing.T) {
 	tests := []struct {
 		name       string
-		workspaces []WorkspacePipelineDeclaration
+		workspaces []PipelineWorkspaceDeclaration
 		tasks      []PipelineTask
 	}{{
 		name: "unused pipeline spec workspaces do not cause an error",
-		workspaces: []WorkspacePipelineDeclaration{{
+		workspaces: []PipelineWorkspaceDeclaration{{
 			Name: "foo",
 		}, {
 			Name: "bar",
@@ -1004,11 +1004,11 @@ func TestValidatePipelineWorkspaces_Success(t *testing.T) {
 func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
 	tests := []struct {
 		name       string
-		workspaces []WorkspacePipelineDeclaration
+		workspaces []PipelineWorkspaceDeclaration
 		tasks      []PipelineTask
 	}{{
 		name: "workspace bindings relying on a non-existent pipeline workspace cause an error",
-		workspaces: []WorkspacePipelineDeclaration{{
+		workspaces: []PipelineWorkspaceDeclaration{{
 			Name: "foo",
 		}},
 		tasks: []PipelineTask{{
@@ -1020,7 +1020,7 @@ func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
 		}},
 	}, {
 		name: "multiple workspaces sharing the same name are not allowed",
-		workspaces: []WorkspacePipelineDeclaration{{
+		workspaces: []PipelineWorkspaceDeclaration{{
 			Name: "foo",
 		}, {
 			Name: "foo",
@@ -1030,7 +1030,7 @@ func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
 		}},
 	}, {
 		name: "workspace name must not be empty",
-		workspaces: []WorkspacePipelineDeclaration{{
+		workspaces: []PipelineWorkspaceDeclaration{{
 			Name: "",
 		}},
 		tasks: []PipelineTask{{
