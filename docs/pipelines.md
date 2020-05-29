@@ -440,8 +440,9 @@ without getting stuck in an infinite loop.
 
 This is done using:
 
-- [`from`](#using-the-from-parameter) clauses on the [`PipelineResources`](resources.md) used by each `Task`, and
-- [`runAfter`](#using-the-runafter-parameter) clauses on the corresponding `Tasks`.
+- [`from`](#using-the-from-parameter) clauses on the [`PipelineResources`](resources.md) used by each `Task`
+- [`runAfter`](#using-the-runafter-parameter) clauses on the corresponding `Tasks`
+- By linking the [`results`](#configuring-execution-results-at-the-pipeline-level) of one `Task` to the params of another
 
 For example, the `Pipeline` defined as follows
 
