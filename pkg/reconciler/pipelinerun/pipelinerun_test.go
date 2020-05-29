@@ -440,6 +440,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params")),
 			tb.PipelineRunParam("some-param", "stringval"),
 		)),
+		tb.PipelineRun("pipelinerun-missing-params", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineParamSpec("some-param", v1beta1.ParamTypeString),
+			tb.PipelineTask("some-task", "a-task-that-needs-params")),
+		)),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -497,6 +501,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-embedded-pipeline-mismatching-parameter-types",
 			pipelineRun: prs[10],
 			reason:      ReasonParameterTypeMismatch,
+		}, {
+			name:        "invalid-pipeline-run-missing-params-shd-stop-reconciling",
+			pipelineRun: prs[11],
+			reason:      ReasonParameterMissing,
 		},
 	}
 

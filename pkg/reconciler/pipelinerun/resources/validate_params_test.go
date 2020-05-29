@@ -121,3 +121,104 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
+	tcs := []struct {
+		name string
+		pp   []v1beta1.ParamSpec
+		prp  []v1beta1.Param
+	}{{
+		name: "required string params provided",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "required-string-param",
+				Type: v1beta1.ParamTypeString,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name:  "required-string-param",
+				Value: *tb.ArrayOrString("somestring"),
+			},
+		},
+	}, {
+		name: "required array params provided",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "required-array-param",
+				Type: v1beta1.ParamTypeArray,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name:  "required-array-param",
+				Value: *tb.ArrayOrString("another", "array"),
+			},
+		},
+	}, {
+		name: "string params provided in default",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name:    "string-param",
+				Type:    v1beta1.ParamTypeString,
+				Default: tb.ArrayOrString("somedefault"),
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name:  "another-string-param",
+				Value: *tb.ArrayOrString("somestring"),
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err != nil {
+				t.Errorf("Didn't expect to see error when validating valid PipelineRun parameters but got: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
+	tcs := []struct {
+		name string
+		pp   []v1beta1.ParamSpec
+		prp  []v1beta1.Param
+	}{{
+		name: "required string param missing",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "required-string-param",
+				Type: v1beta1.ParamTypeString,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name:  "another-string-param",
+				Value: *tb.ArrayOrString("anotherstring"),
+			},
+		},
+	}, {
+		name: "required array param missing",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "required-array-param",
+				Type: v1beta1.ParamTypeArray,
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name:  "another-array-param",
+				Value: *tb.ArrayOrString("anotherstring"),
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err == nil {
+				t.Errorf("Expected to see error when validating invalid PipelineRun parameters but saw none")
+			}
+		})
+	}
+}

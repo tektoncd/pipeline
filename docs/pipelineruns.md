@@ -186,6 +186,9 @@ to all `persistentVolumeClaims` generated internally.
 You can specify `Parameters` that you want to pass to the `Pipeline` during execution,
 including different values of the same parameter for different `Tasks` in the `Pipeline`.
 
+**Note:** You must specify all the `Parameters` that the `Pipeline` expects. Parameters 
+that have default values specified in Pipeline are not required to be provided by PipelineRun.
+
 For example:
 
 ```yaml
@@ -196,6 +199,10 @@ spec:
   - name: pl-param-y
     value: "500"
 ```
+You can pass in extra `Parameters` if needed depending on your use cases. An example use 
+case is when your CI system autogenerates `PipelineRuns` and it has `Parameters` it wants to 
+provide to all `PipelineRuns`. Because you can pass in extra `Parameters`, you don't have to 
+go through the complexity of checking each `Pipeline` and providing only the required params.
 
 ### Specifying custom `ServiceAccount` credentials
 
