@@ -14,29 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gcp_credentials
+package gcp
 
 import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/klog"
-	"github.com/vdemeester/k8s-pkg-credentialprovider"
+	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
 )
 
 const (
-	metadataUrl              = "http://metadata.google.internal./computeMetadata/v1/"
-	metadataAttributes       = metadataUrl + "instance/attributes/"
+	metadataURL              = "http://metadata.google.internal./computeMetadata/v1/"
+	metadataAttributes       = metadataURL + "instance/attributes/"
 	dockerConfigKey          = metadataAttributes + "google-dockercfg"
-	dockerConfigUrlKey       = metadataAttributes + "google-dockercfg-url"
-	serviceAccounts          = metadataUrl + "instance/service-accounts/"
-	metadataScopes           = metadataUrl + "instance/service-accounts/default/scopes"
-	metadataToken            = metadataUrl + "instance/service-accounts/default/token"
-	metadataEmail            = metadataUrl + "instance/service-accounts/default/email"
+	dockerConfigURLKey       = metadataAttributes + "google-dockercfg-url"
+	serviceAccounts          = metadataURL + "instance/service-accounts/"
+	metadataScopes           = metadataURL + "instance/service-accounts/default/scopes"
+	metadataToken            = metadataURL + "instance/service-accounts/default/token"
+	metadataEmail            = metadataURL + "instance/service-accounts/default/email"
 	storageScopePrefix       = "https://www.googleapis.com/auth/devstorage"
 	cloudPlatformScopePrefix = "https://www.googleapis.com/auth/cloud-platform"
 	defaultServiceAccount    = "default/"
@@ -68,7 +70,7 @@ type dockerConfigKeyProvider struct {
 
 // A DockerConfigProvider that reads its configuration from a URL read from
 // a specific Google Compute Engine metadata key: 'google-dockercfg-url'.
-type dockerConfigUrlKeyProvider struct {
+type dockerConfigURLKeyProvider struct {
 	metadataProvider
 }
 
@@ -98,7 +100,7 @@ func init() {
 
 	credentialprovider.RegisterCredentialProvider("google-dockercfg-url",
 		&credentialprovider.CachingDockerConfigProvider{
-			Provider: &dockerConfigUrlKeyProvider{
+			Provider: &dockerConfigURLKeyProvider{
 				metadataProvider{Client: httpClient},
 			},
 			Lifetime: 60 * time.Second,
@@ -115,12 +117,27 @@ func init() {
 // Returns true if it finds a local GCE VM.
 // Looks at a product file that is an undocumented API.
 func onGCEVM() bool {
-	data, err := ioutil.ReadFile(gceProductNameFile)
-	if err != nil {
-		klog.V(2).Infof("Error while reading product_name: %v", err)
-		return false
+	var name string
+
+	if runtime.GOOS == "windows" {
+		data, err := exec.Command("wmic", "computersystem", "get", "model").Output()
+		if err != nil {
+			return false
+		}
+		fields := strings.Split(strings.TrimSpace(string(data)), "\r\n")
+		if len(fields) != 2 {
+			klog.V(2).Infof("Received unexpected value retrieving system model: %q", string(data))
+			return false
+		}
+		name = fields[1]
+	} else {
+		data, err := ioutil.ReadFile(gceProductNameFile)
+		if err != nil {
+			klog.V(2).Infof("Error while reading product_name: %v", err)
+			return false
+		}
+		name = strings.TrimSpace(string(data))
 	}
-	name := strings.TrimSpace(string(data))
 	return name == "Google" || name == "Google Compute Engine"
 }
 
@@ -129,13 +146,8 @@ func (g *metadataProvider) Enabled() bool {
 	return onGCEVM()
 }
 
-// LazyProvide implements DockerConfigProvider. Should never be called.
-func (g *dockerConfigKeyProvider) LazyProvide() *credentialprovider.DockerConfigEntry {
-	return nil
-}
-
 // Provide implements DockerConfigProvider
-func (g *dockerConfigKeyProvider) Provide() credentialprovider.DockerConfig {
+func (g *dockerConfigKeyProvider) Provide(image string) credentialprovider.DockerConfig {
 	// Read the contents of the google-dockercfg metadata key and
 	// parse them as an alternate .dockercfg
 	if cfg, err := credentialprovider.ReadDockerConfigFileFromUrl(dockerConfigKey, g.Client, metadataHeader); err != nil {
@@ -147,15 +159,10 @@ func (g *dockerConfigKeyProvider) Provide() credentialprovider.DockerConfig {
 	return credentialprovider.DockerConfig{}
 }
 
-// LazyProvide implements DockerConfigProvider. Should never be called.
-func (g *dockerConfigUrlKeyProvider) LazyProvide() *credentialprovider.DockerConfigEntry {
-	return nil
-}
-
 // Provide implements DockerConfigProvider
-func (g *dockerConfigUrlKeyProvider) Provide() credentialprovider.DockerConfig {
+func (g *dockerConfigURLKeyProvider) Provide(image string) credentialprovider.DockerConfig {
 	// Read the contents of the google-dockercfg-url key and load a .dockercfg from there
-	if url, err := credentialprovider.ReadUrl(dockerConfigUrlKey, g.Client, metadataHeader); err != nil {
+	if url, err := credentialprovider.ReadUrl(dockerConfigURLKey, g.Client, metadataHeader); err != nil {
 		klog.Errorf("while reading 'google-dockercfg-url' metadata: %v", err)
 	} else {
 		if strings.HasPrefix(string(url), "http") {
@@ -173,7 +180,7 @@ func (g *dockerConfigUrlKeyProvider) Provide() credentialprovider.DockerConfig {
 	return credentialprovider.DockerConfig{}
 }
 
-// runcWithBackoff runs input function `f` with an exponential backoff.
+// runWithBackoff runs input function `f` with an exponential backoff.
 // Note that this method can block indefinitely.
 func runWithBackoff(f func() ([]byte, error)) []byte {
 	var backoff = 100 * time.Millisecond
@@ -257,16 +264,11 @@ type tokenBlob struct {
 	AccessToken string `json:"access_token"`
 }
 
-// LazyProvide implements DockerConfigProvider. Should never be called.
-func (g *containerRegistryProvider) LazyProvide() *credentialprovider.DockerConfigEntry {
-	return nil
-}
-
 // Provide implements DockerConfigProvider
-func (g *containerRegistryProvider) Provide() credentialprovider.DockerConfig {
+func (g *containerRegistryProvider) Provide(image string) credentialprovider.DockerConfig {
 	cfg := credentialprovider.DockerConfig{}
 
-	tokenJsonBlob, err := credentialprovider.ReadUrl(metadataToken, g.Client, metadataHeader)
+	tokenJSONBlob, err := credentialprovider.ReadUrl(metadataToken, g.Client, metadataHeader)
 	if err != nil {
 		klog.Errorf("while reading access token endpoint: %v", err)
 		return cfg
@@ -279,8 +281,8 @@ func (g *containerRegistryProvider) Provide() credentialprovider.DockerConfig {
 	}
 
 	var parsedBlob tokenBlob
-	if err := json.Unmarshal([]byte(tokenJsonBlob), &parsedBlob); err != nil {
-		klog.Errorf("while parsing json blob %s: %v", tokenJsonBlob, err)
+	if err := json.Unmarshal([]byte(tokenJSONBlob), &parsedBlob); err != nil {
+		klog.Errorf("while parsing json blob %s: %v", tokenJSONBlob, err)
 		return cfg
 	}
 

@@ -15,6 +15,9 @@
 package k8schain
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
@@ -37,6 +40,11 @@ type Options struct {
 	// Namespace) containing credential data to use for the image pull.
 	ImagePullSecrets []string
 }
+
+var (
+	keyring credentialprovider.DockerKeyring
+	once    sync.Once
+)
 
 // New returns a new authn.Keychain suitable for resolving image references as
 // scoped by the provided Options.  It speaks to Kubernetes through the provided
@@ -81,8 +89,12 @@ func New(client kubernetes.Interface, opt Options) (authn.Keychain, error) {
 		}
 	}
 
+	once.Do(func() {
+		keyring = credentialprovider.NewDockerKeyring()
+	})
+
 	// Third, extend the default keyring with the pull secrets.
-	kr, err := credentialprovidersecrets.MakeDockerKeyring(pullSecrets, credentialprovider.NewDockerKeyring())
+	kr, err := credentialprovidersecrets.MakeDockerKeyring(pullSecrets, keyring)
 	if err != nil {
 		return nil, err
 	}
@@ -119,11 +131,18 @@ func NewNoClient() (authn.Keychain, error) {
 	return New(nil, Options{})
 }
 
-type lazyProvider credentialprovider.LazyAuthConfiguration
+type lazyProvider struct {
+	kc    *keychain
+	image string
+}
 
 // Authorization implements Authenticator.
 func (lp lazyProvider) Authorization() (*authn.AuthConfig, error) {
-	authConfig := credentialprovider.LazyProvide(credentialprovider.LazyAuthConfiguration(lp))
+	creds, found := lp.kc.keyring.Lookup(lp.image)
+	if !found || len(creds) < 1 {
+		return nil, fmt.Errorf("keychain returned no credentials for %q", lp.image)
+	}
+	authConfig := creds[0]
 	return &authn.AuthConfig{
 		Username:      authConfig.Username,
 		Password:      authConfig.Password,
@@ -139,19 +158,20 @@ type keychain struct {
 
 // Resolve implements authn.Keychain
 func (kc *keychain) Resolve(target authn.Resource) (authn.Authenticator, error) {
-	var (
-		creds []credentialprovider.LazyAuthConfiguration
-		found bool
-	)
+	var image string
 	if repo, ok := target.(name.Repository); ok {
-		creds, found = kc.keyring.Lookup(repo.String())
+		image = repo.String()
 	} else {
 		// Lookup expects an image reference and we only have a registry.
-		creds, found = kc.keyring.Lookup(target.RegistryStr() + "/foo/bar")
+		image = target.RegistryStr() + "/foo/bar"
 	}
-	if !found || len(creds) < 1 {
+
+	if creds, found := kc.keyring.Lookup(image); !found || len(creds) < 1 {
 		return authn.Anonymous, nil
 	}
 	// TODO(mattmoor): How to support multiple credentials?
-	return lazyProvider(creds[0]), nil
+	return lazyProvider{
+		kc:    kc,
+		image: image,
+	}, nil
 }
