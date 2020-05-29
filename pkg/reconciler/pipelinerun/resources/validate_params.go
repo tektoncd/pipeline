@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/list"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
@@ -43,6 +44,32 @@ func ValidateParamTypesMatching(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun
 	// Return an error with the misconfigured parameters' names, or return nil if there are none.
 	if len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("parameters have inconsistent types : %s", wrongTypeParamNames)
+	}
+	return nil
+}
+
+// ValidateRequiredParametersProvided validates that all the parameters expected by the Pipeline are provided by the PipelineRun.
+// Extra Parameters are allowed, the Pipeline will use the Parameters it needs and ignore the other Parameters.
+func ValidateRequiredParametersProvided(pipelineParameters *[]v1beta1.ParamSpec, pipelineRunParameters *[]v1beta1.Param) error {
+	// Build a list of parameter names declared in pr.
+	var providedParams []string
+	for _, param := range *pipelineRunParameters {
+		providedParams = append(providedParams, param.Name)
+	}
+
+	var requiredParams []string
+	for _, param := range *pipelineParameters {
+		if param.Default == nil { // include only parameters that don't have default values specified in the Pipeline
+			requiredParams = append(requiredParams, param.Name)
+		}
+	}
+
+	// Build a list of parameter names in p that are missing from pr.
+	missingParams := list.DiffLeft(requiredParams, providedParams)
+
+	// Return an error with the missing parameters' names, or return nil if there are none.
+	if len(missingParams) != 0 {
+		return fmt.Errorf("PipelineRun missing parameters: %s", missingParams)
 	}
 	return nil
 }
