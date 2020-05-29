@@ -78,7 +78,12 @@ type WorkspaceBinding struct {
 
 // WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
 // is expected to populate with a workspace binding.
-type WorkspacePipelineDeclaration struct {
+// Deprecated: use PipelineWorkspaceDeclaration type instead
+type WorkspacePipelineDeclaration = PipelineWorkspaceDeclaration
+
+// PipelineWorkspaceDeclaration creates a named slot in a Pipeline that a PipelineRun
+// is expected to populate with a workspace binding.
+type PipelineWorkspaceDeclaration struct {
 	// Name is the name of a workspace to be provided by a PipelineRun.
 	Name string `json:"name"`
 	// Description is a human readable string describing how the workspace will be

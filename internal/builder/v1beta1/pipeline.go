@@ -541,7 +541,7 @@ func PipelineRunTaskRunsStatus(taskRunName string, status *v1beta1.PipelineRunTa
 func PipelineWorkspaceDeclaration(names ...string) PipelineSpecOp {
 	return func(spec *v1beta1.PipelineSpec) {
 		for _, name := range names {
-			spec.Workspaces = append(spec.Workspaces, v1beta1.WorkspacePipelineDeclaration{Name: name})
+			spec.Workspaces = append(spec.Workspaces, v1beta1.PipelineWorkspaceDeclaration{Name: name})
 		}
 	}
 }

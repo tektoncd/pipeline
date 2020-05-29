@@ -231,7 +231,7 @@ func validatePipelineTaskName(ctx context.Context, prefix string, i int, t Pipel
 	return nil
 }
 
-func validatePipelineWorkspaces(wss []WorkspacePipelineDeclaration, pts []PipelineTask) *apis.FieldError {
+func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
 	wsTable := make(map[string]struct{})
 	for i, ws := range wss {

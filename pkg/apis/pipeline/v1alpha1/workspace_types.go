@@ -26,9 +26,9 @@ type WorkspaceDeclaration = v1beta1.WorkspaceDeclaration
 // WorkspaceBinding maps a Task's declared workspace to a Volume.
 type WorkspaceBinding = v1beta1.WorkspaceBinding
 
-// WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
+// PipelineWorkspaceDeclaration creates a named slot in a Pipeline that a PipelineRun
 // is expected to populate with a workspace binding.
-type WorkspacePipelineDeclaration = v1beta1.WorkspacePipelineDeclaration
+type PipelineWorkspaceDeclaration = v1beta1.PipelineWorkspaceDeclaration
 
 // WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
 // mapped to a task's declared workspace.

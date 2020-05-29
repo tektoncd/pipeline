@@ -71,7 +71,7 @@ func TestPipelineConversion(t *testing.T) {
 					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
 				}},
-				Workspaces: []WorkspacePipelineDeclaration{{
+				Workspaces: []PipelineWorkspaceDeclaration{{
 					Name: "workspace1",
 				}},
 				Tasks: []PipelineTask{{
