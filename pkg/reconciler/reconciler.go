@@ -17,8 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"time"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineScheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
@@ -29,7 +27,6 @@ import (
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	cachingclientset "knative.dev/caching/pkg/client/clientset/versioned"
-	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/logging/logkey"
 )
 
@@ -41,19 +38,8 @@ type Options struct {
 	PipelineClientSet clientset.Interface
 	CachingClientSet  cachingclientset.Interface
 
-	ConfigMapWatcher configmap.Watcher
-	Logger           *zap.SugaredLogger
-	Recorder         record.EventRecorder
-
-	ResyncPeriod time.Duration
-}
-
-// GetTrackerLease returns a multiple of the resync period to use as the
-// duration for tracker leases. This attempts to ensure that resyncs happen to
-// refresh leases frequently enough that we don't miss updates to tracked
-// objects.
-func (o Options) GetTrackerLease() time.Duration {
-	return o.ResyncPeriod * 3
+	Logger   *zap.SugaredLogger
+	Recorder record.EventRecorder
 }
 
 // Base implements the core controller logic, given a Reconciler.
@@ -66,9 +52,6 @@ type Base struct {
 
 	// CachingClientSet allows us to instantiate Image objects
 	CachingClientSet cachingclientset.Interface
-
-	// ConfigMapWatcher allows us to watch for ConfigMap changes.
-	ConfigMapWatcher configmap.Watcher
 
 	// Recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -117,10 +100,10 @@ func NewBase(opt Options, controllerAgentName string, images pipeline.Images) *B
 
 		PipelineClientSet: opt.PipelineClientSet,
 		CachingClientSet:  opt.CachingClientSet,
-		ConfigMapWatcher:  opt.ConfigMapWatcher,
-		Recorder:          recorder,
-		Logger:            logger,
-		Images:            images,
+
+		Recorder: recorder,
+		Logger:   logger,
+		Images:   images,
 	}
 
 	return base
