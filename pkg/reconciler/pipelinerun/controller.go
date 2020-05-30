@@ -66,8 +66,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		opt := reconciler.Options{
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
-			ConfigMapWatcher:  cmw,
-			ResyncPeriod:      resyncPeriod,
 			Logger:            logger,
 		}
 
@@ -103,7 +101,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		c.Logger.Info("Setting up ConfigMap receivers")
 		c.configStore = config.NewStore(images, c.Logger.Named("config-store"))
-		c.configStore.WatchConfigs(opt.ConfigMapWatcher)
+		c.configStore.WatchConfigs(cmw)
 
 		return impl
 	}

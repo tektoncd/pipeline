@@ -64,8 +64,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		opt := reconciler.Options{
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
-			ConfigMapWatcher:  cmw,
-			ResyncPeriod:      resyncPeriod,
 			Logger:            logger,
 			Recorder:          controller.GetEventRecorder(ctx),
 		}
