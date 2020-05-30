@@ -148,6 +148,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			if err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
+			err = metrics.CloudEvents(tr)
+			if err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
 		}(c.metrics)
 
 		return merr.ErrorOrNil()
