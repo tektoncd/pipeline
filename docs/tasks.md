@@ -484,7 +484,7 @@ The `sidecars` field specifies a list of [`Containers`](https://kubernetes.io/do
 to run alongside the `Steps` in your `Task`. You can use `Sidecars` to provide auxiliary functionality, such as
 [Docker in Docker](https://hub.docker.com/_/docker) or running a mock API server that your app can hit during testing.
 `Sidecars` spin up before your `Task` executes and are deleted after the `Task` execution completes.
-For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#sidecars).
+For further information, see [`Sidecars` in `TaskRuns`](taskruns.md#specifying-sidecars).
 
 In the example below, a `Step` uses a Docker-in-Docker `Sidecar` to build a Docker image:
 
