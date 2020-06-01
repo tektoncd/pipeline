@@ -18,6 +18,8 @@ package injection
 
 import (
 	"context"
+
+	"k8s.io/client-go/rest"
 )
 
 // nsKey is the key that namespaces are associated with on
@@ -46,4 +48,21 @@ func GetNamespaceScope(ctx context.Context) string {
 		return ""
 	}
 	return value.(string)
+}
+
+// cfgKey is the key that the config is associated with.
+type cfgKey struct{}
+
+// WithConfig associates a given config with the context.
+func WithConfig(ctx context.Context, cfg *rest.Config) context.Context {
+	return context.WithValue(ctx, cfgKey{}, cfg)
+}
+
+// GetConfig gets the current config from the context.
+func GetConfig(ctx context.Context) *rest.Config {
+	value := ctx.Value(cfgKey{})
+	if value == nil {
+		return nil
+	}
+	return value.(*rest.Config)
 }

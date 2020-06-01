@@ -42,11 +42,11 @@ type Callback struct {
 	function func(ctx context.Context, unstructured *unstructured.Unstructured) error
 
 	// supportedVerbs are the verbs supported for the callback.
-	// The function will only be called on these acitons.
+	// The function will only be called on these actions.
 	supportedVerbs map[webhook.Operation]struct{}
 }
 
-// NewCallback creates a new callback function to be invoked on supported vebs.
+// NewCallback creates a new callback function to be invoked on supported verbs.
 func NewCallback(function func(context.Context, *unstructured.Unstructured) error, supportedVerbs ...webhook.Operation) Callback {
 	m := make(map[webhook.Operation]struct{})
 	for _, op := range supportedVerbs {
@@ -131,21 +131,24 @@ func (ac *reconciler) decodeRequestAndPrepareContext(
 		}
 	}
 
-	// Set up the context for validation
-	if oldObj != nil {
-		if req.SubResource == "" {
-			ctx = apis.WithinUpdate(ctx, oldObj)
-		} else {
-			ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
-		}
-	} else {
-		ctx = apis.WithinCreate(ctx)
-	}
 	ctx = apis.WithUserInfo(ctx, &req.UserInfo)
 	ctx = context.WithValue(ctx, kubeclient.Key{}, ac.client)
-
 	if req.DryRun != nil && *req.DryRun {
 		ctx = apis.WithDryRun(ctx)
+	}
+
+	if newObj != nil && oldObj != nil && req.SubResource == "" {
+		ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
+	}
+
+	switch req.Operation {
+	case admissionv1beta1.Update:
+		ctx = apis.WithinUpdate(ctx, oldObj)
+	case admissionv1beta1.Create:
+		ctx = apis.WithinCreate(ctx)
+	case admissionv1beta1.Delete:
+		ctx = apis.WithinDelete(ctx)
+		return ctx, oldObj, nil
 	}
 
 	return ctx, newObj, nil
@@ -158,6 +161,8 @@ func validate(ctx context.Context, resource resourcesemantics.GenericCRD, req *a
 	switch req.Operation {
 	case admissionv1beta1.Create, admissionv1beta1.Update:
 		// Supported verbs
+	case admissionv1beta1.Delete:
+		return nil // Validation handled by optional Callback, but not validatable.
 	default:
 		logger.Infof("Unhandled webhook validation operation, letting it through %v", req.Operation)
 		return nil

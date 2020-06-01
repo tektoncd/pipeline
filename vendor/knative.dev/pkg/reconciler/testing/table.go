@@ -321,7 +321,9 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		if got.GetName() != want.GetName() {
 			t.Errorf("Unexpected patch[%d]: %#v", i, got)
 		}
-		if !r.SkipNamespaceValidation && got.GetNamespace() != expectedNamespace {
+		if (!r.SkipNamespaceValidation && got.GetNamespace() != expectedNamespace) &&
+			(!r.SkipNamespaceValidation && got.GetResource().GroupResource().Resource != "namespaces" &&
+				got.GetName() != expectedNamespace) {
 			t.Errorf("Unexpected patch[%d]: %#v", i, got)
 		}
 		if diff := cmp.Diff(string(want.GetPatch()), string(got.GetPatch())); diff != "" {

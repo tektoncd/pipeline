@@ -1,4 +1,4 @@
-# cloud.google.com/go v0.53.0
+# cloud.google.com/go v0.55.0
 cloud.google.com/go
 cloud.google.com/go/compute/metadata
 cloud.google.com/go/container/apiv1
@@ -18,19 +18,19 @@ contrib.go.opencensus.io/exporter/prometheus
 # contrib.go.opencensus.io/exporter/stackdriver v0.13.1 => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
 contrib.go.opencensus.io/exporter/stackdriver
 contrib.go.opencensus.io/exporter/stackdriver/monitoredresource
-# github.com/Azure/azure-sdk-for-go v38.0.0+incompatible
+# github.com/Azure/azure-sdk-for-go v38.0.0+incompatible => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
 github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2019-05-01/containerregistry
 github.com/Azure/azure-sdk-for-go/version
-# github.com/Azure/go-autorest/autorest v0.9.3
+# github.com/Azure/go-autorest/autorest v0.9.6
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure
-# github.com/Azure/go-autorest/autorest/adal v0.8.1
+# github.com/Azure/go-autorest/autorest/adal v0.8.2
 github.com/Azure/go-autorest/autorest/adal
 # github.com/Azure/go-autorest/autorest/date v0.2.0
 github.com/Azure/go-autorest/autorest/date
 # github.com/Azure/go-autorest/autorest/to v0.3.0
 github.com/Azure/go-autorest/autorest/to
-# github.com/Azure/go-autorest/autorest/validation v0.1.0
+# github.com/Azure/go-autorest/autorest/validation v0.2.0
 github.com/Azure/go-autorest/autorest/validation
 # github.com/Azure/go-autorest/logger v0.1.0
 github.com/Azure/go-autorest/logger
@@ -86,7 +86,7 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/blang/semver v3.5.0+incompatible
+# github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
 # github.com/census-instrumentation/opencensus-proto v0.2.1
 github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1
@@ -123,7 +123,7 @@ github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
 github.com/docker/cli/cli/config/types
-# github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
+# github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 github.com/docker/docker/pkg/homedir
 # github.com/docker/docker-credential-helpers v0.6.3
 github.com/docker/docker-credential-helpers/client
@@ -141,11 +141,11 @@ github.com/go-logr/logr
 github.com/go-openapi/jsonpointer
 # github.com/go-openapi/jsonreference v0.19.3
 github.com/go-openapi/jsonreference
-# github.com/go-openapi/spec v0.19.4
+# github.com/go-openapi/spec v0.19.6
 github.com/go-openapi/spec
-# github.com/go-openapi/swag v0.19.5
+# github.com/go-openapi/swag v0.19.7
 github.com/go-openapi/swag
-# github.com/gobuffalo/envy v1.6.5
+# github.com/gobuffalo/envy v1.7.1
 github.com/gobuffalo/envy
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
@@ -267,10 +267,14 @@ github.com/prometheus/client_model/go
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.0.8
+# github.com/prometheus/procfs v0.0.10
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rogpeppe/go-internal v1.3.2
+github.com/rogpeppe/go-internal/modfile
+github.com/rogpeppe/go-internal/module
+github.com/rogpeppe/go-internal/semver
 # github.com/shurcooL/githubv4 v0.0.0-20191102174205-af46314aec7b
 github.com/shurcooL/githubv4
 # github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f
@@ -329,10 +333,7 @@ go.uber.org/zap/zaptest/observer
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6
-golang.org/x/exp/apidiff
-golang.org/x/exp/cmd/apidiff
-# golang.org/x/lint v0.0.0-20200130185559-910be7a94367
+# golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 golang.org/x/lint
 golang.org/x/lint/golint
 # golang.org/x/mod v0.2.0
@@ -343,6 +344,7 @@ golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
+golang.org/x/net/http2/h2c
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
@@ -367,7 +369,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 golang.org/x/time/rate
-# golang.org/x/tools v0.0.0-20200224181240-023911ca70b2
+# golang.org/x/tools v0.0.0-20200317043434-63da46f3035e
 golang.org/x/tools/cmd/goimports
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/passes/inspect
@@ -384,6 +386,7 @@ golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/fastwalk
+golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/packagesinternal
@@ -403,7 +406,6 @@ google.golang.org/api/option
 google.golang.org/api/option/internaloption
 google.golang.org/api/storage/v1
 google.golang.org/api/support/bundler
-google.golang.org/api/transport
 google.golang.org/api/transport/cert
 google.golang.org/api/transport/grpc
 google.golang.org/api/transport/http
@@ -421,7 +423,7 @@ google.golang.org/appengine/internal/socket
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/socket
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20200224152610-e50cd9704f63
+# google.golang.org/genproto v0.0.0-20200317114155-1f3552e48f24
 google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/distribution
@@ -894,7 +896,7 @@ k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
 # k8s.io/component-base v0.17.6
 k8s.io/component-base/version
-# k8s.io/gengo v0.0.0-20191108084044-e500ee069b5c => k8s.io/gengo v0.0.0-20190327210449-e17681d19d3a
+# k8s.io/gengo v0.0.0-20200205140755-e0e292d8aa12
 k8s.io/gengo/args
 k8s.io/gengo/examples/deepcopy-gen/generators
 k8s.io/gengo/examples/defaulter-gen/generators
@@ -920,13 +922,13 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/caching v0.0.0-20200521155757-e78d17bc250e => knative.dev/caching v0.0.0-20200116200605-67bca2c83dfa
+# knative.dev/caching v0.0.0-20200521155757-e78d17bc250e => knative.dev/caching v0.0.0-20200521155757-e78d17bc250e
 knative.dev/caching/pkg/apis/caching
 knative.dev/caching/pkg/apis/caching/v1alpha1
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/scheme
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1
-# knative.dev/pkg v0.0.0-20200528190300-08a86da47d28 => knative.dev/pkg v0.0.0-20200410152005-2a1db869228c
+# knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9 => knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/v1
@@ -962,6 +964,7 @@ knative.dev/pkg/metrics
 knative.dev/pkg/metrics/metricskey
 knative.dev/pkg/metrics/metricstest
 knative.dev/pkg/metrics/testing
+knative.dev/pkg/network
 knative.dev/pkg/profiling
 knative.dev/pkg/ptr
 knative.dev/pkg/reconciler

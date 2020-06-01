@@ -452,6 +452,28 @@ value of the `<key>` annotation on a resource must match the value provided to
 `NewImpl` (or `NewReconcile`) for `ReconcileKind` or `FinalizeKind` to be called
 for that resource.
 
+#### Annotation based common logic
+
+**krshaped=true may become the default if omitted in the future**
+
+Reconcilers can handle common logic for resources that conform to the KRShaped
+interface. This allows the generated code to automatically increment
+ObservedGeneration.
+
+```go
+// +genreconciler:krshapedlogic=true
+```
+
+Setting this annotation will emit the following in the generated reconciler.
+
+```go
+reconciler.PreProcessReconcile(ctx, resource)
+
+reconcileEvent = r.reconciler.ReconcileKind(ctx, resource)
+
+reconciler.PostProcessReconcile(ctx, resource)
+```
+
 #### Stubs
 
 To get started, or to use as reference. It is intended to be copied out of the

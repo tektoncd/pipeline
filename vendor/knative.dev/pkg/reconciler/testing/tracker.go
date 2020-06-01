@@ -20,6 +20,8 @@ import (
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/tracker"
 )
 
@@ -31,13 +33,32 @@ type NullTracker = FakeTracker
 // FakeTracker implements Tracker.
 type FakeTracker struct {
 	sync.Mutex
-	references []tracker.Reference
+	references map[tracker.Reference]map[types.NamespacedName]struct{}
 }
 
 var _ tracker.Interface = (*FakeTracker)(nil)
 
 // OnChanged implements OnChanged.
 func (*FakeTracker) OnChanged(interface{}) {}
+
+// OnDeletedObserver implements OnDeletedObserver.
+func (n *FakeTracker) OnDeletedObserver(obj interface{}) {
+	item, err := kmeta.DeletionHandlingAccessor(obj)
+	if err != nil {
+		return
+	}
+	key := types.NamespacedName{Namespace: item.GetNamespace(), Name: item.GetName()}
+
+	n.Lock()
+	defer n.Unlock()
+
+	for ref, objs := range n.references {
+		delete(objs, key)
+		if len(objs) == 0 {
+			delete(n.references, ref)
+		}
+	}
+}
 
 // Track implements tracker.Interface.
 func (n *FakeTracker) Track(ref corev1.ObjectReference, obj interface{}) error {
@@ -51,10 +72,26 @@ func (n *FakeTracker) Track(ref corev1.ObjectReference, obj interface{}) error {
 
 // TrackReference implements tracker.Interface.
 func (n *FakeTracker) TrackReference(ref tracker.Reference, obj interface{}) error {
+	item, err := kmeta.DeletionHandlingAccessor(obj)
+	if err != nil {
+		return err
+	}
+	key := types.NamespacedName{Namespace: item.GetNamespace(), Name: item.GetName()}
+
 	n.Lock()
 	defer n.Unlock()
 
-	n.references = append(n.references, ref)
+	if n.references == nil {
+		n.references = make(map[tracker.Reference]map[types.NamespacedName]struct{}, 1)
+	}
+
+	objs := n.references[ref]
+	if objs == nil {
+		objs = make(map[types.NamespacedName]struct{}, 1)
+	}
+	objs[key] = struct{}{}
+	n.references[ref] = objs
+
 	return nil
 }
 
@@ -63,5 +100,10 @@ func (n *FakeTracker) References() []tracker.Reference {
 	n.Lock()
 	defer n.Unlock()
 
-	return append(n.references[:0:0], n.references...)
+	refs := make([]tracker.Reference, 0, len(n.references))
+	for ref := range n.references {
+		refs = append(refs, ref)
+	}
+
+	return refs
 }

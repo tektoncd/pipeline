@@ -314,7 +314,7 @@ func (c *MetricClient) GetMetricDescriptor(ctx context.Context, req *monitoringp
 
 // CreateMetricDescriptor creates a new metric descriptor.
 // User-created metric descriptors define
-// custom metrics (at /monitoring/custom-metrics).
+// custom metrics (at https://cloud.google.com/monitoring/custom-metrics).
 func (c *MetricClient) CreateMetricDescriptor(ctx context.Context, req *monitoringpb.CreateMetricDescriptorRequest, opts ...gax.CallOption) (*metricpb.MetricDescriptor, error) {
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
@@ -332,7 +332,8 @@ func (c *MetricClient) CreateMetricDescriptor(ctx context.Context, req *monitori
 }
 
 // DeleteMetricDescriptor deletes a metric descriptor. Only user-created
-// custom metrics (at /monitoring/custom-metrics) can be deleted.
+// custom metrics (at https://cloud.google.com/monitoring/custom-metrics) can be
+// deleted.
 func (c *MetricClient) DeleteMetricDescriptor(ctx context.Context, req *monitoringpb.DeleteMetricDescriptorRequest, opts ...gax.CallOption) error {
 	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
 	ctx = insertMetadata(ctx, c.xGoogMetadata, md)

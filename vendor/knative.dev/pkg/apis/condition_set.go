@@ -109,7 +109,7 @@ func NewBatchConditionSet(d ...ConditionType) ConditionSet {
 // important for the caller. The first ConditionType is the overarching status
 // for that will be used to signal the resources' status is Ready or Succeeded.
 func newConditionSet(happy ConditionType, dependents ...ConditionType) ConditionSet {
-	var deps []ConditionType
+	deps := make([]ConditionType, 0, len(dependents))
 	for _, d := range dependents {
 		// Skip duplicates
 		if d == happy || contains(deps, d) {
@@ -140,6 +140,11 @@ var _ ConditionManager = (*conditionsImpl)(nil)
 type conditionsImpl struct {
 	ConditionSet
 	accessor ConditionsAccessor
+}
+
+// GetTopLevelConditionType is an accessor for the top-level happy condition.
+func (r ConditionSet) GetTopLevelConditionType() ConditionType {
+	return r.happy
 }
 
 // Manage creates a ConditionManager from an accessor object using the original

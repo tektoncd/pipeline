@@ -109,7 +109,7 @@ func New(
 	opts ...TransportOption) (*SpoofingClient, error) {
 	endpoint, err := ResolveEndpoint(kubeClientset, domain, resolvable, endpointOverride)
 	if err != nil {
-		return nil, fmt.Errorf("failed get the cluster endpoint: %v", err)
+		return nil, fmt.Errorf("failed get the cluster endpoint: %w", err)
 	}
 
 	// Spoof the hostname at the resolver level
@@ -244,18 +244,18 @@ func (sc *SpoofingClient) Poll(req *http.Request, inState ResponseChecker, error
 // DefaultErrorRetryChecker implements the defaults for retrying on error.
 func DefaultErrorRetryChecker(err error) (bool, error) {
 	if isTCPTimeout(err) {
-		return true, fmt.Errorf("Retrying for TCP timeout: %v", err)
+		return true, fmt.Errorf("Retrying for TCP timeout: %w", err)
 	}
 	// Retrying on DNS error, since we may be using xip.io or nip.io in tests.
 	if isDNSError(err) {
-		return true, fmt.Errorf("Retrying for DNS error: %v", err)
+		return true, fmt.Errorf("Retrying for DNS error: %w", err)
 	}
 	// Repeat the poll on `connection refused` errors, which are usually transient Istio errors.
 	if isConnectionRefused(err) {
-		return true, fmt.Errorf("Retrying for connection refused: %v", err)
+		return true, fmt.Errorf("Retrying for connection refused: %w", err)
 	}
 	if isConnectionReset(err) {
-		return true, fmt.Errorf("Retrying for connection reset: %v", err)
+		return true, fmt.Errorf("Retrying for connection reset: %w", err)
 	}
 	return false, err
 }

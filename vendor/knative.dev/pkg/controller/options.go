@@ -23,6 +23,14 @@ import "knative.dev/pkg/reconciler"
 type Options struct {
 	// ConfigStore is used to attach the frozen configuration to the context.
 	ConfigStore reconciler.ConfigStore
+
+	// FinalizerName is the name of the finalizer this reconciler uses. This
+	// overrides a default finalizer name assigned by the generator if needed.
+	FinalizerName string
+
+	// AgentName is the name of the agent this reconciler uses. This overrides
+	// the default controller's agent name.
+	AgentName string
 }
 
 // OptionsFn is a callback method signature that accepts an Impl and returns

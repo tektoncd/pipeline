@@ -18,10 +18,10 @@ package metrics
 
 import (
 	"os"
-	"strings"
 	texttemplate "text/template"
 
 	corev1 "k8s.io/api/core/v1"
+	cm "knative.dev/pkg/configmap"
 )
 
 const (
@@ -61,39 +61,33 @@ type ObservabilityConfig struct {
 	EnableProfiling bool
 }
 
+func defaultConfig() *ObservabilityConfig {
+	return &ObservabilityConfig{
+		LoggingURLTemplate:    DefaultLogURLTemplate,
+		RequestMetricsBackend: DefaultRequestMetricsBackend,
+	}
+}
+
 // NewObservabilityConfigFromConfigMap creates a ObservabilityConfig from the supplied ConfigMap
 func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*ObservabilityConfig, error) {
-	oc := &ObservabilityConfig{}
-	if evlc, ok := configMap.Data["logging.enable-var-log-collection"]; ok {
-		oc.EnableVarLogCollection = strings.EqualFold(evlc, "true")
+	oc := defaultConfig()
+
+	if err := cm.Parse(configMap.Data,
+		cm.AsBool("logging.enable-var-log-collection", &oc.EnableVarLogCollection),
+		cm.AsString("logging.revision-url-template", &oc.LoggingURLTemplate),
+		cm.AsString("logging.request-log-template", &oc.RequestLogTemplate),
+		cm.AsBool("logging.enable-probe-request-log", &oc.EnableProbeRequestLog),
+		cm.AsString("metrics.request-metrics-backend-destination", &oc.RequestMetricsBackend),
+		cm.AsBool("profiling.enable", &oc.EnableProfiling),
+	); err != nil {
+		return nil, err
 	}
 
-	if rut, ok := configMap.Data["logging.revision-url-template"]; ok {
-		oc.LoggingURLTemplate = rut
-	} else {
-		oc.LoggingURLTemplate = DefaultLogURLTemplate
-	}
-
-	if rlt, ok := configMap.Data["logging.request-log-template"]; ok {
+	if oc.RequestLogTemplate != "" {
 		// Verify that we get valid templates.
-		if _, err := texttemplate.New("requestLog").Parse(rlt); err != nil {
+		if _, err := texttemplate.New("requestLog").Parse(oc.RequestLogTemplate); err != nil {
 			return nil, err
 		}
-		oc.RequestLogTemplate = rlt
-	}
-
-	if eprl, ok := configMap.Data["logging.enable-probe-request-log"]; ok {
-		oc.EnableProbeRequestLog = strings.EqualFold(eprl, "true")
-	}
-
-	if mb, ok := configMap.Data["metrics.request-metrics-backend-destination"]; ok {
-		oc.RequestMetricsBackend = mb
-	} else {
-		oc.RequestMetricsBackend = DefaultRequestMetricsBackend
-	}
-
-	if prof, ok := configMap.Data["profiling.enable"]; ok {
-		oc.EnableProfiling = strings.EqualFold(prof, "true")
 	}
 
 	return oc, nil

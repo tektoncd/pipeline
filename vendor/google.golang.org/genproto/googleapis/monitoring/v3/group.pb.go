@@ -136,7 +136,9 @@ func init() {
 	proto.RegisterType((*Group)(nil), "google.monitoring.v3.Group")
 }
 
-func init() { proto.RegisterFile("google/monitoring/v3/group.proto", fileDescriptor_907e30c1f087271d) }
+func init() {
+	proto.RegisterFile("google/monitoring/v3/group.proto", fileDescriptor_907e30c1f087271d)
+}
 
 var fileDescriptor_907e30c1f087271d = []byte{
 	// 349 bytes of a gzipped FileDescriptorProto

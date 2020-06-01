@@ -32,7 +32,6 @@ import (
 )
 
 var (
-	klogFlags = flag.NewFlagSet("klog", flag.ExitOnError)
 	// Flags holds the command line flags or defaults for settings in the user's environment.
 	// See EnvironmentFlags for a list of supported fields.
 	Flags = initializeFlags()

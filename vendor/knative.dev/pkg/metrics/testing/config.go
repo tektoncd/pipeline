@@ -24,4 +24,5 @@ import (
 
 func init() {
 	os.Setenv(metrics.DomainEnv, "knative.dev/testing")
+	metrics.InitForTesting()
 }

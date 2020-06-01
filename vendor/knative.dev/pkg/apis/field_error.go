@@ -109,6 +109,11 @@ func (fe *FieldError) ViaFieldKey(field string, key string) *FieldError {
 
 // Also collects errors, returns a new collection of existing errors and new errors.
 func (fe *FieldError) Also(errs ...*FieldError) *FieldError {
+	// Avoid doing any work, if we don't have to.
+	if l := len(errs); l == 0 || l == 1 && errs[0].isEmpty() {
+		return fe
+	}
+
 	var newErr *FieldError
 	// collect the current objects errors, if it has any
 	if !fe.isEmpty() {

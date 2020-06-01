@@ -1452,7 +1452,9 @@ func init() {
 	proto.RegisterType((*WindowsBasedSli_MetricRange)(nil), "google.monitoring.v3.WindowsBasedSli.MetricRange")
 }
 
-func init() { proto.RegisterFile("google/monitoring/v3/service.proto", fileDescriptor_72cc01277ee8f421) }
+func init() {
+	proto.RegisterFile("google/monitoring/v3/service.proto", fileDescriptor_72cc01277ee8f421)
+}
 
 var fileDescriptor_72cc01277ee8f421 = []byte{
 	// 1498 bytes of a gzipped FileDescriptorProto

@@ -30,6 +30,8 @@ rm -rf $(dirname $0)/genclient
 
 header "Test Generated Reconciler Builds."
 
+chmod +x ${CODEGEN_PKG}/generate-groups.sh
+
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   ${GENCLIENT_PKG} knative.dev/pkg/apis/test \
   "example:v1alpha1" \
@@ -52,7 +54,6 @@ ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   ${GENCLIENT_PKG}/pub knative.dev/pkg/apis/test \
   "pub:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
-
 
 if ! go build -v $(dirname $0)/genclient/... ; then
     exit 1

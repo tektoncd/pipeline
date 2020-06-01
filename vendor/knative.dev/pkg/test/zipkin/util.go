@@ -183,7 +183,7 @@ func jsonTrace(traceID string) ([]model.SpanModel, error) {
 	var models []model.SpanModel
 	err = json.Unmarshal(body, &models)
 	if err != nil {
-		return empty, fmt.Errorf("got an error in unmarshalling JSON %q: %v", body, err)
+		return empty, fmt.Errorf("got an error in unmarshalling JSON %q: %w", body, err)
 	}
 	return models, nil
 }

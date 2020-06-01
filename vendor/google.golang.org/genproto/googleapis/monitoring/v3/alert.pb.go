@@ -786,7 +786,9 @@ func init() {
 	proto.RegisterType((*AlertPolicy_Condition_MetricAbsence)(nil), "google.monitoring.v3.AlertPolicy.Condition.MetricAbsence")
 }
 
-func init() { proto.RegisterFile("google/monitoring/v3/alert.proto", fileDescriptor_014ef0e1a0f00a00) }
+func init() {
+	proto.RegisterFile("google/monitoring/v3/alert.proto", fileDescriptor_014ef0e1a0f00a00)
+}
 
 var fileDescriptor_014ef0e1a0f00a00 = []byte{
 	// 1094 bytes of a gzipped FileDescriptorProto
