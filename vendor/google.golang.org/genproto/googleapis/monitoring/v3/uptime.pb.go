@@ -931,7 +931,9 @@ func init() {
 	proto.RegisterType((*UptimeCheckIp)(nil), "google.monitoring.v3.UptimeCheckIp")
 }
 
-func init() { proto.RegisterFile("google/monitoring/v3/uptime.proto", fileDescriptor_7ca0e36dfc8221d8) }
+func init() {
+	proto.RegisterFile("google/monitoring/v3/uptime.proto", fileDescriptor_7ca0e36dfc8221d8)
+}
 
 var fileDescriptor_7ca0e36dfc8221d8 = []byte{
 	// 1290 bytes of a gzipped FileDescriptorProto

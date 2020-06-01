@@ -109,14 +109,11 @@ func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
 // GetLeaderElectionConfig gets the leader election config.
 func GetLeaderElectionConfig(ctx context.Context) (*kle.Config, error) {
 	leaderElectionConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(kle.ConfigMapName(), metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return kle.NewConfigFromConfigMap(nil)
-		}
-
+	if apierrors.IsNotFound(err) {
+		return kle.NewConfigFromConfigMap(nil)
+	} else if err != nil {
 		return nil, err
 	}
-
 	return kle.NewConfigFromConfigMap(leaderElectionConfigMap)
 }
 
@@ -146,6 +143,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	// Adjust our client's rate limits based on the number of controllers we are running.
 	cfg.QPS = float32(len(ctors)) * rest.DefaultQPS
 	cfg.Burst = len(ctors) * rest.DefaultBurst
+	ctx = injection.WithConfig(ctx, cfg)
 
 	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
 
@@ -183,7 +181,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 			logger.Fatalw("Failed to start informers", zap.Error(err))
 		}
 		logger.Info("Starting controllers...")
-		go controller.StartAll(ctx.Done(), controllers...)
+		go controller.StartAll(ctx, controllers...)
 
 		<-ctx.Done()
 	}
@@ -191,7 +189,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	// Set up leader election config
 	leaderElectionConfig, err := GetLeaderElectionConfig(ctx)
 	if err != nil {
-		logger.Fatalf("Error loading leader election configuration: %v", err)
+		logger.Fatalw("Error loading leader election configuration", zap.Error(err))
 	}
 	leConfig := leaderElectionConfig.GetComponentConfig(component)
 
@@ -199,7 +197,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 		logger.Infof("%v will not run in leader-elected mode", component)
 		run(ctx)
 	} else {
-		RunLeaderElected(ctx, logger, run, component, leConfig)
+		RunLeaderElected(ctx, logger, run, leConfig)
 	}
 }
 
@@ -269,7 +267,7 @@ func WebhookMainWithConfig(ctx context.Context, component string, cfg *rest.Conf
 		wh.InformersHaveSynced()
 	}
 	logger.Info("Starting controllers...")
-	go controller.StartAll(ctx.Done(), controllers...)
+	go controller.StartAll(ctx, controllers...)
 
 	// This will block until either a signal arrives or one of the grouped functions
 	// returns an error.
@@ -345,9 +343,9 @@ func SetupConfigMapWatchOrDie(ctx context.Context, logger *zap.SugaredLogger) *c
 	if cmLabel := system.ResourceLabel(); cmLabel != "" {
 		req, err := configmap.FilterConfigByLabelExists(cmLabel)
 		if err != nil {
-			logger.With(zap.Error(err)).Fatalf("Failed to generate requirement for label %q")
+			logger.Fatalw("Failed to generate requirement for label "+cmLabel, zap.Error(err))
 		}
-		logger.Infof("Setting up ConfigMap watcher with label selector %q", req)
+		logger.Info("Setting up ConfigMap watcher with label selector: ", req)
 		cmLabelReqs = append(cmLabelReqs, *req)
 	}
 	// TODO(mattmoor): This should itself take a context and be injection-based.
@@ -362,7 +360,7 @@ func WatchLoggingConfigOrDie(ctx context.Context, cmw *configmap.InformedWatcher
 		metav1.GetOptions{}); err == nil {
 		cmw.Watch(logging.ConfigMapName(), logging.UpdateLevelFromConfigMap(logger, atomicLevel, component))
 	} else if !apierrors.IsNotFound(err) {
-		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", logging.ConfigMapName())
+		logger.Fatalw("Error reading ConfigMap "+logging.ConfigMapName(), zap.Error(err))
 	}
 }
 
@@ -376,7 +374,7 @@ func WatchObservabilityConfigOrDie(ctx context.Context, cmw *configmap.InformedW
 			metrics.ConfigMapWatcher(component, SecretFetcher(ctx), logger),
 			profilingHandler.UpdateFromConfigMap)
 	} else if !apierrors.IsNotFound(err) {
-		logger.With(zap.Error(err)).Fatalf("Error reading ConfigMap %q", metrics.ConfigMapName())
+		logger.Fatalw("Error reading ConfigMap "+metrics.ConfigMapName(), zap.Error(err))
 	}
 }
 
@@ -419,7 +417,7 @@ func ControllersAndWebhooksFromCtors(ctx context.Context,
 
 // RunLeaderElected runs the given function in leader elected mode. The function
 // will be run only once the leader election lock is obtained.
-func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(context.Context), component string, leConfig kle.ComponentConfig) {
+func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(context.Context), leConfig kle.ComponentConfig) {
 	recorder := controller.GetEventRecorder(ctx)
 	if recorder == nil {
 		// Create event broadcaster
@@ -431,7 +429,7 @@ func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(c
 				&typedcorev1.EventSinkImpl{Interface: kubeclient.Get(ctx).CoreV1().Events(system.Namespace())}),
 		}
 		recorder = eventBroadcaster.NewRecorder(
-			scheme.Scheme, corev1.EventSource{Component: component})
+			scheme.Scheme, corev1.EventSource{Component: leConfig.Component})
 		go func() {
 			<-ctx.Done()
 			for _, w := range watches {
@@ -446,12 +444,12 @@ func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(c
 	if err != nil {
 		logger.Fatalw("Failed to get unique ID for leader election", zap.Error(err))
 	}
-	logger.Infof("%v will run in leader-elected mode with id %v", component, id)
+	logger.Infof("%v will run in leader-elected mode with id %v", leConfig.Component, id)
 
 	// rl is the resource used to hold the leader election lock.
 	rl, err := resourcelock.New(leConfig.ResourceLock,
 		system.Namespace(), // use namespace we are running in
-		component,          // component is used as the resource name
+		leConfig.Component, // component is used as the resource name
 		kubeclient.Get(ctx).CoreV1(),
 		kubeclient.Get(ctx).CoordinationV1(),
 		resourcelock.ResourceLockConfig{
@@ -459,7 +457,7 @@ func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(c
 			EventRecorder: recorder,
 		})
 	if err != nil {
-		logger.Fatalw("Error creating lock: %v", err)
+		logger.Fatalw("Error creating lock", zap.Error(err))
 	}
 
 	// Execute the `run` function when we have the lock.
@@ -471,10 +469,11 @@ func RunLeaderElected(ctx context.Context, logger *zap.SugaredLogger, run func(c
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: run,
 			OnStoppedLeading: func() {
-				logger.Fatal("leaderelection lost")
+				logger.Fatal("Leader election lost")
 			},
 		},
+		ReleaseOnCancel: true,
 		// TODO: use health check watchdog, knative/pkg#1048
-		Name: component,
+		Name: leConfig.Component,
 	})
 }

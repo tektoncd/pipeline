@@ -90,8 +90,14 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 
 		var response admissionv1beta1.AdmissionReview
 		reviewResponse := c.Admit(ctx, review.Request)
-		logger.Infof("AdmissionReview for %#v: %s/%s response=%#v",
-			review.Request.Kind, review.Request.Namespace, review.Request.Name, reviewResponse)
+		var patchType string
+		if reviewResponse.PatchType != nil {
+			patchType = string(*reviewResponse.PatchType)
+		}
+
+		logger.Infof("AdmissionReview for %#v: %s/%s response={ UID: %#v, Allowed: %t, Status: %#v, Patch: %s, PatchType: %s, AuditAnnotations: %#v}",
+			review.Request.Kind, review.Request.Namespace, review.Request.Name,
+			reviewResponse.UID, reviewResponse.Allowed, reviewResponse.Result, string(reviewResponse.Patch), patchType, reviewResponse.AuditAnnotations)
 
 		if !reviewResponse.Allowed || reviewResponse.PatchType != nil || response.Response == nil {
 			response.Response = reviewResponse

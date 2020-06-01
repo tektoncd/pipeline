@@ -18,11 +18,6 @@ package v1
 
 import (
 	"context"
-	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck"
@@ -35,19 +30,6 @@ type Conditions apis.Conditions
 
 // Conditions is an Implementable "duck type".
 var _ duck.Implementable = (*Conditions)(nil)
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// KResource is a skeleton type wrapping Conditions in the manner we expect
-// resource writers defining compatible resources to embed it.  We will
-// typically use this type to deserialize Conditions ObjectReferences and
-// access the Conditions data.  This is not a real resource.
-type KResource struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Status Status `json:"status"`
-}
 
 // Status shows how we expect folks to embed Conditions in
 // their Status field.
@@ -125,32 +107,4 @@ func (source *Status) ConvertTo(ctx context.Context, sink *Status, predicates ..
 	}
 
 	sink.SetConditions(conditions)
-}
-
-// Populate implements duck.Populatable
-func (t *KResource) Populate() {
-	t.Status.ObservedGeneration = 42
-	t.Status.Conditions = Conditions{{
-		// Populate ALL fields
-		Type:               "Birthday",
-		Status:             corev1.ConditionTrue,
-		LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Date(1984, 02, 28, 18, 52, 00, 00, time.UTC))},
-		Reason:             "Celebrate",
-		Message:            "n3wScott, find your party hat :tada:",
-	}}
-}
-
-// GetListType implements apis.Listable
-func (*KResource) GetListType() runtime.Object {
-	return &KResourceList{}
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// KResourceList is a list of KResource resources
-type KResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []KResource `json:"items"`
 }

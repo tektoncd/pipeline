@@ -275,3 +275,32 @@ func (i *impl) OnChanged(obj interface{}) {
 		}
 	}
 }
+
+// OnChanged implements Interface.
+func (i *impl) OnDeletedObserver(obj interface{}) {
+	item, err := kmeta.DeletionHandlingAccessor(obj)
+	if err != nil {
+		return
+	}
+
+	key := types.NamespacedName{Namespace: item.GetNamespace(), Name: item.GetName()}
+
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	// Remove exact matches.
+	for ref, matchers := range i.exact {
+		delete(matchers, key)
+		if len(matchers) == 0 {
+			delete(i.exact, ref)
+		}
+	}
+
+	// Remove inexact matches.
+	for ref, matchers := range i.inexact {
+		delete(matchers, key)
+		if len(matchers) == 0 {
+			delete(i.exact, ref)
+		}
+	}
+}

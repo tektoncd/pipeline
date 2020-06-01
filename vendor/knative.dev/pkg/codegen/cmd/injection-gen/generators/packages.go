@@ -173,37 +173,44 @@ func MustParseClientGenTags(lines []string) Tags {
 		Tags: util.MustParseClientGenTags(lines),
 	}
 
-	values := types.ExtractCommentTags("+", lines)
+	values := ExtractCommentTags("+", lines)
 
 	_, ret.GenerateDuck = values["genduck"]
 
-	_, genRec := values["genreconciler"]
-	_, genRecClass := values["genreconciler:class"]
-
-	// Generate Reconciler code if genreconciler OR genreconciler:class exist.
-	if genRec || genRecClass {
-		ret.GenerateReconciler = true
-	}
+	_, ret.GenerateReconciler = values["genreconciler"]
 
 	return ret
 }
 
-func extractReconcilerClassTag(t *types.Type) (string, bool) {
+func extractCommentTags(t *types.Type) map[string]map[string]string {
 	comments := append(append([]string{}, t.SecondClosestCommentLines...), t.CommentLines...)
-	values := types.ExtractCommentTags("+", comments)["genreconciler:class"]
-	for _, v := range values {
-		if len(v) == 0 {
-			continue
-		}
-		return v, true
-	}
-	return "", false
+	return ExtractCommentTags("+", comments)
 }
 
-func isNonNamespaced(t *types.Type) bool {
-	comments := append(append([]string{}, t.SecondClosestCommentLines...), t.CommentLines...)
-	_, nonNamespaced := types.ExtractCommentTags("+", comments)["genclient:nonNamespaced"]
-	return nonNamespaced
+func extractReconcilerClassTag(tags map[string]map[string]string) (string, bool) {
+	vals, ok := tags["genreconciler"]
+	if !ok {
+		return "", false
+	}
+	classname, has := vals["class"]
+	return classname, has
+}
+
+func isKRShaped(tags map[string]map[string]string) bool {
+	vals, has := tags["genreconciler"]
+	if !has {
+		return false
+	}
+	return vals["krshapedlogic"] == "true"
+}
+
+func isNonNamespaced(tags map[string]map[string]string) bool {
+	vals, has := tags["genclient"]
+	if !has {
+		return false
+	}
+	_, has = vals["nonNamespaced"]
+	return has
 }
 
 func vendorless(p string) string {
@@ -220,118 +227,108 @@ func typedInformerPackage(groupPkgName string, gv clientgentypes.GroupVersion, e
 func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "client")
 
-	vers := make([]generator.Package, 0, 2)
-
-	// Impl
-	vers = append(vers, &generator.DefaultPackage{
-		PackageName: "client",
-		PackagePath: packagePath,
-		HeaderText:  boilerplate,
-		GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-			// Impl
-			generators = append(generators, &clientGenerator{
-				DefaultGen: generator.DefaultGen{
-					OptionalName: "client",
-				},
-				outputPackage:    packagePath,
-				imports:          generator.NewImportTracker(),
-				clientSetPackage: customArgs.VersionedClientSetPackage,
-			})
-
-			return generators
+	vers := []generator.Package{
+		// Impl
+		&generator.DefaultPackage{
+			PackageName: "client",
+			PackagePath: packagePath,
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &clientGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "client",
+					},
+					outputPackage:    packagePath,
+					imports:          generator.NewImportTracker(),
+					clientSetPackage: customArgs.VersionedClientSetPackage,
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
 		},
-		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.NeedsInformerInjection()
+		// Fake
+		&generator.DefaultPackage{
+			PackageName: "fake",
+			PackagePath: filepath.Join(packagePath, "fake"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &fakeClientGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "fake",
+					},
+					outputPackage:      filepath.Join(packagePath, "fake"),
+					imports:            generator.NewImportTracker(),
+					fakeClientPkg:      filepath.Join(customArgs.VersionedClientSetPackage, "fake"),
+					clientInjectionPkg: packagePath,
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
 		},
-	})
-
-	// Fake
-	vers = append(vers, &generator.DefaultPackage{
-		PackageName: "fake",
-		PackagePath: filepath.Join(packagePath, "fake"),
-		HeaderText:  boilerplate,
-		GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-
-			// Impl
-			generators = append(generators, &fakeClientGenerator{
-				DefaultGen: generator.DefaultGen{
-					OptionalName: "fake",
-				},
-				outputPackage:      filepath.Join(packagePath, "fake"),
-				imports:            generator.NewImportTracker(),
-				fakeClientPkg:      filepath.Join(customArgs.VersionedClientSetPackage, "fake"),
-				clientInjectionPkg: packagePath,
-			})
-
-			return generators
-		},
-		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.NeedsInformerInjection()
-		},
-	})
-
+	}
 	return vers
 }
 
 func versionFactoryPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "informers", "factory")
 
-	vers := make([]generator.Package, 0, 2)
-
-	// Impl
-	vers = append(vers, &generator.DefaultPackage{
-		PackageName: "factory",
-		PackagePath: packagePath,
-		HeaderText:  boilerplate,
-		GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-			// Impl
-			generators = append(generators, &factoryGenerator{
-				DefaultGen: generator.DefaultGen{
-					OptionalName: "factory",
-				},
-				outputPackage:                packagePath,
-				cachingClientSetPackage:      filepath.Join(basePackage, "client"),
-				sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
-				imports:                      generator.NewImportTracker(),
-			})
-
-			return generators
+	vers := []generator.Package{
+		// Impl
+		&generator.DefaultPackage{
+			PackageName: "factory",
+			PackagePath: packagePath,
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &factoryGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "factory",
+					},
+					outputPackage:                packagePath,
+					cachingClientSetPackage:      filepath.Join(basePackage, "client"),
+					sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
+					imports:                      generator.NewImportTracker(),
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
 		},
-		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.NeedsInformerInjection()
+		// Fake
+		&generator.DefaultPackage{
+			PackageName: "fake",
+			PackagePath: filepath.Join(packagePath, "fake"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &fakeFactoryGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "fake",
+					},
+					outputPackage:                filepath.Join(packagePath, "fake"),
+					factoryInjectionPkg:          packagePath,
+					fakeClientInjectionPkg:       filepath.Join(basePackage, "client", "fake"),
+					sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
+					imports:                      generator.NewImportTracker(),
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
 		},
-	})
-
-	// Fake
-	vers = append(vers, &generator.DefaultPackage{
-		PackageName: "fake",
-		PackagePath: filepath.Join(packagePath, "fake"),
-		HeaderText:  boilerplate,
-		GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-
-			// Impl
-			generators = append(generators, &fakeFactoryGenerator{
-				DefaultGen: generator.DefaultGen{
-					OptionalName: "fake",
-				},
-				outputPackage:                filepath.Join(packagePath, "fake"),
-				factoryInjectionPkg:          packagePath,
-				fakeClientInjectionPkg:       filepath.Join(basePackage, "client", "fake"),
-				sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
-				imports:                      generator.NewImportTracker(),
-			})
-
-			return generators
-		},
-		FilterFunc: func(c *generator.Context, t *types.Type) bool {
-			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-			return tags.NeedsInformerInjection()
-		},
-	})
-
+	}
 	return vers
 }
 
@@ -339,12 +336,11 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 	factoryPackagePath := filepath.Join(basePackage, "informers", "factory")
 	packagePath := filepath.Join(basePackage, "informers", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
-	vers := make([]generator.Package, 0, len(typesToGenerate))
+	vers := make([]generator.Package, 0, 2*len(typesToGenerate))
 
 	for _, t := range typesToGenerate {
 		// Fix for golang iterator bug.
 		t := t
-
 		packagePath := packagePath + "/" + strings.ToLower(t.Name.Name)
 		typedInformerPackage := typedInformerPackage(groupPkgName, gv, customArgs.ExternalVersionsInformersPackage)
 
@@ -367,7 +363,6 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 					typedInformerPackage:        typedInformerPackage,
 					groupInformerFactoryPackage: factoryPackagePath,
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -395,7 +390,6 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 					informerInjectionPkg:    packagePath,
 					fakeFactoryInjectionPkg: filepath.Join(factoryPackagePath, "fake"),
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -409,21 +403,21 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 
 func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "reconciler", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
+	clientPackagePath := filepath.Join(basePackage, "client")
 
-	vers := make([]generator.Package, 0, len(typesToGenerate))
+	vers := make([]generator.Package, 0, 4*len(typesToGenerate))
 
 	for _, t := range typesToGenerate {
 		// Fix for golang iterator bug.
 		t := t
-
-		reconcilerClass, hasReconcilerClass := extractReconcilerClassTag(t)
-		nonNamespaced := isNonNamespaced(t)
+		extracted := extractCommentTags(t)
+		reconcilerClass, hasReconcilerClass := extractReconcilerClassTag(extracted)
+		nonNamespaced := isNonNamespaced(extracted)
+		isKRShaped := isKRShaped(extracted)
 
 		packagePath := filepath.Join(packagePath, strings.ToLower(t.Name.Name))
 
-		clientPackagePath := filepath.Join(basePackage, "client")
 		informerPackagePath := filepath.Join(basePackage, "informers", groupPkgName, strings.ToLower(gv.Version.NonEmpty()), strings.ToLower(t.Name.Name))
-
 		listerPackagePath := filepath.Join(customArgs.ListersPackage, groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
 		// Controller
@@ -447,7 +441,6 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					reconcilerClass:     reconcilerClass,
 					hasReconcilerClass:  hasReconcilerClass,
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -475,7 +468,6 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					reconcilerClass:     reconcilerClass,
 					hasReconcilerClass:  hasReconcilerClass,
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -506,8 +498,8 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					reconcilerClass:    reconcilerClass,
 					hasReconcilerClass: hasReconcilerClass,
 					nonNamespaced:      nonNamespaced,
+					isKRShaped:         isKRShaped,
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -532,7 +524,6 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					outputPackage:  filepath.Join(packagePath, "stub"),
 					imports:        generator.NewImportTracker(),
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -547,12 +538,11 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 func versionDuckPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "ducks", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
-	vers := make([]generator.Package, 0, len(typesToGenerate))
+	vers := make([]generator.Package, 0, 2*len(typesToGenerate))
 
 	for _, t := range typesToGenerate {
 		// Fix for golang iterator bug.
 		t := t
-
 		packagePath := filepath.Join(packagePath, strings.ToLower(t.Name.Name))
 
 		// Impl
@@ -572,7 +562,6 @@ func versionDuckPackages(basePackage string, groupPkgName string, gv clientgenty
 					typeToGenerate: t,
 					imports:        generator.NewImportTracker(),
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {
@@ -599,7 +588,6 @@ func versionDuckPackages(basePackage string, groupPkgName string, gv clientgenty
 					groupGoName:      groupGoName,
 					duckInjectionPkg: packagePath,
 				})
-
 				return generators
 			},
 			FilterFunc: func(c *generator.Context, t *types.Type) bool {

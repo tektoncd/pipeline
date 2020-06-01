@@ -787,7 +787,9 @@ func init() {
 	proto.RegisterType((*Aggregation)(nil), "google.monitoring.v3.Aggregation")
 }
 
-func init() { proto.RegisterFile("google/monitoring/v3/common.proto", fileDescriptor_013c57c1dcbb8d65) }
+func init() {
+	proto.RegisterFile("google/monitoring/v3/common.proto", fileDescriptor_013c57c1dcbb8d65)
+}
 
 var fileDescriptor_013c57c1dcbb8d65 = []byte{
 	// 946 bytes of a gzipped FileDescriptorProto

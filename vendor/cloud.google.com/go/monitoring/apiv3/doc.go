@@ -24,8 +24,6 @@
 // explanations of the concepts found in the table entries, read the
 // [Stackdriver Monitoring documentation](/monitoring/docs).
 //
-//   NOTE: This package is in alpha. It is not stable, and is likely to change.
-//
 // Use of Context
 //
 // The ctx passed to NewClient is used for authentication requests and
@@ -47,7 +45,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const versionClient = "20200212"
+const versionClient = "20200317"
 
 func insertMetadata(ctx context.Context, mds ...metadata.MD) context.Context {
 	out, _ := metadata.FromOutgoingContext(ctx)

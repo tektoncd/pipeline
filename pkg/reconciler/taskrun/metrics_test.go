@@ -30,6 +30,8 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/metrics/metricstest"
 	rtesting "knative.dev/pkg/reconciler/testing"
+
+	_ "knative.dev/pkg/metrics/testing"
 )
 
 func TestUninitializedMetrics(t *testing.T) {

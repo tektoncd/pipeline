@@ -77,7 +77,7 @@ func (r *reconciler) reconcileCRD(ctx context.Context, cacert []byte, key string
 
 	configuredCRD, err := r.crdLister.Get(key)
 	if err != nil {
-		return fmt.Errorf("error retrieving crd: %v", err)
+		return fmt.Errorf("error retrieving crd: %w", err)
 	}
 
 	crd := configuredCRD.DeepCopy()
@@ -93,12 +93,12 @@ func (r *reconciler) reconcileCRD(ctx context.Context, cacert []byte, key string
 	crd.Spec.Conversion.WebhookClientConfig.Service.Path = ptr.String(r.path)
 
 	if ok, err := kmp.SafeEqual(configuredCRD, crd); err != nil {
-		return fmt.Errorf("error diffing custom resource definitions: %v", err)
+		return fmt.Errorf("error diffing custom resource definitions: %w", err)
 	} else if !ok {
 		logger.Infof("updating CRD")
 		crdClient := r.client.ApiextensionsV1beta1().CustomResourceDefinitions()
 		if _, err := crdClient.Update(crd); err != nil {
-			return fmt.Errorf("failed to update webhook: %v", err)
+			return fmt.Errorf("failed to update webhook: %w", err)
 		}
 	} else {
 		logger.Info("CRD is up to date")

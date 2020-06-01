@@ -23,8 +23,6 @@
 // interact with the Trace API directly. If you are looking to instrument
 // your application for Stackdriver Trace, we recommend using OpenCensus.
 //
-//   NOTE: This package is in alpha. It is not stable, and is likely to change.
-//
 // Use of Context
 //
 // The ctx passed to NewClient is used for authentication requests and
@@ -46,7 +44,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const versionClient = "20200212"
+const versionClient = "20200317"
 
 func insertMetadata(ctx context.Context, mds ...metadata.MD) context.Context {
 	out, _ := metadata.FromOutgoingContext(ctx)

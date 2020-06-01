@@ -29,11 +29,8 @@ import (
 
 	"go.opencensus.io/stats"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/metrics/metricskey"
-)
-
-const (
-	DomainEnv = "METRICS_DOMAIN"
 )
 
 // metricsBackend specifies the backend to use for metrics
@@ -52,6 +49,8 @@ const (
 	StackdriverGCPLocationKey = "metrics.stackdriver-gcp-location"
 	StackdriverClusterNameKey = "metrics.stackdriver-cluster-name"
 	StackdriverUseSecretKey   = "metrics.stackdriver-use-secret"
+
+	DomainEnv = "METRICS_DOMAIN"
 
 	// Stackdriver is used for Stackdriver backend
 	Stackdriver metricsBackend = "stackdriver"
@@ -88,9 +87,8 @@ type metricsConfig struct {
 	// writing the metrics to the stats.RecordWithOptions interface.
 	recorder func(context.Context, []stats.Measurement, ...stats.Options) error
 
-	// secretFetcher provides access for fetching Kubernetes Secrets from an
-	// informer cache.
-	secretFetcher SecretFetcher
+	// secret contains credentials for an exporter to use for authentication.
+	secret *corev1.Secret
 
 	// ---- OpenCensus specific below ----
 	// collectorAddress is the address of the collector, if not `localhost:55678`
@@ -153,7 +151,12 @@ func NewStackdriverClientConfigFromMap(config map[string]string) *StackdriverCli
 // record applies the `ros` Options to each measurement in `mss` and then records the resulting
 // measurements in the metricsConfig's designated backend.
 func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
-	if mc == nil || mc.recorder == nil {
+	if mc == nil {
+		// Don't record data points if the metric config is not initialized yet.
+		// At this point, it's unclear whether should record or not.
+		return nil
+	}
+	if mc.recorder == nil {
 		return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 	}
 	return mc.recorder(ctx, mss, ros...)
@@ -161,10 +164,6 @@ func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ro
 
 func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metricsConfig, error) {
 	var mc metricsConfig
-
-	// We don't check if this is `nil` right now, because this is a transition step.
-	// Eventually, this should be a startup check.
-	mc.secretFetcher = ops.Secrets
 
 	if ops.Domain == "" {
 		return nil, errors.New("metrics domain cannot be empty")
@@ -204,6 +203,13 @@ func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metri
 			var err error
 			if mc.requireSecure, err = strconv.ParseBool(isSecure); err != nil {
 				return nil, fmt.Errorf("invalid %s value %q", CollectorSecureKey, isSecure)
+			}
+
+			if mc.requireSecure {
+				mc.secret, err = getOpenCensusSecret(ops.Component, ops.Secrets)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -264,6 +270,15 @@ func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metri
 				mss = mss[:wIdx]
 				return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 			}
+		}
+
+		if scc.UseSecret {
+			secret, err := getStackdriverSecret(ops.Secrets)
+			if err != nil {
+				return nil, err
+			}
+
+			mc.secret = secret
 		}
 	}
 

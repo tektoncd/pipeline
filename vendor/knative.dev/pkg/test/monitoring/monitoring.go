@@ -65,7 +65,7 @@ func PortForward(logf logging.FormatLogger, podList *v1.PodList, localPort, remo
 	portFwdProcess, err := executeCmdBackground(logf, portFwdCmd)
 
 	if err != nil {
-		return 0, fmt.Errorf("failed to port forward: %v", err)
+		return 0, fmt.Errorf("failed to port forward: %w", err)
 	}
 
 	logf("running %s port-forward in background, pid = %d", podName, portFwdProcess.Pid)
@@ -79,7 +79,7 @@ func executeCmdBackground(logf logging.FormatLogger, format string, args ...inte
 	parts := strings.Split(cmd, " ")
 	c := exec.Command(parts[0], parts[1:]...) // #nosec
 	if err := c.Start(); err != nil {
-		return nil, fmt.Errorf("%s command failed: %v", cmd, err)
+		return nil, fmt.Errorf("%s command failed: %w", cmd, err)
 	}
 	return c.Process, nil
 }
