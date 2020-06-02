@@ -29,7 +29,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestEmitEvent(t *testing.T) {
+func TestEmit(t *testing.T) {
 	testcases := []struct {
 		name      string
 		before    *apis.Condition
@@ -136,7 +136,7 @@ func TestEmitEvent(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		EmitEvent(fr, ts.before, ts.after, tr)
+		Emit(fr, ts.before, ts.after, tr)
 
 		err := checkEvents(t, fr, ts.name, ts.wantEvent)
 		if err != nil {
@@ -145,7 +145,7 @@ func TestEmitEvent(t *testing.T) {
 	}
 }
 
-func TestEmitErrorEvent(t *testing.T) {
+func TestEmitError(t *testing.T) {
 	testcases := []struct {
 		name      string
 		err       error
@@ -163,7 +163,7 @@ func TestEmitErrorEvent(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		EmitErrorEvent(fr, ts.err, tr)
+		EmitError(fr, ts.err, tr)
 
 		err := checkEvents(t, fr, ts.name, ts.wantEvent)
 		if err != nil {

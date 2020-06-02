@@ -117,7 +117,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-		events.EmitEvent(c.Recorder, nil, afterCondition, tr)
+		events.Emit(c.Recorder, nil, afterCondition, tr)
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -210,9 +210,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(tr, original *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	events.EmitEvent(c.Recorder, beforeCondition, afterCondition, tr)
+	events.Emit(c.Recorder, beforeCondition, afterCondition, tr)
 	err := c.updateStatusLabelsAndAnnotations(tr, original)
-	events.EmitErrorEvent(c.Recorder, err, tr)
+	events.EmitError(c.Recorder, err, tr)
 	return multierror.Append(previousError, err).ErrorOrNil()
 }
 

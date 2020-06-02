@@ -34,7 +34,7 @@ const (
 	EventReasonError = "Error"
 )
 
-// EmitEvent emits an event for object if afterCondition is different from beforeCondition
+// Emit emits an event for object if afterCondition is different from beforeCondition
 //
 // Status "ConditionUnknown":
 //   beforeCondition == nil, emit EventReasonStarted
@@ -43,7 +43,7 @@ const (
 //  Status "ConditionTrue": emit EventReasonSucceded
 //  Status "ConditionFalse": emit EventReasonFailed
 //
-func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+func Emit(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
@@ -66,9 +66,28 @@ func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCon
 	}
 }
 
-// EmitErrorEvent emits a failure associated to an error
-func EmitErrorEvent(c record.EventRecorder, err error, object runtime.Object) {
+// EmitError emits a failure associated to an error
+func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
 		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
+}
+
+// EmitEvent emits an event for object if afterCondition is different from beforeCondition
+//
+// Status "ConditionUnknown":
+//   beforeCondition == nil, emit EventReasonStarted
+//   beforeCondition != nil, emit afterCondition.Reason
+//
+//  Status "ConditionTrue": emit EventReasonSucceded
+//  Status "ConditionFalse": emit EventReasonFailed
+// Deprecated: use Emit
+func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	Emit(c, beforeCondition, afterCondition, object)
+}
+
+// EmitErrorEvent emits a failure associated to an error
+// Deprecated: use EmitError instead
+func EmitErrorEvent(c record.EventRecorder, err error, object runtime.Object) {
+	EmitError(c, err, object)
 }

@@ -204,7 +204,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		before := pr.Status.GetCondition(apis.ConditionSucceeded)
 		merr = multierror.Append(merr, cancelPipelineRun(c.Logger, pr, c.PipelineClientSet))
 		after := pr.Status.GetCondition(apis.ConditionSucceeded)
-		events.EmitEvent(c.Recorder, before, after, pr)
+		events.Emit(c.Recorder, before, after, pr)
 	default:
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
@@ -638,7 +638,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 	after := resources.GetPipelineConditionStatus(pr, pipelineState, c.Logger, d)
 	pr.Status.SetCondition(after)
-	events.EmitEvent(c.Recorder, before, after, pr)
+	events.Emit(c.Recorder, before, after, pr)
 
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
