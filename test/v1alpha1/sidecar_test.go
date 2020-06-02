@@ -26,6 +26,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 const (
@@ -54,6 +55,10 @@ func TestSidecarTaskSupport(t *testing.T) {
 	}}
 
 	clients, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, clients, namespace) }, t.Logf)
+	defer tearDown(t, clients, namespace)
 
 	for i, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
@@ -62,13 +67,13 @@ func TestSidecarTaskSupport(t *testing.T) {
 			task := tb.Task(sidecarTaskName,
 				tb.TaskSpec(
 					tb.Step(
-						"busybox:1.31.0-musl",
+						"busybox",
 						tb.StepName(primaryContainerName),
 						tb.StepCommand(test.stepCommand...),
 					),
 					tb.Sidecar(
 						sidecarContainerName,
-						"busybox:1.31.0-musl",
+						"busybox",
 						tb.Command(test.sidecarCommand...),
 					),
 				),

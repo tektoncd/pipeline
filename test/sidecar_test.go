@@ -26,6 +26,7 @@ import (
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 const (
@@ -54,6 +55,10 @@ func TestSidecarTaskSupport(t *testing.T) {
 	}}
 
 	clients, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, clients, namespace) }, t.Logf)
+	defer tearDown(t, clients, namespace)
 
 	for i, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
@@ -63,10 +68,10 @@ func TestSidecarTaskSupport(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskName, Namespace: namespace},
 				Spec: v1beta1.TaskSpec{
 					Steps: []v1beta1.Step{{
-						Container: corev1.Container{Name: primaryContainerName, Image: "busybox:1.31.0-musl", Command: test.stepCommand},
+						Container: corev1.Container{Name: primaryContainerName, Image: "busybox", Command: test.stepCommand},
 					}},
 					Sidecars: []v1beta1.Sidecar{{
-						Container: corev1.Container{Name: sidecarContainerName, Image: "busybox:1.31.0-musl", Command: test.sidecarCommand},
+						Container: corev1.Container{Name: sidecarContainerName, Image: "busybox", Command: test.sidecarCommand},
 					}},
 				},
 			}
