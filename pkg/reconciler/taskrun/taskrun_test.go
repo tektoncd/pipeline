@@ -265,11 +265,12 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		SendSuccessfully: true,
 	}
 	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
-	c, _ := test.SeedTestData(t, ctx, d)
+	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.Assets{
 		Controller: NewController(namespace, images)(ctx, configMapWatcher),
 		Clients:    c,
+		Informers:  informers,
 	}, cancel
 }
 
@@ -1128,8 +1129,12 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	if taskRun.Status.StartTime == nil || taskRun.Status.StartTime.IsZero() {
-		t.Errorf("expected startTime to be set by reconcile but was %q", taskRun.Status.StartTime)
+	newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	if newTr.Status.StartTime == nil || newTr.Status.StartTime.IsZero() {
+		t.Errorf("expected startTime to be set by reconcile but was %q", newTr.Status.StartTime)
 	}
 }
 
@@ -1191,7 +1196,12 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
-	verifyTaskRunStatusStep(t, taskRun)
+
+	newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	verifyTaskRunStatusStep(t, newTr)
 }
 
 func verifyTaskRunStatusStep(t *testing.T, taskRun *v1beta1.TaskRun) {
@@ -1305,8 +1315,12 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf(err.Error())
 			}
 
+			newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+			}
 			// Since the TaskRun is invalid, the status should say it has failed
-			condition := tc.taskRun.Status.GetCondition(apis.ConditionSucceeded)
+			condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
 			}
@@ -1414,6 +1428,11 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).UpdateStatus(pod); err != nil {
 		t.Errorf("Unexpected error while updating build: %v", err)
 	}
+
+	// Before calling Reconcile again, we need to ensure that the informer's
+	// lister cache is update to reflect the result of the previous Reconcile.
+	testAssets.Informers.TaskRun.Informer().GetIndexer().Add(newTr)
+
 	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}

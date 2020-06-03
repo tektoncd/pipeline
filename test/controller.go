@@ -82,6 +82,7 @@ type Informers struct {
 type Assets struct {
 	Controller *controller.Impl
 	Clients    Clients
+	Informers  Informers
 }
 
 // SeedTestData returns Clients and Informers populated with the
@@ -106,6 +107,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	}
 
 	for _, pr := range d.PipelineRuns {
+		pr := pr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.PipelineRun.Informer().GetIndexer().Add(pr); err != nil {
 			t.Fatal(err)
 		}
@@ -114,6 +116,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, p := range d.Pipelines {
+		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.Pipeline.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
@@ -122,6 +125,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, tr := range d.TaskRuns {
+		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.TaskRun.Informer().GetIndexer().Add(tr); err != nil {
 			t.Fatal(err)
 		}
@@ -130,6 +134,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, ta := range d.Tasks {
+		ta := ta.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.Task.Informer().GetIndexer().Add(ta); err != nil {
 			t.Fatal(err)
 		}
@@ -138,6 +143,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, ct := range d.ClusterTasks {
+		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.ClusterTask.Informer().GetIndexer().Add(ct); err != nil {
 			t.Fatal(err)
 		}
@@ -146,6 +152,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, r := range d.PipelineResources {
+		r := r.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
 			t.Fatal(err)
 		}
@@ -154,6 +161,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, cond := range d.Conditions {
+		cond := cond.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.Condition.Informer().GetIndexer().Add(cond); err != nil {
 			t.Fatal(err)
 		}
@@ -162,6 +170,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, p := range d.Pods {
+		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if err := i.Pod.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
@@ -170,6 +179,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	for _, n := range d.Namespaces {
+		n := n.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Kube.CoreV1().Namespaces().Create(n); err != nil {
 			t.Fatal(err)
 		}
