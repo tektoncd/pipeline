@@ -17,16 +17,16 @@ push to from inside your cluster. If you are following instructions
 
 ```bash
 # To invoke the build-push Task only
-kubectl apply -f examples/taskruns/taskrun.yaml
+kubectl apply -f examples/v1beta1/taskruns/task-output-image.yaml
 
 # To invoke the simple Pipeline
-kubectl apply -f examples/pipelineruns/pipelinerun.yaml
+kubectl apply -f examples/v1beta1/pipelineruns/pipelinerun.yaml
 
 # To invoke the Pipeline that links outputs
-kubectl apply -f examples/pipelineruns/output-pipelinerun.yaml
+kubectl apply -f examples/v1beta1/pipelineruns/output-pipelinerun.yaml
 
 # To invoke the TaskRun with embedded Resource spec and task Spec
-kubectl apply -f examples/taskruns/git-resource-spec-taskrun.yaml
+kubectl apply -f examples/v1beta1/taskruns/git-resource.yaml
 ```
 
 ## Results
