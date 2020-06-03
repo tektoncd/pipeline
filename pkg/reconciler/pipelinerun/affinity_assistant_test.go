@@ -82,6 +82,58 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 	}
 }
 
+func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t *testing.T) {
+	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-custom-podtemplate",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PodTemplate: &v1beta1.PodTemplate{
+				Tolerations: []corev1.Toleration{{
+					Key:      "key",
+					Operator: "Equal",
+					Value:    "value",
+					Effect:   "NoSchedule",
+				}},
+				NodeSelector: map[string]string{
+					"disktype": "ssd",
+				},
+			},
+		},
+	}
+
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc")
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+		t.Errorf("expected Tolerations in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+		t.Errorf("expected a NodeSelector in the StatefulSet")
+	}
+}
+
+func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.T) {
+	prWithoutCustomPodTemplate := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-without-custom-podtemplate",
+		},
+		Spec: v1beta1.PipelineRunSpec{},
+	}
+
+	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, "mypvc")
+
+	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 0 {
+		t.Errorf("unexpected Tolerations in the StatefulSet")
+	}
+
+	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 0 {
+		t.Errorf("unexpected NodeSelector in the StatefulSet")
+	}
+}
+
 func TestDisableAffinityAssistant(t *testing.T) {
 	for _, tc := range []struct {
 		description string
