@@ -117,6 +117,18 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 	// We want a singleton pod
 	replicas := int32(1)
 
+	// use tolerations from default podTemplate if specified
+	var tolerations []corev1.Toleration
+	if pr.Spec.PodTemplate != nil {
+		tolerations = pr.Spec.PodTemplate.Tolerations
+	}
+
+	// use nodeSelector from default podTemplate if specified
+	var nodeSelector map[string]string
+	if pr.Spec.PodTemplate != nil {
+		nodeSelector = pr.Spec.PodTemplate.NodeSelector
+	}
+
 	containers := []corev1.Container{{
 		Name: "affinity-assistant",
 
@@ -171,7 +183,9 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 					Labels: getStatefulSetLabels(pr, name),
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
+					Containers:   containers,
+					Tolerations:  tolerations,
+					NodeSelector: nodeSelector,
 					Affinity: &corev1.Affinity{
 						PodAntiAffinity: &corev1.PodAntiAffinity{
 							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{repelOtherAffinityAssistantsPodAffinityTerm},

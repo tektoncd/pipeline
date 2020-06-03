@@ -245,7 +245,7 @@ The example below customizes the following:
 - the default timeout from 60 minutes to 20 minutes.
 - the default `app.kubernetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
 - the default Pod template to include a node selector to select the node where the Pod will be scheduled by default.
-  For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#pod-template).
+  For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
 
 ```yaml
 apiVersion: v1
@@ -270,7 +270,7 @@ To customize the behavior of the Pipelines Controller, modify the ConfigMap `fea
 
 - `disable-affinity-assistant` - set this flag to disable the [Affinity Assistant](./workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
   that is used to provide Node Affinity for `TaskRun` pods that share workspace volume. 
-  The Affinity Assistant pods may be incompatible with NodeSelector and other affinity rules
+  The Affinity Assistant is incompatible with other affinity rules
   configured for `TaskRun` pods.
 
   **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
