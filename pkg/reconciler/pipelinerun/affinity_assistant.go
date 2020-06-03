@@ -128,11 +128,11 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 		// Affinity Assistant pod is a placeholder; request minimal resources
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
+				"cpu":    resource.MustParse("50m"),
 				"memory": resource.MustParse("100Mi"),
 			},
 			Requests: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
+				"cpu":    resource.MustParse("50m"),
 				"memory": resource.MustParse("100Mi"),
 			},
 		},
