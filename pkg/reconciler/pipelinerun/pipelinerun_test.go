@@ -2272,9 +2272,6 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 }
 
 func TestReconcileWithPipelineResults(t *testing.T) {
-	// TODO(mattmoor): DO NOT SUBMIT
-	t.Skip("This is broken")
-
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineTask("a-task", "a-task"),
@@ -2283,21 +2280,6 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		),
 		tb.PipelineResult("result", "$(tasks.a-task.results.aResult)", "pipeline result"),
 	))}
-	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
-		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccountName("test-sa-0"),
-		),
-		tb.PipelineRunStatus(
-			tb.PipelineRunResult("result", "aResultValue")),
-	)}
-	ts := []*v1beta1.Task{
-		tb.Task("a-task", tb.TaskNamespace("foo")),
-		tb.Task("b-task", tb.TaskNamespace("foo"),
-			tb.TaskSpec(
-				tb.TaskParam("bParam", v1beta1.ParamTypeString),
-			),
-		),
-	}
 	trs := []*v1beta1.TaskRun{
 		tb.TaskRun("test-pipeline-run-different-service-accs-a-task-9l9zj",
 			tb.TaskRunNamespace("foo"),
@@ -2320,6 +2302,34 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 					},
 				),
 				tb.TaskRunResult("aResult", "aResultValue"),
+			),
+		),
+	}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+		tb.PipelineRunStatus(
+			tb.PipelineRunResult("result", "aResultValue"),
+			tb.PipelineRunStatusCondition(apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  resources.ReasonSucceeded,
+				Message: "All Tasks have completed executing",
+			}),
+			tb.PipelineRunTaskRunsStatus(trs[0].Name, &v1beta1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "a-task",
+				Status:           &trs[0].Status,
+			}),
+			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1)),
+			tb.PipelineRunCompletionTime(time.Now()),
+		),
+	)}
+	ts := []*v1beta1.Task{
+		tb.Task("a-task", tb.TaskNamespace("foo")),
+		tb.Task("b-task", tb.TaskNamespace("foo"),
+			tb.TaskSpec(
+				tb.TaskParam("bParam", v1beta1.ParamTypeString),
 			),
 		),
 	}
