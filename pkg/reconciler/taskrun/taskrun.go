@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -45,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -454,6 +456,7 @@ func (c *Reconciler) updateStatus(taskrun *v1beta1.TaskRun) (*v1beta1.TaskRun, e
 		return nil, fmt.Errorf("error getting TaskRun %s when updating status: %w", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
+		newtaskrun = newtaskrun.DeepCopy()
 		newtaskrun.Status = taskrun.Status
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
 	}
@@ -466,9 +469,17 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
-		newTr.ObjectMeta.Annotations = tr.ObjectMeta.Annotations
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(newTr)
+		mergePatch := map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"labels":      tr.ObjectMeta.Labels,
+				"annotations": tr.ObjectMeta.Annotations,
+			},
+		}
+		patch, err := json.Marshal(mergePatch)
+		if err != nil {
+			return nil, err
+		}
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Patch(tr.Name, types.MergePatchType, patch)
 	}
 	return newTr, nil
 }

@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -49,6 +50,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
@@ -910,9 +912,9 @@ func (c *Reconciler) updateStatus(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun
 	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
+		newPr = newPr.DeepCopy() // Don't modify the informer's copy
 		newPr.Status = pr.Status
 		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
 	}
@@ -925,9 +927,17 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1bet
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
 	}
 	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
-		newPr.ObjectMeta.Labels = pr.ObjectMeta.Labels
-		newPr.ObjectMeta.Annotations = pr.ObjectMeta.Annotations
-		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(newPr)
+		mergePatch := map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"labels":      pr.ObjectMeta.Labels,
+				"annotations": pr.ObjectMeta.Annotations,
+			},
+		}
+		patch, err := json.Marshal(mergePatch)
+		if err != nil {
+			return nil, err
+		}
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(pr.Name, types.MergePatchType, patch)
 	}
 	return newPr, nil
 }
