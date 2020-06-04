@@ -56,7 +56,8 @@ func (c *Reconciler) createAffinityAssistants(wb []v1alpha1.WorkspaceBinding, pr
 			claimName := getClaimName(w, pr.GetOwnerReference())
 			switch {
 			case apierrors.IsNotFound(err):
-				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(affinityAssistantStatefulSet(affinityAssistantName, pr, claimName))
+				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.AffinityAssistantImage)
+				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(affinityAssistantStatefulSet)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
 				}
@@ -113,7 +114,7 @@ func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string)
 	return labels
 }
 
-func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimName string) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimName string, affinityAssistantImage string) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
@@ -130,10 +131,8 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 	}
 
 	containers := []corev1.Container{{
-		Name: "affinity-assistant",
-
-		//TODO(#2640) We may want to create a custom, minimal binary
-		Image: "nginx",
+		Name:  "affinity-assistant",
+		Image: affinityAssistantImage,
 
 		// Set requests == limits to get QoS class _Guaranteed_.
 		// See https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed
