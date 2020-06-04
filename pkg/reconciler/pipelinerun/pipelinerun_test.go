@@ -226,7 +226,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject()
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
 	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-mz4c7",
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
@@ -347,7 +347,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject()
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
 	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-task-spec-9l9zj",
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
@@ -826,11 +826,11 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		t.Fatalf("Error reconciling: %s", err)
 	}
 
-	if len(clients.Pipeline.Actions()) != 2 {
+	if len(clients.Pipeline.Actions()) != 1 {
 		t.Fatalf("Expected client to have updated the TaskRun status for a completed PipelineRun, but it did not")
 	}
 
-	_, ok := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	_, ok := clients.Pipeline.Actions()[0].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
 	if !ok {
 		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
@@ -974,7 +974,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Fatalf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1189,7 +1189,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1420,7 +1420,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1585,7 +1585,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1690,8 +1690,8 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	condCheck0 := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
-	condCheck1 := clients.Pipeline.Actions()[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	condCheck0 := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	condCheck1 := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if condCheck0 == nil || condCheck1 == nil {
 		t.Errorf("Expected two ConditionCheck TaskRuns to be created, but it wasn't.")
 	}
@@ -1797,7 +1797,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	}
 
 	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a ConditionCheck TaskRun to be created, but it wasn't.")
 	}
@@ -2642,7 +2642,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		t.Fatalf("Error reconciling: %s", err)
 	}
 
-	_, ok := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	_, ok := clients.Pipeline.Actions()[0].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
 	if !ok {
 		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
