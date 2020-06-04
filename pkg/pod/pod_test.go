@@ -1212,7 +1212,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			kubclient := fakek8s.NewSimpleClientset(tc.configMap)
 			if result := shouldAddReadyAnnotationOnPodCreate(tc.sidecars, kubclient); result != tc.expected {
-				t.Errorf("expected: %t Recieved: %t", tc.expected, result)
+				t.Errorf("expected: %t Received: %t", tc.expected, result)
 			}
 		})
 	}
