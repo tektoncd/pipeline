@@ -39,6 +39,7 @@ var (
 	images = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "tianon/true",
+		AffinityAssistantImage:   "nginx",
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
