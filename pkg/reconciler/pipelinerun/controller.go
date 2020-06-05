@@ -28,6 +28,7 @@ import (
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
 	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
+	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
@@ -78,7 +79,14 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			metrics:           metrics,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
-		impl := controller.NewImpl(c, c.Logger, pipeline.PipelineRunControllerName)
+		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
+			configStore := config.NewStore(images, c.Logger.Named("config-store"))
+			configStore.WatchConfigs(cmw)
+			return controller.Options{
+				AgentName:   pipeline.PipelineRunControllerName,
+				ConfigStore: configStore,
+			}
+		})
 
 		timeoutHandler.SetPipelineRunCallbackFunc(impl.Enqueue)
 		timeoutHandler.CheckTimeouts(namespace, kubeclientset, pipelineclientset)
@@ -94,10 +102,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 		})
-
-		c.Logger.Info("Setting up ConfigMap receivers")
-		c.configStore = config.NewStore(images, c.Logger.Named("config-store"))
-		c.configStore.WatchConfigs(cmw)
 
 		go metrics.ReportRunningPipelineRuns(ctx, pipelineRunInformer.Lister())
 

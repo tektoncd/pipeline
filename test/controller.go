@@ -18,6 +18,8 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"sync/atomic"
 	"testing"
 
 	// Link in the fakes so they get injected into injection.Fake
@@ -38,8 +40,13 @@ import (
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
@@ -88,6 +95,49 @@ type Assets struct {
 	Informers  Informers
 }
 
+func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		switch a := action.(type) {
+		case ktesting.CreateActionImpl:
+			if err := store.Add(a.GetObject()); err != nil {
+				t.Fatal(err)
+			}
+
+		case ktesting.UpdateActionImpl:
+			objMeta, err := meta.Accessor(a.GetObject())
+			if err != nil {
+				return true, nil, err
+			}
+
+			// Look up the old copy of this resource and perform the optimistic concurrency check.
+			old, exists, err := store.GetByKey(objMeta.GetNamespace() + "/" + objMeta.GetName())
+			if err != nil {
+				return true, nil, err
+			} else if !exists {
+				// Let the client return the error.
+				return false, nil, nil
+			}
+			oldMeta, err := meta.Accessor(old)
+			if err != nil {
+				return true, nil, err
+			}
+			// If the resource version is mismatched, then fail with a conflict.
+			if oldMeta.GetResourceVersion() != objMeta.GetResourceVersion() {
+				return true, nil, apierrs.NewConflict(
+					a.Resource.GroupResource(), objMeta.GetName(),
+					fmt.Errorf("resourceVersion mismatch, got: %v, wanted: %v",
+						objMeta.GetResourceVersion(), oldMeta.GetResourceVersion()))
+			}
+
+			// Update the store with the new object when it's fine.
+			if err := store.Update(a.GetObject()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return false, nil, nil
+	}
+}
+
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
 // nolint: golint
@@ -97,6 +147,8 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Pipeline: fakepipelineclient.Get(ctx),
 		Resource: fakeresourceclient.Get(ctx),
 	}
+	// Every time a resource is modified, change the metadata.resourceVersion.
+	PrependResourceVersionReactor(&c.Pipeline.Fake)
 
 	i := Informers{
 		PipelineRun:      fakepipelineruninformer.Get(ctx),
@@ -110,74 +162,61 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		ConfigMap:        fakeconfigmapinformer.Get(ctx),
 	}
 
+	// Attach reactors that add resource mutations to the appropriate
+	// informer index, and simulate optimistic concurrency failures when
+	// the resource version is mismatched.
+	c.Pipeline.PrependReactor("*", "pipelineruns", AddToInformer(t, i.PipelineRun.Informer().GetIndexer()))
 	for _, pr := range d.PipelineRuns {
 		pr := pr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.PipelineRun.Informer().GetIndexer().Add(pr); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1beta1().PipelineRuns(pr.Namespace).Create(pr); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "pipelines", AddToInformer(t, i.Pipeline.Informer().GetIndexer()))
 	for _, p := range d.Pipelines {
 		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.Pipeline.Informer().GetIndexer().Add(p); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1beta1().Pipelines(p.Namespace).Create(p); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "taskruns", AddToInformer(t, i.TaskRun.Informer().GetIndexer()))
 	for _, tr := range d.TaskRuns {
 		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.TaskRun.Informer().GetIndexer().Add(tr); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Create(tr); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "tasks", AddToInformer(t, i.Task.Informer().GetIndexer()))
 	for _, ta := range d.Tasks {
 		ta := ta.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.Task.Informer().GetIndexer().Add(ta); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1beta1().Tasks(ta.Namespace).Create(ta); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "clustertasks", AddToInformer(t, i.ClusterTask.Informer().GetIndexer()))
 	for _, ct := range d.ClusterTasks {
 		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.ClusterTask.Informer().GetIndexer().Add(ct); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ct); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Resource.PrependReactor("*", "pipelineresources", AddToInformer(t, i.PipelineResource.Informer().GetIndexer()))
 	for _, r := range d.PipelineResources {
 		r := r.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Pipeline.PrependReactor("*", "conditions", AddToInformer(t, i.Condition.Informer().GetIndexer()))
 	for _, cond := range d.Conditions {
 		cond := cond.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.Condition.Informer().GetIndexer().Add(cond); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(cond); err != nil {
 			t.Fatal(err)
 		}
 	}
+	c.Kube.PrependReactor("*", "pods", AddToInformer(t, i.Pod.Informer().GetIndexer()))
 	for _, p := range d.Pods {
 		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if err := i.Pod.Informer().GetIndexer().Add(p); err != nil {
-			t.Fatal(err)
-		}
 		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(p); err != nil {
 			t.Fatal(err)
 		}
@@ -199,4 +238,43 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	c.Pipeline.ClearActions()
 	c.Kube.ClearActions()
 	return c, i
+}
+
+type ResourceVersionReactor struct {
+	count int64
+}
+
+func (r *ResourceVersionReactor) Handles(action ktesting.Action) bool {
+	body := func(o runtime.Object) bool {
+		objMeta, err := meta.Accessor(o)
+		if err != nil {
+			return false
+		}
+		val := atomic.AddInt64(&r.count, 1)
+		objMeta.SetResourceVersion(fmt.Sprintf("%05d", val))
+		return false
+	}
+
+	switch o := action.(type) {
+	case ktesting.CreateActionImpl:
+		return body(o.GetObject())
+	case ktesting.UpdateActionImpl:
+		return body(o.GetObject())
+	default:
+		return false
+	}
+}
+
+// React is noop-function
+func (r *ResourceVersionReactor) React(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+	return false, nil, nil
+}
+
+var _ ktesting.Reactor = (*ResourceVersionReactor)(nil)
+
+// PrependResourceVersionReactor will instrument a client-go testing Fake
+// with a reactor that simulates resourceVersion changes on mutations.
+// This does not work with patches.
+func PrependResourceVersionReactor(f *ktesting.Fake) {
+	f.ReactionChain = append([]ktesting.Reactor{&ResourceVersionReactor{}}, f.ReactionChain...)
 }
