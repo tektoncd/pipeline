@@ -789,6 +789,9 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1bet
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
 	}
 	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
+		// Note that this uses Update vs. Patch because the former is significantly easier to test.
+		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
+		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
 		newPr = newPr.DeepCopy()
 		newPr.Labels = pr.Labels
 		newPr.Annotations = pr.Annotations
