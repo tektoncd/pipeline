@@ -24,7 +24,8 @@ To start from scratch and use these Pipelines and Tasks:
 
 ## Create an official release
 
-Official releases are performed from the `dogfooding` cluster
+Official releases are performed from
+[the `dogfooding` cluster](https://github.com/tektoncd/plumbing#the-dogfooding-cluster)
 [in the `tekton-releases` GCP project](https://github.com/tektoncd/plumbing/blob/master/gcp.md).
 This cluster [already has the correct version of Tekton installed](#install-tekton).
 
@@ -62,28 +63,6 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
        value: revision-for-vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from (not a tag, since that's not created yet)
    ```
 
- 1. Post-processing services perform post release automated tasks. Today the only
-    service available collects the `PipelineRun` logs uploads them to the release
-    bucker. To use release post-processing services, update the
-    [`resources.yaml`](./resources.yaml) file to add a valid targetURL in the
-    cloud event `PipelineResource` named `post-release-trigger`:
-
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: post-release-trigger
-    spec:
-      type: cloudEvent
-      params:
-        - name: targetURI
-          value: http://el-pipeline-release-post-processing.default.svc.cluster.local:8080 # This has to be changed to a valid URL
-    ```
-
-    The targetURL should point to the event listener configured in the cluster.
-    The example above is configured with the correct value for the  `dogfooding`
-    cluster.
-
 1. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the
    default account should already have these creds, this is just a bonus - plus
@@ -99,7 +78,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
      if running against your own infrastructure
 
 
-1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
+1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#the-dogfooding-cluster):
 
     ```bash
     gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
@@ -113,23 +92,23 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    kubectl apply -f tekton/resources.yaml
 
    # Change the environment variable to the version you would like to use.
-   # Be careful: due to #983 it is possible to overwrite previous releases.
-   export VERSION_TAG=vX.Y.Z
-   export GIT_RESOURCE_NAME=tekton-pipelines-git-vX-Y-Z
+   export TEKTON_VERSION=vX.Y.Z
+   export TEKTON_RELEASE_GIT_RESOURCE=tekton-pipelines-git-vX-Y-Z
+   export TEKTON_BUCKET_RESOURCE=pipeline-tekton-bucket
    export IMAGE_REGISTRY=gcr.io/tekton-releases
 
    # Double-check the git revision that is going to be used for the release:
-   kubectl get pipelineresource/tekton-pipelines-git-vX-Y-Z -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
+   kubectl get pipelineresource/$TEKTON_RELEASE_GIT_RESOURCE -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
 
    # Execute the release pipeline.
    # By default this will tag the release as Pipelines' latest. If you would like to prevent
    # this from happening add --param=releaseAsLatest="false"
    tkn pipeline start \
-		--param=versionTag=${VERSION_TAG} \
+		--param=versionTag=${TEKTON_VERSION} \
 		--param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
-		--resource=source-repo=${GIT_RESOURCE_NAME} \
-		--resource=bucket=pipeline-tekton-bucket \
+		--resource=source-repo=${TEKTON_RELEASE_GIT_RESOURCE} \
+		--resource=bucket=${TEKTON_BUCKET_RESOURCE} \
 		--resource=builtBaseImage=base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
 		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
@@ -148,6 +127,30 @@ _TODO(#569): Normally we'd use the image `PipelineResources` to control which
 image registry the images are pushed to. However since we have so many images,
 all going to the same registry, we are cheating and using a parameter for the
 image registry instead._
+
+### Pipeline setup
+
+Post-processing services perform post release automated tasks. Today the only
+service available collects the `PipelineRun` logs uploads them to the release
+bucker. To use release post-processing services, the PipelineResource in
+[`resources.yaml`](./resources.yaml) must be configured with a valid targetURL in the
+cloud event `PipelineResource` named `post-release-trigger`:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: post-release-trigger
+spec:
+  type: cloudEvent
+  params:
+    - name: targetURI
+      value: http://el-pipeline-release-post-processing.default.svc.cluster.local:8080 # This has to be changed to a valid URL
+```
+
+The targetURL should point to the event listener configured in the cluster.
+The example above is configured with the correct value for the  `dogfooding`
+cluster, using the event listener `pipeline-release-post-processing`.
 
 ## Nightly releases
 
