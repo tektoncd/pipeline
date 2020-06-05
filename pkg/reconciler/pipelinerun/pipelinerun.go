@@ -18,7 +18,6 @@ package pipelinerun
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -33,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
+	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -46,15 +46,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/controller"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
 )
 
@@ -127,37 +124,17 @@ type Reconciler struct {
 }
 
 var (
-	// Check that our Reconciler implements controller.Reconciler
-	_ controller.Reconciler = (*Reconciler)(nil)
+	// Check that our Reconciler implements pipelinerunreconciler.Interface
+	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 )
 
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
-func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
-	c.Logger.Infof("Reconciling key %s at %v", key, time.Now())
+func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun) pkgreconciler.Event {
+	// Snapshot original for the label/annotation check below.
+	original := pr.DeepCopy()
 
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		c.Logger.Errorf("invalid resource key: %s", key)
-		return nil
-	}
-
-	ctx = c.configStore.ToContext(ctx)
-
-	// Get the Pipeline Run resource with this namespace/name
-	original, err := c.pipelineRunLister.PipelineRuns(namespace).Get(name)
-	if errors.IsNotFound(err) {
-		// The resource no longer exists, in which case we stop processing.
-		c.Logger.Errorf("pipeline run %q in work queue no longer exists", key)
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	// Don't modify the informer's copy.
-	pr := original.DeepCopy()
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
@@ -215,7 +192,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}
 
 		// Make sure that the PipelineRun status is in sync with the actual TaskRuns
-		err = c.updatePipelineRunStatusFromInformer(pr)
+		err := c.updatePipelineRunStatusFromInformer(pr)
 		if err != nil {
 			// This should not fail. Return the error so we can re-try later.
 			c.Logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
@@ -230,16 +207,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}
 	}
 
-	if !equality.Semantic.DeepEqual(original.Status, pr.Status) {
-		if _, err := c.updateStatus(pr); err != nil {
-			c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
-			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
-			return multierror.Append(merr, err)
-		}
-	}
-
-	// When we update the status only, we use updateStatus to minimize the chances of
-	// racing any clients updating other parts of the Run, e.g. the spec or the labels.
 	// If we need to update the labels or annotations, we need to call Update with these
 	// changes explicitly.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
@@ -816,36 +783,16 @@ func getTaskRunTimeout(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipeline
 	return taskRunTimeout
 }
 
-func (c *Reconciler) updateStatus(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
-	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
-	if err != nil {
-		return nil, fmt.Errorf("error getting PipelineRun %s when updating status: %w", pr.Name, err)
-	}
-	if !reflect.DeepEqual(pr.Status, newPr.Status) {
-		newPr = newPr.DeepCopy() // Don't modify the informer's copy
-		newPr.Status = pr.Status
-		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
-	}
-	return newPr, nil
-}
-
 func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
 	}
 	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) || !reflect.DeepEqual(pr.ObjectMeta.Annotations, newPr.ObjectMeta.Annotations) {
-		mergePatch := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"labels":      pr.ObjectMeta.Labels,
-				"annotations": pr.ObjectMeta.Annotations,
-			},
-		}
-		patch, err := json.Marshal(mergePatch)
-		if err != nil {
-			return nil, err
-		}
-		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(pr.Name, types.MergePatchType, patch)
+		newPr = newPr.DeepCopy()
+		newPr.Labels = pr.Labels
+		newPr.Annotations = pr.Annotations
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
 }

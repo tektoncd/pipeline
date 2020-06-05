@@ -38,6 +38,7 @@ var (
 )
 
 // +genclient
+// +genreconciler
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PipelineRun represents a single execution of a Pipeline. PipelineRuns are how
