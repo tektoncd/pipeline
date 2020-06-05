@@ -421,8 +421,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 // Push changes (if any) to the TaskRun status, labels and annotations to
 // TaskRun definition in ectd
 func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.TaskRun) error {
-	var updated bool
-
 	if !equality.Semantic.DeepEqual(original.Status, tr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
@@ -432,7 +430,6 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.Task
 			c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
 			return err
 		}
-		updated = true
 	}
 
 	// When we update the status only, we use updateStatus to minimize the chances of
@@ -444,16 +441,6 @@ func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1beta1.Task
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 			return err
 		}
-		updated = true
-	}
-
-	if updated {
-		go func(metrics *Recorder) {
-			err := metrics.RunningTaskRuns(c.taskRunLister)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 	}
 
 	return nil
