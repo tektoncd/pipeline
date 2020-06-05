@@ -67,6 +67,8 @@ var (
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
+
+	ignoreResourceVersion = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
 )
 
 func getRunName(pr *v1beta1.PipelineRun) string {
@@ -1276,7 +1278,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
-		if d := cmp.Diff(actual, expectedTaskRuns[i]); d != "" {
+		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
 		}
 
@@ -2265,7 +2267,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun); d != "" {
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 }
@@ -2344,7 +2346,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(expectedTaskRun, &actualTaskRun); d != "" {
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
@@ -2431,7 +2433,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
 
-	if d := cmp.Diff(&pipelineRun, &prs[0]); d != "" {
+	if d := cmp.Diff(&pipelineRun, &prs[0], ignoreResourceVersion); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -2642,7 +2644,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		t.Fatalf("Error reconciling: %s", err)
 	}
 
-	_, ok := clients.Pipeline.Actions()[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+	_, ok := clients.Pipeline.Actions()[2].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
 	if !ok {
 		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
@@ -2663,7 +2665,10 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 			}
 		}
 	}
-	if got, want := pipelineUpdates, 2; got != want {
+	// We actually expect three update calls because the first status update fails due to
+	// optimistic concurrency (due to the label update) and is retried after reloading via
+	// the client.
+	if got, want := pipelineUpdates, 3; got != want {
 		// If only the pipelinerun status changed, we expect one update
 		t.Fatalf("Expected client to have updated the pipelinerun %d times, but it did %d times", want, got)
 	}
