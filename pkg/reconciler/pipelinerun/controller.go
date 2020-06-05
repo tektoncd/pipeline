@@ -40,10 +40,6 @@ import (
 	"knative.dev/pkg/tracker"
 )
 
-const (
-	resyncPeriod = 10 * time.Hour
-)
-
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
 func NewController(namespace string, images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -102,6 +98,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		c.Logger.Info("Setting up ConfigMap receivers")
 		c.configStore = config.NewStore(images, c.Logger.Named("config-store"))
 		c.configStore.WatchConfigs(cmw)
+
+		go metrics.ReportRunningPipelineRuns(ctx, pipelineRunInformer.Lister())
 
 		return impl
 	}

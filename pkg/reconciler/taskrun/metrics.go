@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 )
 
@@ -69,6 +70,8 @@ type Recorder struct {
 	pipeline    tag.Key
 	pipelineRun tag.Key
 	pod         tag.Key
+
+	ReportingPeriod time.Duration
 }
 
 // NewRecorder creates a new metrics recorder instance
@@ -76,6 +79,9 @@ type Recorder struct {
 func NewRecorder() (*Recorder, error) {
 	r := &Recorder{
 		initialized: true,
+
+		// Default to reporting metrics every 30s.
+		ReportingPeriod: 30 * time.Second,
 	}
 
 	task, err := tag.NewKey("task")
@@ -248,6 +254,25 @@ func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
 	metrics.Record(ctx, runningTRsCount.M(float64(runningTrs)))
 
 	return nil
+}
+
+// ReportRunningTaskRuns invokes RunningTaskRuns on our configured PeriodSeconds
+// until the context is cancelled.
+func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) {
+	logger := logging.FromContext(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			// When the context is cancelled, stop reporting.
+			return
+
+		case <-time.After(r.ReportingPeriod):
+			// Every 30s surface a metric for the number of running tasks.
+			if err := r.RunningTaskRuns(lister); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}
+	}
 }
 
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun

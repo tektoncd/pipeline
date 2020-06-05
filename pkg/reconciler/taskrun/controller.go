@@ -106,6 +106,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		c.configStore = config.NewStore(c.Logger.Named("config-store"))
 		c.configStore.WatchConfigs(cmw)
+
+		go metrics.ReportRunningTaskRuns(ctx, taskRunInformer.Lister())
+
 		return impl
 	}
 }

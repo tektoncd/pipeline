@@ -230,14 +230,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}
 	}
 
-	var updated bool
 	if !equality.Semantic.DeepEqual(original.Status, pr.Status) {
 		if _, err := c.updateStatus(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
 			return multierror.Append(merr, err)
 		}
-		updated = true
 	}
 
 	// When we update the status only, we use updateStatus to minimize the chances of
@@ -250,16 +248,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update labels/annotations")
 			return multierror.Append(merr, err)
 		}
-		updated = true
-	}
-
-	if updated {
-		go func(metrics *Recorder) {
-			err := metrics.RunningPipelineRuns(c.pipelineRunLister)
-			if err != nil {
-				c.Logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 	}
 
 	return merr.ErrorOrNil()
