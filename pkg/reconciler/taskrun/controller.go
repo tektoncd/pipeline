@@ -103,6 +103,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
+		go metrics.ReportRunningTaskRuns(ctx, taskRunInformer.Lister())
+
 		return impl
 	}
 }

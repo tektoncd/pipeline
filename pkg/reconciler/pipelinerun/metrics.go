@@ -29,6 +29,7 @@ import (
 	"go.opencensus.io/tag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 )
 
@@ -56,6 +57,8 @@ type Recorder struct {
 	pipelineRun tag.Key
 	namespace   tag.Key
 	status      tag.Key
+
+	ReportingPeriod time.Duration
 }
 
 // NewRecorder creates a new metrics recorder instance
@@ -63,6 +66,9 @@ type Recorder struct {
 func NewRecorder() (*Recorder, error) {
 	r := &Recorder{
 		initialized: true,
+
+		// Default to 30s intervals.
+		ReportingPeriod: 30 * time.Second,
 	}
 
 	pipeline, err := tag.NewKey("pipeline")
@@ -183,4 +189,23 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	metrics.Record(ctx, runningPRsCount.M(float64(runningPRs)))
 
 	return nil
+}
+
+// ReportRunningPipelineRuns invokes RunningPipelineRuns on our configured PeriodSeconds
+// until the context is cancelled.
+func (r *Recorder) ReportRunningPipelineRuns(ctx context.Context, lister listers.PipelineRunLister) {
+	logger := logging.FromContext(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			// When the context is cancelled, stop reporting.
+			return
+
+		case <-time.After(r.ReportingPeriod):
+			// Every 30s surface a metric for the number of running pipelines.
+			if err := r.RunningPipelineRuns(lister); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}
+	}
 }
