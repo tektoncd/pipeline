@@ -47,9 +47,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stesting "k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 var (
@@ -80,13 +83,15 @@ func getRunName(pr *v1beta1.PipelineRun) string {
 func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	//unregisterMetrics()
 	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx, cancel := context.WithCancel(ctx)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
-	ctx, cancel := context.WithCancel(ctx)
 	return test.Assets{
+		Logger:     logging.FromContext(ctx),
 		Controller: NewController(namespace, images)(ctx, configMapWatcher),
 		Clients:    c,
 		Informers:  informers,
+		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 	}, cancel
 }
 
