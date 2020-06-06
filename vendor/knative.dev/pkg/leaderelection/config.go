@@ -30,6 +30,10 @@ import (
 
 const ConfigMapNameEnv = "CONFIG_LEADERELECTION_NAME"
 
+// MaxBuckets is the maximum number of buckets to allow users to define.
+// This is a variable so that it may be customized in the binary entrypoint.
+var MaxBuckets uint32 = 10
+
 var validResourceLocks = sets.NewString("leases", "configmaps", "endpoints")
 
 // NewConfigFromMap returns a Config for the given map, or an error.
@@ -43,6 +47,8 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		cm.AsDuration("renewDeadline", &config.RenewDeadline),
 		cm.AsDuration("retryPeriod", &config.RetryPeriod),
 
+		cm.AsUint32("buckets", &config.Buckets),
+
 		// enabledComponents are not validated here, because they are dependent on
 		// the component. Components should provide additional validation for this
 		// field.
@@ -51,6 +57,9 @@ func NewConfigFromMap(data map[string]string) (*Config, error) {
 		return nil, err
 	}
 
+	if config.Buckets < 1 || config.Buckets > MaxBuckets {
+		return nil, fmt.Errorf("buckets: value must be between %d <= %d <= %d", 1, config.Buckets, MaxBuckets)
+	}
 	if !validResourceLocks.Has(config.ResourceLock) {
 		return nil, fmt.Errorf(`resourceLock: invalid value %q: valid values are "leases","configmaps","endpoints"`, config.ResourceLock)
 	}
@@ -72,6 +81,7 @@ func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
 // single source repository, viz: serving or eventing.
 type Config struct {
 	ResourceLock      string
+	Buckets           uint32
 	LeaseDuration     time.Duration
 	RenewDeadline     time.Duration
 	RetryPeriod       time.Duration
@@ -83,6 +93,7 @@ func (c *Config) GetComponentConfig(name string) ComponentConfig {
 		return ComponentConfig{
 			Component:     name,
 			LeaderElect:   true,
+			Buckets:       c.Buckets,
 			ResourceLock:  c.ResourceLock,
 			LeaseDuration: c.LeaseDuration,
 			RenewDeadline: c.RenewDeadline,
@@ -96,6 +107,7 @@ func (c *Config) GetComponentConfig(name string) ComponentConfig {
 func defaultConfig() *Config {
 	return &Config{
 		ResourceLock:      "leases",
+		Buckets:           1,
 		LeaseDuration:     15 * time.Second,
 		RenewDeadline:     10 * time.Second,
 		RetryPeriod:       2 * time.Second,
@@ -107,6 +119,7 @@ func defaultConfig() *Config {
 type ComponentConfig struct {
 	Component     string
 	LeaderElect   bool
+	Buckets       uint32
 	ResourceLock  string
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration

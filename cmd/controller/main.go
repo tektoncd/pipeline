@@ -69,7 +69,7 @@ func main() {
 		PRImage:                  *prImage,
 		ImageDigestExporterImage: *imageDigestExporterImage,
 	}
-	sharedmain.MainWithContext(injection.WithNamespaceScope(signals.NewContext(), *namespace), ControllerLogKey,
+	sharedmain.WebhookMainWithContext(injection.WithNamespaceScope(signals.NewContext(), *namespace), ControllerLogKey,
 		taskrun.NewController(*namespace, images),
 		pipelinerun.NewController(*namespace, images),
 	)

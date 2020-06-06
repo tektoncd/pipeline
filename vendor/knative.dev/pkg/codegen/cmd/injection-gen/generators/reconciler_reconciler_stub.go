@@ -77,6 +77,14 @@ func (g *reconcilerReconcilerStubGenerator) GenerateType(c *generator.Context, t
 			Package: g.reconcilerPkg,
 			Name:    "Finalizer",
 		}),
+		"reconcilerReadOnlyInterface": c.Universe.Type(types.Name{
+			Package: g.reconcilerPkg,
+			Name:    "ReadOnlyInterface",
+		}),
+		"reconcilerReadOnlyFinalizer": c.Universe.Type(types.Name{
+			Package: g.reconcilerPkg,
+			Name:    "ReadOnlyFinalizer",
+		}),
 		"corev1EventTypeNormal": c.Universe.Type(types.Name{
 			Package: "k8s.io/api/core/v1",
 			Name:    "EventTypeNormal",
@@ -112,16 +120,24 @@ var _ {{.reconcilerInterface|raw}} = (*Reconciler)(nil)
 // Optionally check that our Reconciler implements Finalizer
 //var _ {{.reconcilerFinalizer|raw}} = (*Reconciler)(nil)
 
+// Optionally check that our Reconciler implements ReadOnlyInterface
+// Implement this to observe resources even when we are not the leader.
+//var _ {{.reconcilerReadOnlyInterface|raw}} = (*Reconciler)(nil)
+
+// Optionally check that our Reconciler implements ReadOnlyFinalizer
+// Implement this to observe tombstoned resources even when we are not
+// the leader (best effort).
+//var _ {{.reconcilerReadOnlyFinalizer|raw}} = (*Reconciler)(nil)
 
 // ReconcileKind implements Interface.ReconcileKind.
 func (r *Reconciler) ReconcileKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
-    // TODO: use this if the resource implements InitializeConditions.
+	// TODO: use this if the resource implements InitializeConditions.
 	// o.Status.InitializeConditions()
 
 	// TODO: add custom reconciliation logic here.
 
 	// TODO: use this if the object has .status.ObservedGeneration.
-    // o.Status.ObservedGeneration = o.Generation
+	// o.Status.ObservedGeneration = o.Generation
 	return newReconciledNormal(o.Namespace, o.Name)
 }
 
@@ -129,6 +145,18 @@ func (r *Reconciler) ReconcileKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}
 // when the resource is deleted.
 //func (r *Reconciler) FinalizeKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
 //	// TODO: add custom finalization logic here.
+//	return nil
+//}
+
+// Optionally, use ObserveKind to observe the resource when we are not the leader.
+// func (r *Reconciler) ObserveKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
+// 	// TODO: add custom observation logic here.
+// 	return nil
+// }
+
+// Optionally, use ObserveFinalizeKind to observe resources being finalized when we are no the leader.
+//func (r *Reconciler) ObserveFinalizeKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
+// 	// TODO: add custom observation logic here.
 //	return nil
 //}
 `

@@ -28,6 +28,7 @@ import (
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -37,6 +38,7 @@ import (
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
@@ -45,6 +47,7 @@ import (
 // reconciler implements the AdmissionController for ConfigMaps
 type reconciler struct {
 	webhook.StatelessAdmissionImpl
+	pkgreconciler.LeaderAwareFuncs
 
 	name         string
 	path         string
@@ -58,12 +61,18 @@ type reconciler struct {
 }
 
 var _ controller.Reconciler = (*reconciler)(nil)
+var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
 var _ webhook.AdmissionController = (*reconciler)(nil)
 var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
 
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
+
+	if !ac.IsLeaderFor(types.NamespacedName{Name: ac.name}) {
+		logger.Debugf("Skipping key %q, not the leader.", key)
+		return nil
+	}
 
 	secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.secretName)
 	if err != nil {
@@ -182,6 +191,15 @@ func (ac *reconciler) validate(ctx context.Context, req *admissionv1beta1.Admiss
 		if err := newDecoder.Decode(&newObj); err != nil {
 			return fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
+	}
+
+	exampleData, hasExampleData := newObj.Data[configmap.ExampleKey]
+	exampleChecksum, hasExampleChecksumAnnotation := newObj.Annotations[configmap.ExampleChecksumAnnotation]
+	if hasExampleData && hasExampleChecksumAnnotation &&
+		exampleChecksum != configmap.Checksum(exampleData) {
+		return fmt.Errorf(
+			"%q modified, you likely wanted to create an unindented configuration",
+			configmap.ExampleKey)
 	}
 
 	var err error

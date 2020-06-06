@@ -28,7 +28,10 @@ metadata:
     # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
-  replicas: 1
+
+  # TODO(mattmoor): DO NOT SUBMIT
+  replicas: 10
+
   selector:
     matchLabels:
       app.kubernetes.io/name: controller

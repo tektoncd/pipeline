@@ -23,10 +23,12 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 )
@@ -45,6 +47,15 @@ func NewController(
 	options := webhook.GetOptions(ctx)
 
 	wh := &reconciler{
+		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
+			// Enqueue the key whenever we become leader.
+			PromoteFunc: func(bkt pkgreconciler.Bucket, enq func(pkgreconciler.Bucket, types.NamespacedName)) {
+				enq(bkt, types.NamespacedName{
+					Namespace: system.Namespace(),
+					Name:      options.SecretName,
+				})
+			},
+		},
 		secretName:  options.SecretName,
 		serviceName: options.ServiceName,
 
@@ -52,8 +63,7 @@ func NewController(
 		secretlister: secretInformer.Lister(),
 	}
 
-	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(wh, logger, "WebhookCertificates")
+	c := controller.NewImpl(wh, logging.FromContext(ctx), "WebhookCertificates")
 
 	// Reconcile when the cert bundle changes.
 	secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

@@ -46,6 +46,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -55,6 +56,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 const (
@@ -267,9 +269,15 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+
+	ctl := NewController(namespace, images)(ctx, configMapWatcher)
+	// The Reconciler won't do any work until it becomes the leader.
+	if la, ok := ctl.Reconciler.(pkgreconciler.LeaderAware); ok {
+		la.Promote(pkgreconciler.AllBuckets(), func(pkgreconciler.Bucket, types.NamespacedName) {})
+	}
 	return test.Assets{
 		Logger:     logging.FromContext(ctx),
-		Controller: NewController(namespace, images)(ctx, configMapWatcher),
+		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),

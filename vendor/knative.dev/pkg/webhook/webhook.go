@@ -73,13 +73,6 @@ const (
 	Connect Operation = admissionv1beta1.Connect
 )
 
-var (
-	// GracePeriod is the duration that the webhook will wait after it's
-	// context is cancelled (and probes are failing) before shutting down
-	// the http server.
-	GracePeriod = 30 * time.Second
-)
-
 // Webhook implements the external webhook for validation of
 // resources and configuration.
 type Webhook struct {
@@ -145,7 +138,7 @@ func New(
 		Logger:       logger,
 		synced:       cancel,
 		stopCh:       make(chan struct{}),
-		gracePeriod:  GracePeriod,
+		gracePeriod:  network.DefaultDrainTimeout,
 	}
 
 	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

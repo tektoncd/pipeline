@@ -15,5 +15,8 @@ import (
 
 	_ "knative.dev/pkg/codegen/cmd/injection-gen"
 
+	// For chaos testing the leaderelection stuff.
+	_ "knative.dev/pkg/leaderelection/chaosduck"
+
 	_ "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher"
 )

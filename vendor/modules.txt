@@ -928,7 +928,7 @@ knative.dev/caching/pkg/apis/caching/v1alpha1
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/scheme
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1
-# knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9 => knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9
+# knative.dev/pkg v0.0.0-20200603222317-b79e4a24ca50 => github.com/mattmoor/pkg v0.0.0-20200606205049-91cbf7083dca
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/v1
@@ -957,6 +957,7 @@ knative.dev/pkg/injection/sharedmain
 knative.dev/pkg/kmeta
 knative.dev/pkg/kmp
 knative.dev/pkg/leaderelection
+knative.dev/pkg/leaderelection/chaosduck
 knative.dev/pkg/logging
 knative.dev/pkg/logging/logkey
 knative.dev/pkg/logging/testing

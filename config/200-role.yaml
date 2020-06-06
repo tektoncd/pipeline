@@ -48,7 +48,7 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get"]
-    resourceNames: ["config-logging", "config-observability"]
+    resourceNames: ["config-logging", "config-observability", "config-leader-election"]
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["list", "watch"]

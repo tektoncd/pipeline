@@ -20,7 +20,9 @@ package spoof
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -244,18 +246,22 @@ func (sc *SpoofingClient) Poll(req *http.Request, inState ResponseChecker, error
 // DefaultErrorRetryChecker implements the defaults for retrying on error.
 func DefaultErrorRetryChecker(err error) (bool, error) {
 	if isTCPTimeout(err) {
-		return true, fmt.Errorf("Retrying for TCP timeout: %w", err)
+		return true, fmt.Errorf("retrying for TCP timeout: %w", err)
 	}
 	// Retrying on DNS error, since we may be using xip.io or nip.io in tests.
 	if isDNSError(err) {
-		return true, fmt.Errorf("Retrying for DNS error: %w", err)
+		return true, fmt.Errorf("retrying for DNS error: %w", err)
 	}
 	// Repeat the poll on `connection refused` errors, which are usually transient Istio errors.
 	if isConnectionRefused(err) {
-		return true, fmt.Errorf("Retrying for connection refused: %w", err)
+		return true, fmt.Errorf("retrying for connection refused: %w", err)
 	}
 	if isConnectionReset(err) {
-		return true, fmt.Errorf("Retrying for connection reset: %w", err)
+		return true, fmt.Errorf("retrying for connection reset: %w", err)
+	}
+	// Retry on connection/network errors.
+	if errors.Is(err, io.EOF) {
+		return true, fmt.Errorf("retrying for: %w", err)
 	}
 	return false, err
 }

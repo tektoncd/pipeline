@@ -26,6 +26,7 @@ import (
 
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck"
+	"knative.dev/pkg/kmeta"
 )
 
 // +genduck
@@ -63,6 +64,12 @@ type Status struct {
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	Conditions Conditions `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+
+	// Annotations is additional Status fields for the Resource to save some
+	// additional State as well as convey more information to the user. This is
+	// roughly akin to Annotations on any k8s resource, just the reconciler conveying
+	// richer information outwards.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 var _ apis.ConditionsAccessor = (*Status)(nil)
@@ -101,6 +108,10 @@ func (s *Status) GetCondition(t apis.ConditionType) *apis.Condition {
 // ConvertTo helps implement apis.Convertible for types embedding this Status.
 func (source *Status) ConvertTo(ctx context.Context, sink *Status) {
 	sink.ObservedGeneration = source.ObservedGeneration
+	if source.Annotations != nil {
+		// This will deep copy the map.
+		sink.Annotations = kmeta.UnionMaps(source.Annotations)
+	}
 	for _, c := range source.Conditions {
 		switch c.Type {
 		// Copy over the "happy" condition, which is the only condition that

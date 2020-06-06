@@ -26,3 +26,7 @@ data:
   leaseDuration: "15s"
   renewDeadline: "10s"
   retryPeriod: "2s"
+
+  # TODO(mattmoor): DO NOT SUBMIT
+  enabledComponents: "tekton,webhook"
+  buckets: "10"
