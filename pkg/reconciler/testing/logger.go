@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"go.uber.org/zap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -12,6 +13,10 @@ import (
 
 func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
 	ctx, informer := rtesting.SetupFakeContext(t)
+	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
+		SendSuccessfully: true,
+	}
+	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
 	return WithLogger(ctx, t), informer
 }
 

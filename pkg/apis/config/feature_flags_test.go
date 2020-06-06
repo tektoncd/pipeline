@@ -14,32 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package config_test
 
 import (
 	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	type testCase struct {
-		expectedConfig *FeatureFlags
+		expectedConfig *config.FeatureFlags
 		fileName       string
 	}
 
 	testCases := []testCase{
 		{
-			expectedConfig: &FeatureFlags{
-				RunningInEnvWithInjectedSidecars: DefaultRunningInEnvWithInjectedSidecars,
+			expectedConfig: &config.FeatureFlags{
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 			},
-			fileName: GetFeatureFlagsConfigName(),
+			fileName: config.GetFeatureFlagsConfigName(),
 		},
 		{
-			expectedConfig: &FeatureFlags{
+			expectedConfig: &config.FeatureFlags{
 				DisableHomeEnvOverwrite:          true,
 				DisableWorkingDirOverwrite:       true,
 				DisableAffinityAssistant:         true,
@@ -56,7 +57,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
-	expectedConfig := &FeatureFlags{
+	expectedConfig := &config.FeatureFlags{
 		RunningInEnvWithInjectedSidecars: true,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
@@ -84,7 +85,7 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 			if tc.featureFlagEnvValue != "" {
 				os.Setenv("CONFIG_FEATURE_FLAGS_NAME", tc.featureFlagEnvValue)
 			}
-			got := GetFeatureFlagsConfigName()
+			got := config.GetFeatureFlagsConfigName()
 			want := tc.expected
 			if got != want {
 				t.Errorf("GetFeatureFlagsConfigName() = %s, want %s", got, want)
@@ -93,9 +94,9 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 	}
 }
 
-func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *FeatureFlags) {
+func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
-	if flags, err := NewFeatureFlagsFromConfigMap(cm); err == nil {
+	if flags, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(flags, expectedConfig); d != "" {
 			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 		}
