@@ -18,7 +18,6 @@ package pipelinerun
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -67,7 +66,7 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		t.Errorf("unexpected error from createAffinityAssistants: %v", err)
 	}
 
-	expectedAffinityAssistantName := affinityAssistantStatefulSetNamePrefix + fmt.Sprintf("%s-%s", workspaceName, pipelineRunName)
+	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
 	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(expectedAffinityAssistantName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("unexpected error when retrieving StatefulSet: %v", err)
@@ -133,6 +132,22 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 0 {
 		t.Errorf("unexpected NodeSelector in the StatefulSet")
+	}
+}
+
+// TestThatAffinityAssistantNameIsNoLongerThan53 tests that the Affinity Assistant Name
+// is no longer than 53 chars. This is a limitation with StatefulSet.
+// See https://github.com/kubernetes/kubernetes/issues/64023
+// This is because the StatefulSet-controller adds a label with the name of the StatefulSet
+// plus 10 chars for a hash. Labels in Kubernetes can not be longer than 63 chars.
+// Typical output from the example below is affinity-assistant-0384086f62
+func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
+	affinityAssistantName := getAffinityAssistantName(
+		"pipeline-workspace-name-that-is-quite-long",
+		"pipelinerun-with-a-long-custom-name")
+
+	if len(affinityAssistantName) > 53 {
+		t.Errorf("affinity assistant name can not be longer than 53 chars")
 	}
 }
 

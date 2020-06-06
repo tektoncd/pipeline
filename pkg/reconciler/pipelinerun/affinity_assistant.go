@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -40,7 +41,6 @@ const (
 	ReasonCouldntCreateAffinityAssistantStatefulSet = "CouldntCreateAffinityAssistantStatefulSet"
 
 	featureFlagDisableAffinityAssistantKey = "disable-affinity-assistant"
-	affinityAssistantStatefulSetNamePrefix = "affinity-assistant-"
 )
 
 // createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
@@ -50,9 +50,8 @@ func (c *Reconciler) createAffinityAssistants(wb []v1alpha1.WorkspaceBinding, pr
 	var errs []error
 	for _, w := range wb {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
-			affinityAssistantName := getAffinityAssistantName(w.Name, pr.GetOwnerReference())
-			affinityAssistantStatefulSetName := affinityAssistantStatefulSetNamePrefix + affinityAssistantName
-			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(affinityAssistantStatefulSetName, metav1.GetOptions{})
+			affinityAssistantName := getAffinityAssistantName(w.Name, pr.Name)
+			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(affinityAssistantName, metav1.GetOptions{})
 			claimName := getClaimName(w, pr.GetOwnerReference())
 			switch {
 			case apierrors.IsNotFound(err):
@@ -86,7 +85,7 @@ func (c *Reconciler) cleanupAffinityAssistants(pr *v1beta1.PipelineRun) error {
 	var errs []error
 	for _, w := range pr.Spec.Workspaces {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
-			affinityAssistantStsName := affinityAssistantStatefulSetNamePrefix + getAffinityAssistantName(w.Name, pr.GetOwnerReference())
+			affinityAssistantStsName := getAffinityAssistantName(w.Name, pr.Name)
 			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(affinityAssistantStsName, &metav1.DeleteOptions{}); err != nil {
 				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %s", affinityAssistantStsName, err))
 			}
@@ -95,8 +94,10 @@ func (c *Reconciler) cleanupAffinityAssistants(pr *v1beta1.PipelineRun) error {
 	return errorutils.NewAggregate(errs)
 }
 
-func getAffinityAssistantName(pipelineWorkspaceName string, owner metav1.OwnerReference) string {
-	return fmt.Sprintf("%s-%s", pipelineWorkspaceName, owner.Name)
+func getAffinityAssistantName(pipelineWorkspaceName string, pipelineRunName string) string {
+	hashBytes := sha256.Sum256([]byte(pipelineWorkspaceName + pipelineRunName))
+	hashString := fmt.Sprintf("%x", hashBytes)
+	return fmt.Sprintf("%s-%s", "affinity-assistant", hashString[:10])
 }
 
 func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string) map[string]string {
@@ -168,7 +169,7 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            affinityAssistantStatefulSetNamePrefix + name,
+			Name:            name,
 			Labels:          getStatefulSetLabels(pr, name),
 			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
 		},

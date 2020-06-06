@@ -41,8 +41,6 @@ spec:
   workspaces:
     - name: ws
       volumeClaimTemplate:
-        metadata:
-          name: mypvc
         spec:
           accessModes:
             - ReadWriteOnce

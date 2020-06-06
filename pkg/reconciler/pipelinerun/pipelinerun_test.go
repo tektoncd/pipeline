@@ -1932,13 +1932,11 @@ func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 		t.Fatalf("expected one StatefulSet created. %d was created", len(stsNames))
 	}
 
-	expectedAffinityAssistantName1 := fmt.Sprintf("%s-%s", workspaceName, pipelineRunName)
-	expectedAffinityAssistantName2 := fmt.Sprintf("%s-%s", workspaceName2, pipelineRunName)
-	expectedStsName1 := affinityAssistantStatefulSetNamePrefix + expectedAffinityAssistantName1
-	expectedStsName2 := affinityAssistantStatefulSetNamePrefix + expectedAffinityAssistantName2
+	expectedAffinityAssistantName1 := getAffinityAssistantName(workspaceName, pipelineRunName)
+	expectedAffinityAssistantName2 := getAffinityAssistantName(workspaceName2, pipelineRunName)
 	expectedAffinityAssistantStsNames := make(map[string]bool)
-	expectedAffinityAssistantStsNames[expectedStsName1] = true
-	expectedAffinityAssistantStsNames[expectedStsName2] = true
+	expectedAffinityAssistantStsNames[expectedAffinityAssistantName1] = true
+	expectedAffinityAssistantStsNames[expectedAffinityAssistantName2] = true
 	for _, stsName := range stsNames {
 		_, found := expectedAffinityAssistantStsNames[stsName]
 		if !found {
