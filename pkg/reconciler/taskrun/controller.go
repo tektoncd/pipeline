@@ -18,7 +18,6 @@ package taskrun
 
 import (
 	"context"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -26,6 +25,7 @@ import (
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask"
 	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
+	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -38,10 +38,6 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
-)
-
-const (
-	resyncPeriod = 10 * time.Hour
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
@@ -85,7 +81,11 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			entrypointCache:   entrypointCache,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
-		impl := controller.NewImpl(c, c.Logger, pipeline.TaskRunControllerName)
+		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
+			return controller.Options{
+				AgentName: pipeline.TaskRunControllerName,
+			}
+		})
 
 		timeoutHandler.SetTaskRunCallbackFunc(impl.Enqueue)
 		timeoutHandler.CheckTimeouts(namespace, kubeclientset, pipelineclientset)

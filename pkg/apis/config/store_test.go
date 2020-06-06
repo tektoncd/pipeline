@@ -14,27 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package config_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestStoreLoadWithContext(t *testing.T) {
-	store := NewStore(logtesting.TestLogger(t))
+	store := config.NewStore(logtesting.TestLogger(t))
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
 	store.OnConfigChanged(defaultConfig)
 
-	config := FromContext(store.ToContext(context.Background()))
+	cfg := config.FromContext(store.ToContext(context.Background()))
 
-	expected, _ := NewDefaultsFromConfigMap(defaultConfig)
-	if d := cmp.Diff(config.Defaults, expected); d != "" {
+	expected, _ := config.NewDefaultsFromConfigMap(defaultConfig)
+	if d := cmp.Diff(cfg.Defaults, expected); d != "" {
 		t.Errorf("Unexpected default config %s", diff.PrintWantGot(d))
 	}
 }

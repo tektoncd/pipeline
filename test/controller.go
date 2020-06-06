@@ -39,6 +39,8 @@ import (
 	resourceinformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/informers/externalversions/resource/v1alpha1"
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
+	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -47,6 +49,7 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
 	"knative.dev/pkg/controller"
@@ -68,9 +71,10 @@ type Data struct {
 
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
-	Pipeline *fakepipelineclientset.Clientset
-	Resource *fakeresourceclientset.Clientset
-	Kube     *fakekubeclientset.Clientset
+	Pipeline    *fakepipelineclientset.Clientset
+	Resource    *fakeresourceclientset.Clientset
+	Kube        *fakekubeclientset.Clientset
+	CloudEvents cloudeventclient.CEClient
 }
 
 // Informers holds references to informers which are useful for reconciler tests.
@@ -87,9 +91,11 @@ type Informers struct {
 
 // Assets holds references to the controller, logs, clients, and informers.
 type Assets struct {
+	Logger     *zap.SugaredLogger
 	Controller *controller.Impl
 	Clients    Clients
 	Informers  Informers
+	Recorder   *record.FakeRecorder
 }
 
 func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
@@ -140,9 +146,10 @@ func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool,
 // nolint: golint
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	c := Clients{
-		Kube:     fakekubeclient.Get(ctx),
-		Pipeline: fakepipelineclient.Get(ctx),
-		Resource: fakeresourceclient.Get(ctx),
+		Kube:        fakekubeclient.Get(ctx),
+		Pipeline:    fakepipelineclient.Get(ctx),
+		Resource:    fakeresourceclient.Get(ctx),
+		CloudEvents: cloudeventclient.Get(ctx),
 	}
 	// Every time a resource is modified, change the metadata.resourceVersion.
 	PrependResourceVersionReactor(&c.Pipeline.Fake)

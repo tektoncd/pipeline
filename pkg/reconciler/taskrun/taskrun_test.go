@@ -32,8 +32,10 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/system"
 	test "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -51,6 +53,8 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -261,16 +265,14 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	//unregisterMetrics()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
-	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
-		SendSuccessfully: true,
-	}
-	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.Assets{
+		Logger:     logging.FromContext(ctx),
 		Controller: NewController(namespace, images)(ctx, configMapWatcher),
 		Clients:    c,
 		Informers:  informers,
+		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 	}, cancel
 }
 
@@ -1058,10 +1060,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			reconciler := c.Reconciler.(*Reconciler)
-			fr := reconciler.Recorder.(*record.FakeRecorder)
-
-			if err := reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1106,7 +1105,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			err = checkEvents(fr, tc.name, tc.wantEvents)
+			err = checkEvents(testAssets.Recorder, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1293,9 +1292,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			reconciler := c.Reconciler.(*Reconciler)
-			fr := reconciler.Recorder.(*record.FakeRecorder)
-			err := reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
+			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
 
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -1310,7 +1307,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf("expected one action (list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
 			}
 
-			err = checkEvents(fr, tc.name, tc.wantEvents)
+			err = checkEvents(testAssets.Recorder, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1402,10 +1399,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
-	reconciler := c.Reconciler.(*Reconciler)
-	fr := reconciler.Recorder.(*record.FakeRecorder)
 
-	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1455,7 +1450,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		"Normal Running Not all Steps",
 		"Normal Succeeded",
 	}
-	err = checkEvents(fr, "test-reconcile-pod-updateStatus", wantEvents)
+	err = checkEvents(testAssets.Recorder, "test-reconcile-pod-updateStatus", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1514,10 +1509,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
-	reconciler := c.Reconciler.(*Reconciler)
-	fr := reconciler.Recorder.(*record.FakeRecorder)
 
-	if err := reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1539,7 +1532,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		"Normal Started",
 		"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
 	}
-	err = checkEvents(fr, "test-reconcile-on-cancelled-taskrun", wantEvents)
+	err = checkEvents(testAssets.Recorder, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1626,8 +1619,6 @@ func TestReconcileTimeouts(t *testing.T) {
 		defer cancel()
 		c := testAssets.Controller
 		clients := testAssets.Clients
-		reconciler := c.Reconciler.(*Reconciler)
-		fr := reconciler.Recorder.(*record.FakeRecorder)
 
 		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
@@ -1640,7 +1631,7 @@ func TestReconcileTimeouts(t *testing.T) {
 		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 			t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 		}
-		err = checkEvents(fr, tc.taskRun.Name, tc.wantEvents)
+		err = checkEvents(testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
 		if !(err == nil) {
 			t.Errorf(err.Error())
 		}
@@ -1663,10 +1654,28 @@ func TestHandlePodCreationError(t *testing.T) {
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-	c, ok := testAssets.Controller.Reconciler.(*Reconciler)
-	if !ok {
-		t.Errorf("failed to construct instance of taskrun reconciler")
-		return
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	// Use the test assets to create a *Reconciler directly for focused testing.
+	opt := reconciler.Options{
+		KubeClientSet:     testAssets.Clients.Kube,
+		PipelineClientSet: testAssets.Clients.Pipeline,
+		Logger:            testAssets.Logger,
+		Recorder:          testAssets.Recorder,
+	}
+	c := &Reconciler{
+		Base:              reconciler.NewBase(opt, taskRunAgentName, images),
+		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+		taskLister:        testAssets.Informers.Task.Lister(),
+		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
+		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+		timeoutHandler:    reconciler.NewTimeoutHandler(ctx.Done(), opt.Logger),
+		cloudEventClient:  testAssets.Clients.CloudEvents,
+		metrics:           nil, // Not used
+		entrypointCache:   nil, // Not used
+		pvcHandler:        volumeclaim.NewPVCHandler(opt.KubeClientSet, opt.Logger),
 	}
 
 	// Prevent backoff timer from starting
@@ -2381,10 +2390,9 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, tt.d)
 			defer cancel()
 			clients := testAssets.Clients
-			reconciler := testAssets.Controller.Reconciler.(*Reconciler)
-			fr := reconciler.Recorder.(*record.FakeRecorder)
+			c := testAssets.Controller
 
-			if err := reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0])); err != nil {
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0])); err != nil {
 				t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 			}
 
@@ -2399,7 +2407,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				}
 			}
 
-			err = checkEvents(fr, tt.desc, tt.wantEvents)
+			err = checkEvents(testAssets.Recorder, tt.desc, tt.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -2517,11 +2525,27 @@ func TestFailTaskRun(t *testing.T) {
 
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
-			c, ok := testAssets.Controller.Reconciler.(*Reconciler)
-			if !ok {
-				t.Errorf("failed to construct instance of taskrun reconciler")
-				return
+
+			// Use the test assets to create a *Reconciler directly for focused testing.
+			opt := reconciler.Options{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Logger:            testAssets.Logger,
+				Recorder:          testAssets.Recorder,
 			}
+			c := &Reconciler{
+				Base:              reconciler.NewBase(opt, taskRunAgentName, images),
+				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+				taskLister:        testAssets.Informers.Task.Lister(),
+				clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
+				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+				timeoutHandler:    nil, // Not used
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil, // Not used
+				entrypointCache:   nil, // Not used
+				pvcHandler:        volumeclaim.NewPVCHandler(opt.KubeClientSet, opt.Logger),
+			}
+
 			err := c.failTaskRun(tc.taskRun, tc.reason, tc.message)
 			if err != nil {
 				t.Fatal(err)
