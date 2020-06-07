@@ -426,9 +426,51 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		}
 	}
 
+	as, err := artifacts.InitializeArtifactStorage(c.Images, pr, pipelineSpec, c.KubeClientSet, logger)
+	if err != nil {
+		logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
+		return err
+	}
+
+	// When the pipeline run is stopping, we don't schedule any new task and only
+	// wait for all running tasks to complete and report their status
+	if !pipelineState.IsStopping() {
+		err = c.runNextSchedulableTask(ctx, pr, d, pipelineState, as)
+		if err != nil {
+			return err
+		}
+	}
+
+	before := pr.Status.GetCondition(apis.ConditionSucceeded)
+	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d)
+	switch after.Status {
+	case corev1.ConditionTrue:
+		pr.Status.MarkSucceeded(after.Reason, after.Message)
+	case corev1.ConditionFalse:
+		pr.Status.MarkFailed(after.Reason, after.Message)
+	case corev1.ConditionUnknown:
+		pr.Status.MarkRunning(after.Reason, after.Message)
+	}
+	// Read the condition the way it was set by the Mark* helpers
+	after = pr.Status.GetCondition(apis.ConditionSucceeded)
+	events.Emit(recorder, before, after, pr)
+
+	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
+	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
+	return nil
+}
+
+// runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
+// pipeline run state, and starts them
+func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, d *dag.Graph, pipelineState resources.PipelineRunState, as artifacts.ArtifactStorageInterface) error {
+
+	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
+
 	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
+		return nil
 	}
 
 	nextRprts := pipelineState.GetNextTasks(candidateTasks)
@@ -439,13 +481,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return nil
 	}
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
-
-	var as artifacts.ArtifactStorageInterface
-
-	if as, err = artifacts.InitializeArtifactStorage(c.Images, pr, pipelineSpec, c.KubeClientSet, logger); err != nil {
-		logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
-		return err
-	}
 
 	for _, rprt := range nextRprts {
 		if rprt == nil {
@@ -467,20 +502,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 			}
 		}
 	}
-	before := pr.Status.GetCondition(apis.ConditionSucceeded)
-	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d)
-	switch after.Status {
-	case corev1.ConditionTrue:
-		pr.Status.MarkSucceeded(after.Reason, after.Message)
-	case corev1.ConditionFalse:
-		pr.Status.MarkFailed(after.Reason, after.Message)
-	case corev1.ConditionUnknown:
-		pr.Status.MarkRunning(after.Reason, after.Message)
-	}
-	events.Emit(recorder, before, after, pr)
-
-	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
-	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
 	return nil
 }
 
