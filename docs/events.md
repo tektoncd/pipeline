@@ -16,6 +16,7 @@ No events are emitted for `Conditions` today (https://github.com/tektoncd/pipeli
 ## TaskRuns
 
 `TaskRun` events are generated for the following `Reasons`:
+
 - `Started`: this is triggered the first time the `TaskRun` is picked by the
   reconciler from its work queue, so it only happens if web-hook validation was
   successful. Note that this event does not imply that a step started executing,
@@ -32,6 +33,7 @@ No events are emitted for `Conditions` today (https://github.com/tektoncd/pipeli
 ## PipelineRuns
 
 `PipelineRun` events are generated for the following `Reasons`:
+
 - `Succeeded`: this is triggered once all `Tasks` reachable via the DAG are
   executed successfully.
 - `Failed`: this is triggered if the `PipelineRun` is completed, but not

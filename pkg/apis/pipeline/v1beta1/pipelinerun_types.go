@@ -231,6 +231,9 @@ const (
 	PipelineRunReasonCancelled PipelineRunReason = "Cancelled"
 	// PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out
 	PipelineRunReasonTimedOut PipelineRunReason = "PipelineRunTimeout"
+	// ReasonStopping indicates that no new Tasks will be scheduled by the controller, and the
+	// pipeline will stop once all running tasks complete their work
+	PipelineRunReasonStopping PipelineRunReason = "PipelineRunStopping"
 )
 
 func (t PipelineRunReason) String() string {
