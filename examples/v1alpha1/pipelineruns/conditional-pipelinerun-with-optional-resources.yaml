@@ -74,7 +74,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
-  name: demo-condtional-pr-without-condition-resource
+  name: demo-conditional-pr-without-condition-resource
 spec:
   pipelineRef:
     name: pipeline-list-pipeline-repo-files
