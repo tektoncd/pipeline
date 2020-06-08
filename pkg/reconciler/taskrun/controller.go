@@ -58,20 +58,16 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			logger.Errorf("Failed to create taskrun metrics recorder %v", err)
 		}
 
-		opt := reconciler.Options{
-			KubeClientSet:     kubeclientset,
-			PipelineClientSet: pipelineclientset,
-			Logger:            logger,
-			Recorder:          controller.GetEventRecorder(ctx),
-		}
-
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
 		if err != nil {
 			logger.Fatalf("Error creating entrypoint cache: %v", err)
 		}
 
 		c := &Reconciler{
-			Base:              reconciler.NewBase(opt, taskRunAgentName, images),
+			KubeClientSet:     kubeclientset,
+			PipelineClientSet: pipelineclientset,
+			Images:            images,
+
 			taskRunLister:     taskRunInformer.Lister(),
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),

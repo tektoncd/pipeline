@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
@@ -46,7 +47,9 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -59,7 +62,9 @@ const (
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
-	*reconciler.Base
+	KubeClientSet     kubernetes.Interface
+	PipelineClientSet clientset.Interface
+	Images            pipeline.Images
 
 	// listers index properties about resources
 	taskRunLister     listers.TaskRunLister
@@ -82,6 +87,7 @@ var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
@@ -98,7 +104,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(c.Recorder, nil, afterCondition, tr)
+		events.Emit(recorder, nil, afterCondition, tr)
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -154,7 +160,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
-		return c.finishReconcileUpdateEmitEvents(tr, before, err)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
@@ -163,7 +169,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
-		return c.finishReconcileUpdateEmitEvents(tr, before, err)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
 	// prepare fetches all required resources, validates them together with the
@@ -174,7 +180,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		logger.Errorf("TaskRun prepare error: %v", err.Error())
 		// We only return an error if update failed, otherwise we don't want to
 		// reconcile an invalid TaskRun anymore
-		return c.finishReconcileUpdateEmitEvents(tr, nil, nil)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, nil)
 	}
 
 	// Store the condition before reconcile
@@ -186,15 +192,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 	// Emit events (only when ConditionSucceeded was changed)
-	return c.finishReconcileUpdateEmitEvents(tr, before, err)
+	return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	events.Emit(c.Recorder, beforeCondition, afterCondition, tr)
+func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
+	recorder := controller.GetEventRecorder(ctx)
 
+	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	events.Emit(recorder, beforeCondition, afterCondition, tr)
 	_, err := c.updateLabelsAndAnnotations(tr)
-	events.EmitError(c.Recorder, err, tr)
+	events.EmitError(recorder, err, tr)
+
 	return multierror.Append(previousError, err).ErrorOrNil()
 }
 
@@ -312,6 +320,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	taskSpec *v1beta1.TaskSpec, rtr *resources.ResolvedTaskResources) error {
 	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
 	var err error
@@ -371,7 +380,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	}
 
 	if podconvert.IsPodExceedingNodeResources(pod) {
-		c.Recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+		recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
 	}
 
 	if podconvert.SidecarsReady(pod.Status) {

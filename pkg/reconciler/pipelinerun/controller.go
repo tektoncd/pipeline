@@ -60,14 +60,10 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			logger.Errorf("Failed to create pipelinerun metrics recorder %v", err)
 		}
 
-		opt := reconciler.Options{
+		c := &Reconciler{
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
-			Logger:            logger,
-		}
-
-		c := &Reconciler{
-			Base:              reconciler.NewBase(opt, pipelineRunAgentName, images),
+			Images:            images,
 			pipelineRunLister: pipelineRunInformer.Lister(),
 			pipelineLister:    pipelineInformer.Lister(),
 			taskLister:        taskInformer.Lister(),

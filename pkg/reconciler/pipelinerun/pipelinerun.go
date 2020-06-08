@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
@@ -49,7 +50,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -98,7 +101,10 @@ const (
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
-	*reconciler.Base
+	KubeClientSet     kubernetes.Interface
+	PipelineClientSet clientset.Interface
+	Images            pipeline.Images
+
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
 	pipelineLister    listers.PipelineLister
@@ -123,6 +129,7 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
 	// Snapshot original for the label/annotation check below.
 	original := pr.DeepCopy()
 
@@ -174,11 +181,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before := pr.Status.GetCondition(apis.ConditionSucceeded)
 		merr = multierror.Append(merr, cancelPipelineRun(logger, pr, c.PipelineClientSet))
 		after := pr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(c.Recorder, before, after, pr)
+		events.Emit(recorder, before, after, pr)
 	default:
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
-			c.Recorder.Event(pr, corev1.EventTypeWarning, v1beta1.PipelineRunReasonFailed.String(), "Failed to create tracker for TaskRuns for PipelineRun")
+			recorder.Event(pr, corev1.EventTypeWarning, v1beta1.PipelineRunReasonFailed.String(), "Failed to create tracker for TaskRuns for PipelineRun")
 			return err
 		}
 
@@ -203,7 +210,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
 			logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-			c.Recorder.Event(pr, corev1.EventTypeWarning, "Error", "PipelineRun failed to update labels/annotations")
+			recorder.Event(pr, corev1.EventTypeWarning, "Error", "PipelineRun failed to update labels/annotations")
 			return multierror.Append(merr, err)
 		}
 	}
@@ -236,6 +243,7 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.Pipe
 }
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	logger := logging.FromContext(ctx)
+	recorder := controller.GetEventRecorder(ctx)
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
@@ -381,7 +389,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 
 	if pipelineState.IsDone() && pr.IsDone() {
 		c.timeoutHandler.Release(pr)
-		c.Recorder.Event(pr, corev1.EventTypeNormal, v1beta1.PipelineRunReasonSuccessful.String(), "PipelineRun completed successfully.")
+		recorder.Event(pr, corev1.EventTypeNormal, v1beta1.PipelineRunReasonSuccessful.String(), "PipelineRun completed successfully.")
 		return nil
 	}
 
@@ -446,14 +454,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
 			rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
 			if err != nil {
-				c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 			}
 		} else if !rprt.ResolvedConditionChecks.HasStarted() {
 			for _, rcc := range rprt.ResolvedConditionChecks {
 				rcc.ConditionCheck, err = c.makeConditionCheckContainer(rprt, rcc, pr)
 				if err != nil {
-					c.Recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
+					recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
 					return fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			}
@@ -469,7 +477,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	case corev1.ConditionUnknown:
 		pr.Status.MarkRunning(after.Reason, after.Message)
 	}
-	events.Emit(c.Recorder, before, after, pr)
+	events.Emit(recorder, before, after, pr)
 
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
