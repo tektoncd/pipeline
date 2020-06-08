@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -46,7 +47,9 @@ const (
 // createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createAffinityAssistants(wb []v1alpha1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1alpha1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+	logger := logging.FromContext(ctx)
+
 	var errs []error
 	for _, w := range wb {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
@@ -61,7 +64,7 @@ func (c *Reconciler) createAffinityAssistants(wb []v1alpha1.WorkspaceBinding, pr
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
 				}
 				if err == nil {
-					c.Logger.Infof("Created StatefulSet %s in namespace %s", affinityAssistantName, namespace)
+					logger.Infof("Created StatefulSet %s in namespace %s", affinityAssistantName, namespace)
 				}
 			case err != nil:
 				errs = append(errs, fmt.Errorf("failed to retrieve StatefulSet %s: %s", affinityAssistantName, err))

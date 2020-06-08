@@ -38,6 +38,7 @@ type Options struct {
 	PipelineClientSet clientset.Interface
 	CachingClientSet  cachingclientset.Interface
 
+	// This is just to pass a logger to NewBase, the field has been removed.
 	Logger   *zap.SugaredLogger
 	Recorder record.EventRecorder
 }
@@ -62,7 +63,7 @@ type Base struct {
 	// and use the returned raw logger instead. In addition to the
 	// performance benefits, raw logger also preserves type-safety at
 	// the expense of slightly greater verbosity.
-	Logger *zap.SugaredLogger
+	// Logger *zap.SugaredLogger
 
 	// Images contains images to use for certain internal container
 	Images pipeline.Images
@@ -102,8 +103,8 @@ func NewBase(opt Options, controllerAgentName string, images pipeline.Images) *B
 		CachingClientSet:  opt.CachingClientSet,
 
 		Recorder: recorder,
-		Logger:   logger,
-		Images:   images,
+		// Logger:   logger,
+		Images: images,
 	}
 
 	return base

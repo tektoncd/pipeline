@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/system"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +39,6 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		Base: &reconciler.Base{
 			KubeClientSet: fakek8s.NewSimpleClientset(),
 			Images:        pipeline.Images{},
-			Logger:        zap.NewExample().Sugar(),
 		},
 	}
 
@@ -61,7 +59,7 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		},
 	}
 
-	err := c.createAffinityAssistants(testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
+	err := c.createAffinityAssistants(context.Background(), testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
 	if err != nil {
 		t.Errorf("unexpected error from createAffinityAssistants: %v", err)
 	}
@@ -189,7 +187,6 @@ func TestDisableAffinityAssistant(t *testing.T) {
 						tc.configMap,
 					),
 					Images: pipeline.Images{},
-					Logger: zap.NewExample().Sugar(),
 				},
 			}
 			store := config.NewStore(logtesting.TestLogger(t))

@@ -1905,7 +1905,7 @@ func TestHandlePodCreationError(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
-			c.handlePodCreationError(taskRun, tc.err)
+			c.handlePodCreationError(ctx, taskRun, tc.err)
 			foundCondition := false
 			for _, cond := range taskRun.Status.Conditions {
 				if cond.Type == tc.expectedType && cond.Status == tc.expectedStatus && cond.Reason == tc.expectedReason {
@@ -2745,7 +2745,7 @@ func TestFailTaskRun(t *testing.T) {
 				pvcHandler:        volumeclaim.NewPVCHandler(opt.KubeClientSet, opt.Logger),
 			}
 
-			err := c.failTaskRun(tc.taskRun, tc.reason, tc.message)
+			err := c.failTaskRun(context.Background(), tc.taskRun, tc.reason, tc.message)
 			if err != nil {
 				t.Fatal(err)
 			}
