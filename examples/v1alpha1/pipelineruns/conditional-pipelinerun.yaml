@@ -83,7 +83,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
-  name: condtional-pr
+  name: conditional-pr
 spec:
   pipelineRef:
     name: conditional-pipeline
