@@ -83,7 +83,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
-			configStore := config.NewStore(c.Logger.Named("config-store"))
+			configStore := config.NewStore(logger.Named("config-store"))
 			configStore.WatchConfigs(cmw)
 
 			return controller.Options{
@@ -95,7 +95,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		timeoutHandler.SetTaskRunCallbackFunc(impl.Enqueue)
 		timeoutHandler.CheckTimeouts(namespace, kubeclientset, pipelineclientset)
 
-		c.Logger.Info("Setting up event handlers")
+		logger.Info("Setting up event handlers")
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    impl.Enqueue,
 			UpdateFunc: controller.PassNew(impl.Enqueue),
