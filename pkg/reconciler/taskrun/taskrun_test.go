@@ -1770,7 +1770,8 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef("test-task")))
+	const taskLabel = "test-task"
+	taskRun := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef(taskLabel)))
 
 	pod, err := makePod(taskRun, simpleTask)
 	if err != nil {
@@ -1806,6 +1807,14 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Message: "Not all Steps in the Task have finished executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+	}
+
+	trLabel, ok := newTr.ObjectMeta.Labels[taskNameLabelKey]
+	if !ok {
+		t.Errorf("Labels were not added to task run")
+	}
+	if ld := cmp.Diff(taskLabel, trLabel); ld != "" {
+		t.Errorf("Did not get expected label %s", diff.PrintWantGot(ld))
 	}
 
 	// update pod status and trigger reconcile : build is completed
