@@ -1862,23 +1862,18 @@ func TestHandlePodCreationError(t *testing.T) {
 	defer cancel()
 
 	// Use the test assets to create a *Reconciler directly for focused testing.
-	opt := reconciler.Options{
+	c := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
-		Logger:            testAssets.Logger,
-		Recorder:          testAssets.Recorder,
-	}
-	c := &Reconciler{
-		Base:              reconciler.NewBase(opt, taskRunAgentName, images),
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-		timeoutHandler:    reconciler.NewTimeoutHandler(ctx.Done(), opt.Logger),
+		timeoutHandler:    reconciler.NewTimeoutHandler(ctx.Done(), testAssets.Logger),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
-		pvcHandler:        volumeclaim.NewPVCHandler(opt.KubeClientSet, opt.Logger),
+		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 	}
 
 	// Prevent backoff timer from starting
@@ -2726,14 +2721,9 @@ func TestFailTaskRun(t *testing.T) {
 			defer cancel()
 
 			// Use the test assets to create a *Reconciler directly for focused testing.
-			opt := reconciler.Options{
+			c := &Reconciler{
 				KubeClientSet:     testAssets.Clients.Kube,
 				PipelineClientSet: testAssets.Clients.Pipeline,
-				Logger:            testAssets.Logger,
-				Recorder:          testAssets.Recorder,
-			}
-			c := &Reconciler{
-				Base:              reconciler.NewBase(opt, taskRunAgentName, images),
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				taskLister:        testAssets.Informers.Task.Lister(),
 				clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
@@ -2742,7 +2732,7 @@ func TestFailTaskRun(t *testing.T) {
 				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used
-				pvcHandler:        volumeclaim.NewPVCHandler(opt.KubeClientSet, opt.Logger),
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 			}
 
 			err := c.failTaskRun(context.Background(), tc.taskRun, tc.reason, tc.message)

@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,10 +35,8 @@ import (
 // for a given PipelineRun with a PVC workspace
 func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 	c := Reconciler{
-		Base: &reconciler.Base{
-			KubeClientSet: fakek8s.NewSimpleClientset(),
-			Images:        pipeline.Images{},
-		},
+		KubeClientSet: fakek8s.NewSimpleClientset(),
+		Images:        pipeline.Images{},
 	}
 
 	workspaceName := "testws"
@@ -182,12 +179,10 @@ func TestDisableAffinityAssistant(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			c := Reconciler{
-				Base: &reconciler.Base{
-					KubeClientSet: fakek8s.NewSimpleClientset(
-						tc.configMap,
-					),
-					Images: pipeline.Images{},
-				},
+				KubeClientSet: fakek8s.NewSimpleClientset(
+					tc.configMap,
+				),
+				Images: pipeline.Images{},
 			}
 			store := config.NewStore(logtesting.TestLogger(t))
 			store.OnConfigChanged(tc.configMap)
