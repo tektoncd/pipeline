@@ -387,6 +387,8 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	}
 }
 
+// TestReconcile_InvalidPipelineRuns runs "Reconcile" on several PipelineRuns that are invalid in different ways.
+// It verifies that reconcile fails, how it fails and which events are triggered.
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1beta1.Task{
 		tb.Task("a-task-that-exists", tb.TaskNamespace("foo")),
@@ -458,60 +460,74 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		pipelineRun        *v1beta1.PipelineRun
 		reason             string
 		hasNoDefaultLabels bool
+		permanentError     bool
 	}{
 		{
 			name:               "invalid-pipeline-shd-be-stop-reconciling",
 			pipelineRun:        prs[0],
 			reason:             ReasonCouldntGetPipeline,
 			hasNoDefaultLabels: true,
+			permanentError:     true,
 		}, {
-			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
-			pipelineRun: prs[1],
-			reason:      ReasonCouldntGetTask,
+			name:           "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
+			pipelineRun:    prs[1],
+			reason:         ReasonCouldntGetTask,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
-			pipelineRun: prs[2],
-			reason:      ReasonFailedValidation,
+			name:           "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
+			pipelineRun:    prs[2],
+			reason:         ReasonFailedValidation,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
-			pipelineRun: prs[3],
-			reason:      ReasonInvalidBindings,
+			name:           "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
+			pipelineRun:    prs[3],
+			reason:         ReasonInvalidBindings,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
-			pipelineRun: prs[4],
-			reason:      ReasonCouldntGetResource,
+			name:           "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
+			pipelineRun:    prs[4],
+			reason:         ReasonCouldntGetResource,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
-			pipelineRun: prs[5],
-			reason:      ReasonFailedValidation,
+			name:           "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
+			pipelineRun:    prs[5],
+			reason:         ReasonFailedValidation,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-mismatching-parameter-types",
-			pipelineRun: prs[6],
-			reason:      ReasonParameterTypeMismatch,
+			name:           "invalid-pipeline-mismatching-parameter-types",
+			pipelineRun:    prs[6],
+			reason:         ReasonParameterTypeMismatch,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-missing-conditions-shd-stop-reconciling",
-			pipelineRun: prs[7],
-			reason:      ReasonCouldntGetCondition,
+			name:           "invalid-pipeline-missing-conditions-shd-stop-reconciling",
+			pipelineRun:    prs[7],
+			reason:         ReasonCouldntGetCondition,
+			permanentError: true,
 		}, {
-			name:        "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
-			pipelineRun: prs[8],
-			reason:      ReasonInvalidBindings,
+			name:           "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
+			pipelineRun:    prs[8],
+			reason:         ReasonInvalidBindings,
+			permanentError: true,
 		}, {
-			name:        "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
-			pipelineRun: prs[9],
-			reason:      ReasonFailedValidation,
+			name:           "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
+			pipelineRun:    prs[9],
+			reason:         ReasonFailedValidation,
+			permanentError: true,
 		}, {
-			name:        "invalid-embedded-pipeline-mismatching-parameter-types",
-			pipelineRun: prs[10],
-			reason:      ReasonParameterTypeMismatch,
+			name:           "invalid-embedded-pipeline-mismatching-parameter-types",
+			pipelineRun:    prs[10],
+			reason:         ReasonParameterTypeMismatch,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-run-missing-params-shd-stop-reconciling",
-			pipelineRun: prs[11],
-			reason:      ReasonParameterMissing,
+			name:           "invalid-pipeline-run-missing-params-shd-stop-reconciling",
+			pipelineRun:    prs[11],
+			reason:         ReasonParameterMissing,
+			permanentError: true,
 		}, {
-			name:        "invalid-pipeline-with-invalid-dag-graph",
-			pipelineRun: prs[12],
-			reason:      ReasonInvalidGraph,
+			name:           "invalid-pipeline-with-invalid-dag-graph",
+			pipelineRun:    prs[12],
+			reason:         ReasonInvalidGraph,
+			permanentError: true,
 		},
 	}
 
@@ -521,12 +537,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun)); err != nil {
-				t.Fatalf("Error reconciling: %s", err)
+			// When a PipelineRun is invalid and can't run, we expect a permanent error that will
+			// tell the Reconciler to not keep trying to reconcile.
+			reconcileError := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
+			if reconcileError == nil {
+				t.Fatalf("Expected an error to be returned by Reconcile, got nil instead")
 			}
-			// When a PipelineRun is invalid and can't run, we don't want to return an error because
-			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
-			// and forget about the Run.
+			if controller.IsPermanentError(reconcileError) != tc.permanentError {
+				t.Fatalf("Expected the error to be permanent: %v but got permanent: %v", tc.permanentError, controller.IsPermanentError(reconcileError))
+			}
 
 			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().PipelineRuns(tc.pipelineRun.Namespace).Get(tc.pipelineRun.Name, metav1.GetOptions{})
 			if err != nil {
