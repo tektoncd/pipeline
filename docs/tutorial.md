@@ -550,7 +550,7 @@ tutorial-pipeline-run-1-deploy-web-jjf2l           deploy-web           4 hours 
 tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours ago   1 minute     Succeeded
 ```
 
-The `Succeded` status indicates that your `PipelineRun` completed without errors.
+The `Succeeded` status indicates that your `PipelineRun` completed without errors.
 You can also see the statuses of the individual `TaskRuns`.
 
 ## Running this tutorial locally

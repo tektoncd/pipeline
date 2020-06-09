@@ -215,7 +215,7 @@ When a `PersistentVolumeClaim` is used as volume source for a `Workspace` in a `
 an Affinity Assistant will be created. The Affinity Assistant acts as a placeholder for `TaskRun` pods
 sharing the same `Workspace`. All `TaskRun` pods within the `PipelineRun` that share the `Workspace`
 will be scheduled to the same Node as the Affinity Assistant pod. This means that Affinity Assistant is incompatible
-with e.g. other affinity rules configured for the `TaskRun` pods. If the `PipepineRun` has a custom
+with e.g. other affinity rules configured for the `TaskRun` pods. If the `PipelineRun` has a custom
 [PodTemplate](pipelineruns.md#specifying-a-pod-template) configured, the `NodeSelector` and `Tolerations` fields
 will also be set on the Affinity Assistant pod. The Affinity Assistant
 is deleted when the `PipelineRun` is completed. The Affinity Assistant can be disabled by setting the
@@ -281,7 +281,7 @@ options differ for each type. `Workspaces` support the following fields:
 
 `PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
 Beware that the [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-configured for the `PersinstentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
+configured for the `PersistentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
 [Specifying `workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline) for more information about this.
 There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
 

@@ -125,7 +125,7 @@ Parameter names:
 For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
 Each declared parameter has a `type` field, which can be set to either `array` or `string`.
-`array` is useful in cases where the number of compiliation flags being supplied to the `Pipeline`
+`array` is useful in cases where the number of compilation flags being supplied to the `Pipeline`
 varies throughout its execution. If no value is specified, the `type` field defaults to `string`.
 When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 The `description` and `default` fields for a `Parameter` are optional.

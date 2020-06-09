@@ -761,7 +761,7 @@ func TestTaskResults(t *testing.T) {
 			Script: "#!/usr/bin/env bash\ndate +%s | tee $(results.current-date-unix-timestamp.path)",
 		}, {
 			Container: corev1.Container{
-				Name:  "print-date-humman-readable",
+				Name:  "print-date-human-readable",
 				Image: "bash:latest",
 			},
 			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",

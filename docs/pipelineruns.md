@@ -10,7 +10,7 @@ weight: 4
 - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
   - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
   - [Specifying `Resources`](#specifying-resources)
-  - [Speciying `Parameters`](#specifying-parameters)
+  - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
   - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
@@ -82,7 +82,7 @@ spec:
 
 ```
 
-To embed a `Pipeline` definition in the `PiepelineRun`, use the `pipelineSpec` field:
+To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` field:
 
 ```yaml
 spec:
@@ -210,7 +210,7 @@ For more information, see [`ServiceAccount`](auth.md).
 
 ### Mapping `ServiceAccount` credentials to `Tasks`
 
-If you require more granularity in specifying execution credentials, use the `serviceAccounNames` field to
+If you require more granularity in specifying execution credentials, use the `serviceAccountNames` field to
 map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`. This overrides the global
 `serviceAccountName` you may have set for the `Pipeline` as described in the previous section. 
 
@@ -361,13 +361,13 @@ a different global default timeout value using the `default-timeout-minutes` fie
 The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `PipelineRuns`
-that do not have an idividual timeout set will fail immediately upon encountering an error.
+that do not have an individual timeout set will fail immediately upon encountering an error.
 
 ## Monitoring execution status
 
 As your `PipelineRun` executes, its `status` field accumulates information on the execution of each `TaskRun`
 as well as the `PipelineRun` as a whole. This information includes the name of the pipeline `Task` associated
-to a `TaskRun`, the complete [status of the `TaskrRun`](taskruns.md#monitoring-execution-status) and details
+to a `TaskRun`, the complete [status of the `TaskRun`](taskruns.md#monitoring-execution-status) and details
 about `Conditions` that may be associated to a `TaskRun`.
 
 The following example shows an extract from the `status` field of a `PipelineRun` that has executed successfully:
@@ -431,7 +431,7 @@ When a `PipelineRun` changes status, [events](events.md#pipelineruns) are trigge
 ## Cancelling a `PipelineRun`
 
 To cancel a `PipelineRun` that's currently executing, update its definition
-to mark it as cancelled. When you do so, the spanwed `TaskRuns` are also marked
+to mark it as cancelled. When you do so, the spawned `TaskRuns` are also marked
 as cancelled and all associated `Pods` are deleted. For example:
 
 ```yaml
