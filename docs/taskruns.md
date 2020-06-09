@@ -132,7 +132,7 @@ spec:
           name: my-app-image
 ```
 
-And here is an example of specifing `Resources` by embedding their definitions:
+And here is an example of specifying `Resources` by embedding their definitions:
 
 ```yaml
 spec:
@@ -265,7 +265,7 @@ a different global default timeout value using the `default-timeout-minutes` fie
 The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
 values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `TaskRuns`
-that do not have an idividual timeout set will fail immediately upon encountering an error.
+that do not have an individual timeout set will fail immediately upon encountering an error.
 
 ### Specifying `ServiceAccount' credentials
 

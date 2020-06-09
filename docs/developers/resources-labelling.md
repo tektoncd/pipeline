@@ -23,7 +23,7 @@ The labels set should not cover more than what is needed, for example, if the re
 - `app.kubernetes.io/part-of`: defines the application the resource belongs to (`tekton-pipelines`, `tekton-dashboard`, `tekton-triggers`, etc).
 - `app.kubernetes.io/component`: defines the component the resource belongs to (`controller`, `webhook`). This label is not always present, an application may not be made of multiple components or the resource may not belong to a specific component of the application.
 This label should be present only if the resource belongs to a given component (some resources are )
-- `app.kubernetes.io/instance`: defines the instance of the application the resource belongs to. This label should always be set. It is particularily useful when multiple instances of an application are deployed in the same cluster/namespace.
+- `app.kubernetes.io/instance`: defines the instance of the application the resource belongs to. This label should always be set. It is particularly useful when multiple instances of an application are deployed in the same cluster/namespace.
 - `app.kubernetes.io/name`: this label should uniquely identify a resource when combined with `app.kubernetes.io/part-of`, `app.kubernetes.io/component` and `app.kubernetes.io/instance` labels. Some resources don't need to be looked up, in this case the `app.kubernetes.io/name` label is not necessary.
 - `app.kubernetes.io/version`: defines the version for the resource.
 

@@ -205,7 +205,7 @@ You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Tas
 
 ## Changes to PipelineResources
 
-In Tekton `v1beta1`, `PipelineResources` have been moved from `spec.input.respources`
+In Tekton `v1beta1`, `PipelineResources` have been moved from `spec.input.resources`
 and `spec.output.resources` to `spec.resources.inputs` and `spec.resources.outputs`,
 respectively.
 

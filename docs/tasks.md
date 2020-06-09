@@ -255,7 +255,7 @@ Parameter names:
 For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
 Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
-of compiliation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
+of compilation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
 `string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
 The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares two input parameters named `flags`
@@ -414,7 +414,7 @@ spec:
       script: |
         #!/usr/bin/env bash
         date +%s | tee /tekton/results/current-date-unix-timestamp
-    - name: print-date-humman-readable
+    - name: print-date-human-readable
       image: bash:latest
       script: |
         #!/usr/bin/env bash
@@ -567,7 +567,7 @@ variable values as follows:
 
 #### Substituting `Array` parameters
 
-You can expand referenced paramters of type `array` using the star operator. To do so, add the operator (`[*]`)
+You can expand referenced parameters of type `array` using the star operator. To do so, add the operator (`[*]`)
 to the named parameter to insert the array elements in the spot of the reference string.
 
 For example, given a `params` field with the contents listed below, you can expand
@@ -605,7 +605,7 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 ```yaml
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "$(params.build-args[*])", "additonalArg"]
+      args: ["build", "$(params.build-args[*])", "additionalArg"]
 ```
 
 #### Substituting `Workspace` paths

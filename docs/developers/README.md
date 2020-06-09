@@ -260,7 +260,7 @@ spec:
       script: |
         #!/usr/bin/env bash
         date +%s | tee /tekton/results/current-date-unix-timestamp
-    - name: print-date-humman-readable
+    - name: print-date-human-readable
       image: bash:latest
       script: |
         #!/usr/bin/env bash
