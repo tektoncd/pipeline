@@ -127,8 +127,13 @@ func (be *sshEntry) path(sshDir string) string {
 	return filepath.Join(sshDir, "id_"+be.secretName)
 }
 
-func sshKeyScan(domain string) ([]byte, error) {
-	c := exec.Command("ssh-keyscan", domain)
+func sshKeyScan(host, port string) ([]byte, error) {
+	var c *exec.Cmd
+	if port == "" {
+		c = exec.Command("ssh-keyscan", host)
+	} else {
+		c = exec.Command("ssh-keyscan", host, "-p", port)
+	}
 	var output bytes.Buffer
 	c.Stdout = &output
 	c.Stderr = &output
@@ -138,11 +143,21 @@ func sshKeyScan(domain string) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
+// sshKeyScanArgs returns the host and optional port for running ssh-keyscan
+// given a url.
+func sshKeyScanArgs(url string) (string, string) {
+	host, port, err := net.SplitHostPort(url)
+	if err != nil {
+		return url, ""
+	}
+	return host, port
+}
+
 func (be *sshEntry) Write(sshDir string) error {
 	return ioutil.WriteFile(be.path(sshDir), []byte(be.privateKey), 0600)
 }
 
-func newSSHEntry(u, secretName string) (*sshEntry, error) {
+func newSSHEntry(url, secretName string) (*sshEntry, error) {
 	secretPath := credentials.VolumeName(secretName)
 
 	pk, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.SSHAuthPrivateKey))
@@ -153,9 +168,10 @@ func newSSHEntry(u, secretName string) (*sshEntry, error) {
 
 	kh, err := ioutil.ReadFile(filepath.Join(secretPath, sshKnownHosts))
 	if err != nil {
-		kh, err = sshKeyScan(u)
+		host, port := sshKeyScanArgs(url)
+		kh, err = sshKeyScan(host, port)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ssh-keyscan error: %w", err)
 		}
 	}
 	knownHosts := string(kh)
