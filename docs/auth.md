@@ -45,6 +45,8 @@ aggregates them into their respective files in `$HOME`.
    data:
      ssh-privatekey: <base64 encoded>
      # This is non-standard, but its use is encouraged to make this more secure.
+     # If it is not provided then the git server's public key will be requested
+     # with `ssh-keyscan` during credential initialization.
      known_hosts: <base64 encoded>
    ```
 
