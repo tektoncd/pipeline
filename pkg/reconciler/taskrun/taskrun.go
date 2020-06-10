@@ -180,7 +180,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		logger.Errorf("TaskRun prepare error: %v", err.Error())
 		// We only return an error if update failed, otherwise we don't want to
 		// reconcile an invalid TaskRun anymore
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, nil)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
 	}
 
 	// Store the condition before reconcile
@@ -202,7 +202,9 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	events.Emit(recorder, beforeCondition, afterCondition, tr)
 	_, err := c.updateLabelsAndAnnotations(tr)
 	events.EmitError(recorder, err, tr)
-
+	if controller.IsPermanentError(previousError) {
+		return controller.NewPermanentError(multierror.Append(previousError, err))
+	}
 	return multierror.Append(previousError, err).ErrorOrNil()
 }
 
@@ -240,7 +242,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	if err != nil {
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
-		return nil, nil, err
+		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	// Store the fetched TaskSpec on the TaskRun for auditing
@@ -280,19 +282,19 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	if err != nil {
 		logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
-		return nil, nil, err
+		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := ValidateResolvedTaskResources(tr.Spec.Params, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, err
+		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, err
+		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
@@ -352,7 +354,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
 						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
-				return nil
+				return controller.NewPermanentError(err)
 			}
 
 			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, tr.GetOwnerReference())
@@ -362,8 +364,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 
 		pod, err = c.createPod(ctx, tr, rtr)
 		if err != nil {
-			c.handlePodCreationError(ctx, tr, err)
-			return nil
+			newErr := c.handlePodCreationError(ctx, tr, err)
+			logger.Error("Failed to create task run pod for task %q: %v", tr.Name, newErr)
+			return newErr
 		}
 		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
 	}
@@ -414,9 +417,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 	return newTr, nil
 }
 
-func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) {
-	logger := logging.FromContext(ctx)
-
+func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
 	var msg string
 	if isExceededResourceQuotaError(err) {
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
@@ -430,19 +431,21 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 			Reason:  podconvert.ReasonExceededResourceQuota,
 			Message: fmt.Sprintf("%s: %v", msg, err),
 		})
-	} else {
-		// The pod creation failed, not because of quota issues. The most likely
-		// reason is that something is wrong with the spec of the Task, that we could
-		// not check with validation before - i.e. pod template fields
-		msg = fmt.Sprintf("failed to create task run pod %q: %v. Maybe ", tr.Name, err)
-		if tr.Spec.TaskRef != nil {
-			msg += fmt.Sprintf("missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
-		} else {
-			msg += "invalid TaskSpec"
-		}
-		tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, errors.New(msg))
+		// return a transient error, so that the key is requeued
+		return err
 	}
-	logger.Error("Failed to create task run pod for task %q: %v", tr.Name, err)
+	// The pod creation failed, not because of quota issues. The most likely
+	// reason is that something is wrong with the spec of the Task, that we could
+	// not check with validation before - i.e. pod template fields
+	msg = fmt.Sprintf("failed to create task run pod %q: %v. Maybe ", tr.Name, err)
+	if tr.Spec.TaskRef != nil {
+		msg += fmt.Sprintf("missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
+	} else {
+		msg += "invalid TaskSpec"
+	}
+	newErr := controller.NewPermanentError(errors.New(msg))
+	tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, newErr)
+	return newErr
 }
 
 // failTaskRun stops a TaskRun with the provided Reason
