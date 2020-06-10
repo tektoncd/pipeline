@@ -55,7 +55,9 @@ and we are following [the Kubernetes deprecation policy](https://kubernetes.io/d
     introduced in a backwards compatible manner first, with a deprecation warning
     in the release notes and migration instructions.
   * You will be given at least 9 months to migrate before a backward incompatible
-    change is made.
+    change is made. This means an older beta API version will continue to be
+    supported in new releases for a period of at least 9 months from the time a
+    newer version is made available.
 
 ## Approving API changes
 
