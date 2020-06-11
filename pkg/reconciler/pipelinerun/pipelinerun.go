@@ -124,6 +124,12 @@ var (
 	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 )
 
+// PreProcessReconcile is executed right before "ReconcileKind"
+func PreProcessReconcile(ctx, pr *v1beta1.PipelineRun) {}
+
+// PostProcessReconcile is executed right after "ReconcileKind"
+func PostProcessReconcile(ctx, pr *v1beta1.PipelineRun) {}
+
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.

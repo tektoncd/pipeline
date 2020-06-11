@@ -82,6 +82,12 @@ type Reconciler struct {
 // Check that our Reconciler implements taskrunreconciler.Interface
 var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 
+// PreProcessReconcile is executed right before "ReconcileKind"
+func PreProcessReconcile(ctx, pr *v1beta1.TaskRun) {}
+
+// PostProcessReconcile is executed right after "ReconcileKind"
+func PostProcessReconcile(ctx, pr *v1beta1.TaskRun) {}
+
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
