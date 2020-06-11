@@ -142,16 +142,6 @@ func getClusterResourceTask(namespace, name, configName string) *v1beta1.Task {
 					Name:      "config-vol",
 					MountPath: "/config",
 				}},
-			}}, {Container: corev1.Container{
-				// See #2694
-				Name:    "check-legacy-contents",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "config-vol",
-					MountPath: "/config",
-				}},
 			}},
 			},
 		},
