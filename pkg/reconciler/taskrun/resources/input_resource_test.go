@@ -852,13 +852,6 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 						},
 					},
 				},
-				{
-					Container: corev1.Container{
-						Name:    "ln-dir-cluster3-mz4c7",
-						Image:   "busybox",
-						Command: []string{"ln", "-s", "/workspace/cluster3", "/workspace/cluster3"},
-					},
-				},
 			},
 			Resources: &v1beta1.TaskResources{
 				Inputs: clusterInputs,
@@ -920,13 +913,6 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 							},
 							Name: "CADATA",
 						}},
-					},
-				},
-				{
-					Container: corev1.Container{
-						Name:    "ln-dir-cluster2-mz4c7",
-						Image:   "busybox",
-						Command: []string{"ln", "-s", "/workspace/cluster2", "/workspace/cluster2"},
 					},
 				},
 			},

@@ -151,7 +151,6 @@ func TestNewClusterResource(t *testing.T) {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
 			c.want.ShellImage = "override-with-shell-image:latest"
-			c.want.LegacyName = "test-resource"
 			if d := cmp.Diff(got, c.want); d != "" {
 				t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 			}
@@ -192,14 +191,6 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 						},
 					},
 				}},
-			},
-		},
-		// We need to temporarily create another directory for the legacy name
-		// See #2694.
-		{
-			Container: corev1.Container{
-				Name:    "ln-dir-test-cluster-resource-mz4c7",
-				Command: []string{"ln", "-s", "/workspace/test-cluster-resource", "/workspace"},
 			},
 		},
 	}
