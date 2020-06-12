@@ -47,12 +47,12 @@ func TestTaskRunRetry(t *testing.T) {
 			PipelineSpec: &v1beta1.PipelineSpec{
 				Tasks: []v1beta1.PipelineTask{{
 					Name: "retry-me",
-					TaskSpec: &v1beta1.TaskSpec{
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{
 						Steps: []v1beta1.Step{{
 							Container: corev1.Container{Image: "busybox"},
 							Script:    "exit 1",
 						}},
-					},
+					}},
 					Retries: numRetries,
 				}},
 			},

@@ -152,13 +152,9 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:    "valid-pipeline-task",
 				TaskRef: &TaskRef{Name: "foo-task"},
 			}, {
-				Name:    "invalid-pipeline-task",
-				TaskRef: &TaskRef{Name: "foo-task"},
-				TaskSpec: &TaskSpec{
-					Steps: []Step{{
-						Container: corev1.Container{Name: "foo", Image: "bar"},
-					}},
-				},
+				Name:     "invalid-pipeline-task",
+				TaskRef:  &TaskRef{Name: "foo-task"},
+				TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 			}},
 		},
 	}, {
@@ -250,12 +246,8 @@ func TestValidatePipelineTasks_Success(t *testing.T) {
 	}, {
 		name: "pipeline task with valid taskspec",
 		tasks: []PipelineTask{{
-			Name: "foo",
-			TaskSpec: &TaskSpec{
-				Steps: []Step{{
-					Container: corev1.Container{Name: "foo", Image: "bar"},
-				}},
-			},
+			Name:     "foo",
+			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		}},
 	}}
 	for _, tt := range tests {
@@ -280,19 +272,15 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 	}, {
 		name: "pipeline task with both taskref and taskspec",
 		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "foo-task"},
-			TaskSpec: &TaskSpec{
-				Steps: []Step{{
-					Container: corev1.Container{Name: "foo", Image: "bar"},
-				}},
-			},
+			Name:     "foo",
+			TaskRef:  &TaskRef{Name: "foo-task"},
+			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		}},
 	}, {
 		name: "pipeline task with invalid taskspec",
 		tasks: []PipelineTask{{
 			Name:     "foo",
-			TaskSpec: &TaskSpec{},
+			TaskSpec: &EmbeddedTask{TaskSpec: &TaskSpec{}},
 		}},
 	}, {
 		name: "pipeline tasks invalid (duplicate tasks)",
@@ -660,14 +648,14 @@ func TestValidateGraph_Failure(t *testing.T) {
 func TestValidateParamResults_Success(t *testing.T) {
 	desc := "valid pipeline task referencing task result along with parameter variable"
 	tasks := []PipelineTask{{
-		TaskSpec: &TaskSpec{
+		TaskSpec: &EmbeddedTask{TaskSpec: &TaskSpec{
 			Results: []TaskResult{{
 				Name: "output",
 			}},
 			Steps: []Step{{
 				Container: corev1.Container{Name: "foo", Image: "bar"},
 			}},
-		},
+		}},
 		Name: "a-task",
 	}, {
 		Name:    "foo",
@@ -1041,12 +1029,8 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 					Name:    "final-task-1",
 					TaskRef: &TaskRef{Name: "final-task"},
 				}, {
-					Name: "final-task-2",
-					TaskSpec: &TaskSpec{
-						Steps: []Step{{
-							Container: corev1.Container{Name: "foo", Image: "bar"},
-						}},
-					},
+					Name:     "final-task-2",
+					TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 				}},
 			},
 		},
@@ -1200,13 +1184,9 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 					TaskRef: &TaskRef{Name: "non-final-task"},
 				}},
 				Finally: []PipelineTask{{
-					Name:    "final-task",
-					TaskRef: &TaskRef{Name: "non-final-task"},
-					TaskSpec: &TaskSpec{
-						Steps: []Step{{
-							Container: corev1.Container{Name: "foo", Image: "bar"},
-						}},
-					},
+					Name:     "final-task",
+					TaskRef:  &TaskRef{Name: "non-final-task"},
+					TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 				}},
 			},
 		},
@@ -1489,5 +1469,13 @@ func TestContextInvalid(t *testing.T) {
 				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s, %s", tt.name, tt.tasks[0].Params)
 			}
 		})
+	}
+}
+
+func getTaskSpec() *TaskSpec {
+	return &TaskSpec{
+		Steps: []Step{{
+			Container: corev1.Container{Name: "foo", Image: "bar"},
+		}},
 	}
 }

@@ -651,8 +651,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
-			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name),
-			Annotations:     getTaskrunAnnotations(pr),
+			Labels:          combineTaskRunAndTaskSpecLabels(pr, rprt.PipelineTask),
+			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rprt.PipelineTask),
 		},
 		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
@@ -760,6 +760,50 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[stri
 		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
 	return labels
+}
+
+func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
+	var tsLabels map[string]string
+	trLabels := getTaskrunLabels(pr, pipelineTask.Name)
+
+	if pipelineTask.TaskSpec != nil {
+		tsLabels = pipelineTask.TaskSpecMetadata().Labels
+	}
+
+	labels := make(map[string]string, len(trLabels)+len(tsLabels))
+
+	// labels from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
+	// initialize labels with TaskRun labels
+	labels = trLabels
+	for key, value := range tsLabels {
+		// add labels from TaskSpec if the label does not exist
+		if _, ok := labels[key]; !ok {
+			labels[key] = value
+		}
+	}
+	return labels
+}
+
+func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
+	var tsAnnotations map[string]string
+	trAnnotations := getTaskrunAnnotations(pr)
+
+	if pipelineTask.TaskSpec != nil {
+		tsAnnotations = pipelineTask.TaskSpecMetadata().Annotations
+	}
+
+	annotations := make(map[string]string, len(trAnnotations)+len(tsAnnotations))
+
+	// annotations from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
+	// initialize annotations with TaskRun annotations
+	annotations = trAnnotations
+	for key, value := range tsAnnotations {
+		// add annotations from TaskSpec if the annotation does not exist
+		if _, ok := annotations[key]; !ok {
+			annotations[key] = value
+		}
+	}
+	return annotations
 }
 
 func getTaskRunTimeout(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {

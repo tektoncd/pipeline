@@ -85,20 +85,24 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		desc: "pipeline task with taskSpec - default param type must be " + string(v1beta1.ParamTypeString),
 		ps: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "string-param",
-					}},
+				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: &v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "string-param",
+						}},
+					},
 				},
 			}},
 		},
 		want: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "string-param",
-						Type: v1beta1.ParamTypeString,
-					}},
+				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: &v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "string-param",
+							Type: v1beta1.ParamTypeString,
+						}},
+					},
 				},
 			}},
 		},
@@ -106,20 +110,24 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		desc: "final pipeline task with taskSpec - default param type must be " + string(v1beta1.ParamTypeString),
 		ps: &v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "string-param",
-					}},
+				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: &v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "string-param",
+						}},
+					},
 				},
 			}},
 		},
 		want: &v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
-				Name: "foo", TaskSpec: &v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "string-param",
-						Type: v1beta1.ParamTypeString,
-					}},
+				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: &v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "string-param",
+							Type: v1beta1.ParamTypeString,
+						}},
+					},
 				},
 			}},
 		},

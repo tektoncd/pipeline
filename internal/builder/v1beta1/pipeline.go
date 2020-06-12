@@ -198,7 +198,20 @@ func PipelineRunResult(name, value string) PipelineRunStatusOp {
 // PipelineTaskSpec sets the TaskSpec on a PipelineTask.
 func PipelineTaskSpec(spec *v1beta1.TaskSpec) PipelineTaskOp {
 	return func(pt *v1beta1.PipelineTask) {
-		pt.TaskSpec = spec
+		if pt.TaskSpec == nil {
+			pt.TaskSpec = &v1beta1.EmbeddedTask{}
+		}
+		pt.TaskSpec.TaskSpec = spec
+	}
+}
+
+// TaskSpecMetadata sets the Metadata on a TaskSpec within PipelineTask.
+func TaskSpecMetadata(metadata v1beta1.PipelineTaskMetadata) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		if pt.TaskSpec == nil {
+			pt.TaskSpec = &v1beta1.EmbeddedTask{}
+		}
+		pt.TaskSpec.Metadata = metadata
 	}
 }
 
