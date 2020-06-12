@@ -341,6 +341,9 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 			}
 		}
 
+		if _, ok := parameterNames[p.Name]; ok {
+			return apis.ErrGeneric("parameter appears more than once", fmt.Sprintf("spec.params.%s", p.Name))
+		}
 		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
 		parameterNames[p.Name] = struct{}{}
 		if p.Type == ParamTypeArray {

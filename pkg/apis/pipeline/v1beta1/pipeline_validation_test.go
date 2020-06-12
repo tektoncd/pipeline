@@ -916,6 +916,39 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
 			}},
 		}},
+	}, {
+		name: "multiple string parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString,
+		}, {
+			Name: "baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+	}, {
+		name: "multiple array parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray,
+		}, {
+			Name: "baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
+	}, {
+		name: "multiple different type parameters with the same name",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray,
+		}, {
+			Name: "baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
