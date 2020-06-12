@@ -57,12 +57,14 @@ func TestPipeline(t *testing.T) {
 			tb.RunAfter("foo"),
 			tb.PipelineTaskTimeout(5*time.Second),
 		),
-		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(&v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:  "step",
-				Image: "myimage",
-			}}},
-		})),
+		tb.PipelineTask("foo", "", tb.PipelineTaskSpec(getTaskSpec())),
+		tb.PipelineTask("task-with-taskSpec", "",
+			tb.TaskSpecMetadata(v1beta1.PipelineTaskMetadata{
+				Labels:      map[string]string{"label": "labelvalue"},
+				Annotations: map[string]string{"annotation": "annotationvalue"}},
+			),
+			tb.PipelineTaskSpec(getTaskSpec()),
+		),
 		tb.PipelineWorkspaceDeclaration("workspace1"),
 	),
 		tb.PipelineCreationTimestamp(creationTime),
@@ -137,13 +139,19 @@ func TestPipeline(t *testing.T) {
 				Timeout:  &metav1.Duration{Duration: 5 * time.Second},
 			}, {
 				Name: "foo",
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Name:  "step",
-						Image: "myimage",
-					}}},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: getTaskSpec()},
+			}, {
+				Name: "task-with-taskSpec",
+				TaskSpec: &v1beta1.EmbeddedTask{
+					Metadata: v1beta1.PipelineTaskMetadata{
+						Labels:      map[string]string{"label": "labelvalue"},
+						Annotations: map[string]string{"annotation": "annotationvalue"},
+					},
+					TaskSpec: getTaskSpec(),
 				},
-			}},
+			},
+			},
 			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
 				Name: "workspace1",
 			}},
@@ -426,5 +434,13 @@ func TestPipelineRunWithFinalTask(t *testing.T) {
 	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
 		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
 	}
+}
 
+func getTaskSpec() *v1beta1.TaskSpec {
+	return &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{Container: corev1.Container{
+			Name:  "step",
+			Image: "myimage",
+		}}},
+	}
 }

@@ -7,6 +7,9 @@ spec:
     tasks:
       - name: echo-good-morning
         taskSpec:
+          metadata:
+            labels:
+              app: "example"
           steps:
             - name: echo
               image: ubuntu

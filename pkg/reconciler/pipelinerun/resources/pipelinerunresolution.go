@@ -453,7 +453,7 @@ func ResolvePipelineRun(
 			taskName = t.TaskMetadata().Name
 			kind = pt.TaskRef.Kind
 		} else {
-			spec = *pt.TaskSpec
+			spec = *pt.TaskSpec.TaskSpec
 		}
 		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)

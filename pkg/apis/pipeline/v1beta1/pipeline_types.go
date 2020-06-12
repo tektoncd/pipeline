@@ -90,6 +90,23 @@ type PipelineResult struct {
 	Value string `json:"value"`
 }
 
+type PipelineTaskMetadata struct {
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+type EmbeddedTask struct {
+	// +optional
+	Metadata PipelineTaskMetadata `json:"metadata,omitempty"`
+
+	// TaskSpec is a specification of a task
+	// +optional
+	*TaskSpec `json:",inline,omitempty"`
+}
+
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // Params and from the output of previous tasks.
 type PipelineTask struct {
@@ -104,7 +121,7 @@ type PipelineTask struct {
 
 	// TaskSpec is a specification of a task
 	// +optional
-	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
+	TaskSpec *EmbeddedTask `json:"taskSpec,inline,omitempty"`
 
 	// Conditions is a list of conditions that need to be true for the task to run
 	// +optional
@@ -137,6 +154,10 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+}
+
+func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
+	return pt.TaskSpec.Metadata
 }
 
 func (pt PipelineTask) HashKey() string {

@@ -119,6 +119,28 @@ spec:
 In the [`taskSpec` in `pipelineSpec` example](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml)
 it's `Tasks` all the way down!
 
+You can also specify labels and annotations with `taskSpec` which are propagated to each `taskRun` and then to the
+respective pods. These labels can be used to identify and filter pods for further actions (such as collecting pod metrics,
+and cleaning up completed pod with certain labels, etc) even being part of one single Pipeline.
+
+```yaml
+spec:
+  pipelineSpec:
+    tasks:
+    - name: task1
+      metadata:
+        labels:
+          pipeline-sdk-type: kfp
+      taskSpec:
+       ...
+    - name: task2
+      metadata:
+        labels:
+          pipeline-sdk-type: tfx
+      taskSpec:
+       ...
+```
+
 ## Specifying `Resources`
 
 A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
