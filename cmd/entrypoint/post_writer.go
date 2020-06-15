@@ -20,3 +20,8 @@ func (*realPostWriter) Write(file string) {
 		log.Fatalf("Creating %q: %v", file, err)
 	}
 }
+
+func (*realPostWriter) Exists(file string) bool {
+	_, err := os.Stat(file)
+	return !os.IsNotExist(err)
+}

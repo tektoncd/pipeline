@@ -78,6 +78,9 @@ type Runner interface {
 
 // PostWriter encapsulates writing a file when complete.
 type PostWriter interface {
+	// Exists returns whether the file exists.
+	Exists(file string) bool
+
 	// Write writes to the path when complete.
 	Write(file string)
 }
@@ -95,6 +98,17 @@ func (e Entrypointer) Go() error {
 		}
 		_ = logger.Sync()
 	}()
+
+	if e.PostFile != "" {
+		// If the PostFile already exists, this might indicate an error
+		// in how steps were executed. Write the post file signalling
+		// an error, and fail this step.
+		if e.PostWriter.Exists(e.PostFile) {
+			err := fmt.Errorf("post file %q already exists", e.PostFile)
+			e.WritePostFile(e.PostFile, err)
+			return err
+		}
+	}
 
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {

@@ -35,6 +35,7 @@ func TestEntrypointerFailures(t *testing.T) {
 		waitFiles      []string
 		waiter         Waiter
 		runner         Runner
+		writer         *fakePostWriter
 		expectedError  string
 	}{{
 		desc:          "failing runner with no postFile",
@@ -56,6 +57,11 @@ func TestEntrypointerFailures(t *testing.T) {
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
 		postFile:      "bar",
+	}, {
+		desc:          "postFile already exists",
+		postFile:      "bar",
+		writer:        &fakePostWriter{exists: true},
+		expectedError: `post file "bar" already exists`,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw := c.waiter
@@ -66,7 +72,10 @@ func TestEntrypointerFailures(t *testing.T) {
 			if fr == nil {
 				fr = &fakeRunner{}
 			}
-			fpw := &fakePostWriter{}
+			fpw := c.writer
+			if fpw == nil {
+				fpw = &fakePostWriter{}
+			}
 			err := Entrypointer{
 				Entrypoint:      "echo",
 				WaitFiles:       c.waitFiles,
@@ -88,7 +97,7 @@ func TestEntrypointerFailures(t *testing.T) {
 				if fpw.wrote == nil {
 					t.Error("Wanted post file written, got nil")
 				} else if *fpw.wrote != c.postFile+".err" {
-					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
 				}
 			}
 			if c.postFile == "" && fpw.wrote != nil {
@@ -219,9 +228,14 @@ func (f *fakeRunner) Run(args ...string) error {
 	return nil
 }
 
-type fakePostWriter struct{ wrote *string }
+type fakePostWriter struct {
+	wrote  *string
+	exists bool
+}
 
-func (f *fakePostWriter) Write(file string) { f.wrote = &file }
+func (f *fakePostWriter) Exists(string) bool { return f.exists }
+
+func (f *fakePostWriter) Write(file string) { f.wrote = &file; f.exists = true }
 
 type fakeErrorWaiter struct{ waited *string }
 
