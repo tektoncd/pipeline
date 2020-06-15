@@ -13,6 +13,7 @@ review them:
 - [ ] Includes [tests](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if functionality changed/added)
 - [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
 - [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
+- [ ] Release notes block has been filled in or deleted (only if no user facing changes)
 
 _See [the contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md) for more details._
 
@@ -34,5 +35,6 @@ Examples of user facing changes:
 - API changes
 - Bug fixes
 - Any changes in behavior
+- Changes requiring upgrade notices or deprecation warnings
 
 ```
