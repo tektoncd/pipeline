@@ -109,7 +109,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// If the TaskRun has already been cleaned up, return early to save reconciliation time.
 	if tr.IsCleanedUp() {
-		c.Logger.Info("Not reconciling cleaned up TaskRun")
+		logger.Info("Not reconciling cleaned up TaskRun")
 		return nil
 	}
 
@@ -158,12 +158,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			}
 		}(c.metrics)
 
+		before := tr.Status.GetCondition(v1beta1.ConditionCleanedUp)
+
 		tr.Status.SetCondition(&apis.Condition{
 			Type:   v1beta1.ConditionCleanedUp,
 			Status: corev1.ConditionTrue,
 			Reason: "Cleaned Up",
 		})
-		return multierror.Append(merr, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
 	// If the TaskRun is cancelled, kill resources and update status

@@ -2396,6 +2396,11 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		tb.PipelineRunStatus(
 			tb.PipelineRunResult("result", "aResultValue"),
 			tb.PipelineRunStatusCondition(apis.Condition{
+				Type:    v1beta1.ConditionCleanedUp,
+				Status:  corev1.ConditionTrue,
+				Reason: "Cleaned Up",
+			}),
+			tb.PipelineRunStatusCondition(apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionTrue,
 				Reason:  v1beta1.PipelineRunReasonSuccessful.String(),

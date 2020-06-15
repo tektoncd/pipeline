@@ -135,7 +135,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	// If the PipelineRun has already been cleaned up, we return early to skip reconciliation.
 	if pr.IsCleanedUp() {
-		c.Logger.Info("Not reconciling cleaned up PipelineRun")
+		logger.Info("Not reconciling cleaned up PipelineRun")
 		return nil
 	}
 
