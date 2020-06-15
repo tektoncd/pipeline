@@ -238,9 +238,6 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	resolver, kind := c.getTaskResolver(tr)
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, resolver.GetTask)
 	if err != nil {
-		if ce, ok := err.(*v1beta1.CannotConvertError); ok {
-			tr.Status.MarkResourceNotConvertible(ce)
-		}
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, err
