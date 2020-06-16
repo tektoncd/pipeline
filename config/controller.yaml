@@ -105,6 +105,9 @@ spec:
           value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+        ports:
+        - name: metrics
+          containerPort: 9090
       volumes:
         - name: config-logging
           configMap:
