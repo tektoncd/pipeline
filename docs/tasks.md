@@ -627,7 +627,7 @@ $(workspaces.myworkspace.volume)
 
 You can substitute `Volume` names and [types](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
 by parameterizing them. Tekton supports popular `Volume` types such as `ConfigMap`, `Secret`, and `PersistentVolumeClaim`.
-See this [example](#using-kubernetes-configmap-as-volume-source) to find out how to perform this type of substitution
+See this [example](#mounting-a-configmap-as-a-volume-source) to find out how to perform this type of substitution
 in your `Task.`
 
 ## Code examples
