@@ -150,7 +150,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(controller.GetEventRecorder(ctx), nil, afterCondition, pr)
+		events.Emit(ctx, nil, afterCondition, pr)
 
 		// We already sent an event for start, so update `before` with the current status
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
@@ -213,15 +213,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1beta1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
-	recorder := controller.GetEventRecorder(ctx)
 	logger := logging.FromContext(ctx)
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
-	events.Emit(recorder, beforeCondition, afterCondition, pr)
+	events.Emit(ctx, beforeCondition, afterCondition, pr)
 	_, err := c.updateLabelsAndAnnotations(pr)
 	if err != nil {
 		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-		events.EmitError(recorder, err, pr)
+		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
 	}
 
 	merr := multierror.Append(previousError, err).ErrorOrNil()

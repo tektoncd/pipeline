@@ -16,11 +16,18 @@ limitations under the License.
 package events
 
 import (
+	"context"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -34,16 +41,39 @@ const (
 	EventReasonError = "Error"
 )
 
-// Emit emits an event for object if afterCondition is different from beforeCondition
+// Emit emits events for object
+// Two types of events are supported, k8s and cloud events.
 //
-// Status "ConditionUnknown":
-//   beforeCondition == nil, emit EventReasonStarted
-//   beforeCondition != nil, emit afterCondition.Reason
-//
-//  Status "ConditionTrue": emit EventReasonSucceded
-//  Status "ConditionFalse": emit EventReasonFailed
-//
-func Emit(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+// k8s events are always sent if afterCondition is different from beforeCondition
+// Cloud events are always sent if enabled, i.e. if a sink is available
+func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	recorder := controller.GetEventRecorder(ctx)
+	logger := logging.FromContext(ctx)
+	configs := config.FromContextOrDefaults(ctx)
+	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
+	if sendCloudEvents {
+		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
+	}
+
+	sendKubernetesEvents(recorder, beforeCondition, afterCondition, object)
+
+	if sendCloudEvents {
+		err := cloudevent.SendCloudEventWithRetries(ctx, object)
+		if err != nil {
+			logger.Warnf("Failed to emit cloud events %v", err.Error())
+		}
+	}
+}
+
+func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	// Events that are going to be sent
+	//
+	// Status "ConditionUnknown":
+	//   beforeCondition == nil, emit EventReasonStarted
+	//   beforeCondition != nil, emit afterCondition.Reason
+	//
+	//  Status "ConditionTrue": emit EventReasonSucceded
+	//  Status "ConditionFalse": emit EventReasonFailed
 	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
@@ -82,8 +112,8 @@ func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 //  Status "ConditionTrue": emit EventReasonSucceded
 //  Status "ConditionFalse": emit EventReasonFailed
 // Deprecated: use Emit
-func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
-	Emit(c, beforeCondition, afterCondition, object)
+func EmitEvent(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	Emit(ctx, beforeCondition, afterCondition, object)
 }
 
 // EmitErrorEvent emits a failure associated to an error

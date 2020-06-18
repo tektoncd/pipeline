@@ -19,17 +19,23 @@ package events
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"regexp"
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/controller"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
-func TestEmit(t *testing.T) {
+func TestSendKubernetesEvents(t *testing.T) {
 	testcases := []struct {
 		name      string
 		before    *apis.Condition
@@ -136,7 +142,7 @@ func TestEmit(t *testing.T) {
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		Emit(fr, ts.before, ts.after, tr)
+		sendKubernetesEvents(fr, ts.before, ts.after, tr)
 
 		err := checkEvents(t, fr, ts.name, ts.wantEvent)
 		if err != nil {
@@ -172,16 +178,85 @@ func TestEmitError(t *testing.T) {
 	}
 }
 
-func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvent string) error {
-	t.Helper()
+func TestEmit(t *testing.T) {
+	objectStatus := duckv1beta1.Status{
+		Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: v1beta1.PipelineRunReasonStarted.String(),
+		}},
+	}
+	object := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			SelfLink: "/pipelineruns/test1",
+		},
+		Status: v1beta1.PipelineRunStatus{Status: objectStatus},
+	}
+	after := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Message: "just starting",
+	}
+	testcases := []struct {
+		name           string
+		data           map[string]string
+		wantEvent      string
+		wantCloudEvent string
+	}{{
+		name:           "without sink",
+		data:           map[string]string{},
+		wantEvent:      "Normal Started",
+		wantCloudEvent: "",
+	}, {
+		name:           "with empty string sink",
+		data:           map[string]string{"default-cloud-events-sink": ""},
+		wantEvent:      "Normal Started",
+		wantCloudEvent: "",
+	}, {
+		name:           "with sink",
+		data:           map[string]string{"default-cloud-events-sink": "http://mysink"},
+		wantEvent:      "Normal Started",
+		wantCloudEvent: `(?s)dev.tekton.event.pipelinerun.started.v1.*test1`,
+	}}
+
+	for _, tc := range testcases {
+		// Setup the context and seed test data
+		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true})
+		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+		// Setup the config and add it to the context
+		defaults, _ := config.NewDefaultsFromMap(tc.data)
+		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
+		cfg := &config.Config{
+			Defaults:     defaults,
+			FeatureFlags: featureFlags,
+		}
+		ctx = config.ToContext(ctx, cfg)
+
+		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		Emit(ctx, nil, after, object)
+		if err := checkEvents(t, recorder, tc.name, tc.wantEvent); err != nil {
+			t.Fatalf(err.Error())
+		}
+		if err := checkCloudEvents(t, &fakeClient, tc.name, tc.wantCloudEvent); err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
+
+func eventFromChannel(c chan string, testName string, wantEvent string) error {
 	timer := time.NewTimer(1 * time.Second)
 	select {
-	case event := <-fr.Events:
+	case event := <-c:
 		if wantEvent == "" {
 			return fmt.Errorf("received event \"%s\" for %s but none expected", event, testName)
 		}
-		if !(strings.HasPrefix(event, wantEvent)) {
-			return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+		matching, err := regexp.MatchString(wantEvent, event)
+		if err == nil {
+			if !matching {
+				return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+			}
 		}
 	case <-timer.C:
 		if wantEvent != "" {
@@ -189,4 +264,14 @@ func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEve
 		}
 	}
 	return nil
+}
+
+func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvent string) error {
+	t.Helper()
+	return eventFromChannel(fr.Events, testName, wantEvent)
+}
+
+func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvent string) error {
+	t.Helper()
+	return eventFromChannel(fce.Events, testName, wantEvent)
 }
