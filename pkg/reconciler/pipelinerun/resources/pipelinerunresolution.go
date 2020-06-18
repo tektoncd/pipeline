@@ -234,7 +234,7 @@ type GetTaskRun func(name string) (*v1beta1.TaskRun, error)
 func GetResourcesFromBindings(pr *v1beta1.PipelineRun, getResource resources.GetResource) (map[string]*resourcev1alpha1.PipelineResource, error) {
 	rs := map[string]*resourcev1alpha1.PipelineResource{}
 	for _, resource := range pr.Spec.Resources {
-		r, err := resources.GetResourceFromBinding(&resource, getResource)
+		r, err := resources.GetResourceFromBinding(resource, getResource)
 		if err != nil {
 			return rs, fmt.Errorf("error following resource reference for %s: %w", resource.Name, err)
 		}
