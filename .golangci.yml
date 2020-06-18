@@ -24,6 +24,8 @@ run:
   issues-exit-code: 1
   build-tags:
   - e2e
+  skip-files:
+  - .*/zz_generated.deepcopy.go
   skip-dirs:
   - vendor
   - pkg/client
