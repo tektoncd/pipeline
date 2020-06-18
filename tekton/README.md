@@ -30,6 +30,9 @@ To make a new release:
    ([see one of way of doing that here](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release#create-draft-release)).
 1. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for
    the new release ([README.md#read-the-docs](../README.md#read-the-docs)).
+1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure to use the
+   new release by updating the `RELEASE_YAML` link in
+   [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/v1beta1/test/e2e-tests.sh).
 
 ### Run the Pipeline
 
