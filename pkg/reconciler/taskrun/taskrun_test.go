@@ -3026,3 +3026,68 @@ func Test_storeTaskSpec(t *testing.T) {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
+
+func TestWillOverwritePodAffinity(t *testing.T) {
+	affinity := &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					Namespaces: []string{"tekton-pipelines"},
+				},
+			},
+		},
+	}
+	affinityAssistantName := "pipeline.tekton.dev/affinity-assistant"
+
+	tcs := []struct {
+		name                string
+		hasTemplateAffinity bool
+		annotations         map[string]string
+		expected            bool
+	}{
+		{
+			name:     "no settings",
+			expected: false,
+		},
+		{
+			name: "no PodTemplate affinity set",
+			annotations: map[string]string{
+				affinityAssistantName: "affinity-assistant",
+			},
+			expected: false,
+		},
+		{
+			name:                "affinity assistant not set",
+			hasTemplateAffinity: true,
+			expected:            false,
+		},
+		{
+			name:                "PodTemplate affinity will be overwritten with affinity assistant",
+			hasTemplateAffinity: true,
+			annotations: map[string]string{
+				affinityAssistantName: "affinity-assistant",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := &v1beta1.TaskRun{
+				Spec: v1beta1.TaskRunSpec{
+					PodTemplate: &v1beta1.PodTemplate{},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tc.annotations,
+				},
+			}
+			if tc.hasTemplateAffinity {
+				tr.Spec.PodTemplate.Affinity = affinity
+			}
+
+			if got := willOverwritePodSetAffinity(tr); got != tc.expected {
+				t.Errorf("expected: %t got: %t", tc.expected, got)
+			}
+		})
+	}
+}
