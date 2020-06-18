@@ -1,0 +1,14 @@
+{{ $_hugo_config := `{ "version": 1 }` }}
+<div class="alert alert-success" role="alert">
+    <h4 class="alert-heading">Note</h4>
+    <p>See also the <b>{{ .Get "name" | safeHTML }}</b> interactive tutorial.</p>
+    <button type="button"
+            class="btn btn-success interactive-tutorial-trigger"
+            data-katacoda-src={{ .Get "katacoda-src" }}
+            data-github-lnk={{ .Get "github-lnk" }}
+            data-qwiklabs-lnk={{ .Get "qwiklabs-lnk" }}>
+            Launch Interactive Tutorial
+    </button>
+    {{ partial "tutorial-modal.html" }}
+    </div>
+</div>

@@ -1,0 +1,15 @@
+---
+title: "Tekton Documentation Vault"
+linkTitle: "Vault"
+---
+
+This section keeps the documentation of past versions of Tekton components.
+To see the latest documentation, [visit tekton.dev/docs](/docs).
+
+{% for component_version in component_versions %}
+## {{ component_version['name'] }}
+
+{% for tag in component_version['tags'][1:] %}
+* [{{ component_version['name'] }} {{ tag['displayName'] }}](/vault/{{ component_version['name']|lower }}-{{ tag['displayName']|lower }})
+{% endfor %}
+{% endfor %}

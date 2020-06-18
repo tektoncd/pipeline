@@ -1,0 +1,46 @@
+{{ $_hugo_config := `{ "version": 1 }` }}
+{{ $col_id := .Get "color" | default .Ordinal }}
+{{ $height := .Get "height" | default "auto"  }}
+{{ $type   := .Get "type" | default "" }} 
+<a id="td-block-{{ .Ordinal }}" class="td-offset-anchor"></a>
+<section class="row td-box td-box--{{ $col_id }} td-box--gradient td-box--height-{{ $height }}">
+	<div class="col">
+		<div class="row {{ $type }} pb-2">
+			<div class="col-lg-4 text-center"></div>
+			<div class="col-lg-4 text-center"><h3 style="color: rgba(255, 255, 255, 0.5);">created by</h3></div>
+			<div class="col-lg-4 text-center"></div>
+		</div>
+		<div class="row {{ $type }} pb-5">
+			<div class="col-lg-4 text-center"></div>
+			<div class="col-lg-4 text-center"><img src="/partner-logos/google.png" class="border img-fluid shadow rounded" style="opacity: 0.9;"></div>
+			<div class="col-lg-4 text-center"></div>
+		</div>
+		<div class="row {{ $type }} pb-2">
+			<div class="col-lg-4 text-center"></div>
+			<div class="col-lg-4 text-center"><h3 style="color: rgba(255, 255, 255, 0.5);">in partnership with</h3></div>
+			<div class="col-lg-4 text-center"></div>
+		</div>
+		<div class="row {{ $type }}">
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/alibaba.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/cloudbees.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/ibm.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+		</div>
+		<div class="row {{ $type }} pt-2">
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/puppet.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/redhat.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+			<div class="col-lg-4 pb-2 text-center">
+				<img src="/partner-logos/triggermesh.png" class="border img-fluid shadow rounded" style="opacity: 0.9;">
+			</div>
+		</div>
+	</div>
+</section>

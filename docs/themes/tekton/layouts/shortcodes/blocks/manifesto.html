@@ -1,0 +1,21 @@
+{{ $_hugo_config := `{ "version": 1 }` }}
+{{ $col_id := .Get "color" | default .Ordinal }}
+{{ $height := .Get "height" | default "auto"  }}
+{{/* Height can be one of: auto, min, med, max, full. */}}
+<a id="td-block-{{ .Ordinal }}" class="td-offset-anchor"></a>
+<section class="row td-box td-box--{{ $col_id }} position-relative td-box--gradient td-box--height-{{ $height }}">
+	<div class="container" style="max-width: 600px;">
+		<div class="row">
+			<div class="col mb-5 text-center">
+				<a href="https://cd.foundation/"><img src="/partner-logos/cdf.png" class="img-fluid"></a>
+			</div>
+		</div>
+	</div>
+	<div class="container" style="max-width: 100vw;">
+		<div class="row">
+			<div class="col mb-5 text-center">
+				<h3>Tekton is a <a href="https://cd.foundation/">Continuous Delivery Foundation</a> project.</h3>
+			</div>
+		</div>
+  	</div>
+</section>

@@ -1,0 +1,12 @@
+
+{{ $scssMain := "scss/main.scss" }}
+{{ if .Site.IsServer }}
+{{/* Note the missing postCSS. This makes it snappier to develop in Chrome, but makes it look sub-optimal in other browsers. */}}
+{{ $cssMain := resources.Get $scssMain | toCSS (dict "enableSourceMap" true) }}
+<link href="{{ $cssMain.RelPermalink }}" rel="stylesheet">
+{{ else }}
+{{ $cssMain := resources.Get $scssMain | toCSS (dict "enableSourceMap" false) | postCSS | minify | fingerprint }}
+<link rel="preload" href="{{ $cssMain.RelPermalink }}" as="style">
+<link href="{{ $cssMain.RelPermalink }}" rel="stylesheet" integrity="{{ $cssMain.Data.integrity }}">
+{{ end }}
+<link href="/stylesheets/tabs.css" rel="stylesheet">

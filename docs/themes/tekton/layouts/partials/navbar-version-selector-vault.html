@@ -1,0 +1,21 @@
+{{ $jsVerSwitcher := resources.Get "js/version-switcher.js" }}
+{{ $jsVerSwitcher := $jsVerSwitcher | minify | fingerprint }}
+<script src="{{ $jsVerSwitcher.RelPermalink }}" integrity="{{ $jsVerSwitcher.Data.Integrity }}"></script>
+<li class="nav-item dropdown d-none d-lg-block">
+    <a id='current-location-announcer' class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Pipelines v0.7.x
+    </a>
+    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+        <div class="dropdown-item disabled">
+            <p class="mb-0">You are viewing the documentation of</p>
+            <p id='current-location-announcer-text' class="mb-0" style="color: rgb(55, 114, 255);">Placeholder.</p>
+        </div>
+        <div class="dropdown-divider"></div>
+        <h6 class="dropdown-header">Other Versions</h6>
+        <form id='other-versions-form'></form>
+        <div class="dropdown-divider"></div>
+        <h6 class="dropdown-header">Other Tekton Components</h6>
+        <form id="other-components-form"></form>
+    </div>
+</li>
+<script>setVaultVersionSwitcher();</script>

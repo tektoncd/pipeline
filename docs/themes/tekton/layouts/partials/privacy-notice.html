@@ -1,0 +1,21 @@
+<div id="privacy-notice">
+    <div class="row ml-4 mt-3 mb-3">
+      <div class="col-11">
+        <p class="h5 text-white">This website uses cookies</p>
+        <p class="text-white">
+          We use analytics and cookies to understand site traffic and offer
+          you a better browsing experience. <a href="https://www.linuxfoundation.org/privacy/" style="color: rgb(236, 109, 95);">Learn more about our privacy policy</a>.
+        </p>
+        <button id="privacy-acknowledgement-button" type="button" class="btn btn-lg btn-block" style="background-color: rgb(241, 247, 237); height: 45px;">OK</button>
+      </div>
+    </div>
+</div>
+<script>
+    if (document.cookie.split(';').filter((item) => item.trim().startsWith('privacy-notice-acknowledged=')).length) {
+        $('#privacy-notice').css('display', 'none')
+    }
+    $('#privacy-acknowledgement-button').click(function () {
+        document.cookie = "privacy-notice-acknowledged=true;" + `max-age=${60*60*24*365}`;
+        $('#privacy-notice').css('display', 'none')
+    })
+</script>

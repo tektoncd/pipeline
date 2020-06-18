@@ -1,0 +1,28 @@
+
+/*
+    Styling for privacy notice watermark in privacy-notice.html
+*/
+#privacy-notice {
+    background-color: rgba(84, 73, 75, 0.9); 
+    position: fixed; 
+    bottom: 0%; 
+    right: 0%; 
+    width: 500px; 
+    min-height: 10rem;
+    box-shadow: -8px -8px 8px 0 rgba(0, 0, 0, 0.3), 2px -6px 20px 0 rgba(0, 0, 0, 0.2); 
+    z-index: 1;
+}
+
+/* 
+    Styling for mobile:
+*/
+@media only screen and (max-width: $mobile-width) {
+    #banner-hero-logo {
+        display: none
+    }
+
+    #privacy-notice {
+        width: 100vw;
+    }
+    
+}

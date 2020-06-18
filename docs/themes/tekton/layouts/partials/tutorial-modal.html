@@ -1,0 +1,35 @@
+<div class="modal" tabindex="-1" role="dialog" id="tutorial-stage">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="container" style="padding-left: 0px; padding-right: 0px;">
+                    <div class="row justify-content-between no-gutters">
+                        <div class="col-4">
+                            <h3 style="margin-top: 4px;">Interactive Tutorial</h3>
+                        </div>
+                        <div class="col-8">
+                            <div class="d-flex flex-row-reverse">
+                                <button id="close-interactive-tutorial-button" type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-left: 8px;">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-dark dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Open With ...
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <a id="github-button" class="dropdown-item" href="#">View source code on GitHub</a>
+                                        <a id="katacoda-button" class="dropdown-item" href="#">Open in a new window with Katacoda</a>
+                                        <a id="qwiklabs-button" class="dropdown-item disabled" href="#">Open with QwikLabs (Recommended for GCP developers)</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <div class="modal-body">
+            <div id="embedded-katacoda-scenario"></div>
+        </div>
+      </div>
+    </div>
+</div>

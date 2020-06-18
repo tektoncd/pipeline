@@ -1,0 +1,21 @@
+{{ $_hugo_config := `{ "version": 1 }` }}
+{{ $col_id := .Get "color" | default .Ordinal }}
+{{ $height := .Get "height" | default "auto"  }}
+<section class="row td-box td-box--{{ $col_id }} td-box--gradient td-box--height-{{ $height }}">
+    <div class="container" style="max-width: 600px;">
+		<div class="row">
+			<div class="col mb-5 text-center">
+				<a href="https://github.com/tektoncd/friends"><img src="/partner-logos/tekton-friends.png" class="img-fluid"></a>
+			</div>
+		</div>
+    </div>
+    <div class="container" style="max-width: 100vw;">
+		<div class="row">
+			<div class="col mb-5 text-center">
+                <h3>Tekton is a collaborative project where members of the ecosystem contribute together to make CI/CD easier for everyone.
+                    See the <a href="https://github.com/tektoncd/friends">individuals and organizations</a>
+                    that are involved in the Tekton project.
+			</div>
+		</div>
+  	</div>
+</section>

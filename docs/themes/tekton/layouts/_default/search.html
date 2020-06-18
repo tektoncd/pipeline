@@ -1,0 +1,24 @@
+{{ define "main" }}
+<section class="row td-search-result">
+<div class="col-12 col-md-8 offset-md-2">
+<div style="height: 60px;">
+	<input type="search" class="form-control td-search-input" placeholder="&#xf002 {{ T "ui_search" }}" aria-label="{{ T "ui_search" }}" autocomplete="off">
+</div>
+{{ with .Site.Params.gcs_engine_id }}
+<script>
+(function() {
+var cx = '{{ . }}';
+var gcse = document.createElement('script');
+gcse.type = 'text/javascript';
+gcse.async = true;
+gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+var s = document.getElementsByTagName('script')[0];
+s.parentNode.insertBefore(gcse, s);
+})();
+</script>
+			<gcse:searchresults-only></gcse:searchresults-only>
+{{ end }}
+</div>
+</section>
+
+{{ end }}

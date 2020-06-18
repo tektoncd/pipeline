@@ -1,0 +1,19 @@
+{{ $jsVerSwitcher := resources.Get "js/version-switcher.js" }}
+{{ $jsVerSwitcher := $jsVerSwitcher | fingerprint }}
+<script src="{{ $jsVerSwitcher.RelPermalink }}" integrity="{{ $jsVerSwitcher.Data.Integrity }}"></script>
+<li class="nav-item dropdown d-none d-lg-block">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Latest Releases
+    </a>
+    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdownMenuLink">
+        <div class="dropdown-item disabled">
+            <p class="mb-0">You are viewing the documentation of the</p>
+            <p class="mb-0">lastest releases of Tekton components.</p>
+        </div>
+        <form id="version-announcer"></form>
+        <div class="dropdown-divider"></div>
+        <h6 class="dropdown-header">Previous Releases</h6>
+        <form id="previous-releases-form"></form>
+    </div>
+</li>
+<script>setMainVersionSwitcher();</script>

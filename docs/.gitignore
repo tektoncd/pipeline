@@ -1,0 +1,5 @@
+resources/_gen
+public/
+package-lock.json
+node_modules/
+assets/js/version-switcher.js

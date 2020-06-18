@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="{{ .Site.Language.Lang }}" class="no-js">
+
+<head>
+    {{ partial "head.html" . }}
+    <style>
+        @media only screen and (min-width: 768px) {
+            .scrollable-navbar-margin {
+                margin-top: 64px;
+            }
+        }
+
+        .card-custom-style {
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+            border-radius: 0.5rem;
+        }
+
+        .card-body-custom-style {
+            padding-bottom: 8px;
+        }
+
+        .subtitle-col-custom-style {
+            margin-right: 20px;
+            padding-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body class="td-{{ .Kind }}">
+    <header>
+        {{ partial "navbar.html" . }}
+    </header>
+    {{ partial "tutorial-modal.html" . }}
+    <div class="jumbotron jumbotron-fluid scrollable-navbar-margin bg-white">
+        <div class="container" style="padding-top: 40px; ">
+            <h2>Interactive Tutorials</h1>
+                <p class="lead">These are interactive tutorials
+                    that help you learn how to use Tekton step by step.
+                </p>
+        </div>
+    </div>
+    <div class="container">
+        <section class="row">
+            <div class="col-lg-3 mr-2 pb-3">
+                <p class="h2 d-inline">control and visualize</p>
+                <p class="h2 d-inline text-light">every step of the CI/CD workflow.</p>
+            </div>
+            <div class="col-lg-8 mr-2 ml-2">
+                <div class="row">
+                    <div class="col-md-4 pl-1 pr-1 pb-3">
+                        <article class="card card-custom-style interactive-tutorial-trigger"
+                            style="background-color: hsl(171, 100%, 41%)" data-katacoda-src="ncskier/tekton-dashboard"
+                            data-github-lnk="ncskier/katacoda/tree/master/tekton-dashboard" data-qwiklabs-lnk="">
+                            <div class="card-img-top">
+                                <img src="/try/icons/dashboard.png" class="img-fluid">
+                            </div>
+                            <div class="card-body card-body-custom-style">
+                                <p class="h4 text-white">Monitor with Tekton dashboard</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    {{ partial "privacy-notice.html" }}
+    {{ partial "scripts.html" . }}
+    {{ $launchTutorialJs := resources.Get "js/launch-tutorial.js" }}
+    {{ $launchTutorialJs := $launchTutorialJs | minify }}
+    <script src="{{ $launchTutorialJs.RelPermalink }}"></script>
+</body>
+
+</html>

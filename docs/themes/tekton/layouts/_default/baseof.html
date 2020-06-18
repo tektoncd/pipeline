@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="{{ .Site.Language.Lang }}" class="no-js">
+  <head>
+    {{ partial "head.html" . }}
+    {{ if eq .Kind "home" }}
+    {{ $cssAsciinema := "css/asciinema-player.css" }}
+    {{ $cssAsciinema := resources.Get $cssAsciinema | toCSS (dict "enableSourceMap" false) | postCSS | minify | fingerprint }}
+    <link href="{{ $cssAsciinema.RelPermalink }}" rel="stylesheet" integrity="{{ $cssAsciinema.Data.integrity }}">
+    {{ end }}
+  </head>
+  <body class="td-{{ .Kind }}">
+    <header>
+      {{ partial "navbar.html" . }}
+    </header>
+    <div class="container-fluid td-default td-outer">
+      <main role="main" class="td-main">
+        {{ block "main" . }}{{ end }}
+      </main>
+      {{ partial "footer.html" . }}
+    </div>
+    {{ partial "privacy-notice.html" }}
+    {{ partialCached "scripts.html" . }}
+  </body>
+</html>

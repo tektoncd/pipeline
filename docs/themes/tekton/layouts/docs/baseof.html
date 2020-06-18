@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="{{ .Site.Language.Lang }}" class="no-js">
+  <head>
+    {{ partial "head.html" . }}
+  </head>
+  <body class="td-{{ .Kind }}">
+    <header>
+      {{ partial "navbar-docs.html" . }}
+    </header>
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          <div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+            {{ partial "sidebar.html" . }}
+          </div>
+          <div class="d-none d-xl-block col-xl-2 td-toc d-print-none">
+            {{ partial "toc.html" . }}
+          </div>
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            {{ if not .Site.Params.ui.breadcrumb_disable }}{{ partial "breadcrumb.html" . }}{{ end }}
+            {{ block "main" . }}{{ end }}
+          </main>
+        </div>
+      </div>  
+    </div>
+    {{ partial "privacy-notice.html" }}
+    {{ partial "scripts.html" . }}
+    {{ $launchTutorialJs := resources.Get "js/launch-tutorial.js" }}
+    {{ $launchTutorialJs := $launchTutorialJs | minify }}
+    <script src="{{ $launchTutorialJs.RelPermalink }}"></script>
+    {{ $tabsJs := resources.Get "js/tabs.js" }}
+    {{ $tabsJs := $tabsJs | minify }}
+    <script src="{{ $tabsJs.RelPermalink }}"></script>
+  </body>
+</html>
