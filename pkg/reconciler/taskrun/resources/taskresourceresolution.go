@@ -55,7 +55,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 	}
 
 	for _, r := range inputs {
-		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
+		rr, err := GetResourceFromBinding(r.PipelineResourceBinding, gr)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource: %w", err)
 		}
@@ -64,7 +64,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 	}
 
 	for _, r := range outputs {
-		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
+		rr, err := GetResourceFromBinding(r.PipelineResourceBinding, gr)
 
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource: %w", err)
@@ -77,7 +77,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 
 // GetResourceFromBinding will return an instance of a PipelineResource to use for r, either by getting it with getter or by
 // instantiating it from the embedded spec.
-func GetResourceFromBinding(r *v1beta1.PipelineResourceBinding, getter GetResource) (*resourcev1alpha1.PipelineResource, error) {
+func GetResourceFromBinding(r v1beta1.PipelineResourceBinding, getter GetResource) (*resourcev1alpha1.PipelineResource, error) {
 	if (r.ResourceRef != nil && r.ResourceRef.Name != "") && r.ResourceSpec != nil {
 		return nil, errors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
 	}
