@@ -632,8 +632,13 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}
 
-	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
-
+	pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
+	if err == nil && willOverwritePodSetAffinity(tr) {
+		if recorder := controller.GetEventRecorder(ctx); recorder != nil {
+			recorder.Eventf(tr, corev1.EventTypeWarning, "PodAffinityOverwrite", "Pod template affinity is overwritten by affinity assistant for pod %q", pod.Name)
+		}
+	}
+	return pod, err
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
@@ -733,4 +738,14 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 		tr.Status.TaskSpec = ts
 	}
 	return nil
+}
+
+// willOverwritePodSetAffinity returns a bool indicating whether the
+// affinity for pods will be overwritten with affinity assistant.
+func willOverwritePodSetAffinity(taskRun *v1beta1.TaskRun) bool {
+	var podTemplate v1beta1.PodTemplate
+	if taskRun.Spec.PodTemplate != nil {
+		podTemplate = *taskRun.Spec.PodTemplate
+	}
+	return taskRun.Annotations[workspace.AnnotationAffinityAssistantName] != "" && podTemplate.Affinity != nil
 }
