@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -102,8 +103,18 @@ func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
 	return &cc
 }
 
-func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) error {
-	// The fake recorder runs in a go routine, so the timeout is here to avoid waiting
+func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvents []string) error {
+	t.Helper()
+	return eventFromChannel(fr.Events, testName, wantEvents)
+}
+
+func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvents []string) error {
+	t.Helper()
+	return eventFromChannel(fce.Events, testName, wantEvents)
+}
+
+func eventFromChannel(c chan string, testName string, wantEvents []string) error {
+	// We get events from a channel, so the timeout is here to avoid waiting
 	// on the channel forever if fewer than expected events are received.
 	// We only hit the timeout in case of failure of the test, so the actual value
 	// of the timeout is not so relevant, it's only used when tests are going to fail.
@@ -115,18 +126,23 @@ func checkEvents(fr *record.FakeRecorder, testName string, wantEvents []string) 
 		// we exit the loop. If we never receive enough events, the timeout takes us
 		// out of the loop.
 		select {
-		case event := <-fr.Events:
+		case event := <-c:
 			foundEvents = append(foundEvents, event)
 			if ii > len(wantEvents)-1 {
-				return fmt.Errorf("Received event \"%s\" for %s but not more expected", event, testName)
+				return fmt.Errorf("received event \"%s\" for %s but not more expected", event, testName)
 			}
 			wantEvent := wantEvents[ii]
-			if !(strings.HasPrefix(event, wantEvent)) {
-				return fmt.Errorf("Expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+			matching, err := regexp.MatchString(wantEvent, event)
+			if err == nil {
+				if !matching {
+					return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
+				}
+			} else {
+				return fmt.Errorf("something went wrong matching the event: %s", err)
 			}
 		case <-timer.C:
 			if len(foundEvents) > len(wantEvents) {
-				return fmt.Errorf("Received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
+				return fmt.Errorf("received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
 			}
 		}
 	}
@@ -346,7 +362,7 @@ func TestReconcile(t *testing.T) {
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-success", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-success", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -441,7 +457,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-success", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-success", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -619,7 +635,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			permanentError: true,
 			wantEvents: []string{
 				"Normal Started",
-				"Warning Failed Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec: invalid value \"bad-t@$k\"",
+				"Warning Failed Pipeline foo/embedded-pipeline-invalid can't be Run; it has an invalid spec",
 			},
 		}, {
 			name:           "invalid-embedded-pipeline-mismatching-parameter-types",
@@ -715,7 +731,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			}
 			// Check generated events match what's expected
 			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred")
-			err = checkEvents(testAssets.Recorder, tc.pipelineRun.Name, wantEvents)
+			err = checkEvents(t, testAssets.Recorder, tc.pipelineRun.Name, wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1065,7 +1081,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	wantEvents := []string{
 		"Normal Succeeded All Tasks have completed executing",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1132,7 +1148,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	wantEvents := []string{
 		"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-cancelled", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-cancelled", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1199,7 +1215,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	wantEvents := []string{
 		"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"12h0m0s\"",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-with-timeout", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-with-timeout", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1323,7 +1339,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 		"Warning InternalError 1 error occurred",
 	}
-	err = checkEvents(testAssets.Recorder, prName, wantEvents)
+	err = checkEvents(t, testAssets.Recorder, prName, wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1383,7 +1399,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 	wantEvents := []string{
 		"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-cancelled", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-cancelled", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1643,7 +1659,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 			if status := reconciledRun.Status.TaskRuns["hello-world-1"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
 				t.Fatalf("Succeeded expected to be %s but is %s", tc.conditionSucceeded, status)
 			}
-			err = checkEvents(testAssets.Recorder, prs[0].Name, tc.wantEvents)
+			err = checkEvents(t, testAssets.Recorder, prs[0].Name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1974,9 +1990,9 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 
 	wantEvents := []string{
 		"Normal Started",
-		"Normal Running Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0",
+		"Normal Running Tasks Completed: 0 \\(Failed: 0, Cancelled 0\\), Incomplete: 1, Skipped: 0",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2106,9 +2122,9 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 
 	wantEvents := []string{
 		"Normal Started",
-		"Normal Running Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 1",
+		"Normal Running Tasks Completed: 1 \\(Failed: 0, Cancelled 0\\), Incomplete: 1, Skipped: 1",
 	}
-	err = checkEvents(testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
+	err = checkEvents(t, testAssets.Recorder, "test-pipeline-run-completed", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}

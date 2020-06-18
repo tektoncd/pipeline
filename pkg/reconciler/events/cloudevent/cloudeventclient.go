@@ -34,7 +34,9 @@ type CECKey struct{}
 
 func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context {
 	logger := logging.FromContext(ctx)
+
 	p, err := cloudevents.NewHTTP()
+
 	if err != nil {
 		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
 		return ctx
@@ -52,8 +54,14 @@ func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context
 func Get(ctx context.Context) CEClient {
 	untyped := ctx.Value(CECKey{})
 	if untyped == nil {
-		logging.FromContext(ctx).Fatalf(
-			"Unable to fetch %T from context.", (CEClient)(nil))
+		logging.FromContext(ctx).Errorf(
+			"Unable to fetch client from context.")
+		return nil
 	}
 	return untyped.(CEClient)
+}
+
+// ToContext adds the cloud events client to the context
+func ToContext(ctx context.Context, cec CEClient) context.Context {
+	return context.WithValue(ctx, CECKey{}, cec)
 }

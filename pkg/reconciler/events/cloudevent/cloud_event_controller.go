@@ -18,6 +18,7 @@ package cloudevent
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -26,7 +27,11 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	controller "knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 // InitializeCloudEvents initializes the CloudEvents part of the
@@ -107,4 +112,41 @@ func SendCloudEvents(tr *v1beta1.TaskRun, ceclient CEClient, logger *zap.Sugared
 		logger.With(zap.Error(merr)).Errorw("Failed to send events for TaskRun.", zap.Int("count", merr.Len()))
 	}
 	return merr.ErrorOrNil()
+}
+
+// SendCloudEventWithRetries sends a cloud event for the specified resource.
+// It does not block and it perform retries with backoff using the cloudevents
+// sdk-go capabilities.
+// It accepts a runtime.Object to avoid making objectWithCondition public since
+// it's only used within the events/cloudevents packages.
+func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error {
+	var (
+		o  objectWithCondition
+		ok bool
+	)
+	if o, ok = object.(objectWithCondition); !ok {
+		return errors.New("Input object does not satisfy objectWithCondition")
+	}
+	logger := logging.FromContext(ctx)
+	ceClient := Get(ctx)
+	if ceClient == nil {
+		return errors.New("No cloud events client found in the context")
+	}
+	event, err := EventForObjectWithCondition(o)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
+			logger.Warnf("Failed to send cloudevent: %s", result.Error())
+			recorder := controller.GetEventRecorder(ctx)
+			if recorder == nil {
+				logger.Warnf("No recorder in context, cannot emit error event")
+			}
+			recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+		}
+	}()
+
+	return nil
 }

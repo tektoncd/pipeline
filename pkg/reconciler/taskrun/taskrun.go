@@ -87,7 +87,8 @@ var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	recorder := controller.GetEventRecorder(ctx)
+	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
+
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -106,7 +107,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(recorder, nil, afterCondition, tr)
+		events.Emit(ctx, nil, afterCondition, tr)
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -196,12 +197,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	recorder := controller.GetEventRecorder(ctx)
-
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-	events.Emit(recorder, beforeCondition, afterCondition, tr)
+
+	// Send k8s events and cloud events (when configured)
+	events.Emit(ctx, beforeCondition, afterCondition, tr)
+
 	_, err := c.updateLabelsAndAnnotations(tr)
-	events.EmitError(recorder, err, tr)
+	if err != nil {
+		events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+	}
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(multierror.Append(previousError, err))
 	}

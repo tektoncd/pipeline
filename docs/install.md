@@ -235,6 +235,25 @@ data:
   bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 ```
 
+## Configuring CloudEvents notifications
+
+When configured so, Tekton can generate `CloudEvents` for `TaskRun` and `PipelineRun` lifecycle
+events. The only configuration parameter is the URL of the sink. When not set, no notification is
+generared.
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  default-cloud-events-sink: https://my-sink-url
+```
+
 ## Customizing basic execution parameters
 
 You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.

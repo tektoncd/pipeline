@@ -24,44 +24,47 @@ import (
 	"github.com/cloudevents/sdk-go/v2/protocol"
 )
 
+const bufferSize = 100
+
 // FakeClientBehaviour defines how the client will behave
 type FakeClientBehaviour struct {
 	SendSuccessfully bool
 }
 
 // FakeClient is a fake CloudEvent client for unit testing
-// Holding a pointer to the behaviour allows to change the behaviour of a client
+// Holding  pointer to the behaviour allows to change the behaviour of a client
 type FakeClient struct {
 	behaviour *FakeClientBehaviour
-	event     cloudevents.Event
+	// Modelled after k8s.io/client-go fake recorder
+	Events chan string
 }
 
 // NewFakeClient is a FakeClient factory, it returns a client for the target
 func NewFakeClient(behaviour *FakeClientBehaviour) cloudevents.Client {
-	c := FakeClient{
+	return FakeClient{
 		behaviour: behaviour,
+		Events:    make(chan string, bufferSize),
 	}
-	return c
 }
 
 var _ cloudevents.Client = (*FakeClient)(nil)
 
 // Send fakes the Send method from cloudevents.Client
 func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) protocol.Result {
-	c.event = event
 	if c.behaviour.SendSuccessfully {
+		c.Events <- fmt.Sprintf("%s", event.String())
 		return nil
 	}
-	return fmt.Errorf("%s had to fail", event.ID())
+	return fmt.Errorf("Had to fail. Event ID: %s", event.ID())
 }
 
 // Request fakes the Request method from cloudevents.Client
 func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, protocol.Result) {
-	c.event = event
 	if c.behaviour.SendSuccessfully {
+		c.Events <- fmt.Sprintf("%v", event.String())
 		return &event, nil
 	}
-	return nil, fmt.Errorf("%s had to fail", event.ID())
+	return nil, fmt.Errorf("Had to fail. Event ID: %s", event.ID())
 }
 
 // StartReceiver fakes StartReceiver method from cloudevents.Client

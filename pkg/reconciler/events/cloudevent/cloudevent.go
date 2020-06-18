@@ -133,6 +133,9 @@ func EventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, 
 
 func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 	c := runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
+	if c == nil {
+		return nil, fmt.Errorf("no condition for ConditionSucceeded in %T", runObject)
+	}
 	var eventType TektonEventType
 	switch {
 	case c.IsUnknown():

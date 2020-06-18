@@ -55,3 +55,10 @@ data:
     # TaskRun and PipelineRun, if none is specified. If a pod template
     # is specified, the default pod template is ignored.
     # default-pod-template:
+
+    # default-cloud-events-sink contains the default CloudEvents sink to be
+    # used for TaskRun and PipelineRun, when no sink is specified.
+    # Note that right now it is still not possible to set a PipelineRun or
+    # TaskRun specific sink, so the default is the only option available.
+    # If no sink is specified, no CloudEvent is generated
+    # default-cloud-events-sink:
