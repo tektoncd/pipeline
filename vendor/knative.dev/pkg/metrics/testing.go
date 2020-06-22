@@ -19,7 +19,7 @@ package metrics
 // InitForTesting initialize the necessary global variables for unit tests.
 func InitForTesting() {
 	setCurMetricsConfig(&metricsConfig{
-		backendDestination: Prometheus,
+		backendDestination: prometheus,
 		component:          "test",
 		domain:             "test",
 	})

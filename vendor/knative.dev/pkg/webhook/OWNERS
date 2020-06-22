@@ -2,3 +2,6 @@
 
 approvers:
 - webhook-approvers
+
+reviewers:
+- webhook-reviewers

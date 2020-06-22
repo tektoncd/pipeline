@@ -73,9 +73,9 @@ func (NotificationChannel_VerificationStatus) EnumDescriptor() ([]byte, []int) {
 // the properties of the channel and the set of labels or fields that
 // must be specified to configure channels of a given type.
 type NotificationChannelDescriptor struct {
-	// The full REST resource name for this descriptor. The syntax is:
+	// The full REST resource name for this descriptor. The format is:
 	//
-	//     projects/[PROJECT_ID]/notificationChannelDescriptors/[TYPE]
+	//     projects/[PROJECT_ID_OR_NUMBER]/notificationChannelDescriptors/[TYPE]
 	//
 	// In the above, `[TYPE]` is the value of the `type` field.
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
@@ -187,9 +187,9 @@ type NotificationChannel struct {
 	// The type of the notification channel. This field matches the
 	// value of the [NotificationChannelDescriptor.type][google.monitoring.v3.NotificationChannelDescriptor.type] field.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// The full REST resource name for this channel. The syntax is:
+	// The full REST resource name for this channel. The format is:
 	//
-	//     projects/[PROJECT_ID]/notificationChannels/[CHANNEL_ID]
+	//     projects/[PROJECT_ID_OR_NUMBER]/notificationChannels/[CHANNEL_ID]
 	//
 	// The `[CHANNEL_ID]` is automatically assigned by the server on creation.
 	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`

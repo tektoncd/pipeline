@@ -184,25 +184,25 @@ func (r conditionsImpl) GetCondition(t ConditionType) *Condition {
 
 // SetCondition sets or updates the Condition on Conditions for Condition.Type.
 // If there is an update, Conditions are stored back sorted.
-func (r conditionsImpl) SetCondition(new Condition) {
+func (r conditionsImpl) SetCondition(cond Condition) {
 	if r.accessor == nil {
 		return
 	}
-	t := new.Type
+	t := cond.Type
 	var conditions Conditions
 	for _, c := range r.accessor.GetConditions() {
 		if c.Type != t {
 			conditions = append(conditions, c)
 		} else {
 			// If we'd only update the LastTransitionTime, then return.
-			new.LastTransitionTime = c.LastTransitionTime
-			if reflect.DeepEqual(&new, &c) {
+			cond.LastTransitionTime = c.LastTransitionTime
+			if reflect.DeepEqual(cond, c) {
 				return
 			}
 		}
 	}
-	new.LastTransitionTime = VolatileTime{Inner: metav1.NewTime(time.Now())}
-	conditions = append(conditions, new)
+	cond.LastTransitionTime = VolatileTime{Inner: metav1.NewTime(time.Now())}
+	conditions = append(conditions, cond)
 	// Sorted for convenience of the consumer, i.e. kubectl.
 	sort.Slice(conditions, func(i, j int) bool { return conditions[i].Type < conditions[j].Type })
 	r.accessor.SetConditions(conditions)

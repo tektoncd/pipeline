@@ -25,10 +25,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	apixclient "knative.dev/pkg/client/injection/apiextensions/client"
-	crdinformer "knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1beta1/customresourcedefinition"
+	crdinformer "knative.dev/pkg/client/injection/apiextensions/informers/apiextensions/v1/customresourcedefinition"
 	"knative.dev/pkg/controller"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
 	"knative.dev/pkg/logging"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 )
@@ -89,13 +90,23 @@ func NewConversionController(
 	withContext func(context.Context) context.Context,
 ) *controller.Impl {
 
-	logger := logging.FromContext(ctx)
 	secretInformer := secretinformer.Get(ctx)
 	crdInformer := crdinformer.Get(ctx)
 	client := apixclient.Get(ctx)
 	options := webhook.GetOptions(ctx)
 
 	r := &reconciler{
+		LeaderAwareFuncs: pkgreconciler.LeaderAwareFuncs{
+			// Have this reconciler enqueue our types whenever it becomes leader.
+			PromoteFunc: func(bkt pkgreconciler.Bucket, enq func(pkgreconciler.Bucket, types.NamespacedName)) error {
+				for _, gkc := range kinds {
+					name := gkc.DefinitionName
+					enq(bkt, types.NamespacedName{Name: name})
+				}
+				return nil
+			},
+		},
+
 		kinds:       kinds,
 		path:        path,
 		secretName:  options.SecretName,
@@ -106,7 +117,7 @@ func NewConversionController(
 		crdLister:    crdInformer.Lister(),
 	}
 
-	c := controller.NewImpl(r, logger, "ConversionWebhook")
+	c := controller.NewImpl(r, logging.FromContext(ctx), "ConversionWebhook")
 
 	// Reconciler when the named CRDs change.
 	for _, gkc := range kinds {

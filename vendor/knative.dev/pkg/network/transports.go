@@ -96,15 +96,15 @@ func newHTTPTransport(connTimeout time.Duration, disableKeepAlives bool) http.Ro
 	return &http.Transport{
 		// Those match net/http/transport.go
 		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          1000,
-		MaxIdleConnsPerHost:   100,
-		IdleConnTimeout:       5 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableKeepAlives:     disableKeepAlives,
 
-		// This is bespoke.
-		DialContext: DialWithBackOff,
+		// Those are bespoke.
+		DialContext:         DialWithBackOff,
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 100,
 	}
 }
 

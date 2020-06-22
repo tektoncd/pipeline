@@ -142,9 +142,21 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "context",
 			Name:    "Context",
 		}),
-		"fmtSprintf": c.Universe.Function(types.Name{
-			Package: "fmt",
-			Name:    "Sprintf",
+		"reconcilerLeaderAwareFuncs": c.Universe.Type(types.Name{
+			Package: "knative.dev/pkg/reconciler",
+			Name:    "LeaderAwareFuncs",
+		}),
+		"reconcilerBucket": c.Universe.Type(types.Name{
+			Package: "knative.dev/pkg/reconciler",
+			Name:    "Bucket",
+		}),
+		"typesNamespacedName": c.Universe.Type(types.Name{
+			Package: "k8s.io/apimachinery/pkg/types",
+			Name:    "NamespacedName",
+		}),
+		"labelsEverything": c.Universe.Function(types.Name{
+			Package: "k8s.io/apimachinery/pkg/labels",
+			Name:    "Everything",
 		}),
 		"stringsReplaceAll": c.Universe.Function(types.Name{
 			Package: "strings",
@@ -153,6 +165,10 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 		"reflectTypeOf": c.Universe.Function(types.Name{
 			Package: "reflect",
 			Name:    "TypeOf",
+		}),
+		"fmtSprintf": c.Universe.Function(types.Name{
+			Package: "fmt",
+			Name:    "Sprintf",
 		}),
 	}
 
@@ -185,9 +201,27 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 
 	{{.type|lowercaseSingular}}Informer := {{.informerGet|raw}}(ctx)
 
+	lister := {{.type|lowercaseSingular}}Informer.Lister()
+
 	rec := &reconcilerImpl{
+		LeaderAwareFuncs: {{.reconcilerLeaderAwareFuncs|raw}}{
+			PromoteFunc: func(bkt {{.reconcilerBucket|raw}}, enq func({{.reconcilerBucket|raw}}, {{.typesNamespacedName|raw}})) error {
+				all, err := lister.List({{.labelsEverything|raw}}())
+				if err != nil {
+					return err
+				}
+				for _, elt := range all {
+					// TODO: Consider letting users specify a filter in options.
+					enq(bkt, {{.typesNamespacedName|raw}}{
+						Namespace: elt.GetNamespace(),
+						Name: elt.GetName(),
+					})
+				}
+				return nil
+			},
+		},
 		Client:  {{.clientGet|raw}}(ctx),
-		Lister:  {{.type|lowercaseSingular}}Informer.Lister(),
+		Lister:  lister,
 		reconciler:    r,
 		finalizerName: defaultFinalizerName,
 		{{if .hasClass}}classValue: classValue,{{end}}
@@ -210,6 +244,9 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		}
 		if opts.AgentName != "" {
 			agentName = opts.AgentName
+		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
 		}
 	}
 

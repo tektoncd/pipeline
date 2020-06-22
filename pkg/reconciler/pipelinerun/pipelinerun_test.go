@@ -45,6 +45,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	k8stesting "k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -53,6 +54,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/reconciler"
 )
 
 var (
@@ -87,9 +89,16 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+
+	ctl := NewController(namespace, images)(ctx, configMapWatcher)
+
+	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
+		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
+	}
+
 	return test.Assets{
 		Logger:     logging.FromContext(ctx),
-		Controller: NewController(namespace, images)(ctx, configMapWatcher),
+		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),

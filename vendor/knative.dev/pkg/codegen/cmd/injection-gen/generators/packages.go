@@ -201,7 +201,7 @@ func isKRShaped(tags map[string]map[string]string) bool {
 	if !has {
 		return false
 	}
-	return vals["krshapedlogic"] == "true"
+	return vals["krshapedlogic"] != "false"
 }
 
 func isNonNamespaced(tags map[string]map[string]string) bool {

@@ -31,6 +31,10 @@ type Options struct {
 	// AgentName is the name of the agent this reconciler uses. This overrides
 	// the default controller's agent name.
 	AgentName string
+
+	// SkipStatusUpdates configures this reconciler to either do automated status
+	// updates (default) or skip them if this is set to true.
+	SkipStatusUpdates bool
 }
 
 // OptionsFn is a callback method signature that accepts an Impl and returns

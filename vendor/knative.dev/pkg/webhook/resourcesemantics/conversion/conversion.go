@@ -22,25 +22,29 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
-	apixv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/logging/logkey"
 )
 
 // Convert implements webhook.ConversionController
 func (r *reconciler) Convert(
 	ctx context.Context,
-	req *apixv1beta1.ConversionRequest,
-) *apixv1beta1.ConversionResponse {
+	req *apixv1.ConversionRequest,
+) *apixv1.ConversionResponse {
 
 	if r.withContext != nil {
 		ctx = r.withContext(ctx)
 	}
 
-	res := &apixv1beta1.ConversionResponse{
+	res := &apixv1.ConversionResponse{
 		UID: req.UID,
 		Result: metav1.Status{
 			Status: metav1.StatusSuccess,
@@ -78,8 +82,6 @@ func (r *reconciler) convert(
 		return ret, err
 	}
 
-	logger.Infof("Converting %s to version %s", formatGVK(inGVK), targetVersion)
-
 	inGK := inGVK.GroupKind()
 	conv, ok := r.kinds[inGK]
 	if !ok {
@@ -109,16 +111,27 @@ func (r *reconciler) convert(
 	out := outZygote.DeepCopyObject().(ConvertibleObject)
 
 	hubGVK := inGVK.GroupKind().WithVersion(conv.HubVersion)
-	ctx = logging.WithLogger(ctx, logger.With(
+
+	logger = logger.With(
 		zap.String("inputType", formatGVK(inGVK)),
 		zap.String("outputType", formatGVK(outGVK)),
 		zap.String("hubType", formatGVK(hubGVK)),
-	))
+	)
 
 	// TODO(dprotaso) - potentially error on unknown fields
 	if err = json.Unmarshal(inRaw.Raw, &in); err != nil {
 		return ret, fmt.Errorf("unable to unmarshal input: %w", err)
 	}
+
+	if acc, err := kmeta.DeletionHandlingAccessor(in); err == nil {
+		// TODO: right now we don't convert any non-namespaced objects. If we ever do that
+		// this needs to updated to deal with it.
+		logger = logger.With(zap.String(logkey.Key, acc.GetNamespace()+"/"+acc.GetName()))
+	} else {
+		logger.Infof("Could not get Accessor for %s: %v", formatGK(inGVK.GroupKind()), err)
+	}
+	logger.Infof("Converting %s to version %s", formatGVK(inGVK), targetVersion)
+	ctx = logging.WithLogger(ctx, logger)
 
 	if inGVK.Version == conv.HubVersion {
 		hub = in

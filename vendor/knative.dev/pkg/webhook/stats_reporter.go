@@ -24,7 +24,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"knative.dev/pkg/metrics"
 )
 
@@ -62,7 +62,7 @@ var (
 
 // StatsReporter reports webhook metrics
 type StatsReporter interface {
-	ReportRequest(request *admissionv1beta1.AdmissionRequest, response *admissionv1beta1.AdmissionResponse, d time.Duration) error
+	ReportRequest(request *admissionv1.AdmissionRequest, response *admissionv1.AdmissionResponse, d time.Duration) error
 }
 
 // reporter implements StatsReporter interface
@@ -83,7 +83,7 @@ func NewStatsReporter() (StatsReporter, error) {
 }
 
 // Captures req count metric, recording the count and the duration
-func (r *reporter) ReportRequest(req *admissionv1beta1.AdmissionRequest, resp *admissionv1beta1.AdmissionResponse, d time.Duration) error {
+func (r *reporter) ReportRequest(req *admissionv1.AdmissionRequest, resp *admissionv1.AdmissionResponse, d time.Duration) error {
 	ctx, err := tag.New(
 		r.ctx,
 		tag.Insert(requestOperationKey, string(req.Operation)),

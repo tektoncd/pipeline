@@ -17,8 +17,10 @@ limitations under the License.
 package metricstest
 
 import (
+	"fmt"
 	"reflect"
 
+	"go.opencensus.io/metric/metricproducer"
 	"go.opencensus.io/stats/view"
 	"knative.dev/pkg/test"
 )
@@ -56,14 +58,17 @@ func CheckStatsNotReported(t test.T, names ...string) {
 // reported are tagged with the tags in wantTags and that wantValue matches reported count.
 func CheckCountData(t test.T, name string, wantTags map[string]string, wantValue int64) {
 	t.Helper()
-	if row := checkExactlyOneRow(t, name); row != nil {
-		checkRowTags(t, row, name, wantTags)
+	row, err := checkExactlyOneRow(t, name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	checkRowTags(t, row, name, wantTags)
 
-		if s, ok := row.Data.(*view.CountData); !ok {
-			t.Error("want CountData", "metric", name, "got", reflect.TypeOf(row.Data))
-		} else if s.Value != wantValue {
-			t.Error("Wrong value", "metric", name, "value", s.Value, "want", wantValue)
-		}
+	if s, ok := row.Data.(*view.CountData); !ok {
+		t.Error("want CountData", "metric", name, "got", reflect.TypeOf(row.Data))
+	} else if s.Value != wantValue {
+		t.Error("Wrong value", "metric", name, "value", s.Value, "want", wantValue)
 	}
 }
 
@@ -72,21 +77,24 @@ func CheckCountData(t test.T, name string, wantTags map[string]string, wantValue
 // It also checks that expectedMin and expectedMax match the minimum and maximum reported values, respectively.
 func CheckDistributionData(t test.T, name string, wantTags map[string]string, expectedCount int64, expectedMin float64, expectedMax float64) {
 	t.Helper()
-	if row := checkExactlyOneRow(t, name); row != nil {
-		checkRowTags(t, row, name, wantTags)
+	row, err := checkExactlyOneRow(t, name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	checkRowTags(t, row, name, wantTags)
 
-		if s, ok := row.Data.(*view.DistributionData); !ok {
-			t.Error("want DistributionData", "metric", name, "got", reflect.TypeOf(row.Data))
-		} else {
-			if s.Count != expectedCount {
-				t.Error("reporter count wrong", "metric", name, "got", s.Count, "want", expectedCount)
-			}
-			if s.Min != expectedMin {
-				t.Error("reporter count wrong", "metric", name, "got", s.Min, "want", expectedMin)
-			}
-			if s.Max != expectedMax {
-				t.Error("reporter count wrong", "metric", name, "got", s.Max, "want", expectedMax)
-			}
+	if s, ok := row.Data.(*view.DistributionData); !ok {
+		t.Error("want DistributionData", "metric", name, "got", reflect.TypeOf(row.Data))
+	} else {
+		if s.Count != expectedCount {
+			t.Error("reporter count wrong", "metric", name, "got", s.Count, "want", expectedCount)
+		}
+		if s.Min != expectedMin {
+			t.Error("reporter count wrong", "metric", name, "got", s.Min, "want", expectedMin)
+		}
+		if s.Max != expectedMax {
+			t.Error("reporter count wrong", "metric", name, "got", s.Max, "want", expectedMax)
 		}
 	}
 }
@@ -95,15 +103,19 @@ func CheckDistributionData(t test.T, name string, wantTags map[string]string, ex
 // are tagged with the tags in wantTags and that expectedCount number of records were reported.
 func CheckDistributionCount(t test.T, name string, wantTags map[string]string, expectedCount int64) {
 	t.Helper()
-	if row := checkExactlyOneRow(t, name); row != nil {
-		checkRowTags(t, row, name, wantTags)
-
-		if s, ok := row.Data.(*view.DistributionData); !ok {
-			t.Error("want DistributionData", "metric", name, "got", reflect.TypeOf(row.Data))
-		} else if s.Count != expectedCount {
-			t.Error("reporter count wrong", "metric", name, "got", s.Count, "want", expectedCount)
-		}
+	row, err := checkExactlyOneRow(t, name)
+	if err != nil {
+		t.Error(err)
+		return
 	}
+	checkRowTags(t, row, name, wantTags)
+
+	if s, ok := row.Data.(*view.DistributionData); !ok {
+		t.Error("want DistributionData", "metric", name, "got", reflect.TypeOf(row.Data))
+	} else if s.Count != expectedCount {
+		t.Error("reporter count wrong", "metric", name, "got", s.Count, "want", expectedCount)
+	}
+
 }
 
 // CheckLastValueData checks the view with a name matching string name to verify that the LastValueData stats
@@ -125,14 +137,17 @@ func CheckLastValueData(t test.T, name string, wantTags map[string]string, wantV
 // reported are tagged with the tags in wantTags and that wantValue matches the reported sum.
 func CheckSumData(t test.T, name string, wantTags map[string]string, wantValue float64) {
 	t.Helper()
-	if row := checkExactlyOneRow(t, name); row != nil {
-		checkRowTags(t, row, name, wantTags)
+	row, err := checkExactlyOneRow(t, name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	checkRowTags(t, row, name, wantTags)
 
-		if s, ok := row.Data.(*view.SumData); !ok {
-			t.Error("Wrong type", "metric", name, "got", reflect.TypeOf(row.Data), "want", "SumData")
-		} else if s.Value != wantValue {
-			t.Error("Wrong sumdata", "metric", name, "got", s.Value, "want", wantValue)
-		}
+	if s, ok := row.Data.(*view.SumData); !ok {
+		t.Error("Wrong type", "metric", name, "got", reflect.TypeOf(row.Data), "want", "SumData")
+	} else if s.Value != wantValue {
+		t.Error("Wrong sumdata", "metric", name, "got", s.Value, "want", wantValue)
 	}
 }
 
@@ -166,19 +181,29 @@ func lastRow(t test.T, name string) *view.Row {
 	return d[len(d)-1]
 }
 
-func checkExactlyOneRow(t test.T, name string) *view.Row {
-	t.Helper()
-	d, err := view.RetrieveData(name)
-	if err != nil {
-		t.Error("Reporter.Report() error", "metric", name, "error", err)
-		return nil
-	}
-	if len(d) != 1 {
-		t.Error("Reporter.Report() wrong length", "metric", name, "got", len(d), "want", 1)
-		return nil
-	}
+func checkExactlyOneRow(t test.T, name string) (*view.Row, error) {
+	// view.Meter implements (and is exposed by) metricproducer.GetAll. Since
+	// this is a test, reach around and cast these to view.Meter.
+	var retval *view.Row
+	for _, producer := range metricproducer.GlobalManager().GetAll() {
+		meter := producer.(view.Meter)
 
-	return d[0]
+		d, err := meter.RetrieveData(name)
+		if err != nil || len(d) == 0 {
+			continue
+		}
+		if len(d) > 1 {
+			return nil, fmt.Errorf("expected 1 row for metric %q got %d", name, len(d))
+		}
+		if retval != nil {
+			return nil, fmt.Errorf("got 2 rows from different meters: %+v, %+v", *retval, d[0])
+		}
+		retval = d[0]
+	}
+	if retval == nil {
+		return nil, fmt.Errorf("could not find row for %q", name)
+	}
+	return retval, nil
 }
 
 func checkRowTags(t test.T, row *view.Row, name string, wantTags map[string]string) {

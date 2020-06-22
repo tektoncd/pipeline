@@ -20,21 +20,25 @@ import (
 	"context"
 	"fmt"
 
-	apixv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apixclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apixlisters "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1"
+	apixlisters "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
 
 type reconciler struct {
+	pkgreconciler.LeaderAwareFuncs
+
 	kinds       map[schema.GroupKind]GroupKindConversion
 	path        string
 	secretName  string
@@ -47,6 +51,7 @@ type reconciler struct {
 
 var _ webhook.ConversionController = (*reconciler)(nil)
 var _ controller.Reconciler = (*reconciler)(nil)
+var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
 
 // Path implements webhook.ConversionController
 func (r *reconciler) Path() string {
@@ -56,6 +61,11 @@ func (r *reconciler) Path() string {
 // Reconciler implements controller.Reconciler
 func (r *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
+
+	if !r.IsLeaderFor(types.NamespacedName{Name: key}) {
+		logger.Debugf("Skipping key %q, not the leader.", key)
+		return nil
+	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.
 	secret, err := r.secretLister.Secrets(system.Namespace()).Get(r.secretName)
@@ -83,20 +93,20 @@ func (r *reconciler) reconcileCRD(ctx context.Context, cacert []byte, key string
 	crd := configuredCRD.DeepCopy()
 
 	if crd.Spec.Conversion == nil ||
-		crd.Spec.Conversion.Strategy != apixv1beta1.WebhookConverter ||
-		crd.Spec.Conversion.WebhookClientConfig == nil ||
-		crd.Spec.Conversion.WebhookClientConfig.Service == nil {
+		crd.Spec.Conversion.Strategy != apixv1.WebhookConverter ||
+		crd.Spec.Conversion.Webhook.ClientConfig == nil ||
+		crd.Spec.Conversion.Webhook.ClientConfig.Service == nil {
 		return fmt.Errorf("custom resource %q isn't configured for webhook conversion", key)
 	}
 
-	crd.Spec.Conversion.WebhookClientConfig.CABundle = cacert
-	crd.Spec.Conversion.WebhookClientConfig.Service.Path = ptr.String(r.path)
+	crd.Spec.Conversion.Webhook.ClientConfig.CABundle = cacert
+	crd.Spec.Conversion.Webhook.ClientConfig.Service.Path = ptr.String(r.path)
 
 	if ok, err := kmp.SafeEqual(configuredCRD, crd); err != nil {
 		return fmt.Errorf("error diffing custom resource definitions: %w", err)
 	} else if !ok {
 		logger.Infof("updating CRD")
-		crdClient := r.client.ApiextensionsV1beta1().CustomResourceDefinitions()
+		crdClient := r.client.ApiextensionsV1().CustomResourceDefinitions()
 		if _, err := crdClient.Update(crd); err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}

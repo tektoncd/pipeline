@@ -85,6 +85,26 @@ func UpdateExporterFromConfigMap(component string, logger *zap.SugaredLogger) fu
 	return ConfigMapWatcher(component, nil, logger)
 }
 
+// RegisterResourceView is similar to view.Register(), except that it will
+// register the view across all Resources tracked by the system, rather than
+// simply the default view.
+// this is a placeholder for real implementation in https://github.com/knative/pkg/pull/1392.
+// That PR will introduce a breaking change, as we need to convert some view.Register to RegisterResourceView in
+// all callers, in serving, eventing, and eventing-contrib.
+// Since that PR is huge, a better approach is to introduce the breaking change up front, by creating this
+// passthrough method, and fixing all the callers before merging that PR.
+func RegisterResourceView(views ...*view.View) error {
+	return view.Register(views...)
+}
+
+// UnregisterResourceView is similar to view.unRegister(), except that it will
+// unregister the view across all Resources tracked by the system, rather than
+// simply the default view.
+// this is a placeholder for real implementation in https://github.com/knative/pkg/pull/1392.
+func UnregisterResourceView(views ...*view.View) {
+	view.Unregister(views...)
+}
+
 // ConfigMapWatcher returns a helper func which updates the exporter configuration based on
 // values in the supplied ConfigMap. This method captures a corev1.SecretLister which is used
 // to configure mTLS with the opencensus agent.
@@ -176,11 +196,11 @@ func isNewExporterRequired(newConfig *metricsConfig) bool {
 
 	// If the OpenCensus address has changed, restart the exporter.
 	// TODO(evankanderson): Should we just always restart the opencensus agent?
-	if newConfig.backendDestination == OpenCensus {
+	if newConfig.backendDestination == openCensus {
 		return newConfig.collectorAddress != cc.collectorAddress || newConfig.requireSecure != cc.requireSecure
 	}
 
-	return newConfig.backendDestination == Stackdriver && newConfig.stackdriverClientConfig != cc.stackdriverClientConfig
+	return newConfig.backendDestination == stackdriver && newConfig.stackdriverClientConfig != cc.stackdriverClientConfig
 }
 
 // newMetricsExporter gets a metrics exporter based on the config.
@@ -198,13 +218,13 @@ func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.
 	var err error
 	var e view.Exporter
 	switch config.backendDestination {
-	case OpenCensus:
+	case openCensus:
 		e, err = newOpenCensusExporter(config, logger)
-	case Stackdriver:
+	case stackdriver:
 		e, err = newStackdriverExporter(config, logger)
-	case Prometheus:
+	case prometheus:
 		e, err = newPrometheusExporter(config, logger)
-	case None:
+	case none:
 		e, err = nil, nil
 	default:
 		err = fmt.Errorf("unsupported metrics backend %v", config.backendDestination)

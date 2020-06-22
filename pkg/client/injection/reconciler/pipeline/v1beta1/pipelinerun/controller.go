@@ -28,6 +28,8 @@ import (
 	client "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	pipelinerun "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
 	corev1 "k8s.io/api/core/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -35,6 +37,7 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	controller "knative.dev/pkg/controller"
 	logging "knative.dev/pkg/logging"
+	reconciler "knative.dev/pkg/reconciler"
 )
 
 const (
@@ -56,9 +59,27 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 
 	pipelinerunInformer := pipelinerun.Get(ctx)
 
+	lister := pipelinerunInformer.Lister()
+
 	rec := &reconcilerImpl{
+		LeaderAwareFuncs: reconciler.LeaderAwareFuncs{
+			PromoteFunc: func(bkt reconciler.Bucket, enq func(reconciler.Bucket, types.NamespacedName)) error {
+				all, err := lister.List(labels.Everything())
+				if err != nil {
+					return err
+				}
+				for _, elt := range all {
+					// TODO: Consider letting users specify a filter in options.
+					enq(bkt, types.NamespacedName{
+						Namespace: elt.GetNamespace(),
+						Name:      elt.GetName(),
+					})
+				}
+				return nil
+			},
+		},
 		Client:        client.Get(ctx),
-		Lister:        pipelinerunInformer.Lister(),
+		Lister:        lister,
 		reconciler:    r,
 		finalizerName: defaultFinalizerName,
 	}
@@ -80,6 +101,9 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 		}
 		if opts.AgentName != "" {
 			agentName = opts.AgentName
+		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
 		}
 	}
 
