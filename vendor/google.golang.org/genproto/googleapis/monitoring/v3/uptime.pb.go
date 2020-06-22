@@ -202,9 +202,9 @@ func (UptimeCheckConfig_ContentMatcher_ContentMatcherOption) EnumDescriptor() ([
 type InternalChecker struct {
 	// A unique resource name for this InternalChecker. The format is:
 	//
-	//   `projects/[PROJECT_ID]/internalCheckers/[INTERNAL_CHECKER_ID]`.
+	//     projects/[PROJECT_ID_OR_NUMBER]/internalCheckers/[INTERNAL_CHECKER_ID]
 	//
-	// `[PROJECT_ID]` is the Stackdriver Workspace project for the
+	// `[PROJECT_ID_OR_NUMBER]` is the Stackdriver Workspace project for the
 	// Uptime check config associated with the internal checker.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The checker's human-readable name. The display name
@@ -299,7 +299,7 @@ func (m *InternalChecker) GetState() InternalChecker_State {
 type UptimeCheckConfig struct {
 	// A unique resource name for this Uptime check configuration. The format is:
 	//
-	//   `projects/[PROJECT_ID]/uptimeCheckConfigs/[UPTIME_CHECK_ID]`.
+	//      projects/[PROJECT_ID_OR_NUMBER]/uptimeCheckConfigs/[UPTIME_CHECK_ID]
 	//
 	// This field should be omitted when creating the Uptime check configuration;
 	// on create, the resource name is assigned by the server and included in the
@@ -527,7 +527,8 @@ func (*UptimeCheckConfig) XXX_OneofWrappers() []interface{} {
 // monitored resource, when multiple resources are being monitored.
 type UptimeCheckConfig_ResourceGroup struct {
 	// The group of resources being monitored. Should be only the `[GROUP_ID]`,
-	// and not the full-path `projects/[PROJECT_ID]/groups/[GROUP_ID]`.
+	// and not the full-path
+	// `projects/[PROJECT_ID_OR_NUMBER]/groups/[GROUP_ID]`.
 	GroupId string `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	// The resource type of the group members.
 	ResourceType         GroupResourceType `protobuf:"varint,2,opt,name=resource_type,json=resourceType,proto3,enum=google.monitoring.v3.GroupResourceType" json:"resource_type,omitempty"`

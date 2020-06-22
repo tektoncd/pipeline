@@ -37,4 +37,16 @@ function pre_build_tests() {
   return 0
 }
 
+# Run the unit tests with an additional flag '-mod=vendor' to avoid
+# downloading the deps in unit tests CI job
+function unit_tests() {
+  # Run the default way.
+  default_unit_test_runner || failed=1
+
+  # Run unit testing select packages without race detection,
+  # so that they may use: // +build !race
+  report_go_test ./leaderelection || failed=1
+
+}
+
 main $@

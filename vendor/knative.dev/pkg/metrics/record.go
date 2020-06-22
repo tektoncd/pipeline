@@ -40,7 +40,7 @@ func RecordBatch(ctx context.Context, mss ...stats.Measurement) {
 // be used to create a view.Distribution.
 func Buckets125(low, high float64) []float64 {
 	buckets := []float64{low}
-	for last := low; last < high; last = last * 10 {
+	for last := low; last < high; last *= 10 {
 		buckets = append(buckets, 2*last, 5*last, 10*last)
 	}
 	return buckets

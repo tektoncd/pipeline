@@ -24,15 +24,18 @@ import (
 
 	"github.com/markbates/inflect"
 	"go.uber.org/zap"
-	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1beta1"
+	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
@@ -42,8 +45,9 @@ import (
 // reconciler implements the AdmissionController for resources
 type reconciler struct {
 	webhook.StatelessAdmissionImpl
+	pkgreconciler.LeaderAwareFuncs
 
-	name      string
+	key       types.NamespacedName
 	path      string
 	handlers  map[schema.GroupVersionKind]resourcesemantics.GenericCRD
 	callbacks map[schema.GroupVersionKind]Callback
@@ -59,6 +63,7 @@ type reconciler struct {
 }
 
 var _ controller.Reconciler = (*reconciler)(nil)
+var _ pkgreconciler.LeaderAware = (*reconciler)(nil)
 var _ webhook.AdmissionController = (*reconciler)(nil)
 var _ webhook.StatelessAdmissionController = (*reconciler)(nil)
 
@@ -70,6 +75,11 @@ func (ac *reconciler) Path() string {
 // Reconcile implements controller.Reconciler
 func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
+
+	if !ac.IsLeaderFor(ac.key) {
+		logger.Debugf("Skipping key %q, not the leader.", ac.key)
+		return nil
+	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.
 	secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.secretName)
@@ -89,17 +99,17 @@ func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []byte) error {
 	logger := logging.FromContext(ctx)
 
-	rules := make([]admissionregistrationv1beta1.RuleWithOperations, 0, len(ac.handlers))
+	rules := make([]admissionregistrationv1.RuleWithOperations, 0, len(ac.handlers))
 	for gvk := range ac.handlers {
 		plural := strings.ToLower(inflect.Pluralize(gvk.Kind))
 
-		rules = append(rules, admissionregistrationv1beta1.RuleWithOperations{
-			Operations: []admissionregistrationv1beta1.OperationType{
-				admissionregistrationv1beta1.Create,
-				admissionregistrationv1beta1.Update,
-				admissionregistrationv1beta1.Delete,
+		rules = append(rules, admissionregistrationv1.RuleWithOperations{
+			Operations: []admissionregistrationv1.OperationType{
+				admissionregistrationv1.Create,
+				admissionregistrationv1.Update,
+				admissionregistrationv1.Delete,
 			},
-			Rule: admissionregistrationv1beta1.Rule{
+			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{gvk.Group},
 				APIVersions: []string{gvk.Version},
 				Resources:   []string{plural + "/*"},
@@ -119,7 +129,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 		return lhs.Resources[0] < rhs.Resources[0]
 	})
 
-	configuredWebhook, err := ac.vwhlister.Get(ac.name)
+	configuredWebhook, err := ac.vwhlister.Get(ac.key.Name)
 	if err != nil {
 		return fmt.Errorf("error retrieving webhook: %w", err)
 	}
@@ -135,6 +145,12 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 			continue
 		}
 		webhook.Webhooks[i].Rules = rules
+		webhook.Webhooks[i].NamespaceSelector = &metav1.LabelSelector{
+			MatchExpressions: []metav1.LabelSelectorRequirement{{
+				Key:      "webhooks.knative.dev/exclude",
+				Operator: metav1.LabelSelectorOpDoesNotExist,
+			}},
+		}
 		webhook.Webhooks[i].ClientConfig.CABundle = caCert
 		if webhook.Webhooks[i].ClientConfig.Service == nil {
 			return fmt.Errorf("missing service reference for webhook: %s", wh.Name)
@@ -146,7 +162,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 		return fmt.Errorf("error diffing webhooks: %w", err)
 	} else if !ok {
 		logger.Info("Updating webhook")
-		vwhclient := ac.client.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations()
+		vwhclient := ac.client.AdmissionregistrationV1().ValidatingWebhookConfigurations()
 		if _, err := vwhclient.Update(webhook); err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}

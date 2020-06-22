@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
@@ -36,7 +36,7 @@ type AdmissionController interface {
 	Path() string
 
 	// Admit is the callback which is invoked when an HTTPS request comes in on Path().
-	Admit(context.Context, *admissionv1beta1.AdmissionRequest) *admissionv1beta1.AdmissionResponse
+	Admit(context.Context, *admissionv1.AdmissionRequest) *admissionv1.AdmissionResponse
 }
 
 // StatelessAdmissionController is implemented by AdmissionControllers where Admit may be safely
@@ -48,9 +48,9 @@ type StatelessAdmissionController interface {
 }
 
 // MakeErrorStatus creates an 'BadRequest' error AdmissionResponse
-func MakeErrorStatus(reason string, args ...interface{}) *admissionv1beta1.AdmissionResponse {
+func MakeErrorStatus(reason string, args ...interface{}) *admissionv1.AdmissionResponse {
 	result := apierrors.NewBadRequest(fmt.Sprintf(reason, args...)).Status()
-	return &admissionv1beta1.AdmissionResponse{
+	return &admissionv1.AdmissionResponse{
 		Result:  &result,
 		Allowed: false,
 	}
@@ -71,7 +71,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		logger := rootLogger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
 
-		var review admissionv1beta1.AdmissionReview
+		var review admissionv1.AdmissionReview
 		if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
 			http.Error(w, fmt.Sprintf("could not decode body: %v", err), http.StatusBadRequest)
 			return
@@ -88,7 +88,13 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 
 		ctx := logging.WithLogger(r.Context(), logger)
 
-		var response admissionv1beta1.AdmissionReview
+		response := admissionv1.AdmissionReview{
+			// Use the same type meta as the request - this is required by the K8s API
+			// note: v1beta1 & v1 AdmissionReview shapes are identical so even though
+			// we're using v1 types we still support v1beta1 admission requests
+			TypeMeta: review.TypeMeta,
+		}
+
 		reviewResponse := c.Admit(ctx, review.Request)
 		var patchType string
 		if reviewResponse.PatchType != nil {

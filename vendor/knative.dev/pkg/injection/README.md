@@ -454,14 +454,14 @@ for that resource.
 
 #### Annotation based common logic
 
-**krshaped=true may become the default if omitted in the future**
+**krshapedlogic=false may be used to omit common reconciler logic**
 
 Reconcilers can handle common logic for resources that conform to the KRShaped
 interface. This allows the generated code to automatically increment
 ObservedGeneration.
 
 ```go
-// +genreconciler:krshapedlogic=true
+// +genreconciler
 ```
 
 Setting this annotation will emit the following in the generated reconciler.
@@ -471,7 +471,7 @@ reconciler.PreProcessReconcile(ctx, resource)
 
 reconcileEvent = r.reconciler.ReconcileKind(ctx, resource)
 
-reconciler.PostProcessReconcile(ctx, resource)
+reconciler.PostProcessReconcile(ctx, resource, oldResource)
 ```
 
 #### Stubs

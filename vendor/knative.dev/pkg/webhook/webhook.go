@@ -30,7 +30,7 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/logging"
@@ -63,21 +63,14 @@ type Options struct {
 
 // Operation is the verb being operated on
 // it is aliasde in Validation from the k8s admission package
-type Operation = admissionv1beta1.Operation
+type Operation = admissionv1.Operation
 
 // Operation types
 const (
-	Create  Operation = admissionv1beta1.Create
-	Update  Operation = admissionv1beta1.Update
-	Delete  Operation = admissionv1beta1.Delete
-	Connect Operation = admissionv1beta1.Connect
-)
-
-var (
-	// GracePeriod is the duration that the webhook will wait after it's
-	// context is cancelled (and probes are failing) before shutting down
-	// the http server.
-	GracePeriod = 30 * time.Second
+	Create  Operation = admissionv1.Create
+	Update  Operation = admissionv1.Update
+	Delete  Operation = admissionv1.Delete
+	Connect Operation = admissionv1.Connect
 )
 
 // Webhook implements the external webhook for validation of
@@ -145,7 +138,7 @@ func New(
 		Logger:       logger,
 		synced:       cancel,
 		stopCh:       make(chan struct{}),
-		gracePeriod:  GracePeriod,
+		gracePeriod:  network.DefaultDrainTimeout,
 	}
 
 	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

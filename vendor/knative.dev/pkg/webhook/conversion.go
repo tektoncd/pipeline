@@ -23,7 +23,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
-	apixv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"knative.dev/pkg/logging"
 )
 
@@ -33,7 +33,7 @@ type ConversionController interface {
 	Path() string
 
 	// Convert is the callback which is invoked when an HTTPS request comes in on Path().
-	Convert(context.Context, *apixv1beta1.ConversionRequest) *apixv1beta1.ConversionResponse
+	Convert(context.Context, *apixv1.ConversionRequest) *apixv1.ConversionResponse
 }
 
 func conversionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c ConversionController) http.HandlerFunc {
@@ -41,7 +41,7 @@ func conversionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Con
 		logger := rootLogger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
 
-		var review apixv1beta1.ConversionReview
+		var review apixv1.ConversionReview
 		if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
 			http.Error(w, fmt.Sprintf("could not decode body: %v", err), http.StatusBadRequest)
 			return
@@ -53,7 +53,11 @@ func conversionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Con
 		)
 
 		ctx := logging.WithLogger(r.Context(), logger)
-		response := apixv1beta1.ConversionReview{
+		response := apixv1.ConversionReview{
+			// Use the same type meta as the request - this is required by the K8s API
+			// note: v1beta1 & v1 ConversionReview shapes are identical so even though
+			// we're using v1 types we still support v1beta1 conversion requests
+			TypeMeta: review.TypeMeta,
 			Response: c.Convert(ctx, review.Request),
 		}
 

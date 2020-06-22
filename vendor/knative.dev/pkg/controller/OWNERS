@@ -2,3 +2,6 @@
 
 approvers:
 - controller-approvers
+
+reviewers:
+- controller-reviewers

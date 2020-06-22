@@ -21,7 +21,7 @@ import (
 	"path"
 	"sync"
 
-	"contrib.go.opencensus.io/exporter/stackdriver"
+	sd "contrib.go.opencensus.io/exporter/stackdriver"
 	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
 	"go.opencensus.io/metric/metricdata"
 	"go.opencensus.io/stats/view"
@@ -60,7 +60,7 @@ var (
 	// In product usage, this is always set to function newOpencensusSDExporter.
 	// In unit tests this is set to a fake one to avoid calling actual Google API
 	// service.
-	newStackdriverExporterFunc func(stackdriver.Options) (view.Exporter, error)
+	newStackdriverExporterFunc func(sd.Options) (view.Exporter, error)
 
 	// kubeclient is the in-cluster Kubernetes kubeclient, which is lazy-initialized on first use.
 	kubeclient *kubernetes.Clientset
@@ -100,12 +100,15 @@ func init() {
 	kubeclientInitErr = nil
 }
 
-func newOpencensusSDExporter(o stackdriver.Options) (view.Exporter, error) {
-	e, err := stackdriver.NewExporter(o)
-	if err == nil {
-		// Start the exporter.
-		// TODO(https://github.com/knative/pkg/issues/866): Move this to an interface.
-		e.StartMetricsExporter()
+func newOpencensusSDExporter(o sd.Options) (view.Exporter, error) {
+	e, err := sd.NewExporter(o)
+	if err != nil {
+		return nil, err
+	}
+	// Start the exporter.
+	// TODO(https://github.com/knative/pkg/issues/866): Move this to an interface.
+	if err := e.StartMetricsExporter(); err != nil {
+		return nil, err
 	}
 	return e, nil
 }
@@ -120,7 +123,7 @@ func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (v
 		logger.Warnw("Issue configuring Stackdriver exporter client options, no additional client options will be used: ", zap.Error(err))
 	}
 	// Automatically fall back on Google application default credentials
-	e, err := newStackdriverExporterFunc(stackdriver.Options{
+	e, err := newStackdriverExporterFunc(sd.Options{
 		ProjectID:               gm.project,
 		Location:                gm.location,
 		MonitoringClientOptions: co,
@@ -128,7 +131,7 @@ func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (v
 		GetMetricPrefix:         mpf,
 		ResourceByDescriptor:    getResourceByDescriptorFunc(config.stackdriverMetricTypePrefix, gm),
 		ReportingInterval:       config.reportingPeriod,
-		DefaultMonitoringLabels: &stackdriver.Labels{},
+		DefaultMonitoringLabels: &sd.Labels{},
 	})
 	if err != nil {
 		logger.Errorw("Failed to create the Stackdriver exporter: ", zap.Error(err))

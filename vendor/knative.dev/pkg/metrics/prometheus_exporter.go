@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"sync"
 
-	"contrib.go.opencensus.io/exporter/prometheus"
+	prom "contrib.go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 )
@@ -32,7 +32,7 @@ var (
 )
 
 func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
-	e, err := prometheus.NewExporter(prometheus.Options{Namespace: config.component})
+	e, err := prom.NewExporter(prom.Options{Namespace: config.component})
 	if err != nil {
 		logger.Errorw("Failed to create the Prometheus exporter.", zap.Error(err))
 		return nil, err
@@ -61,7 +61,7 @@ func resetCurPromSrv() {
 	}
 }
 
-func startNewPromSrv(e *prometheus.Exporter, port int) *http.Server {
+func startNewPromSrv(e *prom.Exporter, port int) *http.Server {
 	sm := http.NewServeMux()
 	sm.Handle("/metrics", e)
 	curPromSrvMux.Lock()

@@ -29,10 +29,10 @@ const (
 	DefaultLogURLTemplate = "http://localhost:8001/api/v1/namespaces/knative-monitoring/services/kibana-logging/proxy/app/kibana#/discover?_a=(query:(match:(kubernetes.labels.knative-dev%2FrevisionUID:(query:'${REVISION_UID}',type:phrase))))"
 
 	// The following is used to set the default metrics backend
-	DefaultRequestMetricsBackend = "prometheus"
+	defaultRequestMetricsBackend = "prometheus"
 
 	// The env var name for config-observability
-	ConfigMapNameEnv = "CONFIG_OBSERVABILITY_NAME"
+	configMapNameEnv = "CONFIG_OBSERVABILITY_NAME"
 )
 
 // ObservabilityConfig contains the configuration defined in the observability ConfigMap.
@@ -64,7 +64,7 @@ type ObservabilityConfig struct {
 func defaultConfig() *ObservabilityConfig {
 	return &ObservabilityConfig{
 		LoggingURLTemplate:    DefaultLogURLTemplate,
-		RequestMetricsBackend: DefaultRequestMetricsBackend,
+		RequestMetricsBackend: defaultRequestMetricsBackend,
 	}
 }
 
@@ -95,7 +95,7 @@ func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*Observab
 
 // ConfigMapName gets the name of the metrics ConfigMap
 func ConfigMapName() string {
-	cm := os.Getenv(ConfigMapNameEnv)
+	cm := os.Getenv(configMapNameEnv)
 	if cm == "" {
 		return "config-observability"
 	}

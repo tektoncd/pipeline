@@ -31,9 +31,8 @@ import (
 	"knative.dev/pkg/logging/logkey"
 )
 
-const ConfigMapNameEnv = "CONFIG_LOGGING_NAME"
-
 const (
+	configMapNameEnv   = "CONFIG_LOGGING_NAME"
 	loggerConfigKey    = "zap-logger-config"
 	fallbackLoggerName = "fallback-logger"
 )
@@ -233,7 +232,7 @@ func UpdateLevelFromConfigMap(logger *zap.SugaredLogger, atomicLevel zap.AtomicL
 
 // ConfigMapName gets the name of the logging ConfigMap
 func ConfigMapName() string {
-	cm := os.Getenv(ConfigMapNameEnv)
+	cm := os.Getenv(configMapNameEnv)
 	if cm == "" {
 		return "config-logging"
 	}

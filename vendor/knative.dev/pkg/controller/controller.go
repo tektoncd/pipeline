@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -35,8 +36,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"knative.dev/pkg/kmeta"
+	kle "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/reconciler"
 )
 
 const (
@@ -175,6 +178,10 @@ func FilterWithNameAndNamespace(namespace, name string) func(obj interface{}) bo
 // Impl is our core controller implementation.  It handles queuing and feeding work
 // from the queue to an implementation of Reconciler.
 type Impl struct {
+	// Name is the unique name for this controller workqueue within this process.
+	// This is used for surfacing metrics, and per-controller leader election.
+	Name string
+
 	// Reconciler is the workhorse of this controller, it is fed the keys
 	// from the workqueue to process.  Public for testing.
 	Reconciler Reconciler
@@ -204,7 +211,9 @@ func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string) *Imp
 }
 
 func NewImplWithStats(r Reconciler, logger *zap.SugaredLogger, workQueueName string, reporter StatsReporter) *Impl {
+	logger = logger.Named(workQueueName)
 	return &Impl{
+		Name:       workQueueName,
 		Reconciler: r,
 		WorkQueue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
@@ -340,6 +349,14 @@ func (c *Impl) EnqueueKey(key types.NamespacedName) {
 	c.logger.Debugf("Adding to queue %s (depth: %d)", safeKey(key), c.WorkQueue.Len())
 }
 
+// MaybeEnqueueBucketKey takes a Bucket and namespace/name string and puts it onto the work queue.
+func (c *Impl) MaybeEnqueueBucketKey(bkt reconciler.Bucket, key types.NamespacedName) {
+	if bkt.Has(key) {
+		c.WorkQueue.Add(key)
+		c.logger.Debugf("Adding to queue %s (depth: %d)", safeKey(key), c.WorkQueue.Len())
+	}
+}
+
 // EnqueueKeyAfter takes a namespace/name string and schedules its execution in
 // the work queue after given delay.
 func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
@@ -348,10 +365,12 @@ func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
 }
 
 // RunContext starts the controller's worker threads, the number of which is threadiness.
+// If the context has been decorated for LeaderElection, then an elector is built and run.
 // It then blocks until the context is cancelled, at which point it shuts down its
 // internal work queue and waits for workers to finish processing their current
 // work items.
 func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
+	logger := c.logger
 	defer runtime.HandleCrash()
 	sg := sync.WaitGroup{}
 	defer sg.Wait()
@@ -362,8 +381,20 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 		}
 	}()
 
+	if la, ok := c.Reconciler.(reconciler.LeaderAware); ok {
+		// Build and execute an elector.
+		le, err := kle.BuildElector(ctx, la, c.Name, c.MaybeEnqueueBucketKey)
+		if err != nil {
+			return err
+		}
+		sg.Add(1)
+		go func() {
+			defer sg.Done()
+			le.Run(ctx)
+		}()
+	}
+
 	// Launch workers to process resources that get enqueued to our workqueue.
-	logger := c.logger
 	logger.Info("Starting controller and workers")
 	for i := 0; i < threadiness; i++ {
 		sg.Add(1)
@@ -448,7 +479,7 @@ func (c *Impl) processNextWorkItem() bool {
 func (c *Impl) handleErr(err error, key types.NamespacedName) {
 	c.logger.Errorw("Reconcile error", zap.Error(err))
 
-	// Re-queue the key if it's an transient error.
+	// Re-queue the key if it's a transient error.
 	// We want to check that the queue is shutting down here
 	// since controller Run might have exited by now (since while this item was
 	// being processed, queue.Len==0).
@@ -483,8 +514,8 @@ func (c *Impl) FilteredGlobalResync(f func(interface{}) bool, si cache.SharedInf
 }
 
 // NewPermanentError returns a new instance of permanentError.
-// Users can wrap an error as permanentError with this in reconcile,
-// when he does not expect the key to get re-queued.
+// Users can wrap an error as permanentError with this in reconcile
+// when they do not expect the key to get re-queued.
 func NewPermanentError(err error) error {
 	return permanentError{e: err}
 }
@@ -495,15 +526,20 @@ type permanentError struct {
 	e error
 }
 
-// IsPermanentError returns true if given error is permanentError
+// IsPermanentError returns true if the given error is a permanentError or
+// wraps a permanentError.
 func IsPermanentError(err error) bool {
-	switch err.(type) {
-	case permanentError:
-		return true
-	default:
-		return false
-	}
+	return errors.Is(err, permanentError{})
 }
+
+// Is implements the Is() interface of error. It returns whether the target
+// error can be treated as equivalent to a permanentError.
+func (permanentError) Is(target error) bool {
+	_, ok := target.(permanentError)
+	return ok
+}
+
+var _ error = permanentError{}
 
 // Error implements the Error() interface of error.
 func (err permanentError) Error() string {
@@ -512,6 +548,12 @@ func (err permanentError) Error() string {
 	}
 
 	return err.e.Error()
+}
+
+// Unwrap implements the Unwrap() interface of error. It returns the error
+// wrapped inside permanentError.
+func (err permanentError) Unwrap() error {
+	return err.e
 }
 
 // Informer is the group of methods that a type must implement to be passed to

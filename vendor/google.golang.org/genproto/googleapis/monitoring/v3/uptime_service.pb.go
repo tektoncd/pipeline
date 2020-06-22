@@ -31,8 +31,9 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 // The protocol for the `ListUptimeCheckConfigs` request.
 type ListUptimeCheckConfigsRequest struct {
-	// Required. The project whose Uptime check configurations are listed. The format
-	//   is `projects/[PROJECT_ID]`.
+	// Required. The project whose Uptime check configurations are listed. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]
 	Parent string `protobuf:"bytes,1,opt,name=parent,proto3" json:"parent,omitempty"`
 	// The maximum number of results to return in a single response. The server
 	// may further constrain the maximum number of results returned in a single
@@ -160,8 +161,9 @@ func (m *ListUptimeCheckConfigsResponse) GetTotalSize() int32 {
 
 // The protocol for the `GetUptimeCheckConfig` request.
 type GetUptimeCheckConfigRequest struct {
-	// Required. The Uptime check configuration to retrieve. The format
-	//   is `projects/[PROJECT_ID]/uptimeCheckConfigs/[UPTIME_CHECK_ID]`.
+	// Required. The Uptime check configuration to retrieve. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]/uptimeCheckConfigs/[UPTIME_CHECK_ID]
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -202,8 +204,9 @@ func (m *GetUptimeCheckConfigRequest) GetName() string {
 
 // The protocol for the `CreateUptimeCheckConfig` request.
 type CreateUptimeCheckConfigRequest struct {
-	// Required. The project in which to create the Uptime check. The format
-	//   is `projects/[PROJECT_ID]`.
+	// Required. The project in which to create the Uptime check. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]
 	Parent string `protobuf:"bytes,1,opt,name=parent,proto3" json:"parent,omitempty"`
 	// Required. The new Uptime check configuration.
 	UptimeCheckConfig    *UptimeCheckConfig `protobuf:"bytes,2,opt,name=uptime_check_config,json=uptimeCheckConfig,proto3" json:"uptime_check_config,omitempty"`
@@ -316,8 +319,9 @@ func (m *UpdateUptimeCheckConfigRequest) GetUptimeCheckConfig() *UptimeCheckConf
 
 // The protocol for the `DeleteUptimeCheckConfig` request.
 type DeleteUptimeCheckConfigRequest struct {
-	// Required. The Uptime check configuration to delete. The format
-	//   is `projects/[PROJECT_ID]/uptimeCheckConfigs/[UPTIME_CHECK_ID]`.
+	// Required. The Uptime check configuration to delete. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]/uptimeCheckConfigs/[UPTIME_CHECK_ID]
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

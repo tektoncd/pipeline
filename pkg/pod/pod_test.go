@@ -1105,7 +1105,9 @@ script-heredoc-randomly-generated-78c5n
 					}},
 				},
 				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "multi-creds",
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multi-creds",
+						Namespace: "default",
 						Annotations: map[string]string{
 							"tekton.dev/docker-0": "https://us.gcr.io",
 							"tekton.dev/docker-1": "https://docker.io",
@@ -1131,6 +1133,7 @@ script-heredoc-randomly-generated-78c5n
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "taskrun-name",
+					Namespace:   "default",
 					Annotations: trAnnotations,
 				},
 				Spec: c.trs,

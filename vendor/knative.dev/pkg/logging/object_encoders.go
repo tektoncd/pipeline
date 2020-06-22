@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap/zapcore"
+	"knative.dev/pkg/logging/logkey"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -49,10 +50,10 @@ func StringSet(s sets.String) zapcore.ObjectMarshalerFunc {
 //	logger.Info("Enqueuing", zap.Object("key", logging.NamespacedName(n)))
 func NamespacedName(n types.NamespacedName) zapcore.ObjectMarshalerFunc {
 	return func(enc zapcore.ObjectEncoder) error {
-		if n.Namespace != "" {
-			enc.AddString("key", n.Name)
+		if n.Namespace == "" {
+			enc.AddString(logkey.Key, n.Name)
 		} else {
-			enc.AddString("key", n.Namespace+"/"+n.Name)
+			enc.AddString(logkey.Key, n.Namespace+"/"+n.Name)
 		}
 		return nil
 	}

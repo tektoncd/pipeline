@@ -49,17 +49,21 @@ const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 // depending on what resources exist and what filters are associated with the
 // group and its ancestors.
 type Group struct {
-	// Output only. The name of this group. The format is
-	// `"projects/{project_id_or_number}/groups/{group_id}"`.
+	// Output only. The name of this group. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]/groups/[GROUP_ID]
+	//
 	// When creating a group, this field is ignored and a new name is created
 	// consisting of the project specified in the call to `CreateGroup`
-	// and a unique `{group_id}` that is generated automatically.
+	// and a unique `[GROUP_ID]` that is generated automatically.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// A user-assigned name for this group, used only for display purposes.
 	DisplayName string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	// The name of the group's parent, if it has one.
-	// The format is `"projects/{project_id_or_number}/groups/{group_id}"`.
-	// For groups with no parent, `parentName` is the empty string, `""`.
+	// The name of the group's parent, if it has one. The format is:
+	//
+	//     projects/[PROJECT_ID_OR_NUMBER]/groups/[GROUP_ID]
+	//
+	// For groups with no parent, `parent_name` is the empty string, `""`.
 	ParentName string `protobuf:"bytes,3,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
 	// The filter used to determine which monitored resources belong to this
 	// group.
