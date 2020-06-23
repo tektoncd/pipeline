@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	equality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -149,6 +150,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	if pr.IsDone() {
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
+		original := pr.DeepCopy()
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 		c.updatePipelineResults(ctx, pr)
@@ -165,12 +167,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		go func(metrics *Recorder) {
-			err := metrics.DurationAndCount(pr)
-			if err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
+
+		if equality.Semantic.DeepEqual(original.Status, pr.Status) {
+			go func(metrics *Recorder) {
+				err := metrics.DurationAndCount(pr)
+				if err != nil {
+					logger.Warnf("Failed to log the metrics : %v", err)
+				}
+			}(c.metrics)
+		}
+
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
 	}
 
