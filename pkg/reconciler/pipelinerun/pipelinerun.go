@@ -132,9 +132,8 @@ var (
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	recorder := controller.GetEventRecorder(ctx)
-	// Snapshot original for the label/annotation check below.
-	original := pr.DeepCopy()
+	// Read the initial condition
+	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
@@ -145,16 +144,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		}
 		// start goroutine to track pipelinerun timeout only startTime is not set
 		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
-	} else {
-		pr.Status.InitializeConditions()
 	}
 
-	// In case of reconcile errors, we store the error in a multierror, attempt
-	// to update, and return the original error combined with any update error
-	var merr *multierror.Error
-
-	switch {
-	case pr.IsDone():
+	if pr.IsDone() {
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
@@ -162,16 +154,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		c.updatePipelineResults(ctx, pr)
 		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, logger); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
-			return err
+			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
 		if err := c.cleanupAffinityAssistants(pr); err != nil {
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
-			return err
+			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
 		c.timeoutHandler.Release(pr)
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
-			return err
+			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
 		go func(metrics *Recorder) {
 			err := metrics.DurationAndCount(pr)
@@ -179,46 +171,50 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
 		}(c.metrics)
-	case pr.IsCancelled():
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
+	}
+
+	if pr.IsCancelled() {
 		// If the pipelinerun is cancelled, cancel tasks and update status
-		before := pr.Status.GetCondition(apis.ConditionSucceeded)
-		merr = multierror.Append(merr, cancelPipelineRun(logger, pr, c.PipelineClientSet))
-		after := pr.Status.GetCondition(apis.ConditionSucceeded)
-		events.Emit(recorder, before, after, pr)
-	default:
-		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
-			logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
-			recorder.Event(pr, corev1.EventTypeWarning, v1beta1.PipelineRunReasonFailed.String(), "Failed to create tracker for TaskRuns for PipelineRun")
-			return err
-		}
-
-		// Make sure that the PipelineRun status is in sync with the actual TaskRuns
-		err := c.updatePipelineRunStatusFromInformer(ctx, pr)
-		if err != nil {
-			// This should not fail. Return the error so we can re-try later.
-			logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
-			return err
-		}
-
-		// Reconcile this copy of the pipelinerun and then write back any status or label
-		// updates regardless of whether the reconciliation errored out.
-		if err = c.reconcile(ctx, pr); err != nil {
-			logger.Errorf("Reconcile error: %v", err.Error())
-			merr = multierror.Append(merr, err)
-		}
+		err := cancelPipelineRun(logger, pr, c.PipelineClientSet)
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
-	// If we need to update the labels or annotations, we need to call Update with these
-	// changes explicitly.
-	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
-		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
-			logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
-			recorder.Event(pr, corev1.EventTypeWarning, "Error", "PipelineRun failed to update labels/annotations")
-			return multierror.Append(merr, err)
-		}
+	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
+		logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
-	return merr.ErrorOrNil()
+	// Make sure that the PipelineRun status is in sync with the actual TaskRuns
+	err := c.updatePipelineRunStatusFromInformer(ctx, pr)
+	if err != nil {
+		// This should not fail. Return the error so we can re-try later.
+		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+	}
+
+	// Reconcile this copy of the pipelinerun and then write back any status or label
+	// updates regardless of whether the reconciliation errored out.
+	if err = c.reconcile(ctx, pr); err != nil {
+		logger.Errorf("Reconcile error: %v", err.Error())
+	}
+
+	return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+}
+
+func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1beta1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
+	recorder := controller.GetEventRecorder(ctx)
+	logger := logging.FromContext(ctx)
+
+	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+	events.Emit(recorder, beforeCondition, afterCondition, pr)
+	_, err := c.updateLabelsAndAnnotations(pr)
+	if err != nil {
+		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
+		events.EmitError(recorder, err, pr)
+	}
+
+	return multierror.Append(previousError, err).ErrorOrNil()
 }
 
 func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun) {

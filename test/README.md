@@ -206,8 +206,11 @@ go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun
 To run the YAML e2e tests, run the following command:
 
 ```bash
-./test/e2e-tests-yaml.sh
+go test -v -count=1 -tags=examples -timeout=20m ./test/
 ```
+
+To limit parallelism of tests, use `-parallel=n` where `n` is the number of
+tests to run in parallel.
 
 ### Running upgrade tests
 

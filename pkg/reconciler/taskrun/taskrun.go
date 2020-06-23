@@ -88,6 +88,8 @@ var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
+	// Read the initial condition
+	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
@@ -157,7 +159,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
-		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -166,7 +167,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if tr.HasTimedOut() {
-		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -184,7 +184,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 
 	// Store the condition before reconcile
-	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+	before = tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.

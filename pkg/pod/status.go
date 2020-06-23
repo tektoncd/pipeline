@@ -116,8 +116,13 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	for _, s := range pod.Status.ContainerStatuses {
 		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
-				if err := updateStatusStartTime(&s); err != nil {
+				message, time, err := removeStartInfoFromTerminationMessage(s)
+				if err != nil {
 					logger.Errorf("error setting the start time of step %q in taskrun %q: %w", s.Name, tr.Name, err)
+				}
+				if time != nil {
+					s.State.Terminated.StartedAt = *time
+					s.State.Terminated.Message = message
 				}
 			}
 			trs.Steps = append(trs.Steps, v1beta1.StepState{
@@ -151,34 +156,35 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	return *trs
 }
 
-// updateStatusStartTime searches for a result called "StartedAt" in the JSON-formatted termination message
-// of a step and sets the State.Terminated.StartedAt field to this time if it's found. The "StartedAt" result
-// is also removed from the list of results in the container status.
-func updateStatusStartTime(s *corev1.ContainerStatus) error {
+// removeStartInfoFromTerminationMessage searches for a result called "StartedAt" in the JSON-formatted
+// termination message of a step and returns the values to use for sets State.Terminated if it's
+// found. The "StartedAt" result is also removed from the list of results in the container status.
+func removeStartInfoFromTerminationMessage(s corev1.ContainerStatus) (string, *metav1.Time, error) {
 	r, err := termination.ParseMessage(s.State.Terminated.Message)
 	if err != nil {
-		return fmt.Errorf("termination message could not be parsed as JSON: %w", err)
+		return "", nil, fmt.Errorf("termination message could not be parsed as JSON: %w", err)
 	}
 	for index, result := range r {
 		if result.Key == "StartedAt" {
 			t, err := time.Parse(timeFormat, result.Value)
 			if err != nil {
-				return fmt.Errorf("could not parse time value %q in StartedAt field: %w", result.Value, err)
+				return "", nil, fmt.Errorf("could not parse time value %q in StartedAt field: %w", result.Value, err)
 			}
-			s.State.Terminated.StartedAt = metav1.NewTime(t)
+			message := ""
+			startedAt := metav1.NewTime(t)
 			// remove the entry for the starting time
 			r = append(r[:index], r[index+1:]...)
 			if len(r) == 0 {
-				s.State.Terminated.Message = ""
+				message = ""
 			} else if bytes, err := json.Marshal(r); err != nil {
-				return fmt.Errorf("error marshalling remaining results back into termination message: %w", err)
+				return "", nil, fmt.Errorf("error marshalling remaining results back into termination message: %w", err)
 			} else {
-				s.State.Terminated.Message = string(bytes)
+				message = string(bytes)
 			}
-			break
+			return message, &startedAt, nil
 		}
 	}
-	return nil
+	return "", nil, nil
 }
 
 func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {

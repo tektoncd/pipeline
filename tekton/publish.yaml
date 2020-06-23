@@ -111,13 +111,16 @@ spec:
       value: "off"
     - name: GOFLAGS
       value: "-mod=vendor"
-    - name: CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
-      value: /secret/release.json
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: "/secret/release.json"
     script: |
       #!/usr/bin/env bash
       set -ex
 
-      # Auth with CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
+      # Activate service account
+      gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+
+      # Setup docker-auth
       gcloud auth configure-docker
 
       # ko requires this variable to be set in order to set image creation timestamps correctly https://github.com/google/go-containerregistry/pull/146
@@ -134,7 +137,7 @@ spec:
       # include it. As of 9/20/2019, this amounts to about 11MB of additional
       # data in each image.
       TMPDIR=$(mktemp -d)
-      tar cvfz ${TMPDIR}/source.tar.gz vendor/
+      tar cfz ${TMPDIR}/source.tar.gz vendor/
       for d in cmd/*; do
         ln -s ${TMPDIR}/source.tar.gz ${d}/kodata/
       done

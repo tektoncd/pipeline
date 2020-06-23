@@ -273,7 +273,7 @@ func TestGetResourceFromBinding_Ref(t *testing.T) {
 			Name: "git-repo",
 		},
 	}
-	binding := &v1beta1.PipelineResourceBinding{
+	binding := v1beta1.PipelineResourceBinding{
 		ResourceRef: &v1beta1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
@@ -292,7 +292,7 @@ func TestGetResourceFromBinding_Ref(t *testing.T) {
 }
 
 func TestGetResourceFromBinding_Spec(t *testing.T) {
-	binding := &v1beta1.PipelineResourceBinding{
+	binding := v1beta1.PipelineResourceBinding{
 		ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
 			Type: resourcev1alpha1.PipelineResourceTypeGit,
 			Params: []resourcev1alpha1.ResourceParam{{
@@ -318,7 +318,7 @@ func TestGetResourceFromBinding_Spec(t *testing.T) {
 }
 
 func TestGetResourceFromBinding_NoNameOrSpec(t *testing.T) {
-	binding := &v1beta1.PipelineResourceBinding{}
+	binding := v1beta1.PipelineResourceBinding{}
 	gr := func(n string) (*resourcev1alpha1.PipelineResource, error) {
 		return nil, nil
 	}
@@ -330,7 +330,7 @@ func TestGetResourceFromBinding_NoNameOrSpec(t *testing.T) {
 }
 
 func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
-	binding := &v1beta1.PipelineResourceBinding{
+	binding := v1beta1.PipelineResourceBinding{
 		ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
 			Type: resourcev1alpha1.PipelineResourceTypeGit,
 			Params: []resourcev1alpha1.ResourceParam{{
@@ -353,7 +353,7 @@ func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
 }
 
 func TestGetResourceFromBinding_ErrorGettingResource(t *testing.T) {
-	binding := &v1beta1.PipelineResourceBinding{
+	binding := v1beta1.PipelineResourceBinding{
 		ResourceRef: &v1beta1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
