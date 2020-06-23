@@ -21,12 +21,12 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    * **[`HEAD`]** - this is the bleeding edge. It contains unreleased code that may result
      in unpredictable behavior. To get started, see the [development guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md) instead of this page.
 
-2. If you don't have an existing Kubernetes cluster, set one up, version 1.15 or later:
+2. If you don't have an existing Kubernetes cluster, set one up, version 1.16 or later:
 
    ```bash
    #Example command for creating a cluster on GKE
    gcloud container clusters create $CLUSTER_NAME \
-     --zone=$CLUSTER_ZONE --cluster-version=1.15.11-gke.5
+     --zone=$CLUSTER_ZONE --cluster-version=1.16.9-gke.6
    ```
 
 3. Grant `cluster-admin` permissions to the current user:
