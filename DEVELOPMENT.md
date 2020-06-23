@@ -90,7 +90,7 @@ configuring Kubernetes resources.
 
 The recommended configuration is:
 
--   Kubernetes version 1.15 or later
+-   Kubernetes version 1.16 or later
 -   4 vCPU nodes (`n1-standard-4`)
 -   Node autoscaling, up to 3 nodes
 -   API scopes for cloud-platform
@@ -129,7 +129,7 @@ To use the Kubernetes that comes with Docker Desktop:
     variable (e.g. `PROJECT_ID`).
 
 1.  Create a GKE cluster (with `--cluster-version=latest` but you can use any
-    version 1.15 or later):
+    version 1.16 or later):
 
     ```bash
     export PROJECT_ID=my-gcp-project
@@ -147,7 +147,7 @@ To use the Kubernetes that comes with Docker Desktop:
      --machine-type=n1-standard-4 \
      --image-type=cos \
      --num-nodes=1 \
-     --cluster-version=1.15
+     --cluster-version=1.16
     ```
 
     Note that

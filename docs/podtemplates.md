@@ -7,7 +7,7 @@ weight: 12
 # Pod templates
 
 A pod template specifies a subset of
-[`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
+[`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core)
 configuration that will be used as the basis for the `Task` pod.
 
 This allows for customizing some `Pod` specific field per `Task` execution, `TaskRun` or for all `Task` executions part of a `PipelineRun`.
