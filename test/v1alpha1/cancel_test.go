@@ -19,13 +19,16 @@ limitations under the License.
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -118,9 +121,17 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				t.Fatalf("Failed to get PipelineRun `%s`: %s", "pear", err)
 			}
 
-			pr.Spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
-			if _, err := c.PipelineRunClient.Update(pr); err != nil {
-				t.Fatalf("Failed to cancel PipelineRun `%s`: %s", "pear", err)
+			patches := []jsonpatch.JsonPatchOperation{{
+				Operation: "add",
+				Path:      "/spec/status",
+				Value:     v1alpha1.PipelineRunSpecStatusCancelled,
+			}}
+			patchBytes, err := json.Marshal(patches)
+			if err != nil {
+				t.Fatalf("failed to marshal patch bytes in order to cancel")
+			}
+			if _, err := c.PipelineRunClient.Patch(pr.Name, types.JSONPatchType, patchBytes, ""); err != nil {
+				t.Fatalf("Failed to patch PipelineRun `%s` with cancellation: %s", "pear", err)
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
