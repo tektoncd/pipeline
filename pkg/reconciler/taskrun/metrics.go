@@ -204,7 +204,7 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
 			return err
 		}
 
-		stats.Record(ctx, prTRDuration.M(float64(duration/time.Second)))
+		metrics.Record(ctx, prTRDuration.M(float64(duration/time.Second)))
 		metrics.Record(ctx, trCount.M(1))
 		return nil
 	}
