@@ -43,6 +43,8 @@ Tekton:
 - [Adding support for other architectures](https://github.com/tektoncd/pipeline/issues/856)
 - [Rich type support for params](https://github.com/tektoncd/pipeline/issues/1393)
 - Looping syntax (in [Tasks](https://github.com/tektoncd/pipeline/issues/2112) and/or [Pipelines](https://github.com/tektoncd/pipeline/issues/2050))- either implement or decide it is outside of scope (i.e. better suited for a DSL)
+- [Supplying credentials for authenticated actions in Tasks](https://github.com/tetkoncd/pipeline/issues/2343) - documented guidelines
+  and implemented support for best practices when working with credentials.
 
 ## Beta for all components
 
