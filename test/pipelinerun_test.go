@@ -273,7 +273,7 @@ func TestPipelineRun(t *testing.T) {
 						collectedEvents += ", "
 					}
 				}
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
 			// Wait for up to 10 minutes and restart every second to check if
@@ -550,6 +550,16 @@ func getName(namespace string, suffix int) string {
 	return fmt.Sprintf("%s%d", namespace, suffix)
 }
 
+// inEvents returns true if the specified event already exists in the list of specified events
+func inEvents(events []*corev1.Event, event *corev1.Event) bool {
+	for _, e := range events {
+		if event.InvolvedObject.Name == e.InvolvedObject.Name && event.Reason == e.Reason {
+			return true
+		}
+	}
+	return false
+}
+
 // collectMatchingEvents collects list of events under 5 seconds that match
 // 1. matchKinds which is a map of Kind of Object with name of objects
 // 2. reason which is the expected reason of event
@@ -573,7 +583,9 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 			if val, ok := kinds[event.InvolvedObject.Kind]; ok {
 				for _, expectedName := range val {
 					if event.InvolvedObject.Name == expectedName && event.Reason == reason {
-						events = append(events, event)
+						if !inEvents(events, event) {
+							events = append(events, event)
+						}
 					}
 				}
 			}
