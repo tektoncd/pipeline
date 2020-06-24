@@ -444,6 +444,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineParamSpec("some-param", v1beta1.ParamTypeString),
 			tb.PipelineTask("some-task", "a-task-that-needs-params")),
 		)),
+		tb.PipelineRun("pipeline-invalid-dag-graph", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("dag-task-1", "dag-task-1", tb.RunAfter("dag-task-1")),
+		))),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -505,6 +508,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-run-missing-params-shd-stop-reconciling",
 			pipelineRun: prs[11],
 			reason:      ReasonParameterMissing,
+		}, {
+			name:        "invalid-pipeline-with-invalid-dag-graph",
+			pipelineRun: prs[12],
+			reason:      ReasonInvalidGraph,
 		},
 	}
 
