@@ -440,7 +440,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		}
 	}
 
-	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d)
 	switch after.Status {
 	case corev1.ConditionTrue:
@@ -452,8 +451,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	}
 	// Read the condition the way it was set by the Mark* helpers
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
-	events.Emit(recorder, before, after, pr)
-
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
 	return nil
