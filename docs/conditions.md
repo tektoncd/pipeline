@@ -6,50 +6,55 @@ weight: 11
 -->
 # Conditions
 
-This document defines `Conditions` and their capabilities.
+- [Overview](#overview)
+- [Configuring a `Condition`](#configuring-a-condition)
+  - [Specifying the condition `check`](#specifying-the-condition-check)
+  - [Specifying `Parameters`](#specifying-parameters)
+  - [Specifying `Resources`](#specifying-resources)
+- [Code examples](#code-examples)
 
-- [Syntax](#syntax)
-  - [Check](#check)
-  - [Parameters](#parameters)
-  - [Resources](#resources)
-- [Labels and Annotations](#labels-and-annotations)
-- [Examples](#examples)
+## Overview
 
-## Syntax
+A `Condition` resource in Tekton allows you to conditionalize the execution of `Tasks` within a `Pipeline`.
+You define each `Condition` within your [`PipelineRun` definition](pipelineruns.md) and then conditionalize
+each desired [`Task`](tasks.md) in the corresponding `Pipeline` definition. 
 
-To define a configuration file for a `Condition` resource, you can specify the
-following fields:
+The `Condition` resource runs its own container image that executes the logic that evaluates your chosen condition.
+This container runs to completion and must return an exit code value of `0` for the `check` to be successful; otherwise
+the conditionalized `Task` as well as its `Task` dependencies (defined via `runAfter`) and `Resource` dependencies
+(such as results) do not execute.
+
+**Note:** [Labels](labels.md) and annotations specified in the `Condition's` metadata are automatically
+propagated to the `Pod`.
+
+## Configuring a `Condition`
+
+A `Condition` definition supports the following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
     `tekton.dev/v1alpha1`.
-  - [`kind`][kubernetes-overview] - Specify the `Condition` resource object.
-  - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
-    `Condition` resource object, for example a `name`.
+  - [`kind`][kubernetes-overview] - Identifies this resource object as a `Condition` object.
+  - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies this
+    `Condition` object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    your `Condition` resource object. In order for a `Condition` to do anything,
-    the spec must include:
-    - [`check`](#check) - Specifies a container that you want to run for evaluating the condition
-    - [`description`](#description) - Description of the Condition.
+    this `Condition` resource object. This must include:
+    - [`check`](#check) - Specifies a container that you want to run for evaluating this `Condition`.
+    - [`description`](#description) - Provides a meaningful description of this `Condition` object.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-### Check
+### Specifying the condition `check` 
 
-The `check` field is required. You define a single check to define the body of a `Condition`. The 
-check must specify a [`Step`](./tasks.md#steps). The container image runs till completion. The container 
-must exit successfully i.e. with an exit code 0 for the condition evaluation to be successful. All other 
-exit codes are considered to be a condition check failure.
+The `check` field (required) specifies a single piece of evaluation logic that you want to run before the
+corresponding `Task` in your `Pipeline` can execute. This field must specify a [`Step`](./tasks.md#steps). 
 
-### Description
+### Specifying `Parameters`
 
-The `description` field is an optional field and can be used to provide description of the Condition.
-
-### Parameters
-
-A Condition can declare parameters that must be supplied to it during a PipelineRun. Sub-fields
-within the check field can access the parameter values using the templating syntax:
+You can specify parameters to pass to the `Condition's` evaluation logic at run time. 
+Sub-fields within the `check` field can access these parameter values using Tekton's templating
+syntax as follows:
 
 ```yaml
 spec:
@@ -60,32 +65,33 @@ spec:
     image: $(params.image)
 ```
 
-Parameters name are limited to alpha-numeric characters, `-` and `_` and can
-only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
-parameter name, `barIsBa$` or `0banana` are not.
- 
-Each declared parameter has a type field, assumed to be string if not provided by the user. 
-The other possible type is array — useful, for instance, checking that a pushed branch name doesn't match any of 
-multiple protected branch names. When the actual parameter value is supplied, its parsed type 
-is validated against the type field.
+Parameter names:
+- Must only contain alphanumeric characters, hyphens (`-`), and underscores (`_`).
+- Must begin with a letter or an underscore (`_`).
 
-### Resources
+For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
-Conditions can declare input [`PipelineResources`](resources.md)  via the `resources` field to 
-provide the Condition container step with data or context that is needed to perform the check.
+Each declared parameter has a `type` field, which can be set to either `array` or `string`, and
+defaults to `string` if you don't specify a value. The `description` and `default` fields for a
+`Parameter` are optional. The `array` type is useful in situations such as checking that a pushed
+branch name doesn't collide with any of the specified protected branch names.
 
-Resources in Conditions work similar to the way they work in `Tasks` i.e. they can be accessed using
-[variable substitution](./resources.md#variable-substitution) and the `targetPath` field can be used
-to [control where the resource is mounted](./resources.md#controlling-where-resources-are-mounted)
+### Specifying `Resources`
 
-## Labels and Annotations
+You can specifiy input [`PipelineResources`](resources.md) in your `Condition` definition to 
+provide the `Condition's` container step with data or context necessary to run the evaluation logic.
 
-[Labels](labels.md) and annotations defined as part of the `Condition` metadata will be automatically propagated to the `Pod`.
+`Resources` in `Conditions` behave the same way as in `Tasks`:
+- You can access them via [variable substitution](resources.md#variable-substitution).
+- You can use the `targetPath` field to [specify a mount point](resources.md#controlling-where-resources-are-mounted).
 
-## Examples
+### Adding a `description`
 
-For complete examples, see
-[the examples folder](https://github.com/tektoncd/pipeline/tree/master/examples).
+The `description` field (optional) allows you to specify a meaningful description for your `Condition`.
+
+## Code examples
+
+For a better understanding of `Conditions`, study [our code examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ---
 
