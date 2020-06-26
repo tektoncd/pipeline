@@ -384,3 +384,71 @@ func TestApplyTaskResults_Conditions(t *testing.T) {
 		})
 	}
 }
+
+func TestContext(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		pr          *v1beta1.PipelineRun
+		original    *v1beta1.Pipeline
+		expected    *v1beta1.Pipeline
+	}{{
+		description: "context pipeline name replacement without pipelineRun in spec",
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipeline.name)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "test-pipeline-1"),
+				))),
+		pr: &v1beta1.PipelineRun{},
+	}, {
+		description: "context pipeline name replacement with pipelineRun in spec",
+		pr:          tb.PipelineRun("pipelineRunName"),
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipeline.name)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "test-pipeline-1"),
+				))),
+	}, {
+		description: "context pipelineRunName replacement with defined pipelineRun in spec",
+		pr:          tb.PipelineRun("pipelineRunName"),
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.name)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "pipelineRunName-1"),
+				))),
+	}, {
+		description: "context pipelineRunName replacement with no defined pipeline in spec",
+		pr:          &v1beta1.PipelineRun{},
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.name)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "-1"),
+				))),
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			got := ApplyContexts(&tc.original.Spec, tc.original.Name, tc.pr)
+			if d := cmp.Diff(tc.expected.Spec, *got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

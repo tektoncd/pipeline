@@ -140,6 +140,8 @@ var (
 			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
 			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
 			"--my-additional-arg=$(outputs.resources.myimage.url)",
+			"--my-taskname-arg=$(context.task.name)",
+			"--my-taskrun-arg=$(context.taskRun.name)",
 		)),
 		tb.Step("myotherimage", tb.StepName("myothercontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
@@ -955,7 +957,8 @@ func TestReconcile(t *testing.T) {
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/tekton/tools/1", "-post_file", "/tekton/tools/2", "-termination_path",
 						"/tekton/termination", "-entrypoint", "/mycmd", "--", "--my-arg=foo", "--my-arg-with-default=bar",
-						"--my-arg-with-default2=thedefault", "--my-additional-arg=gcr.io/kristoff/sven"),
+						"--my-arg-with-default2=thedefault", "--my-additional-arg=gcr.io/kristoff/sven", "--my-taskname-arg=test-task-with-substitution",
+						"--my-taskrun-arg=test-taskrun-substitution"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),

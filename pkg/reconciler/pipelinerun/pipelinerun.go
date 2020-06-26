@@ -376,6 +376,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
+	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
 
 	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created

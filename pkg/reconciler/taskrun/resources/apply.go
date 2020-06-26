@@ -96,6 +96,18 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
+// ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
+// Currently supports only name substitution. Uses "" as a default if name is not specified.
+func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
+	stringReplacements := map[string]string{}
+	stringReplacements["context.taskRun.name"] = tr.Name
+	stringReplacements["context.task.name"] = rtr.TaskName
+
+	return ApplyReplacements(spec,
+		map[string]string{"context.taskRun.name": tr.Name, "context.task.name": rtr.TaskName},
+		map[string][]string{})
+}
+
 // ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to, the
 // volumes that wb are realized with in the task spec ts and the PersistentVolumeClaim names for the
 // workspaces.
