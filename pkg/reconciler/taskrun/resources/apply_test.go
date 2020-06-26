@@ -743,6 +743,139 @@ func TestApplyWorkspaces(t *testing.T) {
 	}
 }
 
+func TestContext(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		rtr         resources.ResolvedTaskResources
+		tr          v1beta1.TaskRun
+		spec        v1beta1.TaskSpec
+		want        v1beta1.TaskSpec
+	}{{
+		description: "context taskName replacement without taskRun in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.task.name)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "Task1-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskName replacement with taskRun in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunName",
+			},
+		},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.task.name)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "Task1-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskRunName replacement with defined taskRun in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunName",
+			},
+		},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.name)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "taskrunName-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskRunName replacement with no defined taskRun in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.name)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskRunName replacement with no defined taskName in spec container",
+		rtr:         resources.ResolvedTaskResources{},
+		tr:          v1beta1.TaskRun{},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.task.name)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "-1",
+				},
+			}},
+		},
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			got := resources.ApplyContexts(&tc.spec, &tc.rtr, &tc.tr)
+			if d := cmp.Diff(&tc.want, got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskResults(t *testing.T) {
 	names.TestingSeed()
 	ts := &v1beta1.TaskSpec{
