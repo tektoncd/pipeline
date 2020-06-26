@@ -172,7 +172,7 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 		switch n := taskrunItem.Name; {
 		case strings.HasPrefix(n, "pipelinerun-failed-final-tasks-dagtask1"):
 			if !isSuccessful(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("TaskRun %s for dag task should have succedded", n)
+				t.Fatalf("TaskRun %s for dag task should have succeeded", n)
 			}
 		case strings.HasPrefix(n, "pipelinerun-failed-final-tasks-finaltask1"):
 			if !isFailed(t, n, taskrunItem.Status.Conditions) {
