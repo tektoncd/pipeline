@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	thttp "github.com/cloudevents/sdk-go/v2/protocol/http"
 )
@@ -25,15 +26,20 @@ type EventReceiver struct {
 }
 
 func (r *EventReceiver) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		r.p.ServeHTTP(rw, req)
+		wg.Done()
 	}()
 
-	ctx := context.Background()
+	ctx := req.Context()
 	msg, respFn, err := r.p.Respond(ctx)
 	if err != nil {
 		//lint:ignore SA9003 TODO: Branch left empty
 	} else if err := r.invoker.Invoke(ctx, msg, respFn); err != nil {
 		// TODO
 	}
+	// Block until ServeHTTP has returned
+	wg.Wait()
 }

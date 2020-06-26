@@ -38,6 +38,7 @@ func NewResult(messageFmt string, args ...interface{}) Result {
 	return fmt.Errorf(messageFmt, args...) // TODO: look at adding ACK/Nak support.
 }
 
+// IsACK true means the recipient acknowledged the event.
 func IsACK(target Result) bool {
 	// special case, nil target also means ACK.
 	if target == nil {
@@ -47,8 +48,17 @@ func IsACK(target Result) bool {
 	return ResultIs(target, ResultACK)
 }
 
+// IsNACK true means the recipient did not acknowledge the event.
 func IsNACK(target Result) bool {
 	return ResultIs(target, ResultNACK)
+}
+
+// IsUndelivered true means the target result is not an ACK/NACK, but some other
+// error unrelated to delivery not from the intended recipient. Likely target
+// is an error that represents some part of the protocol is misconfigured or
+// the event that was attempting to be sent was invalid.
+func IsUndelivered(target Result) bool {
+	return !ResultIs(target, ResultACK) && !ResultIs(target, ResultNACK)
 }
 
 var (

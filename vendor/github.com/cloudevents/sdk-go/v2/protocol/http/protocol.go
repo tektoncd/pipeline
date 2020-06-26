@@ -270,22 +270,23 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return // if there was no message, return.
 	}
 
-	done := make(chan struct{})
-
 	var finishErr error
 	m.OnFinish = func(err error) error {
 		finishErr = err
 		return nil
 	}
 
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	var fn protocol.ResponseFn = func(ctx context.Context, respMsg binding.Message, res protocol.Result, transformers ...binding.Transformer) error {
 		// Unblock the ServeHTTP after the reply is written
 		defer func() {
-			done <- struct{}{}
+			wg.Done()
 		}()
 
 		if finishErr != nil {
 			http.Error(rw, fmt.Sprintf("Cannot forward CloudEvent: %s", finishErr), http.StatusInternalServerError)
+			return finishErr
 		}
 
 		status := http.StatusOK
@@ -305,6 +306,7 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 					rw.Header().Set("content-type", "text/plain")
 					rw.WriteHeader(status)
 					_, _ = rw.Write([]byte(validationError.Error()))
+					return validationError
 				} else if errors.Is(res, binding.ErrUnknownEncoding) {
 					status = http.StatusUnsupportedMediaType
 				} else {
@@ -324,5 +326,5 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	p.incoming <- msgErr{msg: m, respFn: fn} // Send to Request
 	// Block until ResponseFn is invoked
-	<-done
+	wg.Wait()
 }

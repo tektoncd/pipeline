@@ -3,13 +3,10 @@ module github.com/tektoncd/pipeline
 go 1.13
 
 require (
-	cloud.google.com/go/storage v1.6.0
-	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
-	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.1 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/aws/aws-sdk-go v1.30.16 // indirect
-	github.com/cloudevents/sdk-go/v2 v2.0.0
+	github.com/cloudevents/sdk-go/v2 v2.1.0
 	github.com/docker/cli v0.0.0-20200210162036-a4bedce16568 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.4.1
@@ -28,8 +25,6 @@ require (
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	google.golang.org/api v0.20.0
-	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/protobuf v1.22.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.17.6
@@ -42,9 +37,6 @@ require (
 	knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
-
-// Needed for the sarama dependency above to work...
-replace github.com/cloudevents/sdk-go/v2 => github.com/cloudevents/sdk-go/v2 v2.0.0
 
 // Knative deps (release-0.15)
 replace (

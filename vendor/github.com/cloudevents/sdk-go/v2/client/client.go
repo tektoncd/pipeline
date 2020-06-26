@@ -221,6 +221,7 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 					msg, respFn, err = c.responder.Respond(ctx)
 				} else if c.receiver != nil {
 					msg, err = c.receiver.Receive(ctx)
+					respFn = noRespFn
 				}
 
 				if err == io.EOF { // Normal close
@@ -240,4 +241,9 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 	}
 	wg.Wait()
 	return nil
+}
+
+// noRespFn is used to simply forward the protocol.Result for receivers that aren't responders
+func noRespFn(_ context.Context, _ binding.Message, r protocol.Result, _ ...binding.Transformer) error {
+	return r
 }
