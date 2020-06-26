@@ -77,16 +77,15 @@ type ResolvedPipelineRunTask struct {
 // state of the PipelineRun.
 type PipelineRunState []*ResolvedPipelineRunTask
 
-func (t ResolvedPipelineRunTask) IsDone() (isDone bool) {
+func (t ResolvedPipelineRunTask) IsDone() bool {
 	if t.TaskRun == nil || t.PipelineTask == nil {
-		return
+		return false
 	}
 
 	status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 	retriesDone := len(t.TaskRun.Status.RetriesStatus)
 	retries := t.PipelineTask.Retries
-	isDone = status.IsTrue() || status.IsFalse() && retriesDone >= retries
-	return
+	return status.IsTrue() || status.IsFalse() && retriesDone >= retries
 }
 
 // IsSuccessful returns true only if the taskrun itself has completed successfully
@@ -152,18 +151,13 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 
 // IsDone returns true when all pipeline tasks have respective taskRun created and
 // that taskRun has either succeeded or failed after all possible retry attempts
-func (state PipelineRunState) IsDone() (isDone bool) {
-	isDone = true
+func (state PipelineRunState) IsDone() bool {
 	for _, t := range state {
-		if t.TaskRun == nil || t.PipelineTask == nil {
+		if !t.IsDone() {
 			return false
 		}
-		isDone = isDone && t.IsDone()
-		if !isDone {
-			return
-		}
 	}
-	return
+	return true
 }
 
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
@@ -249,8 +243,7 @@ func (state PipelineRunState) isDAGTasksStopped(d *dag.Graph) bool {
 
 // checkTasksDone returns true if all tasks from the specified graph are finished executing
 // a task is considered done if it has failed/succeeded/skipped
-func (state PipelineRunState) checkTasksDone(d *dag.Graph) (isDone bool) {
-	isDone = true
+func (state PipelineRunState) checkTasksDone(d *dag.Graph) bool {
 	stateMap := state.ToMap()
 	for _, t := range state {
 		if _, ok := d.Nodes[t.PipelineTask.Name]; ok {
@@ -263,13 +256,12 @@ func (state PipelineRunState) checkTasksDone(d *dag.Graph) (isDone bool) {
 				}
 				return false
 			}
-			isDone = isDone && t.IsDone()
-			if !isDone {
-				return
+			if !t.IsDone() {
+				return false
 			}
 		}
 	}
-	return
+	return true
 }
 
 // GetFinalTasks returns a list of final tasks without any taskRun associated with it
