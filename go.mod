@@ -3,9 +3,6 @@ module github.com/tektoncd/pipeline
 go 1.13
 
 require (
-	cloud.google.com/go/storage v1.6.0
-	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
-	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.1 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/aws/aws-sdk-go v1.30.16 // indirect
@@ -28,8 +25,6 @@ require (
 	golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	google.golang.org/api v0.20.0
-	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/protobuf v1.22.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.17.6
@@ -39,7 +34,7 @@ require (
 	k8s.io/code-generator v0.18.0
 	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
 	k8s.io/utils v0.0.0-20200124190032-861946025e34 // indirect
-	knative.dev/pkg v0.0.0-20200528142800-1c6815d7e4c9
+	knative.dev/pkg v0.0.0-20200625173728-dfb81cf04a7c
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
