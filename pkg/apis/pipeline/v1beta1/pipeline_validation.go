@@ -173,7 +173,16 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	// Validate the pipeline task graph
 	if err := validateGraph(ps.Tasks); err != nil {
-		return apis.ErrInvalidValue(err.Error(), "spec.tasks")
+		ferr := apis.ErrInvalidValue(err.Error(), "spec.tasks")
+		ferr.Details = "Invalid Graph"
+		return ferr
+	}
+
+	// Validate the pipeline finally graph
+	if err := validateGraph(ps.Finally); err != nil {
+		ferr := apis.ErrInvalidValue(err.Error(), "spec.finally")
+		ferr.Details = "Invalid Graph"
+		return ferr
 	}
 
 	if err := validateParamResults(ps.Tasks); err != nil {

@@ -451,8 +451,8 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		))),
 		tb.PipelineRun("pipeline-invalid-final-graph", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
 			tb.PipelineTask("dag-task-1", "taskName"),
-			tb.FinalPipelineTask("final-task-1", "taskName"),
-			tb.FinalPipelineTask("final-task-1", "taskName")))),
+			tb.FinalPipelineTask("final-task-1", "taskName", tb.RunAfter("dag-task-2")),
+		))),
 	}
 
 	d := test.Data{
@@ -1741,12 +1741,14 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels, condition.Annotations)
 	}
 
-	// Check that the expected TaskRun was created
-	condCheck0 := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
-	condCheck1 := clients.Pipeline.Actions()[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
-	if condCheck0 == nil || condCheck1 == nil {
-		t.Errorf("Expected two ConditionCheck TaskRuns to be created, but it wasn't.")
+	// Check that the expected TaskRun were created
+	actions := clients.Pipeline.Actions()
+	if !actions[1].Matches("create", "taskruns") || !actions[2].Matches("create", "taskruns") {
+		t.Fatalf("Expected two ConditionCheck TaskRuns to be created, got instead %d actions: %#v", len(actions), actions)
 	}
+
+	condCheck0 := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	condCheck1 := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 
 	actual := []*v1beta1.TaskRun{condCheck0, condCheck1}
 	if d := cmp.Diff(actual, expectedConditionChecks); d != "" {
