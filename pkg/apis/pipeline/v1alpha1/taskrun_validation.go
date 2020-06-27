@@ -84,7 +84,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateWorkspaceBindings(ctx, ts.Workspaces); err != nil {
 		return err
 	}
-	if err := validateParameters(ts.Params); err != nil {
+	if err := validateParameters("spec.inputs.params", ts.Params); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (i TaskRunInputs) Validate(ctx context.Context, path string) *apis.FieldErr
 	if err := validatePipelineResources(ctx, i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
 		return err
 	}
-	return validateParameters(i.Params)
+	return validateParameters("spec.inputs.params", i.Params)
 }
 
 func (o TaskRunOutputs) Validate(ctx context.Context, path string) *apis.FieldError {
@@ -155,12 +155,13 @@ func validatePipelineResources(ctx context.Context, resources []TaskResourceBind
 	return nil
 }
 
-func validateParameters(params []Param) *apis.FieldError {
+// TODO(jasonhall): Share this with v1beta1/taskrun_validation.go
+func validateParameters(path string, params []Param) *apis.FieldError {
 	// Template must not duplicate parameter names.
 	seen := sets.NewString()
 	for _, p := range params {
 		if seen.Has(strings.ToLower(p.Name)) {
-			return apis.ErrMultipleOneOf("spec.inputs.params")
+			return apis.ErrMultipleOneOf(path)
 		}
 		seen.Insert(p.Name)
 	}
