@@ -45,6 +45,9 @@ const (
 
 	// ConditionNameKey is used as the label identifier for a Condition
 	ConditionNameKey = "/conditionName"
+
+	// RunKey is used as the label identifier for a Run
+	RunKey = "/run"
 )
 
 var (
@@ -62,6 +65,11 @@ var (
 	TaskRunResource = schema.GroupResource{
 		Group:    GroupName,
 		Resource: "taskruns",
+	}
+	// RunResource represents a Tekton Run
+	RunResource = schema.GroupResource{
+		Group:    GroupName,
+		Resource: "runs",
 	}
 	// PipelineResource represents a Tekton Pipeline
 	PipelineResource = schema.GroupResource{

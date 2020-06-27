@@ -46,6 +46,14 @@ type PipelineRunListerExpansion interface{}
 // PipelineRunNamespaceLister.
 type PipelineRunNamespaceListerExpansion interface{}
 
+// RunListerExpansion allows custom methods to be added to
+// RunLister.
+type RunListerExpansion interface{}
+
+// RunNamespaceListerExpansion allows custom methods to be added to
+// RunNamespaceLister.
+type RunNamespaceListerExpansion interface{}
+
 // TaskListerExpansion allows custom methods to be added to
 // TaskLister.
 type TaskListerExpansion interface{}

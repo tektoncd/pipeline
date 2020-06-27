@@ -44,6 +44,10 @@ func (c *FakeTektonV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRun
 	return &FakePipelineRuns{c, namespace}
 }
 
+func (c *FakeTektonV1alpha1) Runs(namespace string) v1alpha1.RunInterface {
+	return &FakeRuns{c, namespace}
+}
+
 func (c *FakeTektonV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 	return &FakeTasks{c, namespace}
 }

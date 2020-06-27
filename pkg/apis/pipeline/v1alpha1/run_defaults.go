@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,16 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipeline
+package v1alpha1
 
-const (
-	// PipelineRunControllerName holds the name of the PipelineRun controller
-	// nolint: golint
-	PipelineRunControllerName = "PipelineRun"
+import (
+	"context"
 
-	// TaskRunControllerName holds the name of the TaskRun controller
-	TaskRunControllerName = "TaskRun"
-
-	// TaskRunControllerName holds the name of the PipelineRun controller
-	RunControllerName = "Run"
+	"knative.dev/pkg/apis"
 )
+
+var _ apis.Defaultable = (*Run)(nil)
+
+func (r *Run) SetDefaults(ctx context.Context) {
+	ctx = apis.WithinParent(ctx, r.ObjectMeta)
+	r.Spec.SetDefaults(apis.WithinSpec(ctx))
+}
+
+func (rs *RunSpec) SetDefaults(ctx context.Context) {
+	// No defaults to set.
+}

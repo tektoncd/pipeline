@@ -32,6 +32,8 @@ type Interface interface {
 	Pipelines() PipelineInformer
 	// PipelineRuns returns a PipelineRunInformer.
 	PipelineRuns() PipelineRunInformer
+	// Runs returns a RunInformer.
+	Runs() RunInformer
 	// Tasks returns a TaskInformer.
 	Tasks() TaskInformer
 	// TaskRuns returns a TaskRunInformer.
@@ -67,6 +69,11 @@ func (v *version) Pipelines() PipelineInformer {
 // PipelineRuns returns a PipelineRunInformer.
 func (v *version) PipelineRuns() PipelineRunInformer {
 	return &pipelineRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Runs returns a RunInformer.
+func (v *version) Runs() RunInformer {
+	return &runInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Tasks returns a TaskInformer.
