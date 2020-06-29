@@ -1515,7 +1515,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Fatalf("Expected to see error when reconciling invalid TaskRun but none")
 			}
 			if !controller.IsPermanentError(reconcileErr) {
-				t.Fatalf("Expected to see a permanet error when reconciling invalid TaskRun, got %s instead", reconcileErr)
+				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
 
 			// Check actions and events
@@ -2524,7 +2524,7 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		t.Fatalf("expected error reconciling invalid TaskRun but got none")
 	}
 	if !controller.IsPermanentError(err) {
-		t.Fatalf("Expected to see a permanet error when reconciling invalid TaskRun, got %s instead", err)
+		t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", err)
 	}
 
 	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -2615,7 +2615,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				t.Fatalf("Expected to see error when reconciling invalid TaskRun but none")
 			}
 			if !controller.IsPermanentError(reconcileErr) {
-				t.Fatalf("Expected to see a permanet error when reconciling invalid TaskRun, got %s instead", reconcileErr)
+				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
 
 			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(tt.d.TaskRuns[0].Name, metav1.GetOptions{})
