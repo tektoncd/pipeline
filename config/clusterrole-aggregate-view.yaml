@@ -20,6 +20,8 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
     rbac.authorization.k8s.io/aggregate-to-view: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
 rules:
 - apiGroups:
   - tekton.dev
@@ -30,6 +32,7 @@ rules:
   - pipelineruns
   - pipelineresources
   - conditions
+  - clustertasks
   verbs:
   - get
   - list

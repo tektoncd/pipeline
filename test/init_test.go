@@ -31,6 +31,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -149,6 +150,32 @@ func verifyServiceAccountExistence(t *testing.T, namespace string, kubeClient *k
 		return true, err
 	}); err != nil {
 		t.Fatalf("Failed to get SA %q in namespace %q for tests: %s", defaultSA, namespace, err)
+	}
+
+	viewRoleBindingName := fmt.Sprintf("view-%s-defaultSA", namespace)
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: viewRoleBindingName, Namespace: namespace},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      defaultSA,
+				Namespace: namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "view",
+		},
+	}
+	_, err := kubeClient.Kube.RbacV1().RoleBindings(namespace).Get(viewRoleBindingName, metav1.GetOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		_, err := kubeClient.Kube.RbacV1().RoleBindings(namespace).Create(roleBinding)
+		if err != nil {
+			t.Fatalf("View rolebinding creation failed namespace %q: %s", namespace, err)
+		}
+	} else {
+		t.Fatalf("Pre-check for view rolebinding failed namespace %q: %s", namespace, err)
 	}
 }
 
