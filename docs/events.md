@@ -28,14 +28,22 @@ No events are emitted for `Conditions` today (https://github.com/tektoncd/pipeli
   successfully, including post-steps injected by Tekton.
 - `Failed`: this is triggered if the `TaskRun` is completed, but not successfully.
   Causes of failure may be: one the steps failed, the `TaskRun` was cancelled or
-  the `TaskRun` timed out.
+  the `TaskRun` timed out. `Failed` events are also triggered in case the `TaskRun`
+  cannot be executed at all because of validation issues.
 
 ## PipelineRuns
 
 `PipelineRun` events are generated for the following `Reasons`:
 
+- `Started`: this is triggered the first time the `PipelineRun` is picked by the
+  reconciler from its work queue, so it only happens if web-hook validation was
+  successful. Note that this event does not imply that a step started executing,
+  as pipeline, task and bound resource validation must be successful first.
+- `Running`: this is triggered when the `PipelineRun` passes validation and
+  actually starts running.
 - `Succeeded`: this is triggered once all `Tasks` reachable via the DAG are
   executed successfully.
 - `Failed`: this is triggered if the `PipelineRun` is completed, but not
   successfully. Causes of failure may be: one the `Tasks` failed or the
-  `PipelineRun` was cancelled.
+  `PipelineRun` was cancelled or timed out. `Failed` events are also triggered
+  in case the `PipelineRun` cannot be executed at all because of validation issues.

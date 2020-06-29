@@ -144,6 +144,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		}
 		// start goroutine to track pipelinerun timeout only startTime is not set
 		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
+		// Emit events. During the first reconcile the status of the PipelineRun may change twice
+		// from not Started to Started and then to Running, so we need to sent the event here
+		// and at the end of 'Reconcile' again.
+		// We also want to send the "Started" event as soon as possible for anyone who may be waiting
+		// on the event to perform user facing initialisations, such has reset a CI check status
+		afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+		events.Emit(controller.GetEventRecorder(ctx), nil, afterCondition, pr)
+
+		// We already sent an event for start, so update `before` with the current status
+		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
 	if pr.IsDone() {
@@ -243,7 +253,6 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.Pipe
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	logger := logging.FromContext(ctx)
-	recorder := controller.GetEventRecorder(ctx)
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
@@ -405,12 +414,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 				pipelineMeta.Namespace, pr.Name, err)
 		}
 		return controller.NewPermanentError(err)
-	}
-
-	if pipelineState.IsDone() && pr.IsDone() {
-		c.timeoutHandler.Release(pr)
-		recorder.Event(pr, corev1.EventTypeNormal, v1beta1.PipelineRunReasonSuccessful.String(), "PipelineRun completed successfully.")
-		return nil
 	}
 
 	for _, rprt := range pipelineState {
