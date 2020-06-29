@@ -38,6 +38,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/timeout"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 	test "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -2817,6 +2818,73 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				t.Errorf(err.Error())
 			}
 		})
+	}
+}
+
+// TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant tests that a TaskRun used with an associated
+// Affinity Assistant is validated and that the validation fails for a TaskRun that is incompatible with
+// Affinity Assistant; e.g. using more than one PVC-backed workspace.
+func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) {
+	taskWithTwoWorkspaces := tb.Task("test-task-two-workspaces", tb.TaskNamespace("foo"),
+		tb.TaskSpec(
+			tb.TaskWorkspace("ws1", "task workspace", "", true),
+			tb.TaskWorkspace("ws2", "another workspace", "", false),
+		))
+	taskRun := tb.TaskRun("taskrun-with-two-workspaces", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithTwoWorkspaces.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunWorkspacePVC("ws1", "", "pvc1"),
+		tb.TaskRunWorkspaceVolumeClaimTemplate("ws2", "", &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pvc2",
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{},
+		}),
+	))
+
+	// associate the TaskRun with a dummy Affinity Assistant
+	taskRun.Annotations[workspace.AnnotationAffinityAssistantName] = "dummy-affinity-assistant"
+
+	d := test.Data{
+		Tasks:             []*v1beta1.Task{taskWithTwoWorkspaces},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+
+	_, err := clients.Pipeline.TektonV1beta1().Tasks(taskRun.Namespace).Get(taskWithTwoWorkspaces.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("krux: %v", err)
+	}
+
+	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	if len(ttt.Status.Conditions) != 1 {
+		t.Errorf("unexpected number of Conditions, expected 1 Condition")
+	}
+
+	for _, cond := range ttt.Status.Conditions {
+		if cond.Reason != podconvert.ReasonFailedValidation {
+			t.Errorf("unexpected Reason on the Condition, expected: %s, got: %s", podconvert.ReasonFailedValidation, cond.Reason)
+		}
 	}
 }
 

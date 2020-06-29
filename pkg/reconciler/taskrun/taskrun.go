@@ -294,6 +294,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := validateWorkspaceCompatibilityWithAffinityAssistant(tr); err != nil {
+		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	// Initialize the cloud events if at least a CloudEventResource is defined
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced
@@ -699,6 +705,29 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
 		tr.Status.TaskSpec = ts
+	}
+	return nil
+}
+
+// validateWorkspaceCompatibilityWithAffinityAssistant validates the TaskRun's compatibility
+// with the Affinity Assistant - if associated with an Affinity Assistant.
+// No more than one PVC-backed workspace can be used for a TaskRun that is associated with an
+// Affinity Assistant.
+func validateWorkspaceCompatibilityWithAffinityAssistant(tr *v1beta1.TaskRun) error {
+	_, isAssociatedWithAnAffinityAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]
+	if !isAssociatedWithAnAffinityAssistant {
+		return nil
+	}
+
+	pvcWorkspaces := 0
+	for _, w := range tr.Spec.Workspaces {
+		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
+			pvcWorkspaces++
+		}
+	}
+
+	if pvcWorkspaces > 1 {
+		return fmt.Errorf("TaskRun mounts more than one PersistentVolumeClaim - that is forbidden when the Affinity Assistant is enabled")
 	}
 	return nil
 }
