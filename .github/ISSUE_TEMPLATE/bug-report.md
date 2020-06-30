@@ -1,6 +1,7 @@
 ---
-name: Issue Template
-about: Template for both bug reports and feature requests
+name: Bug Report
+about: Template for bug reports
+labels: kind/bug
 ---
 
 # Expected Behavior
