@@ -43,7 +43,7 @@ This should be done by looking up the `Service` in the `tekton-pipelines` namesp
 
 Equivalent `kubectl` command:
 ```bash
-kubectl --namespace=tekton-pipelines get svc -l "app.kubernetes.io/part-of=tekton-pipelines,app.kubernetes.io/component=webhook,app.kubernetes.io/instance=default,app.kubernetes.io/name=webhook
+kubectl --namespace=tekton-pipelines get svc -l "app.kubernetes.io/part-of=tekton-pipelines,app.kubernetes.io/component=webhook,app.kubernetes.io/instance=default,app.kubernetes.io/name=webhook"
 ```
 
 See below for the list of applications, components, and names for most commonly used resources.
