@@ -103,7 +103,7 @@ and running Pipelines.
 To use minikube:
 
 ```bash
-minikube start eval $(minikube docker-env)`
+minikube start eval $(minikube docker-env)
 ```
 
 To use the Kubernetes that comes with Docker Desktop: 
