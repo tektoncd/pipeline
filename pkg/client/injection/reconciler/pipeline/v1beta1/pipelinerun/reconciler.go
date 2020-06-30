@@ -229,13 +229,9 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 				return fmt.Errorf("failed to set finalizers: %w", err)
 			}
 
-			reconciler.PreProcessReconcile(ctx, resource)
-
 			// Reconcile this copy of the resource and then write back any status
 			// updates regardless of whether the reconciliation errored out.
 			reconcileEvent = r.reconciler.ReconcileKind(ctx, resource)
-
-			reconciler.PostProcessReconcile(ctx, resource, original)
 
 		} else if isROI {
 			// Append the target method to the logger.
