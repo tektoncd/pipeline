@@ -67,7 +67,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
 			Images:            images,
-
 			taskRunLister:     taskRunInformer.Lister(),
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),

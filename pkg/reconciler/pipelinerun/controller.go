@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
@@ -30,7 +31,7 @@ import (
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
+	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/timeout"
 	"k8s.io/client-go/tools/cache"
@@ -72,11 +73,12 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
+			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
-			configStore := config.NewStore(images, logger.Named("config-store"))
+			configStore := config.NewStore(logger.Named("config-store"))
 			configStore.WatchConfigs(cmw)
 			return controller.Options{
 				AgentName:   pipeline.PipelineRunControllerName,
