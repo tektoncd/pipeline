@@ -361,6 +361,13 @@ func PipelineRunNamespace(namespace string) PipelineRunOp {
 	}
 }
 
+// PipelineRunSelfLink adds a SelfLink
+func PipelineRunSelfLink(selflink string) PipelineRunOp {
+	return func(tr *v1beta1.PipelineRun) {
+		tr.ObjectMeta.SelfLink = selflink
+	}
+}
+
 // PipelineRunSpec sets the PipelineRunSpec, references Pipeline with specified name, to the PipelineRun.
 // Any number of PipelineRunSpec modifier can be passed to transform it.
 func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
