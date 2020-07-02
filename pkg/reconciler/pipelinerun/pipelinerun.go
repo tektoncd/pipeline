@@ -809,21 +809,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1bet
 }
 
 func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
-	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
-	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
-	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
-
-	for key, value := range rcc.Condition.ObjectMeta.Labels {
-		labels[key] = value
-	}
-
-	// Propagate annotations from PipelineRun to TaskRun.
-	annotations := getTaskrunAnnotations(pr)
-
-	for key, value := range rcc.Condition.ObjectMeta.Annotations {
-		annotations[key] = value
-	}
-
 	taskSpec, err := rcc.ConditionToTaskSpec()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
@@ -834,8 +819,8 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			Name:            rcc.ConditionCheckName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
-			Labels:          labels,
-			Annotations:     annotations,
+			Labels:          combineTaskRunAndConditionLabels(pr, rprt.PipelineTask.Name, rcc),
+			Annotations:     combineTaskRunAndConditionAnnotations(pr, rcc),
 		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec:           taskSpec,
@@ -851,6 +836,34 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
 	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
+}
+
+func combineTaskRunAndConditionLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, rcc *resources.ResolvedConditionCheck) map[string]string {
+	trLabels := getTaskrunLabels(pr, pipelineTaskName)
+	cLabels := rcc.Condition.ObjectMeta.Labels
+	labels := make(map[string]string, len(trLabels)+len(cLabels))
+
+	// labels from TaskRun takes higher precedence over the condition
+	labels = cLabels
+	for key, value := range trLabels {
+		labels[key] = value
+	}
+	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
+	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
+	return labels
+}
+
+func combineTaskRunAndConditionAnnotations(pr *v1beta1.PipelineRun, rcc *resources.ResolvedConditionCheck) map[string]string {
+	trAnnotations := getTaskrunAnnotations(pr)
+	cAnnotations := rcc.Condition.ObjectMeta.Annotations
+	annotations := make(map[string]string, len(trAnnotations)+len(cAnnotations))
+
+	// TaskRun annotations takes higher precedence over the condition
+	annotations = cAnnotations
+	for key, value := range trAnnotations {
+		annotations[key] = value
+	}
+	return annotations
 }
 
 func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec) error {

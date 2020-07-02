@@ -1925,6 +1925,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 			tbv1alpha1.ConditionAnnotations(
 				map[string]string{
 					"annotation-1": "value-1",
+					"annotation-2": "value-2",
 				}),
 			tbv1alpha1.ConditionSpec(
 				tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
@@ -1935,6 +1936,10 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 				map[string]string{
 					"label-3": "value-3",
 					"label-4": "value-4",
+				}),
+			tbv1alpha1.ConditionAnnotations(
+				map[string]string{
+					"annotation-1": "value-1",
 				}),
 			tbv1alpha1.ConditionSpec(
 				tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
@@ -1947,9 +1952,12 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	))}
 	prs := []*v1beta1.PipelineRun{tb.PipelineRun(prName, tb.PipelineRunNamespace("foo"),
 		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunAnnotation("annotation-1", "value-1-pr"),
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunServiceAccountName("test-sa"),
 		),
+		tb.PipelineRunLabel("label-1", "value-1-pr"),
+		tb.PipelineRunLabel("label-3", "value-3-pr"),
 	)}
 	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
 
@@ -1982,7 +1990,13 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	}
 	expectedConditionChecks := make([]*v1beta1.TaskRun, len(conditions))
 	for index, condition := range conditions {
-		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels, condition.Annotations)
+		expectedLabels := condition.Labels
+		expectedAnnotations := condition.Annotations
+		// add labels and annotations from PipelineRun
+		expectedLabels["label-1"] = "value-1-pr"
+		expectedLabels["label-3"] = "value-3-pr"
+		expectedAnnotations["annotation-1"] = "value-1-pr"
+		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], expectedLabels, expectedAnnotations)
 	}
 
 	// Check that the expected TaskRun was created
