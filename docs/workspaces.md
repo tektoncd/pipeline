@@ -15,7 +15,7 @@ weight: 5
     - [Mapping `Workspaces` in `Tasks` to `TaskRuns`](#mapping-workspaces-in-tasks-to-taskruns)
     - [Examples of `TaskRun` definition using `Workspaces`](#examples-of-taskrun-definition-using-workspaces)
   - [Using `Workspaces` in `Pipelines`](#using-workspaces-in-pipelines)
-    - [Affinity Assistant and specifying `Workspace` order in a `Pipeline`](#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
+    - [Specifying `Workspace` order in a `Pipeline` and Affinity Assistants](#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
     - [Specifying `Workspaces` in `PipelineRuns`](#specifying-workspaces-in-pipelineruns)
     - [Example `PipelineRun` definition using `Workspaces`](#example-pipelinerun-definition-using-workspaces)
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
@@ -90,7 +90,7 @@ To configure one or more `Workspaces` in a `Task`, add a `workspaces` list with 
 Note the following:
   
 - A `Task` definition can include as many `Workspaces` as it needs. It is recommended that `Tasks` use
-  **at most** one _writable_ `Workspace`.
+  **at most** one _writeable_ `Workspace`.
 - A `readOnly` `Workspace` will have its volume mounted as read-only. Attempting to write
   to a `readOnly` `Workspace` will result in errors and failed `TaskRuns`.
 - `mountPath` can be either absolute or relative. Absolute paths start with `/` and relative paths
@@ -135,10 +135,9 @@ its own `workspaces` list. Each entry in the list contains the following fields:
 - `name` - (**required**) The name of the `Workspace` within the `Task` for which the `Volume` is being provided
 - `subPath` - An optional subdirectory on the `Volume` to store data for that `Workspace`
 
-The entry must also include one `VolumeSource`. See [Using `VolumeSources` with `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
+The entry must also include one `VolumeSource`. See [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
                
 **Caution:**
-- The `subPath` *must* exist on the `Volume` before the `TaskRun` executes or the execution will fail.
 - The `Workspaces` declared in a `Task` must be available when executing the associated `TaskRun`.
   Otherwise, the `TaskRun` will fail.
 
@@ -158,7 +157,8 @@ spec:
     name: example-task
   workspaces:
     - name: myworkspace # this workspace name must be declared in the Task
-      emptyDir: {}      # emptyDir volumes can be used for TaskRuns, but consider using a PersistentVolumeClaim for PipelineRuns
+      emptyDir: {}      # emptyDir volumes can be used for TaskRuns, 
+                        # but consider using a PersistentVolumeClaim for PipelineRuns
 ```
 For examples of using other types of volume sources, see [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces).
 For a more in-depth example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
@@ -205,7 +205,7 @@ Include a `subPath` in the workspace binding to mount different parts of the sam
 
 The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a Workspace with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
 
-#### Affinity Assistant and specifying `Workspace` order in a `Pipeline`
+#### Specifying `Workspace` order in a `Pipeline` and Affinity Assistants
 
 Sharing a `Workspace` between `Tasks` requires you to define the order in which those `Tasks`
 write to or read from that `Workspace`. Use the `runAfter` field in your `Pipeline` definition
@@ -219,7 +219,7 @@ with e.g. other affinity rules configured for the `TaskRun` pods. If the `Pipeli
 [PodTemplate](pipelineruns.md#specifying-a-pod-template) configured, the `NodeSelector` and `Tolerations` fields
 will also be set on the Affinity Assistant pod. The Affinity Assistant
 is deleted when the `PipelineRun` is completed. The Affinity Assistant can be disabled by setting the
-[disable-affinity-assistant](install.md#customizing-basic-execution-parameters) feature gate.
+[disable-affinity-assistant](install.md#customizing-basic-execution-parameters) feature gate to `true`.
 
 **Note:** Affinity Assistant use [Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
 that require substantial amount of processing which can slow down scheduling in large clusters
@@ -282,7 +282,7 @@ options differ for each type. `Workspaces` support the following fields:
 `PersistentVolumeClaim` volumes are a good choice for sharing data among `Tasks` within a `Pipeline`.
 Beware that the [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
 configured for the `PersistentVolumeClaim` effects how you can use the volume for parallel `Tasks` in a `Pipeline`. See
-[Specifying `workspace` order in a `Pipeline`](#specifying-workspace-order-in-a-pipeline) for more information about this.
+[Specifying `workspace` order in a `Pipeline` and Affinity Assistants](#specifying-workspace-order-in-a-pipeline-and-affinity-assistants) for more information about this.
 There are two ways of using `PersistentVolumeClaims` as a `VolumeSource`.
 
 ##### `volumeClaimTemplate`
