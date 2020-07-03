@@ -111,7 +111,7 @@ func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1alpha1.Param) err
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
 func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
 	if err := validateParams(rtr.TaskSpec.Params, params); err != nil {
-		return fmt.Errorf("invalid input params: %w", err)
+		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	inputs := []v1beta1.TaskResource{}
 	outputs := []v1beta1.TaskResource{}
@@ -120,10 +120,10 @@ func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.Resol
 		outputs = rtr.TaskSpec.Resources.Outputs
 	}
 	if err := validateResources(inputs, rtr.Inputs); err != nil {
-		return fmt.Errorf("invalid input resources: %w", err)
+		return fmt.Errorf("invalid input resources for task %s: %w", rtr.TaskName, err)
 	}
 	if err := validateResources(outputs, rtr.Outputs); err != nil {
-		return fmt.Errorf("invalid output resources: %w", err)
+		return fmt.Errorf("invalid output resources for task %s: %w", rtr.TaskName, err)
 	}
 
 	return nil
