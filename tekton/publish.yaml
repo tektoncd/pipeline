@@ -1,27 +1,26 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: publish-tekton-pipelines
 spec:
-  inputs:
-    resources:
-    - name: source
-      type: git
-      targetPath: go/src/github.com/tektoncd/pipeline
+  params:
+  - name: versionTag
+    description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+  - name: imageRegistry
+    description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
+  - name: pathToProject
+    description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+  - name: releaseAsLatest
+    description: Whether to tag and publish this release as Pipelines' latest
+    default: "true"
+  workspaces:
+  - name: source
+    mountPath: /workspace/go/src/github.com/tektoncd/pipeline
+  resources:
+    inputs:
     - name: bucket
       type: storage
-    params:
-    - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
-    - name: imageRegistry
-      description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
-    - name: pathToProject
-      description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
-    - name: releaseAsLatest
-      description: Whether to tag and publish this release as Pipelines' latest
-      default: "true"
-  outputs:
-    resources:
+    outputs:
     - name: bucket
       type: storage
     - name: builtBaseImage
@@ -49,14 +48,13 @@ spec:
     - name: notification
       type: cloudEvent
   steps:
-
   - name: build-push-base-images
     image: gcr.io/kaniko-project/executor:v0.17.1
     command:
     - /kaniko/executor
     args:
     - --dockerfile=/workspace/go/src/github.com/tektoncd/pipeline/images/Dockerfile
-    - --destination=$(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtBaseImage.url)
+    - --destination=$(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtBaseImage.url)
     - --context=/workspace/go/src/github.com/tektoncd/pipeline
 
     volumeMounts:
@@ -76,18 +74,18 @@ spec:
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        $(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
-        $(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
+        $(inputs.params.pathToProject)/$(resources.outputs.builtCredsInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
+        $(inputs.params.pathToProject)/$(resources.outputs.builtGitInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
 
         # These match values configured in .ko.yaml
-        $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
-        $(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
-        $(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
+        $(inputs.params.pathToProject)/$(resources.outputs.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
+        $(inputs.params.pathToProject)/$(resources.outputs.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
+        $(inputs.params.pathToProject)/$(resources.outputs.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
       baseBuildOverrides:
-        $(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
+        $(params.pathToProject)/$(resources.outputs.builtControllerImage.url):
           flags:
             - name: ldflags
-              value: "-X $(inputs.params.pathToProject)/pkg/version.PipelineVersion=$(inputs.params.versionTag)"
+              value: "-X $(params.pathToProject)/pkg/version.PipelineVersion=$(params.versionTag)"
       EOF
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
@@ -105,13 +103,13 @@ spec:
     command: ["mkdir"]
     args:
     - "-p"
-    - "/workspace/output/bucket/previous/$(inputs.params.versionTag)/"
+    - "/workspace/output/bucket/previous/$(params.versionTag)/"
 
   - name: run-ko
     image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
     env:
     - name: KO_DOCKER_REPO
-      value: $(inputs.params.imageRegistry)
+      value: $(params.imageRegistry)
     - name: GOPATH
       value: /workspace/go
     - name: GO111MODULE
@@ -150,12 +148,12 @@ spec:
       done
 
       # Rewrite "devel" to inputs.params.versionTag
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(inputs.params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
 
-      OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+      OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
 
       # Publish images and create release.yaml
-      ko resolve --preserve-import-paths -t $(inputs.params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
+      ko resolve --preserve-import-paths -t $(params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
@@ -171,10 +169,10 @@ spec:
       #!/bin/sh
       set -ex
 
-      if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+      if [[ "$(params.releaseAsLatest)" == "true" ]]
       then
         mkdir -p "/workspace/output/bucket/latest/"
-        OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
+        OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
         OUTPUT_BUCKET_LATEST_DIR="/workspace/output/bucket/latest"
         cp "$OUTPUT_BUCKET_RELEASE_DIR/release.yaml" "$OUTPUT_BUCKET_LATEST_DIR/release.yaml"
         cp "$OUTPUT_BUCKET_RELEASE_DIR/release.notags.yaml" "$OUTPUT_BUCKET_LATEST_DIR/release.notags.yaml"
@@ -188,19 +186,19 @@ spec:
 
       REGIONS=(us eu asia)
       IMAGES=(
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtNopImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtKubeconfigWriterImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtWebhookImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtDigestExporterImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url):$(inputs.params.versionTag)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url):$(inputs.params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtEntrypointImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtNopImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtKubeconfigWriterImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtCredsInitImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtGitInitImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtControllerImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtWebhookImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtDigestExporterImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url):$(params.versionTag)
+        $(params.imageRegistry)/$(params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url):$(params.versionTag)
       )
       # Parse the built images from the release.yaml generated by ko
-      BUILT_IMAGES=( $(/workspace/go/src/github.com/tektoncd/pipeline/tekton/koparse/koparse.py --path /workspace/output/bucket/previous/$(inputs.params.versionTag)/release.yaml --base $(inputs.params.imageRegistry)/$(inputs.params.pathToProject) --images ${IMAGES[@]}) )
+      BUILT_IMAGES=( $(/workspace/go/src/github.com/tektoncd/pipeline/tekton/koparse/koparse.py --path /workspace/output/bucket/previous/$(params.versionTag)/release.yaml --base $(params.imageRegistry)/$(params.pathToProject) --images ${IMAGES[@]}) )
 
       # Auth with account credentials
       gcloud auth activate-service-account --key-file=/secret/release.json
@@ -212,21 +210,21 @@ spec:
         IMAGE_WITHOUT_SHA_AND_TAG=${IMAGE_WITHOUT_SHA%%:*}
         IMAGE_WITH_SHA=${IMAGE_WITHOUT_SHA_AND_TAG}@${IMAGE##*@}
 
-        if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+        if [[ "$(params.releaseAsLatest)" == "true" ]]
         then
           gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${IMAGE_WITHOUT_SHA_AND_TAG}:latest
         fi
 
         for REGION in "${REGIONS[@]}"
         do
-          if [[ "$(inputs.params.releaseAsLatest)" == "true" ]]
+          if [[ "$(params.releaseAsLatest)" == "true" ]]
           then
-            for TAG in "latest" $(inputs.params.versionTag)
+            for TAG in "latest" $(params.versionTag)
             do
               gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
             done
           else
-            TAG="$(inputs.params.versionTag)"
+            TAG="$(params.versionTag)"
             gcloud -q container images add-tag ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
           fi
         done

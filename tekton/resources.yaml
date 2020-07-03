@@ -20,6 +20,19 @@
 #   - name: targetURI
 #     value: http://post-release-trigger-sink  # This has to be changed to a valid URL
 # ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pipeline-release-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:

@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release-nightly
@@ -9,11 +9,13 @@ spec:
     default: github.com/tektoncd/pipeline
   - name: imageRegistry
     default: gcr.io/tekton-nightly
+  - name: gitUrl
+    description: The git url to use to clone the source
+  - name: gitCommit
+    description: The git commit hash that will be tagged with the release
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   resources:
-  - name: source-repo
-    type: git
   - name: bucket
     type: storage
   - name: builtBaseImage
@@ -40,27 +42,45 @@ spec:
     type: image
   - name: notification
     type: cloudEvent
+  workspaces:
+  - name: shared-data
+    description: |
+      This workspace will receive the cloned git repo and be passed
+      to the next Task for the commit to be checked.
   tasks:
+    - name: fetch-repo
+      taskRef:
+        name: git-clone
+      params:
+      - name: url
+        value: $(params.gitUrl)
+      - name: revision
+        value: $(params.gitCommit)
+      - name: deleteExisting
+        value: "true"
+      workspaces:
+      - name: output
+        workspace: shared-data
     - name: unit-tests
       taskRef:
         name: golang-test
+      runAfter: [fetch-repo]
       params:
         - name: package
           value: $(params.package)
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+      workspaces:
+      - name: source
+        workspace: shared-data
     - name: build
       taskRef:
         name: golang-build
+      runAfter: [fetch-repo]
       params:
         - name: package
           value: $(params.package)
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+      workspaces:
+      - name: source
+        workspace: shared-data
     - name: publish-images
       runAfter: [build, unit-tests]
       taskRef:
@@ -72,10 +92,11 @@ spec:
           value: $(params.versionTag)
         - name: imageRegistry
           value: $(params.imageRegistry)
+      workspaces:
+      - name: source
+        workspace: shared-data
       resources:
         inputs:
-          - name: source
-            resource: source-repo
           - name: bucket
             resource: bucket
         outputs:

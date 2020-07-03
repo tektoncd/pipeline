@@ -40,7 +40,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 
 1. Pick the revision you want to release and update the
    [`resources.yaml`](./resources.yaml) file to add a
-   `PipelineResoruce` for it, e.g.:
+   `PipelineResource` for it, e.g.:
 
    ```yaml
    apiVersion: tekton.dev/v1alpha1
@@ -86,6 +86,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 
    # Change the environment variable to the version you would like to use.
    export TEKTON_VERSION=vX.Y.Z
+   export GIT_COMMIT=hashofthecommit
    export TEKTON_RELEASE_GIT_RESOURCE=tekton-pipelines-git-vX-Y-Z
    export TEKTON_BUCKET_RESOURCE=pipeline-tekton-bucket
    export IMAGE_REGISTRY=gcr.io/tekton-releases
@@ -99,8 +100,10 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    tkn pipeline start \
 		--param=versionTag=${TEKTON_VERSION} \
 		--param=imageRegistry=${IMAGE_REGISTRY} \
+		--param=gitUrl="https://github.com/tektoncd/pipeline" \
+		--param=gitCommit="${GIT_COMMIT}" \
+		--workspace=name=shared-data,claimName=pipeline-release-pvc \
 		--serviceaccount=release-right-meow \
-		--resource=source-repo=${TEKTON_RELEASE_GIT_RESOURCE} \
 		--resource=bucket=${TEKTON_BUCKET_RESOURCE} \
 		--resource=builtBaseImage=base-image \
 		--resource=builtEntrypointImage=entrypoint-image \
@@ -192,21 +195,27 @@ tasks that is compatible with version of Tekton being released, usually `master`
 Install Task from plumbing too:
 
 ```bash
+# Check what changes will be applied
+kubectl diff -f https://raw.githubusercontent.com/tektoncd/catalog/master/git/git-clone.yaml
+kubectl diff -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+kubectl diff -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+kubectl diff -f ../plumbing/tekton/resources/release # assuming plumbing is cloned at the same level
 # Apply the Tasks we are using from the catalog
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/resources/release/
+kubectl replace -f https://raw.githubusercontent.com/tektoncd/catalog/master/git/git-clone.yaml
+kubectl replace -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+kubectl replace -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+kubectl replace -f ../plumbing/tekton/resources/release # assuming plumbing is cloned at the same level
 ```
 
 Apply the tasks from the `pipeline` repo:
 ```bash
 # Apply the Tasks and Pipelines we use from this repo
-kubectl apply -f tekton/publish.yaml
-kubectl apply -f tekton/release-pipeline.yaml
-kubectl apply -f tekton/release-pipeline-nightly.yaml
+kubectl replace -f tekton/publish.yaml
+kubectl replace -f tekton/release-pipeline.yaml
+kubectl replace -f tekton/release-pipeline-nightly.yaml
 
 # Apply the resources - note that when manually releasing you'll re-apply these
-kubectl apply -f tekton/resources.yaml
+kubectl replace -f tekton/resources.yaml
 ```
 
 `Tasks` and `Pipelines` from this repo are:

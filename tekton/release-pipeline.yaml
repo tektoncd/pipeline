@@ -1,5 +1,5 @@
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release
@@ -12,12 +12,14 @@ spec:
     default: gcr.io/tekton-releases
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
+  - name: gitUrl
+    description: The git url to use to clone the source
+  - name: gitCommit
+    description: The git commit hash that will be tagged with the release
   - name: releaseAsLatest
     description: Whether to tag and publish this release as Pipelines' latest
     default: "true"
   resources:
-  - name: source-repo
-    type: git
   - name: bucket
     type: storage
   - name: builtBaseImage
@@ -44,10 +46,29 @@ spec:
     type: image
   - name: notification
     type: cloudEvent
+  workspaces:
+  - name: shared-data
+    description: |
+      This workspace will receive the cloned git repo and be passed
+      to the next Task for the commit to be checked.
   tasks:
+    - name: fetch-repo
+      taskRef:
+        name: git-clone
+      params:
+      - name: url
+        value: $(params.gitUrl)
+      - name: revision
+        value: $(params.gitCommit)
+      - name: deleteExisting
+        value: "true"
+      workspaces:
+      - name: output
+        workspace: shared-data
     - name: precheck
       taskRef:
         name: prerelease-checks
+      runAfter: [fetch-repo]
       params:
         - name: package
           value: $(params.package)
@@ -57,21 +78,22 @@ spec:
         inputs:
           - name: release-bucket
             resource: bucket
-          - name: source-to-release
-            resource: source-repo
+      workspaces:
+      - name: source
+        workspace: shared-data
     - name: unit-tests
       runAfter: [precheck]
       taskRef:
         name: golang-test
+      runAfter: [precheck]
       params:
         - name: package
           value: $(params.package)
         - name: flags
           value: -v -mod=vendor
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+      workspaces:
+      - name: source
+        workspace: shared-data
     - name: build
       runAfter: [precheck]
       taskRef:
@@ -81,10 +103,9 @@ spec:
           value: $(params.package)
         - name: flags
           value: -mod=vendor -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+      workspaces:
+      - name: source
+        workspace: shared-data
     - name: publish-images
       runAfter: [build, unit-tests]
       taskRef:
@@ -98,10 +119,11 @@ spec:
           value: $(params.imageRegistry)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
+      workspaces:
+      - name: source
+        workspace: shared-data
       resources:
         inputs:
-          - name: source
-            resource: source-repo
           - name: bucket
             resource: bucket
         outputs:
