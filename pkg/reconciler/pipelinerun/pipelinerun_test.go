@@ -572,7 +572,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			permanentError: true,
 			wantEvents: []string{
 				"Normal Started",
-				"Warning Failed invalid input params: missing values",
+				"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
 			},
 		}, {
 			name:           "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
