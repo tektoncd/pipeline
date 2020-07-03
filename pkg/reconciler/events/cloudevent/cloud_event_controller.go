@@ -137,7 +137,9 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		return err
 	}
 
+	wasIn := make(chan error)
 	go func() {
+		wasIn <- nil
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
 			recorder := controller.GetEventRecorder(ctx)
@@ -148,5 +150,5 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		}
 	}()
 
-	return nil
+	return <-wasIn
 }
