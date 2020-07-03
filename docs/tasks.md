@@ -526,10 +526,10 @@ Sidecars, just like `Steps`, can also run scripts:
 
 ```yaml
 sidecars:
-  image: busybox
-  name: hello-sidecar
-  script: |
-    echo 'Hello from sidecar!'
+  - image: busybox
+    name: hello-sidecar
+    script: |
+      echo 'Hello from sidecar!'
 ```
 **Note:** Tekton's current `Sidecar` implementation contains a bug.
 Tekton uses a container image named `nop` to terminate `Sidecars`.
