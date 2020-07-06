@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -193,6 +194,15 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 
 func (ac *reconciler) validate(ctx context.Context, req *admissionv1.AdmissionRequest) error {
 	logger := logging.FromContext(ctx)
+
+	if os.Getenv("ENABLE_CLUSTER_TASK_ACCESS_VALIDATION") != "true" {
+		logger.Debug("ENABLE_CLUSTER_TASK_ACCESS_VALIDATION != true so returning")
+		return nil
+	}
+	if os.Getenv("DISABLE_CLUSTER_TASK_ACCESS_VALIDATION") == "true" {
+		logger.Debug("DISABLE_CLUSTER_TASK_ACCESS_VALIDATION == true so returning")
+		return nil
+	}
 
 	kind := req.Kind
 	newBytes := req.Object.Raw

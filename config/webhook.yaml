@@ -61,11 +61,13 @@ spec:
         # and substituted here.
         image: ko://github.com/tektoncd/pipeline/cmd/webhook
         env:
+        - name: DISABLE_CLUSTER_TASK_ACCESS_VALIDATION
+          value: "true"
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        # If you are changing these names, you will also need to update
+          # If you are changing these names, you will also need to update
         # the webhook's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.
         - name: CONFIG_LOGGING_NAME
