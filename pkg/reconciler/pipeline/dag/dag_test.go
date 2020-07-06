@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func testGraph(t *testing.T) *dag.Graph {
@@ -74,69 +75,43 @@ func TestGetSchedulable(t *testing.T) {
 	tcs := []struct {
 		name          string
 		finished      []string
-		expectedTasks map[string]struct{}
+		expectedTasks sets.String
 	}{{
-		name:     "nothing-done",
-		finished: []string{},
-		expectedTasks: map[string]struct{}{
-			"a": {},
-			"b": {},
-		},
+		name:          "nothing-done",
+		finished:      []string{},
+		expectedTasks: sets.NewString("a", "b"),
 	}, {
-		name:     "a-done",
-		finished: []string{"a"},
-		expectedTasks: map[string]struct{}{
-			"b": {},
-			"x": {},
-		},
+		name:          "a-done",
+		finished:      []string{"a"},
+		expectedTasks: sets.NewString("b", "x"),
 	}, {
-		name:     "b-done",
-		finished: []string{"b"},
-		expectedTasks: map[string]struct{}{
-			"a": {},
-		},
+		name:          "b-done",
+		finished:      []string{"b"},
+		expectedTasks: sets.NewString("a"),
 	}, {
-		name:     "a-and-b-done",
-		finished: []string{"a", "b"},
-		expectedTasks: map[string]struct{}{
-			"x": {},
-		},
+		name:          "a-and-b-done",
+		finished:      []string{"a", "b"},
+		expectedTasks: sets.NewString("x"),
 	}, {
-		name:     "a-x-done",
-		finished: []string{"a", "x"},
-		expectedTasks: map[string]struct{}{
-			"b": {},
-			"y": {},
-			"z": {},
-		},
+		name:          "a-x-done",
+		finished:      []string{"a", "x"},
+		expectedTasks: sets.NewString("b", "y", "z"),
 	}, {
-		name:     "a-x-b-done",
-		finished: []string{"a", "x", "b"},
-		expectedTasks: map[string]struct{}{
-			"y": {},
-			"z": {},
-		},
+		name:          "a-x-b-done",
+		finished:      []string{"a", "x", "b"},
+		expectedTasks: sets.NewString("y", "z"),
 	}, {
-		name:     "a-x-y-done",
-		finished: []string{"a", "x", "y"},
-		expectedTasks: map[string]struct{}{
-			"b": {},
-			"z": {},
-		},
+		name:          "a-x-y-done",
+		finished:      []string{"a", "x", "y"},
+		expectedTasks: sets.NewString("b", "z"),
 	}, {
-		name:     "a-x-y-done",
-		finished: []string{"a", "x", "y"},
-		expectedTasks: map[string]struct{}{
-			"b": {},
-			"z": {},
-		},
+		name:          "a-x-y-done",
+		finished:      []string{"a", "x", "y"},
+		expectedTasks: sets.NewString("b", "z"),
 	}, {
-		name:     "a-x-y-b-done",
-		finished: []string{"a", "x", "y", "b"},
-		expectedTasks: map[string]struct{}{
-			"w": {},
-			"z": {},
-		},
+		name:          "a-x-y-b-done",
+		finished:      []string{"a", "x", "y", "b"},
+		expectedTasks: sets.NewString("w", "z"),
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

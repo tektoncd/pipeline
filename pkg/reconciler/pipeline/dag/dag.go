@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/list"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 type Task interface {
@@ -93,16 +94,16 @@ func Build(tasks Tasks) (*Graph, error) {
 // It returns tasks which have all dependecies marked as done, and thus can be scheduled. If the
 // specified doneTasks are invalid (i.e. if it is indicated that a Task is
 // done, but the previous Tasks are not done), an error is returned.
-func GetSchedulable(g *Graph, doneTasks ...string) (map[string]struct{}, error) {
+func GetSchedulable(g *Graph, doneTasks ...string) (sets.String, error) {
 	roots := getRoots(g)
-	tm := toMap(doneTasks...)
-	d := map[string]struct{}{}
+	tm := sets.NewString(doneTasks...)
+	d := sets.NewString()
 
-	visited := map[string]struct{}{}
+	visited := sets.NewString()
 	for _, root := range roots {
 		schedulable := findSchedulable(root, visited, tm)
 		for _, task := range schedulable {
-			d[task.HashKey()] = struct{}{}
+			d.Insert(task.HashKey())
 		}
 	}
 
@@ -113,7 +114,7 @@ func GetSchedulable(g *Graph, doneTasks ...string) (map[string]struct{}, error) 
 
 	notVisited := list.DiffLeft(doneTasks, visitedNames)
 	if len(notVisited) > 0 {
-		return map[string]struct{}{}, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
+		return nil, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
 	}
 
 	return d, nil
@@ -180,12 +181,12 @@ func getRoots(g *Graph) []*Node {
 	return n
 }
 
-func findSchedulable(n *Node, visited map[string]struct{}, doneTasks map[string]struct{}) []Task {
-	if _, ok := visited[n.Task.HashKey()]; ok {
+func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []Task {
+	if visited.Has(n.Task.HashKey()) {
 		return []Task{}
 	}
-	visited[n.Task.HashKey()] = struct{}{}
-	if _, ok := doneTasks[n.Task.HashKey()]; ok {
+	visited.Insert(n.Task.HashKey())
+	if doneTasks.Has(n.Task.HashKey()) {
 		schedulable := []Task{}
 		// This one is done! Take note of it and look at the next candidate
 		for _, next := range n.Next {
@@ -204,23 +205,15 @@ func findSchedulable(n *Node, visited map[string]struct{}, doneTasks map[string]
 	return []Task{}
 }
 
-func isSchedulable(doneTasks map[string]struct{}, prevs []*Node) bool {
+func isSchedulable(doneTasks sets.String, prevs []*Node) bool {
 	if len(prevs) == 0 {
 		return true
 	}
 	collected := []string{}
 	for _, n := range prevs {
-		if _, ok := doneTasks[n.Task.HashKey()]; ok {
+		if doneTasks.Has(n.Task.HashKey()) {
 			collected = append(collected, n.Task.HashKey())
 		}
 	}
 	return len(collected) == len(prevs)
-}
-
-func toMap(t ...string) map[string]struct{} {
-	m := map[string]struct{}{}
-	for _, s := range t {
-		m[s] = struct{}{}
-	}
-	return m
 }

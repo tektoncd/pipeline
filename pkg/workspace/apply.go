@@ -6,6 +6,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -75,7 +76,7 @@ func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding) (*v1beta1.TaskSpe
 	}
 
 	v := GetVolumes(wb)
-	addedVolumes := map[string]struct{}{}
+	addedVolumes := sets.NewString()
 
 	// Initialize StepTemplate if it hasn't been already
 	if ts.StepTemplate == nil {
@@ -98,9 +99,9 @@ func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding) (*v1beta1.TaskSpe
 		})
 
 		// Only add this volume if it hasn't already been added
-		if _, ok := addedVolumes[vv.Name]; !ok {
+		if !addedVolumes.Has(vv.Name) {
 			ts.Volumes = append(ts.Volumes, vv)
-			addedVolumes[vv.Name] = struct{}{}
+			addedVolumes.Insert(vv.Name)
 		}
 	}
 	return &ts, nil

@@ -18,11 +18,11 @@ package pod
 
 import (
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // workingDirInit returns a Container that should be run as an init
@@ -33,26 +33,19 @@ import (
 // are specified), this method returns nil, as no init container is necessary.
 func workingDirInit(shellImage string, stepContainers []corev1.Container) *corev1.Container {
 	// Gather all unique workingDirs.
-	workingDirs := map[string]struct{}{}
+	workingDirs := sets.NewString()
 	for _, step := range stepContainers {
 		if step.WorkingDir != "" {
-			workingDirs[step.WorkingDir] = struct{}{}
+			workingDirs.Insert(step.WorkingDir)
 		}
 	}
-	if len(workingDirs) == 0 {
+	if workingDirs.Len() == 0 {
 		return nil
 	}
 
-	// Sort unique workingDirs.
-	var orderedDirs []string
-	for wd := range workingDirs {
-		orderedDirs = append(orderedDirs, wd)
-	}
-	sort.Strings(orderedDirs)
-
 	// Clean and append each relative workingDir.
 	var relativeDirs []string
-	for _, wd := range orderedDirs {
+	for _, wd := range workingDirs.List() {
 		p := filepath.Clean(wd)
 		if !filepath.IsAbs(p) || strings.HasPrefix(p, "/workspace/") {
 			relativeDirs = append(relativeDirs, p)
