@@ -18,7 +18,6 @@ package taskrun
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -46,7 +45,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -406,17 +404,13 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
 	}
 	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		mergePatch := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"labels":      tr.ObjectMeta.Labels,
-				"annotations": tr.ObjectMeta.Annotations,
-			},
-		}
-		patch, err := json.Marshal(mergePatch)
-		if err != nil {
-			return nil, err
-		}
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Patch(tr.Name, types.MergePatchType, patch)
+		// Note that this uses Update vs. Patch because the former is significantly easier to test.
+		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
+		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
+		newTr = newTr.DeepCopy()
+		newTr.Labels = tr.Labels
+		newTr.Annotations = tr.Annotations
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(newTr)
 	}
 	return newTr, nil
 }
@@ -678,9 +672,9 @@ func updateStoppedSidecarStatus(ctx context.Context, pod *corev1.Pod, tr *v1beta
 	return nil
 }
 
-// apply VolumeClaimTemplates and return WorkspaceBindings were templates is translated to PersistentVolumeClaims
+// applyVolumeClaimTemplates and return WorkspaceBindings were templates is translated to PersistentVolumeClaims
 func applyVolumeClaimTemplates(workspaceBindings []v1beta1.WorkspaceBinding, owner metav1.OwnerReference) []v1beta1.WorkspaceBinding {
-	taskRunWorkspaceBindings := make([]v1beta1.WorkspaceBinding, 0)
+	taskRunWorkspaceBindings := make([]v1beta1.WorkspaceBinding, 0, len(workspaceBindings))
 	for _, wb := range workspaceBindings {
 		if wb.VolumeClaimTemplate == nil {
 			taskRunWorkspaceBindings = append(taskRunWorkspaceBindings, wb)
