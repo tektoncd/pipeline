@@ -40,6 +40,29 @@ FORCE:
 bin/%: cmd/% FORCE
 	$(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
+.PHONY: cross
+cross: amd64 arm arm64 s390x ppc64le ## build cross platform binaries
+
+.PHONY: amd64
+amd64:
+	GOOS=linux GOARCH=amd64 go build -mod=vendor $(LDFLAGS) ./cmd/...
+
+.PHONY: arm
+arm:
+	GOOS=linux GOARCH=arm go build -mod=vendor $(LDFLAGS) ./cmd/...
+
+.PHONY: arm64
+arm64:
+	GOOS=linux GOARCH=arm64 go build -mod=vendor $(LDFLAGS) ./cmd/...
+
+.PHONY: s390x
+s390x:
+	GOOS=linux GOARCH=s390x go build -mod=vendor $(LDFLAGS) ./cmd/...
+
+.PHONY: ppc64le
+ppc64le:
+	GOOS=linux GOARCH=ppc64le go build -mod=vendor $(LDFLAGS) ./cmd/...
+
 KO = $(BIN)/ko
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
@@ -173,6 +196,7 @@ fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
 .PHONY: clean
 clean: ; $(info $(M) cleaning…)	@ ## Cleanup everything
 	@rm -rf $(BIN)
+	@rm -rf bin
 	@rm -rf test/tests.* test/coverage.*
 
 .PHONY: help
