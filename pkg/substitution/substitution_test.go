@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/test/diff"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -32,7 +33,7 @@ func TestValidateVariables(t *testing.T) {
 		prefix       string
 		locationName string
 		path         string
-		vars         map[string]struct{}
+		vars         sets.String
 	}
 	for _, tc := range []struct {
 		name          string
@@ -45,9 +46,7 @@ func TestValidateVariables(t *testing.T) {
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-			},
+			vars:         sets.NewString("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -57,10 +56,7 @@ func TestValidateVariables(t *testing.T) {
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-				"foo": {},
-			},
+			vars:         sets.NewString("baz", "foo"),
 		},
 		expectedError: nil,
 	}, {
@@ -70,9 +66,7 @@ func TestValidateVariables(t *testing.T) {
 			prefix:       "something",
 			locationName: "step",
 			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-			},
+			vars:         sets.NewString("baz"),
 		},
 		expectedError: nil,
 	}, {
@@ -82,9 +76,7 @@ func TestValidateVariables(t *testing.T) {
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"foo": {},
-			},
+			vars:         sets.NewString("foo"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable in "--flag=$(inputs.params.baz)" for step somefield`,
@@ -97,9 +89,7 @@ func TestValidateVariables(t *testing.T) {
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"foo": {},
-			},
+			vars:         sets.NewString("foo"),
 		},
 		expectedError: &apis.FieldError{
 			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(input.params.foo)" for step somefield`,

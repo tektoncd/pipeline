@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -527,149 +528,112 @@ func TestGetNextTasks(t *testing.T) {
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
-		candidates   map[string]struct{}
+		candidates   sets.String
 		expectedNext []*ResolvedPipelineRunTask
 	}{{
 		name:         "no-tasks-started-no-candidates",
 		state:        noneStartedState,
-		candidates:   map[string]struct{}{},
+		candidates:   sets.NewString(),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "no-tasks-started-one-candidate",
-		state: noneStartedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-		},
+		name:         "no-tasks-started-one-candidate",
+		state:        noneStartedState,
+		candidates:   sets.NewString("mytask1"),
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[0]},
 	}, {
-		name:  "no-tasks-started-other-candidate",
-		state: noneStartedState,
-		candidates: map[string]struct{}{
-			"mytask2": {},
-		},
+		name:         "no-tasks-started-other-candidate",
+		state:        noneStartedState,
+		candidates:   sets.NewString("mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[1]},
 	}, {
-		name:  "no-tasks-started-both-candidates",
-		state: noneStartedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-			"mytask2": {},
-		},
+		name:         "no-tasks-started-both-candidates",
+		state:        noneStartedState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[0], noneStartedState[1]},
 	}, {
 		name:         "one-task-started-no-candidates",
 		state:        oneStartedState,
-		candidates:   map[string]struct{}{},
+		candidates:   sets.NewString(),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-started-one-candidate",
-		state: oneStartedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-		},
+		name:         "one-task-started-one-candidate",
+		state:        oneStartedState,
+		candidates:   sets.NewString("mytask1"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-started-other-candidate",
-		state: oneStartedState,
-		candidates: map[string]struct{}{
-			"mytask2": {},
-		},
+		name:         "one-task-started-other-candidate",
+		state:        oneStartedState,
+		candidates:   sets.NewString("mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneStartedState[1]},
 	}, {
-		name:  "one-task-started-both-candidates",
-		state: oneStartedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-			"mytask2": {},
-		},
+		name:         "one-task-started-both-candidates",
+		state:        oneStartedState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneStartedState[1]},
 	}, {
 		name:         "one-task-finished-no-candidates",
 		state:        oneFinishedState,
-		candidates:   map[string]struct{}{},
+		candidates:   sets.NewString(),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-finished-one-candidate",
-		state: oneFinishedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-		},
+		name:         "one-task-finished-one-candidate",
+		state:        oneFinishedState,
+		candidates:   sets.NewString("mytask1"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-finished-other-candidate",
-		state: oneFinishedState,
-		candidates: map[string]struct{}{
-			"mytask2": {},
-		},
+		name:         "one-task-finished-other-candidate",
+		state:        oneFinishedState,
+		candidates:   sets.NewString("mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneFinishedState[1]},
 	}, {
-		name:  "one-task-finished-both-candidate",
-		state: oneFinishedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-			"mytask2": {},
-		},
+		name:         "one-task-finished-both-candidate",
+		state:        oneFinishedState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneFinishedState[1]},
 	}, {
 		name:         "one-task-failed-no-candidates",
 		state:        oneFailedState,
-		candidates:   map[string]struct{}{},
+		candidates:   sets.NewString(),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-failed-one-candidate",
-		state: oneFailedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-		},
+		name:         "one-task-failed-one-candidate",
+		state:        oneFailedState,
+		candidates:   sets.NewString("mytask1"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-task-failed-other-candidate",
-		state: oneFailedState,
-		candidates: map[string]struct{}{
-			"mytask2": {},
-		},
+		name:         "one-task-failed-other-candidate",
+		state:        oneFailedState,
+		candidates:   sets.NewString("mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneFailedState[1]},
 	}, {
-		name:  "one-task-failed-both-candidates",
-		state: oneFailedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-			"mytask2": {},
-		},
+		name:         "one-task-failed-both-candidates",
+		state:        oneFailedState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneFailedState[1]},
 	}, {
 		name:         "all-finished-no-candidates",
 		state:        allFinishedState,
-		candidates:   map[string]struct{}{},
+		candidates:   sets.NewString(),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "all-finished-one-candidate",
-		state: allFinishedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-		},
+		name:         "all-finished-one-candidate",
+		state:        allFinishedState,
+		candidates:   sets.NewString("mytask1"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "all-finished-other-candidate",
-		state: allFinishedState,
-		candidates: map[string]struct{}{
-			"mytask2": {},
-		},
+		name:         "all-finished-other-candidate",
+		state:        allFinishedState,
+		candidates:   sets.NewString("mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "all-finished-both-candidates",
-		state: allFinishedState,
-		candidates: map[string]struct{}{
-			"mytask1": {},
-			"mytask2": {},
-		},
+		name:         "all-finished-both-candidates",
+		state:        allFinishedState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "one-cancelled-one-candidate",
-		state: taskCancelled,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "one-cancelled-one-candidate",
+		state:        taskCancelled,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}}
 	for _, tc := range tcs {
@@ -741,49 +705,37 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
-		candidates   map[string]struct{}
+		candidates   sets.String
 		expectedNext []*ResolvedPipelineRunTask
 	}{{
-		name:  "tasks-cancelled-no-candidates",
-		state: taskCancelledByStatusState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-cancelled-no-candidates",
+		state:        taskCancelledByStatusState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "tasks-cancelled-bySpec-no-candidates",
-		state: taskCancelledBySpecState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-cancelled-bySpec-no-candidates",
+		state:        taskCancelledBySpecState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "tasks-running-no-candidates",
-		state: taskRunningState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-running-no-candidates",
+		state:        taskRunningState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "tasks-succeeded-bySpec-no-candidates",
-		state: taskSucceededState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-succeeded-bySpec-no-candidates",
+		state:        taskSucceededState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "tasks-retried-no-candidates",
-		state: taskRetriedState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-retried-no-candidates",
+		state:        taskRetriedState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
-		name:  "tasks-retried-one-candidates",
-		state: taskExpectedState,
-		candidates: map[string]struct{}{
-			"mytask5": {},
-		},
+		name:         "tasks-retried-one-candidates",
+		state:        taskExpectedState,
+		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{taskExpectedState[0]},
 	}}
 

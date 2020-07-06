@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -28,11 +29,11 @@ const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
 
 const braceMatchingRegex = "(\\$(\\(%s.(?P<var>%s)\\)))"
 
-func ValidateVariable(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
-			if _, ok := vars[v]; !ok {
+			if !vars.Has(v) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("non-existent variable in %q for %s %s", value, locationName, name),
 					Paths:   []string{path + "." + name},
@@ -44,11 +45,11 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars map[s
 }
 
 // Verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
-func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
-			if _, ok := vars[v]; ok {
+			if vars.Has(v) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("variable type invalid in %q for %s %s", value, locationName, name),
 					Paths:   []string{path + "." + name},
@@ -60,12 +61,12 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 }
 
 // Verifies that variables matching the relevant string expressions are completely isolated if present.
-func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
+func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
-			if _, ok := vars[v]; ok {
+			if vars.Has(v) {
 				if len(value) != len(firstMatch) {
 					return &apis.FieldError{
 						Message: fmt.Sprintf("variable is not properly isolated in %q for %s %s", value, locationName, name),

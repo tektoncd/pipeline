@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -42,12 +43,12 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func validateDeclaredResources(ps *PipelineSpec) error {
-	encountered := map[string]struct{}{}
+	encountered := sets.NewString()
 	for _, r := range ps.Resources {
-		if _, ok := encountered[r.Name]; ok {
+		if encountered.Has(r.Name) {
 			return fmt.Errorf("resource with name %q appears more than once", r.Name)
 		}
-		encountered[r.Name] = struct{}{}
+		encountered.Insert(r.Name)
 	}
 	required := []string{}
 	for _, t := range ps.Tasks {
@@ -180,7 +181,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 
 func validatePipelineTasks(ctx context.Context, tasks []PipelineTask) *apis.FieldError {
 	// Names cannot be duplicated
-	taskNames := map[string]struct{}{}
+	taskNames := sets.NewString()
 	var err *apis.FieldError
 	for i, t := range tasks {
 		if err = validatePipelineTaskName(ctx, "spec.tasks", i, t, taskNames); err != nil {
@@ -190,7 +191,7 @@ func validatePipelineTasks(ctx context.Context, tasks []PipelineTask) *apis.Fiel
 	return nil
 }
 
-func validatePipelineTaskName(ctx context.Context, prefix string, i int, t PipelineTask, taskNames map[string]struct{}) *apis.FieldError {
+func validatePipelineTaskName(ctx context.Context, prefix string, i int, t PipelineTask, taskNames sets.String) *apis.FieldError {
 	if errs := validation.IsDNS1123Label(t.Name); len(errs) > 0 {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("invalid value %q", t.Name),
@@ -233,15 +234,15 @@ func validatePipelineTaskName(ctx context.Context, prefix string, i int, t Pipel
 
 func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) *apis.FieldError {
 	// Workspace names must be non-empty and unique.
-	wsTable := make(map[string]struct{})
+	wsTable := sets.NewString()
 	for i, ws := range wss {
 		if ws.Name == "" {
 			return apis.ErrInvalidValue(fmt.Sprintf("workspace %d has empty name", i), "spec.workspaces")
 		}
-		if _, ok := wsTable[ws.Name]; ok {
+		if wsTable.Has(ws.Name) {
 			return apis.ErrInvalidValue(fmt.Sprintf("workspace with name %q appears more than once", ws.Name), "spec.workspaces")
 		}
-		wsTable[ws.Name] = struct{}{}
+		wsTable.Insert(ws.Name)
 	}
 
 	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's
@@ -260,8 +261,8 @@ func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []Pipeli
 }
 
 func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) *apis.FieldError {
-	parameterNames := map[string]struct{}{}
-	arrayParameterNames := map[string]struct{}{}
+	parameterNames := sets.NewString()
+	arrayParameterNames := sets.NewString()
 
 	for _, p := range params {
 		// Verify that p is a valid type.
@@ -288,16 +289,16 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 		}
 
 		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
-		parameterNames[p.Name] = struct{}{}
+		parameterNames.Insert(p.Name)
 		if p.Type == ParamTypeArray {
-			arrayParameterNames[p.Name] = struct{}{}
+			arrayParameterNames.Insert(p.Name)
 		}
 	}
 
 	return validatePipelineVariables(tasks, "params", parameterNames, arrayParameterNames)
 }
 
-func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames map[string]struct{}, arrayParamNames map[string]struct{}) *apis.FieldError {
+func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String) *apis.FieldError {
 	for _, task := range tasks {
 		for _, param := range task.Params {
 			if param.Value.Type == ParamTypeString {
@@ -322,14 +323,14 @@ func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames m
 	return nil
 }
 
-func validatePipelineVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validatePipelineVariable(name, value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }
 
-func validatePipelineNoArrayReferenced(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validatePipelineNoArrayReferenced(name, value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariableProhibited(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }
 
-func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validatePipelineArraysIsolated(name, value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
 }

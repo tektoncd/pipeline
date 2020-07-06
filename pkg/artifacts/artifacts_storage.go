@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -131,10 +132,10 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1beta1.PipelineRun, 
 
 	needStorage := false
 	// Build an index of resources used in the pipeline that are an AllowedOutputResource
-	possibleOutputs := map[string]struct{}{}
+	possibleOutputs := sets.NewString()
 	for _, r := range ps.Resources {
 		if _, ok := v1beta1.AllowedOutputResources[r.Type]; ok {
-			possibleOutputs[r.Name] = struct{}{}
+			possibleOutputs.Insert(r.Name)
 		}
 	}
 
@@ -142,7 +143,7 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1beta1.PipelineRun, 
 	for _, t := range ps.Tasks {
 		if t.Resources != nil {
 			for _, o := range t.Resources.Outputs {
-				if _, ok := possibleOutputs[o.Resource]; ok {
+				if possibleOutputs.Has(o.Resource) {
 					needStorage = true
 				}
 			}

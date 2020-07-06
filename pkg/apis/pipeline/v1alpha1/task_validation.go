@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
@@ -146,59 +147,59 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
 func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
-	mountPaths := map[string]struct{}{}
+	mountPaths := sets.NewString()
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {
-			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+			mountPaths.Insert(filepath.Clean(vm.MountPath))
 		}
 	}
 	if stepTemplate != nil {
 		for _, vm := range stepTemplate.VolumeMounts {
-			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+			mountPaths.Insert(filepath.Clean(vm.MountPath))
 		}
 	}
 
-	wsNames := map[string]struct{}{}
+	wsNames := sets.NewString()
 	for _, w := range workspaces {
 		// Workspace names must be unique
-		if _, ok := wsNames[w.Name]; ok {
+		if wsNames.Has(w.Name) {
 			return &apis.FieldError{
 				Message: fmt.Sprintf("workspace name %q must be unique", w.Name),
 				Paths:   []string{"workspaces.name"},
 			}
 		}
-		wsNames[w.Name] = struct{}{}
+		wsNames.Insert(w.Name)
 		// Workspaces must not try to use mount paths that are already used
 		mountPath := filepath.Clean(w.GetMountPath())
-		if _, ok := mountPaths[mountPath]; ok {
+		if mountPaths.Has(mountPath) {
 			return &apis.FieldError{
 				Message: fmt.Sprintf("workspace mount path %q must be unique", mountPath),
 				Paths:   []string{"workspaces.mountpath"},
 			}
 		}
-		mountPaths[mountPath] = struct{}{}
+		mountPaths.Insert(mountPath)
 	}
 	return nil
 }
 
 func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Task must not have duplicate volume names.
-	vols := map[string]struct{}{}
+	vols := sets.NewString()
 	for _, v := range volumes {
-		if _, ok := vols[v.Name]; ok {
+		if vols.Has(v.Name) {
 			return &apis.FieldError{
 				Message: fmt.Sprintf("multiple volumes with same name %q", v.Name),
 				Paths:   []string{"name"},
 			}
 		}
-		vols[v.Name] = struct{}{}
+		vols.Insert(v.Name)
 	}
 	return nil
 }
 
 func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
-	names := map[string]struct{}{}
+	names := sets.NewString()
 	for idx, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
@@ -214,10 +215,10 @@ func validateSteps(steps []Step) *apis.FieldError {
 		}
 
 		if s.Name != "" {
-			if _, ok := names[s.Name]; ok {
+			if names.Has(s.Name) {
 				return apis.ErrInvalidValue(s.Name, "name")
 			}
-			names[s.Name] = struct{}{}
+			names.Insert(s.Name)
 		}
 
 		for _, vm := range s.VolumeMounts {
@@ -268,21 +269,21 @@ func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
 }
 
 func validateInputParameterVariables(steps []Step, inputs *Inputs, params []v1beta1.ParamSpec) *apis.FieldError {
-	parameterNames := map[string]struct{}{}
-	arrayParameterNames := map[string]struct{}{}
+	parameterNames := sets.NewString()
+	arrayParameterNames := sets.NewString()
 
 	for _, p := range params {
-		parameterNames[p.Name] = struct{}{}
+		parameterNames.Insert(p.Name)
 		if p.Type == ParamTypeArray {
-			arrayParameterNames[p.Name] = struct{}{}
+			arrayParameterNames.Insert(p.Name)
 		}
 	}
 	// Deprecated
 	if inputs != nil {
 		for _, p := range inputs.Params {
-			parameterNames[p.Name] = struct{}{}
+			parameterNames.Insert(p.Name)
 			if p.Type == ParamTypeArray {
-				arrayParameterNames[p.Name] = struct{}{}
+				arrayParameterNames.Insert(p.Name)
 			}
 		}
 	}
@@ -294,31 +295,31 @@ func validateInputParameterVariables(steps []Step, inputs *Inputs, params []v1be
 }
 
 func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs, resources *v1beta1.TaskResources) *apis.FieldError {
-	resourceNames := map[string]struct{}{}
+	resourceNames := sets.NewString()
 	if resources != nil {
 		for _, r := range resources.Inputs {
-			resourceNames[r.Name] = struct{}{}
+			resourceNames.Insert(r.Name)
 		}
 		for _, r := range resources.Outputs {
-			resourceNames[r.Name] = struct{}{}
+			resourceNames.Insert(r.Name)
 		}
 	}
 	// Deprecated
 	if inputs != nil {
 		for _, r := range inputs.Resources {
-			resourceNames[r.Name] = struct{}{}
+			resourceNames.Insert(r.Name)
 		}
 	}
 	// Deprecated
 	if outputs != nil {
 		for _, r := range outputs.Resources {
-			resourceNames[r.Name] = struct{}{}
+			resourceNames.Insert(r.Name)
 		}
 	}
 	return validateVariables(steps, "resources", resourceNames)
 }
 
-func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validateArrayUsage(steps []Step, prefix string, vars sets.String) *apis.FieldError {
 	for _, step := range steps {
 		if err := validateTaskNoArrayReferenced("name", step.Name, prefix, vars); err != nil {
 			return err
@@ -359,7 +360,7 @@ func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *
 	return nil
 }
 
-func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validateVariables(steps []Step, prefix string, vars sets.String) *apis.FieldError {
 	for _, step := range steps {
 		if err := validateTaskVariable("name", step.Name, prefix, vars); err != nil {
 			return err
@@ -400,25 +401,25 @@ func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *a
 	return nil
 }
 
-func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validateTaskVariable(name, value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariable(name, value, "(?:inputs|outputs)."+prefix, "step", "taskspec.steps", vars)
 }
 
-func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
+func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames sets.String) *apis.FieldError {
 	return substitution.ValidateVariableProhibited(name, value, "(?:inputs|outputs)."+prefix, "step", "taskspec.steps", arrayNames)
 }
 
-func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
+func validateTaskArraysIsolated(name, value, prefix string, arrayNames sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolated(name, value, "(?:inputs|outputs)."+prefix, "step", "taskspec.steps", arrayNames)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
-	encountered := map[string]struct{}{}
+	encountered := sets.NewString()
 	for _, r := range resources {
-		if _, ok := encountered[strings.ToLower(r.Name)]; ok {
+		if encountered.Has(strings.ToLower(r.Name)) {
 			return apis.ErrMultipleOneOf(path)
 		}
-		encountered[strings.ToLower(r.Name)] = struct{}{}
+		encountered.Insert(strings.ToLower(r.Name))
 	}
 	return nil
 }
