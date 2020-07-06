@@ -21,7 +21,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: devel
+    pipeline.tekton.dev/release: "devel"
 # The data is populated at install time.
 
 ---
@@ -33,7 +33,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: devel
+    pipeline.tekton.dev/release: "devel"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -54,7 +54,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: devel
+    pipeline.tekton.dev/release: "devel"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -75,7 +75,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: devel
+    pipeline.tekton.dev/release: "devel"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
