@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/run"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/injection"
@@ -74,5 +75,6 @@ func main() {
 	sharedmain.MainWithContext(injection.WithNamespaceScope(signals.NewContext(), *namespace), ControllerLogKey,
 		taskrun.NewController(*namespace, images),
 		pipelinerun.NewController(*namespace, images),
+		run.NewController,
 	)
 }
