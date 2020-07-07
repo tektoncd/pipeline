@@ -80,8 +80,9 @@ spec:
     description: The precise commit SHA that was fetched by this Task
   steps:
   - name: clone
-    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.11.0
+    image: ko://github.com/tektoncd/pipeline/cmd/git-init
     script: |
+      #!/bin/ash
       CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
       cleandir() {
         # Delete any existing contents of the repo directory if it exists.
@@ -167,9 +168,11 @@ spec:
       runAsUser: 0
   - name: write-digest
     workingDir: $(workspaces.source.path)
-    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter:v0.11.1
+    image: ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter
     # output of imagedigestexport [{"name":"image","digest":"sha256:eed29..660"}]
     command: ["/ko-app/imagedigestexporter"]
+    securityContext:
+      runAsUser: 0
     args:
     - -images=[{"name":"$(params.IMAGE)","type":"image","url":"$(params.IMAGE)","digest":"","OutputImageDir":"$(workspaces.source.path)/$(params.CONTEXT)/image-digest"}]
     - -terminationMessagePath=$(params.CONTEXT)/image-digested
