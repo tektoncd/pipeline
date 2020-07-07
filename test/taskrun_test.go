@@ -189,8 +189,31 @@ func TestTaskRunStatus(t *testing.T) {
 	}
 }
 
+func isClusterTaskAccessValidationEnabled(c *clients, t *testing.T) bool {
+	deployment, err := c.KubeClient.Kube.AppsV1().Deployments("tekton-pipelines").Get("tekton-pipelines-webhook", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("error accessing webhook deployment: %s", err.Error())
+		return false
+	}
+	for _, con := range deployment.Spec.Template.Spec.Containers {
+		for _, env := range con.Env {
+			if env.Name == "DISABLE_CLUSTER_TASK_ACCESS_VALIDATION" && env.Value != "false" {
+				return false
+			}
+			if env.Name == "ENABLE_CLUSTER_TASK_ACCESS_VALIDATION" && env.Value == "true" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func TestTaskRunClusterTaskWithPermissions(t *testing.T) {
 	c, namespace := setup(t)
+	if !isClusterTaskAccessValidationEnabled(c, t) {
+		t.Log("bypassing TestTaskRunClusterTaskWithPermissions; ClusterTask Access Validation disabled")
+		return
+	}
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
@@ -267,6 +290,10 @@ func TestTaskRunClusterTaskWithPermissions(t *testing.T) {
 
 func TestTaskRunClusterTaskWithoutPermissions(t *testing.T) {
 	c, namespace := setup(t)
+	if !isClusterTaskAccessValidationEnabled(c, t) {
+		t.Log("bypassing TestTaskRunClusterTaskWithoutPermissions; ClusterTask Access Validation disabled")
+		return
+	}
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
