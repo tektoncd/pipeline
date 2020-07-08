@@ -1,35 +1,45 @@
 <!--
 ---
-linkTitle: "Container Contracts"
+linkTitle: "Container Contract"
 weight: 8
 ---
 -->
 # Container Contract
 
-Each container image used as a step in a [`Task`](tasks.md) must comply with a
-specific contract.
+Each container image that executes a `Step` in a [`Task`](tasks.md) must
+comply with the container contract described in this document.
 
-## Entrypoint
+When a `Task` instantiates and runs containers that execute the `Steps` in the `Task`,
+each container's `entrypoint` is overwritten with a custom binary that ensures the
+containers within the `Task's` Pod are executed in the order specified in the `Task`
+definition. Because of this, we highly recommend that you always specify a `command` value.
+However, if you're using the [`script` field](tasks.md#running-scripts-within-steps) to
+embed a script within a `Step`, **do not** specify a `command` value. For example:
 
-When containers are run in a `Task`, the `entrypoint` of the container will be
-overwritten with a custom binary that ensures the containers within the `Task`
-pod are executed in the specified order. As such, it is always recommended to
-explicitly specify a command.
+```
+        - name: setup-comment
+          image: python:3-alpine
+          script: |
+            #!/usr/bin/env python
+            import json
+            (...)
+```
 
-When `command` is not explicitly set, the controller will attempt to lookup the
-entrypoint from the remote registry. If the image is a private registry, the
-service account should include an
-[ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account).
-The Tekton controller will use the `ImagePullSecret` of the service account, and
-if service account is empty, `default` is assumed. Next is falling back to
-docker config added in a `.docker/config.json` at `$HOME/.docker/config.json`.
-If none of these credentials are available the controller will try to lookup the
-image anonymously.
+If you do not specify a `command` value, the Pipelines controller performs a lookup for
+the `entrypoint` value in the associated remote container registry. If the image is in
+a private registry, you must include an [`ImagePullSecret`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
+value in the the service account definition used by the `Task`.
+The Pipelines controller uses this value unless the service account is not 
+defined, at which point it assumes the value of `default`.
 
-For example, in the following Task with the images,
-`gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`, the
-entrypoint would be resolved from the registry, resulting in the tasks running
-`gcloud` and `docker` respectively.
+The final fallback occurs to the Docker config specified in the `$HOME/.docker/config.json` file.
+If no credentials are specified in any of the locations described above, the Pipelines
+controller performs an anonymous lookup of the image.
+
+For example, consider the following `Task`, which uses two images named
+`gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`. In this example, the
+Pipelines controller retrieves the `entrypoint` value from the registry, which allows
+the `Task` to execute the `gcloud` and `docker` commmands, respectively.
 
 ```yaml
 spec:
@@ -40,7 +50,7 @@ spec:
       command: [docker]
 ```
 
-However, if the steps specified a custom `command`, that is what would be used.
+However, if you specify a custom `command` value, the controller uses that value instead:
 
 ```yaml
 spec:
@@ -52,7 +62,7 @@ spec:
         - echo "Hello!"
 ```
 
-You can also provide `args` to the image's `command`:
+You also have the option to specify `args` to go with your `command` value:
 
 ```yaml
 steps:
