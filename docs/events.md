@@ -4,63 +4,57 @@ linkTitle: "Events"
 weight: 2
 ---
 -->
-# Events
+# Events in Tekton
 
-Tekton runtime resources, specifically `TaskRuns` and `PipelineRuns`,
-emit events when they are executed, so that users can monitor their lifecycle
-and react to it.
+Tekton's task controller emits [Kubernetes events](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#event-v1-core)
+when `TaskRuns` and `PipelineRuns` execute. This allows you to monitor and react to what's happening during execution by
+retrieving those events using the `kubectl describe` command. Tekton can also emit [CloudEvents](https://github.com/cloudevents/spec).
 
-Tekton emits [kubernetes events](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#event-v1-core), that can be retrieve from the resource via `kubectl describe [resource]`.
-[Optionally](#CloudEvents) Tekton can emit [CloudEvents](https://github.com/cloudevents/spec) too.
+**Note:** `Conditions` [do not yet emit events](https://github.com/tektoncd/pipeline/issues/2461).
 
-No events are emitted for `Conditions` today (https://github.com/tektoncd/pipeline/issues/2461).
+## Events in `TaskRuns`
 
-## TaskRuns
+`TaskRuns` emit events for the following `Reasons`:
 
-`TaskRun` events are generated for the following `Reasons`:
+- `Started`: emitted the first time the `TaskRun` is picked by the
+  reconciler from its work queue, so it only happens if webhook validation was
+  successful. This event in itself does not indicate that a `Step` is executing;
+  the `Step` executes once the following conditions are satisfied:
+  - Validation of the `Task` and  its associated resources must succeed, and
+  - Checks for associated `Conditions` must succeed, and
+  - Scheduling of the associated `Pod` must succeed.
+- `Succeeded`: emitted once all steps in the `TaskRun` have executed successfully,
+   including post-steps injected by Tekton.
+- `Failed`: emitted if the `TaskRun` finishes running unsuccessfully because a `Step` failed,
+   or the `TaskRun` timed out or was cancelled. A `TaskRun` also emits `Failed` events
+   if it cannot execute at all due to failing validation.
 
-- `Started`: this is triggered the first time the `TaskRun` is picked by the
-  reconciler from its work queue, so it only happens if web-hook validation was
-  successful. Note that this event does not imply that a step started executing,
-  as several conditions must be met first:
-  - task and bound resource validation must be successful
-  - attached conditions must run successfully
-  - the `Pod` associated to the `TaskRun` must be successfully scheduled
-- `Succeeded`: this is triggered once all steps in the `TaskRun` are executed
-  successfully, including post-steps injected by Tekton.
-- `Failed`: this is triggered if the `TaskRun` is completed, but not successfully.
-  Causes of failure may be: one the steps failed, the `TaskRun` was cancelled or
-  the `TaskRun` timed out. `Failed` events are also triggered in case the `TaskRun`
-  cannot be executed at all because of validation issues.
+## Events in `PipelineRuns`
 
-## PipelineRuns
+`PipelineRuns` emit events for the following `Reasons`:
 
-`PipelineRun` events are generated for the following `Reasons`:
-
-- `Started`: this is triggered the first time the `PipelineRun` is picked by the
-  reconciler from its work queue, so it only happens if web-hook validation was
-  successful. Note that this event does not imply that a step started executing,
-  as pipeline, task and bound resource validation must be successful first.
-- `Running`: this is triggered when the `PipelineRun` passes validation and
-  actually starts running.
-- `Succeeded`: this is triggered once all `Tasks` reachable via the DAG are
+- `Started`: emitted the first time the `PipelineRun` is picked by the
+  reconciler from its work queue, so it only happens if webhook validation was
+  successful. This event in itself does not indicate that a `Step` is executing;
+  the `Step` executes once validation for the `Pipeline` as well as all associated `Tasks`
+  and `Resources` is successful.
+- `Running`: emitted when the `PipelineRun` passes validation and
+  actually begins execution.
+- `Succeeded`: emitted once all `Tasks` reachable via the DAG have
   executed successfully.
-- `Failed`: this is triggered if the `PipelineRun` is completed, but not
-  successfully. Causes of failure may be: one the `Tasks` failed or the
-  `PipelineRun` was cancelled or timed out. `Failed` events are also triggered
-  in case the `PipelineRun` cannot be executed at all because of validation issues.
+- `Failed`: emitted if the `PipelineRun` finishes running unsuccessfully because a `Task` failed or the
+  `PipelineRun` timed out or was cancelled. A `PipelineRun` also emits `Failed` events if it cannot
+  execute at all due to failing validation.
 
-# CloudEvents
+# Events via `CloudEvents`
 
-When a sink is [configured](./install.md#configuring-cloudevents-notifications), the following events
-will be generated by appropriate controller when a lifecycle event happens for  `TaskRun`.
+When you [configure a sink](install.md#configuring-cloudevents-notifications), Tekton emits
+events as described in the table below.
 
-The complete table of events:
-
-Reasource     |Event    |Event Type
-:-------------|:-------:|:----------------------------------------------------------
-TaskRun       | Started | dev.tekton.event.taskrun.started.v1
-TaskRun       | Running | dev.tekton.event.taskrun.runnning.v1
-TaskRun       | Condition Change while Running | dev.tekton.event.taskrun.unknown.v1
-TaskRun       | Succeed | dev.tekton.event.taskrun.successful.v1
-TaskRun       | Failed  | dev.tekton.event.taskrun.failed.v1
+Resource  |Event    |Event Type
+:---------|:-------:|:----------------------------------------------------------
+`TaskRun` | `Started` | `dev.tekton.event.taskrun.started.v1`
+`TaskRun` | `Running` | `dev.tekton.event.taskrun.runnning.v1`
+`TaskRun` | `Condition Change while Running` | `dev.tekton.event.taskrun.unknown.v1`
+`TaskRun` | `Succeed` | `dev.tekton.event.taskrun.successful.v1`
+`TaskRun` | `Failed` | `dev.tekton.event.taskrun.failed.v1`
