@@ -20,12 +20,20 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko resolve -f config/ \
+  if [ "$TEST_CLUSTER_TASK_ACCESS_VALIDATION" == "true" ] ; then
+    ko resolve -f config/ \
       | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
       | sed -e 's%DISABLE_CLUSTER_TASK_ACCESS_VALIDATION%ENABLE_CLUSTER_TASK_ACCESS_VALIDATION%' \
       | kubectl apply -f - || fail_test "Build pipeline installation failed"
+  else
+    ko resolve -f config/ \
+      | sed -e 's%"level": "info"%"level": "debug"%' \
+      | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
+      | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
+      | kubectl apply -f - || fail_test "Build pipeline installation failed"
+  fi
   verify_pipeline_installation
 }
 
