@@ -95,7 +95,7 @@ type Template struct {
 	SchedulerName string `json:"schedulerName"`
 
 	// ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
-	ImagePullSecrets []corev1.LocalObjectReference
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets"`
 
 	// HostNetwork specifies whether the pod may use the node network namespace
 	// +optional
