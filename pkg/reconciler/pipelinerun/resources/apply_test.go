@@ -452,12 +452,38 @@ func TestContext(t *testing.T) {
 					tb.PipelineTaskParam("first-task-first-param", "pipelineRunName-1"),
 				))),
 	}, {
+		description: "context pipelineRunNameNamespace replacement with defined pipelineRunNamepsace in spec",
+		pr:          tb.PipelineRun("pipelineRunName", tb.PipelineRunNamespace("prns")),
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.namespace)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "prns-1"),
+				))),
+	}, {
 		description: "context pipelineRunName replacement with no defined pipeline in spec",
 		pr:          &v1beta1.PipelineRun{},
 		original: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.name)-1"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "-1"),
+				))),
+	}, {
+		description: "context pipelineRunNamespace replacement with no defined pipelineRunNamespace in spec",
+		pr:          tb.PipelineRun("pipelineRunName"),
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.namespace)-1"),
 				))),
 		expected: tb.Pipeline("test-pipeline",
 			tb.PipelineSpec(

@@ -15,6 +15,7 @@ This page documents the variable substitions supported by `Tasks` and `Pipelines
 | `params.<param name>` | The value of the parameter at runtime. |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
+| `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipeline.name` | The name of this `Pipeline` . |
 
 
@@ -31,6 +32,7 @@ This page documents the variable substitions supported by `Tasks` and `Pipelines
 | `workspaces.<workspaceName>.volume` | The name of the volume populating the `Workspace`. |
 | `credentials.path` | The path to credentials injected from Secrets with matching annotations. |
 | `context.taskRun.name` | The name of the `TaskRun` that this `Task` is running in. |
+| `context.taskRun.namespace` | The namespace of the `TaskRun` that this `Task` is running in. |
 | `context.task.name` | The name of this `Task`. |
 
 ### `PipelineResource` variables available in a `Task`
