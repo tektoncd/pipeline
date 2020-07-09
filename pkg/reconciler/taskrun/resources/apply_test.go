@@ -839,7 +839,7 @@ func TestContext(t *testing.T) {
 			}},
 		},
 	}, {
-		description: "context taskRunName replacement with no defined taskRun in spec container",
+		description: "context taskRunName replacement with no defined taskRun name in spec container",
 		rtr: resources.ResolvedTaskResources{
 			TaskName: "Task1",
 		},
@@ -857,6 +857,55 @@ func TestContext(t *testing.T) {
 				Container: corev1.Container{
 					Name:  "ImageName",
 					Image: "-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskRun namespace replacement with no defined namepsace in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.namespace)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "-1",
+				},
+			}},
+		},
+	}, {
+		description: "context taskRun namespace replacement with defined namepsace in spec container",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrunName",
+				Namespace: "trNamespace",
+			},
+		},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.namespace)-1",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "trNamespace-1",
 				},
 			}},
 		},
