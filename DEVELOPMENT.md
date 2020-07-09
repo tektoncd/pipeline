@@ -41,7 +41,7 @@ At this point, you may find it useful to return to these `Tekton Pipeline` docs:
     Some of the terms here may make more sense!
 -   Install via
     [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-    or continue though [getting started for development](#getting-started)
+    or continue through [getting started for development](#getting-started)
 -   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
     Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
     they are run
