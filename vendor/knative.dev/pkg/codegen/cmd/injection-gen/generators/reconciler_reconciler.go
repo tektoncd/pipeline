@@ -318,6 +318,9 @@ func NewReconciler(ctx {{.contextContext|raw}}, logger *{{.zapSugaredLogger|raw}
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
 		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
+		}
 	}
 
 	return rec

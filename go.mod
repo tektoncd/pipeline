@@ -33,7 +33,7 @@ require (
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	k8s.io/code-generator v0.18.0
 	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
-	knative.dev/pkg v0.0.0-20200630170034-2c1a029eb97f
+	knative.dev/pkg v0.0.0-20200702222342-ea4d6e985ba0
 )
 
 // Knative deps (release-0.16)
