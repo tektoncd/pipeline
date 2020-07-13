@@ -164,6 +164,9 @@ func NewReconciler(ctx context.Context, logger *zap.SugaredLogger, client versio
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
 		}
+		if opts.SkipStatusUpdates {
+			rec.skipStatusUpdates = true
+		}
 	}
 
 	return rec
