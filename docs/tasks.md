@@ -48,7 +48,7 @@ A `Task` declaration includes the following elements:
 - [Resources](#specifying-resources)
 - [Steps](#defining-steps)
 - [Workspaces](#specifying-workspaces)
-- [Results](#storing-execution-results)
+- [Results](#emitting-results)
 
 ## Configuring a `Task`
 
@@ -71,7 +71,7 @@ A `Task` definition supports the following fields:
     - [`inputs`](#specifying-resources) - Specifies the resources ingested by the `Task`.
     - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
-  - [`results`](#emitting-results) - Specifies the file to which the `Tasks` writes its execution results.
+  - [`results`](#emitting-results) - Specifies the names under which `Tasks` write execution results.
   - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
   - [`stepTemplate`](#specifying-a-step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
   - [`sidecars`](#specifying-sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task`.
@@ -387,9 +387,22 @@ and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yam
 
 ### Emitting results
 
-Use the `results` field to specify one or more files in which the `Task` stores its execution results. These files are
-stored in the `/tekton/results` directory. This directory is created automatically at execution time if at least one file
-is specified in the `results` field. To specify a file, provide its `name` and `description`.
+A Task is able to emit string results that can be viewed by users and passed to other Tasks in a Pipeline. These
+results have a wide variety of potential uses. To highlight just a few examples from the Tekton Catalog: the
+[`git-clone` Task](https://github.com/tektoncd/catalog/blob/master/task/git-clone/0.1/git-clone.yaml) emits a
+cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/master/task/generate-build-id/0.1/generate-build-id.yaml)
+emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/master/task/kaniko/0.1)
+emits a container image digest as a result. In each case these results convey information for users to see when
+looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next.
+
+To define a `Task's` results, use the `results` field. Each `results` entry in the `Task's` YAML corresponds to a
+file that the `Task` should stores the result in. These files should be created by a `Task` in the
+`/tekton/results` directory. The directory itself is created automatically if the `Task` has
+a `results` field but it's the responsibility of the `Task` to generate its contents.
+
+It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
+verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
+precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
 
 In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
