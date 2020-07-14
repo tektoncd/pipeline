@@ -541,13 +541,13 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return nil, err
 	}
 
-	ts, err = resources.AddInputResource(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources, logger)
+	ts, err = resources.AddInputResource(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddOutputResources(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources, logger)
+	ts, err = resources.AddOutputResources(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err

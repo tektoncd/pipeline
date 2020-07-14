@@ -17,18 +17,17 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -48,7 +47,6 @@ var (
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
 	inputResourceInterfaces map[string]v1beta1.PipelineResourceInterface
-	logger                  *zap.SugaredLogger
 
 	gitInputs = []v1beta1.TaskResource{{
 		ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -107,7 +105,6 @@ var (
 )
 
 func setUp() {
-	logger, _ = logging.NewLogger("", "")
 
 	rs := []*resourcev1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -965,7 +962,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 			setUp()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			got, err := AddInputResource(context.Background(), fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun))
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -1201,7 +1198,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 			names.TestingSeed()
 			setUp()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			got, err := AddInputResource(context.Background(), fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun))
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -1424,20 +1421,20 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			fakekubeclient := fakek8s.NewSimpleClientset(
-				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "tekton-pipelines",
-						Name:      artifacts.GetBucketConfigName(),
-					},
-					Data: map[string]string{
-						artifacts.BucketLocationKey:              "gs://fake-bucket",
-						artifacts.BucketServiceAccountSecretName: "gcs-config",
-						artifacts.BucketServiceAccountSecretKey:  "my-key",
-					},
-				},
-			)
-			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			fakekubeclient := fakek8s.NewSimpleClientset()
+			bucketConfig, err := config.NewArtifactBucketFromMap(map[string]string{
+				config.BucketLocationKey:                 "gs://fake-bucket",
+				config.BucketServiceAccountSecretNameKey: "gcs-config",
+				config.BucketServiceAccountSecretKeyKey:  "my-key",
+			})
+			if err != nil {
+				t.Fatalf("Test: %q; Error setting up bucket config = %v", c.desc, err)
+			}
+			configs := config.Config{
+				ArtifactBucket: bucketConfig,
+			}
+			ctx := config.ToContext(context.Background(), &configs)
+			got, err := AddInputResource(ctx, fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun))
 			if err != nil {
 				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}

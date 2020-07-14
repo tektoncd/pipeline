@@ -17,72 +17,23 @@ limitations under the License.
 package artifacts
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
-	"github.com/tektoncd/pipeline/pkg/system"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/logging"
 )
-
-const (
-	// PVCSizeKey is the name of the configmap entry that specifies the size of the PVC to create
-	PVCSizeKey = "size"
-
-	// DefaultPVCSize is the default size of the PVC to create
-	DefaultPVCSize = "5Gi"
-
-	// PVCStorageClassNameKey is the name of the configmap entry that specifies the storage class of the PVC to create
-	PVCStorageClassNameKey = "storageClassName"
-
-	// BucketLocationKey is the name of the configmap entry that specifies
-	// loction of the bucket.
-	BucketLocationKey = "location"
-
-	// BucketServiceAccountSecretName is the name of the configmap entry that specifies
-	// the name of the secret that will provide the servie account with bucket access.
-	// This secret must  have a key called serviceaccount that will have a value with
-	// the service account with access to the bucket
-	BucketServiceAccountSecretName = "bucket.service.account.secret.name"
-
-	// BucketServiceAccountSecretKey is the name of the configmap entry that specifies
-	// the secret key that will have a value with the service account json with access
-	// to the bucket
-	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
-
-	// BucketServiceAccountFieldName is the name of the configmap entry that specifies
-	// the field name that should be used for the service account.
-	// Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG. Defaults to GOOGLE_APPLICATION_CREDENTIALS.
-	BucketServiceAccountFieldName = "bucket.service.account.field.name"
-)
-
-// GetBucketConfigName returns the name of the configmap containing all
-// customizations for the storage bucket.
-func GetBucketConfigName() string {
-	if e := os.Getenv("CONFIG_ARTIFACT_BUCKET_NAME"); e != "" {
-		return e
-	}
-	return "config-artifact-bucket"
-}
-
-// GetPVCConfigName returns the name of the configmap containing all
-// customizations for the storage PVC.
-func GetPVCConfigName() string {
-	if e := os.Getenv("CONFIG_ARTIFACT_PVC_NAME"); e != "" {
-		return e
-	}
-	return "config-artifact-pvc"
-}
 
 // ArtifactStorageInterface is an interface to define the steps to copy
 // an pipeline artifact to/from temporary storage
@@ -125,7 +76,7 @@ func (a *ArtifactStorageNone) StorageBasePath(pr *v1beta1.PipelineRun) string {
 
 // InitializeArtifactStorage will check if there is there is a
 // bucket configured, create a PVC or return nil if no storage is required.
-func InitializeArtifactStorage(images pipeline.Images, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
+func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, c kubernetes.Interface) (ArtifactStorageInterface, error) {
 	// Artifact storage is needed under the following condition:
 	//  Any Task in the pipeline contains an Output resource
 	//  AND that Output resource is one of the AllowedOutputResource types.
@@ -153,32 +104,23 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1beta1.PipelineRun, 
 		return &ArtifactStorageNone{}, nil
 	}
 
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetBucketConfigName(), metav1.GetOptions{})
-	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
-	if err != nil {
-		return nil, err
-	}
-	if shouldCreatePVC {
-		pvc, err := createPVC(pr, c)
+	if NeedsPVC(ctx) {
+		pvc, err := createPVC(ctx, pr, c)
 		if err != nil {
 			return nil, err
 		}
 		return &storage.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
 	}
 
-	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
+	return NewArtifactBucketFromConfig(ctx, images), nil
 }
 
 // CleanupArtifactStorage will delete the PipelineRun's artifact storage PVC if it exists. The PVC is created for using
 // an output workspace or artifacts from one Task to another Task. No other PVCs will be impacted by this cleanup.
-func CleanupArtifactStorage(pr *v1beta1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) error {
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetBucketConfigName(), metav1.GetOptions{})
-	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
-	if err != nil {
-		return err
-	}
-	if shouldCreatePVC {
-		err = deletePVC(pr, c)
+func CleanupArtifactStorage(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
+
+	if NeedsPVC(ctx) {
+		err := deletePVC(pr, c)
 		if err != nil {
 			return err
 		}
@@ -186,105 +128,61 @@ func CleanupArtifactStorage(pr *v1beta1.PipelineRun, c kubernetes.Interface, log
 	return nil
 }
 
-// ConfigMapNeedsPVC checks if the possibly-nil config map passed to it is configured to use a bucket for artifact storage,
+// NeedsPVC checks if the Tekton is is configured to use a bucket for artifact storage,
 // returning true if instead a PVC is needed.
-func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger) (bool, error) {
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, fmt.Errorf("couldn't determine if PVC was needed from config map: %w", err)
+func NeedsPVC(ctx context.Context) bool {
+	bucketConfig := config.FromContextOrDefaults(ctx).ArtifactBucket
+	if bucketConfig == nil {
+		return true
 	}
-	if configMap == nil {
-		return true, nil
+	if strings.TrimSpace(bucketConfig.Location) == "" {
+		logging.FromContext(ctx).Warnf("the configmap key %q is empty", config.BucketLocationKey)
+		return true
 	}
-	if configMap.Data == nil {
-		logger.Warn("the configmap has no data")
-		return true, nil
-	}
-	location, ok := configMap.Data[BucketLocationKey]
-	if !ok {
-		return true, nil
-	}
-	if strings.TrimSpace(location) == "" {
-		logger.Warnf("the configmap key %q is empty", BucketLocationKey)
-		return true, nil
-	}
-	return false, nil
+	return false
 }
 
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
-func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetBucketConfigName(), metav1.GetOptions{})
-	pvc, err := ConfigMapNeedsPVC(configMap, err, logger)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't determine if PVC was needed from config map: %w", err)
+func GetArtifactStorage(ctx context.Context, images pipeline.Images, prName string, c kubernetes.Interface) ArtifactStorageInterface {
+	if NeedsPVC(ctx) {
+		return &storage.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}
 	}
-	if pvc {
-		return &storage.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}, nil
-	}
-	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
+	return NewArtifactBucketFromConfig(ctx, images)
 }
 
-// NewArtifactBucketConfigFromConfigMap creates a Bucket from the supplied ConfigMap
-func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap *corev1.ConfigMap) (*storage.ArtifactBucket, error) {
-	return func(configMap *corev1.ConfigMap) (*storage.ArtifactBucket, error) {
-		c := &storage.ArtifactBucket{
-			ShellImage:  images.ShellImage,
-			GsutilImage: images.GsutilImage,
-		}
-
-		if configMap.Data == nil {
-			return c, nil
-		}
-		if location, ok := configMap.Data[BucketLocationKey]; !ok {
-			c.Location = ""
-		} else {
-			c.Location = location
-		}
-		sp := resourcev1alpha1.SecretParam{}
-		if secretName, ok := configMap.Data[BucketServiceAccountSecretName]; ok {
-			if secretKey, ok := configMap.Data[BucketServiceAccountSecretKey]; ok {
-				sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
-				if fieldName, ok := configMap.Data[BucketServiceAccountFieldName]; ok {
-					sp.FieldName = fieldName
-				}
-				sp.SecretName = secretName
-				sp.SecretKey = secretKey
-				c.Secrets = append(c.Secrets, sp)
-			}
-		}
-		return c, nil
+// NewArtifactBucketFromConfig creates a Bucket from the supplied ConfigMap
+func NewArtifactBucketFromConfig(ctx context.Context, images pipeline.Images) *storage.ArtifactBucket {
+	c := &storage.ArtifactBucket{
+		ShellImage:  images.ShellImage,
+		GsutilImage: images.GsutilImage,
 	}
+
+	bucketConfig := config.FromContextOrDefaults(ctx).ArtifactBucket
+	c.Location = bucketConfig.Location
+	sp := resourcev1alpha1.SecretParam{}
+	if bucketConfig.ServiceAccountSecretName != "" && bucketConfig.ServiceAccountSecretKey != "" {
+		sp.SecretName = bucketConfig.ServiceAccountSecretName
+		sp.SecretKey = bucketConfig.ServiceAccountSecretKey
+		sp.FieldName = bucketConfig.ServiceAccountFieldName
+		c.Secrets = append(c.Secrets, sp)
+	}
+	return c
 }
 
-func createPVC(pr *v1beta1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {
+func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {
 	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
-
-			configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(GetPVCConfigName(), metav1.GetOptions{})
-			if err != nil && !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to get PVC ConfigMap %s for %q due to error: %w", GetPVCConfigName(), pr.Name, err)
-			}
-			var pvcSizeStr string
-			var pvcStorageClassNameStr string
-			if configMap != nil {
-				pvcSizeStr = configMap.Data[PVCSizeKey]
-				pvcStorageClassNameStr = configMap.Data[PVCStorageClassNameKey]
-			}
-			if pvcSizeStr == "" {
-				pvcSizeStr = DefaultPVCSize
-			}
-			pvcSize, err := resource.ParseQuantity(pvcSizeStr)
+			pvcConfig := config.FromContextOrDefaults(ctx).ArtifactPVC
+			pvcSize, err := resource.ParseQuantity(pvcConfig.Size)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create Persistent Volume spec for %q due to error: %w", pr.Name, err)
+				return nil, err
 			}
 			var pvcStorageClassName *string
-			if pvcStorageClassNameStr == "" {
+			if pvcConfig.StorageClassName == "" {
 				pvcStorageClassName = nil
 			} else {
-				pvcStorageClassName = &pvcStorageClassNameStr
+				pvcStorageClassName = &pvcConfig.StorageClassName
 			}
 
 			pvcSpec := GetPVCSpec(pr, pvcSize, pvcStorageClassName)
