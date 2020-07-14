@@ -73,7 +73,12 @@ func (dc *sshGitConfig) Set(value string) error {
 	return nil
 }
 
+// Write puts dc's ssh entries into files in a .ssh directory, under
+// the given directory. If dc has no entries then nothing is written.
 func (dc *sshGitConfig) Write(directory string) error {
+	if len(dc.entries) == 0 {
+		return nil
+	}
 	sshDir := filepath.Join(directory, ".ssh")
 	if err := os.MkdirAll(sshDir, os.ModePerm); err != nil {
 		return err
