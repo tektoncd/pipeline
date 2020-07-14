@@ -279,3 +279,28 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Errorf("got: %v, wanted: %v", string(b), expected)
 	}
 }
+
+// TestNoAuthProvided confirms that providing zero secrets results in no docker
+// credential file being written to disk.
+func TestNoAuthProvided(t *testing.T) {
+	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	fooDir := credentials.VolumeName("foo")
+	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
+	}
+
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	AddFlags(fs)
+	err := fs.Parse([]string{})
+	if err != nil {
+		t.Fatalf("flag.CommandLine.Parse() = %v", err)
+	}
+	os.Setenv("HOME", credentials.VolumePath)
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+		t.Fatalf("Write() = %v", err)
+	}
+	_, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("expected does not exist error but received: %v", err)
+	}
+}
