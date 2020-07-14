@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
-	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -45,13 +45,13 @@ var (
 // 1. If resource has a targetpath that is used. Otherwise:
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
+	ctx context.Context,
 	kubeclient kubernetes.Interface,
 	images pipeline.Images,
 	taskName string,
 	taskSpec *v1beta1.TaskSpec,
 	taskRun *v1beta1.TaskRun,
 	outputResources map[string]v1beta1.PipelineResourceInterface,
-	logger *zap.SugaredLogger,
 ) (*v1beta1.TaskSpec, error) {
 	if taskSpec == nil || taskSpec.Resources == nil || taskSpec.Resources.Outputs == nil {
 		return taskSpec, nil
@@ -60,10 +60,8 @@ func AddOutputResources(
 	taskSpec = taskSpec.DeepCopy()
 
 	pvcName := taskRun.GetPipelineRunPVCName()
-	as, err := artifacts.GetArtifactStorage(images, pvcName, kubeclient, logger)
-	if err != nil {
-		return nil, err
-	}
+	as := artifacts.GetArtifactStorage(ctx, images, pvcName, kubeclient)
+
 	needsPvc := false
 	for _, output := range taskSpec.Resources.Outputs {
 		if taskRun.Spec.Resources == nil {

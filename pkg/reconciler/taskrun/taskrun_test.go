@@ -235,13 +235,19 @@ func getRunName(tr *v1beta1.TaskRun) string {
 }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var defaultsExists, featureFlagsExists bool
+	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
 		}
 		if cm.Name == config.GetFeatureFlagsConfigName() {
 			featureFlagsExists = true
+		}
+		if cm.Name == config.GetArtifactBucketConfigName() {
+			artifactBucketExists = true
+		}
+		if cm.Name == config.GetArtifactPVCConfigName() {
+			artifactPVCExists = true
 		}
 	}
 	if !defaultsExists {
@@ -253,6 +259,18 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !artifactBucketExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !artifactPVCExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.GetNamespace()},
 			Data:       map[string]string{},
 		})
 	}

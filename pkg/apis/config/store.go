@@ -27,8 +27,10 @@ type cfgKey struct{}
 // Config holds the collection of configurations that we attach to contexts.
 // +k8s:deepcopy-gen=false
 type Config struct {
-	Defaults     *Defaults
-	FeatureFlags *FeatureFlags
+	Defaults       *Defaults
+	FeatureFlags   *FeatureFlags
+	ArtifactBucket *ArtifactBucket
+	ArtifactPVC    *ArtifactPVC
 }
 
 // FromContext extracts a Config from the provided context.
@@ -48,9 +50,13 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	}
 	defaults, _ := NewDefaultsFromMap(map[string]string{})
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
+	artifactBucket, _ := NewArtifactBucketFromMap(map[string]string{})
+	artifactPVC, _ := NewArtifactPVCFromMap(map[string]string{})
 	return &Config{
-		Defaults:     defaults,
-		FeatureFlags: featureFlags,
+		Defaults:       defaults,
+		FeatureFlags:   featureFlags,
+		ArtifactBucket: artifactBucket,
+		ArtifactPVC:    artifactPVC,
 	}
 }
 
@@ -70,11 +76,13 @@ type Store struct {
 func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value interface{})) *Store {
 	store := &Store{
 		UntypedStore: configmap.NewUntypedStore(
-			"defaults/features",
+			"defaults/features/artifacts",
 			logger,
 			configmap.Constructors{
-				GetDefaultsConfigName():     NewDefaultsFromConfigMap,
-				GetFeatureFlagsConfigName(): NewFeatureFlagsFromConfigMap,
+				GetDefaultsConfigName():       NewDefaultsFromConfigMap,
+				GetFeatureFlagsConfigName():   NewFeatureFlagsFromConfigMap,
+				GetArtifactBucketConfigName(): NewArtifactBucketFromConfigMap,
+				GetArtifactPVCConfigName():    NewArtifactPVCFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -98,9 +106,19 @@ func (s *Store) Load() *Config {
 	if featureFlags == nil {
 		featureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
 	}
+	artifactBucket := s.UntypedLoad(GetArtifactBucketConfigName())
+	if artifactBucket == nil {
+		artifactBucket, _ = NewArtifactBucketFromMap(map[string]string{})
+	}
+	artifactPVC := s.UntypedLoad(GetArtifactPVCConfigName())
+	if artifactPVC == nil {
+		artifactPVC, _ = NewArtifactPVCFromMap(map[string]string{})
+	}
 
 	return &Config{
-		Defaults:     defaults.(*Defaults).DeepCopy(),
-		FeatureFlags: featureFlags.(*FeatureFlags).DeepCopy(),
+		Defaults:       defaults.(*Defaults).DeepCopy(),
+		FeatureFlags:   featureFlags.(*FeatureFlags).DeepCopy(),
+		ArtifactBucket: artifactBucket.(*ArtifactBucket).DeepCopy(),
+		ArtifactPVC:    artifactPVC.(*ArtifactPVC).DeepCopy(),
 	}
 }
