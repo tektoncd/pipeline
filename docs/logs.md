@@ -4,35 +4,33 @@ linkTitle: "Logs"
 weight: 9
 ---
 -->
-# Logs
+# Execution Logs
 
-Logs for [`PipelineRuns`](pipelineruns.md) and [`TaskRuns`](taskruns.md) are
-associated with the underlying pod.
+Tekton stores execution logs for [`TaskRuns`](taskruns.md) and [`PipelineRuns`](pipelineruns.md) within
+the Pod holding the containers that run the `Steps` for your `TaskRun` or `PipelineRun`.
 
-To access these logs currently you have a few options:
+You can get execution logs using one of the following methods:
 
-- [You can get the logs from the pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
-  e.g. using `kubectl`:
+- Get the logs [directly from the Pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods).
+  For example, you can use the `kubectl` as follows:
 
   ```bash
-  # Get the name of the pod from the instance of the TaskRun
+  # Get the Pod name from the TaskRun instance.
   kubectl get taskruns -o yaml | grep podName
 
-  # Or get the pod name from the PipelineRun
+  # Or, get the Pod name from the PipelineRun.
   kubectl get pipelineruns -o yaml | grep podName
 
-  # Use kubectl to access the logs for all containers in the pod
+  # Get the logs for all containers in the Pod.
   kubectl logs $POD_NAME --all-containers
 
-  # Or get the logs from a specific container in the pod
+  # Or, get the logs for a specific container in the Pod.
   kubectl logs $POD_NAME -c $CONTAINER_NAME
   kubectl logs $POD_NAME -c step-run-kubectl
   ```
 
-- You can use [the `tkn` cli tool](https://github.com/tektoncd/cli) to access
-  logs
-- You can use
-  [the dashboard web interface](https://github.com/tektoncd/dashboard) to access
-  logs
-- You can setup an external service to consume and display logs, for example
-  [Elasticsearch, Beats and Kibana](https://github.com/mgreau/tekton-pipelines-elastic-tutorials)
+- Get the logs using Tekton's [`tkn` CLI](https://github.com/tektoncd/cli).
+
+- Get the logs using [Tekton Dashboard](https://github.com/tektoncd/dashboard).
+
+- Configure an external service to consume and display the logs. For example, [ElasticSearch, Beats, and Kibana](https://github.com/mgreau/tekton-pipelines-elastic-tutorials).
