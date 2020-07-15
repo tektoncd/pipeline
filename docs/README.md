@@ -46,6 +46,10 @@ Tekton Pipelines defines the following entities:
     <td><code>PipelineResource</code></td>
     <td>Defines locations for inputs ingested and outputs produced by the steps in <code>Tasks</code>.</td>
   </tr>
+  <tr>
+    <td><Code>Run</code> (alpha)</td>
+    <td>Instantiates a Custom Task for execution when specific inputs.</td>
+  </tr>
 </table>
 
 ## Getting started
@@ -68,6 +72,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Viewing logs](logs.md)
 - [Pipelines metrics](metrics.md)
 - [Variable Substitutions](variables.md)
+- [Running a Custom Task (alpha)](runs.md)
 
 ## Contributing to Tekton Pipelines
 
