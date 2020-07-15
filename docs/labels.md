@@ -6,88 +6,108 @@ weight: 10
 -->
 # Labels
 
-In order to make it easier to identify objects that are all part of the same
-conceptual pipeline, custom
-[labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
-set on resources used by Tekton Pipelines are propagated from more general to
-more specific resources, and a few labels are automatically added to make it
-easier to identify relationships between those resources.
+Tekton allows you to use custom [Kubernetes Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
+to easily mark Tekton entities belonging to the same conceptual execution chain. Tekton also automatically adds select labels
+to more easily identify resource relationships. This document describes the label propagation scheme, automatic labeling, and
+provides usage examples.
 
 ---
 
-- [Propagation Details](#propagation-details)
-- [Automatically Added Labels](#automatically-added-labels)
-- [Examples](#examples)
+- [Label propagation](#label-propagation)
+- [Automatic labeling](#automatic-labeling)
+- [Usage examples](#usage-examples)
 
 ---
 
-## Propagation Details
+## Label propagation
 
-For `Pipelines` executed using a `PipelineRun`, labels are propagated
-automatically from `Pipelines` to `PipelineRuns` to `TaskRuns` and then to
-`Pods`. Additionally, labels from the `Tasks` referenced by `TaskRuns` are
-propagated to the corresponding `TaskRuns` and then to `Pods`.
+Labels propagate among Tekton entities as follows:
 
-For `TaskRuns` executed directly, not as part of a `Pipeline`, labels are
-propagated from the referenced `Task` (if one exists, see the
-[Specifying a `Task`](taskruns.md#specifying-a-task) section of the `TaskRun`
-documentation) to the corresponding `TaskRun` and then to the `Pod`.
+- For `Pipelines` instantiated using a `PipelineRun`, labels propagate
+automatically from `Pipelines` to `PipelineRuns` to `TaskRuns`, and then to
+the associated `Pods`.
 
-For `Conditions`, labels are propagated automatically to the corresponding `TaskRuns`
-and then to `Pods`.
+- Labels from `Tasks` referenced by `TaskRuns` within a `PipelineRun` propagate to the corresponding `TaskRuns`,
+and then to the associated `Pods`.
 
-## Automatically Added Labels
+- For standalone `TaskRuns` (that is, ones not executing as part of a `Pipeline`), labels
+propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
+the corresponding `TaskRun`, and then to the associated `Pod`.
 
-The following labels are added to resources automatically:
+- For `Conditions`, labels propagate to the corresponding `TaskRuns`, and then to the associated `Pods`.
 
-- `tekton.dev/pipeline` is added to `PipelineRuns` (and propagated to `TaskRuns`
-  and `Pods`), and contains the name of the `Pipeline` that the `PipelineRun`
-  references.
-- `tekton.dev/pipelineRun` is added to `TaskRuns` (and propagated to `TaskRuns`
-  and `Pods`) that are created automatically during the execution of a
-  `PipelineRun`, and contains the name of the `PipelineRun` that triggered the
-  creation of the `TaskRun`.
-- `tekton.dev/task` is added to `TaskRuns` (and propagated to `Pods`) that
-  reference an existing `Task` (see the
-  [Specifying a `Task`](taskruns.md#specifying-a-task) section of the `TaskRun`
-  documentation), and contains the name of the `Task` that the `TaskRun`
-  references.
-- `tekton.dev/clusterTask` is added to `TaskRuns` (and propagated to `Pods`) that
-  reference an existing `ClusterTask`and contains the name of the `ClusterTask` 
-  that the `TaskRun` references. For backwards compatibility, `TaskRuns` that
-  reference a `ClusterTask` will also receive `tekton.dev/task`.
-- `tekton.dev/taskRun` is added to `Pods`, and contains the name of the
-  `TaskRun` that created the `Pod`.
-- `app.kubernetes.io/instance` and `app.kubernetes.io/component` is added to 
-  Affinity Assistant `StatefulSets` and `Pods`. These are used for Pod Affinity for TaskRuns.
+## Automatic labeling
 
-## Examples
+Tekton automatically adds labels to Tekton entities as described in the following table.
 
-- [Finding Pods for a Specific PipelineRun](#finding-pods-for-a-specific-pipelinerun)
-- [Finding TaskRuns for a Specific Task](#finding-taskruns-for-a-specific-task)
+**Note:** `*.tekton.dev` labels are reserved for Tekton's internal use only. Do not add or remove them manually.
 
-### Finding Pods for a Specific PipelineRun
+<table >
+	<tbody>
+		<tr>
+			<td><b>Label</b></td>
+			<td><b>Added To</b></td>
+			<td><b>Propagates To</b></td>
+			<td><b>Contains</b></td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/pipeline</code></td>
+			<td><code>PipelineRuns</code></td>
+			<td><code>TaskRuns, Pods</code></td>
+			<td>Name of the <code>Pipeline</code> that the <code>PipelineRun</code> references.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/pipelineRun</code></td>
+			<td><code>TaskRuns</code> that are created automatically during the execution of a <code>PipelineRun</code>.</td>
+			<td><code>TaskRuns, Pods</code></td>
+			<td>Name of the <code>PipelineRun</code> that triggered the creation of the <code>TaskRun</code>.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/task</code></td>
+			<td><code>TaskRuns</code> that <a href="taskruns.md#specifying-the-target-task">reference an existing </code>Task</code></a>.</td>
+			<td><code>Pods</code></td>
+			<td>Name of the <code>Task</code> that the <code>TaskRun</code> references.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/clusterTask</code></td>
+			<td><code>TaskRuns</code> that reference an existing <code>ClusterTask</code>.</td>
+			<td><code>Pods</code></td>
+			<td>Name of the <code>ClusterTask</code> that the <code>TaskRun</code> references.</td>
+		</tr>
+		<tr>
+			<td><code>tekton.dev/taskRun</code></td>
+			<td><code>Pods</code></td>
+			<td>No propagation.</td>
+			<td>Name of the <code>TaskRun</code> that created the <code>Pod</code>.</td>
+		</tr>
+		<tr>
+			<td><code>app.kubernetes.io/instance</code>, <code>app.kubernetes.io/component</code></td>
+			<td><code>Pods</code>, <code>StatefulSets</code> (Affinity Assistant)</td>
+			<td>No propagation.</td>
+			<td><code>Pod</code> affinity values for <code>TaskRuns</code>.</td>
+		</tr>
+	</tbody>
+</table>
 
-To find all `Pods` created by a `PipelineRun` named test-pipelinerun, you could
-use the following command:
+**Note:** For backward compatibility, `TaskRuns` that reference a `ClusterTask` also get the `tekton.dev/task` label.
+
+## Usage examples
+
+Below are some examples of using labels:
+
+The following command finds all `Pods` created by a `PipelineRun` named `test-pipelinerun`:
 
 ```shell
 kubectl get pods --all-namespaces -l tekton.dev/pipelineRun=test-pipelinerun
 ```
 
-### Finding TaskRuns for a Specific Task
-
-To find all `TaskRuns` that reference a `Task` named test-task, you could use
-the following command:
+The following command finds all `TaskRuns` that reference a `Task` named `test-task`:
 
 ```shell
 kubectl get taskruns --all-namespaces -l tekton.dev/task=test-task
 ```
 
-### Finding TaskRuns for a Specific ClusterTask
-
-To find all `TaskRuns` that reference a `ClusterTask` named test-clustertask, you could use
-the following command:
+The following command finds all `TaskRuns` that reference a `ClusterTask` named `test-clustertask`:
 
 ```shell
 kubectl get taskruns --all-namespaces -l tekton.dev/clusterTask=test-clustertask
