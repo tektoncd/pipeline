@@ -125,7 +125,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		}
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-		if err == nil {
+		if err == nil && tr.Spec.ForceSidecarTermination == false {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
 			if err == nil {
 				// Check if any SidecarStatuses are still shown as Running after stopping
