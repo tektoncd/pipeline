@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -141,9 +142,31 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 	return true
 }
 
+func (t ResolvedPipelineRunTask) shouldContinueAfterSkip() bool {
+	trueMap := map[string]bool {"true": true, "yes": true, "y": true, "on": true}
+	if _, ok := trueMap[strings.ToLower(t.PipelineTask.ContinueAfterSkip)]; ok {
+		return true
+	}
+	return false
+} 
+
+func (t ResolvedPipelineRunTask) skipChildTask(state PipelineRunState, d *dag.Graph) bool {
+	stateMap := state.ToMap()
+	node := d.Nodes[t.PipelineTask.Name]
+	if isTaskInGraph(t.PipelineTask.Name, d) {
+		for _, p := range node.Prev {
+			if stateMap[p.Task.HashKey()].IsSkipped(state, d){
+				if !stateMap[p.Task.HashKey()].shouldContinueAfterSkip(){
+					return true
+				}
+			}
+		}
+	} 
+	return false
+}
 // IsSkipped returns true if a PipelineTask will not be run because
-// (1) its Condition Checks failed or
-// (2) one of the parent task's conditions failed or
+// (1) its Condition Checks evaluates to False or
+// (2) one of the parent task's conditions evaluates to False and continueAfterSkip is not set to True/Yes or
 // (3) Pipeline is in stopping state (one of the PipelineTasks failed)
 // Note that this means IsSkipped returns false if a conditionCheck is in progress
 func (t ResolvedPipelineRunTask) IsSkipped(state PipelineRunState, d *dag.Graph) bool {
@@ -164,17 +187,12 @@ func (t ResolvedPipelineRunTask) IsSkipped(state PipelineRunState, d *dag.Graph)
 		return true
 	}
 
-	stateMap := state.ToMap()
 	// Recursively look at parent tasks to see if they have been skipped,
 	// if any of the parents have been skipped, skip as well
-	node := d.Nodes[t.PipelineTask.Name]
-	if isTaskInGraph(t.PipelineTask.Name, d) {
-		for _, p := range node.Prev {
-			if stateMap[p.Task.HashKey()].IsSkipped(state, d) {
-				return true
-			}
-		}
+	if t.skipChildTask(state, d) {
+		return true
 	}
+
 	return false
 }
 

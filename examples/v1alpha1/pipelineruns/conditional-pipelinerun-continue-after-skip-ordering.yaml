@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: always-false
+spec:
+  check:
+    image: alpine
+    script: |
+      exit 1 
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: echo-expected
+spec:
+  steps:
+    - name: echo-expected
+      image: ubuntu
+      script: 'echo expected'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: echo-unexpected
+spec:
+  steps:
+    - name: echo-file-exists
+      image: ubuntu
+      script: 'echo UNEXPECTED!'
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: conditional-pipeline
+spec:
+  tasks:
+    - name: task-should-be-skipped # failed
+      conditions:
+        - conditionRef: always-false
+      continueAfterSkip: 'true' # allows executing dependent tasks
+      taskRef:
+        name: echo-unexpected
+    - name: task-should-execute # succeeded
+      taskRef:
+        name: echo-expected
+      runAfter: 
+        - task-should-be-skipped
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: conditional-pr-continue-after-skip-ordering
+spec:
+  pipelineRef:
+    name: conditional-pipeline
+  serviceAccountName: 'default'

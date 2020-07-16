@@ -891,6 +891,162 @@ func TestIsDone(t *testing.T) {
 	}
 }
 
+func TestShouldContinuteAfterSkip (t *testing.T) {
+	tcs := []struct {
+		name     string
+		taskName string
+		state    PipelineRunState
+		expected bool
+	}{{
+		name:     "tasks-parent-condition-false-should-continue-default",
+		taskName: "mytask7",
+		state: PipelineRunState{{
+			PipelineTask: &pts[6],
+		}},
+		expected: false,
+	}, {
+		name:     "tasks-parent-condition-false-should-continue-true",
+		taskName: "mytask10",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask10",
+				TaskRef: &v1beta1.TaskRef{Name: "taskWithConditionsWithContinueAfterSkip"},
+				Conditions: []v1beta1.PipelineTaskCondition{{
+					ConditionRef: "always-true",
+				}},
+				ContinueAfterSkip: "true",
+			},
+		}},
+		expected: true,
+    }, {
+		name:     "tasks-parent-condition-false-should-continue-yes",
+		taskName: "mytask10",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask10",
+				TaskRef: &v1beta1.TaskRef{Name: "taskWithConditionsWithContinueAfterSkip"},
+				Conditions: []v1beta1.PipelineTaskCondition{{
+					ConditionRef: "always-true",
+				}},
+				ContinueAfterSkip: "yes",
+			},
+		}},
+		expected: true,
+	}, {
+		name:     "tasks-parent-condition-false-should-continue-false",
+		taskName: "mytask10",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask10",
+				TaskRef: &v1beta1.TaskRef{Name: "taskWithConditionsWithContinueAfterSkip"},
+				Conditions: []v1beta1.PipelineTaskCondition{{
+					ConditionRef: "always-true",
+				}},
+				ContinueAfterSkip: "false",
+			},
+		}},
+		expected: false,
+    }, {
+		name:     "tasks-parent-condition-false-should-continue-no",
+		taskName: "mytask10",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask10",
+				TaskRef: &v1beta1.TaskRef{Name: "taskWithConditionsWithContinueAfterSkip"},
+				Conditions: []v1beta1.PipelineTaskCondition{{
+					ConditionRef: "always-true",
+				}},
+				ContinueAfterSkip: "no",
+			},
+		}},
+		expected: false,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			stateMap := tc.state.ToMap()
+			rprt := stateMap[tc.taskName]
+			if rprt == nil {
+				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
+			}
+			shouldContinueAfterSkip := rprt.shouldContinueAfterSkip()
+			if d := cmp.Diff(shouldContinueAfterSkip, tc.expected); d != "" {
+				t.Errorf("Didn't get expected shouldContinueAfterSkip %s from task %s", diff.PrintWantGot(d), tc.taskName)
+			}
+		})
+	}	
+
+}
+func TestSkipChildTask(t *testing.T) {
+	tcs := []struct {
+		name     string
+		taskName string
+		state    PipelineRunState
+		expected bool
+	}{{
+		name:     "tasks-parent-condition-failed-should-skip-child-task",
+		taskName: "mytask7",
+		state: PipelineRunState{{
+			PipelineTask: &pts[5],
+			TaskRunName:  "pipelinerun-conditionaltask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+			ResolvedConditionChecks: failedTaskConditionCheckState,
+		}, {
+			PipelineTask: &pts[6],
+		}},
+		expected: true,
+	}, {
+		name:     "tasks-parent-condition-failed-should-execute-child-task",
+		taskName: "mytask11",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "mytask10",
+				TaskRef: &v1beta1.TaskRef{Name: "taskWithConditionsWithContinueAfterSkip"},
+				Conditions: []v1beta1.PipelineTaskCondition{{
+					ConditionRef: "always-true",
+				}},
+				ContinueAfterSkip: "true",
+			},
+			TaskRunName:  "pipelinerun-conditionaltask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+			ResolvedConditionChecks: failedTaskConditionCheckState,
+		}, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask11",
+				TaskRef:  &v1beta1.TaskRef{Name: "taskWithOneParentWithContinueAfterSkip"},
+				RunAfter: []string{"mytask10"},
+			},
+		}},
+		expected: false,	
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			dag, err := DagFromState(tc.state)
+			if err != nil {
+				t.Fatalf("Could not get a dag from the TC state %#v: %v", tc.state, err)
+			}
+
+			stateMap := tc.state.ToMap()
+			rprt := stateMap[tc.taskName]
+			if rprt == nil {
+				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
+			}
+
+			skipChildTask := rprt.skipChildTask(tc.state, dag)
+			if d := cmp.Diff(skipChildTask, tc.expected); d != "" {
+				t.Errorf("Didn't get expected skipChildTask %s from task %s", diff.PrintWantGot(d), tc.taskName)
+			}
+		})
+	}	
+}
+
 func TestIsSkipped(t *testing.T) {
 
 	tcs := []struct {

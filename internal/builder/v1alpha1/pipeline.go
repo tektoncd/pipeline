@@ -306,6 +306,13 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 	}
 }
 
+// ContinueAfterSkip sets the boolean to determine whether dependent tasks will execute upon Condition failure
+func ContinueAfterSkip(continueAfterSkip string) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.ContinueAfterSkip = continueAfterSkip
+	}
+}
+
 // PipelineTaskWorkspaceBinding adds a workspace with the specified name, workspace and subpath on a PipelineTask.
 func PipelineTaskWorkspaceBinding(name, workspace, subPath string) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {

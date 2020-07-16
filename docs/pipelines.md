@@ -380,6 +380,33 @@ tasks:
       name: echo-hello
 ```
 
+When a `Condition` evaluates to `False`, to skip the guarded `Task` only and allow dependent `Tasks` to execute, use the 
+`continueAfterSkip` field and set it to `true` or `yes`. The `continueAfterSkip` field defaults to `false`, but to explicitly
+not execute dependent `Tasks`, set it to `false` or `no`. 
+
+In this example, `Task` `create-file` is executed, `Condition` `echo-when-file-missing` evaluates to `false` so `Task`
+`echo-when-file-missing` is skipped, but because `continueAfterSkip` is set to `true`, `Task` `echo-hello` is executed. 
+ 
+```yaml
+tasks: 
+  - name: create-file # executed
+    taskRef: create-readme-file 
+  - name: echo-when-file-missing  # skipped
+    when:
+      - name: file-missing
+        taskRef: 
+          name: file-missing
+    continueAfterSkip: `true`
+    taskRef:
+      name: echo-missing
+    runAfter:
+      - create-file
+  - name: echo-hello        # executed
+    taskRef: echo-hello
+    runAfter:
+    - echo-when-file-missing 
+```
+
 ### Configuring the failure timeout
 
 You can use the `Timeout` field in the `Task` spec within the `Pipeline` to set the timeout

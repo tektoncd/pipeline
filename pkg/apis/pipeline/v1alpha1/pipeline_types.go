@@ -121,6 +121,11 @@ type PipelineTask struct {
 	// +optional
 	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
 
+	// ContinueAfterSkip is a string that needs to be true for the dependent Tasks of a Task guarded by Conditions 
+	// to execute even when the Conditions evaluate to False and the Task is skipped
+	// +optional
+	ContinueAfterSkip string `json:"continueAfterSkip,omitempty"`
+
 	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
 	// +optional
 	Retries int `json:"retries,omitempty"`
@@ -134,6 +139,7 @@ type PipelineTask struct {
 	// outputs.
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
+
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
