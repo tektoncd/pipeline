@@ -121,13 +121,9 @@ This is required because while Tekton does set the $HOME environment variable
 to `/tekton/home` by default, `ssh` ignores that environment variable and only
 considers the user's home as that described in `/etc/passwd`.
 
-**Note:** The additional symlink is not required if you are using the
+**Note:** This additional symlink is not required if you are using the
 [`git-clone` catalog Task](https://github.com/tektoncd/catalog/tree/v1beta1/git)
 or Git PipelineResource.
-
-For an example of vanilla git commands using the SSH credentials described
-above, see the
-[authenticating-git-commands example](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
 
 ## Basic authentication (Git)
 
@@ -378,28 +374,6 @@ github.com only.
 Credential annotation keys must begin with `tekton.dev/docker-` or
 `tekton.dev/git-`, and the value describes the URL of the host with which to use
 the credential.
-
-## Using credentials as non-root user
-
-For a number of reasons you may need to use the credentials described in this
-doc in non-root contexts:
-
-- Your platform may randomize the user and/or groups that your containers run as.
-- The Steps of Tasks that you use may define a non-root `securityContext`.
-- Tasks themselves may specify non-root `securityContext`s applied to all `Steps`.
-
-Running as a non-root user has several effects that need to be accounted for
-when using the credentials mounted with the process described above:
-
-1. Certain credential types (SSH/git) require that the user have a valid home
-directory defined in `/etc/passwd`. Just having a random UID but no home directory
-will result in SSH erroring out.
-2. Credentials may need to be moved or symlinked from the `$HOME` directory that
-Tekton defines (`/tekton/home`) to the correct `home` directory for your user.
-This is true for SSH, which ignores the `$HOME` environment variable completely.
-
-For an example of using SSH credentials in a non-root `securityContext`, see the
-[authenticating-git-commands example](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
 
 ## Implementation details
 

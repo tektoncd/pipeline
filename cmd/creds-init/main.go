@@ -18,7 +18,6 @@ package main
 import (
 	"flag"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -38,7 +37,7 @@ func main() {
 
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
-		if err := c.Write(pipeline.CredsDir); err != nil {
+		if err := c.Write(); err != nil {
 			logger.Fatalf("Error initializing credentials: %v", err)
 		}
 	}
