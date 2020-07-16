@@ -46,7 +46,7 @@ aggregates them into their respective files in `$HOME`.
      ssh-privatekey: <base64 encoded>
      # This is non-standard, but its use is encouraged to make this more secure.
      # If it is not provided then the git server's public key will be requested
-     # with `ssh-keyscan` during credential initialization.
+     # when the repo is first fetched.
      known_hosts: <base64 encoded>
    ```
 
@@ -389,7 +389,7 @@ type: kubernetes.io/ssh-auth
 data:
   ssh-privatekey: <base64 encoded>
   # This is non-standard, but its use is encouraged to make this more secure.
-  # Omitting this results in the use of ssh-keyscan (see below).
+  # Omitting this results in the server's public key being blindly accepted.
   known_hosts: <base64 encoded>
 ```
 

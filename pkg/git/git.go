@@ -20,11 +20,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
+)
+
+const (
+	sshKnownHostsUserPath          = ".ssh/known_hosts"
+	sshMissingKnownHostsSSHCommand = "ssh -o StrictHostKeyChecking=accept-new"
 )
 
 func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) {
@@ -77,6 +83,18 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	trimmedURL := strings.TrimSpace(spec.URL)
 	if _, err := run(logger, "", "remote", "add", "origin", trimmedURL); err != nil {
 		return err
+	}
+
+	hasKnownHosts, err := userHasKnownHostsFile(logger)
+	if err != nil {
+		return fmt.Errorf("error checking for known_hosts file: %w", err)
+	}
+	if !hasKnownHosts {
+		if _, err := run(logger, "", "config", "--global", "core.sshCommand", sshMissingKnownHostsSSHCommand); err != nil {
+			err = fmt.Errorf("error disabling strict host key checking: %w", err)
+			logger.Warnf(err.Error())
+			return err
+		}
 	}
 	if _, err := run(logger, "", "config", "--global", "http.sslVerify", strconv.FormatBool(spec.SSLVerify)); err != nil {
 		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
@@ -208,4 +226,21 @@ func ensureHomeEnv(logger *zap.SugaredLogger) error {
 		}
 	}
 	return nil
+}
+
+func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
+	homepath, err := homedir.Dir()
+	if err != nil {
+		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
+		return false, err
+	}
+	f, err := os.Open(filepath.Join(homepath, sshKnownHostsUserPath))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	f.Close()
+	return true, nil
 }
