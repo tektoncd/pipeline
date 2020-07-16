@@ -63,9 +63,6 @@ type TaskRunSpec struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
-	// ForceSidecarTermination is a bool flag to toggle sidecar termination when all the steps in the task are completed.
-	// +optional
-	ForceSidecarTermination bool `json:"forceSidecarTermination,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

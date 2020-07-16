@@ -1523,6 +1523,8 @@ golang.org/x/tools v0.0.0-20200512131952-2bc93b1c0c88/go.mod h1:EkVYQZoAsY45+roY
 golang.org/x/tools v0.0.0-20200527183253-8e7acdbce89d/go.mod h1:EkVYQZoAsY45+roYkvgYkIh4xh/qjgUK9TdY2XT94GE=
 golang.org/x/tools v0.0.0-20200714190737-9048b464a08d h1:hYhnolbefSSt3WZp66sgmgnEOFv5PD6a5PIcnKJ8jdU=
 golang.org/x/tools v0.0.0-20200714190737-9048b464a08d/go.mod h1:njjCfa9FT2d7l9Bc6FUM5FLjQPp3cFF28FI3qnDFljA=
+golang.org/x/tools v0.0.0-20200715235423-130c9f19d3fe h1:q+DqTBqwpg3C8p5kTZ0WSLOmLxH57dKhWAieWmuFv7M=
+golang.org/x/tools v0.0.0-20200715235423-130c9f19d3fe/go.mod h1:njjCfa9FT2d7l9Bc6FUM5FLjQPp3cFF28FI3qnDFljA=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=
@@ -1717,6 +1719,8 @@ k8s.io/cli-runtime v0.17.3 h1:0ZlDdJgJBKsu77trRUynNiWsRuAvAVPBNaQfnt/1qtc=
 k8s.io/cli-runtime v0.17.3/go.mod h1:X7idckYphH4SZflgNpOOViSxetiMj6xI0viMAjM81TA=
 k8s.io/cli-runtime v0.18.5 h1:Wr2hTNFlrb9smNqTGCfJHd21F9j0rh3jzB8Pkn0h2RE=
 k8s.io/cli-runtime v0.18.5/go.mod h1:uS210tk6ngtwwIJctPLs4ul1r7XlrEtwh9dA1oB700A=
+k8s.io/cli-runtime v0.18.6 h1:I8BkH5NyqMQ4zqUBmpXJ1LxIqpCH88H/1edPkPVWzjQ=
+k8s.io/cli-runtime v0.18.6/go.mod h1:+G/WTNqHgUv636e5y7rhOQ7epUbRXnwmPnhOhD6t9uM=
 k8s.io/client-go v0.17.6 h1:W/JkbAcIZUPb9vENRTC75ymjQQO3qEJAZyYhOIEOifM=
 k8s.io/client-go v0.17.6/go.mod h1:tX5eAbQR/Kbqv+5R93rzHQoyRnPjjW2mm9i0lXnW218=
 k8s.io/cloud-provider v0.17.0/go.mod h1:Ze4c3w2C0bRsjkBUoHpFi+qWe3ob1wI2/7cUn+YQIDE=

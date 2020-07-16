@@ -107,7 +107,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		events.Emit(ctx, nil, afterCondition, tr)
 	}
-
 	// If the TaskRun is complete, run some post run fixtures when applicable
 	if tr.IsDone() {
 		logger.Infof("taskrun done : %s \n", tr.Name)
@@ -125,15 +124,20 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		}
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-		if err == nil && tr.Spec.ForceSidecarTermination == false {
-			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
-			if err == nil {
-				// Check if any SidecarStatuses are still shown as Running after stopping
-				// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
-				if podconvert.IsSidecarStatusRunning(tr) {
-					err = updateStoppedSidecarStatus(ctx, pod, tr, c)
+
+		if err == nil {
+			for _, sidecar := range tr.Spec.TaskSpec.Sidecars {
+				if sidecar.ForceTermination == false {
+					continue
+				}
+				err = podconvert.StopSidecar(c.Images.NopImage, c.KubeClientSet, *pod, sidecar.Name)
+				if err == nil {
+					if podconvert.IsSidecarStatusRunning(tr, sidecar.Name) {
+						err = updateStoppedSidecarStatus(sidecar.Name, pod, tr)
+					}
 				}
 			}
+
 		} else if k8serrors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -636,15 +640,15 @@ func getLabelSelector(tr *v1beta1.TaskRun) string {
 	return strings.Join(labels, ",")
 }
 
-// updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
+// updateStoppedSidecarStatus updates SidecarStatus for a particular sidecar that were
 // terminated by nop image
-func updateStoppedSidecarStatus(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun, c *Reconciler) error {
+func updateStoppedSidecarStatus(sidecarName string, pod *corev1.Pod, tr *v1beta1.TaskRun) error {
 	tr.Status.Sidecars = []v1beta1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
-		if !podconvert.IsContainerStep(s.Name) {
+		if s.Name == sidecarName {
 			var sidecarState corev1.ContainerState
 			if s.LastTerminationState.Terminated != nil {
-				// Sidecar has successfully by terminated by nop image
+				// Sidecar has been successfully terminated by nop image
 				lastTerminatedState := s.LastTerminationState.Terminated
 				sidecarState = corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{

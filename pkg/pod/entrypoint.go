@@ -180,9 +180,9 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	return nil
 }
 
-// StopSidecars updates sidecar containers in the Pod to a nop image, which
+// StopSidecar updates sidecar container in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+func StopSidecar(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod, sideCarContainerName string) error {
 	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
@@ -195,7 +195,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 			// An injected sidecar container might not have the
 			// "sidecar-" prefix, so we can't just look for that
 			// prefix.
-			if !IsContainerStep(s.Name) && s.State.Running != nil {
+			if s.Name == sideCarContainerName && s.State.Running != nil {
 				for j, c := range newPod.Spec.Containers {
 					if c.Name == s.Name && c.Image != nopImage {
 						updated = true
@@ -213,15 +213,14 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	return nil
 }
 
-// IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
+// IsSidecarStatusRunning determines if SidecarStatus for a particular sidecar on a TaskRun
 // is still running.
-func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
+func IsSidecarStatusRunning(tr *v1beta1.TaskRun, sidecarName string) bool {
 	for _, sidecar := range tr.Status.Sidecars {
-		if sidecar.Terminated == nil {
+		if sidecar.Name == sidecarName && sidecar.Terminated == nil {
 			return true
 		}
 	}
-
 	return false
 }
 
