@@ -37,16 +37,15 @@ var config basicDocker
 var dockerConfig string
 var dockerCfg string
 
-// AddFlags adds CLI flags that dockercreds supports to a given flag.FlagSet.
-func AddFlags(flagSet *flag.FlagSet) {
-	flags(flagSet)
-}
-
 func flags(fs *flag.FlagSet) {
 	config = basicDocker{make(map[string]entry)}
 	fs.Var(&config, "basic-docker", "List of secret=url pairs.")
 	fs.StringVar(&dockerConfig, "docker-config", "", "Docker config.json secret file.")
 	fs.StringVar(&dockerCfg, "docker-cfg", "", "Docker .dockercfg secret file.")
+}
+
+func init() {
+	flags(flag.CommandLine)
 }
 
 // As the flag is read, this status is populated.
@@ -149,8 +148,8 @@ func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	return flags
 }
 
-func (*basicDockerBuilder) Write(directory string) error {
-	dockerDir := filepath.Join(directory, ".docker")
+func (*basicDockerBuilder) Write() error {
+	dockerDir := filepath.Join(os.Getenv("HOME"), ".docker")
 	basicDocker := filepath.Join(dockerDir, "config.json")
 	if err := os.MkdirAll(dockerDir, os.ModePerm); err != nil {
 		return err

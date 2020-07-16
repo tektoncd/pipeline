@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -70,8 +71,8 @@ func (dc *basicGitConfig) Set(value string) error {
 	return nil
 }
 
-func (dc *basicGitConfig) Write(directory string) error {
-	gitConfigPath := filepath.Join(directory, ".gitconfig")
+func (dc *basicGitConfig) Write() error {
+	gitConfigPath := filepath.Join(os.Getenv("HOME"), ".gitconfig")
 	gitConfigs := []string{
 		"[credential]\n	helper = store\n",
 	}
@@ -84,7 +85,7 @@ func (dc *basicGitConfig) Write(directory string) error {
 		return err
 	}
 
-	gitCredentialsPath := filepath.Join(directory, ".git-credentials")
+	gitCredentialsPath := filepath.Join(os.Getenv("HOME"), ".git-credentials")
 	var gitCredentials []string
 	for _, k := range dc.order {
 		v := dc.entries[k]

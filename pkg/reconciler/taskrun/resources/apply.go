@@ -142,8 +142,8 @@ func ApplyTaskResults(spec *v1beta1.TaskSpec) *v1beta1.TaskSpec {
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }
 
-// ApplyCredentialsPath applies a substitution of the key $(credentials.path) with the path that credentials
-// from annotated secrets are written to.
+// ApplyCredentialsPath applies a substitution of the key $(credentials.path) with the path that the creds-init
+// helper will write its credentials to.
 func ApplyCredentialsPath(spec *v1beta1.TaskSpec, path string) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{
 		"credentials.path": path,

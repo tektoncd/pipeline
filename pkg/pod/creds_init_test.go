@@ -34,24 +34,33 @@ const (
 )
 
 func TestCredsInit(t *testing.T) {
+	volumeMounts := []corev1.VolumeMount{{
+		Name: "implicit-volume-mount",
+	}}
+	fooEnvVar := corev1.EnvVar{
+		Name:  "FOO",
+		Value: "bar",
+	}
+	credsInitHomeEnvVar := corev1.EnvVar{
+		Name:  "HOME",
+		Value: credsInitHomeDir,
+	}
 	customHomeEnvVar := corev1.EnvVar{
 		Name:  "HOME",
 		Value: "/users/home/my-test-user",
 	}
 
 	for _, c := range []struct {
-		desc             string
-		wantArgs         []string
-		wantVolumeMounts []corev1.VolumeMount
-		objs             []runtime.Object
-		envVars          []corev1.EnvVar
+		desc    string
+		want    *corev1.Container
+		objs    []runtime.Object
+		envVars []corev1.EnvVar
 	}{{
 		desc: "service account exists with no secrets; nothing to initialize",
 		objs: []runtime.Object{
 			&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace}},
 		},
-		wantArgs:         nil,
-		wantVolumeMounts: nil,
+		want: nil,
 	}, {
 		desc: "service account has no annotated secrets; nothing to initialize",
 		objs: []runtime.Object{
@@ -71,8 +80,7 @@ func TestCredsInit(t *testing.T) {
 				},
 			},
 		},
-		wantArgs:         nil,
-		wantVolumeMounts: nil,
+		want: nil,
 	}, {
 		desc: "service account has annotated secret and no HOME env var passed in; initialize creds in /tekton/creds",
 		objs: []runtime.Object{
@@ -100,17 +108,23 @@ func TestCredsInit(t *testing.T) {
 				},
 			},
 		},
-		envVars: []corev1.EnvVar{},
-		wantArgs: []string{
-			"-basic-docker=my-creds=https://docker.io",
-			"-basic-docker=my-creds=https://us.gcr.io",
-			"-basic-git=my-creds=github.com",
-			"-basic-git=my-creds=gitlab.com",
+		envVars: []corev1.EnvVar{fooEnvVar},
+		want: &corev1.Container{
+			Name:    "credential-initializer",
+			Image:   images.CredsImage,
+			Command: []string{"/ko-app/creds-init"},
+			Args: []string{
+				"-basic-docker=my-creds=https://docker.io",
+				"-basic-docker=my-creds=https://us.gcr.io",
+				"-basic-git=my-creds=github.com",
+				"-basic-git=my-creds=gitlab.com",
+			},
+			Env: []corev1.EnvVar{fooEnvVar, credsInitHomeEnvVar},
+			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
+				Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+				MountPath: "/tekton/creds-secrets/my-creds",
+			}),
 		},
-		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
-			MountPath: "/tekton/creds-secrets/my-creds",
-		}},
 	}, {
 		desc: "service account with secret and HOME env var passed in",
 		objs: []runtime.Object{
@@ -139,31 +153,34 @@ func TestCredsInit(t *testing.T) {
 			},
 		},
 		envVars: []corev1.EnvVar{customHomeEnvVar},
-		wantArgs: []string{
-			"-basic-docker=my-creds=https://docker.io",
-			"-basic-docker=my-creds=https://us.gcr.io",
-			"-basic-git=my-creds=github.com",
-			"-basic-git=my-creds=gitlab.com",
+		want: &corev1.Container{
+			Name:    "credential-initializer",
+			Image:   images.CredsImage,
+			Command: []string{"/ko-app/creds-init"},
+			Args: []string{
+				"-basic-docker=my-creds=https://docker.io",
+				"-basic-docker=my-creds=https://us.gcr.io",
+				"-basic-git=my-creds=github.com",
+				"-basic-git=my-creds=gitlab.com",
+			},
+			Env: []corev1.EnvVar{customHomeEnvVar},
+			VolumeMounts: append(volumeMounts, corev1.VolumeMount{
+				Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+				MountPath: "/tekton/creds-secrets/my-creds",
+			}),
 		},
-		wantVolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
-			MountPath: "/tekton/creds-secrets/my-creds",
-		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			args, volumes, volumeMounts, err := credsInit(serviceAccountName, namespace, kubeclient)
+			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, kubeclient, volumeMounts, c.envVars)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}
-			if len(args) == 0 && len(volumes) != 0 {
-				t.Fatalf("credsInit returned secret volumes but no arguments")
+			if got == nil && len(volumes) > 0 {
+				t.Errorf("Got nil creds-init container, with non-empty volumes: %v", volumes)
 			}
-			if d := cmp.Diff(c.wantArgs, args); d != "" {
-				t.Fatalf("Diff %s", diff.PrintWantGot(d))
-			}
-			if d := cmp.Diff(c.wantVolumeMounts, volumeMounts); d != "" {
+			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff %s", diff.PrintWantGot(d))
 			}
 		})

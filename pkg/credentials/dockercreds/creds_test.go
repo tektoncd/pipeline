@@ -45,7 +45,7 @@ func TestFlagHandling(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	AddFlags(fs)
+	flags(fs)
 	err := fs.Parse([]string{
 		"-basic-docker=foo=https://us.gcr.io",
 	})
@@ -54,7 +54,7 @@ func TestFlagHandling(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	if err := NewBuilder().Write(); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
@@ -94,7 +94,7 @@ func TestFlagHandlingTwice(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	AddFlags(fs)
+	flags(fs)
 	err := fs.Parse([]string{
 		"-basic-docker=foo=https://us.gcr.io",
 		"-basic-docker=bar=https://eu.gcr.io",
@@ -104,7 +104,7 @@ func TestFlagHandlingTwice(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	if err := NewBuilder().Write(); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 
@@ -253,7 +253,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	AddFlags(fs)
+	flags(fs)
 	err := fs.Parse([]string{
 		"-basic-docker=foo=https://us.gcr.io",
 		"-docker-config=bar",
@@ -264,7 +264,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	}
 
 	os.Setenv("HOME", credentials.VolumePath)
-	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+	if err := NewBuilder().Write(); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
 

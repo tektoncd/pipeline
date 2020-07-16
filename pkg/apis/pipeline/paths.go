@@ -23,6 +23,4 @@ const (
 	DefaultResultPath = "/tekton/results"
 	// HomeDir is the HOME directory of PipelineResources
 	HomeDir = "/tekton/home"
-	// CredsDir is the directory where credentials are placed to meet the creds-init contract
-	CredsDir = "/tekton/creds"
 )
