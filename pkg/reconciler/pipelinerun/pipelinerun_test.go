@@ -2373,7 +2373,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 		t.Errorf("expected one PVC created. %d was created", len(pvcNames))
 	}
 
-	expectedPVCName := fmt.Sprintf("%s-%s-%s", claimName, workspaceName, pipelineRunName)
+	expectedPVCName := fmt.Sprintf("%s-%s", claimName, "cab465d09a")
 	if pvcNames[0] != expectedPVCName {
 		t.Errorf("expected the created PVC to be named %s. It was named %s", expectedPVCName, pvcNames[0])
 	}
