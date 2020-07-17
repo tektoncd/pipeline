@@ -108,8 +108,6 @@ func readLayer(layer v1.Layer) (runtime.Object, error) {
 		return nil, fmt.Errorf("Could not read contents of image layer: %w", err)
 	}
 
-	runtime.NewScheme()
-
 	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(contents, nil, nil)
 	return obj, err
 }
