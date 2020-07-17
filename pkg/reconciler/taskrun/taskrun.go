@@ -53,11 +53,6 @@ import (
 	"knative.dev/pkg/tracker"
 )
 
-const (
-	// taskRunAgentName defines logging agent name for TaskRun Controller
-	taskRunAgentName = "taskrun-controller"
-)
-
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	KubeClientSet     kubernetes.Interface

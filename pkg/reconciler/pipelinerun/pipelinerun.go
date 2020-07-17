@@ -97,9 +97,6 @@ const (
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
 	ReasonCouldntCancel = "PipelineRunCouldntCancel"
-
-	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
-	pipelineRunAgentName = "pipeline-controller"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
