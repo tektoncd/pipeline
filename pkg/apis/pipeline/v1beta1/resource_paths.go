@@ -24,7 +24,7 @@ func InputResourcePath(r ResourceDeclaration) string {
 	return path("/workspace", r)
 }
 
-// OutputResourcePath returns the path to the output resouce in a Pod
+// OutputResourcePath returns the path to the output resource in a Pod
 func OutputResourcePath(r ResourceDeclaration) string {
 	return path("/workspace/output", r)
 }
