@@ -58,6 +58,7 @@ spec:
           - name: source-to-release
             resource: source-repo
     - name: unit-tests
+      runAfter: [precheck]
       taskRef:
         name: golang-test
       params:
