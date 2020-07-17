@@ -75,16 +75,16 @@ aggregates them into their respective files in `$HOME`.
 
 1. Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: TaskRun
-metadata:
-  name: build-push-task-run-2
-spec:
-  serviceAccountName: build-bot
-  taskRef:
-    name: build-push
-```
+   ```yaml
+   apiVersion: tekton.dev/v1beta1
+   kind: TaskRun
+   metadata:
+     name: build-push-task-run-2
+   spec:
+     serviceAccountName: build-bot
+     taskRef:
+       name: build-push
+   ```
 
 1. Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
@@ -239,16 +239,16 @@ credentials are then used to authenticate when retrieving any
 
 1. Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: TaskRun
-metadata:
-  name: build-push-task-run-2
-spec:
-  serviceAccountName: build-bot
-  taskRef:
-    name: build-push
-```
+   ```yaml
+   apiVersion: tekton.dev/v1beta1
+   kind: TaskRun
+   metadata:
+     name: build-push-task-run-2
+   spec:
+     serviceAccountName: build-bot
+     taskRef:
+       name: build-push
+   ```
 
 1. Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
@@ -408,7 +408,7 @@ For an example of using SSH credentials in a non-root `securityContext`, see the
 Given URLs, usernames, and passwords of the form: `https://url{n}.com`,
 `user{n}`, and `pass{n}`, generate the following for Docker:
 
-```json
+```
 === ~/.docker/config.json ===
 {
   "auths": {

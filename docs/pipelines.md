@@ -63,6 +63,8 @@ A `Pipeline` definition supports the following fields:
   - [`results`](#configuring-execution-results-at-the-pipeline-level) - Specifies the location to which
     the `Pipeline` emits its execution results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
+  - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks`
+    to be executed in parallel after all other tasks have completed.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
