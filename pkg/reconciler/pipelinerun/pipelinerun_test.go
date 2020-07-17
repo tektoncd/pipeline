@@ -32,7 +32,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -115,11 +114,6 @@ func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
 func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvents []string) error {
 	t.Helper()
 	return eventFromChannel(fr.Events, testName, wantEvents)
-}
-
-func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvents []string) error {
-	t.Helper()
-	return eventFromChannel(fce.Events, testName, wantEvents)
 }
 
 func eventFromChannel(c chan string, testName string, wantEvents []string) error {
