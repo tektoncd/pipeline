@@ -123,13 +123,20 @@ type Step struct {
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
+}
+
+// A sidecar has the same data structure as a Step, consisting of a Container, and optional Script.
+type Sidecar struct {
+	corev1.Container `json:",inline"`
+
+	// Script is the contents of an executable file to execute.
+	//
+	// If Script is not empty, the Step cannot have an Command or Args.
+	Script string `json:"script,omitempty"`
 	// ForceSidecarTermination is a bool flag to toggle sidecar termination when all the steps in the task are completed.
 	// +optional
 	ForceTermination bool `json:"forceTermination,omitempty"`
 }
-
-// A sidecar has the same data structure as a Step, consisting of a Container, and optional Script.
-type Sidecar = Step
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // TaskList contains a list of Task
