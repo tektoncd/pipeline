@@ -82,6 +82,7 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 1001
         ports:
         - name: metrics
           containerPort: 9090

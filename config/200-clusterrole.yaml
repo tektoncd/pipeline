@@ -39,10 +39,6 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "pipelineresources/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["policy"]
-    resources: ["podsecuritypolicies"]
-    resourceNames: ["tekton-pipelines"]
-    verbs: ["use"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

@@ -105,6 +105,9 @@ spec:
           value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 1001
       volumes:
         - name: config-logging
           configMap:
