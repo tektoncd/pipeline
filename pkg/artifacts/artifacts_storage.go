@@ -178,6 +178,12 @@ func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 			if err != nil {
 				return nil, err
 			}
+
+			// The storage class name on pod spec has three states. Tekton doesn't support the empty-string case.
+			// - nil if we don't care
+			// - "" if we explicitly want to have no class names
+			// - "$name" if we want a specific name
+			// https://kubernetes.io/docs/concepts/storage/persistent-volumes/#class-1
 			var pvcStorageClassName *string
 			if pvcConfig.StorageClassName == "" {
 				pvcStorageClassName = nil
