@@ -71,6 +71,14 @@ func main() {
 				Name: imageResource.Name,
 			},
 		})
+		output = append(output, v1beta1.PipelineResourceResult{
+			Key:          "url",
+			Value:        imageResource.URL,
+			ResourceName: imageResource.Name,
+			ResourceRef: v1beta1.PipelineResourceRef{
+				Name: imageResource.Name,
+			},
+		})
 
 	}
 

@@ -67,6 +67,14 @@ func main() {
 			},
 			ResourceName: resourceName,
 		},
+		{
+			Key:   "url",
+			Value: fetchSpec.URL,
+			ResourceRef: v1beta1.PipelineResourceRef{
+				Name: resourceName,
+			},
+			ResourceName: resourceName,
+		},
 	}
 
 	if err := termination.WriteMessage(terminationMessagePath, output); err != nil {

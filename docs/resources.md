@@ -656,7 +656,7 @@ If no value is specified for `targetPath`, it will default to
 _Please check the builder tool used on how to pass this path to create the
 output file._
 
-The `taskRun` will include the image digest in the `resourcesResult` field that
+The `taskRun` will include the image digest and URL in the `resourcesResult` field that
 is part of the `taskRun.Status`
 
 for example:
