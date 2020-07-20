@@ -89,12 +89,15 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 	digest := ""
 	commit := ""
+	url := ""
 	for _, rr := range tr.Status.ResourcesResult {
 		switch rr.Key {
 		case "digest":
 			digest = rr.Value
 		case "commit":
 			commit = rr.Value
+		case "url":
+			url = rr.Value
 		}
 		// Every resource should have a ref with a name
 		if rr.ResourceRef.Name == "" {
@@ -106,6 +109,9 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 	if commit == "" {
 		t.Errorf("Commit not found in TaskRun.Status: %v", tr.Status)
+	}
+	if url == "" {
+		t.Errorf("Url not found in TaskRun.Status: %v", tr.Status)
 	}
 
 	if revision != commit {
