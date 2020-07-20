@@ -4,6 +4,7 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+  - deadcode
   - errcheck
   - gofmt
   - goimports

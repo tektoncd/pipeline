@@ -53,8 +53,8 @@ A `TaskRun` definition supports the following fields:
     object that provides custom credentials for executing the `TaskRun`.
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Task`.
   - [`resources`](#specifying-resources) - Specifies the desired `PipelineResource` values.
-    -[`inputs`](#specifying-resources) - Specifies the input resources.
-    -[`outputs`](#specifying-resources) - Specifies the output resources.
+    - [`inputs`](#specifying-resources) - Specifies the input resources.
+    - [`outputs`](#specifying-resources) - Specifies the output resources.
   - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before the `TaskRun` fails.
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](podtemplates.md) to use as
     the starting point for configuring the `Pods` for the `Task`.

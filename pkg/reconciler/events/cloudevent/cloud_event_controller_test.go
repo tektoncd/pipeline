@@ -29,7 +29,6 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/diff"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -425,14 +424,6 @@ func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bo
 		ctx = WithClient(ctx, &behaviour)
 	}
 	return ctx
-}
-
-func testLogger(t *testing.T) *zap.SugaredLogger {
-	logger, err := zap.NewDevelopment(zap.AddCaller())
-	if err != nil {
-		t.Fatalf("failed to create logger: %s", err)
-	}
-	return logger.Sugar().Named(t.Name())
 }
 
 func eventFromChannel(c chan string, testName string, wantEvent string) error {

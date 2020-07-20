@@ -101,12 +101,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
-		trs.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  v1beta1.TaskRunReasonRunning.String(),
-			Message: "Not all Steps in the Task have finished executing",
-		})
+		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	}
 
 	trs.PodName = pod.Name
@@ -190,19 +185,9 @@ func removeStartInfoFromTerminationMessage(s corev1.ContainerStatus) (string, *m
 func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(pod)
-		trs.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonFailed.String(),
-			Message: msg,
-		})
+		MarkStatusFailure(trs, msg)
 	} else {
-		trs.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionTrue,
-			Reason:  v1beta1.TaskRunReasonSuccessful.String(),
-			Message: "All Steps have completed executing",
-		})
+		MarkStatusSuccess(trs)
 	}
 
 	// update tr completed time
@@ -212,12 +197,7 @@ func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 func updateIncompleteTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
-		trs.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  v1beta1.TaskRunReasonRunning.String(),
-			Message: "Not all Steps in the Task have finished executing",
-		})
+		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	case corev1.PodPending:
 		var reason, msg string
 		switch {
@@ -231,12 +211,7 @@ func updateIncompleteTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 			reason = ReasonPending
 			msg = getWaitingMessage(pod)
 		}
-		trs.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  reason,
-			Message: msg,
-		})
+		MarkStatusRunning(trs, reason, msg)
 	}
 }
 
@@ -363,6 +338,36 @@ func getWaitingMessage(pod *corev1.Pod) string {
 
 	// Lastly fall back on a generic pending message.
 	return "Pending"
+}
+
+// MarkStatusRunning sets taskrun status to running
+func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  reason,
+		Message: message,
+	})
+}
+
+// MarkStatusFailure sets taskrun status to failure
+func MarkStatusFailure(trs *v1beta1.TaskRunStatus, message string) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  v1beta1.TaskRunReasonFailed.String(),
+		Message: message,
+	})
+}
+
+// MarkStatusSuccess sets taskrun status to success
+func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  v1beta1.TaskRunReasonSuccessful.String(),
+		Message: "All Steps have completed executing",
+	})
 }
 
 // sortTaskRunStepOrder sorts the StepStates in the same order as the original

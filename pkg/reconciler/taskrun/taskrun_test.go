@@ -218,12 +218,6 @@ var (
 			},
 		},
 	}
-	credsVolume = corev1.Volume{
-		Name: "tekton-creds-init-home",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory},
-		},
-	}
 
 	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
