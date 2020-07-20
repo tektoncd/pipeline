@@ -9,8 +9,3 @@ baseImageOverrides:
 
   # Our entrypoint image does not need root, it simply needs to be able to 'cp' the binary into a shared location.
   github.com/tektoncd/pipeline/cmd/entrypoint: gcr.io/distroless/base:debug-nonroot
-baseBuildOverrides:
-  github.com/tektoncd/pipeline/cmd/controller:
-    flags:
-    - name: ldflags
-      value: "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=devel"
