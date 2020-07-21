@@ -538,7 +538,13 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Apply creds-init path substitutions.
 	ts = resources.ApplyCredentialsPath(ts, pipeline.CredsDir)
 
-	pod, err := podconvert.MakePod(ctx, c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache, shouldOverrideHomeEnv)
+	podbuilder := podconvert.Builder{
+		Images:          c.Images,
+		KubeClient:      c.KubeClientSet,
+		EntrypointCache: c.entrypointCache,
+		OverrideHomeEnv: shouldOverrideHomeEnv,
+	}
+	pod, err := podbuilder.Build(ctx, tr, *ts)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

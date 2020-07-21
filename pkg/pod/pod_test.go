@@ -55,7 +55,7 @@ var (
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 )
 
-func TestMakePod(t *testing.T) {
+func TestPodBuild(t *testing.T) {
 	implicitEnvVars := []corev1.EnvVar{{
 		Name:  "HOME",
 		Value: homeDir,
@@ -1142,9 +1142,15 @@ script-heredoc-randomly-generated-78c5n
 			// No entrypoints should be looked up.
 			entrypointCache := fakeCache{}
 
-			got, err := MakePod(store.ToContext(context.Background()), images, tr, c.ts, kubeclient, entrypointCache, true)
+			builder := Builder{
+				Images:          images,
+				KubeClient:      kubeclient,
+				EntrypointCache: entrypointCache,
+				OverrideHomeEnv: true,
+			}
+			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
 			if err != nil {
-				t.Fatalf("MakePod: %v", err)
+				t.Fatalf("builder.Build: %v", err)
 			}
 
 			if !strings.HasPrefix(got.Name, "taskrun-name-pod-") {
