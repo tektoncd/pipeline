@@ -19,8 +19,8 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
@@ -106,9 +106,9 @@ func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger,
 	// If the destination Directory is provided, kubeconfig will be written to the given directory.
 	// otherwise it will use default location i.e. "/workspace/<cluster-name>/
 	if *destinationDir != "" {
-		destinationFile = fmt.Sprintf("%s/kubeconfig", *destinationDir)
+		destinationFile = filepath.Join(*destinationDir, "kubeconfig")
 	} else {
-		destinationFile = fmt.Sprintf("/workspace/%s/kubeconfig", resource.Name)
+		destinationFile = filepath.Join("/workspace", resource.Name, "kubeconfig")
 	}
 
 	if err := clientcmd.WriteToFile(*c, destinationFile); err != nil {
