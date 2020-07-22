@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -330,6 +329,19 @@ func TestStopSidecars(t *testing.T) {
 		Image: nopImage,
 	}
 
+	// This is a container that doesn't start with the "sidecar-" prefix,
+	// which indicates it was injected into the Pod by a Mutating Webhook
+	// Admission Controller. Injected sidecars should also be stopped if
+	// they're running.
+	injectedSidecar := corev1.Container{
+		Name:  "injected",
+		Image: "original-injected-image",
+	}
+	stoppedInjectedSidecar := corev1.Container{
+		Name:  injectedSidecar.Name,
+		Image: nopImage,
+	}
+
 	for _, c := range []struct {
 		desc           string
 		pod            corev1.Pod
@@ -341,7 +353,7 @@ func TestStopSidecars(t *testing.T) {
 				Name: "test-pod",
 			},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{stepContainer, sidecarContainer},
+				Containers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -351,10 +363,14 @@ func TestStopSidecars(t *testing.T) {
 					Name: sidecarContainer.Name,
 					// Sidecar is running.
 					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+				}, {
+					Name: injectedSidecar.Name,
+					// Injected sidecar is running.
+					State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
 				}},
 			},
 		},
-		wantContainers: []corev1.Container{stepContainer, stoppedSidecarContainer},
+		wantContainers: []corev1.Container{stepContainer, stoppedSidecarContainer, stoppedInjectedSidecar},
 	}, {
 		desc: "Pending Pod should not be updated",
 		pod: corev1.Pod{
@@ -375,7 +391,7 @@ func TestStopSidecars(t *testing.T) {
 				Name: "test-pod",
 			},
 			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{stepContainer, sidecarContainer},
+				Containers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -385,14 +401,19 @@ func TestStopSidecars(t *testing.T) {
 					Name: sidecarContainer.Name,
 					// Sidecar is waiting.
 					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}},
+				}, {
+					Name: injectedSidecar.Name,
+					// Injected sidecar is waiting.
+					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}},
 				}},
 			},
 		},
-		wantContainers: []corev1.Container{stepContainer, sidecarContainer},
+		wantContainers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := StopSidecar(nopImage, kubeclient, c.pod, sidecarContainer.Name); err != nil {
+			stoppableContainers := append([]corev1.Container{}, sidecarContainer, injectedSidecar)
+			if err := StopSidecars(nopImage, kubeclient, c.pod, &stoppableContainers); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
 			}
 
@@ -400,7 +421,6 @@ func TestStopSidecars(t *testing.T) {
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
-				fmt.Sprintf("Containers Diff %s", diff.PrintWantGot(d))
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 			}
 		})

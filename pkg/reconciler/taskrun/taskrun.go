@@ -102,6 +102,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		events.Emit(ctx, nil, afterCondition, tr)
 	}
+
 	// If the TaskRun is complete, run some post run fixtures when applicable
 	if tr.IsDone() {
 		logger.Infof("taskrun done : %s \n", tr.Name)
@@ -119,20 +120,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		}
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-
 		if err == nil {
-			for _, sidecar := range tr.Spec.TaskSpec.Sidecars {
-				if sidecar.ForceTermination == false {
-					continue
-				}
-				err = podconvert.StopSidecar(c.Images.NopImage, c.KubeClientSet, *pod, sidecar.Name)
-				if err == nil {
-					if podconvert.IsSidecarStatusRunning(tr, sidecar.Name) {
-						err = updateStoppedSidecarStatus(sidecar.Name, pod, tr)
-					}
+			stoppableContainers := getStoppableContainers(*pod, tr.Spec.TaskSpec.Sidecars)
+			err := podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod, &stoppableContainers)
+			if err == nil {
+				// Check if any SidecarStatuses are still shown as Running after stopping
+				// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
+				if podconvert.IsSidecarStatusRunning(tr) {
+					err = updateStoppedSidecarStatus(ctx, pod, tr, c)
 				}
 			}
-
 		} else if k8serrors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -635,15 +632,15 @@ func getLabelSelector(tr *v1beta1.TaskRun) string {
 	return strings.Join(labels, ",")
 }
 
-// updateStoppedSidecarStatus updates SidecarStatus for a particular sidecar that were
+// updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
 // terminated by nop image
-func updateStoppedSidecarStatus(sidecarName string, pod *corev1.Pod, tr *v1beta1.TaskRun) error {
+func updateStoppedSidecarStatus(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun, c *Reconciler) error {
 	tr.Status.Sidecars = []v1beta1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
-		if s.Name == sidecarName {
+		if !podconvert.IsContainerStep(s.Name) {
 			var sidecarState corev1.ContainerState
 			if s.LastTerminationState.Terminated != nil {
-				// Sidecar has been successfully terminated by nop image
+				// Sidecar has been terminated successfully by nop image
 				lastTerminatedState := s.LastTerminationState.Terminated
 				sidecarState = corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -699,4 +696,22 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 		tr.Status.TaskSpec = ts
 	}
 	return nil
+}
+
+func getStoppableContainers(pod corev1.Pod, sidecars []v1beta1.Sidecar) []corev1.Container {
+	stoppables := []corev1.Container{}
+	// Sidecars that does not have ForceTermination disabled should be terminated.
+	for _, sidecar := range sidecars {
+		if sidecar.ForceTerminationDisabled != true {
+			stoppables = append(stoppables, sidecar.Container)
+		}
+	}
+	// Anything that's not a sidecar or a step must be injected sidecar and thus should be marked for force termination.
+	for _, containerItem := range pod.Spec.Containers {
+		if podconvert.IsContainerStep(containerItem.Name) || podconvert.IsContainerSidecar(containerItem.Name) {
+			continue
+		}
+		stoppables = append(stoppables, containerItem)
+	}
+	return stoppables
 }

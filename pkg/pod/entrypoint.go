@@ -180,29 +180,27 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	return nil
 }
 
-// StopSidecar updates sidecar container in the Pod to a nop image, which
+// StopSidecars updates sidecar containers in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecar(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod, sideCarContainerName string) error {
+func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod, containers *[]corev1.Container) (error) {
+	updated := false
 	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
 	}
-
-	updated := false
 	if newPod.Status.Phase == corev1.PodRunning {
 		for _, s := range newPod.Status.ContainerStatuses {
-			// Stop any running container that isn't a step.
-			// An injected sidecar container might not have the
-			// "sidecar-" prefix, so we can't just look for that
-			// prefix.
-			if s.Name == sideCarContainerName && s.State.Running != nil {
-				for j, c := range newPod.Spec.Containers {
-					if c.Name == s.Name && c.Image != nopImage {
-						updated = true
-						newPod.Spec.Containers[j].Image = nopImage
+			for _, containerItem := range *containers {
+				if s.Name == containerItem.Name && s.State.Running != nil {
+					for j, c := range newPod.Spec.Containers {
+						if c.Name == s.Name && c.Image != nopImage {
+							updated = true
+							newPod.Spec.Containers[j].Image = nopImage
+						}
 					}
 				}
 			}
+
 		}
 	}
 	if updated {
@@ -213,14 +211,15 @@ func StopSidecar(nopImage string, kubeclient kubernetes.Interface, pod corev1.Po
 	return nil
 }
 
-// IsSidecarStatusRunning determines if SidecarStatus for a particular sidecar on a TaskRun
+// IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
 // is still running.
-func IsSidecarStatusRunning(tr *v1beta1.TaskRun, sidecarName string) bool {
+func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	for _, sidecar := range tr.Status.Sidecars {
-		if sidecar.Name == sidecarName && sidecar.Terminated == nil {
+		if sidecar.Terminated == nil {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -228,9 +227,9 @@ func IsSidecarStatusRunning(tr *v1beta1.TaskRun, sidecarName string) bool {
 // represents a step.
 func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 
-// isContainerSidecar returns true if the container name indicates that it
+// IsContainerSidecar returns true if the container name indicates that it
 // represents a sidecar.
-func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
+func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
 
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }

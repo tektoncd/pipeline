@@ -126,7 +126,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
 			})
-		} else if isContainerSidecar(s.Name) {
+		} else if IsContainerSidecar(s.Name) {
 			trs.Sidecars = append(trs.Sidecars, v1beta1.SidecarState{
 				ContainerState: *s.State.DeepCopy(),
 				Name:           TrimSidecarPrefix(s.Name),
