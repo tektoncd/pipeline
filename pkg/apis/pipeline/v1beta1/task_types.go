@@ -133,7 +133,7 @@ type Sidecar struct {
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
-	// ForceSidecarTermination is a bool flag to toggle sidecar termination when all the steps in the task are completed.
+	// ForceTerminationDisabled is a bool flag to toggle sidecar termination when all the steps in the task are completed.
 	// +optional
 	ForceTerminationDisabled bool `json:"forceTermination,omitempty,default:false"`
 }
