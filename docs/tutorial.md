@@ -555,11 +555,14 @@ You can also see the statuses of the individual `TaskRuns`.
 
 ## Running this tutorial locally
 
-This section provides guidelines for completing this tutorial on your local workstation.
+This section provides guidelines for completing this tutorial on your local workstation on:
 
-### Prerequisites
+* [Docker for Desktop](#prerequisites-docker-for-desktop)
+* [Minikube](#prerequisites-minikube)
 
-Complete these prerequisites to run this tutorial locally:
+### Prerequisites: Docker for Desktop
+
+Complete these prerequisites to run this tutorial locally using Docker for Desktop:
 
 - Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Install [Docker for Desktop](https://www.docker.com/products/docker-desktop) and configure it to use six CPUs,
@@ -593,6 +596,33 @@ You must reconfigure any `image` resource definitions in your `PipelineResources
 - You can deploy Elasticsearch, Beats, or Kibana locally to view logs. You can find an
   example configuration at <https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
 - To learn more about obtaining logs, see [Logs](logs.md).
+
+### Prerequisites: Minikube
+
+Complete these prerequisites to run this tutorial locally using Minikube:
+
+- Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
+- Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a sesion as follows:
+```bash
+minikube start --memory 10240 --cpus 6 
+```
+- Point your shell to minikube's docker-daemon by running `eval $(minikube -p minikube docker-env)`
+- Set up a [registry on minikube](https://github.com/kubernetes/minikube/tree/master/deploy/addons/registry-aliases) by running `minikube addons enable registry` and `minikube addons enable registry-aliases`
+
+### Reconfigure `image` resources
+
+The `registry-aliases` addon will create several aliases for the minikube registry. You'll need to reconfigure your `image` resource definitions to use one of these aliases in your `PipelineResources` (for this tutorial, we use `example.com`; for a full list of aliases, you can run `minikube ssh -- cat /etc/hosts`. You can also configure your own alias by editing minikube's `/etc/hosts` file and the `coredns` configmap in the `kube-system` namespace).
+
+- Set the URL to `example.com/<image_name>`
+- When using `ko`, be sure to [use the `-L` flag](https://github.com/google/ko/blob/master/README.md#with-minikube) (i.e. `ko apply -L -f config/`) 
+- Set your applications (such as deployment definitions) to push to
+  `example.com/<image name>`.
+
+If you wish to use a different image URL, you can add the appropriate line to minikube's `/etc/hosts`.
+
+### Reconfigure logging
+
+See the information in the "Docker for Desktop" section 
 
 ## Further reading
 
