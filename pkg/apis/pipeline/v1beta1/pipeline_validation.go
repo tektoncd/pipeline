@@ -190,6 +190,10 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if err := validatePipelineContextVariables(ps.Tasks); err != nil {
+		return err
+	}
+
 	// Validate the pipeline's workspaces.
 	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks, ps.Finally); err != nil {
 		return err
@@ -390,6 +394,37 @@ func validatePipelineNoArrayReferenced(name, value, prefix string, vars sets.Str
 
 func validatePipelineArraysIsolated(name, value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", vars)
+}
+
+func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
+	pipelineRunContextNames := sets.NewString().Insert(
+		"name",
+		"namespace",
+		"uid",
+	)
+	pipelineContextNames := sets.NewString().Insert(
+		"name",
+	)
+	var paramValues []string
+	for _, task := range tasks {
+		for _, param := range task.Params {
+			paramValues = append(paramValues, param.Value.StringVal)
+			paramValues = append(paramValues, param.Value.ArrayVal...)
+		}
+	}
+	if err := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames); err != nil {
+		return err
+	}
+	return validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames)
+}
+
+func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.String) *apis.FieldError {
+	for _, paramValue := range paramValues {
+		if err := substitution.ValidateVariable(fmt.Sprintf("param[%s]", paramValue), paramValue, prefix, "params", "pipelinespec.params", contextNames); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // validateParamResults ensures that task result variables are properly configured
