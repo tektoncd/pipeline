@@ -22,6 +22,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestGetParams(t *testing.T) {
@@ -93,5 +99,72 @@ func TestGetParams(t *testing.T) {
 				t.Fatalf("Diff(-want,+got): %v", d)
 			}
 		})
+	}
+}
+
+// TestRunStatusExtraFields tests that extraFields in a RunStatus can be parsed
+// from YAML.
+func TestRunStatus(t *testing.T) {
+	in := `apiVersion: tekton.dev/v1alpha1
+kind: Run
+metadata:
+  name: run
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - type: "Succeeded"
+    status: "True"
+  results:
+  - name: foo
+    value: bar
+  extraFields:
+    simple: 'hello'
+    complex:
+      hello: ['w', 'o', 'r', 'l', 'd']
+`
+	var r v1alpha1.Run
+	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(in), nil, &r); err != nil {
+		t.Fatalf("Decode YAML: %v", err)
+	}
+
+	want := &v1alpha1.Run{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1alpha1",
+			Kind:       "Run",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "run",
+		},
+		Spec: v1alpha1.RunSpec{
+			Ref: &v1alpha1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "Example",
+			},
+		},
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}},
+			},
+			RunStatusFields: v1alpha1.RunStatusFields{
+				// Results are parsed correctly.
+				Results: []v1beta1.TaskRunResult{{
+					Name:  "foo",
+					Value: "bar",
+				}},
+				// Any extra fields are simply stored as JSON bytes.
+				ExtraFields: runtime.RawExtension{
+					Raw: []byte(`{"complex":{"hello":["w","o","r","l","d"]},"simple":"hello"}`),
+				},
+			},
+		},
+	}
+	if d := cmp.Diff(want, &r); d != "" {
+		t.Fatalf("Diff(-want,+got): %s", d)
 	}
 }
