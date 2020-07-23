@@ -77,8 +77,8 @@ spec:
           # This is google/cloud-sdk:293.0.0-slim
           "-gsutil-image", "google/cloud-sdk@sha256:37654ada9b7afbc32828b537030e85de672a9dd468ac5c92a36da1e203a98def",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of May 19, 2020
-          "-shell-image", "gcr.io/distroless/base@sha256:f79e093f9ba639c957ee857b1ad57ae5046c328998bf8f72b30081db4d8edbe4",
+          # gcr.io/distroless/base:debug as of July 23, 2020
+          "-shell-image", "gcr.io/distroless/base@sha256:60f5ffe6fc481e9102747b043b3873a01893a5a8138f970c5f5fc06fb7494656",
         ]
         volumeMounts:
         - name: config-logging
