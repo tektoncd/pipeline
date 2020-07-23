@@ -1391,3 +1391,103 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 		})
 	}
 }
+
+func TestContextValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "valid string context variable for task name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipeline.name)"},
+			}},
+		}},
+	}, {
+		name: "valid string context variable for taskrun name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.name)"},
+			}},
+		}},
+	}, {
+		name: "valid string context variable for taskRun namespace",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.namespace)"},
+			}},
+		}},
+	}, {
+		name: "valid string context variable for taskRun uid",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.uid)"},
+			}},
+		}},
+	}, {
+		name: "valid array context variables for task and taskRun names",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePipelineContextVariables(tt.tasks); err != nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %s: %v", tt.name, err)
+			}
+		})
+	}
+}
+
+func TestContextInvalid(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "invalid string context variable for pipeline",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipeline.missing)"},
+			}},
+		}},
+	}, {
+		name: "invalid string context variable for pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.missing)"},
+			}},
+		}},
+	}, {
+		name: "invalid array context variables for pipeline and pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing)", "and", "$(context.pipelineRun.missing)"}},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePipelineContextVariables(tt.tasks); err == nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s, %s", tt.name, tt.tasks[0].Params)
+			}
+		})
+	}
+}

@@ -27,7 +27,7 @@ import (
 
 const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
 
-const braceMatchingRegex = "(\\$(\\(%s.(?P<var>%s)\\)))"
+const braceMatchingRegex = "(\\$(\\(%s\\.(?P<var>%s)\\)))"
 
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {

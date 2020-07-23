@@ -50,6 +50,16 @@ func TestValidateVariables(t *testing.T) {
 		},
 		expectedError: nil,
 	}, {
+		name: "valid variable uid",
+		args: args{
+			input:        "--flag=$(context.taskRun.uid)",
+			prefix:       "context.taskRun",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars:         sets.NewString("uid"),
+		},
+		expectedError: nil,
+	}, {
 		name: "multiple variables",
 		args: args{
 			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",

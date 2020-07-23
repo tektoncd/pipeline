@@ -97,11 +97,15 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 }
 
 // ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
-// Currently supports only name substitution. Uses "" as a default if name is not specified.
+// Uses "" as a default if a value is not available.
 func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
-	return ApplyReplacements(spec,
-		map[string]string{"context.taskRun.name": tr.Name, "context.task.name": rtr.TaskName, "context.taskRun.namespace": tr.Namespace},
-		map[string][]string{})
+	replacements := map[string]string{
+		"context.taskRun.name":      tr.Name,
+		"context.task.name":         rtr.TaskName,
+		"context.taskRun.namespace": tr.Namespace,
+		"context.taskRun.uid":       string(tr.ObjectMeta.UID),
+	}
+	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
 // ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to, the
