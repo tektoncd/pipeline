@@ -3158,6 +3158,13 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 		},
 	}
 
+	prStatusWithEmptyTaskRuns := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			TaskRuns: nil,
+		},
+	}
+
 	prStatusWithOrphans := v1beta1.PipelineRunStatus{
 		Status: duckv1beta1.Status{
 			Conditions: []apis.Condition{
@@ -3196,6 +3203,18 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 					PipelineTaskName: "task-4",
 					Status:           nil,
 					ConditionChecks:  prccs4Recovered,
+				},
+			},
+		},
+	}
+
+	prStatusRecoveredSimple := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+				"pr-task-1-xxyyy": {
+					PipelineTaskName: "task-1",
+					Status:           &v1beta1.TaskRunStatus{},
 				},
 			},
 		},
@@ -3266,6 +3285,20 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			prStatus:         prStatusWithCondition,
 			trs:              nil,
 			expectedPrStatus: prStatusWithCondition,
+		}, {
+			prName:   "status-nil-taskruns",
+			prStatus: prStatusWithEmptyTaskRuns,
+			trs: []*v1beta1.TaskRun{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pr-task-1-xxyyy",
+						Labels: map[string]string{
+							pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-1",
+						},
+					},
+				},
+			},
+			expectedPrStatus: prStatusRecoveredSimple,
 		}, {
 			prName:   "status-missing-taskruns",
 			prStatus: prStatusWithCondition,
