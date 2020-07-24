@@ -24,7 +24,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/text v0.3.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
