@@ -122,7 +122,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			fmt.Println("Stopping sidecars that are not marked for exemption.")
-			stoppableContainers := getStoppableContainers(pod, &tr.Spec.TaskSpec.Sidecars)
+			stoppableContainers := getStoppableContainers(pod, tr.Spec.TaskSpec.Sidecars)
 			err := podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod, &stoppableContainers)
 			if err == nil {
 				// Check if any SidecarStatuses are still shown as Running after stopping
@@ -705,14 +705,17 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 	return nil
 }
 
-func getStoppableContainers(pod *corev1.Pod, sidecars *[]v1beta1.Sidecar) []corev1.Container {
+func getStoppableContainers(pod *corev1.Pod, sidecars []v1beta1.Sidecar) []corev1.Container {
 	stoppables := []corev1.Container{}
 	// Sidecars that does not have ForceTermination disabled should be terminated.
-	for _, sidecar := range *sidecars {
+	fmt.Println("Gathering Tekton Sidecars...")
+	for _, sidecar := range sidecars {
 		if sidecar.ForceTerminationDisabled != true {
 			stoppables = append(stoppables, sidecar.Container)
 		}
 	}
+
+	fmt.Println("Gathering injected Sidecars...")
 	// Anything that's not a sidecar or a step must be injected sidecar and thus should be marked for force termination.
 	for _, containerItem := range pod.Spec.Containers {
 		if podconvert.IsContainerStep(containerItem.Name) || podconvert.IsContainerSidecar(containerItem.Name) {
