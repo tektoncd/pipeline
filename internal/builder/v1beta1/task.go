@@ -185,7 +185,7 @@ func Step(image string, ops ...StepOp) TaskSpecOp {
 
 // Sidecar adds a sidecar container with the specified name and image to the TaskSpec.
 // Any number of Container modifier can be passed to transform it.
-func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
+func Sidecar(name, image string, forceTerminationDisabled bool, ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1beta1.TaskSpec) {
 		c := corev1.Container{
 			Name:  name,
@@ -194,7 +194,7 @@ func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
 		for _, op := range ops {
 			op(&c)
 		}
-		spec.Sidecars = append(spec.Sidecars, v1beta1.Sidecar{Container: c})
+		spec.Sidecars = append(spec.Sidecars, v1beta1.Sidecar{Container: c, ForceTerminationDisabled: forceTerminationDisabled })
 	}
 }
 

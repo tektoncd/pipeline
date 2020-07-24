@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gotest.tools/assert"
 	"regexp"
 	"strings"
 	"testing"
@@ -112,11 +113,11 @@ var (
 	), tb.TaskNamespace("foo"))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 	taskSidecar = tb.Task("test-task-sidecar", tb.TaskSpec(
-		tb.Sidecar("sidecar", "image-id"),
+		tb.Sidecar("sidecar", "image-id", false),
 	), tb.TaskNamespace("foo"))
 	taskMultipleSidecars = tb.Task("test-task-sidecar", tb.TaskSpec(
-		tb.Sidecar("sidecar", "image-id"),
-		tb.Sidecar("sidecar2", "image-id"),
+		tb.Sidecar("sidecar", "image-id", false),
+		tb.Sidecar("sidecar2", "image-id", false),
 	), tb.TaskNamespace("foo"))
 
 	outputTask = tb.Task("test-output-task", tb.TaskSpec(
@@ -2987,4 +2988,137 @@ func Test_storeTaskSpec(t *testing.T) {
 	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
+}
+
+func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Enabled(t *testing.T) {
+	trueB := true
+	nopImage := "tianon/true"
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	taskMultipleSidecarsWithForceterminationDisabled := tb.Task("test-task-sidecar-termination-flag", tb.TaskSpec(
+		tb.Step("foo", tb.StepName("step-simple"), tb.StepCommand("/mycmd")),
+		tb.Sidecar("sidecar-sidecar1", "image-id", false),
+		tb.Sidecar("sidecar-sidecar2", "image-id", true),
+	), tb.TaskNamespace("foo"))
+
+	taskRun := tb.TaskRun("test-taskrun-sidecars-termination-flag",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(
+				tb.Step("foo", tb.StepName("step-simple"), tb.StepCommand("/mycmd")),
+				tb.Sidecar("sidecar-sidecar1", "image-id", false),
+				tb.Sidecar("sidecar-sidecar2", "image-id", true),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.SidecarState(
+				tb.SidecarStateName("sidecar-sidecar1"),
+				tb.SidecarStateImageID("image-id"),
+				tb.SidecarStateContainerName("sidecar-sidecar1"),
+				tb.SetSidecarStateRunning(runningState),
+			),
+			tb.SidecarState(
+				tb.SidecarStateName("sidecar-sidecar2"),
+				tb.SidecarStateImageID("image-id"),
+				tb.SidecarStateContainerName("sidecar-sidecar2"),
+				tb.SetSidecarStateRunning(runningState),
+			),
+			tb.StepState(tb.StateTerminated(0)),
+			tb.PodName("test-taskrun-sidecars-termination-flag-pod"),
+			tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}),
+			tb.StatusCondition(apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue, Reason: "Completed"}),
+		),
+		tb.TaskRunNamespace("foo"),
+	)
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{taskMultipleSidecarsWithForceterminationDisabled},
+		Pods: []*corev1.Pod{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-sidecars-termination-flag-pod",
+					Namespace: "foo",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind:               "TaskRun",
+						Name:               "test-taskrun-sidecars-termination-flag",
+						APIVersion:         "a1",
+						Controller:         &trueB,
+						BlockOwnerDeletion: &trueB,
+					}},
+				},
+				Spec: corev1.PodSpec{
+					ServiceAccountName: "sa",
+					RestartPolicy:      corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:  "step-simple",
+							Image: "foo",
+						},
+						{
+							Name:  "injected-container",
+							Image: "injected",
+						},
+						{
+							Name:  "sidecar-sidecar1",
+							Image: "image-id",
+						},
+						{
+							Name:  "sidecar-sidecar2",
+							Image: "image-id",
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "step-simple",
+						Image: "foo",
+						State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+					}, {
+						Name: "injected-container",
+						// Sidecar is running.
+						Image: "injected",
+						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+					}, {
+						Name: "sidecar-sidecar1",
+						// Sidecar is running.
+						Image: "image-id",
+						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+					}, {
+						Name:  "sidecar-sidecar2",
+						Image: "image-id",
+						// sidecar is running.
+						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+					}},
+				},
+			},
+		},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	retrievedPod, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).Get(taskRun.Status.PodName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed retrieving the pod for comparing")
+	}
+
+	assert.Equal(t, retrievedPod.Spec.Containers[0].Name, "step-simple")
+	assert.Equal(t, retrievedPod.Spec.Containers[0].Image, "foo")
+
+	assert.Equal(t, retrievedPod.Spec.Containers[1].Name, "injected-container")
+	assert.Equal(t, retrievedPod.Spec.Containers[1].Image, nopImage)
+
+	assert.Equal(t, retrievedPod.Spec.Containers[2].Name, "sidecar-sidecar1")
+	assert.Equal(t, retrievedPod.Spec.Containers[2].Image, nopImage)
+
+	assert.Equal(t, retrievedPod.Spec.Containers[3].Name, "sidecar-sidecar2")
+	assert.Equal(t, retrievedPod.Spec.Containers[3].Image, "image-id")
 }
