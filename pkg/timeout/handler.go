@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package timeout
 
 import (
 	"math"
@@ -58,13 +58,16 @@ type Backoff struct {
 // backoff algorithm and returns the "jittered" result.
 type jitterFunc func(numSeconds int) (jitteredSeconds int)
 
-// TimeoutSet contains data used to track goroutines handling timeouts
-type TimeoutSet struct {
+// Handler knows how to track channels that can be used to communicate with go routines
+// which timeout, and the functions to call when that happens.
+type Handler struct {
 	logger *zap.SugaredLogger
 
-	// taskRunCallbackFunc is the function to call when a TaskRun has timed out
+	// taskRunCallbackFunc is the function to call when a TaskRun has timed out.
+	// This is usually set to the function that enqueues the taskRun for reconciling.
 	taskRunCallbackFunc func(interface{})
 	// pipelineRunCallbackFunc is the function to call when a TaskRun has timed out
+	// This is usually set to the function that enqueues the taskRun for reconciling.
 	pipelineRunCallbackFunc func(interface{})
 	// stopCh is used to signal to all goroutines that they should stop, e.g. because
 	// the reconciler is stopping
@@ -79,12 +82,13 @@ type TimeoutSet struct {
 	backoffsMut sync.Mutex
 }
 
-// NewTimeoutHandler returns TimeoutSet filled structure
-func NewTimeoutHandler(
+// NewHandler returns an instance of Handler with the specified stopCh and logger, instantiated
+// and ready to track go routines.
+func NewHandler(
 	stopCh <-chan struct{},
 	logger *zap.SugaredLogger,
-) *TimeoutSet {
-	return &TimeoutSet{
+) *Handler {
+	return &Handler{
 		stopCh:   stopCh,
 		done:     make(map[string]chan bool),
 		backoffs: make(map[string]Backoff),
@@ -93,17 +97,17 @@ func NewTimeoutHandler(
 }
 
 // SetTaskRunCallbackFunc sets the callback function when timeout occurs for taskrun objects
-func (t *TimeoutSet) SetTaskRunCallbackFunc(f func(interface{})) {
+func (t *Handler) SetTaskRunCallbackFunc(f func(interface{})) {
 	t.taskRunCallbackFunc = f
 }
 
 // SetPipelineRunCallbackFunc sets the callback function when timeout occurs for pipelinerun objects
-func (t *TimeoutSet) SetPipelineRunCallbackFunc(f func(interface{})) {
+func (t *Handler) SetPipelineRunCallbackFunc(f func(interface{})) {
 	t.pipelineRunCallbackFunc = f
 }
 
 // Release deletes channels and data that are specific to a StatusKey object.
-func (t *TimeoutSet) Release(runObj StatusKey) {
+func (t *Handler) Release(runObj StatusKey) {
 	key := runObj.GetRunKey()
 	t.doneMut.Lock()
 	defer t.doneMut.Unlock()
@@ -118,7 +122,7 @@ func (t *TimeoutSet) Release(runObj StatusKey) {
 	delete(t.backoffs, key)
 }
 
-func (t *TimeoutSet) getOrCreateDoneChan(runObj StatusKey) chan bool {
+func (t *Handler) getOrCreateDoneChan(runObj StatusKey) chan bool {
 	key := runObj.GetRunKey()
 	t.doneMut.Lock()
 	defer t.doneMut.Unlock()
@@ -143,7 +147,7 @@ func (t *TimeoutSet) getOrCreateDoneChan(runObj StatusKey) chan bool {
 // describing the time at which the next attempt should be performed.
 // Additionally a boolean is returned indicating whether a backoff for the
 // TaskRun is already in progress.
-func (t *TimeoutSet) GetBackoff(tr *v1beta1.TaskRun) (Backoff, bool) {
+func (t *Handler) GetBackoff(tr *v1beta1.TaskRun) (Backoff, bool) {
 	t.backoffsMut.Lock()
 	defer t.backoffsMut.Unlock()
 	b := t.backoffs[tr.GetRunKey()]
@@ -175,7 +179,7 @@ func backoffDuration(count uint, jf jitterFunc) time.Duration {
 
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
-func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
+func (t *Handler) checkPipelineRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
 	pipelineRuns, err := pipelineclientset.TektonV1beta1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
@@ -194,7 +198,7 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientse
 
 // CheckTimeouts function iterates through a given namespace or all namespaces
 // (if empty string) and calls corresponding taskrun/pipelinerun timeout functions
-func (t *TimeoutSet) CheckTimeouts(namespace string, kubeclientset kubernetes.Interface, pipelineclientset clientset.Interface) {
+func (t *Handler) CheckTimeouts(namespace string, kubeclientset kubernetes.Interface, pipelineclientset clientset.Interface) {
 	// scoped namespace
 	namespaceNames := []string{namespace}
 	// all namespaces
@@ -218,7 +222,7 @@ func (t *TimeoutSet) CheckTimeouts(namespace string, kubeclientset kubernetes.In
 
 // checkTaskRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
-func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
+func (t *Handler) checkTaskRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
 	taskruns, err := pipelineclientset.TektonV1beta1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
@@ -238,7 +242,7 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset cl
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
-func (t *TimeoutSet) WaitTaskRun(tr *v1beta1.TaskRun, startTime *metav1.Time) {
+func (t *Handler) WaitTaskRun(tr *v1beta1.TaskRun, startTime *metav1.Time) {
 	var timeout time.Duration
 	if tr.Spec.Timeout == nil {
 		timeout = config.DefaultTimeoutMinutes * time.Minute
@@ -251,7 +255,7 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1beta1.TaskRun, startTime *metav1.Time) {
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
-func (t *TimeoutSet) WaitPipelineRun(pr *v1beta1.PipelineRun, startTime *metav1.Time) {
+func (t *Handler) WaitPipelineRun(pr *v1beta1.PipelineRun, startTime *metav1.Time) {
 	var timeout time.Duration
 	if pr.Spec.Timeout == nil {
 		timeout = config.DefaultTimeoutMinutes * time.Minute
@@ -261,7 +265,7 @@ func (t *TimeoutSet) WaitPipelineRun(pr *v1beta1.PipelineRun, startTime *metav1.
 	t.waitRun(pr, timeout, startTime, t.pipelineRunCallbackFunc)
 }
 
-func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
+func (t *Handler) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
 	if startTime == nil {
 		t.logger.Errorf("startTime must be specified in order for a timeout to be calculated accurately for %s", runObj.GetRunKey())
 		return
@@ -282,7 +286,7 @@ func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime 
 // the lifetime of the TaskRun no resources are released after the timer
 // fires. It is the caller's responsibility to Release() the TaskRun when
 // work with it has completed.
-func (t *TimeoutSet) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
+func (t *Handler) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
 	callback := t.taskRunCallbackFunc
 	if callback == nil {
 		t.logger.Errorf("attempted to set a timer for %q but no task run callback has been assigned", tr.Name)
@@ -291,7 +295,7 @@ func (t *TimeoutSet) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
 	t.setTimer(tr, d, callback)
 }
 
-func (t *TimeoutSet) setTimer(runObj StatusKey, timeout time.Duration, callback func(interface{})) {
+func (t *Handler) setTimer(runObj StatusKey, timeout time.Duration, callback func(interface{})) {
 	done := t.getOrCreateDoneChan(runObj)
 	started := time.Now()
 	select {
