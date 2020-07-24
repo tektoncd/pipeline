@@ -195,6 +195,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 					for j, c := range newPod.Spec.Containers {
 						if c.Name == s.Name && c.Image != nopImage {
 							updated = true
+							fmt.Println(fmt.Sprintf("Attempting to terminate Sidecar container %s since it was not marked for exemption from ForceTermination.", s.Name))
 							newPod.Spec.Containers[j].Image = nopImage
 						}
 					}
