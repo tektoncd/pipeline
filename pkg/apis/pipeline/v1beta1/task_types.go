@@ -134,7 +134,7 @@ type Sidecar struct {
 	Script string `json:"script,omitempty"`
 	// ForceTerminationDisabled is a bool flag to toggle sidecar termination when all the steps in the task are completed.
 	// +optional
-	ForceTerminationDisabled bool `json:"forceTermination,omitempty,default:false"`
+	ForceTerminationDisabled bool `json:"forceTerminationDisabled,omitempty,default:false"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
