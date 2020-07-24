@@ -225,6 +225,17 @@ a `TaskRun` with the condition that each `Sidecar` running inside the
 This might result in the `Pod` including each affected `Sidecar` with a 
 retry count of 1 and a different container image than expected.
 
+However, this behaviour can be overridden by the `ForceTerminationDisabled` flag
+in each `Sidecar` definition. 
+
+If you set this flag to `true` for a given `Sidecar`, Tekton would not attempt to 
+terminate the `Sidecar` even if all the steps were finished in the task run. You 
+should make sure your `Sidecar` container `knows` when and how to terminate itself 
+to avoid timeout scenarios. 
+
+This does not apply to the injected sidecars. They will get force terminated as 
+explained above.
+
 We are aware of the following issues affecting Tekton's implementation of `Sidecars`:
 
 - The configured `nop` image **must not** provide the command that the
