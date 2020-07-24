@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package timeout
 
 import (
 	"fmt"
@@ -102,7 +102,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	defer close(stopCh)
 	observer, _ := observer.New(zap.InfoLevel)
 
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	th := NewHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
 		trNew := tr.(*v1beta1.TaskRun)
@@ -192,7 +192,7 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 	defer close(stopCh)
 	observer, _ := observer.New(zap.InfoLevel)
 
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	th := NewHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
 		trNew := tr.(*v1beta1.TaskRun)
@@ -305,7 +305,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	th := NewHandler(stopCh, zap.New(observer).Sugar())
 
 	gotCallback := sync.Map{}
 	f := func(pr interface{}) {
@@ -384,7 +384,7 @@ func TestWithNoFunc(t *testing.T) {
 	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	testHandler := NewHandler(stopCh, zap.New(observer).Sugar())
 	defer func() {
 		// this delay will ensure there is no race condition between stopCh/ timeout channel getting triggered
 		time.Sleep(10 * time.Millisecond)
@@ -411,7 +411,7 @@ func TestSetTaskRunTimer(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	testHandler := NewHandler(stopCh, zap.New(observer).Sugar())
 	timerDuration := 50 * time.Millisecond
 	timerFailDeadline := 100 * time.Millisecond
 	doneCh := make(chan struct{})
