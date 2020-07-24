@@ -58,16 +58,25 @@ type Backoff struct {
 // backoff algorithm and returns the "jittered" result.
 type jitterFunc func(numSeconds int) (jitteredSeconds int)
 
-// TimeoutSet contains required k8s interfaces to handle build timeouts
+// TimeoutSet contains data used to track goroutines handling timeouts
 type TimeoutSet struct {
-	logger                  *zap.SugaredLogger
-	taskRunCallbackFunc     func(interface{})
+	logger *zap.SugaredLogger
+
+	// taskRunCallbackFunc is the function to call when a TaskRun has timed out
+	taskRunCallbackFunc func(interface{})
+	// pipelineRunCallbackFunc is the function to call when a TaskRun has timed out
 	pipelineRunCallbackFunc func(interface{})
-	stopCh                  <-chan struct{}
-	done                    map[string]chan bool
-	doneMut                 sync.Mutex
-	backoffs                map[string]Backoff
-	backoffsMut             sync.Mutex
+	// stopCh is used to signal to all goroutines that they should stop, e.g. because
+	// the reconciler is stopping
+	stopCh <-chan struct{}
+	// done is a map from the name of the Run to the channel to use to indicate that the
+	// Run is done (and so there is no need to wait on it any longer)
+	done map[string]chan bool
+	// doneMut is a mutex that protects access to done to ensure that multiple goroutines
+	// don't try to update it simultaneously
+	doneMut     sync.Mutex
+	backoffs    map[string]Backoff
+	backoffsMut sync.Mutex
 }
 
 // NewTimeoutHandler returns TimeoutSet filled structure
@@ -102,25 +111,24 @@ func (t *TimeoutSet) Release(runObj StatusKey) {
 	t.backoffsMut.Lock()
 	defer t.backoffsMut.Unlock()
 
-	if finished, ok := t.done[key]; ok {
+	if done, ok := t.done[key]; ok {
 		delete(t.done, key)
-		close(finished)
+		close(done)
 	}
 	delete(t.backoffs, key)
 }
 
-func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
-	var finished chan bool
+func (t *TimeoutSet) getOrCreateDoneChan(runObj StatusKey) chan bool {
 	key := runObj.GetRunKey()
 	t.doneMut.Lock()
 	defer t.doneMut.Unlock()
-	if existingFinishedChan, ok := t.done[key]; ok {
-		finished = existingFinishedChan
-	} else {
-		finished = make(chan bool)
+	var done chan bool
+	var ok bool
+	if done, ok = t.done[key]; !ok {
+		done = make(chan bool)
 	}
-	t.done[key] = finished
-	return finished
+	t.done[key] = done
+	return done
 }
 
 // GetBackoff records the number of times it has seen a TaskRun and calculates an
@@ -284,13 +292,13 @@ func (t *TimeoutSet) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
 }
 
 func (t *TimeoutSet) setTimer(runObj StatusKey, timeout time.Duration, callback func(interface{})) {
-	finished := t.getOrCreateFinishedChan(runObj)
+	done := t.getOrCreateDoneChan(runObj)
 	started := time.Now()
 	select {
 	case <-t.stopCh:
 		t.logger.Infof("stopping timer for %q", runObj.GetRunKey())
 		return
-	case <-finished:
+	case <-done:
 		t.logger.Infof("%q finished, stopping timer", runObj.GetRunKey())
 		return
 	case <-time.After(timeout):
