@@ -21,6 +21,7 @@ weight: 5
   - [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces)
     - [Using `PersistentVolumeClaims` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource)
     - [Using other types of `VolumeSources`](#using-other-types-of-volumesources)
+- [Using Persistent Volumes within a `PipelineRun`](#using-persistent-volumes-within-a-pipelinerun)
 - [More examples](#more-examples)
 
 ## Overview
@@ -363,6 +364,46 @@ workspaces:
 
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
 a [pull request](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
+
+## Using Persistent Volumes within a `PipelineRun`
+
+When using a workspace with a [`PersistentVolumeClaim` as `VolumeSource`](#using-persistentvolumeclaims-as-volumesource),
+a Kubernetes [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) is used within the `PipelineRun`.
+There are some details that are good to know when using Persistent Volumes within a `PipelineRun`.
+
+### Storage Class
+
+`PersistentVolumeClaims` specify a [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/) for the underlying Persistent Volume. Storage Classes have specific
+characteristics. If a StorageClassName is not specified for your `PersistentVolumeClaim`, the cluster defined _default_
+Storage Class is used. For _regional_ clusters - clusters that typically consist of Nodes located in multiple Availability
+Zones - it is important to know whether your Storage Class is available to all Nodes. Default Storage Classes are typically
+only available to Nodes within *one* Availability Zone. There is usually an option to use a _regional_ Storage Class,
+but they have trade-offs, e.g. you need to pay for multiple volumes since they are replicated and your volume may have 
+substantially higher latency.
+
+When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center) and the `TaskRun`
+pods can be scheduled to any Availability Zone in a regional cluster, some techniques must be used to avoid deadlock in the `Pipeline`.
+
+Tekton provides an Affinity Assistant that schedules all TaskRun Pods sharing a `PersistentVolumeClaim` to the same
+Node. This avoids deadlocks that can happen when two Pods requiring the same Volume are scheduled to different Availability Zones.
+A volume typically only lives within a single Availability Zone.
+
+### Access Modes
+
+A `PersistentVolumeClaim` specifies an [Access Mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
+Available Access Modes are `ReadWriteOnce`, `ReadWriteMany` and `ReadOnlyMany`. What Access Mode you can use depend on
+the storage solution that you are using.
+
+* `ReadWriteOnce` is the most commonly available Access Mode. A volume with this Access Mode can only be mounted on one
+  Node at a time. This can be problematic for a `Pipeline` that has parallel `Tasks` that access the volume concurrently.
+  The Affinity Assistant helps with this problem by scheduling all `Tasks` that use the same `PersistentVolumeClaim` to
+  the same Node.
+  
+* `ReadOnlyMany` is read-only and is less common in a CI/CD-pipeline. These volumes often need to be "prepared" with data
+  in some way before use. Dynamically provided volumes can usually not be used in read-only mode.
+
+* `ReadWriteMany` is the least commonly available Access Mode. If you use this access mode and these volumes are available
+  to all Nodes within your cluster, you may want to disable the Affinity Assistant.
 
 ## More examples
 

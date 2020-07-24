@@ -331,8 +331,12 @@ When a `TaskRun` changes status, [events](events.md#taskruns) are triggered acco
 ### Monitoring `Steps`
 
 If multiple `Steps` are defined in the `Task` invoked by the `TaskRun`, you can monitor their execution
-status in the `steps.results` field using the following command, where `<name>` is the name of the target
+status in the `status.steps` field using the following command, where `<name>` is the name of the target
 `TaskRun`:
+
+```bash
+kubectl get taskrun <name> -o yaml
+```
 
 The exact Task Spec used to instantiate the TaskRun is also included in the Status for full auditability.
 

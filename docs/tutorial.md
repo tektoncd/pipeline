@@ -48,7 +48,7 @@ Apply your `Task` YAML file as follows:
 kubectl apply -f <name-of-task-file.yaml>
 ```
 
-To see details about your created `Task`, use the following command:  
+To see details about your created `Task`, use the following command:
 ```bash
 tkn task describe echo-hello-world
 ```
@@ -212,7 +212,7 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v0.17.1
+      image: gcr.io/kaniko-project/executor:v0.16.0
       # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
       env:
         - name: "DOCKER_CONFIG"
@@ -564,8 +564,7 @@ Complete these prerequisites to run this tutorial locally:
 - Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Install [Docker for Desktop](https://www.docker.com/products/docker-desktop) and configure it to use six CPUs,
   10 GB of RAM and 2GB of swap space.
-- Set `host.docker.local:5000` as an insecure registry with Docker for
-  Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
+- Set `host.docker.internal:5000` as an insecure registry with Docker for Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
   for details.
 - Pass `--insecure` as an argument to your Kaniko tasks so that you can push to an insecure registry.
 - Run a local (insecure) Docker registry as follows:

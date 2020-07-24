@@ -1761,7 +1761,13 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 		return nil, err
 	}
 
-	return podconvert.MakePod(context.Background(), images, taskRun, task.Spec, kubeclient, entrypointCache, true)
+	builder := podconvert.Builder{
+		Images:          images,
+		KubeClient:      kubeclient,
+		EntrypointCache: entrypointCache,
+		OverrideHomeEnv: true,
+	}
+	return builder.Build(context.Background(), taskRun, task.Spec)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {

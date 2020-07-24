@@ -115,3 +115,40 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `name` | The name of the resource. |
 | `type` | Type value of `"cloudEvent"`. |
 | `target-uri` | The URI to hit with cloud event payloads. |
+
+## Fields that accept variable substitutions
+
+| CRD | Field |
+| --- | ----- |
+| `Task` | `spec.steps[].name` |
+| `Task` | `spec.steps[].image` |
+| `Task` | `spec.steps[].env.value` |
+| `Task` | `spec.steps[].env.valuefrom.secretkeyref.name` |
+| `Task` | `spec.steps[].env.valuefrom.secretkeyref.key` |
+| `Task` | `spec.steps[].env.valuefrom.configmapkeyref.name` |
+| `Task` | `spec.steps[].env.valuefrom.configmapkeyref.key` |
+| `Task` | `spec.steps[].volumemounts.name` |
+| `Task` | `spec.steps[].volumemounts.mountpath` |
+| `Task` | `spec.steps[].volumemounts.subpath` |
+| `Task` | `spec.volumes[].name` |
+| `Task` | `spec.volumes[].configmap.name` |
+| `Task` | `spec.volumes[].secret.secretname` |
+| `Task` | `spec.volumes[].persistentvolumeclaim.claimname` |
+| `Task` | `spec.volumes[].projected.sources.configmap.name` |
+| `Task` | `spec.volumes[].projected.sources.secret.name` |
+| `Task` | `spec.volumes[].projected.sources.serviceaccounttoken.audience` |
+| `Task` | `spec.volumes[].csi.nodepublishsecretref.name` |
+| `Task` | `spec.volumes[].csi.volumeattributes.* `|
+| `Task` | `spec.sidecars[].name` |
+| `Task` | `spec.sidecars[].image` |
+| `Task` | `spec.sidecars[].env.value` |
+| `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.name` |
+| `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.key` |
+| `Task` | `spec.sidecars[].env.valuefrom.configmapkeyref.name` |
+| `Task` | `spec.sidecars[].env.valuefrom.configmapkeyref.key` |
+| `Task` | `spec.sidecars[].volumemounts.name` |
+| `Task` | `spec.sidecars[].volumemounts.mountpath` |
+| `Task` | `spec.sidecars[].volumemounts.subpath` |
+| `Pipeline` | `spec.tasks[].params[].value` |
+| `Pipeline` | `spec.tasks[].conditions[].params[].value` |
+| `Pipeline` | `spec.results[].value` |

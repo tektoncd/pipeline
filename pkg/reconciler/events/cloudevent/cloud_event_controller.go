@@ -94,7 +94,7 @@ func SendCloudEvents(tr *v1beta1.TaskRun, ceclient CEClient, logger *zap.Sugared
 		}
 
 		// Send the event.
-		result := ceclient.Send(cloudevents.ContextWithTarget(context.Background(), cloudEventDelivery.Target), *event)
+		result := ceclient.Send(cloudevents.ContextWithTarget(cloudevents.ContextWithRetriesExponentialBackoff(context.Background(), 10*time.Millisecond, 10), cloudEventDelivery.Target), *event)
 
 		// Record the result.
 		eventStatus.SentAt = &metav1.Time{Time: time.Now()}

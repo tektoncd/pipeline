@@ -295,6 +295,6 @@ func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(expected, rcc.ToTaskResourceBindings()); d != "" {
-		t.Errorf("Did not get expected task resouce binding from condition %s", diff.PrintWantGot(d))
+		t.Errorf("Did not get expected task resource binding from condition %s", diff.PrintWantGot(d))
 	}
 }

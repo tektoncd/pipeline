@@ -34,6 +34,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+var newClusterManagerClientHook clientHook
+
 // ClusterManagerCallOptions contains the retry settings for each method of ClusterManagerClient.
 type ClusterManagerCallOptions struct {
 	ListClusters            []gax.CallOption
@@ -235,7 +237,17 @@ type ClusterManagerClient struct {
 //
 // Google Kubernetes Engine Cluster Manager v1
 func NewClusterManagerClient(ctx context.Context, opts ...option.ClientOption) (*ClusterManagerClient, error) {
-	connPool, err := gtransport.DialPool(ctx, append(defaultClusterManagerClientOptions(), opts...)...)
+	clientOpts := defaultClusterManagerClientOptions()
+
+	if newClusterManagerClientHook != nil {
+		hookOpts, err := newClusterManagerClientHook(ctx, clientHookParams{})
+		if err != nil {
+			return nil, err
+		}
+		clientOpts = append(clientOpts, hookOpts...)
+	}
+
+	connPool, err := gtransport.DialPool(ctx, append(clientOpts, opts...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +323,7 @@ func (c *ClusterManagerClient) GetCluster(ctx context.Context, req *containerpb.
 // Compute Engine instances.
 //
 // By default, the cluster is created in the project’s
-// default network (at /compute/docs/networks-and-firewalls#networks).
+// default network (at https://cloud.google.com/compute/docs/networks-and-firewalls#networks).
 //
 // One firewall is added for the cluster. After cluster creation,
 // the Kubelet creates routes for each node to allow the containers
