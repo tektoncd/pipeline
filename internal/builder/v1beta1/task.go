@@ -194,7 +194,7 @@ func Sidecar(name, image string, forceTerminationDisabled bool, ops ...Container
 		for _, op := range ops {
 			op(&c)
 		}
-		spec.Sidecars = append(spec.Sidecars, v1beta1.Sidecar{Container: c, ForceTerminationDisabled: forceTerminationDisabled })
+		spec.Sidecars = append(spec.Sidecars, v1beta1.Sidecar{Container: c, ForceTerminationDisabled: forceTerminationDisabled})
 	}
 }
 
@@ -356,7 +356,7 @@ func TaskRunNamespace(namespace string) TaskRunOp {
 	}
 }
 
-// TaskRunStatus sets the TaskRunStatus to tshe TaskRun
+// TaskRunStatus sets the TaskRunStatus to the TaskRun
 func TaskRunStatus(ops ...TaskRunStatusOp) TaskRunOp {
 	return func(tr *v1beta1.TaskRun) {
 		status := &tr.Status
@@ -417,6 +417,17 @@ func SidecarState(ops ...SidecarStateOp) TaskRunStatusOp {
 			op(state)
 		}
 		s.Sidecars = append(s.Sidecars, *state)
+	}
+}
+
+// TaskSpec adds a TaskSpec to the TaskRunStatus.
+func TaskrunStatusTaskSpec(ops ...TaskSpecOp) TaskRunStatusOp {
+	return func(s *v1beta1.TaskRunStatus) {
+		spec := &v1beta1.TaskSpec{}
+		for _, op := range ops {
+			op(spec)
+		}
+		s.TaskSpec = spec
 	}
 }
 

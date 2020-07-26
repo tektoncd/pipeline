@@ -3008,13 +3008,14 @@ func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Ena
 
 	taskRun := tb.TaskRun("test-taskrun-sidecars-termination-flag",
 		tb.TaskRunSpec(
-			tb.TaskRunTaskSpec(
+			tb.TaskRunTaskRef(taskMultipleSidecarsWithForceterminationDisabled.Name),
+		),
+		tb.TaskRunStatus(
+			tb.TaskrunStatusTaskSpec(
 				tb.Step("foo", tb.StepName("step-simple"), tb.StepCommand("/mycmd")),
 				tb.Sidecar("sidecar-sidecar1", "image-id", false),
 				tb.Sidecar("sidecar-sidecar2", "image-id", true),
 			),
-		),
-		tb.TaskRunStatus(
 			tb.SidecarState(
 				tb.SidecarStateName("sidecar-sidecar1"),
 				tb.SidecarStateImageID("image-id"),
@@ -3058,46 +3059,35 @@ func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Ena
 					ServiceAccountName: "sa",
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
-						{
-							Name:  "step-simple",
-							Image: "foo",
-						},
-						{
-							Name:  "injected-container",
-							Image: "injected",
-						},
-						{
-							Name:  "sidecar-sidecar1",
-							Image: "image-id",
-						},
-						{
-							Name:  "sidecar-sidecar2",
-							Image: "image-id",
-						},
+						{Name: "step-simple", Image: "foo"},
+						{Name: "injected-container", Image: "injected"},
+						{Name: "sidecar-sidecar1", Image: "image-id"},
+						{Name: "sidecar-sidecar2", Image: "image-id"},
 					},
 				},
 				Status: corev1.PodStatus{
 					Phase: corev1.PodRunning,
-					ContainerStatuses: []corev1.ContainerStatus{{
-						Name:  "step-simple",
-						Image: "foo",
-						State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
-					}, {
-						Name: "injected-container",
-						// Sidecar is running.
-						Image: "injected",
-						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
-					}, {
-						Name: "sidecar-sidecar1",
-						// Sidecar is running.
-						Image: "image-id",
-						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
-					}, {
-						Name:  "sidecar-sidecar2",
-						Image: "image-id",
-						// sidecar is running.
-						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
-					}},
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  "step-simple",
+							Image: "foo",
+							State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{}},
+						}, {
+							Name: "injected-container",
+							// Sidecar is running.
+							Image: "injected",
+							State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+						}, {
+							Name: "sidecar-sidecar1",
+							// Sidecar is running.
+							Image: "image-id",
+							State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+						}, {
+							Name:  "sidecar-sidecar2",
+							Image: "image-id",
+							// sidecar is running.
+							State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())}},
+						}},
 				},
 			},
 		},
