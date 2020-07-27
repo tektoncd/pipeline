@@ -16,6 +16,11 @@ limitations under the License.
 
 package pipeline
 
+import (
+	"fmt"
+	"sort"
+)
+
 // Images holds the images reference for a number of container images used
 // across tektoncd pipelines.
 type Images struct {
@@ -39,4 +44,34 @@ type Images struct {
 	PRImage string
 	// ImageDigestExporterImage is the container image containing our image digest exporter binary.
 	ImageDigestExporterImage string
+
+	// NOTE: Make sure to add any new images to Validate below!
+}
+
+// Validate returns an error if any image is not set.
+func (i Images) Validate() error {
+	var unset []string
+	for _, f := range []struct {
+		v, name string
+	}{
+		{i.EntrypointImage, "entrypoint"},
+		{i.NopImage, "nop"},
+		{i.GitImage, "git"},
+		{i.CredsImage, "creds"},
+		{i.KubeconfigWriterImage, "kubeconfig-writer"},
+		{i.ShellImage, "shell"},
+		{i.GsutilImage, "gsutil"},
+		{i.BuildGCSFetcherImage, "build-gcs-fetcher"},
+		{i.PRImage, "pr"},
+		{i.ImageDigestExporterImage, "imagedigest-exporter"},
+	} {
+		if f.v == "" {
+			unset = append(unset, f.name)
+		}
+	}
+	if len(unset) > 0 {
+		sort.Strings(unset)
+		return fmt.Errorf("found unset image flags: %s", unset)
+	}
+	return nil
 }
