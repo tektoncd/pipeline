@@ -58,7 +58,7 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1alpha1
 			claimName := getClaimName(w, pr.GetOwnerReference())
 			switch {
 			case apierrors.IsNotFound(err):
-				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.AffinityAssistantImage)
+				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage)
 				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(affinityAssistantStatefulSet)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
@@ -137,6 +137,7 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 	containers := []corev1.Container{{
 		Name:  "affinity-assistant",
 		Image: affinityAssistantImage,
+		Args:  []string{"tekton_run_indefinitely"},
 
 		// Set requests == limits to get QoS class _Guaranteed_.
 		// See https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-guaranteed
