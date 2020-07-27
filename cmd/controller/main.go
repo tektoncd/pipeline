@@ -36,9 +36,8 @@ const (
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
 		"The container image containing our entrypoint binary.")
-	nopImage               = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
-	affinityAssistantImage = flag.String("affinity-assistant-image", "nginx", "The container image used for the Affinity Assistant")
-	gitImage               = flag.String("git-image", "override-with-git:latest",
+	nopImage = flag.String("nop-image", "override-with-nop:latest", "The container image used to stop sidecars")
+	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
@@ -61,7 +60,6 @@ func main() {
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
-		AffinityAssistantImage:   *affinityAssistantImage,
 		GitImage:                 *gitImage,
 		CredsImage:               *credsImage,
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
