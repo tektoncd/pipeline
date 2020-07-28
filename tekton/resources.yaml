@@ -71,6 +71,16 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
+  name: nop-image
+spec:
+  type: image
+  params:
+  - name: url
+    value: cmd/nop  # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
   name: kubeconfigwriter-image
 spec:
   type: image
