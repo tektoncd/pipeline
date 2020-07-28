@@ -167,6 +167,24 @@ func TestApplyReplacements(t *testing.T) {
 	}
 }
 
+func TestNestedReplacements(t *testing.T) {
+	replacements := map[string]string{
+		// Foo should turn into barbar, which could then expand into bazbaz depending on how this is expanded
+		"foo": "$(bar)$(bar)",
+		"bar": "baz",
+	}
+	input := "$(foo) is cool"
+	expected := "$(bar)$(bar) is cool"
+
+	// Run this test a lot of times to ensure the behavior is deterministic
+	for i := 0; i <= 1000; i++ {
+		got := substitution.ApplyReplacements(input, replacements)
+		if d := cmp.Diff(expected, got); d != "" {
+			t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
+		}
+	}
+}
+
 func TestApplyArrayReplacements(t *testing.T) {
 	type args struct {
 		input              string
