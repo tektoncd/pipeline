@@ -18,7 +18,6 @@ package termination
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -73,9 +72,7 @@ func TestParseMessage(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseMessage: %v", err)
 			}
-			if d := cmp.Diff(c.want, got); d != "" {
-				t.Fatalf("ParseMessage %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, c.want, got, "ParseMessage %s")
 		})
 	}
 }

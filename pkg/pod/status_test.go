@@ -729,9 +729,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
-				t.Errorf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, c.want, got, "Diff %s", ignoreVolatileTime, ensureTimeNotNil)
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
 				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
 			}
@@ -879,9 +877,7 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 	}
 
 	want := []string{"hello", "exit", "world", "nop"}
-	if d := cmp.Diff(want, gotNames); d != "" {
-		t.Errorf("Unexpected step order %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, gotNames, "Unexpected step order %s")
 }
 
 func TestSortContainerStatuses(t *testing.T) {
@@ -918,9 +914,7 @@ func TestSortContainerStatuses(t *testing.T) {
 	}
 
 	want := []string{"my", "world", "hello"}
-	if d := cmp.Diff(want, gotNames); d != "" {
-		t.Errorf("Unexpected step order %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, gotNames, "Unexpected step order %s")
 
 }
 
@@ -935,9 +929,7 @@ func TestMarkStatusRunning(t *testing.T) {
 		Message: "Not all Steps in the Task have finished executing",
 	}
 
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
-		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expected, trs.GetCondition(apis.ConditionSucceeded), "Unexpected status: %s", cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time))
 }
 
 func TestMarkStatusFailure(t *testing.T) {
@@ -950,10 +942,7 @@ func TestMarkStatusFailure(t *testing.T) {
 		Reason:  v1beta1.TaskRunReasonFailed.String(),
 		Message: "failure message",
 	}
-
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
-		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expected, trs.GetCondition(apis.ConditionSucceeded), "Unexpected status: %s", cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time))
 }
 
 func TestMarkStatusSuccess(t *testing.T) {
@@ -967,7 +956,5 @@ func TestMarkStatusSuccess(t *testing.T) {
 		Message: "All Steps have completed executing",
 	}
 
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
-		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expected, trs.GetCondition(apis.ConditionSucceeded), "Unexpected status: %s", cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time))
 }

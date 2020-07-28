@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -92,9 +91,7 @@ func TestCondition_Invalidate(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Expected an Error, got nothing for %v", tc)
 			}
-			if d := cmp.Diff(tc.expectedError, *err, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("Condition.Validate() errors diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expectedError, *err, "Condition.Validate() errors diff %s", cmpopts.IgnoreUnexported(apis.FieldError{}))
 		})
 	}
 }

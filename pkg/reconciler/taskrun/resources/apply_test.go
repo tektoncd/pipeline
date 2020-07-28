@@ -19,7 +19,6 @@ package resources_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -492,9 +491,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.want, got, "ApplyParameters() got diff %s")
 		})
 	}
 }
@@ -558,9 +555,7 @@ func TestApplyParameters(t *testing.T) {
 		spec.Sidecars[0].Container.Env[0].Value = "world"
 	})
 	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "ApplyParameters() got diff %s")
 }
 
 func TestApplyResources(t *testing.T) {
@@ -630,9 +625,7 @@ func TestApplyResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("ApplyResources() %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.want, got, "ApplyResources() %s")
 		})
 	}
 }
@@ -751,9 +744,7 @@ func TestApplyWorkspaces(t *testing.T) {
 		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	}}
 	got := resources.ApplyWorkspaces(ts, w, wb)
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "TestApplyWorkspaces() got diff %s")
 }
 
 func TestContext(t *testing.T) {
@@ -931,9 +922,7 @@ func TestContext(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyContexts(&tc.spec, &tc.rtr, &tc.tr)
-			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, &tc.want, got, "%s")
 		})
 	}
 }
@@ -969,9 +958,7 @@ func TestTaskResults(t *testing.T) {
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 	})
 	got := resources.ApplyTaskResults(ts)
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("ApplyTaskResults() got diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "ApplyTaskResults() got diff %s")
 }
 
 func TestApplyCredentialsPath(t *testing.T) {
@@ -1015,9 +1002,7 @@ func TestApplyCredentialsPath(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := resources.ApplyCredentialsPath(&tc.spec, tc.path)
-			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, &tc.want, got, " %s")
 		})
 	}
 }

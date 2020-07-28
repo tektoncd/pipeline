@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -78,9 +77,7 @@ func TestCloudEventDeliveryFromTargets(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			gotCloudEvents := cloudEventDeliveryFromTargets(tc.targets)
-			if d := cmp.Diff(tc.wantCloudEvents, gotCloudEvents); d != "" {
-				t.Errorf("Wrong Cloud Events %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.wantCloudEvents, gotCloudEvents, "Wrong Cloud Events %s")
 		})
 	}
 }
@@ -143,9 +140,7 @@ func TestSendCloudEvents(t *testing.T) {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			opts := GetCloudEventDeliveryCompareOptions()
-			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
-				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.wantTaskRun.Status, tc.taskRun.Status, "Wrong Cloud Events Status %s", opts...)
 		})
 	}
 }
@@ -201,9 +196,7 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				t.Fatalf("Unexpected success sending cloud events: %v", err)
 			}
 			opts := GetCloudEventDeliveryCompareOptions()
-			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
-				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.wantTaskRun.Status, tc.taskRun.Status, "Wrong Cloud Events Status %s", opts...)
 		})
 	}
 }
@@ -286,9 +279,7 @@ func TestInitializeCloudEvents(t *testing.T) {
 			}
 			InitializeCloudEvents(tc.taskRun, prMap)
 			opts := GetCloudEventDeliveryCompareOptions()
-			if d := cmp.Diff(tc.wantTaskRun.Status, tc.taskRun.Status, opts...); d != "" {
-				t.Errorf("Wrong Cloud Events Status %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.wantTaskRun.Status, tc.taskRun.Status, "Wrong Cloud Events Status %s", opts...)
 		})
 	}
 }
@@ -412,9 +403,7 @@ func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected an error sending cloud events with no client in the context, got none")
 	}
-	if d := cmp.Diff("No cloud events client found in the context", err.Error()); d != "" {
-		t.Fatalf("Unexpected error message %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, "No cloud events client found in the context", err.Error(), "Unexpected error message %s")
 }
 
 func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool) context.Context {

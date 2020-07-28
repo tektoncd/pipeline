@@ -19,7 +19,6 @@ package pod
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -41,9 +40,7 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 	}, {
 		Image: "step-2",
 	}}
-	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, gotScripts, "Diff %s")
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
 	}
@@ -68,9 +65,7 @@ func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 	}, {
 		Image: "step-2",
 	}}
-	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, gotScripts, "Diff %s")
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
 	}
@@ -102,13 +97,8 @@ func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
 	wantSidecar := []corev1.Container{{
 		Image: "sidecar-1",
 	}}
-	if d := cmp.Diff(want, gotScripts); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
-
-	if d := cmp.Diff(wantSidecar, gotSidecars); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, gotScripts, "Diff %s")
+	diff.ErrorWantGot(t, wantSidecar, gotSidecars, "Diff %s")
 
 	if gotInit != nil {
 		t.Errorf("Wanted nil init container, got %v", gotInit)
@@ -203,12 +193,8 @@ script-heredoc-randomly-generated-j2tds
 			scriptsVolumeMount,
 		},
 	}}
-	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
-	}
-	if d := cmp.Diff(want, gotSteps); d != "" {
-		t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, wantInit, gotInit, "Init Container Diff %s")
+	diff.ErrorWantGot(t, want, gotSteps, "Init Container Diff %s")
 
 	if len(gotSidecars) != 0 {
 		t.Errorf("Expected zero sidecars, got %v", len(gotSidecars))
@@ -294,15 +280,9 @@ sidecar-script-heredoc-randomly-generated-j2tds
 		Command:      []string{"/tekton/scripts/sidecar-script-0-6nl7g"},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}}
-	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
-	}
-	if d := cmp.Diff(want, gotSteps); d != "" {
-		t.Errorf("Step Containers Diff %s", diff.PrintWantGot(d))
-	}
-	if d := cmp.Diff(wantSidecars, gotSidecars); d != "" {
-		t.Errorf("Sidecar Containers Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, wantInit, gotInit, "Init Container Diff %s")
+	diff.ErrorWantGot(t, want, gotSteps, "Step Containers Diff %s")
+	diff.ErrorWantGot(t, wantSidecars, gotSidecars, "Sidecar Containers Diff %s")
 
 	if len(gotSidecars) != 1 {
 		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))

@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
@@ -116,9 +115,7 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			ctx := context.Background()
 			tc.trs.SetDefaults(ctx)
 
-			if d := cmp.Diff(tc.want, tc.trs); d != "" {
-				t.Errorf("Mismatch of TaskRunSpec %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.want, tc.trs, "Mismatch of TaskRunSpec %s")
 		})
 	}
 }
@@ -378,9 +375,7 @@ func TestTaskRunDefaulting(t *testing.T) {
 				ctx = tc.wc(ctx)
 			}
 			got.SetDefaults(ctx)
-			if d := cmp.Diff(tc.want, got, ignoreUnexportedResources); d != "" {
-				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.want, got, "SetDefaults %s", ignoreUnexportedResources)
 		})
 	}
 }

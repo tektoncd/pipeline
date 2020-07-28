@@ -19,7 +19,6 @@ package cloudevent
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -117,20 +116,15 @@ func TestEventForTaskRun(t *testing.T) {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
 				wantSubject := taskRunName
-				if d := cmp.Diff(wantSubject, got.Subject()); d != "" {
-					t.Errorf("Wrong Event ID %s", diff.PrintWantGot(d))
-				}
-				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
-					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, wantSubject, got.Subject(), "Wrong Event ID %s")
+				diff.ErrorWantGot(t, string(c.wantEventType), got.Type(), "Wrong Event Type %s")
+
 				wantData := NewTektonCloudEventData(c.taskRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)
 				}
-				if d := cmp.Diff(wantData, gotData); d != "" {
-					t.Errorf("Wrong Event data %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, wantData, gotData, "Wrong Event data %s")
 
 				if err := got.Validate(); err != nil {
 					t.Errorf("Expected event to be valid; %s", err)
@@ -174,20 +168,15 @@ func TestEventForPipelineRun(t *testing.T) {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
 				wantSubject := pipelineRunName
-				if d := cmp.Diff(wantSubject, got.Subject()); d != "" {
-					t.Errorf("Wrong Event ID %s", diff.PrintWantGot(d))
-				}
-				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
-					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, wantSubject, got.Subject(), "Wrong Event ID %s")
+				diff.ErrorWantGot(t, string(c.wantEventType), got.Type(), "Wrong Event Type %s")
+
 				wantData := NewTektonCloudEventData(c.pipelineRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)
 				}
-				if d := cmp.Diff(wantData, gotData); d != "" {
-					t.Errorf("Wrong Event data %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, wantData, gotData, "Wrong Event data %s")
 
 				if err := got.Validate(); err != nil {
 					t.Errorf("Expected event to be valid; %s", err)

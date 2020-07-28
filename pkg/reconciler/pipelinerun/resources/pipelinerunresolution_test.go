@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
@@ -639,9 +638,7 @@ func TestGetNextTasks(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.GetNextTasks(tc.candidates)
-			if d := cmp.Diff(next, tc.expectedNext); d != "" {
-				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, next, tc.expectedNext, "Didn't get expected next Tasks %s")
 		})
 	}
 }
@@ -745,9 +742,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.GetNextTasks(tc.candidates)
-			if d := cmp.Diff(next, tc.expectedNext); d != "" {
-				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, next, tc.expectedNext, "Didn't get expected next Tasks %s")
 		})
 	}
 }
@@ -877,15 +872,10 @@ func TestIsDone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			isDone := tc.state.IsDone()
-			if d := cmp.Diff(isDone, tc.expected); d != "" {
-				t.Errorf("Didn't get expected IsDone %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, isDone, tc.expected, "Didn't get expected IsDone %s")
 			for i, pt := range tc.state {
 				isDone = pt.IsDone()
-				if d := cmp.Diff(isDone, tc.ptExpected[i]); d != "" {
-					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone %s", diff.PrintWantGot(d))
-				}
-
+				diff.ErrorWantGot(t, isDone, tc.ptExpected[i], "Didn't get expected (ResolvedPipelineRunTask) IsDone %s")
 			}
 		})
 	}
@@ -1148,9 +1138,7 @@ func TestIsSkipped(t *testing.T) {
 				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
 			}
 			isSkipped := rprt.IsSkipped(tc.state, dag)
-			if d := cmp.Diff(isSkipped, tc.expected); d != "" {
-				t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, isSkipped, tc.expected, "Didn't get expected isSkipped %s")
 		})
 	}
 }
@@ -1210,9 +1198,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
 			names := tc.state.SuccessfulOrSkippedDAGTasks(dag)
-			if d := cmp.Diff(names, tc.expectedNames); d != "" {
-				t.Errorf("Expected to get completed names %v but got something different %s", tc.expectedNames, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, names, tc.expectedNames, fmt.Sprintf("Expected to get completed names %v but got something different ", tc.expectedNames)+"%s")
 		})
 	}
 }
@@ -1476,9 +1462,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				Message: getExpectedMessage(tc.expectedStatus, tc.expectedSucceeded,
 					tc.expectedIncomplete, tc.expectedSkipped, tc.expectedFailed, tc.expectedCancelled),
 			}
-			if d := cmp.Diff(wantCondition, c); d != "" {
-				t.Fatalf("Mismatch in condition %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, wantCondition, c, "Mismatch in condition %s")
 		})
 	}
 }
@@ -1587,9 +1571,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 				Message: getExpectedMessage(tc.expectedStatus, tc.expectedSucceeded,
 					tc.expectedIncomplete, tc.expectedSkipped, tc.expectedFailed, tc.expectedCancelled),
 			}
-			if d := cmp.Diff(wantCondition, c); d != "" {
-				t.Fatalf("Mismatch in condition %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, wantCondition, c, "Mismatch in condition %s")
 		})
 	}
 }
@@ -1645,8 +1627,8 @@ func TestGetResourcesFromBindings(t *testing.T) {
 	r1, ok := m["git-resource"]
 	if !ok {
 		t.Errorf("Missing expected resource git-resource: %v", m)
-	} else if d := cmp.Diff(r, r1); d != "" {
-		t.Errorf("Expected resources didn't match actual %s", diff.PrintWantGot(d))
+	} else {
+		diff.ErrorWantGot(t, r, r1, "Expected resources didn't match actual %s")
 	}
 
 	r2, ok := m["image-resource"]
@@ -1785,9 +1767,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}}
 
-	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
-		t.Errorf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedState, pipelineState, fmt.Sprintf("Expected to get current pipeline state %v, but actual differed ", expectedState)+"%s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}))
 }
 
 func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
@@ -1825,12 +1805,8 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		Inputs:   map[string]*resourcev1alpha1.PipelineResource{},
 		Outputs:  map[string]*resourcev1alpha1.PipelineResource{},
 	}
-	if d := cmp.Diff(pipelineState[0].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed %s", diff.PrintWantGot(d))
-	}
-	if d := cmp.Diff(pipelineState[1].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pipelineState[0].ResolvedTaskResources, expectedTaskResources, "Expected resources where only Tasks were resolved but but actual differed %s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}))
+	diff.FatalWantGot(t, pipelineState[1].ResolvedTaskResources, expectedTaskResources, "Expected resources where only Tasks were resolved but but actual differed %s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}))
 }
 
 func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
@@ -1973,9 +1949,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 		},
 	}}
 
-	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pipelineState, expectedState, fmt.Sprintf("Expected to get current pipeline state %v, but actual differed ", expectedState)+"%s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}))
 }
 
 func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
@@ -2027,10 +2001,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 			},
 		},
 	}}
-
-	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{})); d != "" {
-		t.Errorf("Expected to get current pipeline state %v, but actual differed %s", expectedState, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedState, pipelineState, fmt.Sprintf("Expected to get current pipeline state %v, but actual differed ", expectedState)+"%s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}))
 }
 
 func TestResolveConditionChecks(t *testing.T) {
@@ -2115,10 +2086,7 @@ func TestResolveConditionChecks(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 			}
-
-			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ConditionChecks did not resolve as expected for case %s %s", tc.name, diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, fmt.Sprintf("ConditionChecks did not resolve as expected for case %s", tc.name)+"%s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{}))
 		})
 	}
 }
@@ -2208,10 +2176,7 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 			}
-
-			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ConditionChecks did not resolve as expected for case %s %s", tc.name, diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, fmt.Sprintf("ConditionChecks did not resolve as expected for case %s", tc.name)+"%s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{}))
 		})
 	}
 }
@@ -2330,9 +2295,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		ResolvedResources:     providedResources,
 	}}
 
-	if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-		t.Fatalf("ConditionChecks did not resolve as expected %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, "ConditionChecks did not resolve as expected %s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{}))
 }
 
 func TestResolvedConditionCheck_WithResources(t *testing.T) {
@@ -2410,9 +2373,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 					PipelineTaskCondition: &ptc,
 					ResolvedResources:     tc.expected,
 				}}
-				if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-					t.Fatalf("ConditionChecks did not resolve as expected %s", diff.PrintWantGot(d))
-				}
+				diff.FatalWantGot(t, expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, "ConditionChecks did not resolve as expected %s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{}))
 			}
 		})
 	}
@@ -2654,9 +2615,7 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.GetFinalTasks(dagGraph, finalGraph)
-			if d := cmp.Diff(tc.expectedFinalTasks, next); d != "" {
-				t.Errorf("Didn't get expected final Tasks for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expectedFinalTasks, next, fmt.Sprintf("Didn't get expected final Tasks for %s (%s): ", tc.name, tc.desc)+"%s")
 		})
 	}
 }

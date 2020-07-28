@@ -19,7 +19,6 @@ package resources_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -75,9 +74,7 @@ func TestPipelineRef(t *testing.T) {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, task, tc.expected, "%s")
 		})
 	}
 }

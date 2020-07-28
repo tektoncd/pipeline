@@ -19,7 +19,6 @@ package resources
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -923,12 +922,8 @@ func TestValidOutputResources(t *testing.T) {
 			}
 
 			if got != nil {
-				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
-				}
-				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch %s", diff.PrintWantGot(d))
-				}
+				diff.FatalWantGot(t, c.wantSteps, got.Steps, "post build steps mismatch %s")
+				diff.FatalWantGot(t, c.wantVolumes, got.Volumes, "post build steps volumes mismatch %s")
 			}
 		})
 	}
@@ -1117,9 +1112,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 			if got != nil {
-				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
-				}
+				diff.FatalWantGot(t, c.wantSteps, got.Steps, "post build steps mismatch %s")
 			}
 		})
 	}
@@ -1733,12 +1726,8 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}
 
 			if got != nil {
-				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
-				}
-				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch %s", diff.PrintWantGot(d))
-				}
+				diff.FatalWantGot(t, c.wantSteps, got.Steps, "post build steps mismatch %s")
+				diff.FatalWantGot(t, c.wantVolumes, got.Volumes, "post build steps volumes mismatch %s")
 			}
 		})
 	}

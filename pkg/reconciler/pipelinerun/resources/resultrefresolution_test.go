@@ -377,9 +377,7 @@ func TestResolveResultRefs(t *testing.T) {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tt.want, got, "ResolveResultRef %s")
 		})
 	}
 }
@@ -511,9 +509,7 @@ func TestResolvePipelineResultRefs(t *testing.T) {
 			sort.SliceStable(got, func(i, j int) bool {
 				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
 			})
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tt.want, got, "ResolveResultRef %s")
 		})
 	}
 }

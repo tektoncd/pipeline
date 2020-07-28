@@ -22,9 +22,9 @@ package dag_test
 // dealing with v1beta1 in our code and we won't need 2 sets of tests.
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -122,9 +122,7 @@ func TestGetSchedulable_v1beta1(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
-			if d := cmp.Diff(tasks, tc.expectedTasks, cmpopts.IgnoreFields(v1beta1.PipelineTask{}, "RunAfter")); d != "" {
-				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tasks, tc.expectedTasks, fmt.Sprintf("expected that with %v done, %v would be ready to schedule but was different: ", tc.finished, tc.expectedTasks)+"%s", cmpopts.IgnoreFields(v1beta1.PipelineTask{}, "RunAfter"))
 		})
 	}
 }

@@ -49,18 +49,14 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 	p.Status.SetCondition(foo)
 
 	fooStatus := p.Status.GetCondition(foo.Type)
-	if d := cmp.Diff(fooStatus, foo, ignoreVolatileTime); d != "" {
-		t.Errorf("Unexpected pipeline run condition type; diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, fooStatus, foo, "Unexpected pipeline run condition type; diff %s", ignoreVolatileTime)
 
 	// Add a second condition.
 	p.Status.SetCondition(bar)
 
 	barStatus := p.Status.GetCondition(bar.Type)
+	diff.FatalWantGot(t, barStatus, bar, "Unexpected pipeline run condition type; diff %s", ignoreVolatileTime)
 
-	if d := cmp.Diff(barStatus, bar, ignoreVolatileTime); d != "" {
-		t.Fatalf("Unexpected pipeline run condition type; diff %s", diff.PrintWantGot(d))
-	}
 }
 
 func TestPipelineRun_TaskRunref(t *testing.T) {
@@ -77,10 +73,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 		Namespace:  p.Namespace,
 		Name:       p.Name,
 	}
-
-	if d := cmp.Diff(p.GetTaskRunRef(), expectTaskRunRef); d != "" {
-		t.Fatalf("Taskrun reference mismatch; diff %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, p.GetTaskRunRef(), expectTaskRunRef, "Taskrun reference mismatch; diff %s")
 }
 
 func TestInitializeConditions(t *testing.T) {

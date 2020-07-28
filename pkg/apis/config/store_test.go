@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -45,7 +44,5 @@ func TestStoreLoadWithContext(t *testing.T) {
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 
-	if d := cmp.Diff(cfg, expected); d != "" {
-		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, cfg, expected, "Unexpected config %s")
 }

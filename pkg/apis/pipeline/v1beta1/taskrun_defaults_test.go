@@ -116,9 +116,7 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			ctx := context.Background()
 			tc.trs.SetDefaults(ctx)
 
-			if d := cmp.Diff(tc.want, tc.trs); d != "" {
-				t.Errorf("Mismatch of TaskRunSpec: %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.want, tc.trs, "Mismatch of TaskRunSpec: %s")
 		})
 	}
 }
@@ -379,8 +377,7 @@ func TestTaskRunDefaulting(t *testing.T) {
 			}
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
-				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
-				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
+				diff.ErrorWantGot(t, got, tc.want, "SetDefaults %s", ignoreUnexportedResources)
 			}
 		})
 	}

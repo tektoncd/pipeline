@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -38,14 +37,12 @@ func TestTaskRun_GetBuildPodRef(t *testing.T) {
 			Name:      "taskrunname",
 		},
 	}
-	if d := cmp.Diff(tr.GetBuildPodRef(), corev1.ObjectReference{
+	diff.FatalWantGot(t, tr.GetBuildPodRef(), corev1.ObjectReference{
 		APIVersion: "v1",
 		Kind:       "Pod",
 		Namespace:  "testns",
 		Name:       "taskrunname",
-	}); d != "" {
-		t.Fatalf("taskrun build pod ref mismatch: %s", diff.PrintWantGot(d))
-	}
+	}, "taskrun build pod ref mismatch: %s")
 }
 
 func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
@@ -334,9 +331,7 @@ func TestHasTimedOut(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.taskRun.HasTimedOut()
-			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, result, tc.expectedStatus, "%s")
 		})
 	}
 }

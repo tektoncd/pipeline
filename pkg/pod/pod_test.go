@@ -23,7 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -1157,14 +1156,10 @@ script-heredoc-randomly-generated-78c5n
 				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
 			}
 
-			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, c.want, &got.Spec, "Diff %s", resourceQuantityCmp)
 
 			if c.wantAnnotations != nil {
-				if d := cmp.Diff(c.wantAnnotations, got.ObjectMeta.Annotations, cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)); d != "" {
-					t.Errorf("Annotation Diff(-want, +got):\n%s", d)
-				}
+				diff.ErrorWantGot(t, c.wantAnnotations, got.ObjectMeta.Annotations, "Diff %s", cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation))
 			}
 		})
 	}
@@ -1186,9 +1181,7 @@ func TestMakeLabels(t *testing.T) {
 			},
 		},
 	})
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff labels %s")
 }
 
 func TestShouldOverrideHomeEnv(t *testing.T) {

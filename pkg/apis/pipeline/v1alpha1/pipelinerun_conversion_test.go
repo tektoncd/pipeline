@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -173,9 +172,7 @@ func TestPipelineRunConversion(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, test.in, got, "roundtrip %s")
 			})
 		}
 	}

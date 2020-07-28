@@ -24,7 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
@@ -95,9 +94,7 @@ func TestOCIResolver(t *testing.T) {
 
 			// The contents of the image are in a specific order so we can expect this iteration to be consistent.
 			for idx, actual := range listActual {
-				if d := cmp.Diff(actual, tc.listExpected[idx]); d != "" {
-					t.Error(diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, actual, tc.listExpected[idx], "%s")
 			}
 
 			for _, obj := range tc.objs {
@@ -106,9 +103,7 @@ func TestOCIResolver(t *testing.T) {
 					t.Fatalf("could not retrieve object from image: %#v", err)
 				}
 
-				if d := cmp.Diff(actual, obj); d != "" {
-					t.Error(diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, actual, obj, "%s")
 			}
 		})
 	}

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -111,9 +111,7 @@ func TestTaskRunFailure(t *testing.T) {
 	}}
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
 	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
-	}
+	diff.FatalWantGot(t, taskrun.Status.Steps, expectedStepState, "-got, +want: %v", ignoreTerminatedFields, ignoreStepFields)
 }
 
 func TestTaskRunStatus(t *testing.T) {
@@ -174,15 +172,10 @@ func TestTaskRunStatus(t *testing.T) {
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
 	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
-	}
+	diff.FatalWantGot(t, taskrun.Status.Steps, expectedStepState, "-got, +want: %v", ignoreTerminatedFields, ignoreStepFields)
 	// Note(chmouel): Sometime we have docker-pullable:// or docker.io/library as prefix, so let only compare the suffix
 	if !strings.HasSuffix(taskrun.Status.Steps[0].ImageID, fqImageName) {
 		t.Fatalf("`ImageID: %s` does not end with `%s`", taskrun.Status.Steps[0].ImageID, fqImageName)
 	}
-
-	if d := cmp.Diff(taskrun.Status.TaskSpec, &task.Spec); d != "" {
-		t.Fatalf("-got, +want: %v", d)
-	}
+	diff.FatalWantGot(t, taskrun.Status.TaskSpec, &task.Spec, "-got, +want: %v")
 }

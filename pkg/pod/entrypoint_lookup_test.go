@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -99,9 +98,7 @@ func TestResolveEntrypoints(t *testing.T) {
 		Image:   "gcr.io/my/image@" + dig.String(),
 		Command: []string{"my", "entrypoint"},
 	}}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Fatalf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, want, got, "Diff %s")
 }
 
 type fakeCache map[string]*data

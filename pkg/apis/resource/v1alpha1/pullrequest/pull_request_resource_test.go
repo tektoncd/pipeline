@@ -19,7 +19,6 @@ package pullrequest_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -54,9 +53,7 @@ func TestPullRequest_NewResource(t *testing.T) {
 		InsecureSkipTLSVerify:     false,
 		DisableStrictJSONComments: true,
 	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Error(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "%s")
 }
 
 func TestPullRequest_NewResource_error(t *testing.T) {
@@ -163,9 +160,7 @@ func TestPullRequest_GetDownloadSteps(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if d := cmp.Diff(tc.out, got.GetStepsToPrepend()); d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.out, got.GetStepsToPrepend(), "%s")
 		})
 	}
 }
@@ -180,9 +175,7 @@ func TestPullRequest_GetOutputSteps(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if d := cmp.Diff(tc.out, got.GetStepsToAppend()); d != "" {
-				t.Error(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.out, got.GetStepsToAppend(), "%s")
 		})
 	}
 }

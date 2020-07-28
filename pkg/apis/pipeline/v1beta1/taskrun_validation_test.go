@@ -18,10 +18,10 @@ package v1beta1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -56,9 +56,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("TaskRun.Validate/%s %s", ts.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, err.Error(), ts.want.Error(), fmt.Sprintf("TaskRun.Validate/%s", ts.name)+"%s")
 		})
 	}
 }
@@ -118,9 +116,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 			if err == nil {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
-			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, ts.wantErr.Error(), err.Error(), fmt.Sprintf("TaskRunSpec.Validate/%s ", ts.name)+"%s")
 		})
 	}
 }
@@ -204,9 +200,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.spec.Validate(context.Background())
-			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, ts.wantErr.Error(), err.Error(), fmt.Sprintf("TaskRunSpec.Validate/%s ", ts.name)+"%s")
 		})
 	}
 }
@@ -500,9 +494,7 @@ func TestResources_Invalidate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.resources.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("TaskRunInputs.Validate/%s %s", ts.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, err.Error(), ts.wantErr.Error(), fmt.Sprintf("TaskRunInputs.Validate/%s ", ts.name)+"%s")
 		})
 	}
 }

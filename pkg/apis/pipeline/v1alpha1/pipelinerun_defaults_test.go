@@ -88,10 +88,7 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctx := context.Background()
 			tc.prs.SetDefaults(ctx)
-
-			if d := cmp.Diff(tc.want, tc.prs); d != "" {
-				t.Errorf("Mismatch of PipelineRunSpec %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.want, tc.prs, "Mismatch of PipelineRunSpec %s")
 		})
 	}
 
@@ -258,8 +255,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			}
 			got.SetDefaults(ctx)
 			if !cmp.Equal(got, tc.want, ignoreUnexportedResources) {
-				d := cmp.Diff(got, tc.want, ignoreUnexportedResources)
-				t.Errorf("SetDefaults %s", diff.PrintWantGot(d))
+				diff.ErrorWantGot(t, got, tc.want, "SetDefaults %s", ignoreUnexportedResources)
 			}
 		})
 	}

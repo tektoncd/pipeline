@@ -19,7 +19,6 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -123,9 +122,7 @@ func TestNewBuildGCSResource_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error creating BuildGCS resource: %s", err)
 	}
-	if d := cmp.Diff(expectedGCSResource, r); d != "" {
-		t.Errorf("Mismatch of BuildGCS resource: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedGCSResource, r, "Mismatch of BuildGCS resource: %s")
 }
 
 func TestBuildGCS_GetReplacements(t *testing.T) {
@@ -139,9 +136,7 @@ func TestBuildGCS_GetReplacements(t *testing.T) {
 		"type":     "build-gcs",
 		"location": "gs://fake-bucket",
 	}
-	if d := cmp.Diff(r.Replacements(), expectedReplacementMap); d != "" {
-		t.Errorf("BuildGCS Replacement map mismatch: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.Replacements(), expectedReplacementMap, "BuildGCS Replacement map mismatch: %s")
 }
 
 func TestBuildGCS_GetInputSteps(t *testing.T) {
@@ -176,9 +171,7 @@ func TestBuildGCS_GetInputSteps(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetDownloadSteps: %v", err)
 			}
-			if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
-				t.Errorf("Error mismatch between download steps: %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, got.GetStepsToPrepend(), wantSteps, "Error mismatch between download steps: %s")
 		})
 	}
 }

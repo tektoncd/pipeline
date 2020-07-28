@@ -19,7 +19,6 @@ package v1alpha1_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -121,9 +120,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 	}
 
 	v1alpha1.ApplyContainerReplacements(&s, replacements, arrayReplacements)
-	if d := cmp.Diff(s, expected); d != "" {
-		t.Errorf("Container replacements failed: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, s, expected, "Container replacements failed: %s")
 }
 
 func TestApplyContainerReplacements_NotDefined(t *testing.T) {
@@ -142,7 +139,5 @@ func TestApplyContainerReplacements_NotDefined(t *testing.T) {
 		Name: "$(params.not.defined)",
 	}
 	v1alpha1.ApplyContainerReplacements(&s, replacements, arrayReplacements)
-	if d := cmp.Diff(s, expected); d != "" {
-		t.Errorf("Unexpected container replacement: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, s, expected, "Unexpected container replacement: %s")
 }

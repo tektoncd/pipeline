@@ -224,9 +224,7 @@ func TestSSHFlagHandling(t *testing.T) {
     Port 22
     IdentityFile %s/.ssh/id_foo
 `, credentials.VolumePath)
-	if d := cmp.Diff(expectedSSHConfig, string(b)); d != "" {
-		t.Errorf("ssh_config diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedSSHConfig, string(b), "ssh_config diff %s")
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "known_hosts"))
 	if err != nil {
@@ -314,9 +312,7 @@ Host gitlab.example.com
     Port 2222
     IdentityFile %s/.ssh/id_baz
 `, credentials.VolumePath, credentials.VolumePath, credentials.VolumePath)
-	if d := cmp.Diff(expectedSSHConfig, string(b)); d != "" {
-		t.Errorf("ssh_config diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedSSHConfig, string(b), "ssh_config diff %s")
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "known_hosts"))
 	if err != nil {
@@ -325,9 +321,7 @@ Host gitlab.example.com
 	expectedSSHKnownHosts := `ssh-rsa aaaa
 ssh-rsa bbbb
 ssh-rsa cccc`
-	if d := cmp.Diff(expectedSSHKnownHosts, string(b)); d != "" {
-		t.Errorf("known_hosts diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedSSHKnownHosts, string(b), "known_hosts diff %s")
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "id_foo"))
 	if err != nil {

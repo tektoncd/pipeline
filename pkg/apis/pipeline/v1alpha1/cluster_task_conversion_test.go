@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -176,9 +175,7 @@ func TestClusterTaskConversion(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, test.in, got, "roundtrip %s")
 			})
 		}
 	}
@@ -313,9 +310,7 @@ func TestClusterTaskConversionFromDeprecated(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.want, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, test.want, got, "roundtrip %s")
 			})
 		}
 	}

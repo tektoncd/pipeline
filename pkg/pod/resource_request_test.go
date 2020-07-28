@@ -208,9 +208,7 @@ func TestResolveResourceRequests_No_LimitRange(t *testing.T) {
 	} {
 		t.Run(c.desc, func(t *testing.T) {
 			got := resolveResourceRequests(c.in, allZeroQty())
-			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, c.want, got, "Diff %s", resourceQuantityCmp)
 		})
 	}
 }
@@ -338,9 +336,7 @@ func TestResolveResourceRequests_LimitRange(t *testing.T) {
 				corev1.ResourceEphemeralStorage: resource.MustParse("100m"),
 			},
 			)
-			if d := cmp.Diff(c.want, got, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, c.want, got, "Diff %s", resourceQuantityCmp)
 		})
 	}
 }

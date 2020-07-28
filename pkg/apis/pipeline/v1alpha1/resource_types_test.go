@@ -16,7 +16,6 @@ package v1alpha1_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -94,9 +93,7 @@ func TestApplyTaskModifier(t *testing.T) {
 				},
 			}}
 
-			if d := cmp.Diff(expectedTaskSpec, tc.ts); d != "" {
-				t.Errorf("TaskSpec was not modified as expected %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, expectedTaskSpec, tc.ts, "TaskSpec was not modified as expected %s")
 		})
 	}
 }

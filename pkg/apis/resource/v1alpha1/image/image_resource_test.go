@@ -19,8 +19,6 @@ package image_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
@@ -58,9 +56,7 @@ func TestNewImageResource_Valid(t *testing.T) {
 		t.Fatalf("Unexpected error creating Image resource: %s", err)
 	}
 
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Mismatch of Image resource: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Mismatch of Image resource: %s")
 }
 
 func TestImageResource_Replacements(t *testing.T) {
@@ -80,7 +76,5 @@ func TestImageResource_Replacements(t *testing.T) {
 
 	got := ir.Replacements()
 
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Mismatch of ImageResource Replacements %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Mismatch of ImageResource Replacements %s")
 }

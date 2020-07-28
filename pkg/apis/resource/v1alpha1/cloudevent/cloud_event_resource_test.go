@@ -19,7 +19,6 @@ package cloudevent_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -69,9 +68,7 @@ func TestNewResource_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error creating CloudEvent resource: %s", err)
 	}
-	if d := cmp.Diff(expectedResource, r); d != "" {
-		t.Errorf("Mismatch of CloudEvent resource %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedResource, r, "Mismatch of CloudEvent resource %s")
 }
 
 func TestCloudEvent_GetReplacements(t *testing.T) {
@@ -85,9 +82,7 @@ func TestCloudEvent_GetReplacements(t *testing.T) {
 		"type":       "cloudEvent",
 		"target-uri": "http://fake-uri",
 	}
-	if d := cmp.Diff(r.Replacements(), expectedReplacementMap); d != "" {
-		t.Errorf("CloudEvent Replacement map mismatch: %s", d)
-	}
+	diff.ErrorWantGot(t, r.Replacements(), expectedReplacementMap, "CloudEvent Replacement map mismatch: %s")
 }
 
 func TestCloudEvent_InputContainerSpec(t *testing.T) {

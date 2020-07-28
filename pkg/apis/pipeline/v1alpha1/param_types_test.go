@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -72,9 +71,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			tc.before.SetDefaults(ctx)
-			if d := cmp.Diff(tc.before, tc.defaultsApplied); d != "" {
-				t.Errorf("ParamSpec.SetDefaults/%s %s", tc.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.before, tc.defaultsApplied, "ParamSpec.SetDefaults/%s %s")
 		})
 	}
 }
@@ -133,9 +130,7 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.args.input.ApplyReplacements(tt.args.stringReplacements, tt.args.arrayReplacements)
-			if d := cmp.Diff(tt.expectedOutput, tt.args.input); d != "" {
-				t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.expectedOutput, tt.args.input, "ApplyReplacements() output did not match expected value %s")
 		})
 	}
 }

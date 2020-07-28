@@ -19,7 +19,6 @@ package resources
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -159,9 +158,7 @@ func TestApplyParameters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyParameters(&tt.original.Spec, tt.run)
-			if d := cmp.Diff(&tt.expected.Spec, got); d != "" {
-				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, &tt.expected.Spec, got, "ApplyParameters() got diff %s")
 		})
 	}
 }
@@ -232,9 +229,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.want, tt.args.targets); d != "" {
-				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tt.want, tt.args.targets, "ApplyTaskResults() %s")
 		})
 	}
 }
@@ -305,9 +300,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.want, tt.args.targets); d != "" {
-				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tt.want, tt.args.targets, "ApplyTaskResults() %s")
 		})
 	}
 }
@@ -399,9 +392,7 @@ func TestApplyTaskResults_Conditions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.args.targets, tt.args.resolvedResultRefs)
-			if d := cmp.Diff(tt.want[0].ResolvedConditionChecks, tt.args.targets[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
-				t.Fatalf("ApplyTaskResults() %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, tt.want[0].ResolvedConditionChecks, tt.args.targets[0].ResolvedConditionChecks, "ApplyTaskResults() %s", cmpopts.IgnoreUnexported(v1beta1.TaskRunSpec{}, ResolvedConditionCheck{}))
 		})
 	}
 }
@@ -493,9 +484,7 @@ func TestContext(t *testing.T) {
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := ApplyContexts(&tc.original.Spec, tc.original.Name, tc.pr)
-			if d := cmp.Diff(tc.expected.Spec, *got); d != "" {
-				t.Errorf(diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expected.Spec, *got, "%s")
 		})
 	}
 }

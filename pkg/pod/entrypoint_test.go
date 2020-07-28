@@ -101,9 +101,7 @@ func TestOrderContainers(t *testing.T) {
 		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
-	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, wantInit, gotInit, "Init Container Diff %s")
 }
 
 func TestEntryPointResults(t *testing.T) {
@@ -175,9 +173,7 @@ func TestEntryPointResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Diff %s")
 }
 
 func TestEntryPointResultsSingleStep(t *testing.T) {
@@ -213,9 +209,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Diff %s")
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 	results := []v1alpha1.TaskResult{{
@@ -247,9 +241,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Diff %s")
 }
 func TestUpdateReady(t *testing.T) {
 	for _, c := range []struct {
@@ -304,8 +296,8 @@ func TestUpdateReady(t *testing.T) {
 			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
-			} else if d := cmp.Diff(c.wantAnnotations, got.Annotations); d != "" {
-				t.Errorf("Annotations Diff %s", diff.PrintWantGot(d))
+			} else {
+				diff.ErrorWantGot(t, c.wantAnnotations, got.Annotations, "Annotations Diff %s")
 			}
 		})
 	}
@@ -419,8 +411,8 @@ func TestStopSidecars(t *testing.T) {
 			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
-			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
-				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
+			} else {
+				diff.ErrorWantGot(t, c.wantContainers, got.Spec.Containers, "Containers Diff %s")
 			}
 		})
 	}

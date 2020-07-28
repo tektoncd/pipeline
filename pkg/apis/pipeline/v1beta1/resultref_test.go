@@ -17,10 +17,10 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -170,9 +170,7 @@ func TestNewResultReference(t *testing.T) {
 				t.Fatalf("expected to find expressions but didn't find any")
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
-				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, tt.want, got, fmt.Sprintf("TestNewResultReference/%s ", tt.name)+"%s")
 			}
 		})
 	}
@@ -306,9 +304,7 @@ func TestHasResultReference(t *testing.T) {
 				}
 				return true
 			})
-			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.wantRef, got, fmt.Sprintf("TestHasResultReference/%s ", tt.name)+"%s")
 		})
 	}
 }

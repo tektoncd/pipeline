@@ -27,7 +27,6 @@ import (
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/tektoncd/pipeline/test/diff"
 
-	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -113,9 +112,7 @@ func TestDownload(t *testing.T) {
 	}
 	populateManifest(want)
 
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Get PullRequest: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, want, got, "Get PullRequest: %s")
 }
 
 func TestUploadFromDisk(t *testing.T) {
@@ -164,9 +161,7 @@ func TestUpload_NewComment(t *testing.T) {
 
 	// Only compare comments since the resource manifest will change between
 	// downloads.
-	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.Comments, got.Comments, "%s")
 }
 
 func TestUpload_DeleteComment(t *testing.T) {
@@ -185,9 +180,7 @@ func TestUpload_DeleteComment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.Comments, got.Comments, "%s")
 }
 
 func TestUpload_ManifestComment(t *testing.T) {
@@ -218,10 +211,7 @@ func TestUpload_ManifestComment(t *testing.T) {
 		Body:   "hello world!",
 		Author: scm.User{Login: "k8s-ci-robot"},
 	}}
-
-	if d := cmp.Diff(r.Comments, got.Comments); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.Comments, got.Comments, "%s")
 }
 
 func TestUpload_NewStatus(t *testing.T) {
@@ -244,9 +234,7 @@ func TestUpload_NewStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if d := cmp.Diff(r, got); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r, got, "%s")
 }
 
 func TestUpload_UpdateStatus(t *testing.T) {
@@ -265,9 +253,7 @@ func TestUpload_UpdateStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if d := cmp.Diff(r, got); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r, got, "%s")
 }
 
 func TestUpload_Invalid_Status(t *testing.T) {
@@ -304,9 +290,8 @@ func TestUpload_Invalid_Status(t *testing.T) {
 		t.Fatalf("expected 2 errors, got %d", len(merr.Errors))
 	}
 	for i, err := range merr.Errors {
-		if d := cmp.Diff(expectedErrors[i], err.Error()); d != "" {
-			t.Errorf("Upload status error diff %s", diff.PrintWantGot(d))
-		}
+
+		diff.ErrorWantGot(t, expectedErrors[i], err.Error(), "Upload status error diff %s")
 	}
 }
 
@@ -326,9 +311,7 @@ func TestUpload_NewLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if d := cmp.Diff(r.PR, got.PR); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.PR, got.PR, "%s")
 }
 
 func TestUpload_DeleteLabel(t *testing.T) {
@@ -347,9 +330,7 @@ func TestUpload_DeleteLabel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if d := cmp.Diff(r.PR, got.PR); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.PR, got.PR, "%s")
 }
 
 func TestUpload_ManifestLabel(t *testing.T) {
@@ -374,7 +355,5 @@ func TestUpload_ManifestLabel(t *testing.T) {
 	}
 	r.PR.Labels = append(r.PR.Labels, &scm.Label{Name: "z"})
 
-	if d := cmp.Diff(r.PR, got.PR); d != "" {
-		t.Errorf(diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, r.PR, got.PR, "%s")
 }

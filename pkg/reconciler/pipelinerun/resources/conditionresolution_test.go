@@ -20,7 +20,6 @@ package resources
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -274,9 +273,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				t.Errorf("Unexpected error when converting condition to task spec: %v", err)
 			}
 
-			if d := cmp.Diff(&tc.want, got); d != "" {
-				t.Errorf("TaskSpec generated from Condition is unexpected %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, &tc.want, got, "TaskSpec generated from Condition is unexpected %s")
 		})
 	}
 }
@@ -294,7 +291,5 @@ func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
 		},
 	}}
 
-	if d := cmp.Diff(expected, rcc.ToTaskResourceBindings()); d != "" {
-		t.Errorf("Did not get expected task resource binding from condition %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expected, rcc.ToTaskResourceBindings(), "Did not get expected task resource binding from condition %s")
 }

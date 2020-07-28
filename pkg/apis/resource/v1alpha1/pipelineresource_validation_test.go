@@ -18,9 +18,9 @@ package v1alpha1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -160,9 +160,7 @@ func TestResourceValidation_Invalid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
-			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
-				t.Errorf("Didn't get expected error for %s %s", tt.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.want.Error(), err.Error(), fmt.Sprintf("Didn't get expected error for %s ", tt.name)+"%s")
 		})
 	}
 }

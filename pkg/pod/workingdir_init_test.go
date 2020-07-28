@@ -19,7 +19,6 @@ package pod
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -66,9 +65,7 @@ func TestWorkingDirInit(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			got := workingDirInit(images.ShellImage, c.stepContainers)
-			if d := cmp.Diff(c.want, got); d != "" {
-				t.Fatalf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, c.want, got, "Diff %s")
 		})
 	}
 }

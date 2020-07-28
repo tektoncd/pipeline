@@ -3,7 +3,6 @@ package workspace_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -186,9 +185,7 @@ func TestGetVolumes(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := workspace.GetVolumes(tc.workspaces)
-			if d := cmp.Diff(tc.expectedVolumes, v); d != "" {
-				t.Errorf("Didn't get expected volumes from bindings %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expectedVolumes, v, "Didn't get expected volumes from bindings %s")
 		})
 	}
 }
@@ -515,9 +512,7 @@ func TestApply(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}
-			if d := cmp.Diff(tc.expectedTaskSpec, *ts); d != "" {
-				t.Errorf("Didn't get expected TaskSpec modifications %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expectedTaskSpec, *ts, "Didn't get expected TaskSpec modifications %s")
 		})
 	}
 }

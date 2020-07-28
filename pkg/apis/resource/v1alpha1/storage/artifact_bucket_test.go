@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -64,9 +63,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 	}}}
 
 	got := bucket.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestBucketGetCopyToContainerSpec(t *testing.T) {
@@ -81,9 +78,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	}}}
 
 	got := bucket.GetCopyToStorageFromSteps("workspace", "src-path", "workspace/destination")
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestGetSecretsVolumes(t *testing.T) {
@@ -97,7 +92,5 @@ func TestGetSecretsVolumes(t *testing.T) {
 		},
 	}}
 	got := bucket.GetSecretsVolumes()
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }

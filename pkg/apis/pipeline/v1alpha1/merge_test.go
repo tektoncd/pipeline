@@ -129,10 +129,7 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 			if err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
-
-			if d := cmp.Diff(tc.expected, result, resourceQuantityCmp); d != "" {
-				t.Errorf("merged steps don't match, diff: %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expected, result, "merged steps don't match, diff: %s", resourceQuantityCmp)
 		})
 	}
 }

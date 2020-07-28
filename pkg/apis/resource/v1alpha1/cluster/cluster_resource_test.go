@@ -19,7 +19,6 @@ package cluster_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -151,9 +150,7 @@ func TestNewClusterResource(t *testing.T) {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
 			c.want.ShellImage = "override-with-shell-image:latest"
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, got, c.want, "Diff:\n%s")
 		})
 	}
 }
@@ -199,7 +196,5 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDownloadSteps: %v", err)
 	}
-	if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
-		t.Errorf("Error mismatch between download steps: %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got.GetStepsToPrepend(), wantSteps, "Error mismatch between download steps: %s")
 }

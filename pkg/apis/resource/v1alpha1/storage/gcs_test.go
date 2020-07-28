@@ -19,7 +19,6 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -105,9 +104,7 @@ func TestValidNewGCSResource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
-	if d := cmp.Diff(expectedGCSResource, gcsRes); d != "" {
-		t.Errorf("Mismatch of GCS resource %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedGCSResource, gcsRes, "Mismatch of GCS resource %s")
 }
 
 func TestGCSGetReplacements(t *testing.T) {
@@ -121,9 +118,7 @@ func TestGCSGetReplacements(t *testing.T) {
 		"type":     "gcs",
 		"location": "gs://fake-bucket",
 	}
-	if d := cmp.Diff(gcsResource.Replacements(), expectedReplacementMap); d != "" {
-		t.Errorf("GCS Replacement map mismatch %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, gcsResource.Replacements(), expectedReplacementMap, "GCS Replacement map mismatch %s")
 }
 
 func TestGetParams(t *testing.T) {
@@ -142,9 +137,7 @@ func TestGetParams(t *testing.T) {
 		SecretName: "test-secret-name",
 		FieldName:  "test-field-name",
 	}}
-	if d := cmp.Diff(gcsResource.GetSecretParams(), expectedSp); d != "" {
-		t.Errorf("Error mismatch on storage secret params %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, gcsResource.GetSecretParams(), expectedSp, "Error mismatch on storage secret params %s")
 }
 
 func TestGetInputSteps(t *testing.T) {
@@ -243,9 +236,7 @@ gsutil cp gs://some-bucket /workspace
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
-			if d := cmp.Diff(tc.wantSteps, gotSpec.GetStepsToPrepend()); d != "" {
-				t.Errorf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.wantSteps, gotSpec.GetStepsToPrepend(), "Diff %s")
 		})
 	}
 }
@@ -333,9 +324,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
 
-			if d := cmp.Diff(got.GetStepsToAppend(), tc.wantSteps); d != "" {
-				t.Errorf("Error mismatch between upload containers spec %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, got.GetStepsToAppend(), tc.wantSteps, "Error mismatch between upload containers spec %s")
 		})
 	}
 }

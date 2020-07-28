@@ -19,7 +19,6 @@ package resources
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -189,9 +188,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				t.Fatalf("Failed to declare output resources for test %q: error %v", c.desc, err)
 			}
 
-			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
-				t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, c.task.Spec.Steps, c.wantSteps, "post build steps mismatch %s")
 		})
 	}
 }

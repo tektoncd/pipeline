@@ -18,10 +18,10 @@ package v1beta1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -100,9 +100,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.pr.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s %s", ps.name, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, err.Error(), ps.want.Error(), fmt.Sprintf("PipelineRun.Validate/%s ", ps.name)+"%s")
 		})
 	}
 }
@@ -201,9 +199,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.spec.Validate(context.Background())
-			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, d)
-			}
+			diff.ErrorWantGot(t, ps.wantErr.Error(), err.Error(), fmt.Sprintf("PipelineRunSpec.Validate/%s ", ps.name)+"%s")
 		})
 	}
 }

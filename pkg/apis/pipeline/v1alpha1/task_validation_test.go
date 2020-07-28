@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -1015,9 +1014,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
-			if d := cmp.Diff(tt.expectedError, *err, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tt.expectedError, *err, "TaskSpec.Validate() errors diff %s", cmpopts.IgnoreUnexported(apis.FieldError{}))
 		})
 	}
 }

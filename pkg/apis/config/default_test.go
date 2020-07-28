@@ -19,7 +19,6 @@ package config_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -187,9 +186,7 @@ func TestEquals(t *testing.T) {
 func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedConfig *config.Defaults) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if Defaults, err := config.NewDefaultsFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(Defaults, expectedConfig); d != "" {
-			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-		}
+		diff.ErrorWantGot(t, Defaults, expectedConfig, "Diff:\n%s")
 	} else {
 		t.Errorf("NewDefaultsFromConfigMap(actual) = %v", err)
 	}

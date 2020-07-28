@@ -19,7 +19,6 @@ package pod
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -160,12 +159,8 @@ func TestCredsInit(t *testing.T) {
 			if len(args) == 0 && len(volumes) != 0 {
 				t.Fatalf("credsInit returned secret volumes but no arguments")
 			}
-			if d := cmp.Diff(c.wantArgs, args); d != "" {
-				t.Fatalf("Diff %s", diff.PrintWantGot(d))
-			}
-			if d := cmp.Diff(c.wantVolumeMounts, volumeMounts); d != "" {
-				t.Fatalf("Diff %s", diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, c.wantArgs, args, "Diff %s")
+			diff.FatalWantGot(t, c.wantVolumeMounts, volumeMounts, "Diff %s")
 		})
 	}
 }

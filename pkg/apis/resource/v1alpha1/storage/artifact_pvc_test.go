@@ -19,7 +19,6 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -43,9 +42,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 	}}}
 
 	got := pvc.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestPVCGetCopyToContainerSpec(t *testing.T) {
@@ -68,9 +65,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	}}}
 
 	got := pvc.GetCopyToStorageFromSteps("workspace", "src-path", "/workspace/destination")
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestPVCGetPvcMount(t *testing.T) {
@@ -83,9 +78,7 @@ func TestPVCGetPvcMount(t *testing.T) {
 		MountPath: pvcDir,
 	}
 	got := storage.GetPvcMount(name)
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestPVCGetMakeStep(t *testing.T) {
@@ -97,9 +90,7 @@ func TestPVCGetMakeStep(t *testing.T) {
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
 	}}
 	got := storage.CreateDirStep("busybox", "workspace", "/workspace/destination")
-	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, want, "Diff:\n%s")
 }
 
 func TestStorageBasePath(t *testing.T) {
@@ -113,7 +104,5 @@ func TestStorageBasePath(t *testing.T) {
 		},
 	}
 	got := pvc.StorageBasePath(pipelinerun)
-	if d := cmp.Diff(got, "/pvc"); d != "" {
-		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, got, "/pvc", "Diff:\n%s")
 }

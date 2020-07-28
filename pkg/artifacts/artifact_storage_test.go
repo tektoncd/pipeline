@@ -375,12 +375,8 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 			if err := CleanupArtifactStorage(pipelinerun, fakekubeclient, logger); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			if d := cmp.Diff(artifactStorage.GetType(), c.storagetype); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
-			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage, quantityComparer); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, artifactStorage.GetType(), c.storagetype, "%s")
+			diff.FatalWantGot(t, artifactStorage, c.expectedArtifactStorage, "%s", quantityComparer)
 		})
 	}
 }
@@ -581,9 +577,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 		ShellImage:            "busybox",
 	}
 
-	if d := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pvc, expectedArtifactPVC, "%s", cmpopts.IgnoreUnexported(resource.Quantity{}))
 }
 
 func TestGetArtifactStorageWithConfigMap(t *testing.T) {
@@ -675,9 +669,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
 
-			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, artifactStorage, c.expectedArtifactStorage, "%s")
 		})
 	}
 }
@@ -695,9 +687,7 @@ func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 		ShellImage: "busybox",
 	}
 
-	if d := cmp.Diff(pvc, expectedArtifactPVC); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pvc, expectedArtifactPVC, "%s")
 }
 
 func TestGetArtifactStorageWithPVCConfigMap(t *testing.T) {
@@ -731,9 +721,7 @@ func TestGetArtifactStorageWithPVCConfigMap(t *testing.T) {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
 
-			if d := cmp.Diff(artifactStorage, c.expectedArtifactStorage); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, artifactStorage, c.expectedArtifactStorage, "%s")
 		})
 	}
 }

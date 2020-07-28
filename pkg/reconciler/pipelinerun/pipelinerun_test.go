@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
@@ -365,9 +364,7 @@ func TestReconcile(t *testing.T) {
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedTaskRun, actual, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRun)+"%s", cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name }))
 	// test taskrun is able to recreate correct pipeline-pvc-name
 	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
 		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
@@ -473,9 +470,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedTaskRun, actual, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRun)+"%s", cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) }))
 
 	// test taskrun is able to recreate correct pipeline-pvc-name
 	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
@@ -864,9 +859,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	}}
 	pr.Status.InitializeConditions()
 	status := getTaskRunsStatus(pr, state)
-	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, status, expectedPipelineRunStatus.TaskRuns, "Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s")
 
 }
 
@@ -1006,9 +999,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
 				taskrunName: &tc.expectedStatus,
 			}
-			if d := cmp.Diff(status, expected, ignoreLastTransitionTime); d != "" {
-				t.Fatalf("Did not get expected status for %s %s", tc.name, diff.PrintWantGot(d))
-			}
+			diff.FatalWantGot(t, status, expected, fmt.Sprintf("Did not get expected status for %s ", tc.name)+"%s", ignoreLastTransitionTime)
 		})
 	}
 }
@@ -1111,9 +1102,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		},
 	}
 
-	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch %s", diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, reconciledRun.Status.TaskRuns, expectedTaskRunsStatus, "Expected PipelineRun status to match TaskRun(s) status, but got a mismatch %s")
 
 	wantEvents := []string{
 		"Normal Succeeded All Tasks have completed executing",
@@ -1502,9 +1491,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
 
-	if d := cmp.Diff(actual, expected); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, actual, expected, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expected)+"%s")
 }
 
 func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
@@ -1584,9 +1571,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
-		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion); d != "" {
-			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
-		}
+		diff.ErrorWantGot(t, actual, expectedTaskRuns[i], fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRuns[i])+"%s")
 
 	}
 
@@ -1760,10 +1745,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 			tb.TaskRunServiceAccountName("test-sa"),
 		),
 	)
-
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, actual, expectedTaskRun, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRun)+"%s")
 }
 
 func TestGetTaskRunTimeout(t *testing.T) {
@@ -1851,9 +1833,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(getTaskRunTimeout(tc.pr, tc.rprt), tc.expected); d != "" {
-				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, getTaskRunTimeout(tc.pr, tc.rprt), tc.expected, "Unexpected task run timeout. Diff %s")
 		})
 	}
 }
@@ -1931,9 +1911,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 		),
 	)
 
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, actual, expectedTaskRun, fmt.Sprintf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff ", expectedTaskRun)+"%s")
 }
 
 func TestReconcileWithConditionChecks(t *testing.T) {
@@ -2021,9 +1999,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	}
 
 	actual := []*v1beta1.TaskRun{condCheck0, condCheck1}
-	if d := cmp.Diff(actual, expectedConditionChecks); d != "" {
-		t.Errorf("expected to see 2 ConditionCheck TaskRuns created. Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, actual, expectedConditionChecks, "expected to see 2 ConditionCheck TaskRuns created. Diff %s")
 
 	wantEvents := []string{
 		"Normal Started",
@@ -2153,9 +2129,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		),
 	)
 
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see ConditionCheck TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, actual, expectedTaskRun, fmt.Sprintf("expected to see ConditionCheck TaskRun %v created. Diff ", expectedTaskRun)+"%s")
 
 	wantEvents := []string{
 		"Normal Started",
@@ -2608,9 +2582,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, &actualTaskRun, expectedTaskRun, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRunName)+"%s", ignoreResourceVersion)
 }
 
 func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
@@ -2687,9 +2659,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, expectedTaskRun, &actualTaskRun, fmt.Sprintf("expected to see TaskRun %v created. Diff ", expectedTaskRun)+"%s", ignoreResourceVersion)
 }
 
 func TestReconcileWithPipelineResults(t *testing.T) {
@@ -2774,9 +2744,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
 
-	if d := cmp.Diff(&pipelineRun, &prs[0], ignoreResourceVersion); d != "" {
-		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
-	}
+	diff.ErrorWantGot(t, &pipelineRun, &prs[0], "expected to see pipeline run results created. Diff %s", ignoreResourceVersion)
 }
 
 func Test_storePipelineSpec(t *testing.T) {
@@ -2791,17 +2759,13 @@ func Test_storePipelineSpec(t *testing.T) {
 	if err := storePipelineSpec(ctx, pr, &ps); err != nil {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
-	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pr.Status.PipelineSpec, want, "%s")
 
 	// The next time, it should not get overwritten
 	if err := storePipelineSpec(ctx, pr, &ps1); err != nil {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
-	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
-	}
+	diff.FatalWantGot(t, pr.Status.PipelineSpec, want, "%s")
 }
 
 func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
@@ -3084,9 +3048,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 			break
 		}
 	}
-	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
-	}
+	diff.FatalWantGot(t, reconciledRun.Status.TaskRuns, expectedTaskRunsStatus, "Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s")
 }
 
 func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
@@ -3393,9 +3355,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				actualPrStatus.PipelineRunStatusFields.TaskRuns = fixedTaskRuns
 			}
 
-			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
-				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))
-			}
+			diff.ErrorWantGot(t, tc.expectedPrStatus, actualPrStatus, fmt.Sprintf("expected the PipelineRun status to match %#v. Diff ", tc.expectedPrStatus)+"%s")
 		})
 	}
 }
@@ -3754,10 +3714,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
 				}
 			}
-
-			if d := cmp.Diff(reconciledRun.Status.TaskRuns, tt.expectedTaskRuns); d != "" {
-				t.Fatalf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: %s", tt.name, d)
-			}
+			diff.ErrorWantGot(t, reconciledRun.Status.TaskRuns, tt.expectedTaskRuns, fmt.Sprintf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: ", tt.name)+"%s")
 
 		})
 	}

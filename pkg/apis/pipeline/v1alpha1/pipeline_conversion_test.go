@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -130,9 +129,7 @@ func TestPipelineConversion_Success(t *testing.T) {
 				}
 				// compare origin input and roundtrip Pipeline i.e. v1alpha1 pipeline converted to v1beta1 and then converted back to v1alpha1
 				// this check is making sure that we do not end up with different object than what we started with
-				if d := cmp.Diff(test.in, got); d != "" {
-					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
-				}
+				diff.ErrorWantGot(t, test.in, got, "roundtrip %s")
 			})
 		}
 	}
