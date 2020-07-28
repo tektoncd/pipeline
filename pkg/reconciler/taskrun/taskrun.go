@@ -35,12 +35,12 @@ import (
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/termination"
+	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -67,7 +67,7 @@ type Reconciler struct {
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache
-	timeoutHandler    *reconciler.TimeoutSet
+	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
 }
@@ -75,7 +75,7 @@ type Reconciler struct {
 // Check that our Reconciler implements taskrunreconciler.Interface
 var _ taskrunreconciler.Interface = (*Reconciler)(nil)
 
-// Reconcile compares the actual state with the desired, and attempts to
+// ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
@@ -292,6 +292,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 
 	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
+		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
+	if err := validateWorkspaceCompatibilityWithAffinityAssistant(tr); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -725,4 +731,27 @@ func getStoppableContainers(pod *corev1.Pod, sidecars []v1beta1.Sidecar) []corev
 		stoppables = append(stoppables, containerItem)
 	}
 	return stoppables
+}
+
+// validateWorkspaceCompatibilityWithAffinityAssistant validates the TaskRun's compatibility
+// with the Affinity Assistant - if associated with an Affinity Assistant.
+// No more than one PVC-backed workspace can be used for a TaskRun that is associated with an
+// Affinity Assistant.
+func validateWorkspaceCompatibilityWithAffinityAssistant(tr *v1beta1.TaskRun) error {
+	_, isAssociatedWithAnAffinityAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]
+	if !isAssociatedWithAnAffinityAssistant {
+		return nil
+	}
+
+	pvcWorkspaces := 0
+	for _, w := range tr.Spec.Workspaces {
+		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
+			pvcWorkspaces++
+		}
+	}
+
+	if pvcWorkspaces > 1 {
+		return fmt.Errorf("TaskRun mounts more than one PersistentVolumeClaim - that is forbidden when the Affinity Assistant is enabled")
+	}
+	return nil
 }

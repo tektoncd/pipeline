@@ -24,6 +24,8 @@ spec:
     type: image
   - name: builtEntrypointImage
     type: image
+  - name: builtNopImage
+    type: image
   - name: builtKubeconfigWriterImage
     type: image
   - name: builtCredsInitImage
@@ -109,6 +111,8 @@ spec:
             resource: builtBaseImage
           - name: builtEntrypointImage
             resource: builtEntrypointImage
+          - name: builtNopImage
+            resource: builtNopImage
           - name: builtKubeconfigWriterImage
             resource: builtKubeconfigWriterImage
           - name: builtCredsInitImage

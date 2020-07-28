@@ -110,6 +110,27 @@ When the `Run` executes, before steps execute, a `~/.ssh/config` will be
 generated containing the key configured in the `Secret`. This key is then used
 to authenticate when retrieving any `PipelineResources`.
 
+### Using a custom port for SSH authentication
+
+In order to interact with your git server over a custom SSH port you must
+specify the port as part of the Secret. Here's an example:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ssh-key-custom-port
+  annotations:
+    tekton.dev/git-0: example.com:2222
+type: kubernetes.io/ssh-auth
+data:
+  ssh-privatekey: <base64 encoded>
+  known_hosts: <base64 encoded>
+```
+
+Any PipelineResource referencing a repo at `example.com` will now connect
+to it over port 2222.
+
 ### Using SSH authentication in your own `git` `Tasks`
 
 The SSH credentials described above can be used when invoking `git` commands

@@ -70,7 +70,13 @@ func (dc *basicGitConfig) Set(value string) error {
 	return nil
 }
 
+// Write builds a .gitconfig file from dc.entries and writes it to disk
+// in the directory provided. If dc.entries is empty then nothing is
+// written.
 func (dc *basicGitConfig) Write(directory string) error {
+	if len(dc.entries) == 0 {
+		return nil
+	}
 	gitConfigPath := filepath.Join(directory, ".gitconfig")
 	gitConfigs := []string{
 		"[credential]\n	helper = store\n",
