@@ -40,6 +40,10 @@ type Backoff struct {
 	timeoutCallback func(interface{})
 	// timer is used to start timers in separate goroutines
 	timer *Timer
+	// j is the function that will be called to jitter the backoff intervals.
+	j jitterFunc
+	// now is the function that will be used to get the current time.
+	now nowFunc
 }
 
 // Attempts contains state of exponential backoff for a given StatusKey
@@ -55,6 +59,9 @@ type Attempts struct {
 // backoff algorithm and returns the "jittered" result.
 type jitterFunc func(numSeconds int) (jitteredSeconds int)
 
+// nowFunc is a function that is used to get the current time
+type nowFunc func() time.Time
+
 // NewBackoff returns an instance of Backoff with the specified stopCh and logger, instantiated
 // and ready to track go routines.
 func NewBackoff(
@@ -64,6 +71,8 @@ func NewBackoff(
 	return &Backoff{
 		timer:    NewTimer(stopCh, logger),
 		attempts: make(map[string]Attempts),
+		j:        rand.Intn,
+		now:      time.Now,
 		logger:   logger,
 	}
 }
@@ -92,24 +101,28 @@ func (b *Backoff) SetTimeoutCallback(f func(interface{})) {
 // describing the time at which the next attempt should be performed.
 // Additionally a boolean is returned indicating whether a backoff for the
 // TaskRun is already in progress.
-func (b *Backoff) Get(tr *v1beta1.TaskRun) (Attempts, bool) {
+func (b *Backoff) Get(tr *v1beta1.TaskRun) (a Attempts, inProgress bool) {
 	b.attemptsMut.Lock()
 	defer b.attemptsMut.Unlock()
-	a := b.attempts[tr.GetRunKey()]
-	if time.Now().Before(a.NextAttempt) {
-		return a, true
+	a = b.attempts[tr.GetRunKey()]
+	if b.now().Before(a.NextAttempt) {
+		inProgress = true
+		return
 	}
 	a.NumAttempts++
-	a.NextAttempt = time.Now().Add(backoffDuration(a.NumAttempts, rand.Intn))
-	timeoutDeadline := tr.Status.StartTime.Time.Add(tr.Spec.Timeout.Duration)
+	a.NextAttempt = b.now().Add(GetExponentialBackoffWithJitter(a.NumAttempts, b.j))
+	duration := timeoutFromSpec((tr.Spec.Timeout))
+	timeoutDeadline := tr.Status.StartTime.Time.Add(duration)
 	if timeoutDeadline.Before(a.NextAttempt) {
 		a.NextAttempt = timeoutDeadline
 	}
 	b.attempts[tr.GetRunKey()] = a
-	return a, false
+	return
 }
 
-func backoffDuration(count uint, jf jitterFunc) time.Duration {
+// GetExponentialBackoffWithJitter will return a number which is 2 to the power
+// of count, but with a jittered value obtained via jf.
+func GetExponentialBackoffWithJitter(count uint, jf jitterFunc) time.Duration {
 	exp := float64(count)
 	if exp > maxBackoffExponent {
 		exp = maxBackoffExponent

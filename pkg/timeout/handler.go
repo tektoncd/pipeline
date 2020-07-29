@@ -147,6 +147,10 @@ func (t *Handler) checkTaskRunTimeouts(namespace string, pipelineclientset clien
 	}
 }
 
+// timeoutFromSpec will return the default timeout minutes if the timeout is not
+// set; however this is probably overly cautious because the taskrun SetDefaults logic
+// will ensure this value is set; in addition to that, it will use the default that is
+// provided to the controller via a config map which this logic is not doing.
 func timeoutFromSpec(timeout *metav1.Duration) time.Duration {
 	if timeout == nil {
 		return config.DefaultTimeoutMinutes * time.Minute
