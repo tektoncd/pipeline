@@ -18,8 +18,6 @@ package timeout
 
 import (
 	"math"
-	"math/rand"
-	"sync"
 
 	"time"
 
@@ -45,19 +43,6 @@ type StatusKey interface {
 	GetRunKey() string
 }
 
-// Backoff contains state of exponential backoff for a given StatusKey
-type Backoff struct {
-	// NumAttempts reflects the number of times a given StatusKey has been delayed
-	NumAttempts uint
-	// NextAttempt is the point in time at which this backoff expires
-	NextAttempt time.Time
-}
-
-// jitterFunc is a func applied to a computed backoff duration to remove uniformity
-// from its results. A jitterFunc receives the number of seconds calculated by a
-// backoff algorithm and returns the "jittered" result.
-type jitterFunc func(numSeconds int) (jitteredSeconds int)
-
 // Handler knows how to track channels that can be used to communicate with go routines
 // which timeout, and the functions to call when that happens.
 type Handler struct {
@@ -66,20 +51,11 @@ type Handler struct {
 	// taskRunCallbackFunc is the function to call when a TaskRun has timed out.
 	// This is usually set to the function that enqueues the taskRun for reconciling.
 	taskRunCallbackFunc func(interface{})
-	// pipelineRunCallbackFunc is the function to call when a TaskRun has timed out
-	// This is usually set to the function that enqueues the taskRun for reconciling.
+	// pipelineRunCallbackFunc is the function to call when a PipelineRun has timed out
+	// This is usually set to the function that enqueues the pipelineRun for reconciling.
 	pipelineRunCallbackFunc func(interface{})
-	// stopCh is used to signal to all goroutines that they should stop, e.g. because
-	// the reconciler is stopping
-	stopCh <-chan struct{}
-	// done is a map from the name of the Run to the channel to use to indicate that the
-	// Run is done (and so there is no need to wait on it any longer)
-	done map[string]chan bool
-	// doneMut is a mutex that protects access to done to ensure that multiple goroutines
-	// don't try to update it simultaneously
-	doneMut     sync.Mutex
-	backoffs    map[string]Backoff
-	backoffsMut sync.Mutex
+	// timer is used to start timers in separate goroutines
+	timer *Timer
 }
 
 // NewHandler returns an instance of Handler with the specified stopCh and logger, instantiated
@@ -89,10 +65,8 @@ func NewHandler(
 	logger *zap.SugaredLogger,
 ) *Handler {
 	return &Handler{
-		stopCh:   stopCh,
-		done:     make(map[string]chan bool),
-		backoffs: make(map[string]Backoff),
-		logger:   logger,
+		timer:  NewTimer(stopCh, logger),
+		logger: logger,
 	}
 }
 
@@ -108,73 +82,7 @@ func (t *Handler) SetPipelineRunCallbackFunc(f func(interface{})) {
 
 // Release deletes channels and data that are specific to a StatusKey object.
 func (t *Handler) Release(runObj StatusKey) {
-	key := runObj.GetRunKey()
-	t.doneMut.Lock()
-	defer t.doneMut.Unlock()
-
-	t.backoffsMut.Lock()
-	defer t.backoffsMut.Unlock()
-
-	if done, ok := t.done[key]; ok {
-		delete(t.done, key)
-		close(done)
-	}
-	delete(t.backoffs, key)
-}
-
-func (t *Handler) getOrCreateDoneChan(runObj StatusKey) chan bool {
-	key := runObj.GetRunKey()
-	t.doneMut.Lock()
-	defer t.doneMut.Unlock()
-	var done chan bool
-	var ok bool
-	if done, ok = t.done[key]; !ok {
-		done = make(chan bool)
-	}
-	t.done[key] = done
-	return done
-}
-
-// GetBackoff records the number of times it has seen a TaskRun and calculates an
-// appropriate backoff deadline based on that count. Only one backoff per TaskRun
-// may be active at any moment. Requests for a new backoff in the face of an
-// existing one will be ignored and details of the existing backoff will be returned
-// instead. Further, if a calculated backoff time is after the timeout of the TaskRun
-// then the time of the timeout will be returned instead.
-//
-// Returned values are a backoff struct containing a NumAttempts field with the
-// number of attempts performed for this TaskRun and a NextAttempt field
-// describing the time at which the next attempt should be performed.
-// Additionally a boolean is returned indicating whether a backoff for the
-// TaskRun is already in progress.
-func (t *Handler) GetBackoff(tr *v1beta1.TaskRun) (Backoff, bool) {
-	t.backoffsMut.Lock()
-	defer t.backoffsMut.Unlock()
-	b := t.backoffs[tr.GetRunKey()]
-	if time.Now().Before(b.NextAttempt) {
-		return b, true
-	}
-	b.NumAttempts++
-	b.NextAttempt = time.Now().Add(backoffDuration(b.NumAttempts, rand.Intn))
-	timeoutDeadline := tr.Status.StartTime.Time.Add(tr.Spec.Timeout.Duration)
-	if timeoutDeadline.Before(b.NextAttempt) {
-		b.NextAttempt = timeoutDeadline
-	}
-	t.backoffs[tr.GetRunKey()] = b
-	return b, false
-}
-
-func backoffDuration(count uint, jf jitterFunc) time.Duration {
-	exp := float64(count)
-	if exp > maxBackoffExponent {
-		exp = maxBackoffExponent
-	}
-	seconds := int(math.Exp2(exp))
-	jittered := 1 + jf(seconds)
-	if jittered > maxBackoffSeconds {
-		jittered = maxBackoffSeconds
-	}
-	return time.Duration(jittered) * time.Second
+	t.timer.Release(runObj)
 }
 
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
@@ -239,30 +147,25 @@ func (t *Handler) checkTaskRunTimeouts(namespace string, pipelineclientset clien
 	}
 }
 
+func timeoutFromSpec(timeout *metav1.Duration) time.Duration {
+	if timeout == nil {
+		return config.DefaultTimeoutMinutes * time.Minute
+	}
+	return timeout.Duration
+}
+
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *Handler) WaitTaskRun(tr *v1beta1.TaskRun, startTime *metav1.Time) {
-	var timeout time.Duration
-	if tr.Spec.Timeout == nil {
-		timeout = config.DefaultTimeoutMinutes * time.Minute
-	} else {
-		timeout = tr.Spec.Timeout.Duration
-	}
-	t.waitRun(tr, timeout, startTime, t.taskRunCallbackFunc)
+	t.waitRun(tr, timeoutFromSpec(tr.Spec.Timeout), startTime, t.taskRunCallbackFunc)
 }
 
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *Handler) WaitPipelineRun(pr *v1beta1.PipelineRun, startTime *metav1.Time) {
-	var timeout time.Duration
-	if pr.Spec.Timeout == nil {
-		timeout = config.DefaultTimeoutMinutes * time.Minute
-	} else {
-		timeout = pr.Spec.Timeout.Duration
-	}
-	t.waitRun(pr, timeout, startTime, t.pipelineRunCallbackFunc)
+	t.waitRun(pr, timeoutFromSpec(pr.Spec.Timeout), startTime, t.pipelineRunCallbackFunc)
 }
 
 func (t *Handler) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
@@ -276,37 +179,5 @@ func (t *Handler) waitRun(runObj StatusKey, timeout time.Duration, startTime *me
 	runtime := time.Since(startTime.Time)
 	t.logger.Infof("About to start timeout timer for %s. started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime.Time, timeout, runtime)
 	defer t.Release(runObj)
-	t.setTimer(runObj, timeout-runtime, callback)
-}
-
-// SetTaskRunTimer creates a blocking function for taskrun to wait for
-// 1. Stop signal, 2. TaskRun to complete or 3. a given Duration to elapse.
-//
-// Since the timer's duration is a parameter rather than being tied to
-// the lifetime of the TaskRun no resources are released after the timer
-// fires. It is the caller's responsibility to Release() the TaskRun when
-// work with it has completed.
-func (t *Handler) SetTaskRunTimer(tr *v1beta1.TaskRun, d time.Duration) {
-	callback := t.taskRunCallbackFunc
-	if callback == nil {
-		t.logger.Errorf("attempted to set a timer for %q but no task run callback has been assigned", tr.Name)
-		return
-	}
-	t.setTimer(tr, d, callback)
-}
-
-func (t *Handler) setTimer(runObj StatusKey, timeout time.Duration, callback func(interface{})) {
-	done := t.getOrCreateDoneChan(runObj)
-	started := time.Now()
-	select {
-	case <-t.stopCh:
-		t.logger.Infof("stopping timer for %q", runObj.GetRunKey())
-		return
-	case <-done:
-		t.logger.Infof("%q finished, stopping timer", runObj.GetRunKey())
-		return
-	case <-time.After(timeout):
-		t.logger.Infof("timer for %q has activated after %s", runObj.GetRunKey(), time.Since(started).String())
-		callback(runObj)
-	}
+	t.timer.SetTimer(runObj, timeout-runtime, callback)
 }

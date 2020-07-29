@@ -2061,21 +2061,20 @@ func TestHandlePodCreationError(t *testing.T) {
 
 	// Use the test assets to create a *Reconciler directly for focused testing.
 	c := &Reconciler{
-		KubeClientSet:     testAssets.Clients.Kube,
-		PipelineClientSet: testAssets.Clients.Pipeline,
-		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-		taskLister:        testAssets.Informers.Task.Lister(),
-		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
-		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-		timeoutHandler:    timeout.NewHandler(ctx.Done(), testAssets.Logger),
-		cloudEventClient:  testAssets.Clients.CloudEvents,
-		metrics:           nil, // Not used
-		entrypointCache:   nil, // Not used
-		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		KubeClientSet:      testAssets.Clients.Kube,
+		PipelineClientSet:  testAssets.Clients.Pipeline,
+		taskRunLister:      testAssets.Informers.TaskRun.Lister(),
+		taskLister:         testAssets.Informers.Task.Lister(),
+		clusterTaskLister:  testAssets.Informers.ClusterTask.Lister(),
+		resourceLister:     testAssets.Informers.PipelineResource.Lister(),
+		timeoutHandler:     timeout.NewHandler(ctx.Done(), testAssets.Logger),
+		// This has not been instantiated with a timeoutcallback so backoffs will not start
+		podCreationBackoff: timeout.NewBackoff(ctx.Done(), testAssets.Logger),
+		cloudEventClient:   testAssets.Clients.CloudEvents,
+		metrics:            nil, // Not used
+		entrypointCache:    nil, // Not used
+		pvcHandler:         volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 	}
-
-	// Prevent backoff timer from starting
-	c.timeoutHandler.SetTaskRunCallbackFunc(nil)
 
 	testcases := []struct {
 		description    string

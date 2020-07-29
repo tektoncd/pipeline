@@ -62,16 +62,17 @@ type Reconciler struct {
 	Images            pipeline.Images
 
 	// listers index properties about resources
-	taskRunLister     listers.TaskRunLister
-	taskLister        listers.TaskLister
-	clusterTaskLister listers.ClusterTaskLister
-	resourceLister    resourcelisters.PipelineResourceLister
-	cloudEventClient  cloudevent.CEClient
-	tracker           tracker.Interface
-	entrypointCache   podconvert.EntrypointCache
-	timeoutHandler    *timeout.Handler
-	metrics           *Recorder
-	pvcHandler        volumeclaim.PvcHandler
+	taskRunLister      listers.TaskRunLister
+	taskLister         listers.TaskLister
+	clusterTaskLister  listers.ClusterTaskLister
+	resourceLister     resourcelisters.PipelineResourceLister
+	cloudEventClient   cloudevent.CEClient
+	tracker            tracker.Interface
+	entrypointCache    podconvert.EntrypointCache
+	timeoutHandler     *timeout.Handler
+	podCreationBackoff *timeout.Backoff
+	metrics            *Recorder
+	pvcHandler         volumeclaim.PvcHandler
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -121,6 +122,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return merr.ErrorOrNil()
 		}
 		c.timeoutHandler.Release(tr)
+		c.podCreationBackoff.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
@@ -460,9 +462,9 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
 	var msg string
 	if isExceededResourceQuotaError(err) {
-		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
+		backoff, currentlyBackingOff := c.podCreationBackoff.Get(tr)
 		if !currentlyBackingOff {
-			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
+			go c.podCreationBackoff.SetTimer(tr, time.Until(backoff.NextAttempt))
 		}
 		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 		tr.Status.SetCondition(&apis.Condition{

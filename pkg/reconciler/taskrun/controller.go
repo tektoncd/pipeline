@@ -53,6 +53,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		podInformer := podinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		timeoutHandler := timeout.NewHandler(ctx.Done(), logger)
+		podCreationBackoff := timeout.NewBackoff(ctx.Done(), logger)
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create taskrun metrics recorder %v", err)
@@ -64,18 +65,19 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		}
 
 		c := &Reconciler{
-			KubeClientSet:     kubeclientset,
-			PipelineClientSet: pipelineclientset,
-			Images:            images,
-			taskRunLister:     taskRunInformer.Lister(),
-			taskLister:        taskInformer.Lister(),
-			clusterTaskLister: clusterTaskInformer.Lister(),
-			resourceLister:    resourceInformer.Lister(),
-			timeoutHandler:    timeoutHandler,
-			cloudEventClient:  cloudeventclient.Get(ctx),
-			metrics:           metrics,
-			entrypointCache:   entrypointCache,
-			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
+			KubeClientSet:      kubeclientset,
+			PipelineClientSet:  pipelineclientset,
+			Images:             images,
+			taskRunLister:      taskRunInformer.Lister(),
+			taskLister:         taskInformer.Lister(),
+			clusterTaskLister:  clusterTaskInformer.Lister(),
+			resourceLister:     resourceInformer.Lister(),
+			timeoutHandler:     timeoutHandler,
+			podCreationBackoff: podCreationBackoff,
+			cloudEventClient:   cloudeventclient.Get(ctx),
+			metrics:            metrics,
+			entrypointCache:    entrypointCache,
+			pvcHandler:         volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			configStore := config.NewStore(logger.Named("config-store"))
