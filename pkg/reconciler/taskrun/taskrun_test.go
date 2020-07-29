@@ -1941,6 +1941,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
+		name           string
 		taskRun        *v1beta1.TaskRun
 		expectedStatus *apis.Condition
 		wantEvents     []string
@@ -1948,6 +1949,7 @@ func TestReconcileTimeouts(t *testing.T) {
 
 	testcases := []testCase{
 		{
+			name: "taskrun with timeout",
 			taskRun: tb.TaskRun("test-taskrun-timeout",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -1969,6 +1971,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				"Warning Failed ",
 			},
 		}, {
+			name: "taskrun with default timeout",
 			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -1989,6 +1992,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				"Warning Failed ",
 			},
 		}, {
+			name: "task run with nil timeout uses default",
 			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -2012,30 +2016,32 @@ func TestReconcileTimeouts(t *testing.T) {
 		}}
 
 	for _, tc := range testcases {
-		d := test.Data{
-			TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
-			Tasks:    []*v1beta1.Task{simpleTask},
-		}
-		testAssets, cancel := getTaskRunController(t, d)
-		defer cancel()
-		c := testAssets.Controller
-		clients := testAssets.Clients
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
+				Tasks:    []*v1beta1.Task{simpleTask},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
 
-		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
-			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
-		}
-		newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
-		}
-		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
-		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
-			t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
-		}
-		err = checkEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
-		if !(err == nil) {
-			t.Errorf(err.Error())
-		}
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+			}
+			condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+			if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
+				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+			}
+			err = checkEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
+			}
+		})
 	}
 }
 
