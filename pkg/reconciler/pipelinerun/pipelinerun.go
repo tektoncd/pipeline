@@ -366,10 +366,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return controller.NewPermanentError(err)
 	}
 
-	// Ensure that the ServiceAccountNames defined correct.
+	// Ensure that the ServiceAccountNames defined are correct.
+	// This is "deprecated".
 	if err := resources.ValidateServiceaccountMapping(pipelineSpec, pr); err != nil {
 		pr.Status.MarkFailed(ReasonInvalidServiceAccountMapping,
 			"PipelineRun %s/%s doesn't define ServiceAccountNames correctly: %s",
+			pr.Namespace, pr.Name, err)
+		return controller.NewPermanentError(err)
+	}
+
+	// Ensure that the TaskRunSpecs defined are correct.
+	if err := resources.ValidateTaskRunSpecs(pipelineSpec, pr); err != nil {
+		pr.Status.MarkFailed(ReasonInvalidServiceAccountMapping,
+			"PipelineRun %s/%s doesn't define taskRunSpecs correctly: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
