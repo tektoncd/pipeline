@@ -494,9 +494,10 @@ Host url2.com
 ...
 ```
 
-Note: Because `known_hosts` is a non-standard extension of
-`kubernetes.io/ssh-auth`, when it is not present this will be generated through
-`ssh-keygen url{n}.com` instead.
+Note: When `known_hosts` is not provided, Tekton will configure SSH to
+accept _any_ public key that is returned on its first request to the server.
+This is implemented by setting git's `core.sshCommand` to
+`ssh -o StrictHostKeyChecking=accept-new`.
 
 ### Least privilege
 
