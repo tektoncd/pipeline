@@ -557,8 +557,8 @@ You can also see the statuses of the individual `TaskRuns`.
 
 This section provides guidelines for completing this tutorial on your local workstation on:
 
-* [Docker for Desktop](#prerequisites-docker-for-desktop)
-* [Minikube](#prerequisites-minikube)
+- [Docker for Desktop](#prerequisites-docker-for-desktop)
+- [Minikube](#prerequisites-minikube)
 
 ### Prerequisites: Docker for Desktop
 
@@ -604,7 +604,7 @@ Complete these prerequisites to run this tutorial locally using Minikube:
 - Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a sesion as follows:
 ```bash
-minikube start --memory 10240 --cpus 6 
+minikube start --memory 6144 --cpus 2 
 ```
 - Point your shell to minikube's docker-daemon by running `eval $(minikube -p minikube docker-env)`
 - Set up a [registry on minikube](https://github.com/kubernetes/minikube/tree/master/deploy/addons/registry-aliases) by running `minikube addons enable registry` and `minikube addons enable registry-aliases`
