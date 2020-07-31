@@ -72,7 +72,7 @@ A `Task` definition supports the following fields:
     - [`outputs`](#specifying-resources) - Specifies the resources produced by the `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies paths to volumes required by the `Task`.
   - [`results`](#emitting-results) - Specifies the names under which `Tasks` write execution results.
-  - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available available to the `Steps` in the `Task`.
+  - [`volumes`](#specifying-volumes) - Specifies one or more volumes that will be available to the `Steps` in the `Task`.
   - [`stepTemplate`](#specifying-a-step-template) - Specifies a `Container` step definition to use as the basis for all `Steps` in the `Task`.
   - [`sidecars`](#specifying-sidecars) - Specifies `Sidecar` containers to run alongside the `Steps` in the `Task`.
 
