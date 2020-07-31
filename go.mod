@@ -3,7 +3,6 @@ module github.com/tektoncd/pipeline
 go 1.13
 
 require (
-	cloud.google.com/go/storage v1.8.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.1 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go/v2 v2.1.0
@@ -25,8 +24,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/text v0.3.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
-	google.golang.org/api v0.25.0
-	gopkg.in/yaml.v2 v2.3.0 // indirect
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
