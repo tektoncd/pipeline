@@ -81,7 +81,8 @@ spec:
 
         # These match values configured in .ko.yaml
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
-        $(inputs.params.pathToPrjoect)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
+        $(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
+        $(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
       baseBuildOverrides:
         $(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
           flags:
