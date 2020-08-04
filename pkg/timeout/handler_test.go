@@ -17,6 +17,7 @@ limitations under the License.
 package timeout
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -31,6 +32,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 )
@@ -104,13 +106,12 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 
 	th := NewHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
-	f := func(tr interface{}) {
-		trNew := tr.(*v1beta1.TaskRun)
-		gotCallback.Store(trNew.Name, struct{}{})
+	f := func(n types.NamespacedName) {
+		gotCallback.Store(n.Name, struct{}{})
 	}
 
-	th.SetTaskRunCallbackFunc(f)
-	th.CheckTimeouts(allNs, c.Kube, c.Pipeline)
+	th.SetCallbackFunc(f)
+	th.CheckTimeouts(context.Background(), testNs, c.Kube, c.Pipeline)
 
 	for _, tc := range []struct {
 		name           string
@@ -194,13 +195,15 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 
 	th := NewHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
-	f := func(tr interface{}) {
-		trNew := tr.(*v1beta1.TaskRun)
-		gotCallback.Store(trNew.Name, struct{}{})
+	f := func(n types.NamespacedName) {
+		gotCallback.Store(n.Name, struct{}{})
 	}
 
-	th.SetTaskRunCallbackFunc(f)
-	th.CheckTimeouts(testNs, c.Kube, c.Pipeline)
+	th.SetCallbackFunc(f)
+	// Note that since f843899a11d5d09b29fac750f72f4a7e4882f615 CheckTimeouts is always called
+	// with a namespace so there is no reason to maintain all namespaces functionality;
+	// however in #2905 we should remove CheckTimeouts completely
+	th.CheckTimeouts(context.Background(), "", c.Kube, c.Pipeline)
 
 	for _, tc := range []struct {
 		name           string
@@ -308,13 +311,12 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	th := NewHandler(stopCh, zap.New(observer).Sugar())
 
 	gotCallback := sync.Map{}
-	f := func(pr interface{}) {
-		prNew := pr.(*v1beta1.PipelineRun)
-		gotCallback.Store(prNew.Name, struct{}{})
+	f := func(n types.NamespacedName) {
+		gotCallback.Store(n.Name, struct{}{})
 	}
 
-	th.SetPipelineRunCallbackFunc(f)
-	th.CheckTimeouts(allNs, c.Kube, c.Pipeline)
+	th.SetCallbackFunc(f)
+	th.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
 	for _, tc := range []struct {
 		name           string
 		pr             *v1beta1.PipelineRun
@@ -393,7 +395,7 @@ func TestWithNoFunc(t *testing.T) {
 			t.Fatal("Expected CheckTimeouts function not to panic")
 		}
 	}()
-	testHandler.CheckTimeouts(allNs, c.Kube, c.Pipeline)
+	testHandler.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
 
 }
 
@@ -402,7 +404,7 @@ func TestWithNoFunc(t *testing.T) {
 func TestSetTaskRunTimer(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-arbitrary-timer", tb.TaskRunNamespace(testNs), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunTimeout(2*time.Second),
+		tb.TaskRunTimeout(50*time.Millisecond),
 	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
@@ -415,11 +417,11 @@ func TestSetTaskRunTimer(t *testing.T) {
 	timerDuration := 50 * time.Millisecond
 	timerFailDeadline := 100 * time.Millisecond
 	doneCh := make(chan struct{})
-	callback := func(_ interface{}) {
+	f := func(_ types.NamespacedName) {
 		close(doneCh)
 	}
-	testHandler.SetTaskRunCallbackFunc(callback)
-	go testHandler.SetTaskRunTimer(taskRun, timerDuration)
+	testHandler.SetCallbackFunc(f)
+	go testHandler.SetTimer(taskRun.GetNamespacedName(), timerDuration)
 	select {
 	case <-doneCh:
 		// The task run timer executed before the failure deadline
