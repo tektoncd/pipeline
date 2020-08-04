@@ -93,7 +93,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		tr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if tr.Status.StartTime.Sub(tr.CreationTimestamp.Time) < 0 {
-			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetRunKey(), tr.CreationTimestamp, tr.Status.StartTime)
+			logger.Warnf("TaskRun %s createTimestamp %s is after the taskRun started %s", tr.GetNamespacedName().String(), tr.CreationTimestamp, tr.Status.StartTime)
 			tr.Status.StartTime = &tr.CreationTimestamp
 		}
 		// Emit events. During the first reconcile the status of the TaskRun may change twice
@@ -120,7 +120,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			// send cloud events. So we stop here an return errors encountered this far.
 			return merr.ErrorOrNil()
 		}
-		c.timeoutHandler.Release(tr)
+		c.timeoutHandler.Release(tr.GetNamespacedName())
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
@@ -379,7 +379,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
-		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
+		go c.timeoutHandler.Wait(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 	}
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
@@ -460,9 +460,9 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
 	var msg string
 	if isExceededResourceQuotaError(err) {
-		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
+		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 		if !currentlyBackingOff {
-			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
+			go c.timeoutHandler.SetTimer(tr.GetNamespacedName(), time.Until(backoff.NextAttempt))
 		}
 		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 		tr.Status.SetCondition(&apis.Condition{

@@ -140,11 +140,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		pr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
-			logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetRunKey(), pr.CreationTimestamp, pr.Status.StartTime)
+			logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetNamespacedName().String(), pr.CreationTimestamp, pr.Status.StartTime)
 			pr.Status.StartTime = &pr.CreationTimestamp
 		}
 		// start goroutine to track pipelinerun timeout only startTime is not set
-		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
+		go c.timeoutHandler.Wait(pr.GetNamespacedName(), *pr.Status.StartTime, *pr.Spec.Timeout)
 		// Emit events. During the first reconcile the status of the PipelineRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
@@ -171,7 +171,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		c.timeoutHandler.Release(pr)
+		c.timeoutHandler.Release(pr.GetNamespacedName())
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)

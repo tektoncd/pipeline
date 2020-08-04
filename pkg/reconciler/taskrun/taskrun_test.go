@@ -2099,7 +2099,7 @@ func TestHandlePodCreationError(t *testing.T) {
 	}
 
 	// Prevent backoff timer from starting
-	c.timeoutHandler.SetTaskRunCallbackFunc(nil)
+	c.timeoutHandler.SetCallbackFunc(nil)
 
 	testcases := []struct {
 		description    string

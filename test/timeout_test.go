@@ -116,7 +116,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
-	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to time out and be cancelled", pipelineRun.Name, namespace)
 	var wg sync.WaitGroup
 	for _, taskrunItem := range taskrunList.Items {
 		wg.Add(1)
