@@ -602,9 +602,9 @@ You must reconfigure any `image` resource definitions in your `PipelineResources
 Complete these prerequisites to run this tutorial locally using Minikube:
 
 - Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
-- Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a sesion as follows:
+- Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a session as follows:
 ```bash
-minikube start --memory 6144 --cpus 2 
+minikube start --memory 6144 --cpus 2
 ```
 - Point your shell to minikube's docker-daemon by running `eval $(minikube -p minikube docker-env)`
 - Set up a [registry on minikube](https://github.com/kubernetes/minikube/tree/master/deploy/addons/registry-aliases) by running `minikube addons enable registry` and `minikube addons enable registry-aliases`
@@ -614,7 +614,7 @@ minikube start --memory 6144 --cpus 2
 The `registry-aliases` addon will create several aliases for the minikube registry. You'll need to reconfigure your `image` resource definitions to use one of these aliases in your `PipelineResources` (for this tutorial, we use `example.com`; for a full list of aliases, you can run `minikube ssh -- cat /etc/hosts`. You can also configure your own alias by editing minikube's `/etc/hosts` file and the `coredns` configmap in the `kube-system` namespace).
 
 - Set the URL to `example.com/<image_name>`
-- When using `ko`, be sure to [use the `-L` flag](https://github.com/google/ko/blob/master/README.md#with-minikube) (i.e. `ko apply -L -f config/`) 
+- When using `ko`, be sure to [use the `-L` flag](https://github.com/google/ko/blob/master/README.md#with-minikube) (i.e. `ko apply -L -f config/`)
 - Set your applications (such as deployment definitions) to push to
   `example.com/<image name>`.
 
@@ -622,7 +622,7 @@ If you wish to use a different image URL, you can add the appropriate line to mi
 
 ### Reconfigure logging
 
-See the information in the "Docker for Desktop" section 
+See the information in the "Docker for Desktop" section
 
 ## Further reading
 
