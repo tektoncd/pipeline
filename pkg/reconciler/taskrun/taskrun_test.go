@@ -43,7 +43,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/pkg/workspace"
-	test "github.com/tektoncd/pipeline/test"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -1772,6 +1772,57 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 		})
 	}
 
+}
+
+func TestReconcileTaskRunWithPermanentError(t *testing.T) {
+	noTaskRun := tb.TaskRun("notaskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef("notask")),
+		tb.TaskRunStatus(tb.TaskRunStartTime(time.Now()),
+			tb.StatusCondition(apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  podconvert.ReasonFailedResolution,
+				Message: "error when listing tasks for taskRun taskrun-failure: tasks.tekton.dev \"notask\" not found",
+			})))
+
+	taskRuns := []*v1beta1.TaskRun{noTaskRun}
+
+	d := test.Data{
+		TaskRuns: taskRuns,
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	reconcileErr := c.Reconciler.Reconcile(context.Background(), getRunName(noTaskRun))
+
+	// When a TaskRun was rejected with a permanent error, reconciler must stop and forget about the run
+	// Such TaskRun enters Reconciler and from within the isDone block, marks the run success so that
+	// reconciler does not keep trying to reconcile
+	if reconcileErr != nil {
+		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
+	}
+
+	// Check actions
+	actions := clients.Kube.Actions()
+	if len(actions) != 3 || actions[0].Matches("namespaces", "list") {
+		t.Errorf("expected 3 actions (list namespaces, list configmaps, and watch configmaps) created by the reconciler,"+
+			" got %d. Actions: %#v", len(actions), actions)
+	}
+
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(noTaskRun.Namespace).Get(context.Background(), noTaskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", noTaskRun.Name, err)
+	}
+
+	// Since the TaskRun is invalid, the status should say it has failed
+	condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionFalse {
+		t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
+	}
+	if condition != nil && condition.Reason != podconvert.ReasonFailedResolution {
+		t.Errorf("Expected failure to be because of reason %q but was %s", podconvert.ReasonFailedResolution, condition.Reason)
+	}
 }
 
 func TestReconcilePodFetchError(t *testing.T) {
