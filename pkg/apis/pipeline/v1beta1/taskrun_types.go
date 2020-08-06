@@ -168,6 +168,8 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 		Reason:  reason.String(),
 		Message: err.Error(),
 	})
+	succeeded := trs.GetCondition(apis.ConditionSucceeded)
+	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
