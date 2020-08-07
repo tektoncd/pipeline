@@ -46,7 +46,7 @@ aggregates them into their respective files in `$HOME`.
      ssh-privatekey: <base64 encoded>
      # This is non-standard, but its use is encouraged to make this more secure.
      # If it is not provided then the git server's public key will be requested
-     # with `ssh-keyscan` during credential initialization.
+     # when the repo is first fetched.
      known_hosts: <base64 encoded>
    ```
 
@@ -109,6 +109,27 @@ aggregates them into their respective files in `$HOME`.
 When the `Run` executes, before steps execute, a `~/.ssh/config` will be
 generated containing the key configured in the `Secret`. This key is then used
 to authenticate when retrieving any `PipelineResources`.
+
+### Using a custom port for SSH authentication
+
+In order to interact with your git server over a custom SSH port you must
+specify the port as part of the Secret. Here's an example:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ssh-key-custom-port
+  annotations:
+    tekton.dev/git-0: example.com:2222
+type: kubernetes.io/ssh-auth
+data:
+  ssh-privatekey: <base64 encoded>
+  known_hosts: <base64 encoded>
+```
+
+Any PipelineResource referencing a repo at `example.com` will now connect
+to it over port 2222.
 
 ### Using SSH authentication in your own `git` `Tasks`
 
@@ -368,7 +389,7 @@ type: kubernetes.io/ssh-auth
 data:
   ssh-privatekey: <base64 encoded>
   # This is non-standard, but its use is encouraged to make this more secure.
-  # Omitting this results in the use of ssh-keyscan (see below).
+  # Omitting this results in the server's public key being blindly accepted.
   known_hosts: <base64 encoded>
 ```
 
@@ -473,9 +494,10 @@ Host url2.com
 ...
 ```
 
-Note: Because `known_hosts` is a non-standard extension of
-`kubernetes.io/ssh-auth`, when it is not present this will be generated through
-`ssh-keygen url{n}.com` instead.
+Note: When `known_hosts` is not provided, Tekton will configure SSH to
+accept _any_ public key that is returned on its first request to the server.
+This is implemented by setting git's `core.sshCommand` to
+`ssh -o StrictHostKeyChecking=accept-new`.
 
 ### Least privilege
 

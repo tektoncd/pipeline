@@ -1,0 +1,47 @@
+# This examples taskrun exercises the behaviour of the pullrequest
+# resource when the output pullrequest resource matches exactly the
+# input pullrequest resource.
+#
+# A step is used to copy the input resource's data directly to the
+# output resource's workspace directory. The output resource should
+# then read the copied data and skip sending any changes to GitHub.
+#
+# Importantly the output pullrequest should _not_ fail to read the
+# data from its workspace directory, regardless of which user the
+# copy step ran as and the ownership permissions attached to the
+# pr.json file.
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: pr-test-copy-prjson-from-input-to-output
+spec:
+  taskSpec:
+    resources:
+      inputs:
+        - name: pr
+          type: pullRequest
+      outputs:
+        - name: pr
+          type: pullRequest
+    steps:
+    - name: copy-pr-to-output
+      image: busybox
+      script: |
+        #!/bin/sh
+        mkdir -p $(outputs.resources.pr.path)
+        cp -r $(inputs.resources.pr.path)/* $(outputs.resources.pr.path)/
+  resources:
+    inputs:
+    - name: pr
+      resourceSpec:
+        type: pullRequest
+        params:
+        - name: url
+          value: https://github.com/tektoncd/pipeline/pull/100
+    outputs:
+    - name: pr
+      resourceSpec:
+        type: pullRequest
+        params:
+        - name: url
+          value: https://github.com/tektoncd/pipeline/pull/100

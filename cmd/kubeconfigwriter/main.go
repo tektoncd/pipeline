@@ -24,11 +24,11 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	"go.uber.org/zap"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"knative.dev/pkg/logging"
 )
 
 var (

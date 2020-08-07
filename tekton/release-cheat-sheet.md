@@ -61,6 +61,7 @@ the pipelines repo, a terminal window and a text editor.
       --resource=bucket=pipeline-tekton-bucket \
       --resource=builtBaseImage=base-image \
       --resource=builtEntrypointImage=entrypoint-image \
+      --resource=builtNopImage=nop-image \
       --resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
       --resource=builtCredsInitImage=creds-init-image \
       --resource=builtGitInitImage=git-init-image \

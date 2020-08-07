@@ -28,6 +28,8 @@ spec:
       type: image
     - name: builtEntrypointImage
       type: image
+    - name: builtNopImage
+      type: image
     - name: builtKubeconfigWriterImage
       type: image
     - name: builtCredsInitImage
@@ -71,11 +73,16 @@ spec:
       set -ex
 
       cat <<EOF > /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
-      # By default ko will build images on top of distroless
+      # This matches the value configured in .ko.yaml
+      defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
         $(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
-        $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): busybox # image should have shell in $PATH
+
+        # These match values configured in .ko.yaml
+        $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
+        $(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
+        $(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
       baseBuildOverrides:
         $(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
           flags:
@@ -182,6 +189,7 @@ spec:
       REGIONS=(us eu asia)
       IMAGES=(
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url):$(inputs.params.versionTag)
+        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtNopImage.url):$(inputs.params.versionTag)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtKubeconfigWriterImage.url):$(inputs.params.versionTag)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url):$(inputs.params.versionTag)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url):$(inputs.params.versionTag)

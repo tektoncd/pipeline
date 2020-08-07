@@ -490,6 +490,23 @@ func TestContext(t *testing.T) {
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "-1"),
 				))),
+	}, {
+		description: "context pipeline name replacement with pipelinerun uid",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: "UID-1",
+			},
+		},
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(context.pipelineRun.uid)"),
+				))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "UID-1"),
+				))),
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			got := ApplyContexts(&tc.original.Spec, tc.original.Name, tc.pr)

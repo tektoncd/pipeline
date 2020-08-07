@@ -38,12 +38,13 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -113,8 +114,9 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
+	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
-	timeoutHandler    *reconciler.TimeoutSet
+	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
 }
@@ -124,11 +126,13 @@ var (
 	_ pipelinerunreconciler.Interface = (*Reconciler)(nil)
 )
 
-// Reconcile compares the actual state with the desired, and attempts to
+// ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
+
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -159,7 +163,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
 		c.updatePipelineResults(ctx, pr)
-		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, logger); err != nil {
+		if err := artifacts.CleanupArtifactStorage(ctx, pr, c.KubeClientSet); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
@@ -362,10 +366,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return controller.NewPermanentError(err)
 	}
 
-	// Ensure that the ServiceAccountNames defined correct.
+	// Ensure that the ServiceAccountNames defined are correct.
+	// This is "deprecated".
 	if err := resources.ValidateServiceaccountMapping(pipelineSpec, pr); err != nil {
 		pr.Status.MarkFailed(ReasonInvalidServiceAccountMapping,
 			"PipelineRun %s/%s doesn't define ServiceAccountNames correctly: %s",
+			pr.Namespace, pr.Name, err)
+		return controller.NewPermanentError(err)
+	}
+
+	// Ensure that the TaskRunSpecs defined are correct.
+	if err := resources.ValidateTaskRunSpecs(pipelineSpec, pr); err != nil {
+		pr.Status.MarkFailed(ReasonInvalidServiceAccountMapping,
+			"PipelineRun %s/%s doesn't define taskRunSpecs correctly: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
@@ -446,7 +459,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		}
 	}
 
-	as, err := artifacts.InitializeArtifactStorage(c.Images, pr, pipelineSpec, c.KubeClientSet, logger)
+	as, err := artifacts.InitializeArtifactStorage(ctx, c.Images, pr, pipelineSpec, c.KubeClientSet)
 	if err != nil {
 		logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
 		return controller.NewPermanentError(err)
@@ -884,6 +897,8 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 		for taskRunName, pipelineRunTaskRunStatus := range prStatus.TaskRuns {
 			taskRunByPipelineTask[pipelineRunTaskRunStatus.PipelineTaskName] = taskRunName
 		}
+	} else {
+		prStatus.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	}
 	// Loop over all the TaskRuns associated to Tasks
 	for _, taskrun := range trs {

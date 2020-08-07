@@ -35,8 +35,7 @@ import (
 var (
 	images = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "tianon/true",
-		AffinityAssistantImage:   "nginx",
+		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
@@ -926,6 +925,32 @@ func TestContext(t *testing.T) {
 				Container: corev1.Container{
 					Name:  "ImageName",
 					Image: "-1",
+				},
+			}},
+		},
+	}, {
+		description: "context UID replacement",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: "UID-1",
+			},
+		},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.uid)",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "UID-1",
 				},
 			}},
 		},

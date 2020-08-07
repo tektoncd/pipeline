@@ -164,6 +164,8 @@ type PipelineRunSpec struct {
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// Deprecated: use taskRunSpecs.ServiceAccountName instead
 	// +optional
 	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)

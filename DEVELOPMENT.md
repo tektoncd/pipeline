@@ -95,25 +95,30 @@ The recommended configuration is:
 -   Node autoscaling, up to 3 nodes
 -   API scopes for cloud-platform
 
-### To setup a cluster with Docker Desktop:
 
-Docker Desktop using an edge version has been proven to work for both developing
-and running Pipelines.
+### To setup a cluster using MiniKube:
 
-To use minikube:
+- Follow instructions for your platform to [Install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a session as follows:
 
 ```bash
 minikube start eval $(minikube docker-env)
 ```
 
-To use the Kubernetes that comes with Docker Desktop: 
+### To setup a cluster with Docker Desktop:
 
-1.  First go into the Docker Desktop preferences. Under the resource tabs ensure
-    that you have at least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap. 
+Docker Desktop versions come integrated with an edge version of Kubernetes that has been proven to work for both developing and running Pipelines.  To find out what Kubernetes a specific version of Docker Desktop includes, please refer to the release notes for your platform here: https://docs.docker.com/.
 
-1.  Under the Kubernetes tab, enable Kubernetes.
+To enable the Kubernetes that comes with Docker Desktop:
 
-1.  Click the Apply and Restart button to save the preferences.
+1.  From the Docker Desktop dropdown menu, open the `preferences...` interface.
+
+1. Under the `Resources` tab ensure that in the `ADVANCED` menuitem you have at allocated at least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap.
+
+1.  Under the `Kubernetes` tab, check the   `Enable Kubernetes` box.
+
+    * *Note: the Kubernetes version Docker Desktop will use is displayed at the top of the window.*
+
+1.  Click the `Apply and Restart` button to save the preferences.
 
 1.  Switch the proper `kubectl` config context:
 
@@ -121,6 +126,7 @@ To use the Kubernetes that comes with Docker Desktop:
     kubectl config get-contexts # You should see docker-for-desktop in the previous command output
     kubectl config use-context docker-for-desktop
     ```
+    * *Note: Docker Desktop menu provides a `Kubernetes` menuitem that allows you to select between contexts which is equivalent to the `kubectl` command.*
 
 ### To setup a cluster with GKE:
 

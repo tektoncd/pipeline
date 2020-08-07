@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -45,13 +45,13 @@ func getBoundResource(resourceName string, boundResources []v1beta1.TaskResource
 // from  previous task
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
+	ctx context.Context,
 	kubeclient kubernetes.Interface,
 	images pipeline.Images,
 	taskName string,
 	taskSpec *v1beta1.TaskSpec,
 	taskRun *v1beta1.TaskRun,
 	inputResources map[string]v1beta1.PipelineResourceInterface,
-	logger *zap.SugaredLogger,
 ) (*v1beta1.TaskSpec, error) {
 	if taskSpec == nil || taskSpec.Resources == nil || taskSpec.Resources.Inputs == nil {
 		return taskSpec, nil
@@ -66,10 +66,7 @@ func AddInputResource(
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as, err := artifacts.GetArtifactStorage(images, prNameFromLabel, kubeclient, logger)
-	if err != nil {
-		return nil, err
-	}
+	as := artifacts.GetArtifactStorage(ctx, images, prNameFromLabel, kubeclient)
 
 	// Iterate in reverse through the list, each element prepends but we want the first one to remain first.
 	for i := len(taskSpec.Resources.Inputs) - 1; i >= 0; i-- {

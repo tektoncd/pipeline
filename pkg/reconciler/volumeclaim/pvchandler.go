@@ -17,6 +17,7 @@ limitations under the License.
 package volumeclaim
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -88,10 +89,18 @@ func getPersistentVolumeClaims(workspaceBindings []v1alpha1.WorkspaceBinding, ow
 }
 
 // GetPersistentVolumeClaimName gets the name of PersistentVolumeClaim for a Workspace and PipelineRun or TaskRun. claim
-// must be a PersistentVolumeClaim from set's VolumeClaims template.
+// must be a PersistentVolumeClaim from a volumeClaimTemplate. The returned name must be consistent given the same
+// workspaceBinding name and ownerReference name - because it is first used for creating a PVC and later,
+// possibly several TaskRuns to lookup the PVC to mount.
 func GetPersistentVolumeClaimName(claim *corev1.PersistentVolumeClaim, wb v1alpha1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	if claim.Name == "" {
-		return fmt.Sprintf("%s-%s", wb.Name, owner.Name)
+		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, owner.Name))
 	}
-	return fmt.Sprintf("%s-%s-%s", claim.Name, wb.Name, owner.Name)
+	return fmt.Sprintf("%s-%s", claim.Name, getPersistentVolumeClaimIdentity(wb.Name, owner.Name))
+}
+
+func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {
+	hashBytes := sha256.Sum256([]byte(workspaceName + ownerName))
+	hashString := fmt.Sprintf("%x", hashBytes)
+	return hashString[:10]
 }

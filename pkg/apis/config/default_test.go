@@ -172,6 +172,26 @@ func TestEquals(t *testing.T) {
 			},
 			expected: true,
 		},
+		{
+			name: "different default workspace",
+			left: &config.Defaults{
+				DefaultTaskRunWorkspaceBinding: "emptyDir: {}",
+			},
+			right: &config.Defaults{
+				DefaultTaskRunWorkspaceBinding: "source",
+			},
+			expected: false,
+		},
+		{
+			name: "same default workspace",
+			left: &config.Defaults{
+				DefaultTaskRunWorkspaceBinding: "emptyDir: {}",
+			},
+			right: &config.Defaults{
+				DefaultTaskRunWorkspaceBinding: "emptyDir: {}",
+			},
+			expected: true,
+		},
 	}
 
 	for _, tc := range testCases {

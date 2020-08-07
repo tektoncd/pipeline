@@ -17,12 +17,10 @@ limitations under the License.
 package gitcreds
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -73,7 +71,12 @@ func (dc *sshGitConfig) Set(value string) error {
 	return nil
 }
 
+// Write puts dc's ssh entries into files in a .ssh directory, under
+// the given directory. If dc has no entries then nothing is written.
 func (dc *sshGitConfig) Write(directory string) error {
+	if len(dc.entries) == 0 {
+		return nil
+	}
 	sshDir := filepath.Join(directory, ".ssh")
 	if err := os.MkdirAll(sshDir, os.ModePerm); err != nil {
 		return err
@@ -103,7 +106,9 @@ func (dc *sshGitConfig) Write(directory string) error {
 			}
 			configEntry += fmt.Sprintf(`    IdentityFile %s
 `, e.path(sshDir))
-			knownHosts = append(knownHosts, e.knownHosts)
+			if e.knownHosts != "" {
+				knownHosts = append(knownHosts, e.knownHosts)
+			}
 		}
 		configEntries = append(configEntries, configEntry)
 	}
@@ -112,9 +117,12 @@ func (dc *sshGitConfig) Write(directory string) error {
 	if err := ioutil.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		return err
 	}
-	knownHostsPath := filepath.Join(sshDir, "known_hosts")
-	knownHostsContent := strings.Join(knownHosts, "\n")
-	return ioutil.WriteFile(knownHostsPath, []byte(knownHostsContent), 0600)
+	if len(knownHosts) > 0 {
+		knownHostsPath := filepath.Join(sshDir, "known_hosts")
+		knownHostsContent := strings.Join(knownHosts, "\n")
+		return ioutil.WriteFile(knownHostsPath, []byte(knownHostsContent), 0600)
+	}
+	return nil
 }
 
 type sshEntry struct {
@@ -125,32 +133,6 @@ type sshEntry struct {
 
 func (be *sshEntry) path(sshDir string) string {
 	return filepath.Join(sshDir, "id_"+be.secretName)
-}
-
-func sshKeyScan(host, port string) ([]byte, error) {
-	var c *exec.Cmd
-	if port == "" {
-		c = exec.Command("ssh-keyscan", host)
-	} else {
-		c = exec.Command("ssh-keyscan", host, "-p", port)
-	}
-	var output bytes.Buffer
-	c.Stdout = &output
-	c.Stderr = &output
-	if err := c.Run(); err != nil {
-		return nil, err
-	}
-	return output.Bytes(), nil
-}
-
-// sshKeyScanArgs returns the host and optional port for running ssh-keyscan
-// given a url.
-func sshKeyScanArgs(url string) (string, string) {
-	host, port, err := net.SplitHostPort(url)
-	if err != nil {
-		return url, ""
-	}
-	return host, port
 }
 
 func (be *sshEntry) Write(sshDir string) error {
@@ -166,15 +148,10 @@ func newSSHEntry(url, secretName string) (*sshEntry, error) {
 	}
 	privateKey := string(pk)
 
-	kh, err := ioutil.ReadFile(filepath.Join(secretPath, sshKnownHosts))
-	if err != nil {
-		host, port := sshKeyScanArgs(url)
-		kh, err = sshKeyScan(host, port)
-		if err != nil {
-			return nil, fmt.Errorf("ssh-keyscan error: %w", err)
-		}
+	knownHosts := ""
+	if kh, err := ioutil.ReadFile(filepath.Join(secretPath, sshKnownHosts)); err == nil {
+		knownHosts = string(kh)
 	}
-	knownHosts := string(kh)
 
 	return &sshEntry{
 		secretName: secretName,

@@ -98,6 +98,8 @@ Note the following:
   start with the name of a directory. For example, a `mountPath` of `"/foobar"` is  absolute and exposes
   the `Workspace` at `/foobar` inside the `Task's` `Steps`, but a `mountPath` of `"foobar"` is relative and
   exposes the `Workspace` at `/workspace/foobar`.
+- A default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun 
+  does not explicitly provide. It can be set in the `config-defaults` ConfigMap in `default-task-run-workspace-binding`.
     
 Below is an example `Task` definition that includes a `Workspace` called `messages` to which the `Task` writes a message:
 

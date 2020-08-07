@@ -34,6 +34,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+var newAlertPolicyClientHook clientHook
+
 // AlertPolicyCallOptions contains the retry settings for each method of AlertPolicyClient.
 type AlertPolicyCallOptions struct {
 	ListAlertPolicies []gax.CallOption
@@ -96,7 +98,7 @@ func defaultAlertPolicyCallOptions() *AlertPolicyCallOptions {
 	}
 }
 
-// AlertPolicyClient is a client for interacting with Stackdriver Monitoring API.
+// AlertPolicyClient is a client for interacting with Cloud Monitoring API.
 //
 // Methods, except Close, may be called concurrently. However, fields must not be modified concurrently with method calls.
 type AlertPolicyClient struct {
@@ -125,7 +127,17 @@ type AlertPolicyClient struct {
 // which can be reached by clicking the “Monitoring” tab in
 // Cloud Console (at https://console.cloud.google.com/).
 func NewAlertPolicyClient(ctx context.Context, opts ...option.ClientOption) (*AlertPolicyClient, error) {
-	connPool, err := gtransport.DialPool(ctx, append(defaultAlertPolicyClientOptions(), opts...)...)
+	clientOpts := defaultAlertPolicyClientOptions()
+
+	if newAlertPolicyClientHook != nil {
+		hookOpts, err := newAlertPolicyClientHook(ctx, clientHookParams{})
+		if err != nil {
+			return nil, err
+		}
+		clientOpts = append(clientOpts, hookOpts...)
+	}
+
+	connPool, err := gtransport.DialPool(ctx, append(clientOpts, opts...)...)
 	if err != nil {
 		return nil, err
 	}

@@ -77,7 +77,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
-	expectedPVCName := fmt.Sprintf("%s-%s-%s", claimName1, ws1, ownerName)
+	expectedPVCName := claimName1 + "-ad02547921"
 	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -139,7 +139,7 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
-	expectedPVCName := fmt.Sprintf("%s-%s", workspaceName, ownerName)
+	expectedPVCName := fmt.Sprintf("%s-%s", "pvc", "3fc56c2bb2")
 	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

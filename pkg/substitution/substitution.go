@@ -27,7 +27,7 @@ import (
 
 const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
 
-const braceMatchingRegex = "(\\$(\\(%s.(?P<var>%s)\\)))"
+const braceMatchingRegex = "(\\$(\\(%s\\.(?P<var>%s)\\)))"
 
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
@@ -118,10 +118,14 @@ func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
 }
 
 func ApplyReplacements(in string, replacements map[string]string) string {
+	replacementsList := []string{}
 	for k, v := range replacements {
-		in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
+		replacementsList = append(replacementsList, fmt.Sprintf("$(%s)", k), v)
 	}
-	return in
+	// strings.Replacer does all replacements in one pass, preventing multiple replacements
+	// See #2093 for an explanation on why we need to do this.
+	replacer := strings.NewReplacer(replacementsList...)
+	return replacer.Replace(in)
 }
 
 // Take an input string, and output an array of strings related to possible arrayReplacements. If there aren't any

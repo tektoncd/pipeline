@@ -62,18 +62,11 @@ spec:
           "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
-          # This image is used as a placeholder pod, the Affinity Assistant
-          # TODO(#2640) We may want to create a custom, minimal binary
-          # As of June 8, 2020, tag 1.19.0
-          "-affinity-assistant-image", "nginx@sha256:c870bf53de0357813af37b9500cb1c2ff9fb4c00120d5fe1d75c21591293c34d",
-
-          # These images are pulled from Dockerhub, by digest, as of May 19, 2020.
-          # As of May 29, 2020 new sha for nop image
-          "-nop-image", "tianon/true@sha256:009cce421096698832595ce039aa13fa44327d96beedb84282a69d3dbcf5a81b",
           # This is google/cloud-sdk:293.0.0-slim
           "-gsutil-image", "google/cloud-sdk@sha256:37654ada9b7afbc32828b537030e85de672a9dd468ac5c92a36da1e203a98def",
           # The shell image must be root in order to create directories and copy files to PVCs.
@@ -91,6 +84,8 @@ spec:
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.
+        - name: CONFIG_DEFAULTS_NAME
+          value: config-defaults
         - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
@@ -105,6 +100,9 @@ spec:
           value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 1001
       volumes:
         - name: config-logging
           configMap:

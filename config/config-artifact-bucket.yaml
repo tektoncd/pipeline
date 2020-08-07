@@ -28,3 +28,6 @@ metadata:
 #    bucket.service.account.secret.name:
 #    # The key in the secret with the required service account json
 #    bucket.service.account.secret.key:
+#    # The field name that should be used for the service account
+#    # Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG.
+#    bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS

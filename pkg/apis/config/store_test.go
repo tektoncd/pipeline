@@ -30,18 +30,26 @@ import (
 func TestStoreLoadWithContext(t *testing.T) {
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
 	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
+	artifactBucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
+	artifactPVCConfig := test.ConfigMapFromTestFile(t, "config-artifact-pvc")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
+	expectedArtifactBucket, _ := config.NewArtifactBucketFromConfigMap(artifactBucketConfig)
+	expectedArtifactPVC, _ := config.NewArtifactPVCFromConfigMap(artifactPVCConfig)
 
 	expected := &config.Config{
-		Defaults:     expectedDefaults,
-		FeatureFlags: expectedFeatures,
+		Defaults:       expectedDefaults,
+		FeatureFlags:   expectedFeatures,
+		ArtifactBucket: expectedArtifactBucket,
+		ArtifactPVC:    expectedArtifactPVC,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(defaultConfig)
 	store.OnConfigChanged(featuresConfig)
+	store.OnConfigChanged(artifactBucketConfig)
+	store.OnConfigChanged(artifactPVCConfig)
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 
