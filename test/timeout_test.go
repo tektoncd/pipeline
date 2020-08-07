@@ -168,6 +168,76 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 }
 
+// TestStepTimeout is an integration test that will verify a Step can be timed out.
+func TestStepTimeout(t *testing.T) {
+	c, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	t.Logf("Creating Task with Step step-no-timeout, Step step-timeout, and Step step-canceled in namespace %s", namespace)
+
+	taskrunName := "run-timeout"
+
+	t.Logf("Creating TaskRun %s in namespace %s", taskrunName, namespace)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: taskrunName, Namespace: namespace},
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Name:  "no-timeout",
+						Image: "busybox",
+					},
+					Script:  "sleep 1",
+					Timeout: "2s",
+				}, {
+					Container: corev1.Container{
+						Name:  "timeout",
+						Image: "busybox",
+					},
+					Script:  "sleep 1",
+					Timeout: "1ms",
+				}, {
+					Container: corev1.Container{
+						Name:  "canceled",
+						Image: "busybox",
+					},
+					Script: "sleep 1",
+				},
+				},
+			},
+		},
+	}
+	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", taskrunName, err)
+	}
+
+	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
+	t.Logf("Waiting for %s in namespace %s to time out", "step-timeout", namespace)
+	if err := WaitForTaskRunState(c, taskrunName, FailedWithMessage(failMsg, "run-timeout"), "StepTimeout"); err != nil {
+		t.Logf("Error in taskRun %s status: %s\n", taskrunName, err)
+		t.Errorf("Expected: %s", failMsg)
+	}
+
+	tr, err := c.TaskRunClient.Get(taskrunName, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Error getting Taskrun: %v", err)
+	}
+	if tr.Status.Steps[0].Terminated == nil {
+		if tr.Status.Steps[0].Terminated.Reason != "Completed" {
+			t.Errorf("step-no-timeout should not have been terminated")
+		}
+	}
+	if tr.Status.Steps[2].Terminated == nil {
+		t.Errorf("step-canceled should have been canceled after step-timeout timed out")
+	} else if exitcode := tr.Status.Steps[2].Terminated.ExitCode; exitcode != 1 {
+		t.Logf("step-canceled exited with exit code %d, expected exit code 1", exitcode)
+	}
+
+}
+
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
 	ctx := context.Background()

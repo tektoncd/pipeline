@@ -1084,7 +1084,54 @@ script-heredoc-randomly-generated-78c5n
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
-		}}} {
+		},
+	}, {
+		desc: "step-with-timeout",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			},
+				Timeout: "1s",
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-timeout",
+					"1s",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env: implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-9l9zj",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-9l9zj",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			store := config.NewStore(logtesting.TestLogger(t))

@@ -41,6 +41,7 @@ var (
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	waitPollingInterval = time.Second
+	timeout             = flag.String("timeout", "", "If specified, sets timeout for step")
 )
 
 func cp(src, dst string) error {
@@ -103,6 +104,10 @@ func main() {
 		Runner:          &realRunner{},
 		PostWriter:      &realPostWriter{},
 		Results:         strings.Split(*results, ","),
+	}
+
+	if timeout != nil {
+		e.Timeout = *timeout
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

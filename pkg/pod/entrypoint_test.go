@@ -88,7 +88,7 @@ func TestOrderContainers(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	gotInit, got, err := orderContainers(images.EntrypointImage, []string{}, steps, nil)
+	gotInit, got, err := orderContainers(images.EntrypointImage, []string{}, make([][]string, len(steps)), steps, nil)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestEntryPointResults(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, make([][]string, len(steps)), steps, results)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, make([][]string, len(steps)), steps, results)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, make([][]string, len(steps)), steps, results)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}

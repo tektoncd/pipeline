@@ -12,6 +12,7 @@ weight: 1
   - [Defining `Steps`](#defining-steps)
     - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
+    - [Specifying a timeout](#specifying-a-timeout)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
@@ -241,7 +242,25 @@ steps:
     #!/usr/bin/env bash
     /bin/my-binary
 ```
+#### Specifying a timeout
 
+A `Step` can specify a `timeout` field. If the `Step` execution time exceeds the specified timeout, this `Step` and any subsequent `Steps` are canceled.
+Specifically, the running process spawned by the `Step` is killed.
+An accompanying log is output under the `status.conditions.message` field of the `TaskRun` YAML.
+
+The format for a timeout is a duration string as specified in the [Go time package](https://golang.org/pkg/time/#ParseDuration) (e.g. 1s or 1ms).
+
+The example `Step` below is supposed to sleep for 60 seconds but will be canceled by the specified 5 second timeout.
+```yaml
+steps:
+  - name: sleep-then-timeout
+    image: ubuntu
+    script: | 
+      #!/usr/bin/env bash
+      echo "I am supposed to sleep for 60 seconds!"
+      sleep 60
+    timeout: 5s
+``` 
 ### Specifying `Parameters`
 
 You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.

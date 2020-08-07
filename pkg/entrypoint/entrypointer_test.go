@@ -214,7 +214,7 @@ func (f *fakeWaiter) Wait(file string, _ bool) error {
 
 type fakeRunner struct{ args *[]string }
 
-func (f *fakeRunner) Run(args ...string) error {
+func (f *fakeRunner) Run(timeout string, args ...string) error {
 	f.args = &args
 	return nil
 }
@@ -232,7 +232,7 @@ func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 
 type fakeErrorRunner struct{ args *[]string }
 
-func (f *fakeErrorRunner) Run(args ...string) error {
+func (f *fakeErrorRunner) Run(timeout string, args ...string) error {
 	f.args = &args
 	return errors.New("runner failed")
 }

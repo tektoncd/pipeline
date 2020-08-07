@@ -85,9 +85,7 @@ var (
 // Containers must have Command specified; if the user didn't specify a
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
-//
-// TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, extraEntrypointArgs [][]string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
@@ -121,7 +119,10 @@ func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps
 				"-termination_path", terminationPath,
 			}
 		}
-		argsForEntrypoint = append(argsForEntrypoint, extraEntrypointArgs...)
+		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
+		if extraEntrypointArgs[i] != nil {
+			argsForEntrypoint = append(argsForEntrypoint, extraEntrypointArgs[i]...)
+		}
 		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)
 
 		cmd, args := s.Command, s.Args
@@ -239,6 +240,6 @@ func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidec
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar
+// TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

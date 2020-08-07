@@ -125,10 +125,11 @@ type Step struct {
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
+	// If step times out after Timeout, pod is terminated
+	Timeout string `json:"timeout,omitempty"`
 }
 
-// Sidecar embeds the Container type, which allows it to include fields not
-// provided by Container.
+// Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.
 type Sidecar struct {
 	corev1.Container `json:",inline"`
 
