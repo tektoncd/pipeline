@@ -376,7 +376,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 		pod, err = c.createPod(ctx, tr, rtr)
 		if err != nil {
 			newErr := c.handlePodCreationError(ctx, tr, err)
-			logger.Error("Failed to create task run pod for task %q: %v", tr.Name, newErr)
+			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
 		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
