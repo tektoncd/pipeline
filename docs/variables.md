@@ -134,7 +134,11 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.steps[].volumemounts.subpath` |
 | `Task` | `spec.volumes[].name` |
 | `Task` | `spec.volumes[].configmap.name` |
+| `Task` | `spec.volumes[].configmap.items[].key` |
+| `Task` | `spec.volumes[].configmap.items[].path` |
 | `Task` | `spec.volumes[].secret.secretname` |
+| `Task` | `spec.volumes[].secret.items[].key` |
+| `Task` | `spec.volumes[].secret.items[].path` |
 | `Task` | `spec.volumes[].persistentvolumeclaim.claimname` |
 | `Task` | `spec.volumes[].projected.sources.configmap.name` |
 | `Task` | `spec.volumes[].projected.sources.secret.name` |
