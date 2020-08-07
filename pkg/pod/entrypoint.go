@@ -85,9 +85,8 @@ var (
 // Containers must have Command specified; if the user didn't specify a
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
-//
-// TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
+// Additionally, Step timeouts are added as entrypoint flag.
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
@@ -121,8 +120,13 @@ func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps
 				"-termination_path", terminationPath,
 			}
 		}
-		argsForEntrypoint = append(argsForEntrypoint, extraEntrypointArgs...)
-		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)
+		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
+		if taskSpec != nil {
+			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 && taskSpec.Steps[i].Timeout != nil {
+				argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
+			}
+			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+		}
 
 		cmd, args := s.Command, s.Args
 		if len(cmd) == 0 {
@@ -239,6 +243,6 @@ func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidec
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar
+// TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

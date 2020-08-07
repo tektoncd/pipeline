@@ -10,7 +10,7 @@ apiVersion: tekton.dev/v1beta1
 metadata:
   generateName: workspace-in-sidecar-
 spec:
-  timeout: 30s
+  timeout: 60s
   workspaces:
   - name: signals
     emptyDir: {}
