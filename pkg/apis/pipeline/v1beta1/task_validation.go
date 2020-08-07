@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -157,6 +158,12 @@ func validateStep(s Step, names sets.String) (errs *apis.FieldError) {
 			})
 		}
 		names.Insert(s.Name)
+	}
+
+	if s.Timeout != nil {
+		if s.Timeout.Duration < time.Duration(0) {
+			return apis.ErrInvalidValue(s.Timeout.Duration, "negative timeout")
+		}
 	}
 
 	for j, vm := range s.VolumeMounts {

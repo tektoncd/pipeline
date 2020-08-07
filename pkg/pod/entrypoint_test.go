@@ -108,13 +108,15 @@ func TestOrderContainers(t *testing.T) {
 }
 
 func TestEntryPointResults(t *testing.T) {
-	results := []v1beta1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}, {
-		Name:        "sub",
-		Description: "This is the sub result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}, {
+			Name:        "sub",
+			Description: "This is the sub result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -172,7 +174,7 @@ func TestEntryPointResults(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -182,13 +184,15 @@ func TestEntryPointResults(t *testing.T) {
 }
 
 func TestEntryPointResultsSingleStep(t *testing.T) {
-	results := []v1beta1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}, {
-		Name:        "sub",
-		Description: "This is the sub result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}, {
+			Name:        "sub",
+			Description: "This is the sub result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -210,7 +214,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -219,10 +223,12 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 	}
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
-	results := []v1beta1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -244,7 +250,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}

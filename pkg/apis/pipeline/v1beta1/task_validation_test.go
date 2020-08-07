@@ -19,12 +19,14 @@ package v1beta1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -929,6 +931,17 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
 			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "negative timeout string",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Timeout: &metav1.Duration{Duration: -10 * time.Second},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "invalid value: -10s",
+			Paths:   []string{"steps[0].negative timeout"},
 		},
 	}}
 	for _, tt := range tests {

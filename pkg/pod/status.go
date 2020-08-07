@@ -109,9 +109,9 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	complete := areStepsComplete(pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
 
 	if complete {
-		updateCompletedTaskRun(trs, pod)
+		updateCompletedTaskRunStatus(logger, trs, pod)
 	} else {
-		updateIncompleteTaskRun(trs, pod)
+		updateIncompleteTaskRunStatus(trs, pod)
 	}
 
 	trs.PodName = pod.Name
@@ -269,9 +269,9 @@ func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (
 	return nil, nil
 }
 
-func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
+func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
-		msg := getFailureMessage(pod)
+		msg := getFailureMessage(logger, pod)
 		MarkStatusFailure(trs, msg)
 	} else {
 		MarkStatusSuccess(trs)
@@ -281,7 +281,7 @@ func updateCompletedTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRun(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
+func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
@@ -327,15 +327,27 @@ func areStepsComplete(pod *corev1.Pod) bool {
 	return stepsComplete
 }
 
-func getFailureMessage(pod *corev1.Pod) string {
+func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
 	// First, try to surface an error about the actual build step that failed.
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
-		if term != nil && term.ExitCode != 0 {
-			// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
-			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n",
-				status.Name, term.ExitCode, status.ImageID,
-				pod.Namespace, pod.Name, status.Name)
+		if term != nil {
+			msg := status.State.Terminated.Message
+			r, _ := termination.ParseMessage(logger, msg)
+			for _, result := range r {
+				if result.ResultType == v1beta1.InternalTektonResultType && result.Key == "Reason" && result.Value == "TimeoutExceeded" {
+					// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+					return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit; for logs run: kubectl -n %s logs %s -c %s\n",
+						status.Name,
+						pod.Namespace, pod.Name, status.Name)
+				}
+			}
+			if term.ExitCode != 0 {
+				// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+				return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n",
+					status.Name, term.ExitCode, status.ImageID,
+					pod.Namespace, pod.Name, status.Name)
+			}
 		}
 	}
 	// Next, return the Pod's status message if it has one.

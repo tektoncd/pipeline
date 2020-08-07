@@ -1205,6 +1205,11 @@ func (in *SkippedTask) DeepCopy() *SkippedTask {
 func (in *Step) DeepCopyInto(out *Step) {
 	*out = *in
 	in.Container.DeepCopyInto(&out.Container)
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	return
 }
 

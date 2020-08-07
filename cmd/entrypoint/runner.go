@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -19,7 +20,7 @@ type realRunner struct {
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
-func (rr *realRunner) Run(args ...string) error {
+func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return nil
 	}
@@ -33,7 +34,7 @@ func (rr *realRunner) Run(args ...string) error {
 	signal.Notify(rr.signals)
 	defer signal.Reset()
 
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	// dedicated PID group used to forward signals to
@@ -42,6 +43,9 @@ func (rr *realRunner) Run(args ...string) error {
 
 	// Start defined command
 	if err := cmd.Start(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return context.DeadlineExceeded
+		}
 		return err
 	}
 
@@ -57,6 +61,9 @@ func (rr *realRunner) Run(args ...string) error {
 
 	// Wait for command to exit
 	if err := cmd.Wait(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return context.DeadlineExceeded
+		}
 		return err
 	}
 
