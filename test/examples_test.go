@@ -183,6 +183,18 @@ func getExamplePaths(t *testing.T, dir string) []string {
 			return filepath.SkipDir
 		}
 		if info.IsDir() == false && filepath.Ext(info.Name()) == ".yaml" {
+			// Ignore test matching the regexp in the TEST_EXAMPLES_IGNORES
+			// environement variable.
+			val, ok := os.LookupEnv("TEST_EXAMPLES_IGNORES")
+			if ok {
+				re := regexp.MustCompile(val)
+				submatch := re.FindSubmatch([]byte(path))
+				if submatch != nil {
+					t.Logf("Skipping test %s", path)
+					return nil
+				}
+			}
+			t.Logf("Adding test %s", path)
 			examplePaths = append(examplePaths, path)
 			return nil
 		}
