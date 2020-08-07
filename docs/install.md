@@ -279,7 +279,7 @@ data:
     nodeSelector:
       kops.k8s.io/instancegroup: build-instance-group
   default-managed-by-label-value: "my-tekton-installation"
-  default-task-run-workspace-binding: 
+  default-task-run-workspace-binding: |
     emptyDir: {}
 ```
 
