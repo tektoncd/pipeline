@@ -1,0 +1,2353 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Tekton Pipeline",
+    "title": "Tekton",
+    "version": "v0.17.2"
+  },
+  "paths": {},
+  "definitions": {
+    "pod.Template": {
+      "description": "PodTemplate holds pod specific configuration",
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "description": "If specified, the pod's scheduling constraints",
+          "$ref": "#/definitions/v1.Affinity"
+        },
+        "automountServiceAccountToken": {
+          "description": "AutomountServiceAccountToken indicates whether pods running as this service account should have an API token automatically mounted.",
+          "type": "boolean"
+        },
+        "dnsConfig": {
+          "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy.",
+          "$ref": "#/definitions/v1.PodDNSConfig"
+        },
+        "dnsPolicy": {
+          "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy.",
+          "type": "string"
+        },
+        "enableServiceLinks": {
+          "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
+          "type": "boolean"
+        },
+        "hostNetwork": {
+          "description": "HostNetwork specifies whether the pod may use the node network namespace",
+          "type": "boolean"
+        },
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          }
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "runtimeClassName": {
+          "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod. If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
+          "type": "string"
+        },
+        "schedulerName": {
+          "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Toleration"
+          }
+        },
+        "volumes": {
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge,retainKeys"
+        }
+      }
+    },
+    "v1alpha1.PipelineResource": {
+      "description": "PipelineResource describes a resource that is an input to or output from a Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the PipelineResource from the client",
+          "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
+        },
+        "status": {
+          "description": "Status is deprecated. It usually is used to communicate the observed state of the PipelineResource from the controller, but was unused as there is no controller for PipelineResource.",
+          "$ref": "#/definitions/v1alpha1.PipelineResourceStatus"
+        }
+      }
+    },
+    "v1alpha1.PipelineResourceList": {
+      "description": "PipelineResourceList contains a list of PipelineResources",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1.PipelineResource"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.PipelineResourceSpec": {
+      "description": "PipelineResourceSpec defines  an individual resources used in the pipeline.",
+      "type": "object",
+      "required": [
+        "type",
+        "params"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the resource that may be used to populate a UI.",
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1.ResourceParam"
+          }
+        },
+        "secrets": {
+          "description": "Secrets to fetch to populate some of resource fields",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1.SecretParam"
+          }
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.PipelineResourceStatus": {
+      "description": "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status Deprecated",
+      "type": "object"
+    },
+    "v1alpha1.ResourceDeclaration": {
+      "description": "ResourceDeclaration defines an input or output PipelineResource declared as a requirement by another type such as a Task or Condition. The Name field will be used to refer to these PipelineResources within the type's definition, and when provided as an Input, the Name will be the path to the volume mounted containing this PipelineResource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the declared resource that may be used to populate a UI.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
+          "type": "boolean"
+        },
+        "targetPath": {
+          "description": "TargetPath is the path in workspace directory where the resource will be copied.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type is the type of this resource;",
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.ResourceParam": {
+      "description": "ResourceParam declares a string value to use for the parameter called Name, and is used in the specific context of PipelineResources.",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1alpha1.SecretParam": {
+      "description": "SecretParam indicates which secret can be used to populate a field of the resource",
+      "type": "object",
+      "required": [
+        "fieldName",
+        "secretKey",
+        "secretName"
+      ],
+      "properties": {
+        "fieldName": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string"
+        },
+        "secretName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.ArrayOrString": {
+      "description": "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.",
+      "type": "object",
+      "required": [
+        "type",
+        "stringVal",
+        "arrayVal"
+      ],
+      "properties": {
+        "arrayVal": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stringVal": {
+          "description": "Represents the stored type of ArrayOrString.",
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.CannotConvertError": {
+      "description": "CannotConvertError is returned when a field cannot be converted.",
+      "type": "object",
+      "required": [
+        "Message",
+        "Field"
+      ],
+      "properties": {
+        "Field": {
+          "type": "string"
+        },
+        "Message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.CloudEventDelivery": {
+      "description": "CloudEventDelivery is the target of a cloud event along with the state of delivery.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/v1beta1.CloudEventDeliveryState"
+        },
+        "target": {
+          "description": "Target points to an addressable",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.CloudEventDeliveryState": {
+      "description": "CloudEventDeliveryState reports the state of a cloud event to be sent.",
+      "type": "object",
+      "required": [
+        "message",
+        "retryCount"
+      ],
+      "properties": {
+        "condition": {
+          "description": "Current status",
+          "type": "string"
+        },
+        "message": {
+          "description": "Error is the text of error (if any)",
+          "type": "string"
+        },
+        "retryCount": {
+          "description": "RetryCount is the number of attempts of sending the cloud event",
+          "type": "integer",
+          "format": "int32"
+        },
+        "sentAt": {
+          "description": "SentAt is the time at which the last attempt to send the event was made",
+          "$ref": "#/definitions/v1.Time"
+        }
+      }
+    },
+    "v1beta1.ClusterTask": {
+      "description": "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Task from the client",
+          "$ref": "#/definitions/v1beta1.TaskSpec"
+        }
+      }
+    },
+    "v1beta1.ClusterTaskList": {
+      "description": "ClusterTaskList contains a list of ClusterTask",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.ClusterTask"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.ConditionCheck": {
+      "description": "ConditionCheck represents a single evaluation of a Condition step.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1beta1.TaskRunSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1beta1.TaskRunStatus"
+        }
+      }
+    },
+    "v1beta1.ConditionCheckStatus": {
+      "description": "ConditionCheckStatus defines the observed state of ConditionCheck",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "check": {
+          "description": "Check describes the state of the check container.",
+          "$ref": "#/definitions/v1.ContainerState"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the check pod completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this condition check.",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "StartTime is the time the check is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        }
+      }
+    },
+    "v1beta1.ConditionCheckStatusFields": {
+      "description": "ConditionCheckStatusFields holds the fields of ConfigurationCheck's status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "check": {
+          "description": "Check describes the state of the check container.",
+          "$ref": "#/definitions/v1.ContainerState"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the check pod completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this condition check.",
+          "type": "string"
+        },
+        "startTime": {
+          "description": "StartTime is the time the check is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        }
+      }
+    },
+    "v1beta1.EmbeddedTask": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
+        },
+        "params": {
+          "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.ParamSpec"
+          }
+        },
+        "resources": {
+          "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
+          "$ref": "#/definitions/v1beta1.TaskResources"
+        },
+        "results": {
+          "description": "Results are values that this Task can output",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResult"
+          }
+        },
+        "sidecars": {
+          "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Sidecar"
+          }
+        },
+        "stepTemplate": {
+          "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
+          "$ref": "#/definitions/v1.Container"
+        },
+        "steps": {
+          "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Step"
+          }
+        },
+        "volumes": {
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Volume"
+          }
+        },
+        "workspaces": {
+          "description": "Workspaces are the volumes that this Task requires.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
+          }
+        }
+      }
+    },
+    "v1beta1.InternalTaskModifier": {
+      "description": "InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.",
+      "type": "object",
+      "required": [
+        "StepsToPrepend",
+        "StepsToAppend",
+        "Volumes"
+      ],
+      "properties": {
+        "StepsToAppend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Step"
+          }
+        },
+        "StepsToPrepend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Step"
+          }
+        },
+        "Volumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Volume"
+          }
+        }
+      }
+    },
+    "v1beta1.Param": {
+      "description": "Param declares an ArrayOrString to use for the parameter called name.",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
+        }
+      }
+    },
+    "v1beta1.ParamSpec": {
+      "description": "ParamSpec defines arbitrary parameters needed beyond typed inputs (such as resources). Parameter values are provided by users as inputs on a TaskRun or PipelineRun.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "default": {
+          "description": "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
+        },
+        "description": {
+          "description": "Description is a user-facing description of the parameter that may be used to populate a UI.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name declares the name by which a parameter is referenced.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\" and \"array\", and \"string\" is the default.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.Pipeline": {
+      "description": "Pipeline describes a list of Tasks to execute. It expresses how outputs of tasks feed into inputs of subsequent tasks.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Pipeline from the client",
+          "$ref": "#/definitions/v1beta1.PipelineSpec"
+        }
+      }
+    },
+    "v1beta1.PipelineDeclaredResource": {
+      "description": "PipelineDeclaredResource is used by a Pipeline to declare the types of the PipelineResources that it will required to run and names which can be used to refer to these PipelineResources in PipelineTaskResourceBindings.",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name that will be used by the Pipeline to refer to this resource. It does not directly correspond to the name of any PipelineResources Task inputs or outputs, and it does not correspond to the actual names of the PipelineResources that will be bound in the PipelineRun.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Optional declares the resource as optional. optional: true - the resource is considered optional optional: false - the resource is considered required (default/equivalent of not specifying it)",
+          "type": "boolean"
+        },
+        "type": {
+          "description": "Type is the type of the PipelineResource.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineList": {
+      "description": "PipelineList contains a list of Pipeline",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Pipeline"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.PipelineRef": {
+      "description": "PipelineRef can be used to refer to a specific instance of a Pipeline. Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent",
+          "type": "string"
+        },
+        "bundle": {
+          "description": "Bundle url reference to a Tekton Bundle.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineResourceBinding": {
+      "description": "PipelineResourceBinding connects a reference to an instance of a PipelineResource with a PipelineResource dependency that the Pipeline has declared",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name is the name of the PipelineResource in the Pipeline's declaration",
+          "type": "string"
+        },
+        "resourceRef": {
+          "description": "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
+          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
+        },
+        "resourceSpec": {
+          "description": "ResourceSpec is specification of a resource that should be created and consumed by the task",
+          "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
+        }
+      }
+    },
+    "v1beta1.PipelineResourceRef": {
+      "description": "PipelineResourceRef can be used to refer to a specific instance of a Resource",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineResourceResult": {
+      "description": "PipelineResourceResult used to export the image name and digest as json",
+      "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "resourceName": {
+          "type": "string"
+        },
+        "resourceRef": {
+          "description": "The field ResourceRef should be deprecated and removed in the next API version. See https://github.com/tektoncd/pipeline/issues/2694 for more information.",
+          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
+        },
+        "type": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineResult": {
+      "description": "PipelineResult used to describe the results of a pipeline",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value the expression used to retrieve the value",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineRun": {
+      "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how the graph of Tasks declared in a Pipeline are executed; they specify inputs to Pipelines such as parameter values and capture operational aspects of the Tasks execution such as service account and tolerations. Creating a PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1beta1.PipelineRunSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1beta1.PipelineRunStatus"
+        }
+      }
+    },
+    "v1beta1.PipelineRunConditionCheckStatus": {
+      "description": "PipelineRunConditionCheckStatus returns the condition check status",
+      "type": "object",
+      "properties": {
+        "conditionName": {
+          "description": "ConditionName is the name of the Condition",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the ConditionCheckStatus for the corresponding ConditionCheck",
+          "$ref": "#/definitions/v1beta1.ConditionCheckStatus"
+        }
+      }
+    },
+    "v1beta1.PipelineRunList": {
+      "description": "PipelineRunList contains a list of PipelineRun",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.PipelineRunResult": {
+      "description": "PipelineRunResult used to describe the results of a pipeline",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the result's name as declared by the Pipeline",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value is the result returned from the execution of this PipelineRun",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineRunSpec": {
+      "description": "PipelineRunSpec defines the desired state of PipelineRun",
+      "type": "object",
+      "properties": {
+        "params": {
+          "description": "Params is a list of parameter names and values.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "pipelineRef": {
+          "$ref": "#/definitions/v1beta1.PipelineRef"
+        },
+        "pipelineSpec": {
+          "$ref": "#/definitions/v1beta1.PipelineSpec"
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "resources": {
+          "description": "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineResourceBinding"
+          }
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "serviceAccountNames": {
+          "description": "Deprecated: use taskRunSpecs.ServiceAccountName instead",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineRunSpecServiceAccountName"
+          }
+        },
+        "status": {
+          "description": "Used for cancelling a pipelinerun (and maybe more later on)",
+          "type": "string"
+        },
+        "taskRunSpecs": {
+          "description": "TaskRunSpecs holds a set of runtime specs",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTaskRunSpec"
+          }
+        },
+        "timeout": {
+          "description": "Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces holds a set of workspace bindings that must match names with those declared in the pipeline.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WorkspaceBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineRunSpecServiceAccountName": {
+      "description": "PipelineRunSpecServiceAccountName can be used to configure specific ServiceAccountName for a concrete Task",
+      "type": "object",
+      "properties": {
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "taskName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineRunStatus": {
+      "description": "PipelineRunStatus defines the observed state of PipelineRun",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the PipelineRun completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "pipelineResults": {
+          "description": "PipelineResults are the list of results written out by the pipeline task's containers",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineRunResult"
+          }
+        },
+        "pipelineSpec": {
+          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "$ref": "#/definitions/v1beta1.PipelineSpec"
+        },
+        "skippedTasks": {
+          "description": "list of tasks that were skipped due to when expressions evaluating to false",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.SkippedTask"
+          }
+        },
+        "startTime": {
+          "description": "StartTime is the time the PipelineRun is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "taskRuns": {
+          "description": "map of PipelineRunTaskRunStatus with the taskRun name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineRunStatusFields": {
+      "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
+      "type": "object",
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the PipelineRun completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "pipelineResults": {
+          "description": "PipelineResults are the list of results written out by the pipeline task's containers",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineRunResult"
+          }
+        },
+        "pipelineSpec": {
+          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "$ref": "#/definitions/v1beta1.PipelineSpec"
+        },
+        "skippedTasks": {
+          "description": "list of tasks that were skipped due to when expressions evaluating to false",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.SkippedTask"
+          }
+        },
+        "startTime": {
+          "description": "StartTime is the time the PipelineRun is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "taskRuns": {
+          "description": "map of PipelineRunTaskRunStatus with the taskRun name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineRunTaskRunStatus": {
+      "description": "PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status",
+      "type": "object",
+      "properties": {
+        "conditionChecks": {
+          "description": "ConditionChecks maps the name of a condition check to its Status",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunConditionCheckStatus"
+          }
+        },
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the TaskRunStatus for the corresponding TaskRun",
+          "$ref": "#/definitions/v1beta1.TaskRunStatus"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineSpec": {
+      "description": "PipelineSpec defines the desired state of Pipeline.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the pipeline that may be used to populate a UI.",
+          "type": "string"
+        },
+        "finally": {
+          "description": "Finally declares the list of Tasks that execute just before leaving the Pipeline i.e. either after all Tasks are finished executing successfully or after a failure which would result in ending the Pipeline",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTask"
+          }
+        },
+        "params": {
+          "description": "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.ParamSpec"
+          }
+        },
+        "resources": {
+          "description": "Resources declares the names and types of the resources given to the Pipeline's tasks as inputs and outputs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineDeclaredResource"
+          }
+        },
+        "results": {
+          "description": "Results are values that this pipeline can output once run",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineResult"
+          }
+        },
+        "tasks": {
+          "description": "Tasks declares the graph of Tasks that execute when this Pipeline is run.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTask"
+          }
+        },
+        "workspaces": {
+          "description": "Workspaces declares a set of named workspaces that are expected to be provided by a PipelineRun.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineWorkspaceDeclaration"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineTask": {
+      "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "description": "Conditions is a list of conditions that need to be true for the task to run Conditions are deprecated, use WhenExpressions instead",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTaskCondition"
+          }
+        },
+        "name": {
+          "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
+          "type": "string"
+        },
+        "params": {
+          "description": "Parameters declares parameters passed to this task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "resources": {
+          "description": "Resources declares the resources given to this task as inputs and outputs.",
+          "$ref": "#/definitions/v1beta1.PipelineTaskResources"
+        },
+        "retries": {
+          "description": "Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False",
+          "type": "integer",
+          "format": "int32"
+        },
+        "runAfter": {
+          "description": "RunAfter is the list of PipelineTask names that should be executed before this Task executes. (Used to force a specific ordering in graph execution.)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "taskRef": {
+          "description": "TaskRef is a reference to a task definition.",
+          "$ref": "#/definitions/v1beta1.TaskRef"
+        },
+        "taskSpec": {
+          "description": "TaskSpec is a specification of a task",
+          "$ref": "#/definitions/v1beta1.EmbeddedTask"
+        },
+        "timeout": {
+          "description": "Time after which the TaskRun times out. Defaults to 1 hour. Specified TaskRun timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "when": {
+          "description": "WhenExpressions is a list of when expressions that need to be true for the task to run",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        },
+        "workspaces": {
+          "description": "Workspaces maps workspaces from the pipeline spec to the workspaces declared in the Task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WorkspacePipelineTaskBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineTaskCondition": {
+      "description": "PipelineTaskCondition allows a PipelineTask to declare a Condition to be evaluated before the Task is run.",
+      "type": "object",
+      "required": [
+        "conditionRef"
+      ],
+      "properties": {
+        "conditionRef": {
+          "description": "ConditionRef is the name of the Condition to use for the conditionCheck",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params declare parameters passed to this Condition",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "resources": {
+          "description": "Resources declare the resources provided to this Condition as input",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineTaskInputResource": {
+      "description": "PipelineTaskInputResource maps the name of a declared PipelineResource input dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used. This input may come from a previous task.",
+      "type": "object",
+      "required": [
+        "name",
+        "resource"
+      ],
+      "properties": {
+        "from": {
+          "description": "From is the list of PipelineTask names that the resource has to come from. (Implies an ordering in the execution graph.)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "description": "Name is the name of the PipelineResource as declared by the Task.",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Resource is the name of the DeclaredPipelineResource to use.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineTaskMetadata": {
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineTaskOutputResource": {
+      "description": "PipelineTaskOutputResource maps the name of a declared PipelineResource output dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used.",
+      "type": "object",
+      "required": [
+        "name",
+        "resource"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name of the PipelineResource as declared by the Task.",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Resource is the name of the DeclaredPipelineResource to use.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineTaskParam": {
+      "description": "PipelineTaskParam is used to provide arbitrary string parameters to a Task.",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineTaskResources": {
+      "description": "PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "description": "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
+          }
+        },
+        "outputs": {
+          "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineTaskOutputResource"
+          }
+        }
+      }
+    },
+    "v1beta1.PipelineTaskRun": {
+      "description": "PipelineTaskRun reports the results of running a step in the Task. Each task has the potential to succeed or fail (based on the exit code) and produces logs.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineTaskRunSpec": {
+      "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
+      "type": "object",
+      "properties": {
+        "pipelineTaskName": {
+          "type": "string"
+        },
+        "taskPodTemplate": {
+          "$ref": "#/definitions/pod.Template"
+        },
+        "taskServiceAccountName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.PipelineWorkspaceDeclaration": {
+      "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human readable string describing how the workspace will be used in the Pipeline. It can be useful to include a bit of detail about which tasks are intended to have access to the data on the workspace.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name is the name of a workspace to be provided by a PipelineRun.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Optional marks a Workspace as not being required in PipelineRuns. By default this field is false and so declared workspaces are required.",
+          "type": "boolean"
+        }
+      }
+    },
+    "v1beta1.ResultRef": {
+      "description": "ResultRef is a type that represents a reference to a task run result",
+      "type": "object",
+      "required": [
+        "PipelineTask",
+        "Result"
+      ],
+      "properties": {
+        "PipelineTask": {
+          "type": "string"
+        },
+        "Result": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.Sidecar": {
+      "description": "Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "args": {
+          "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "description": "List of environment variables to set in the container. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "envFrom": {
+          "description": "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.EnvFromSource"
+          }
+        },
+        "image": {
+          "description": "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+          "type": "string"
+        },
+        "imagePullPolicy": {
+          "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+          "type": "string"
+        },
+        "lifecycle": {
+          "description": "Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+          "$ref": "#/definitions/v1.Lifecycle"
+        },
+        "livenessProbe": {
+          "description": "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "name": {
+          "description": "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+          "type": "string"
+        },
+        "ports": {
+          "description": "List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ContainerPort"
+          },
+          "x-kubernetes-list-map-keys": [
+            "containerPort",
+            "protocol"
+          ],
+          "x-kubernetes-list-type": "map",
+          "x-kubernetes-patch-merge-key": "containerPort",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "readinessProbe": {
+          "description": "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "resources": {
+          "description": "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "script": {
+          "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+          "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "startupProbe": {
+          "description": "StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "stdin": {
+          "description": "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+          "type": "boolean"
+        },
+        "stdinOnce": {
+          "description": "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+          "type": "boolean"
+        },
+        "terminationMessagePath": {
+          "description": "Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.",
+          "type": "string"
+        },
+        "terminationMessagePolicy": {
+          "description": "Indicate how the termination message should be populated. File will use the contents of terminationMessagePath to populate the container status message on both success and failure. FallbackToLogsOnError will use the last chunk of container log output if the termination message file is empty and the container exited with an error. The log output is limited to 2048 bytes or 80 lines, whichever is smaller. Defaults to File. Cannot be updated.",
+          "type": "string"
+        },
+        "tty": {
+          "description": "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+          "type": "boolean"
+        },
+        "volumeDevices": {
+          "description": "volumeDevices is the list of block devices to be used by the container.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.VolumeDevice"
+          },
+          "x-kubernetes-patch-merge-key": "devicePath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "volumeMounts": {
+          "description": "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "workingDir": {
+          "description": "Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.SidecarState": {
+      "description": "SidecarState reports the results of running a sidecar in a Task.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "imageID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "running": {
+          "description": "Details about a running container",
+          "$ref": "#/definitions/v1.ContainerStateRunning"
+        },
+        "terminated": {
+          "description": "Details about a terminated container",
+          "$ref": "#/definitions/v1.ContainerStateTerminated"
+        },
+        "waiting": {
+          "description": "Details about a waiting container",
+          "$ref": "#/definitions/v1.ContainerStateWaiting"
+        }
+      }
+    },
+    "v1beta1.SkippedTask": {
+      "description": "SkippedTask is used to describe the Tasks that were skipped due to their When Expressions evaluating to False. This is a struct because we are looking into including more details about the When Expressions that caused this Task to be skipped.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the Pipeline Task name",
+          "type": "string"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        }
+      }
+    },
+    "v1beta1.Step": {
+      "description": "Step embeds the Container type, which allows it to include fields not provided by Container.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "args": {
+          "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "description": "List of environment variables to set in the container. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "envFrom": {
+          "description": "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.EnvFromSource"
+          }
+        },
+        "image": {
+          "description": "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+          "type": "string"
+        },
+        "imagePullPolicy": {
+          "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+          "type": "string"
+        },
+        "lifecycle": {
+          "description": "Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+          "$ref": "#/definitions/v1.Lifecycle"
+        },
+        "livenessProbe": {
+          "description": "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "name": {
+          "description": "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+          "type": "string"
+        },
+        "ports": {
+          "description": "List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ContainerPort"
+          },
+          "x-kubernetes-list-map-keys": [
+            "containerPort",
+            "protocol"
+          ],
+          "x-kubernetes-list-type": "map",
+          "x-kubernetes-patch-merge-key": "containerPort",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "readinessProbe": {
+          "description": "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "resources": {
+          "description": "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "script": {
+          "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+          "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "startupProbe": {
+          "description": "StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "$ref": "#/definitions/v1.Probe"
+        },
+        "stdin": {
+          "description": "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+          "type": "boolean"
+        },
+        "stdinOnce": {
+          "description": "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+          "type": "boolean"
+        },
+        "terminationMessagePath": {
+          "description": "Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.",
+          "type": "string"
+        },
+        "terminationMessagePolicy": {
+          "description": "Indicate how the termination message should be populated. File will use the contents of terminationMessagePath to populate the container status message on both success and failure. FallbackToLogsOnError will use the last chunk of container log output if the termination message file is empty and the container exited with an error. The log output is limited to 2048 bytes or 80 lines, whichever is smaller. Defaults to File. Cannot be updated.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Timeout is the time after which the step times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "tty": {
+          "description": "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+          "type": "boolean"
+        },
+        "volumeDevices": {
+          "description": "volumeDevices is the list of block devices to be used by the container.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.VolumeDevice"
+          },
+          "x-kubernetes-patch-merge-key": "devicePath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "volumeMounts": {
+          "description": "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "workingDir": {
+          "description": "Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.StepState": {
+      "description": "StepState reports the results of running a step in a Task.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "imageID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "running": {
+          "description": "Details about a running container",
+          "$ref": "#/definitions/v1.ContainerStateRunning"
+        },
+        "terminated": {
+          "description": "Details about a terminated container",
+          "$ref": "#/definitions/v1.ContainerStateTerminated"
+        },
+        "waiting": {
+          "description": "Details about a waiting container",
+          "$ref": "#/definitions/v1.ContainerStateWaiting"
+        }
+      }
+    },
+    "v1beta1.Task": {
+      "description": "Task represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Tasks execute when TaskRuns are created that provide the input parameters and resources and output resources the Task requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Task from the client",
+          "$ref": "#/definitions/v1beta1.TaskSpec"
+        }
+      }
+    },
+    "v1beta1.TaskList": {
+      "description": "TaskList contains a list of Task",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Task"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.TaskRef": {
+      "description": "TaskRef can be used to refer to a specific instance of a task. Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent",
+          "type": "string"
+        },
+        "bundle": {
+          "description": "Bundle url reference to a Tekton Bundle.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "TaskKind indicates the kind of the task, namespaced or cluster scoped.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.TaskResource": {
+      "description": "TaskResource defines an input or output Resource declared as a requirement by a Task. The Name field will be used to refer to these Resources within the Task definition, and when provided as an Input, the Name will be the path to the volume mounted containing this Resource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the declared resource that may be used to populate a UI.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
+          "type": "boolean"
+        },
+        "targetPath": {
+          "description": "TargetPath is the path in workspace directory where the resource will be copied.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type is the type of this resource;",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.TaskResourceBinding": {
+      "description": "TaskResourceBinding points to the PipelineResource that will be used for the Task input or output called Name.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name is the name of the PipelineResource in the Pipeline's declaration",
+          "type": "string"
+        },
+        "paths": {
+          "description": "Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead. The optional Path field corresponds to a path on disk at which the Resource can be found (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resourceRef": {
+          "description": "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
+          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
+        },
+        "resourceSpec": {
+          "description": "ResourceSpec is specification of a resource that should be created and consumed by the task",
+          "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
+        }
+      }
+    },
+    "v1beta1.TaskResources": {
+      "description": "TaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "description": "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResource"
+          }
+        },
+        "outputs": {
+          "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResource"
+          }
+        }
+      }
+    },
+    "v1beta1.TaskResult": {
+      "description": "TaskResult used to describe the results of a task",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.TaskRun": {
+      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1beta1.TaskRunSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1beta1.TaskRunStatus"
+        }
+      }
+    },
+    "v1beta1.TaskRunInputs": {
+      "description": "TaskRunInputs holds the input values that this task was invoked with.",
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.TaskRunList": {
+      "description": "TaskRunList contains a list of TaskRun",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.TaskRunOutputs": {
+      "description": "TaskRunOutputs holds the output values that this task was invoked with.",
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.TaskRunResources": {
+      "description": "TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "description": "Inputs holds the inputs resources this task was invoked with",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
+          }
+        },
+        "outputs": {
+          "description": "Outputs holds the inputs resources this task was invoked with",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.TaskRunResult": {
+      "description": "TaskRunResult used to describe the results of a task",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name the given name",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value the given value of the result",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.TaskRunSpec": {
+      "description": "TaskRunSpec defines the desired state of TaskRun",
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "resources": {
+          "$ref": "#/definitions/v1beta1.TaskRunResources"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "status": {
+          "description": "Used for cancelling a taskrun (and maybe more later on)",
+          "type": "string"
+        },
+        "taskRef": {
+          "description": "no more than one of the TaskRef and TaskSpec may be specified.",
+          "$ref": "#/definitions/v1beta1.TaskRef"
+        },
+        "taskSpec": {
+          "$ref": "#/definitions/v1beta1.TaskSpec"
+        },
+        "timeout": {
+          "description": "Time after which the build times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WorkspaceBinding"
+          }
+        }
+      }
+    },
+    "v1beta1.TaskRunStatus": {
+      "description": "TaskRunStatus defines the observed state of TaskRun",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "cloudEvents": {
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.CloudEventDelivery"
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the build completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this task's steps.",
+          "type": "string"
+        },
+        "resourcesResult": {
+          "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
+          }
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskRunStatus"
+          }
+        },
+        "sidecars": {
+          "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.SidecarState"
+          }
+        },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "steps": {
+          "description": "Steps describes the state of each build step container.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.StepState"
+          }
+        },
+        "taskResults": {
+          "description": "TaskRunResults are the list of results written out by the task's containers",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskRunResult"
+          }
+        },
+        "taskSpec": {
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "$ref": "#/definitions/v1beta1.TaskSpec"
+        }
+      }
+    },
+    "v1beta1.TaskRunStatusFields": {
+      "description": "TaskRunStatusFields holds the fields of TaskRun's status.  This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "cloudEvents": {
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.CloudEventDelivery"
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the build completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this task's steps.",
+          "type": "string"
+        },
+        "resourcesResult": {
+          "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
+          }
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskRunStatus"
+          }
+        },
+        "sidecars": {
+          "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.SidecarState"
+          }
+        },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "steps": {
+          "description": "Steps describes the state of each build step container.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.StepState"
+          }
+        },
+        "taskResults": {
+          "description": "TaskRunResults are the list of results written out by the task's containers",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskRunResult"
+          }
+        },
+        "taskSpec": {
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "$ref": "#/definitions/v1beta1.TaskSpec"
+        }
+      }
+    },
+    "v1beta1.TaskSpec": {
+      "description": "TaskSpec defines the desired state of Task.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.ParamSpec"
+          }
+        },
+        "resources": {
+          "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
+          "$ref": "#/definitions/v1beta1.TaskResources"
+        },
+        "results": {
+          "description": "Results are values that this Task can output",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.TaskResult"
+          }
+        },
+        "sidecars": {
+          "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Sidecar"
+          }
+        },
+        "stepTemplate": {
+          "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
+          "$ref": "#/definitions/v1.Container"
+        },
+        "steps": {
+          "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.Step"
+          }
+        },
+        "volumes": {
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.Volume"
+          }
+        },
+        "workspaces": {
+          "description": "Workspaces are the volumes that this Task requires.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
+          }
+        }
+      }
+    },
+    "v1beta1.WhenExpression": {
+      "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run to determine whether the Task should be executed or skipped",
+      "type": "object",
+      "required": [
+        "input",
+        "operator",
+        "values"
+      ],
+      "properties": {
+        "Input": {
+          "description": "DeprecatedInput for backwards compatibility with \u003cv0.17 it is the string for guard checking which can be a static input or an output from a parent Task",
+          "type": "string"
+        },
+        "Operator": {
+          "description": "DeprecatedOperator for backwards compatibility with \u003cv0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
+          "type": "string"
+        },
+        "Values": {
+          "description": "DeprecatedValues for backwards compatibility with \u003cv0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input": {
+          "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
+          "type": "string"
+        },
+        "operator": {
+          "description": "Operator that represents an Input's relationship to the values",
+          "type": "string"
+        },
+        "values": {
+          "description": "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1.WorkspaceBinding": {
+      "description": "WorkspaceBinding maps a Task's declared workspace to a Volume.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "configMap": {
+          "description": "ConfigMap represents a configMap that should populate this workspace.",
+          "$ref": "#/definitions/v1.ConfigMapVolumeSource"
+        },
+        "emptyDir": {
+          "description": "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
+          "$ref": "#/definitions/v1.EmptyDirVolumeSource"
+        },
+        "name": {
+          "description": "Name is the name of the workspace populated by the volume.",
+          "type": "string"
+        },
+        "persistentVolumeClaim": {
+          "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
+          "$ref": "#/definitions/v1.PersistentVolumeClaimVolumeSource"
+        },
+        "secret": {
+          "description": "Secret represents a secret that should populate this workspace.",
+          "$ref": "#/definitions/v1.SecretVolumeSource"
+        },
+        "subPath": {
+          "description": "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
+          "type": "string"
+        },
+        "volumeClaimTemplate": {
+          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.",
+          "$ref": "#/definitions/v1.PersistentVolumeClaim"
+        }
+      }
+    },
+    "v1beta1.WorkspaceDeclaration": {
+      "description": "WorkspaceDeclaration is a declaration of a volume that a Task requires.",
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is an optional human readable description of this volume.",
+          "type": "string"
+        },
+        "mountPath": {
+          "description": "MountPath overrides the directory that the volume will be made available at.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name is the name by which you can bind the volume at runtime.",
+          "type": "string"
+        },
+        "optional": {
+          "description": "Optional marks a Workspace as not being required in TaskRuns. By default this field is false and so declared workspaces are required.",
+          "type": "boolean"
+        },
+        "readOnly": {
+          "description": "ReadOnly dictates whether a mounted volume is writable. By default this field is false and so mounted volumes are writable.",
+          "type": "boolean"
+        }
+      }
+    },
+    "v1beta1.WorkspacePipelineTaskBinding": {
+      "description": "WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be mapped to a task's declared workspace.",
+      "type": "object",
+      "required": [
+        "name",
+        "workspace"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the name of the workspace as declared by the task",
+          "type": "string"
+        },
+        "subPath": {
+          "description": "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
+          "type": "string"
+        },
+        "workspace": {
+          "description": "Workspace is the name of the workspace declared by the pipeline",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
