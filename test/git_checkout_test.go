@@ -41,6 +41,8 @@ const (
 // TestGitPipelineRun is an integration test that will verify the source code is either fetched or pulled
 // successfully under different revision inputs (branch, commitid, tag, ref)
 func TestGitPipelineRun(t *testing.T) {
+	SkipIfExcluded(t)
+
 	t.Parallel()
 
 	revisions := []string{"master", "c15aced0e5aaee6456fbe6f7a7e95e0b5b3b2b2f", "release-0.1", "v0.1.0", "refs/pull/347/head"}
@@ -82,6 +84,8 @@ func TestGitPipelineRun(t *testing.T) {
 
 // Test revision fetching with refspec specified
 func TestGitPipelineRunWithRefspec(t *testing.T) {
+	SkipIfExcluded(t)
+
 	t.Parallel()
 
 	for _, tc := range []struct {
@@ -303,6 +307,8 @@ func TestGitPipelineRunFail_HTTPS_PROXY(t *testing.T) {
 // successfully under different revision inputs (default branch, branch)
 // This test will run on spring-petclinic repository which does not contain a master branch as the default branch
 func TestGitPipelineRunWithNonMasterBranch(t *testing.T) {
+	SkipIfExcluded(t)
+
 	t.Parallel()
 
 	revisions := []string{"", "main"}

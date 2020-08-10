@@ -51,6 +51,8 @@ func init() {
 }
 
 func setup(t *testing.T, fn ...func(*testing.T, *clients, string)) (*clients, string) {
+	SkipIfExcluded(t)
+
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 

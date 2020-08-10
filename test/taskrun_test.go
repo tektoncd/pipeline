@@ -19,7 +19,6 @@ limitations under the License.
 package test
 
 import (
-	"runtime"
 	"strings"
 	"testing"
 
@@ -126,10 +125,7 @@ func TestTaskRunStatus(t *testing.T) {
 
 	taskRunName := "status-taskrun"
 
-	fqImageName := "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649"
-	if runtime.GOARCH == "s390x" {
-		fqImageName = "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977"
-	}
+	fqImageName := GetTestImage(BusyboxSha)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := &v1beta1.Task{

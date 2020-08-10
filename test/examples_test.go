@@ -116,6 +116,8 @@ type waitFunc func(t *testing.T, c *clients, name string)
 
 func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
+		SkipIfExcluded(t)
+
 		t.Parallel()
 
 		// Setup unique namespaces for each test so they can run in complete
