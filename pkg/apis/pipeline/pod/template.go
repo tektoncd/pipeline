@@ -24,6 +24,7 @@ import (
 
 // PodTemplate holds pod specific configuration
 // +k8s:deepcopy-gen=true
+// +k8s:openapi-gen=true
 type Template struct {
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -47,6 +48,8 @@ type Template struct {
 	// List of volumes that can be mounted by containers belonging to the pod.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
 	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge,retainKeys
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
 
 	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
