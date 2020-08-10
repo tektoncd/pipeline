@@ -67,7 +67,7 @@ func getRegistryDeployment(namespace string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:  "registry",
-						Image: "registry",
+						Image: GetTestImage(Registry),
 					}},
 				},
 			},
