@@ -498,8 +498,9 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 	logger.Warn("stopping task run %q because of %q", tr.Name, reason)
 	tr.Status.MarkResourceFailed(reason, errors.New(message))
 
+	completionTime := metav1.Time{Time: time.Now()}
 	// update tr completed time
-	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	tr.Status.CompletionTime = &completionTime
 
 	if tr.Status.PodName == "" {
 		logger.Warnf("task run %q has no pod running yet", tr.Name)
@@ -510,11 +511,36 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 	// can be reached, for example, by the pod never being schedulable due to limits imposed by
 	// a namespace's ResourceQuota.
 	err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete(tr.Status.PodName, &metav1.DeleteOptions{})
-
 	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Infof("Failed to terminate pod: %v", err)
 		return err
 	}
+
+	// Update step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
+	for i, step := range tr.Status.Steps {
+		// If running, include StartedAt for when step began running
+		if step.Running != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				StartedAt:  step.Running.StartedAt,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Running = nil
+			tr.Status.Steps[i] = step
+		}
+
+		if step.Waiting != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Waiting = nil
+			tr.Status.Steps[i] = step
+		}
+	}
+
 	return nil
 }
 
