@@ -48,3 +48,25 @@ func ValidateBindings(w []v1beta1.WorkspaceDeclaration, wb []v1beta1.WorkspaceBi
 	}
 	return nil
 }
+
+// ValidateOnlyOnePVCIsUsed checks that a list of WorkspaceBinding uses only one
+// persistent volume claim.
+//
+// This is only useful to validate that WorkspaceBindings in TaskRuns are compatible
+// with affinity rules enforced by the AffinityAssistant.
+func ValidateOnlyOnePVCIsUsed(wb []v1beta1.WorkspaceBinding) error {
+	workspaceVolumes := make(map[string]bool)
+	for _, w := range wb {
+		if w.PersistentVolumeClaim != nil {
+			workspaceVolumes[w.PersistentVolumeClaim.ClaimName] = true
+		}
+		if w.VolumeClaimTemplate != nil {
+			workspaceVolumes[w.Name] = true
+		}
+	}
+
+	if len(workspaceVolumes) > 1 {
+		return fmt.Errorf("more than one PersistentVolumeClaim is bound")
+	}
+	return nil
+}

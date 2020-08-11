@@ -17,9 +17,11 @@ limitations under the License.
 package workspace
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -127,6 +129,92 @@ func TestValidateBindingsInvalid(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateBindings(tc.declarations, tc.bindings); err == nil {
 				t.Errorf("expected error for invalid bindings but didn't get any!")
+			}
+		})
+	}
+}
+
+func TestValidateOnlyOnePVCIsUsed_Valid(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		bindings []v1beta1.WorkspaceBinding
+	}{{
+		name:     "an error is not returned when no bindings are given",
+		bindings: []v1beta1.WorkspaceBinding{},
+	}, {
+		name: "an error is not returned when volume claims are not used",
+		bindings: []v1beta1.WorkspaceBinding{{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}, {
+			Secret: &corev1.SecretVolumeSource{},
+		}},
+	}, {
+		name: "an error is not returned when one PV claim is used in two bindings",
+		bindings: []v1beta1.WorkspaceBinding{{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}, {
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}},
+	}, {
+		name: "an error is not returned when one PV claim is used in two bindings with different subpaths",
+		bindings: []v1beta1.WorkspaceBinding{{
+			SubPath: "/pathA",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}, {
+			SubPath: "/pathB",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateOnlyOnePVCIsUsed(tc.bindings); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateOnlyOnePVCIsUsed_Invalid(t *testing.T) {
+	validationError := errors.New("more than one PersistentVolumeClaim is bound")
+	for _, tc := range []struct {
+		name     string
+		bindings []v1beta1.WorkspaceBinding
+		wantErr  error
+	}{{
+		name: "an error is returned when two different PV claims are used",
+		bindings: []v1beta1.WorkspaceBinding{{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}, {
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "bar",
+			},
+		}},
+		wantErr: validationError,
+	}, {
+		name: "an error is returned when a PVC and volume claim template are mixed",
+		bindings: []v1beta1.WorkspaceBinding{{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}, {
+			Name:                "bar",
+			VolumeClaimTemplate: &corev1.PersistentVolumeClaim{},
+		}},
+		wantErr: validationError,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateOnlyOnePVCIsUsed(tc.bindings)
+			if err == nil || (tc.wantErr.Error() != err.Error()) {
+				t.Errorf("expected %v received %v", tc.wantErr, err)
 			}
 		})
 	}
