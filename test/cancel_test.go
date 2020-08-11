@@ -26,6 +26,7 @@ import (
 
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,9 +164,17 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled")
+					err := WaitForTaskRunState(c, name, FailedWithReason(v1beta1.TaskRunReasonCancelled.String(), name), v1beta1.TaskRunReasonCancelled.String())
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be finished: %v", name, err)
+					}
+					for _, step := range taskrunItem.Status.Steps {
+						if step.Terminated == nil {
+							t.Errorf("TaskRun %s step %s does not have a terminated state but should", name, step.Name)
+						}
+						if d := cmp.Diff(step.Terminated.Reason, string(v1beta1.TaskRunReasonCancelled)); d != "" {
+							t.Fatalf("-got, +want: %v", d)
+						}
 					}
 				}(taskrunItem.Name)
 			}
