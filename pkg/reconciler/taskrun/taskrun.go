@@ -760,14 +760,17 @@ func validateWorkspaceCompatibilityWithAffinityAssistant(tr *v1beta1.TaskRun) er
 		return nil
 	}
 
-	pvcWorkspaces := 0
+	workspaceVolumes := make(map[string]bool)
 	for _, w := range tr.Spec.Workspaces {
-		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
-			pvcWorkspaces++
+		if w.PersistentVolumeClaim != nil {
+			workspaceVolumes[w.PersistentVolumeClaim.ClaimName] = true
+		}
+		if w.VolumeClaimTemplate != nil {
+			workspaceVolumes[w.Name] = true
 		}
 	}
 
-	if pvcWorkspaces > 1 {
+	if len(workspaceVolumes) > 1 {
 		return fmt.Errorf("TaskRun mounts more than one PersistentVolumeClaim - that is forbidden when the Affinity Assistant is enabled")
 	}
 	return nil
