@@ -6,7 +6,7 @@ weight: 15
 -->
 # Variable Substitutions Supported by `Tasks` and `Pipelines`
 
-This page documents the variable substitions supported by `Tasks` and `Pipelines`.
+This page documents the variable substitutions supported by `Tasks` and `Pipelines`.
 
 ## Variables available in a `Pipeline`
 

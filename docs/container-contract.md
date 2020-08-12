@@ -39,7 +39,7 @@ controller performs an anonymous lookup of the image.
 For example, consider the following `Task`, which uses two images named
 `gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`. In this example, the
 Pipelines controller retrieves the `entrypoint` value from the registry, which allows
-the `Task` to execute the `gcloud` and `docker` commmands, respectively.
+the `Task` to execute the `gcloud` and `docker` commands, respectively.
 
 ```yaml
 spec:

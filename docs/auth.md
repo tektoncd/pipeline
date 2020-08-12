@@ -444,7 +444,7 @@ Kubernetes `Secrets`.
    - Associate the `ServiceAccount` with your `TaskRun`:
 
      ```yaml
-     apiVersion: tetkon.dev/v1beta1
+     apiVersion: tekton.dev/v1beta1
      kind: TaskRun
      metadata:
        name: build-with-basic-auth

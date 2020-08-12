@@ -239,7 +239,7 @@ data:
 
 When configured so, Tekton can generate `CloudEvents` for `TaskRun` and `PipelineRun` lifecycle
 events. The only configuration parameter is the URL of the sink. When not set, no notification is
-generared.
+generated.
 
 ```
 apiVersion: v1

@@ -1115,7 +1115,7 @@ They also present challenges from a documentation perspective:
 So what are PipelineResources still good for?  We think we've identified some of the most important things:
 
 1. You can augment `Task`-only workflows with `PipelineResources` that, without them, can only be done with `Pipelines`.
-    - For example, let's say you want to checkout a git repo for your Task to test. You have two options. First, you could use a `git` PipelineResource and add it directly to your test `Task`. Second, you could write a `Pipeline` that has a `git-clone` `Task` which checks out the code onto a PersistentVolumeClaim `workspace` and then passes that PVC `workspace` to your test `Task`. For a lot of users the second workflow is totally acceptable but for others it isn't. Some of the most noteable reasons we've heard are:
+    - For example, let's say you want to checkout a git repo for your Task to test. You have two options. First, you could use a `git` PipelineResource and add it directly to your test `Task`. Second, you could write a `Pipeline` that has a `git-clone` `Task` which checks out the code onto a PersistentVolumeClaim `workspace` and then passes that PVC `workspace` to your test `Task`. For a lot of users the second workflow is totally acceptable but for others it isn't. Some of the most notable reasons we've heard are:
       - Some users simply cannot allocate storage on their platform, meaning `PersistentVolumeClaims` are out of the question.
       - Expanding a single `Task` workflow into a `Pipeline` is labor-intensive and feels unnecessary.
 2. Despite being difficult to explain the whole CRD clearly each individual `type` is relatively easy to explain.
