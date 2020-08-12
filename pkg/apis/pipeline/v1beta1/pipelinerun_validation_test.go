@@ -197,6 +197,26 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			Message: `workspace "ws" provided by pipelinerun more than once, at index 0 and 1`,
 			Paths:   []string{"spec.workspaces"},
 		},
+	}, {
+		name: "workspaces must contain a valid volume config",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "pipelinerefname",
+			},
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name: "ws",
+			}},
+		},
+		wantErr: &apis.FieldError{
+			Message: "expected exactly one, got neither",
+			Paths: []string{
+				"spec.workspaces[0].configmap",
+				"spec.workspaces[0].emptydir",
+				"spec.workspaces[0].persistentvolumeclaim",
+				"spec.workspaces[0].secret",
+				"spec.workspaces[0].volumeclaimtemplate",
+			},
+		},
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
