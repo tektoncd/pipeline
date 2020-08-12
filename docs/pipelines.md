@@ -233,7 +233,7 @@ as its input, use the optional `from` parameter to specify a list of `Tasks`
 that must execute **before** the `Task` that requires their outputs as its 
 input. When your target `Task` executes, only the version of the desired 
 `PipelineResource` produced by the last `Task` in this list is used. The
-`name` of this output `PipelineReource` output must match the `name` of the
+`name` of this output `PipelineResource` output must match the `name` of the
 input `PipelineResource` specified in the `Task` that ingests it. 
 
 In the example below, the `deploy-app` `Task` ingests the output of the `build-app`
@@ -299,7 +299,7 @@ should retry its execution when it fails. When a `Task` fails, the corresponding
 instructs Tekton to retry executing the `Task` when this happens.
 
 If you expect a `Task` to encounter problems during execution (for example,
-you know that there will be issues with network connectivitity or missing
+you know that there will be issues with network connectivity or missing
 dependencies), set its `retries` parameter to a suitable value greater than 0.
 If you don't explicitly specify a value, Tekton does not attempt to execute
 the failed `Task` again.
