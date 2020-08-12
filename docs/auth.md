@@ -13,7 +13,7 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
 
 - [Overview](#overview)
 - [Understanding credential selection](#understanding-credential-selection)
-- [Authenticating as a non-root user](#authenticating-as-a-non-root-user)
+- [Using `Secrets` as a non-root user](#using-secrets-as-a-non-root-user)
 - [Limiting `Secret` access to specific `Steps`](#limiting-secret-access-to-specific-steps)
 - [Configuring authentication for Git](#configuring-authentication-for-git)
   - [Configuring `basic-auth` authentication for Git](#configuring-basic-auth-authentication-for-git)
