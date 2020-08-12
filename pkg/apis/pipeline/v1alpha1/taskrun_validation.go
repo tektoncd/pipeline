@@ -118,7 +118,7 @@ func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis
 		}
 		seen.Insert(w.Name)
 
-		if err := w.Validate(ctx); err != nil {
+		if err := w.Validate(ctx).ViaField("workspace"); err != nil {
 			return err
 		}
 	}

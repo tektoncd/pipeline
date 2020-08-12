@@ -74,6 +74,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
 		for idx, ws := range ps.Workspaces {
+			field := fmt.Sprintf("spec.workspaces[%d]", idx)
+			if err := ws.Validate(ctx).ViaField(field); err != nil {
+				return err
+			}
 			if prevIdx, alreadyExists := wsNames[ws.Name]; alreadyExists {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("workspace %q provided by pipelinerun more than once, at index %d and %d", ws.Name, prevIdx, idx),
