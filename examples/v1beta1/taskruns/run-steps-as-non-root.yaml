@@ -4,7 +4,7 @@ metadata:
   name: show-non-root-steps
 spec:
   steps:
-    # no securityContext specified so will use 
+    # no securityContext specified so will use
     # securityContext from TaskRun podTemplate
     - name: show-user-1001
       image: ubuntu
@@ -12,7 +12,7 @@ spec:
         - ps
       args:
         - "aux"
-    # securityContext specified so will run as  
+    # securityContext specified so will run as
     # user 2000 instead of 1001
     - name: show-user-2000
       image: ubuntu

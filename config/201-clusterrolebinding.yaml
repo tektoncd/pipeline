@@ -100,4 +100,3 @@ roleRef:
   kind: ClusterRole
   name: tekton-pipelines-leader-election
   apiGroup: rbac.authorization.k8s.io
-

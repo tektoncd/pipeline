@@ -50,7 +50,8 @@ spec:
     value: "100"
   - name: pl-param-y
     value: "200"
-  - name: pl-param-z # the extra parameter
+    # the extra parameter
+  - name: pl-param-z
     value: "300"
   pipelineRef:
     name: pipeline-with-extra-params
