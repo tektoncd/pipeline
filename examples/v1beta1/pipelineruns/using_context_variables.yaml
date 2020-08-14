@@ -11,7 +11,7 @@ spec:
       - name: pipeline-uid
         value: "$(context.pipelineRun.uid)"
       - name: pipeline-name
-        value: "$(context.pipeline.name)" 
+        value: "$(context.pipeline.name)"
       - name: pipelineRun-name
         value: "$(context.pipelineRun.name)"
       taskSpec:

@@ -62,7 +62,7 @@ data:
     # TaskRun specific sink, so the default is the only option available.
     # If no sink is specified, no CloudEvent is generated
     # default-cloud-events-sink:
-      
+
     # default-task-run-workspace-binding contains the default workspace
     # configuration provided for any Workspaces that a Task declares
     # but that a TaskRun does not explicitly provide.
