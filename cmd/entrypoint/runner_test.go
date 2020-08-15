@@ -53,17 +53,17 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 }
 
 func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := ioutil.TempFile("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer os.RemoveAll(tmp)
+	defer os.RemoveAll(tmp.Name())
+	defer tmp.Close()
 
-	path := filepath.Join(tmp, "logs")
 	expectedString := "hello world"
 	rr := realRunner{
-		stdoutPath: path,
-		stderrPath: path,
+		stdoutPath: tmp.Name(),
+		stderrPath: tmp.Name(),
 	}
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -71,9 +71,9 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 
 	// Since writes to stdout and stderr might be racy, we only check for lengths here.
 	expectedSize := (len(expectedString) + 1) * 2
-	if got, err := ioutil.ReadFile(path); err != nil {
+	if stat, err := tmp.Stat(); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
-	} else if gotSize := len(got); gotSize != expectedSize {
+	} else if gotSize := int(stat.Size()); gotSize != expectedSize {
 		t.Errorf("got: %v, wanted: %v", gotSize, expectedSize)
 	}
 }
