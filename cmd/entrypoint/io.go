@@ -33,6 +33,7 @@ func copyAsync(dst io.Writer, src io.Reader, stopCh <-chan struct{}) <-chan ioRe
 		buf := make([]byte, 1024)
 		result := ioResult{}
 		readCh := readAsync(src, buf)
+		stopped := false
 		done := false
 		timer := time.NewTimer(time.Duration(math.MaxInt64))
 		defer timer.Stop()
@@ -41,7 +42,7 @@ func copyAsync(dst io.Writer, src io.Reader, stopCh <-chan struct{}) <-chan ioRe
 			// If the stop channel is signalled, continue the loop to read the rest of the available
 			// data with a short timeout instead of a non-blocking read to mitigate the race between
 			// this loop and Read() running in another goroutine.
-			if stopCh == nil {
+			if stopped {
 				if !timer.Stop() {
 					<-timer.C
 				}
@@ -70,6 +71,7 @@ func copyAsync(dst io.Writer, src io.Reader, stopCh <-chan struct{}) <-chan ioRe
 					readCh = readAsync(src, buf)
 				}
 			case <-stopCh:
+				stopped = true
 				stopCh = nil
 			case <-timer.C:
 				done = true
