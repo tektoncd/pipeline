@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io"
+	"log"
 	"math"
 	"os"
 	"time"
@@ -83,35 +84,20 @@ func copyAsync(dst io.Writer, src io.Reader, stopCh <-chan struct{}) <-chan ioRe
 	return resultCh
 }
 
-type asyncWriter struct {
-	w     io.Writer
-	errCh <-chan error
-}
-
-func (w *asyncWriter) Write(p []byte) (int, error) {
-	select {
-	case err := <-w.errCh:
-		return 0, err
-	default:
-		return w.w.Write(p)
-	}
-}
-
-// AsyncWriter creates a write that duplicates its writes to the provided writer asynchronously.
-func AsyncWriter(w io.Writer, stopCh <-chan struct{}) (io.Writer, error) {
+// asyncWriter creates a write that duplicates its writes to the provided writer asynchronously.
+func asyncWriter(name string, w io.Writer, stopCh <-chan struct{}) (io.Writer, error) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return nil, err
 	}
 
-	errCh := make(chan error, 1)
 	go func() {
-		defer close(errCh)
-
-		errCh <- (<-copyAsync(w, pr, stopCh)).err
+		if err := (<-copyAsync(w, pr, stopCh)).err; err != nil {
+			log.Fatalf("Copying %s: %v", name, err)
+		}
 		pr.Close()
 		pw.Close()
 	}()
 
-	return &asyncWriter{pw, errCh}, nil
+	return pw, nil
 }

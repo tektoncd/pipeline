@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -46,24 +48,24 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 	for _, file := range []string{"stdout", "stderr"} {
 		if got, err := ioutil.ReadFile(filepath.Join(tmp, file)); err != nil {
 			t.Fatalf("Unexpected error: %v", err)
-		} else if gotString := string(got[:len(got)-1]); gotString != expectedString {
+		} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 			t.Errorf("%v: got: %v, wanted: %v", file, gotString, expectedString)
 		}
 	}
 }
 
 func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "")
+	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer os.RemoveAll(tmp.Name())
-	defer tmp.Close()
+	defer os.RemoveAll(tmp)
 
+	path := filepath.Join(tmp, "logs")
 	expectedString := "hello world"
 	rr := realRunner{
-		stdoutPath: tmp.Name(),
-		stderrPath: tmp.Name(),
+		stdoutPath: path,
+		stderrPath: path,
 	}
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
@@ -71,25 +73,25 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 
 	// Since writes to stdout and stderr might be racy, we only check for lengths here.
 	expectedSize := (len(expectedString) + 1) * 2
-	if stat, err := tmp.Stat(); err != nil {
+	if got, err := ioutil.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
-	} else if gotSize := int(stat.Size()); gotSize != expectedSize {
+	} else if gotSize := len(got); gotSize != expectedSize {
 		t.Errorf("got: %v, wanted: %v", gotSize, expectedSize)
 	}
 }
 
 func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "")
+	tmp, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
+	defer os.RemoveAll(tmp)
 
 	signals := make(chan os.Signal, 1)
+	path := filepath.Join(tmp, "stdout")
 	rr := realRunner{
 		signals:    signals,
-		stdoutPath: tmp.Name(),
+		stdoutPath: path,
 	}
 
 	expectedString := "hello world"
@@ -97,8 +99,10 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 	go func() {
 		timer := time.Tick(100 * time.Millisecond)
 		for {
-			if stat, err := tmp.Stat(); err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+			if stat, err := os.Stat(path); err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("Unexpected error: %v", err)
+				}
 			} else if int(stat.Size()) > len(expectedString) {
 				break
 			}
@@ -110,9 +114,9 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && sleep 3600", expectedString)); err.Error() != expectedError {
 		t.Errorf("Expected error %v but got %v", expectedError, err)
 	}
-	if got, err := ioutil.ReadAll(tmp); err != nil {
+	if got, err := ioutil.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
-	} else if gotString := string(got[:len(got)-1]); gotString != expectedString {
+	} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 		t.Errorf("got: %v, wanted: %v", gotString, expectedString)
 	}
 }

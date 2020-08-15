@@ -38,6 +38,9 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	defer signal.Reset()
 
 	cmd := exec.CommandContext(ctx, name, args...)
+	stopCh := make(chan struct{}, 1)
+	defer close(stopCh)
+
 	cmd.Stdout = os.Stdout
 	var stdoutFile *os.File
 	if rr.stdoutPath != "" {
@@ -46,13 +49,11 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		defer stdoutFile.Close()
-		// We use os.Pipe in newAsyncWriter to copy stdout instead of cmd.StdoutPipe or providing an
+		// We use os.Pipe in asyncWriter to copy stdout instead of cmd.StdoutPipe or providing an
 		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
 		// child process before returning from cmd.Wait even if the process is no longer running. This
 		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		stopCh := make(chan struct{}, 1)
-		defer close(stopCh)
-		if cmd.Stdout, err = AsyncWriter(io.MultiWriter(os.Stdout, stdoutFile), stopCh); err != nil {
+		if cmd.Stdout, err = asyncWriter("stdout", io.MultiWriter(os.Stdout, stdoutFile), stopCh); err != nil {
 			return err
 		}
 	}
@@ -71,13 +72,11 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		defer stderrFile.Close()
-		// We use os.Pipe in newAsyncWriter to copy stderr instead of cmd.StderrPipe or providing an
+		// We use os.Pipe in asyncWriter to copy stderr instead of cmd.StderrPipe or providing an
 		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
 		// child process before returning from cmd.Wait even if the process is no longer running. This
 		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		stopCh := make(chan struct{}, 1)
-		defer close(stopCh)
-		if cmd.Stderr, err = AsyncWriter(io.MultiWriter(os.Stderr, stderrFile), stopCh); err != nil {
+		if cmd.Stderr, err = asyncWriter("stderr", io.MultiWriter(os.Stderr, stderrFile), stopCh); err != nil {
 			return err
 		}
 	}
