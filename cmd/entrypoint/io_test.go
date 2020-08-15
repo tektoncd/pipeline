@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestAsyncCopyEOF(t *testing.T) {
+func TestCopyAsyncEOF(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	defer close(stopCh)
 
@@ -29,7 +29,7 @@ func TestAsyncCopyEOF(t *testing.T) {
 	}
 }
 
-func TestAsyncCopyStop(t *testing.T) {
+func TestCopyAsyncStop(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 
 	pr, pw := io.Pipe()
@@ -52,7 +52,7 @@ func TestAsyncCopyStop(t *testing.T) {
 	}
 }
 
-func TestAsyncCopyError(t *testing.T) {
+func TestCopyAsyncError(t *testing.T) {
 	stopCh := make(chan struct{}, 1)
 	defer close(stopCh)
 
