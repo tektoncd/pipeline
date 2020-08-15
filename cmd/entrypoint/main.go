@@ -40,6 +40,8 @@ var (
 	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
 	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results         = flag.String("results", "", "If specified, list of file names that might contain task results")
+	stdoutPath      = flag.String("stdout_path", os.Getenv("TEKTON_STDOUT_PATH"), "If specified, file to copy stdout to")
+	stderrPath      = flag.String("stderr_path", os.Getenv("TEKTON_STDERR_PATH"), "If specified, file to copy stdout to")
 	timeout         = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 )
 
@@ -104,10 +106,13 @@ func main() {
 		TerminationPath: *terminationPath,
 		Args:            flag.Args(),
 		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval},
-		Runner:          &realRunner{},
-		PostWriter:      &realPostWriter{},
-		Results:         strings.Split(*results, ","),
-		Timeout:         timeout,
+		Runner: &realRunner{
+			stdoutPath: *stdoutPath,
+			stderrPath: *stderrPath,
+		},
+		PostWriter: &realPostWriter{},
+		Results:    strings.Split(*results, ","),
+		Timeout:    timeout,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
