@@ -221,7 +221,12 @@ func (f *fakeRunner) Run(args ...string) error {
 
 type fakePostWriter struct{ wrote *string }
 
-func (f *fakePostWriter) Write(file string) { f.wrote = &file }
+func (f *fakePostWriter) Write(file string, err error) {
+	if err != nil {
+		file += ".err"
+	}
+	f.wrote = &file
+}
 
 type fakeErrorWaiter struct{ waited *string }
 

@@ -19,6 +19,7 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -118,5 +119,47 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 		// Success
 	case <-time.After(2 * waitPollingInterval):
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
+	}
+}
+
+func TestRealWaiterWaitWithErrorFile(t *testing.T) {
+	tmp, err := ioutil.TempFile("", "real_waiter_test_file*.err")
+	if err != nil {
+		t.Fatalf("error creating temp error file: %v", err)
+	}
+	defer os.Remove(tmp.Name())
+	for _, c := range []struct {
+		desc          string
+		rw            realWaiter
+		expectedError string
+	}{{
+		desc:          "wait with error file",
+		rw:            realWaiter{},
+		expectedError: "error file present, bail and skip the step",
+	}, {
+		desc:          "wait with run always",
+		rw:            realWaiter{runAlways: true},
+		expectedError: "",
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			rw := c.rw
+			doneCh := make(chan struct{})
+			go func() {
+				var gotError string
+				if err := rw.Wait(strings.TrimSuffix(tmp.Name(), ".err"), false); err != nil {
+					gotError = err.Error()
+				}
+				if gotError != c.expectedError {
+					t.Errorf("error waiting on tmp file %q", tmp.Name())
+				}
+				close(doneCh)
+			}()
+			select {
+			case <-doneCh:
+				// Success
+			case <-time.After(2 * waitPollingInterval):
+				t.Errorf("expected Wait() to have detected the file's existence by now")
+			}
+		})
 	}
 }

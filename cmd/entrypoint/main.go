@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -39,6 +40,8 @@ var (
 	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
+	runAlways           = flag.Bool("run_always", boolFromEnv("TEKTON_RUN_ALWAYS"), "If specified, do not skip if a previous step fails")
+	discardError        = flag.Bool("discard_error", boolFromEnv("TEKTON_DISCARD_ERROR"), "If specified, do not post error file if a previous or current step fails")
 	waitPollingInterval = time.Second
 )
 
@@ -66,10 +69,14 @@ func main() {
 		PostFile:        *postFile,
 		TerminationPath: *terminationPath,
 		Args:            flag.Args(),
-		Waiter:          &realWaiter{},
-		Runner:          &realRunner{},
-		PostWriter:      &realPostWriter{},
-		Results:         strings.Split(*results, ","),
+		Waiter: &realWaiter{
+			runAlways: *runAlways,
+		},
+		Runner: &realRunner{},
+		PostWriter: &realPostWriter{
+			discardError: *discardError,
+		},
+		Results: strings.Split(*results, ","),
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
@@ -101,4 +108,9 @@ func main() {
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}
+}
+
+func boolFromEnv(key string) bool {
+	b, _ := strconv.ParseBool(os.Getenv(key))
+	return b
 }

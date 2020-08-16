@@ -17,7 +17,6 @@ limitations under the License.
 package entrypoint
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -79,7 +78,7 @@ type Runner interface {
 // PostWriter encapsulates writing a file when complete.
 type PostWriter interface {
 	// Write writes to the path when complete.
-	Write(file string)
+	Write(file string, err error)
 }
 
 // Go optionally waits for a file, runs the command, and writes a
@@ -164,10 +163,7 @@ func (e Entrypointer) readResultsFromDisk() error {
 
 // WritePostFile write the postfile
 func (e Entrypointer) WritePostFile(postFile string, err error) {
-	if err != nil && postFile != "" {
-		postFile = fmt.Sprintf("%s.err", postFile)
-	}
 	if postFile != "" {
-		e.PostWriter.Write(postFile)
+		e.PostWriter.Write(postFile, err)
 	}
 }

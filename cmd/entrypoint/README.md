@@ -9,7 +9,7 @@ The following flags are available :
 - `-entrypoint`: "original" command to be executed (as
   entrypoint). This will be executed as a sub-process on `entrypoint`
 - `-post_file`: file path to write once the sub-process has
-  finished. If the sub-process failed, it will write to
+  finished. If the sub-process fails, it will write to
   `{{post_file}}.err` instead of `{{post_file}}`.
 - `-wait_file`: file path to watch before starting the sub-process. It
   watches for `{{wait_file}}` and `{{wait_file}}.err` presence and
@@ -19,11 +19,18 @@ The following flags are available :
 - `-wait_file_content`: excepts the `wait_file` to add actual
   content. It will continue watching for `wait_file` until it has
   content.
+- `-run_always`: If specified, do not skip the execution if
+  `{{wait_file}}.err` is present. The default values can be set by the
+  `TEKTON_RUN_ALWAYS` environment variable.
+- `-discard_error`: If specified, write to `{{post_file}}` instead of
+  `{{post_file}}.err` if `{{wait_file}}.err` is present or the
+  sub-process fails. The default value can be set by the
+  `TEKTON_DISCARD_ERROR` environment variable.
 
 The following example of usage for `entrypoint`, wait's for
 `/tekton/downward/ready` file to exists and have some content before
 executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/tekton/tools/0` in case of succes, or
+and will write to `/tekton/tools/0` in case of success, or
 `/tekton/tools/0.err` in case of failure.
 
 ```shell

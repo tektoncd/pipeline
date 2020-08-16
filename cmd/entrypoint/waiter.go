@@ -9,7 +9,9 @@ import (
 )
 
 // realWaiter actually waits for files, by polling.
-type realWaiter struct{}
+type realWaiter struct {
+	runAlways bool
+}
 
 var _ entrypoint.Waiter = (*realWaiter)(nil)
 
@@ -22,7 +24,7 @@ var _ entrypoint.Waiter = (*realWaiter)(nil)
 //
 // If a file of the same name with a ".err" extension exists then this Wait
 // will end with a skipError.
-func (*realWaiter) Wait(file string, expectContent bool) error {
+func (rw *realWaiter) Wait(file string, expectContent bool) error {
 	if file == "" {
 		return nil
 	}
@@ -35,6 +37,9 @@ func (*realWaiter) Wait(file string, expectContent bool) error {
 			return fmt.Errorf("waiting for %q: %w", file, err)
 		}
 		if _, err := os.Stat(file + ".err"); err == nil {
+			if rw.runAlways {
+				return nil
+			}
 			return skipError("error file present, bail and skip the step")
 		}
 	}
