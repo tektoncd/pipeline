@@ -97,11 +97,15 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 }
 
 // ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
-// Currently supports only name substitution. Uses "" as a default if name is not specified.
+// Uses "" as a default if a value is not available.
 func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
-	return ApplyReplacements(spec,
-		map[string]string{"context.taskRun.name": tr.Name, "context.task.name": rtr.TaskName, "context.taskRun.namespace": tr.Namespace},
-		map[string][]string{})
+	replacements := map[string]string{
+		"context.taskRun.name":      tr.Name,
+		"context.task.name":         rtr.TaskName,
+		"context.taskRun.namespace": tr.Namespace,
+		"context.taskRun.uid":       string(tr.ObjectMeta.UID),
+	}
+	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
 // ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to, the
@@ -167,9 +171,17 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 		spec.Volumes[i].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
 		if v.VolumeSource.ConfigMap != nil {
 			spec.Volumes[i].ConfigMap.Name = substitution.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
+			for index, item := range v.ConfigMap.Items {
+				spec.Volumes[i].ConfigMap.Items[index].Key = substitution.ApplyReplacements(item.Key, stringReplacements)
+				spec.Volumes[i].ConfigMap.Items[index].Path = substitution.ApplyReplacements(item.Path, stringReplacements)
+			}
 		}
 		if v.VolumeSource.Secret != nil {
 			spec.Volumes[i].Secret.SecretName = substitution.ApplyReplacements(v.Secret.SecretName, stringReplacements)
+			for index, item := range v.Secret.Items {
+				spec.Volumes[i].Secret.Items[index].Key = substitution.ApplyReplacements(item.Key, stringReplacements)
+				spec.Volumes[i].Secret.Items[index].Path = substitution.ApplyReplacements(item.Path, stringReplacements)
+			}
 		}
 		if v.PersistentVolumeClaim != nil {
 			spec.Volumes[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)

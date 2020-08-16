@@ -265,6 +265,58 @@ func TestTaskSpecValidate(t *testing.T) {
 				Description: "my great result",
 			}},
 		},
+	}, {
+		name: "valid task name context",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello "$(context.task.name)"`,
+			}},
+		},
+	}, {
+		name: "valid taskrun name context",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello "$(context.taskRun.name)"`,
+			}},
+		},
+	}, {
+		name: "valid taskrun uid context",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello "$(context.taskRun.uid)"`,
+			}},
+		},
+	}, {
+		name: "valid context",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello "$(context.taskRun.namespace)"`,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -851,6 +903,23 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `invalid key name "MY^RESULT"`,
 			Paths:   []string{"results[0].name"},
 			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
+		},
+	}, {
+		name: "context  not validate",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				hello "$(context.task.missing)"`,
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\"" for step script`,
+			Paths:   []string{"taskspec.steps.script"},
 		},
 	}}
 	for _, tt := range tests {

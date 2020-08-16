@@ -265,18 +265,23 @@ For more information, see the [`LimitRange` code example](../examples/v1beta1/ta
 
 ## Configuring the failure timeout
 
-You can use the `timeout` field to set the `TaskRun's` desired timeout value in minutes.
-If you do not specify this value in the `TaskRun`, the global default timeout value applies.
-If you set the timeout to 0, the `TaskRun` fails immediately upon encountering an error.
+You can use the `timeout` field to set the `TaskRun's` desired timeout value. If you do not specify this 
+value for the `TaskRun`, the global default timeout value applies. If you set the timeout to 0, the `TaskRun` will 
+have no timeout and will run until it completes successfully or fails from an error.
 
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml). If you set the global timeout to 0, 
+all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully 
+or fails from an error.
 
 The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
-values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `TaskRuns`
-that do not have an individual timeout set will fail immediately upon encountering an error.
+values are `1h30m`, `1h`, `1m`, `60s`, and `0`. 
+
+If a `TaskRun` runs longer than its timeout value, the pod associated with the `TaskRun` will be deleted. This 
+means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary in order to 
+stop `TaskRun` step containers from running. 
 
 ### Specifying `ServiceAccount' credentials
 
@@ -378,9 +383,13 @@ Status:
 
 ## Cancelling a `TaskRun`
 
-To cancel a `TaskRun` that's currently executing, update its definition
-to mark it as cancelled. When you do so, all running `Pods` associated with
-that `TaskRun` are deleted. For example:
+To cancel a `TaskRun` that's currently executing, update its status to mark it as cancelled. 
+
+When you cancel a TaskRun, the running pod associated with that `TaskRun` is deleted. This 
+means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary 
+in order to stop `TaskRun` step containers from running. 
+
+Example of cancelling a `TaskRun`:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1

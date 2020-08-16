@@ -1,69 +1,57 @@
 <!--
 ---
-linkTitle: "Migration from KNative Build"
+linkTitle: "Migrating from Knative Build"
 weight: 13
 ---
 -->
-# Migrating from [Knative Build](https://github.com/knative/build)
+# Migrating from Knative Build
 
-This doc describes a process for users who are familiar with Knative `Build` and
-`BuildTemplate` resources to migrate to Tekton `TaskRuns` and `Tasks`, respectively.
+Tekton Pipelines is the technological successor to [Knative Build](https://github.com/knative/build). Tekton
+entities are based on Knative Build's entities but provide additional flexibility and reusability. This page
+explains how to convert your Knative Build entities to Tekton entities of equivalent functionality.
 
-Tekton's resources are heavily influenced by Knative's Build-related resources,
-with some additional features that enable them to be chained together inside a
-Pipeline, and provide additional flexibility and reusability.
+The table below lists the mapping between the old and new entities:
 
-| **Knative**          | **Tekton**  |
-|----------------------|-------------|
-| Build                | TaskRun     |
-| BuildTemplate        | Task        |
-| ClusterBuildTemplate | ClusterTask |
+| **Knative Build Entity** | **Tekton Entity**  |
+|--------------------------|--------------------|
+| `Build`                  | `TaskRun`          |
+| `BuildTemplate`          | `Task`             |
+| `ClusterBuildTemplate`   | `ClusterTask`      |
 
-## Important differences
+## Conversion guidelines
 
-* All `steps` must have a `name`.
+Follow the guidelines below when converting your Knative Build entities to Tekton entities:
 
-* BuildTemplate
-  [`parameters`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#parameters)
-  are moved inside Task's `input.params` field, and parameter placeholder
-  strings (e.g., `${FOO}`) must be specified like `$(input.parameters.FOO)`
-  (see [variable substitution](tasks.md#variable-substitution)).
+* All `steps` must specify a `name` value.
 
-* Tasks must specify
-  [`input.resources`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#input-resources)
-  if they need to operate on a resource (e.g., source from a Git repo).
-  BuildTemplates did not specify input resource requirements, and just assumed
-  whatever source was available.
+* `BuildTemplate` [parameters](tasks.md#specifying-parameters) now reside inside the `input.params` field of a `Task`. In a
+   related change, parameter placeholders, such as `${FOO}`, now follow the format `$(input.parameters.FOO)`. For more information,
+   see [Using variable substitution](tasks.md#using-variable-substitution).
 
-* Input resources must specify a `name`, which is the directory within
-  `/workspace` where the resource's source will be placed. So if you specify a
-  `git`-type resource named `foo`, the source will be cloned into
-  `/workspace/foo` -- make sure to either set `workingDir: /workspace/foo` in
-  the Task's `steps`, or at least be aware that source will not be cloned into
-  `/workspace` as was the case with Knative Builds. See [Controlling where
-  resources are
-  mounted](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#controlling-where-resources-are-mounted)
-  for more information.
+* `Tasks` that ingest inputs from resources must now explicitly specify [`input.resources`](tasks.md#specifying-resources).
+  `BuildTemplates` did not explicitly specify input resources and just assumed those resources were always available.
 
-* TaskRuns which specify a PipelineResource to satisfy a Task's `input.resources`
-  can do so either by referencing an existing PipelineResource resource in its
-  `resourceRef`, or by fully specifying the resource in its
-  [`resourceSpec`](https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md#providing-resources).
+* Input resource data is no longer cloned into the `/workspace` directory. Instead, Tekton clones the data into a subdirectory
+  of your choice within the `/workspace` directory. You must specify this subdirectory using the `name` field in your input
+  resource definition. For example, if you specify a `git` resource named `foo`, Tekton clones the data into `/workspace/foo`.
+  Due to this change, we highly recommend that you set `workingDir: /workspace/foo` in the affected `steps` within your `Task`.
+  For more information, see [Controlling where resources are mounted](resources.md#controlling-where-resources-are-mounted).
 
-* Because of how steps are serialized without relying on init containers, steps
-  should specify a `command` instead of
-  [`entrypoint`](https://github.com/tektoncd/pipeline/blob/master/docs/container-contract.md#entrypoint)
-  and `args`. If the image's `entrypoint` isn't defined, Tekton will attempt
-  to determine the image's entrypoint. This field can be a list of strings,
-  so instead of specifying `args: ['foo', 'bar']` and assuming the image's
-  entrypoint (e.g., `/bin/entrypoint`) as before, you can specify
-  `command: ['/bin/entrypoint', 'foo, bar']`.
+* `TaskRuns` which specify a `PipelineResource` as the value of the `input.resources` field of the invoked `Task`
+  can do so either by referencing an existing `PipelineResource` using the `resourceRef` field or by embedding
+  a complete `PipelineResource` definition using the [`resourceSpec`](taskruns.md#specifying-resources) field.
 
-## Example
+* Containers that execute the `Steps` in your `Tasks` must now abide by Tekton's [container contract](container-contract.md)
+  and are now serialized without relying on init containers. Because of this, we highly recommend
+  that for each `Step` within your `Task` you specify a `command` value instead of an `entrypoint` and `args` pair.
 
-### BuildTemplate -> Task
+## Code examples
 
-Given this example BuildTemplate which runs `go test`*:
+Study the following code examples to better understand the conversion of entities described earlier in this document.
+
+### Converting a `BuildTemplate` to a `Task`
+
+This example `BuildTemplate` runs `go test`.
 
 ```
 apiVersion: build.knative.dev/v1alpha1
@@ -81,9 +69,7 @@ spec:
     args: ['go', 'test', '${TARGET}']
 ```
 
-*This is just an example BuildTemplate, for illustration purposes only.
-
-This is the equivalent Task:
+Below is an equivalent `Task`.
 
 ```
 apiVersion: tekton.dev/v1beta1
@@ -96,7 +82,7 @@ spec:
     description: The Go target to test
     default: ./...
 
-  # The Task must operate on some source, e.g., in a Git repo.
+  # The Task must operate on a source, such as a Git repo.
   resources:
     inputs:
     - name: source
@@ -109,10 +95,9 @@ spec:
     command: ['go', 'test', '$(params.TARGET)']  # <-- specify params.TARGET
 ```
 
-### Build -> TaskRun
+### Converting a `Build` to a `TaskRun`
 
-Given this example Build which instantiates and runs the above
-BuildTemplate:
+This example `Build` instantiates and runs the `BuildTemplate` from the previous example.
 
 ```
 apiVersion: build.knative.dev/v1alpha1
@@ -131,7 +116,7 @@ spec:
       value: ./path/to/test/...
 ```
 
-This is the equivalent TaskRun:
+Below is an equivalent `TaskRun`.
 
 ```
 apiVersion: tekton.dev/v1beta1

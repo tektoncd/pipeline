@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -126,8 +127,9 @@ type RunStatusFields struct {
 	// +optional
 	Results []v1beta1.TaskRunResult `json:"results,omitempty"`
 
-	// TODO(jasonhall): Add a field to hold additional arbitrary fields as
-	// a map[string]interface{}.
+	// ExtraFields holds arbitrary fields provided by the custom task
+	// controller.
+	ExtraFields runtime.RawExtension `json:"extraFields,omitempty"`
 }
 
 // +genclient

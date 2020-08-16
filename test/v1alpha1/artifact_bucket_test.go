@@ -26,8 +26,8 @@ import (
 	"time"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -100,22 +100,22 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	defer runTaskToDeleteBucket(c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
-	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(artifacts.GetBucketConfigName(), metav1.GetOptions{})
+	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(config.GetArtifactBucketConfigName(), metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", artifacts.GetBucketConfigName(), err)
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetArtifactBucketConfigName(), err)
 	}
 	originalConfigMapData := originalConfigMap.Data
 
-	t.Logf("Creating ConfigMap %s", artifacts.GetBucketConfigName())
+	t.Logf("Creating ConfigMap %s", config.GetArtifactBucketConfigName())
 	configMapData := map[string]string{
-		artifacts.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
-		artifacts.BucketServiceAccountSecretName: bucketSecretName,
-		artifacts.BucketServiceAccountSecretKey:  bucketSecretKey,
+		config.BucketLocationKey:                 fmt.Sprintf("gs://%s", bucketName),
+		config.BucketServiceAccountSecretNameKey: bucketSecretName,
+		config.BucketServiceAccountSecretKeyKey:  bucketSecretKey,
 	}
-	if err := updateConfigMap(c.KubeClient, systemNamespace, artifacts.GetBucketConfigName(), configMapData); err != nil {
+	if err := updateConfigMap(c.KubeClient, systemNamespace, config.GetArtifactBucketConfigName(), configMapData); err != nil {
 		t.Fatal(err)
 	}
-	defer resetConfigMap(t, c, systemNamespace, artifacts.GetBucketConfigName(), originalConfigMapData)
+	defer resetConfigMap(t, c, systemNamespace, config.GetArtifactBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, tb.PipelineResourceSpec(

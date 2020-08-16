@@ -143,6 +143,10 @@ var (
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "$(inputs.params.FOO)",
 					},
+					Items: []corev1.KeyToPath{{
+						Key:  "$(inputs.params.FOO)",
+						Path: "$(inputs.params.FOO)",
+					}},
 				},
 			},
 		}, {
@@ -150,6 +154,10 @@ var (
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "$(inputs.params.FOO)",
+					Items: []corev1.KeyToPath{{
+						Key:  "$(inputs.params.FOO)",
+						Path: "$(inputs.params.FOO)",
+					}},
 				},
 			},
 		}, {
@@ -546,7 +554,11 @@ func TestApplyParameters(t *testing.T) {
 
 		spec.Volumes[0].Name = "world"
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.Items[0].Key = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.Items[0].Path = "world"
 		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
+		spec.Volumes[1].VolumeSource.Secret.Items[0].Key = "world"
+		spec.Volumes[1].VolumeSource.Secret.Items[0].Path = "world"
 		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
 		spec.Volumes[3].VolumeSource.Projected.Sources[0].ConfigMap.Name = "world"
 		spec.Volumes[3].VolumeSource.Projected.Sources[0].Secret.Name = "world"
@@ -925,6 +937,32 @@ func TestContext(t *testing.T) {
 				Container: corev1.Container{
 					Name:  "ImageName",
 					Image: "-1",
+				},
+			}},
+		},
+	}, {
+		description: "context UID replacement",
+		rtr: resources.ResolvedTaskResources{
+			TaskName: "Task1",
+		},
+		tr: v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: "UID-1",
+			},
+		},
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "$(context.taskRun.uid)",
+				},
+			}},
+		},
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "ImageName",
+					Image: "UID-1",
 				},
 			}},
 		},

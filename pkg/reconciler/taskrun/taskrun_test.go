@@ -236,13 +236,19 @@ func getRunName(tr *v1beta1.TaskRun) string {
 }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var defaultsExists, featureFlagsExists bool
+	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
 		}
 		if cm.Name == config.GetFeatureFlagsConfigName() {
 			featureFlagsExists = true
+		}
+		if cm.Name == config.GetArtifactBucketConfigName() {
+			artifactBucketExists = true
+		}
+		if cm.Name == config.GetArtifactPVCConfigName() {
+			artifactPVCExists = true
 		}
 	}
 	if !defaultsExists {
@@ -254,6 +260,18 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !artifactBucketExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.GetNamespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !artifactPVCExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.GetNamespace()},
 			Data:       map[string]string{},
 		})
 	}
@@ -1942,6 +1960,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
+		name           string
 		taskRun        *v1beta1.TaskRun
 		expectedStatus *apis.Condition
 		wantEvents     []string
@@ -1949,6 +1968,7 @@ func TestReconcileTimeouts(t *testing.T) {
 
 	testcases := []testCase{
 		{
+			name: "taskrun with timeout",
 			taskRun: tb.TaskRun("test-taskrun-timeout",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -1970,6 +1990,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				"Warning Failed ",
 			},
 		}, {
+			name: "taskrun with default timeout",
 			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -1990,6 +2011,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				"Warning Failed ",
 			},
 		}, {
+			name: "task run with nil timeout uses default",
 			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes",
 				tb.TaskRunNamespace("foo"),
 				tb.TaskRunSpec(
@@ -2013,30 +2035,32 @@ func TestReconcileTimeouts(t *testing.T) {
 		}}
 
 	for _, tc := range testcases {
-		d := test.Data{
-			TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
-			Tasks:    []*v1beta1.Task{simpleTask},
-		}
-		testAssets, cancel := getTaskRunController(t, d)
-		defer cancel()
-		c := testAssets.Controller
-		clients := testAssets.Clients
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
+				Tasks:    []*v1beta1.Task{simpleTask},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
 
-		if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
-			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
-		}
-		newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
-		}
-		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
-		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
-			t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
-		}
-		err = checkEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
-		if !(err == nil) {
-			t.Errorf(err.Error())
-		}
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+			}
+			condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+			if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
+				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+			}
+			err = checkEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
+			}
+		})
 	}
 }
 
@@ -2725,6 +2749,106 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 	}
 	if !failedCorrectly {
 		t.Fatalf("Expected TaskRun to fail validation but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+	}
+}
+
+// TestReconcileValidDefaultWorkspace tests a reconcile of a TaskRun that does
+// not include a Workspace that the Task is expecting and it uses the default Workspace instead.
+func TestReconcileValidDefaultWorkspace(t *testing.T) {
+	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
+		tb.TaskSpec(
+			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
+			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
+		))
+	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	d := test.Data{
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+
+	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			"default-task-run-workspace-binding": "emptyDir: {}",
+		},
+	})
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	for _, c := range tr.Status.Conditions {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+			t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+		}
+	}
+}
+
+// TestReconcileInvalidDefaultWorkspace tests a reconcile of a TaskRun that does
+// not include a Workspace that the Task is expecting, and gets an error updating
+// the TaskRun with an invalid default workspace.
+func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
+	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
+		tb.TaskSpec(
+			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
+			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
+		))
+	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	d := test.Data{
+		Tasks:             []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:          []*v1beta1.TaskRun{taskRun},
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+
+	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			"default-task-run-workspace-binding": "emptyDir == {}",
+		},
+	})
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+		t.Errorf("Expected error reconciling invalid TaskRun due to invalid workspace but got %v", err)
 	}
 }
 

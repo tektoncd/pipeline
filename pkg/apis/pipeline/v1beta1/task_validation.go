@@ -94,6 +94,11 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateResults(ts.Results); err != nil {
 		return err
 	}
+
+	if err := validateTaskContextVariables(ts.Steps); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -246,6 +251,21 @@ func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 		return err
 	}
 	return validateArrayUsage(steps, "params", arrayParameterNames)
+}
+
+func validateTaskContextVariables(steps []Step) *apis.FieldError {
+	taskRunContextNames := sets.NewString().Insert(
+		"name",
+		"namespace",
+		"uid",
+	)
+	taskContextNames := sets.NewString().Insert(
+		"name",
+	)
+	if err := validateVariables(steps, "context\\.taskRun", taskRunContextNames); err != nil {
+		return err
+	}
+	return validateVariables(steps, "context\\.task", taskContextNames)
 }
 
 func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.FieldError {

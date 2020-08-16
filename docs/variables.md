@@ -16,6 +16,7 @@ This page documents the variable substitions supported by `Tasks` and `Pipelines
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
+| `context.pipelineRun.uid` | The uid of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipeline.name` | The name of this `Pipeline` . |
 
 
@@ -33,6 +34,7 @@ This page documents the variable substitions supported by `Tasks` and `Pipelines
 | `credentials.path` | The path to credentials injected from Secrets with matching annotations. |
 | `context.taskRun.name` | The name of the `TaskRun` that this `Task` is running in. |
 | `context.taskRun.namespace` | The namespace of the `TaskRun` that this `Task` is running in. |
+| `context.taskRun.uid` | The uid of the `TaskRun` that this `Task` is running in. |
 | `context.task.name` | The name of this `Task`. |
 
 ### `PipelineResource` variables available in a `Task`
@@ -132,7 +134,11 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.steps[].volumemounts.subpath` |
 | `Task` | `spec.volumes[].name` |
 | `Task` | `spec.volumes[].configmap.name` |
+| `Task` | `spec.volumes[].configmap.items[].key` |
+| `Task` | `spec.volumes[].configmap.items[].path` |
 | `Task` | `spec.volumes[].secret.secretname` |
+| `Task` | `spec.volumes[].secret.items[].key` |
+| `Task` | `spec.volumes[].secret.items[].path` |
 | `Task` | `spec.volumes[].persistentvolumeclaim.claimname` |
 | `Task` | `spec.volumes[].projected.sources.configmap.name` |
 | `Task` | `spec.volumes[].projected.sources.secret.name` |

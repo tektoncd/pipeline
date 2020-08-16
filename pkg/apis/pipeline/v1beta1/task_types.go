@@ -125,14 +125,18 @@ type Step struct {
 	Script string `json:"script,omitempty"`
 }
 
-// A sidecar has the same data structure as a Step, consisting of a Container, and optional Script.
+// Sidecar embeds the Container type, which allows it to include fields not
+// provided by Container.
 type Sidecar struct {
 	corev1.Container `json:",inline"`
 
 	// Script is the contents of an executable file to execute.
+	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
+
 	// ForceTerminationDisabled is a bool flag to toggle sidecar termination when all the steps in the task are completed.
+	//
 	// +optional
 	ForceTerminationDisabled bool `json:"forceTerminationDisabled,omitempty,default:false"`
 }

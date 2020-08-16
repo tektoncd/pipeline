@@ -62,8 +62,8 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, "script")
-	// Other than the optional flags, sidecar is equivalent to a step. To avoid code duplication, we're converting
-	// Sidecar into step equivalent
+	// convertListOfSteps operates on overlapping fields across Step and Sidecar, hence a conversion
+	// from Sidecar into Step
 	sideCarSteps := []v1beta1.Step{}
 	for _, step := range sidecars {
 		sidecarStep := v1beta1.Step{
@@ -73,6 +73,7 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 		sideCarSteps = append(sideCarSteps, sidecarStep)
 	}
 	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, "sidecar-script")
+
 	if placeScripts {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers
 	}

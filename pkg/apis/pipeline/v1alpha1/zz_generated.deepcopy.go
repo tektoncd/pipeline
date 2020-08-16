@@ -733,6 +733,7 @@ func (in *RunStatusFields) DeepCopyInto(out *RunStatusFields) {
 		*out = make([]v1beta1.TaskRunResult, len(*in))
 		copy(*out, *in)
 	}
+	in.ExtraFields.DeepCopyInto(&out.ExtraFields)
 	return
 }
 
