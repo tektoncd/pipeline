@@ -41,7 +41,7 @@ var (
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	runAlways           = flag.Bool("run_always", boolFromEnv("TEKTON_RUN_ALWAYS"), "If specified, do not skip if a previous step fails")
-	discardError        = flag.Bool("discard_error", boolFromEnv("TEKTON_DISCARD_ERROR"), "If specified, do not post error file if a previous or current step fails")
+	ignoreError         = flag.Bool("ignore_error", boolFromEnv("TEKTON_IGNORE_ERROR"), "If specified, do not post error file if a previous or current step fails")
 	waitPollingInterval = time.Second
 )
 
@@ -74,7 +74,7 @@ func main() {
 		},
 		Runner: &realRunner{},
 		PostWriter: &realPostWriter{
-			discardError: *discardError,
+			ignoreError: *ignoreError,
 		},
 		Results: strings.Split(*results, ","),
 	}

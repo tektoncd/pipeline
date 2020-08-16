@@ -9,13 +9,13 @@ import (
 
 // realPostWriter actually writes files.
 type realPostWriter struct {
-	discardError bool
+	ignoreError bool
 }
 
 var _ entrypoint.PostWriter = (*realPostWriter)(nil)
 
 func (rpw *realPostWriter) Write(file string, err error) {
-	if err != nil && !rpw.discardError {
+	if err != nil && !rpw.ignoreError {
 		file += ".err"
 	}
 	if _, err := os.Create(file); err != nil {

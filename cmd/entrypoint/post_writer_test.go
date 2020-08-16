@@ -32,7 +32,7 @@ func TestRealPostWriterWrite(t *testing.T) {
 		expectedFile: postfile + ".err",
 	}, {
 		desc:         "discard error",
-		rpw:          realPostWriter{discardError: true},
+		rpw:          realPostWriter{ignoreError: true},
 		err:          errors.New("test error"),
 		expectedFile: postfile,
 	}} {

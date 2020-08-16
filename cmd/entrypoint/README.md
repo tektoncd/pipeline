@@ -22,10 +22,10 @@ The following flags are available :
 - `-run_always`: If specified, do not skip the execution if
   `{{wait_file}}.err` is present. The default values can be set by the
   `TEKTON_RUN_ALWAYS` environment variable.
-- `-discard_error`: If specified, write to `{{post_file}}` instead of
+- `-ignore_error`: If specified, write to `{{post_file}}` instead of
   `{{post_file}}.err` if `{{wait_file}}.err` is present or the
   sub-process fails. The default value can be set by the
-  `TEKTON_DISCARD_ERROR` environment variable.
+  `TEKTON_IGNORE_ERROR` environment variable.
 
 The following example of usage for `entrypoint`, wait's for
 `/tekton/downward/ready` file to exists and have some content before
