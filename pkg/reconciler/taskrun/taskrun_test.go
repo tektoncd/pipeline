@@ -3187,11 +3187,11 @@ func Test_storeTaskSpec(t *testing.T) {
 	}
 }
 
-func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Enabled(t *testing.T) {
+func TestReconcile_Multiple_SidecarStates_With_WaitForTermination_Flag_Enabled(t *testing.T) {
 	trueB := true
-	nopImage := "tianon/true"
+	nopImage := "override-with-nop:latest"
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
-	taskMultipleSidecarsWithForceterminationDisabled := tb.Task("test-task-sidecar-termination-flag", tb.TaskSpec(
+	taskMultipleSidecarsWithWaitForTerminationEnabled := tb.Task("test-task-sidecar-termination-flag", tb.TaskSpec(
 		tb.Step("foo", tb.StepName("step-simple"), tb.StepCommand("/mycmd")),
 		tb.Sidecar("sidecar-sidecar1", "image-id", false),
 		tb.Sidecar("sidecar-sidecar2", "image-id", true),
@@ -3199,7 +3199,7 @@ func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Ena
 
 	taskRun := tb.TaskRun("test-taskrun-sidecars-termination-flag",
 		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskMultipleSidecarsWithForceterminationDisabled.Name),
+			tb.TaskRunTaskRef(taskMultipleSidecarsWithWaitForTerminationEnabled.Name),
 		),
 		tb.TaskRunStatus(
 			tb.TaskrunStatusTaskSpec(
@@ -3232,7 +3232,7 @@ func TestReconcile_Multiple_SidecarStates_With_ForceterminationDisabled_Flag_Ena
 
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
-		Tasks:    []*v1beta1.Task{taskMultipleSidecarsWithForceterminationDisabled},
+		Tasks:    []*v1beta1.Task{taskMultipleSidecarsWithWaitForTerminationEnabled},
 		Pods: []*corev1.Pod{
 			{
 				ObjectMeta: metav1.ObjectMeta{

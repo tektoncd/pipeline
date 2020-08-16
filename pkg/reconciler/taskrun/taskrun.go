@@ -755,10 +755,10 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 
 func getStoppableContainers(pod *corev1.Pod, sidecars []v1beta1.Sidecar) []corev1.Container {
 	stoppables := []corev1.Container{}
-	// Sidecars that does not have ForceTermination disabled should be terminated.
+	// Sidecars that does not have waitForTermination enabled should be terminated.
 	fmt.Println("Gathering Tekton Sidecars...")
 	for _, sidecar := range sidecars {
-		if sidecar.ForceTerminationDisabled != true {
+		if sidecar.WaitForTermination != true {
 			stoppables = append(stoppables, sidecar.Container)
 		}
 	}

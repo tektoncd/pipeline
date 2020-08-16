@@ -225,7 +225,7 @@ a `TaskRun` with the condition that each `Sidecar` running inside the
 This might result in the `Pod` including each affected `Sidecar` with a 
 retry count of 1 and a different container image than expected.
 
-However, this behaviour can be overridden by the `ForceTerminationDisabled` flag
+However, this behaviour can be overridden by the `waitForTermination` flag
 in each `Sidecar` definition. 
 
 If you set this flag to `true` for a given `Sidecar`, Tekton would not attempt to 
