@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gotest.tools/assert"
 	"regexp"
 	"strings"
 	"testing"
@@ -3297,15 +3296,36 @@ func TestReconcile_Multiple_SidecarStates_With_WaitForTermination_Flag_Enabled(t
 		t.Fatalf("Failed retrieving the pod for comparing")
 	}
 
-	assert.Equal(t, retrievedPod.Spec.Containers[0].Name, "step-simple")
-	assert.Equal(t, retrievedPod.Spec.Containers[0].Image, "foo")
+	if retrievedPod.Spec.Containers[0].Name != "step-simple" {
+		t.Errorf(".Pod.Spec.Containers[0].Name must be %s", "step-simple")
+	}
 
-	assert.Equal(t, retrievedPod.Spec.Containers[1].Name, "injected-container")
-	assert.Equal(t, retrievedPod.Spec.Containers[1].Image, nopImage)
+	if retrievedPod.Spec.Containers[0].Image != "foo" {
+		t.Errorf(".Pod.Spec.Containers[0].Image must be %s", "foo")
+	}
 
-	assert.Equal(t, retrievedPod.Spec.Containers[2].Name, "sidecar-sidecar1")
-	assert.Equal(t, retrievedPod.Spec.Containers[2].Image, nopImage)
+	if retrievedPod.Spec.Containers[1].Name != "injected-container" {
+		t.Errorf(".Pod.Spec.Containers[1].Name must be %s", "injected-container")
+	}
 
-	assert.Equal(t, retrievedPod.Spec.Containers[3].Name, "sidecar-sidecar2")
-	assert.Equal(t, retrievedPod.Spec.Containers[3].Image, "image-id")
+	if retrievedPod.Spec.Containers[1].Image != nopImage {
+		t.Errorf(".Pod.Spec.Containers[1].Image must be %s", nopImage)
+	}
+
+	if retrievedPod.Spec.Containers[2].Name != "sidecar-sidecar1" {
+		t.Errorf(".Pod.Spec.Containers[2].Name must be %s", "sidecar-sidecar1")
+	}
+
+	if retrievedPod.Spec.Containers[2].Image != nopImage {
+		t.Errorf(".Pod.Spec.Containers[2].Image must be %s", nopImage)
+	}
+
+	if retrievedPod.Spec.Containers[3].Name != "sidecar-sidecar2" {
+		t.Errorf(".Pod.Spec.Containers[3].Name must be %s", "sidecar-sidecar2")
+	}
+
+	if retrievedPod.Spec.Containers[3].Image != "image-id" {
+		t.Errorf(".Pod.Spec.Containers[3].Image must be %s", "image-id")
+	}
+
 }

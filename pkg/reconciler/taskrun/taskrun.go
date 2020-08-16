@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"reflect"
 	"strings"
 	"time"
@@ -123,9 +124,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
-			fmt.Println("Stopping Sidecars that were not marked for exemption.")
+			logger.Info("Stopping Sidecars that were not marked for exemption.")
 			sidecars := tr.Status.TaskSpec.Sidecars
-			stoppableContainers := getStoppableContainers(pod, sidecars)
+			stoppableContainers := getStoppableContainers(logger, pod, sidecars)
 			err := podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod, &stoppableContainers)
 			if err == nil {
 				// Check if any SidecarStatuses are still shown as Running after stopping
@@ -753,17 +754,17 @@ func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpe
 	return nil
 }
 
-func getStoppableContainers(pod *corev1.Pod, sidecars []v1beta1.Sidecar) []corev1.Container {
+func getStoppableContainers(logger *zap.SugaredLogger, pod *corev1.Pod, sidecars []v1beta1.Sidecar) []corev1.Container {
 	stoppables := []corev1.Container{}
 	// Sidecars that does not have waitForTermination enabled should be terminated.
-	fmt.Println("Gathering Tekton Sidecars...")
+	logger.Info("Gathering Tekton Sidecars...")
 	for _, sidecar := range sidecars {
 		if sidecar.WaitForTermination != true {
 			stoppables = append(stoppables, sidecar.Container)
 		}
 	}
 
-	fmt.Println("Gathering injected Sidecars...")
+	logger.Info("Gathering injected Sidecars...")
 	// Anything that's not a sidecar or a step must be injected sidecar and thus should be marked for force termination.
 	for _, containerItem := range pod.Spec.Containers {
 		if podconvert.IsContainerStep(containerItem.Name) || podconvert.IsContainerSidecar(containerItem.Name) {
