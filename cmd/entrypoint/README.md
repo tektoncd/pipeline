@@ -23,6 +23,13 @@ The following flags are available:
 - `-wait_file_content`: expects the `wait_file` to contain actual
   contents. It will continue watching for `wait_file` until it has
   content.
+- `-stdout_path`: If specified, the stdout of the sub-process will be
+  copied to the given path on the local filesystem.
+- `-stderr_path`: If specified, the stderr of the sub-process will be
+  copied to the given path on the local filesystem. It can be set to the
+  same value as `{{stdout_path}}` so both streams are copied to the same
+  file. However, there is no ordering guarantee on data copied from both
+  streams.
 
 Any extra positional arguments are passed to the original entrypoint command.
 

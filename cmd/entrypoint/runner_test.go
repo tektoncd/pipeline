@@ -45,11 +45,11 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	for _, file := range []string{"stdout", "stderr"} {
-		if got, err := ioutil.ReadFile(filepath.Join(tmp, file)); err != nil {
+	for _, path := range []string{"stdout", "stderr"} {
+		if got, err := ioutil.ReadFile(filepath.Join(tmp, path)); err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
-			t.Errorf("%v: got: %v, wanted: %v", file, gotString, expectedString)
+			t.Errorf("%v: got: %v, wanted: %v", path, gotString, expectedString)
 		}
 	}
 }
