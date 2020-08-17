@@ -67,11 +67,11 @@ spec:
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
-          # This is google/cloud-sdk:293.0.0-slim
-          "-gsutil-image", "google/cloud-sdk@sha256:37654ada9b7afbc32828b537030e85de672a9dd468ac5c92a36da1e203a98def",
+          # This is google/cloud-sdk:302.0.0-slim
+          "-gsutil-image", "google/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of July 23, 2020
-          "-shell-image", "gcr.io/distroless/base@sha256:60f5ffe6fc481e9102747b043b3873a01893a5a8138f970c5f5fc06fb7494656",
+          # gcr.io/distroless/base:debug-nonroot as of July 23, 2020
+          "-shell-image", "gcr.io/distroless/base@sha256:60f5ffe6fc481e9102747b043b3873a01893a5a8138f970c5f5fc06fb7494656"
         ]
         volumeMounts:
         - name: config-logging
