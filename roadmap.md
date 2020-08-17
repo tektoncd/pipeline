@@ -34,7 +34,7 @@ Tekton:
 - [Alternative Task Implementations](https://github.com/tektoncd/pipeline/issues/215)
 - [Local Execution](https://github.com/tektoncd/pipeline/issues/235)
 - [Testing](https://github.com/tektoncd/pipeline/issues/1289) and [debugging](https://github.com/tektoncd/pipeline/issues/2069) frameworks
-- [Emiting events throughout `Pipeline`
+- [Emitting events throughout `Pipeline`
   execution](https://github.com/tektoncd/pipeline/issues/2082)
 - [Config as code](https://github.com/tektoncd/pipeline/issues/859) - This has some cross
   over with [a related Triggers issue](https://github.com/tektoncd/triggers/issues/189)
@@ -50,7 +50,7 @@ Tekton:
 
 In early 2020 we will have our first beta release, however
 [it will be only for a subset of Pipeline's resources](https://docs.google.com/document/d/1H8I2Rk4kLdQaR4mV0A71Qbk-1FxXFrmvisEAjLKT6H0/edit#heading=h.t0sc4hdrr5yq).
-After the intial beta release, we would like to get the rest of the resources to beta
+After the initial beta release, we would like to get the rest of the resources to beta
 as well.
 
 ## Task Interfaces and PipelineResources
@@ -76,7 +76,7 @@ https://github.com/tektoncd/pipeline/tree/master/cmd.
 
 SCM support in 2019 was handled by
 [the PullRequest Resource](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md#pull-request-resource).
-However [we are revisting PipelineResources](#task-interfaces-and-pipelineresources),
+However [we are revisiting PipelineResources](#task-interfaces-and-pipelineresources),
 and likely this `PipelineResource` will become one or more `Tasks` in
 [the catalog](https://github.com/tektoncd/catalog) instead. Once that happens,
 we will need to make decisions about how to release and maintain the

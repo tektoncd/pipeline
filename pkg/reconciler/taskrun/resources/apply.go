@@ -171,9 +171,17 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 		spec.Volumes[i].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
 		if v.VolumeSource.ConfigMap != nil {
 			spec.Volumes[i].ConfigMap.Name = substitution.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
+			for index, item := range v.ConfigMap.Items {
+				spec.Volumes[i].ConfigMap.Items[index].Key = substitution.ApplyReplacements(item.Key, stringReplacements)
+				spec.Volumes[i].ConfigMap.Items[index].Path = substitution.ApplyReplacements(item.Path, stringReplacements)
+			}
 		}
 		if v.VolumeSource.Secret != nil {
 			spec.Volumes[i].Secret.SecretName = substitution.ApplyReplacements(v.Secret.SecretName, stringReplacements)
+			for index, item := range v.Secret.Items {
+				spec.Volumes[i].Secret.Items[index].Key = substitution.ApplyReplacements(item.Key, stringReplacements)
+				spec.Volumes[i].Secret.Items[index].Path = substitution.ApplyReplacements(item.Path, stringReplacements)
+			}
 		}
 		if v.PersistentVolumeClaim != nil {
 			spec.Volumes[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)

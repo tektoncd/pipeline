@@ -54,12 +54,12 @@ events as described in the table below.
 Resource      |Event    |Event Type
 :-------------|:-------:|:----------------------------------------------------------
 `TaskRun`     | `Started` | `dev.tekton.event.taskrun.started.v1`
-`TaskRun`     | `Running` | `dev.tekton.event.taskrun.runnning.v1`
+`TaskRun`     | `Running` | `dev.tekton.event.taskrun.running.v1`
 `TaskRun`     | `Condition Change while Running` | `dev.tekton.event.taskrun.unknown.v1`
 `TaskRun`     | `Succeed` | `dev.tekton.event.taskrun.successful.v1`
 `TaskRun`     | `Failed`  | `dev.tekton.event.taskrun.failed.v1`
 `PipelineRun` | `Started` | `dev.tekton.event.pipelinerun.started.v1`
-`PipelineRun` | `Running` | `dev.tekton.event.pipelinerun.runnning.v1`
+`PipelineRun` | `Running` | `dev.tekton.event.pipelinerun.running.v1`
 `PipelineRun` | `Condition Change while Running` | `dev.tekton.event.pipelinerun.unknown.v1`
 `PipelineRun` | `Succeed` | `dev.tekton.event.pipelinerun.successful.v1`
 `PipelineRun` | `Failed`  | `dev.tekton.event.pipelinerun.failed.v1`

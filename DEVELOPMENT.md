@@ -20,7 +20,7 @@ Then you can [iterate](#iterating) (including
 
 Welcome to the project!! You may find these resources helpful to ramp up on some
 of the technology this project is built on. This project extends Kubernetes (aka
-`k8s`) with Custom Resource Definitions (CRDSs). To find out more:
+`k8s`) with Custom Resource Definitions (CRDs). To find out more:
 
 -   [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
     These will orient you on what words like "Resource" and "Controller"

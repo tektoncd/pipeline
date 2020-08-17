@@ -33,6 +33,9 @@
 # Emacs garbage
 *~
 
+# Vim garbage
+*.swp
+
 # VSCode config
 .vscode
 

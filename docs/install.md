@@ -239,7 +239,7 @@ data:
 
 When configured so, Tekton can generate `CloudEvents` for `TaskRun` and `PipelineRun` lifecycle
 events. The only configuration parameter is the URL of the sink. When not set, no notification is
-generared.
+generated.
 
 ```
 apiVersion: v1
@@ -279,7 +279,7 @@ data:
     nodeSelector:
       kops.k8s.io/instancegroup: build-instance-group
   default-managed-by-label-value: "my-tekton-installation"
-  default-task-run-workspace-binding: 
+  default-task-run-workspace-binding: |
     emptyDir: {}
 ```
 
