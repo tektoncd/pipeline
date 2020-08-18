@@ -123,7 +123,7 @@ github.com/cloudevents/sdk-go/v2/types
 github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
-# github.com/docker/cli v0.0.0-20200210162036-a4bedce16568
+# github.com/docker/cli v0.0.0-20200303162255-7d407207c304
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials

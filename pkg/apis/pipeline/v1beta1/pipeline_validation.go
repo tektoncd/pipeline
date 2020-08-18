@@ -102,27 +102,59 @@ func validatePipelineTaskName(name string) *apis.FieldError {
 func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.String) *apis.FieldError {
 	cfg := config.FromContextOrDefaults(ctx)
 	errs := validatePipelineTaskName(t.Name)
+
+	hasTaskRef := t.TaskRef != nil
+	hasTaskSpec := t.TaskSpec != nil
+	isCustomTask := hasTaskRef && t.TaskRef.APIVersion != ""
+
 	// can't have both taskRef and taskSpec at the same time
-	if (t.TaskRef != nil && t.TaskRef.Name != "") && t.TaskSpec != nil {
+	if hasTaskRef && hasTaskSpec {
 		errs = errs.Also(apis.ErrMultipleOneOf("taskRef", "taskSpec"))
 	}
 	// Check that one of TaskRef and TaskSpec is present
-	if (t.TaskRef == nil || (t.TaskRef != nil && t.TaskRef.Name == "")) && t.TaskSpec == nil {
+	if !hasTaskRef && !hasTaskSpec {
 		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
 	}
 	// Validate TaskSpec if it's present
-	if t.TaskSpec != nil {
+	if hasTaskSpec {
 		errs = errs.Also(t.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
-	if t.TaskRef != nil && t.TaskRef.Name != "" {
+
+	// Check that PipelineTask names are unique.
+	if _, ok := taskNames[t.Name]; ok {
+		errs = errs.Also(apis.ErrMultipleOneOf("name"))
+	}
+	taskNames[t.Name] = struct{}{}
+
+	// Custom Task refs are allowed to have no name.
+	if hasTaskRef && t.TaskRef.Name != "" {
 		// TaskRef name must be a valid k8s name
 		if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
 			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
 		}
-		if _, ok := taskNames[t.Name]; ok {
-			errs = errs.Also(apis.ErrMultipleOneOf("name"))
+	}
+
+	if hasTaskRef && !isCustomTask && t.TaskRef.Name == "" {
+		return apis.ErrInvalidValue(t.TaskRef, "taskRef must specify name")
+	}
+	if isCustomTask && t.TaskRef.Kind == "" {
+		return apis.ErrInvalidValue(t.TaskRef, "custom task ref must specify apiVersion and kind")
+	}
+
+	// TODO(#3133): Support these features if possible.
+	if isCustomTask {
+		if t.Retries > 0 {
+			return apis.ErrInvalidValue(t.Retries, "custom tasks do not support Retries")
 		}
-		taskNames[t.Name] = struct{}{}
+		if t.Resources != nil {
+			return apis.ErrInvalidValue(t.Resources, "custom tasks do not support PipelineResources")
+		}
+		if len(t.Workspaces) > 0 {
+			return apis.ErrInvalidValue(t.Workspaces, "custom tasks do not support Workspaces")
+		}
+		if t.Timeout != nil {
+			return apis.ErrInvalidValue(t.Timeout, "custom tasks do not support Timeout")
+		}
 	}
 
 	// If EnableTektonOCIBundles feature flag is on validate it.
@@ -142,6 +174,7 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 	} else if t.TaskRef != nil && t.TaskRef.Bundle != "" {
 		errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 	}
+
 	return errs
 }
 
