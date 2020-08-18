@@ -20,9 +20,8 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
-	"testing"
+	"testing" // Link in the fakes so they get injected into injection.Fake
 
-	// Link in the fakes so they get injected into injection.Fake
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -30,6 +29,7 @@ import (
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
 	fakeconditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition/fake"
+	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline/fake"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
@@ -84,6 +84,7 @@ type Informers struct {
 	PipelineRun      informersv1beta1.PipelineRunInformer
 	Pipeline         informersv1beta1.PipelineInformer
 	TaskRun          informersv1beta1.TaskRunInformer
+	Run              informersv1alpha1.RunInformer
 	Task             informersv1beta1.TaskInformer
 	ClusterTask      informersv1beta1.ClusterTaskInformer
 	PipelineResource resourceinformersv1alpha1.PipelineResourceInformer
@@ -161,6 +162,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		PipelineRun:      fakepipelineruninformer.Get(ctx),
 		Pipeline:         fakepipelineinformer.Get(ctx),
 		TaskRun:          faketaskruninformer.Get(ctx),
+		Run:              fakeruninformer.Get(ctx),
 		Task:             faketaskinformer.Get(ctx),
 		ClusterTask:      fakeclustertaskinformer.Get(ctx),
 		PipelineResource: fakeresourceinformer.Get(ctx),

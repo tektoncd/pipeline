@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
+	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask"
 	pipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
@@ -49,6 +50,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
+		runInformer := runinformer.Get(ctx)
 		taskInformer := taskinformer.Get(ctx)
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
@@ -70,6 +72,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),
 			taskRunLister:     taskRunInformer.Lister(),
+			runLister:         runInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
@@ -98,6 +101,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		})
+		runInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 		})
 

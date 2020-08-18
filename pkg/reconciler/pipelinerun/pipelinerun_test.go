@@ -408,6 +408,93 @@ func TestReconcile(t *testing.T) {
 	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
+// TestReconcile_CustomTask runs "Reconcile" on a PipelineRun with one Custom
+// Task reference that has not been run yet.  It verifies that the Run is
+// created, it checks the resulting API actions, status and events.
+func TestReconcile_CustomTask(t *testing.T) {
+	names.TestingSeed()
+	const pipelineRunName = "test-pipelinerun-custom-task"
+	const namespace = "namespace"
+	prt := NewPipelineRunTest(test.Data{PipelineRuns: []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pipelineRunName,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "custom-task",
+					TaskRef: &v1beta1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+					},
+				}},
+			},
+		},
+	}},
+	}, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
+
+	actions := clients.Pipeline.Actions()
+	if len(actions) < 2 {
+		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+	}
+
+	// Check that the expected Run was created.
+	trueB := true
+	actual := actions[0].(ktesting.CreateAction).GetObject()
+	wantRun := &v1alpha1.Run{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipelinerun-custom-task-custom-task-9l9zj",
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "tekton.dev/v1beta1",
+				Kind:               "PipelineRun",
+				Name:               "test-pipelinerun-custom-task",
+				Controller:         &trueB,
+				BlockOwnerDeletion: &trueB,
+			}},
+			Labels: map[string]string{
+				"tekton.dev/pipeline":     "test-pipelinerun-custom-task",
+				"tekton.dev/pipelineRun":  "test-pipelinerun-custom-task",
+				"tekton.dev/pipelineTask": "custom-task",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: v1alpha1.RunSpec{
+			Ref: &v1beta1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "Example",
+			},
+		},
+	}
+	if d := cmp.Diff(wantRun, actual); d != "" {
+		t.Errorf("expected to see Run created: %s", diff.PrintWantGot(d))
+	}
+
+	// This PipelineRun is in progress now and the status should reflect that
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
+	}
+	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
+		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
+	}
+
+	if len(reconciledRun.Status.Runs) != 1 {
+		t.Errorf("Expected PipelineRun status to include one Run status, got %d", len(reconciledRun.Status.Runs))
+	}
+	if _, exists := reconciledRun.Status.Runs["test-pipelinerun-custom-task-custom-task-9l9zj"]; !exists {
+		t.Errorf("Expected PipelineRun status to include Run status but was %v", reconciledRun.Status.Runs)
+	}
+}
+
 func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.

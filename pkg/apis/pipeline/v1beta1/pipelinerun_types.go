@@ -29,13 +29,11 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    pipeline.PipelineRunControllerName,
-	}
-)
+var groupVersionKind = schema.GroupVersionKind{
+	Group:   SchemeGroupVersion.Group,
+	Version: SchemeGroupVersion.Version,
+	Kind:    pipeline.PipelineRunControllerName,
+}
 
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -325,6 +323,10 @@ type PipelineRunStatusFields struct {
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
 
+	// map of PipelineRunRunStatus with the run name as the key
+	// +optional
+	Runs map[string]*PipelineRunRunStatus `json:"runs,omitempty"`
+
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
 	PipelineResults []PipelineRunResult `json:"pipelineResults,omitempty"`
@@ -352,6 +354,14 @@ type PipelineRunTaskRunStatus struct {
 	// ConditionChecks maps the name of a condition check to its Status
 	// +optional
 	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
+}
+
+// PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status
+type PipelineRunRunStatus struct {
+	// PipelineTaskName is the name of the PipelineTask.
+	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
+
+	// TODO(#3133): Add v1alpha1.RunStatus here, without introducing an import cycle.
 }
 
 // PipelineRunConditionCheckStatus returns the condition check status

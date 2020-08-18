@@ -29,7 +29,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestPipelineRun_Invalidate(t *testing.T) {
+func TestPipelineRun_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun

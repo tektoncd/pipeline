@@ -34,13 +34,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	knativetest "knative.dev/pkg/test"
-	"knative.dev/pkg/test/logging"
-
-	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	// Mysteriously by k8s libs, or they fail to create `KubeClient`s when using oidc authentication. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/345
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // Mysteriously by k8s libs, or they fail to create `KubeClient`s when using oidc authentication. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/345
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/logging" // Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 )
 
 var initMetrics sync.Once
@@ -205,11 +202,28 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	for _, i := range ts.Items {
 		printOrAdd(i)
 	}
+
+	cts, err := cs.ClusterTaskClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get clustertasks: %w", err)
+	}
+	for _, i := range cts.Items {
+		printOrAdd(i)
+	}
+
 	trs, err := cs.TaskRunClient.List(metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("could not get taskrun: %w", err)
+		return nil, fmt.Errorf("could not get taskruns: %w", err)
 	}
 	for _, i := range trs.Items {
+		printOrAdd(i)
+	}
+
+	rs, err := cs.RunClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get runs: %v", err)
+	}
+	for _, i := range rs.Items {
 		printOrAdd(i)
 	}
 

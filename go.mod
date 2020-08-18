@@ -7,7 +7,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.1 // indirect
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20191203181535-308b93ad1f39
 	github.com/cloudevents/sdk-go/v2 v2.1.0
-	github.com/docker/cli v0.0.0-20200210162036-a4bedce16568 // indirect
+	github.com/docker/cli v0.0.0-20200303162255-7d407207c304 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.4.1
 	github.com/google/go-containerregistry v0.1.1
@@ -26,6 +26,7 @@ require (
 	golang.org/x/text v0.3.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	google.golang.org/api v0.25.0
+	gotest.tools/v3 v3.0.2 // indirect
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible

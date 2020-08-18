@@ -22,12 +22,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
-	"knative.dev/pkg/apis"
-
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
@@ -35,6 +30,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"knative.dev/pkg/apis"
 )
 
 const (
@@ -66,12 +66,23 @@ func (e *ConditionNotFoundError) Error() string {
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
 // exists. TaskRun can be nil to represent there being no TaskRun.
 type ResolvedPipelineRunTask struct {
-	TaskRunName           string
-	TaskRun               *v1beta1.TaskRun
+	TaskRunName string
+	TaskRun     *v1beta1.TaskRun
+
+	// If the PipelineTask is a Custom Task, RunName and Run will be set.
+	RunName string
+	Run     *v1alpha1.Run
+
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
 	// ConditionChecks ~~TaskRuns but for evaling conditions
 	ResolvedConditionChecks TaskConditionCheckState // Could also be a TaskRun or maybe just a Pod?
+}
+
+// IsCustomTask returns true if the PipelineTask references a Custom Task.
+func (t ResolvedPipelineRunTask) IsCustomTask() bool {
+	return t.PipelineTask.TaskRef != nil &&
+		t.PipelineTask.TaskRef.APIVersion != ""
 }
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -79,66 +90,72 @@ type ResolvedPipelineRunTask struct {
 type PipelineRunState []*ResolvedPipelineRunTask
 
 func (t ResolvedPipelineRunTask) IsDone() bool {
-	if t.TaskRun == nil || t.PipelineTask == nil {
+	if t.PipelineTask == nil {
 		return false
 	}
 
-	status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	retriesDone := len(t.TaskRun.Status.RetriesStatus)
-	retries := t.PipelineTask.Retries
-	return status.IsTrue() || status.IsFalse() && retriesDone >= retries
+	if !t.IsCustomTask() {
+		if t.TaskRun == nil {
+			return false
+		}
+		status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		retriesDone := len(t.TaskRun.Status.RetriesStatus)
+		retries := t.PipelineTask.Retries
+		return status.IsTrue() || status.IsFalse() && retriesDone >= retries
+	}
+	return t.Run != nil && t.Run.IsDone()
 }
 
 // IsSuccessful returns true only if the taskrun itself has completed successfully
 func (t ResolvedPipelineRunTask) IsSuccessful() bool {
-	if t.TaskRun == nil {
-		return false
+	if !t.IsCustomTask() {
+		if t.TaskRun == nil {
+			return false
+		}
+		return t.TaskRun.IsSuccessful()
 	}
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	if c == nil {
-		return false
-	}
-
-	return c.Status == corev1.ConditionTrue
+	return t.Run != nil && t.Run.IsSuccessful()
 }
 
-// IsFailure returns true only if the taskrun itself has failed
+// IsFailure returns true only if the run has failed and will not be retried.
 func (t ResolvedPipelineRunTask) IsFailure() bool {
-	if t.TaskRun == nil {
-		return false
+	if !t.IsCustomTask() {
+		if t.TaskRun == nil {
+			return false
+		}
+		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		retriesDone := len(t.TaskRun.Status.RetriesStatus)
+		retries := t.PipelineTask.Retries
+		return c.IsFalse() && retriesDone >= retries
 	}
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	retriesDone := len(t.TaskRun.Status.RetriesStatus)
-	retries := t.PipelineTask.Retries
-	return c.IsFalse() && retriesDone >= retries
+	return t.Run != nil && t.Run.IsDone() && !t.Run.IsSuccessful()
 }
 
 // IsCancelled returns true only if the taskrun itself has cancelled
 func (t ResolvedPipelineRunTask) IsCancelled() bool {
-	if t.TaskRun == nil {
-		return false
-	}
+	if !t.IsCustomTask() {
+		if t.TaskRun == nil {
+			return false
+		}
 
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	if c == nil {
-		return false
-	}
+		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		if c == nil {
+			return false
+		}
 
-	return c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
+		return c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
+	}
+	// TODO(#3133): Support cancellation of Custom Task runs.
+	return false
 }
 
-// IsStarted returns true only if the PipelineRunTask itself has a TaskRun associated
+// IsStarted returns true only if the PipelineRunTask itself has a TaskRun or
+// Run associated that has a Succeeded-type condition.
 func (t ResolvedPipelineRunTask) IsStarted() bool {
-	if t.TaskRun == nil {
-		return false
+	if !t.IsCustomTask() {
+		return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 	}
-
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	if c == nil {
-		return false
-	}
-
-	return true
+	return t.Run != nil && t.Run.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
 
 // IsSkipped returns true if a PipelineTask will not be run because
@@ -201,7 +218,9 @@ func (state PipelineRunState) IsDone() bool {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if t.TaskRun != nil {
+		if t.IsCustomTask() && t.Run != nil {
+			return false
+		} else if t.TaskRun != nil {
 			return false
 		}
 	}
@@ -230,11 +249,19 @@ func (state PipelineRunState) IsStopping(d *dag.Graph) bool {
 func (state PipelineRunState) GetNextTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
 	tasks := []*ResolvedPipelineRunTask{}
 	for _, t := range state {
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil && t.Run == nil {
 			tasks = append(tasks, t)
 		}
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
-			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
+			var status *apis.Condition
+			switch {
+			case t.IsCustomTask() && t.Run != nil:
+				status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
+			case !t.IsCustomTask() && t.TaskRun != nil:
+				status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+			default:
+				continue
+			}
 			if status != nil && status.IsFalse() {
 				if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
 					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
@@ -266,10 +293,16 @@ func (state PipelineRunState) SuccessfulOrSkippedDAGTasks(d *dag.Graph) []string
 func (state PipelineRunState) checkTasksDone(d *dag.Graph) bool {
 	for _, t := range state {
 		if isTaskInGraph(t.PipelineTask.Name, d) {
-			if t.TaskRun == nil {
-				// this task might have skipped if taskRun is nil
-				// continue and ignore if this task was skipped
-				// skipped task is considered part of done
+			// this task might have skipped if taskRun is nil
+			// continue and ignore if this task was skipped
+			// skipped task is considered part of done
+			if !t.IsCustomTask() && t.TaskRun == nil {
+				if t.IsSkipped(state, d) {
+					continue
+				}
+				return false
+			}
+			if t.IsCustomTask() && t.Run == nil {
 				if t.IsSkipped(state, d) {
 					continue
 				}
@@ -305,14 +338,12 @@ func (state PipelineRunState) GetFinalTasks(d *dag.Graph, dfinally *dag.Graph) [
 
 // Check if a PipelineTask belongs to the specified Graph
 func isTaskInGraph(pipelineTaskName string, d *dag.Graph) bool {
-	if _, ok := d.Nodes[pipelineTaskName]; ok {
-		return true
-	}
-	return false
+	_, found := d.Nodes[pipelineTaskName]
+	return found
 }
 
-// GetTaskRun is a function that will retrieve the TaskRun name.
-type GetTaskRun func(name string) (*v1beta1.TaskRun, error)
+// GetRun is a function that will retrieve a Run by name.
+type GetRun func(name string) (*v1alpha1.Run, error)
 
 // GetResourcesFromBindings will retrieve all Resources bound in PipelineRun pr and return a map
 // from the declared name of the PipelineResource (which is how the PipelineResource will
@@ -408,11 +439,16 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
 // It will retrieve the Resources needed for the TaskRun using the mapping of providedResources.
+//
+// TODO: The proliferation of Get* methods here is a smell. This method should
+// take a versioned clientset instead which includes methods to retrieve these
+// resources, with generated fakes for testing.
 func ResolvePipelineRun(
 	ctx context.Context,
 	pipelineRun v1beta1.PipelineRun,
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
+	getRun GetRun,
 	getClusterTask resources.GetClusterTask,
 	getCondition GetCondition,
 	tasks []v1beta1.PipelineTask,
@@ -422,54 +458,58 @@ func ResolvePipelineRun(
 	state := []*ResolvedPipelineRunTask{}
 	for i := range tasks {
 		pt := tasks[i]
-
 		rprt := ResolvedPipelineRunTask{
 			PipelineTask: &pt,
-			TaskRunName:  GetTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
 		}
 
-		// Find the Task that this PipelineTask is using
-		var (
-			t        v1beta1.TaskInterface
-			err      error
-			spec     v1beta1.TaskSpec
-			taskName string
-			kind     v1beta1.TaskKind
-		)
-
-		if pt.TaskRef != nil {
-			if pt.TaskRef.Kind == v1beta1.ClusterTaskKind {
-				t, err = getClusterTask(pt.TaskRef.Name)
-			} else {
-				t, err = getTask(pt.TaskRef.Name)
+		if rprt.IsCustomTask() {
+			rprt.RunName = GetRunName(pipelineRun.Status.Runs, pt.Name, pipelineRun.Name)
+			run, err := getRun(rprt.RunName)
+			if err != nil && !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
 			}
-			if err != nil {
-				return nil, &TaskNotFoundError{
-					Name: pt.TaskRef.Name,
-					Msg:  err.Error(),
-				}
-			}
-			spec = t.TaskSpec()
-			taskName = t.TaskMetadata().Name
-			kind = pt.TaskRef.Kind
+			rprt.Run = run
 		} else {
-			spec = *pt.TaskSpec.TaskSpec
-		}
-		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
-		}
+			rprt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name)
+			// Find the Task that this PipelineTask is using
+			var (
+				t        v1beta1.TaskInterface
+				err      error
+				spec     v1beta1.TaskSpec
+				taskName string
+				kind     v1beta1.TaskKind
+			)
 
-		rprt.ResolvedTaskResources = rtr
+			if pt.TaskRef != nil {
+				if pt.TaskRef.Kind == v1beta1.ClusterTaskKind {
+					t, err = getClusterTask(pt.TaskRef.Name)
+				} else {
+					t, err = getTask(pt.TaskRef.Name)
+				}
+				if err != nil {
+					return nil, &TaskNotFoundError{
+						Name: pt.TaskRef.Name,
+						Msg:  err.Error(),
+					}
+				}
+				spec = t.TaskSpec()
+				taskName = t.TaskMetadata().Name
+				kind = pt.TaskRef.Kind
+			} else {
+				spec = *pt.TaskSpec.TaskSpec
+			}
+			spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+			rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
+			}
 
-		taskRun, err := getTaskRun(rprt.TaskRunName)
-		if err != nil {
-			if !errors.IsNotFound(err) {
+			rprt.ResolvedTaskResources = rtr
+
+			taskRun, err := getTaskRun(rprt.TaskRunName)
+			if err != nil && !errors.IsNotFound(err) {
 				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
 			}
-		}
-		if taskRun != nil {
 			rprt.TaskRun = taskRun
 		}
 
@@ -505,6 +545,18 @@ func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunS
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
 func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName, prName string) string {
 	for k, v := range taskRunsStatus {
+		if v.PipelineTaskName == ptName {
+			return k
+		}
+	}
+
+	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
+}
+
+// GetRunName should return a unique name for a `Run` if one has not already
+// been defined, and the existing one otherwise.
+func GetRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
+	for k, v := range runsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
 		}
@@ -621,6 +673,7 @@ func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*
 			}
 		}
 		conditionCheckName := getConditionCheckName(taskRunStatus, taskRunName, crName)
+		// TODO(#3133): Also handle Custom Task Runs (getRun here)
 		cctr, err := getTaskRun(conditionCheckName)
 		if err != nil {
 			if !errors.IsNotFound(err) {
