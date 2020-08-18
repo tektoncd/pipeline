@@ -184,6 +184,9 @@ type PipelineRunSpec struct {
 	// TaskRunSpecs holds a set of runtime specs
 	// +optional
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// MaxParallel holds the nbr of parallel task that can run for a specific pipeline
+	// +optional
+	MaxParallel int `json:"maxParallel,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

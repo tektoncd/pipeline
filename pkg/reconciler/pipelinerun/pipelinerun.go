@@ -525,10 +525,22 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 			continue
 		}
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
-			rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+			tasks, err := c.taskRunLister.List(labels.SelectorFromSet(pr.Labels)) // https://github.com/tektoncd/pipeline/blob/master/docs/labels.md
 			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+				return fmt.Errorf("error creating task list for PipelineTask %s from PipelineRun %s: %w", rprt.PipelineTask.Name, pr.Name, err)
+			}
+			var countRunningTasks int = 0
+			for _, task := range tasks {
+				if task.Status.Conditions != nil && task.Status.Conditions[0].Reason == "Running" { // https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md#monitoring-steps
+					countRunningTasks++
+				}
+			}
+			if countRunningTasks > pr.Spec.MaxParallel || pr.Spec.PipelineSpec == nil {
+				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+					return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+				}
 			}
 		} else if !rprt.ResolvedConditionChecks.HasStarted() {
 			for _, rcc := range rprt.ResolvedConditionChecks {
