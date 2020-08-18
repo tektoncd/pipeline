@@ -31,7 +31,7 @@ import (
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestPipelineRun_Invalidate(t *testing.T) {
+func TestPipelineRun_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun

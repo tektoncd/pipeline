@@ -209,11 +209,28 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 	for _, i := range ts.Items {
 		printOrAdd(i)
 	}
+
+	cts, err := cs.ClusterTaskClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get clustertasks: %w", err)
+	}
+	for _, i := range cts.Items {
+		printOrAdd(i)
+	}
+
 	trs, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("could not get taskrun: %w", err)
+		return nil, fmt.Errorf("could not get taskruns: %w", err)
 	}
 	for _, i := range trs.Items {
+		printOrAdd(i)
+	}
+
+	rs, err := cs.RunClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get runs: %v", err)
+	}
+	for _, i := range rs.Items {
 		printOrAdd(i)
 	}
 

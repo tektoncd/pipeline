@@ -45,6 +45,13 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			},
 		},
 	}, {
+		name: "pipelinetask custom task references",
+		p: &Pipeline{
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
+			},
+		},
+	}, {
 		name: "valid pipeline with params, resources, workspaces, task results, and pipeline results",
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
@@ -475,7 +482,7 @@ func TestValidatePipelineTasks_Success(t *testing.T) {
 }
 
 func TestValidatePipelineTasks_Failure(t *testing.T) {
-	tests := []struct {
+	for _, tc := range []struct {
 		name          string
 		tasks         []PipelineTask
 		expectedError apis.FieldError
@@ -513,7 +520,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		name: "pipeline tasks invalid (duplicate tasks)",
 		tasks: []PipelineTask{
 			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
-			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
+			{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}},
 		},
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
@@ -553,10 +560,63 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
 			Paths:   []string{"tasks[0].name"},
 		},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
+	}, {
+		name:  "pipelinetask taskRef without name",
+		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: ""}}},
+		expectedError: apis.FieldError{
+			Message: `GMD FIX ME`,
+			Paths:   []string{"tasks[0].taskSpec.steps"},
+		},
+	}, {
+		name:  "pipelinetask custom task taskRef without name",
+		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "", Name: ""}}},
+		expectedError: apis.FieldError{
+			Message: `GMD FIX ME -- i think this one is not an error though`,
+			Paths:   []string{"tasks[0].taskSpec.steps"},
+		},
+	}, {
+		name: "pipelinetask custom task doesn't support retries",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			Retries: 3,
+			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `GMD FIX ME`,
+			Paths:   []string{"tasks[0].taskSpec.steps"},
+		},
+	}, {
+		name: "pipelinetask custom task doesn't support pipeline resources",
+		tasks: []PipelineTask{{
+			Name:      "foo",
+			Resources: &PipelineTaskResources{},
+			TaskRef:   &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `GMD FIX ME`,
+			Paths:   []string{"tasks[0].taskSpec.steps"},
+		},
+	}, {
+		name: "pipelinetask custom task doesn't support workspaces",
+		tasks: []PipelineTask{{
+			Name:       "foo",
+			Workspaces: []WorkspacePipelineTaskBinding{{}},
+			TaskRef:    &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+		}},
+	}, {
+		name: "pipelinetask custom task doesn't support timeout",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			Timeout: &metav1.Duration{time.Duration(3)},
+			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `GMD FIX ME`,
+			Paths:   []string{"tasks[0].taskSpec.steps"},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validatePipelineTasks(context.Background(), tc.tasks, []PipelineTask{})
 			if err == nil {
 				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
