@@ -96,6 +96,7 @@ for more information.
    ```bash
    oc new-project tekton-pipelines
    oc adm policy add-scc-to-user anyuid -z tekton-pipelines-controller
+   oc adm policy add-scc-to-user anyuid -z tekton-pipelines-webhook
    ```
 1. Install Tekton Pipelines:
 
