@@ -518,7 +518,6 @@ func TestPodBuild(t *testing.T) {
 					Name:         "place-scripts",
 					Image:        "busybox",
 					Command:      []string{"sh"},
-					TTY:          true,
 					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 					Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
@@ -756,7 +755,6 @@ print("Hello from Python")`,
 					Name:    "place-scripts",
 					Image:   images.ShellImage,
 					Command: []string{"sh"},
-					TTY:     true,
 					Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'

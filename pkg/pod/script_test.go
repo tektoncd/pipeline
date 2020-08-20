@@ -157,7 +157,6 @@ script-3`,
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
-		TTY:     true,
 		Command: []string{"sh"},
 		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
@@ -249,7 +248,6 @@ sidecar-1`,
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
-		TTY:     true,
 		Command: []string{"sh"},
 		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
