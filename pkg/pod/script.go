@@ -55,7 +55,6 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 	placeScriptsInit := corev1.Container{
 		Name:         "place-scripts",
 		Image:        shellImage,
-		TTY:          true,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", ""},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
