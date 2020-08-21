@@ -252,35 +252,6 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 // +build e2e
 ```
 
-#### Create Tekton objects
-
-To create Tekton objects (e.g. `Task`, `Pipeline`, …), you can use the
-[`github.com/tektoncd/pipeline/test/builder`](./builder) package to reduce
-noise:
-
-```go
-import tb "github.com/tektoncd/pipeline/test/builder"
-
-func MyTest(t *testing.T){
-    // Pipeline
-    pipeline := tb.Pipeline("tomatoes",
-        tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
-    )
-    // … and PipelineRun
-    pipelineRun := tb.PipelineRun("pear",
-        tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
-    )
-    // And do something with them
-    // […]
-    if _, err := c.PipelineClient.Create(pipeline); err != nil {
-        t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
-    }
-    if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
-        t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
-    }
-}
-```
-
 #### Get access to client objects
 
 To initialize client objects use [the command line flags](#use-flags) which

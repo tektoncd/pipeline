@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -45,13 +44,19 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 	}, {
 		name: "inferred type from default value",
 		before: &v1alpha1.ParamSpec{
-			Name:    "parametername",
-			Default: tb.ArrayOrString("an", "array"),
+			Name: "parametername",
+			Default: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"an", "array"},
+			},
 		},
 		defaultsApplied: &v1alpha1.ParamSpec{
-			Name:    "parametername",
-			Type:    v1alpha1.ParamTypeArray,
-			Default: tb.ArrayOrString("an", "array"),
+			Name: "parametername",
+			Type: v1alpha1.ParamTypeArray,
+			Default: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"an", "array"},
+			},
 		},
 	}, {
 		name: "fully defined ParamSpec",
@@ -59,13 +64,19 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1alpha1.ParamTypeArray,
 			Description: "a description",
-			Default:     tb.ArrayOrString("an", "array"),
+			Default: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"an", "array"},
+			},
 		},
 		defaultsApplied: &v1alpha1.ParamSpec{
 			Name:        "parametername",
 			Type:        v1alpha1.ParamTypeArray,
 			Description: "a description",
-			Default:     tb.ArrayOrString("an", "array"),
+			Default: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"an", "array"},
+			},
 		},
 	}}
 	for _, tc := range tests {
@@ -92,43 +103,73 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	}{{
 		name: "no replacements on array",
 		args: args{
-			input:              tb.ArrayOrString("an", "array"),
+			input: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"an", "array"},
+			},
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"sdf", "sdfsd"}},
 		},
-		expectedOutput: tb.ArrayOrString("an", "array"),
+		expectedOutput: &v1alpha1.ArrayOrString{
+			Type:     v1alpha1.ParamTypeArray,
+			ArrayVal: []string{"an", "array"},
+		},
 	}, {
 		name: "string replacements on string",
 		args: args{
-			input:              tb.ArrayOrString("astring$(some) asdf $(anotherkey)"),
+			input: &v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "astring$(some) asdf $(anotherkey)",
+			},
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: tb.ArrayOrString("astringvalue asdf value"),
+		expectedOutput: &v1alpha1.ArrayOrString{
+			Type:      v1alpha1.ParamTypeString,
+			StringVal: "astringvalue asdf value",
+		},
 	}, {
 		name: "single array replacement",
 		args: args{
-			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"firstvalue", "$(arraykey)", "lastvalue"},
+			},
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: tb.ArrayOrString("firstvalue", "array", "value", "lastvalue"),
+		expectedOutput: &v1alpha1.ArrayOrString{
+			Type:     v1alpha1.ParamTypeArray,
+			ArrayVal: []string{"firstvalue", "array", "value", "lastvalue"},
+		},
 	}, {
 		name: "multiple array replacement",
 		args: args{
-			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"),
+			input: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"},
+			},
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: tb.ArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
+		expectedOutput: &v1alpha1.ArrayOrString{
+			Type:     v1alpha1.ParamTypeArray,
+			ArrayVal: []string{"firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"},
+		},
 	}, {
 		name: "empty array replacement",
 		args: args{
-			input:              tb.ArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input: &v1alpha1.ArrayOrString{
+				Type:     v1alpha1.ParamTypeArray,
+				ArrayVal: []string{"firstvalue", "$(arraykey)", "lastvalue"},
+			},
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {}},
 		},
-		expectedOutput: tb.ArrayOrString("firstvalue", "lastvalue"),
+		expectedOutput: &v1alpha1.ArrayOrString{
+			Type:     v1alpha1.ParamTypeArray,
+			ArrayVal: []string{"firstvalue", "lastvalue"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,46 +186,56 @@ type ArrayOrStringHolder struct {
 }
 
 func TestArrayOrString_UnmarshalJSON(t *testing.T) {
-	cases := []struct {
-		input  string
-		result v1alpha1.ArrayOrString
-	}{
-		{"{\"val\": \"123\"}", *tb.ArrayOrString("123")},
-		{"{\"val\": \"\"}", *tb.ArrayOrString("")},
-		{"{\"val\":[]}", v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{}}},
-		{"{\"val\":[\"oneelement\"]}", v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"oneelement"}}},
-		{"{\"val\":[\"multiple\", \"elements\"]}", v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}}},
-	}
-
-	for _, c := range cases {
-		var result ArrayOrStringHolder
-		if err := json.Unmarshal([]byte(c.input), &result); err != nil {
+	for _, c := range []struct {
+		input string
+		want  v1alpha1.ArrayOrString
+	}{{
+		input: "{\"val\": \"123\"}",
+		want:  v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "123"},
+	}, {
+		input: "{\"val\": \"\"}",
+		want:  v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: ""},
+	}, {
+		input: "{\"val\":[]}",
+		want:  v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{}},
+	}, {
+		input: "{\"val\":[\"oneelement\"]}",
+		want:  v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"oneelement"}},
+	}, {
+		input: "{\"val\":[\"multiple\", \"elements\"]}",
+		want:  v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}}},
+	} {
+		var got ArrayOrStringHolder
+		if err := json.Unmarshal([]byte(c.input), &got); err != nil {
 			t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
 		}
-		if !reflect.DeepEqual(result.AOrS, c.result) {
-			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.result, result)
+		if !reflect.DeepEqual(got.AOrS, c.want) {
+			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.want, got.AOrS)
 		}
 	}
 }
 
 func TestArrayOrString_MarshalJSON(t *testing.T) {
-	cases := []struct {
-		input  v1alpha1.ArrayOrString
-		result string
-	}{
-		{*tb.ArrayOrString("123"), "{\"val\":\"123\"}"},
-		{*tb.ArrayOrString("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
-		{*tb.ArrayOrString("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
-	}
-
-	for _, c := range cases {
+	for _, c := range []struct {
+		input v1alpha1.ArrayOrString
+		want  string
+	}{{
+		input: v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "123"},
+		want:  "{\"val\":\"123\"}",
+	}, {
+		input: v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"123", "1234"}},
+		want:  "{\"val\":[\"123\",\"1234\"]}",
+	}, {
+		input: v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"a", "a", "a"}},
+		want:  "{\"val\":[\"a\",\"a\",\"a\"]}",
+	}} {
 		input := ArrayOrStringHolder{c.input}
-		result, err := json.Marshal(&input)
+		got, err := json.Marshal(&input)
 		if err != nil {
 			t.Errorf("Failed to marshal input '%v': %v", input, err)
 		}
-		if string(result) != c.result {
-			t.Errorf("Failed to marshal input '%v': expected: %+v, got %q", input, c.result, string(result))
+		if string(got) != c.want {
+			t.Errorf("Failed to marshal input '%v': expected: %+v, got %q", input, c.want, string(got))
 		}
 	}
 }

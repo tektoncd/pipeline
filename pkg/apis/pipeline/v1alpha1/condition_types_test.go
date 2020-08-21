@@ -19,20 +19,21 @@ package v1alpha1_test
 import (
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
-
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestConditionCheck_IsDone(t *testing.T) {
-	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
-		apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-		},
-	)))
+	tr := &v1alpha1.TaskRun{
+		Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}},
+		}},
+	}
 
 	cc := v1alpha1.ConditionCheck(*tr)
 	if !cc.IsDone() {
@@ -41,12 +42,14 @@ func TestConditionCheck_IsDone(t *testing.T) {
 }
 
 func TestConditionCheck_IsSuccessful(t *testing.T) {
-	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
-		apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
-		},
-	)))
+	tr := &v1alpha1.TaskRun{
+		Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}},
+		}},
+	}
 
 	cc := v1alpha1.ConditionCheck(*tr)
 	if !cc.IsSuccessful() {

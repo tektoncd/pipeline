@@ -217,8 +217,11 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 func TestInput_Validate(t *testing.T) {
 	i := v1alpha1.TaskRunInputs{
 		Params: []v1alpha1.Param{{
-			Name:  "name",
-			Value: *tb.ArrayOrString("value"),
+			Name: "name",
+			Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "value",
+			},
 		}},
 		Resources: []v1alpha1.TaskResourceBinding{{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
@@ -271,11 +274,17 @@ func TestInput_Invalid(t *testing.T) {
 				},
 			}},
 			Params: []v1alpha1.Param{{
-				Name:  "name",
-				Value: *tb.ArrayOrString("value"),
+				Name: "name",
+				Value: v1alpha1.ArrayOrString{
+					Type:      v1alpha1.ParamTypeString,
+					StringVal: "value",
+				},
 			}, {
-				Name:  "name",
-				Value: *tb.ArrayOrString("value"),
+				Name: "name",
+				Value: v1alpha1.ArrayOrString{
+					Type:      v1alpha1.ParamTypeString,
+					StringVal: "value",
+				},
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),

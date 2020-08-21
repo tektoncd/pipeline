@@ -18,12 +18,14 @@ package v1alpha1_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipeline_Validate(t *testing.T) {
@@ -33,102 +35,181 @@ func TestPipeline_Validate(t *testing.T) {
 		failureExpected bool
 	}{{
 		name: "valid metadata",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: false,
 	}, {
 		name: "period in name",
-		p: tb.Pipeline("pipe.line", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipe.line"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline name too long",
-		p: tb.Pipeline("asdf123456789012345678901234567890123456789012345678901234567890", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: strings.Repeat("a", 64)},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
-		name:            "pipeline spec missing",
-		p:               tb.Pipeline("pipeline"),
+		name: "pipeline spec missing",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec invalid (duplicate tasks)",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-			tb.PipelineTask("foo", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}, {
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec empty task name",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec invalid task name",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("_foo", "foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "_foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
-		name: "pipeline spec invalid task name 2",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("FooTask", "foo-task"),
-		)),
+		name: "pipeline spec invalid task name (capital)",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "Foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec invalid taskref name",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo", "_foo-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "_foo-task"},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
-		name: "pipeline spec missing tasfref and taskspec",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("", ""),
-			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
-		)),
+		name: "pipeline spec missing taskfref and taskspec",
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "foo",
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec with taskref and taskspec",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Name:  "foo",
-						Image: "bar",
-					}}},
-				},
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1alpha1.Step{{Container: corev1.Container{
+							Name:  "foo",
+							Image: "bar",
+						}}},
+					}},
+				}},
 			},
-			)))),
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec invalid taskspec",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:     "foo",
+					TaskSpec: &v1alpha1.TaskSpec{},
+				}},
+			},
+		},
 		failureExpected: true,
 	}, {
 		name: "pipeline spec valid taskspec",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo-task", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Name:  "foo",
-						Image: "bar",
-					}}},
-				},
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name: "foo",
+					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1alpha1.Step{{Container: corev1.Container{
+							Name:  "foo",
+							Image: "bar",
+						}}},
+					}},
+				}},
 			},
-			)))),
+		},
 		failureExpected: false,
 	}, {
 		name: "no duplicate tasks",
-		p: tb.Pipeline("pipeline", tb.PipelineSpec(
-			tb.PipelineTask("foo", "foo-task"),
-			tb.PipelineTask("bar", "bar-task"),
-		)),
+		p: &v1alpha1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: v1alpha1.PipelineSpec{
+				Tasks: []v1alpha1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
+				}, {
+					Name:    "bar",
+					TaskRef: &v1alpha1.TaskRef{Name: "bar-task"},
+				}},
+			},
+		},
 		failureExpected: false,
 	}, {
 		// Adding this case because `task.Resources` is a pointer, explicitly making sure this is handled
