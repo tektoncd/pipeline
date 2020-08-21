@@ -22,71 +22,97 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
 func TestCondition_Validate(t *testing.T) {
-	c := tb.Condition("condname",
-		tb.ConditionSpec(
-			tb.ConditionSpecCheck("cname", "ubuntu"),
-			tb.ConditionParamSpec("paramname", v1alpha1.ParamTypeString),
-		))
-
+	c := v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{Name: "condname"},
+		Spec: v1alpha1.ConditionSpec{
+			Check: v1alpha1.Step{Container: corev1.Container{
+				Name:  "cname",
+				Image: "ubuntu",
+			}},
+			Params: []v1alpha1.ParamSpec{{
+				Name: "paramname",
+				Type: v1alpha1.ParamTypeString,
+			}},
+		},
+	}
 	if err := c.Validate(context.Background()); err != nil {
 		t.Errorf("Condition.Validate()  unexpected error = %v", err)
 	}
 }
 
-func TestCondition_Invalidate(t *testing.T) {
-	tcs := []struct {
+func TestCondition_Invalid(t *testing.T) {
+	for _, tc := range []struct {
 		name          string
 		cond          *v1alpha1.Condition
 		expectedError apis.FieldError
 	}{{
 		name: "invalid meta",
-		cond: tb.Condition("invalid.,name"),
+		cond: &v1alpha1.Condition{
+			ObjectMeta: metav1.ObjectMeta{Name: "invalid.,name"},
+		},
 		expectedError: apis.FieldError{
 			Message: "Invalid resource name: special character . must not be present",
 			Paths:   []string{"metadata.name"},
 		},
 	}, {
 		name: "no image",
-		cond: tb.Condition("cond", tb.ConditionSpec(
-			tb.ConditionSpecCheck("", ""),
-		)),
+		cond: &v1alpha1.Condition{
+			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
+			Spec: v1alpha1.ConditionSpec{
+				Check: v1alpha1.Step{Container: corev1.Container{
+					Image: "",
+				}},
+			},
+		},
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"Spec.Check.Image"},
 		},
 	}, {
 		name: "condition with script and command",
-		cond: tb.Condition("cond",
-			tb.ConditionSpec(
-				tb.ConditionSpecCheck("cname", "image", tb.Command("exit 0")),
-				tb.ConditionSpecCheckScript("echo foo"),
-			)),
+		cond: &v1alpha1.Condition{
+			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
+			Spec: v1alpha1.ConditionSpec{
+				Check: v1alpha1.Step{
+					Container: corev1.Container{
+						Image:   "image",
+						Command: []string{"exit", "0"},
+					},
+					Script: "echo foo",
+				},
+			},
+		},
 		expectedError: apis.FieldError{
 			Message: "step 0 script cannot be used with command",
 			Paths:   []string{"Spec.Check.script"},
 		},
 	}, {
 		name: "condition with invalid check name",
-		cond: tb.Condition("cond",
-			tb.ConditionSpec(
-				tb.ConditionSpecCheck("Cname", "image", tb.Command("exit 0")),
-				tb.ConditionSpecCheckScript("echo foo"),
-			)),
+		cond: &v1alpha1.Condition{
+			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
+			Spec: v1alpha1.ConditionSpec{
+				Check: v1alpha1.Step{
+					Container: corev1.Container{
+						Name:  "Cname",
+						Image: "image",
+					},
+				},
+			},
+		},
 		expectedError: apis.FieldError{
 			Message: "invalid value \"Cname\"",
 			Paths:   []string{"Spec.Check.name"},
 			Details: "Condition check name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
-	}}
-
-	for _, tc := range tcs {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.cond.Validate(context.Background())
 			if err == nil {

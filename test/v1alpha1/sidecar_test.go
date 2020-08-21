@@ -23,7 +23,8 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -64,26 +65,31 @@ func TestSidecarTaskSupport(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
 			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
-			task := tb.Task(sidecarTaskName,
-				tb.TaskSpec(
-					tb.Step(
-						"busybox",
-						tb.StepName(primaryContainerName),
-						tb.StepCommand(test.stepCommand...),
-					),
-					tb.Sidecar(
-						sidecarContainerName,
-						"busybox",
-						tb.Command(test.sidecarCommand...),
-					),
-				),
-			)
+			task := &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskName},
+				Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{Container: corev1.Container{
+						Image:   "busybox",
+						Name:    primaryContainerName,
+						Command: test.stepCommand,
+					}}},
+					Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
+						Image:   "busybox",
+						Name:    sidecarContainerName,
+						Command: test.sidecarCommand,
+					}}},
+				}},
+			}
 
-			taskRun := tb.TaskRun(sidecarTaskRunName,
-				tb.TaskRunSpec(tb.TaskRunTaskRef(sidecarTaskName),
-					tb.TaskRunTimeout(1*time.Minute),
-				),
-			)
+			taskRun := &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskRunName},
+				Spec: v1alpha1.TaskRunSpec{
+					TaskRef: &v1alpha1.TaskRef{
+						Name: sidecarTaskName,
+					},
+					Timeout: &metav1.Duration{time.Minute},
+				},
+			}
 
 			t.Logf("Creating Task %q", sidecarTaskName)
 			if _, err := clients.TaskClient.Create(task); err != nil {
