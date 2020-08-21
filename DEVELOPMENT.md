@@ -161,35 +161,11 @@ The recommended configuration is:
 
 ### To setup a cluster using MiniKube:
 
-- Follow instructions for your platform to [Install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a session as follows:
-
-```bash
-minikube start eval $(minikube docker-env)
-```
+- Follow the instructions for [running locally with Minikube](docs/developers/local-setup.md#using-minikube)
 
 ### To setup a cluster with Docker Desktop:
 
-Docker Desktop versions come integrated with an edge version of Kubernetes that has been proven to work for both developing and running Pipelines.  To find out what Kubernetes a specific version of Docker Desktop includes, please refer to the release notes for your platform here: https://docs.docker.com/.
-
-To enable the Kubernetes that comes with Docker Desktop:
-
-1.  From the Docker Desktop dropdown menu, open the `preferences...` interface.
-
-1. Under the `Resources` tab ensure that in the `ADVANCED` menuitem you have at allocated at least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap.
-
-1.  Under the `Kubernetes` tab, check the   `Enable Kubernetes` box.
-
-    * *Note: the Kubernetes version Docker Desktop will use is displayed at the top of the window.*
-
-1.  Click the `Apply and Restart` button to save the preferences.
-
-1.  Switch the proper `kubectl` config context:
-
-    ```bash
-    kubectl config get-contexts # You should see docker-for-desktop in the previous command output
-    kubectl config use-context docker-for-desktop
-    ```
-    * *Note: Docker Desktop menu provides a `Kubernetes` menuitem that allows you to select between contexts which is equivalent to the `kubectl` command.*
+- Follow the instructions for [running locally with Docker Desktop](docs/developers/local-setup.md#using-docker-desktop)
 
 ### To setup a cluster with GKE:
 
