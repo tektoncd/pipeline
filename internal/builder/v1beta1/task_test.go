@@ -41,7 +41,7 @@ var (
 )
 
 func TestTask(t *testing.T) {
-	task := tb.Task("test-task", tb.TaskType(), tb.TaskSpec(
+	task := tb.Task("test-task", tb.TaskType, tb.TaskSpec(
 		tb.TaskParam("param", v1beta1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
 		tb.TaskParam("array-param", v1beta1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		tb.TaskResources(
@@ -143,7 +143,7 @@ func TestTask(t *testing.T) {
 }
 
 func TestClusterTask(t *testing.T) {
-	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType(), tb.ClusterTaskSpec(
+	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType, tb.ClusterTaskSpec(
 		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
@@ -184,6 +184,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			tb.TaskRunTaskRef("task-output",
 				tb.TaskRefKind(v1beta1.ClusterTaskKind),
 				tb.TaskRefAPIVersion("a1"),
+				tb.TaskRefBundle("some/bundle/url"),
 			),
 			tb.TaskRunParam("iparam", "ivalue"),
 			tb.TaskRunParam("arrayparam", "array", "values"),
@@ -277,6 +278,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Name:       "task-output",
 				Kind:       v1beta1.ClusterTaskKind,
 				APIVersion: "a1",
+				Bundle:     "some/bundle/url",
 			},
 			Workspaces: []v1beta1.WorkspaceBinding{{
 				Name:     "bread",

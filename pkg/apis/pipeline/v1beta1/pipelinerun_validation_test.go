@@ -90,6 +90,34 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled", "spec.status"),
+		}, {
+			name: "bundle missing name",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Bundle: "docker.io/foo",
+					},
+					PipelineSpec: &v1beta1.PipelineSpec{Description: "foo"},
+				},
+			},
+			want: apis.ErrMissingField("spec.pipelineref.name"),
+		}, {
+			name: "invalid bundle reference",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name:   "my-pipeline",
+						Bundle: "not a valid reference",
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
 		},
 	}
 

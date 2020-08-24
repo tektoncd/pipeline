@@ -281,88 +281,75 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 	return nil
 }
 
-// ResolvePipelineRun retrieves all Tasks instances which are reference by tasks, getting
-// instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
-// will return an error, otherwise it returns a list of all of the Tasks retrieved.
-// It will retrieve the Resources needed for the TaskRun using the mapping of providedResources.
-func ResolvePipelineRun(
+// ResolvePipelineRunTask retrieves a single Task's instance using the getTask to fetch
+// the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
+// an error, otherwise it returns a list of all of the Tasks retrieved.  It will retrieve
+// the Resources needed for the TaskRun using the mapping of providedResources.
+func ResolvePipelineRunTask(
 	ctx context.Context,
 	pipelineRun v1beta1.PipelineRun,
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
-	getClusterTask resources.GetClusterTask,
 	getCondition GetCondition,
-	tasks []v1beta1.PipelineTask,
+	task v1beta1.PipelineTask,
 	providedResources map[string]*resourcev1alpha1.PipelineResource,
-) (PipelineRunState, error) {
+) (*ResolvedPipelineRunTask, error) {
 
-	state := []*ResolvedPipelineRunTask{}
-	for i := range tasks {
-		pt := tasks[i]
-
-		rprt := ResolvedPipelineRunTask{
-			PipelineTask: &pt,
-			TaskRunName:  GetTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
-		}
-
-		// Find the Task that this PipelineTask is using
-		var (
-			t        v1beta1.TaskInterface
-			err      error
-			spec     v1beta1.TaskSpec
-			taskName string
-			kind     v1beta1.TaskKind
-		)
-
-		if pt.TaskRef != nil {
-			if pt.TaskRef.Kind == v1beta1.ClusterTaskKind {
-				t, err = getClusterTask(pt.TaskRef.Name)
-			} else {
-				t, err = getTask(ctx, pt.TaskRef.Name)
-			}
-			if err != nil {
-				return nil, &TaskNotFoundError{
-					Name: pt.TaskRef.Name,
-					Msg:  err.Error(),
-				}
-			}
-			spec = t.TaskSpec()
-			taskName = t.TaskMetadata().Name
-			kind = pt.TaskRef.Kind
-		} else {
-			spec = pt.TaskSpec.TaskSpec
-		}
-		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
-		}
-
-		rprt.ResolvedTaskResources = rtr
-
-		taskRun, err := getTaskRun(rprt.TaskRunName)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
-			}
-		}
-		if taskRun != nil {
-			rprt.TaskRun = taskRun
-		}
-
-		// Get all conditions that this pipelineTask will be using, if any
-		if len(pt.Conditions) > 0 {
-			rcc, err := resolveConditionChecks(&pt, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition, providedResources)
-			if err != nil {
-				return nil, err
-			}
-			rprt.ResolvedConditionChecks = rcc
-		}
-
-		// Add this task to the state of the PipelineRun
-		state = append(state, &rprt)
+	rprt := ResolvedPipelineRunTask{
+		PipelineTask: &task,
+		TaskRunName:  GetTaskRunName(pipelineRun.Status.TaskRuns, task.Name, pipelineRun.Name),
 	}
-	return state, nil
+
+	// Find the Task that this PipelineTask is using
+	var (
+		t        v1beta1.TaskInterface
+		err      error
+		spec     v1beta1.TaskSpec
+		taskName string
+		kind     v1beta1.TaskKind
+	)
+
+	if task.TaskRef != nil {
+		t, err = getTask(ctx, task.TaskRef.Name)
+		if err != nil {
+			return nil, &TaskNotFoundError{
+				Name: task.TaskRef.Name,
+				Msg:  err.Error(),
+			}
+		}
+		spec = t.TaskSpec()
+		taskName = t.TaskMetadata().Name
+		kind = task.TaskRef.Kind
+	} else {
+		spec = task.TaskSpec.TaskSpec
+	}
+	spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+	rtr, err := ResolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
+	}
+
+	rprt.ResolvedTaskResources = rtr
+
+	taskRun, err := getTaskRun(rprt.TaskRunName)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
+		}
+	}
+	if taskRun != nil {
+		rprt.TaskRun = taskRun
+	}
+
+	// Get all conditions that this pipelineTask will be using, if any
+	if len(task.Conditions) > 0 {
+		rcc, err := resolveConditionChecks(&task, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition, providedResources)
+		if err != nil {
+			return nil, err
+		}
+		rprt.ResolvedConditionChecks = rcc
+	}
+	return &rprt, nil
 }
 
 // getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.

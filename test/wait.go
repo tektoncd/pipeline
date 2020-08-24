@@ -264,3 +264,16 @@ func PipelineRunSucceed(name string) ConditionAccessorFn {
 func PipelineRunFailed(name string) ConditionAccessorFn {
 	return Failed(name)
 }
+
+// Chain allows multiple ConditionAccessorFns to be chained together, checking the condition of each in order.
+func Chain(fns ...ConditionAccessorFn) ConditionAccessorFn {
+	return func(ca apis.ConditionAccessor) (bool, error) {
+		for _, fn := range fns {
+			status, err := fn(ca)
+			if err != nil || !status {
+				return status, err
+			}
+		}
+		return true, nil
+	}
+}

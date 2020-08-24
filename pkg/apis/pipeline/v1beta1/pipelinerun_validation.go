@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
@@ -42,6 +43,18 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	// Check that one of PipelineRef and PipelineSpec is present
 	if (ps.PipelineRef == nil || (ps.PipelineRef != nil && ps.PipelineRef.Name == "")) && ps.PipelineSpec == nil {
 		errs = errs.Also(apis.ErrMissingField("pipelineref.name", "pipelinespec"))
+	}
+
+	// Check that if a bundle is specified, that a PipelineRef is specified as well.
+	if (ps.PipelineRef != nil && ps.PipelineRef.Bundle != "") && ps.PipelineRef.Name == "" {
+		errs = errs.Also(apis.ErrMissingField("pipelineref.name"))
+	}
+
+	// If a bundle url is specified, ensure it is parseable.
+	if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
+		if _, err := name.ParseReference(ps.PipelineRef.Bundle); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "pipelineref.bundle"))
+		}
 	}
 
 	// Validate PipelineSpec if it's present

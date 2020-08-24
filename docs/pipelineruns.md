@@ -82,6 +82,18 @@ spec:
 
 ```
 
+You may also use a `Tekton Bundle` to reference a pipeline defined remotely.
+
+ ```yaml
+ spec:
+   pipelineRef:
+     name: mypipeline
+     bundle: docker.io/myrepo/mycatalog:v1.0
+ ```
+
+The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
+in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bundles).
+
 To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` field:
 
 ```yaml

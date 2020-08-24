@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -44,6 +45,18 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Check that one of TaskRef and TaskSpec is present
 	if (ts.TaskRef == nil || (ts.TaskRef != nil && ts.TaskRef.Name == "")) && ts.TaskSpec == nil {
 		errs = errs.Also(apis.ErrMissingField("taskref.name", "taskspec"))
+	}
+
+	// Check that if a bundle is specified, that a TaskRef is specified as well.
+	if (ts.TaskRef != nil && ts.TaskRef.Bundle != "") && ts.TaskRef.Name == "" {
+		errs = errs.Also(apis.ErrMissingField("taskref.name"))
+	}
+
+	// If a bundle url is specified, ensure it is parseable.
+	if ts.TaskRef != nil && ts.TaskRef.Bundle != "" {
+		if _, err := name.ParseReference(ts.TaskRef.Bundle); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskref.bundle"))
+		}
 	}
 
 	// Validate TaskSpec if it's present
