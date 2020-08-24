@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"os"
 	"runtime"
 	"testing"
 )
@@ -33,10 +34,20 @@ const (
 	Registry
 )
 
+// return architecture of the cluster where test suites will be executed.
+// default value is similar to build architecture, TEST_RUNTIME_ARCH is used when test target cluster has another architecture
+func getTestArch() string {
+	val, ok := os.LookupEnv("TEST_RUNTIME_ARCH")
+	if ok {
+		return val
+	}
+	return runtime.GOARCH
+}
+
 func initImageNames() map[int]string {
 	mapping := make(map[int]string)
 
-	switch arch := runtime.GOARCH; arch {
+	switch getTestArch() {
 	case "s390x":
 		mapping[BusyboxSha] = "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977"
 		mapping[Registry] = "ibmcom/registry:2.6.2.5"
@@ -51,7 +62,7 @@ func initImageNames() map[int]string {
 func initExcludedTests() map[string]bool {
 	mapping := make(map[string]bool)
 	tests := []string{}
-	switch arch := runtime.GOARCH; arch {
+	switch getTestArch() {
 	case "s390x":
 		//examples
 		tests = []string{
@@ -131,6 +142,6 @@ func GetTestImage(image int) string {
 // check if test name is in the excluded list and skip it
 func SkipIfExcluded(t *testing.T) {
 	if excludedTests[t.Name()] {
-		t.Skipf("skip for %s architecture", runtime.GOARCH)
+		t.Skipf("skip for %s architecture", getTestArch())
 	}
 }

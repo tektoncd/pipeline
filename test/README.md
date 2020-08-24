@@ -156,6 +156,10 @@ go test -v -count=1 -tags=e2e -timeout=20m ./test
 go test -v -count=1 -tags=e2e -timeout=20m ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
 ```
 
+If tests are applied to the cluster with hardware architecture different to the base one
+(for instance `go test` starts on amd64 architecture and `--kubeconfig` points to s390x Kubernetes cluster),
+use `TEST_RUNTIME_ARCH` environment variable to specify the target hardware architecture(amd64, s390x, ppc64le, arm, arm64, etc)
+
 You can also use
 [all of flags defined in `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
