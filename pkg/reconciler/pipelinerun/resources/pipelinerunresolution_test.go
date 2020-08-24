@@ -100,17 +100,6 @@ var task = &v1beta1.Task{
 	},
 }
 
-var clustertask = &v1beta1.ClusterTask{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "clustertask",
-	},
-	Spec: v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{Container: corev1.Container{
-			Name: "step1",
-		}}},
-	},
-}
-
 var trs = []v1beta1.TaskRun{{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "namespace",
