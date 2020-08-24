@@ -34,7 +34,7 @@ import (
 func TestPipeline(t *testing.T) {
 	creationTime := time.Now()
 
-	pipeline := tb.Pipeline("tomatoes", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+	pipeline := tb.Pipeline("tomatoes", tb.PipelineType(), tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
 		tb.PipelineDescription("Test Pipeline"),
@@ -47,6 +47,7 @@ func TestPipeline(t *testing.T) {
 				tb.PipelineTaskConditionResource("some-resource", "my-only-git-resource", "bar", "never-gonna"),
 			),
 			tb.PipelineTaskWorkspaceBinding("task-workspace1", "workspace1", ""),
+			tb.PipelineTaskRefBundle("/some/registry"),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1beta1.ClusterTaskKind),
@@ -70,6 +71,10 @@ func TestPipeline(t *testing.T) {
 		tb.PipelineCreationTimestamp(creationTime),
 	)
 	expectedPipeline := &v1beta1.Pipeline{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Pipeline",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "tomatoes", Namespace: "foo",
 			CreationTimestamp: metav1.Time{Time: creationTime},
@@ -91,7 +96,7 @@ func TestPipeline(t *testing.T) {
 			}},
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
+				TaskRef: &v1beta1.TaskRef{Name: "banana", Bundle: "/some/registry"},
 				Params: []v1beta1.Param{{
 					Name:  "stringparam",
 					Value: *tb.ArrayOrString("value"),
@@ -173,6 +178,7 @@ func TestPipelineRun(t *testing.T) {
 		tb.PipelineRunTimeout(1*time.Hour),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
+		tb.PipelineRunPipelineRefBundle("/some/registry"),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
@@ -190,7 +196,7 @@ func TestPipelineRun(t *testing.T) {
 			},
 		},
 		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:         &v1beta1.PipelineRef{Name: "tomatoes"},
+			PipelineRef:         &v1beta1.PipelineRef{Name: "tomatoes", Bundle: "/some/registry"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1beta1.Param{{

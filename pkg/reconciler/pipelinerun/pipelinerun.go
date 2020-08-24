@@ -43,6 +43,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -231,15 +232,69 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 	return merr
 }
 
+// resolvePipelineState will attempt to resolve each referenced task in the pipeline's spec and all of the resources
+// specified by those tasks.
+func (c *Reconciler) resolvePipelineState(
+	ctx context.Context,
+	tasks []v1beta1.PipelineTask,
+	pipelineMeta *metav1.ObjectMeta,
+	pr *v1beta1.PipelineRun,
+	providedResources map[string]*v1alpha1.PipelineResource) (resources.PipelineRunState, error) {
+	pst := resources.PipelineRunState{}
+	// Resolve each task individually because they each could have a different reference context (remote or local).
+	for _, task := range tasks {
+		fn, _, err := tresources.GetTaskFunc(c.KubeClientSet, c.PipelineClientSet, task.TaskRef, pr.Namespace, pr.Spec.ServiceAccountName)
+		if err != nil {
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			pr.Status.MarkFailed(ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
+				pipelineMeta.Namespace, pipelineMeta.Name, task.Name, err)
+			return nil, controller.NewPermanentError(err)
+		}
+
+		resolvedTask, err := resources.ResolvePipelineRunTask(ctx,
+			*pr,
+			fn,
+			func(name string) (*v1beta1.TaskRun, error) {
+				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			},
+			func(name string) (*v1alpha1.Condition, error) {
+				return c.conditionLister.Conditions(pr.Namespace).Get(name)
+			},
+			task, providedResources,
+		)
+		if err != nil {
+			switch err := err.(type) {
+			case *resources.TaskNotFoundError:
+				pr.Status.MarkFailed(ReasonCouldntGetTask,
+					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
+					pipelineMeta.Namespace, pipelineMeta.Name, err)
+			case *resources.ConditionNotFoundError:
+				pr.Status.MarkFailed(ReasonCouldntGetCondition,
+					"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
+					pipelineMeta.Namespace, pr.Name, err)
+			default:
+				pr.Status.MarkFailed(ReasonFailedValidation,
+					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
+					pipelineMeta.Namespace, pr.Name, err)
+			}
+			return nil, controller.NewPermanentError(err)
+		}
+		pst = append(pst, resolvedTask)
+	}
+	return pst, nil
+}
+
 func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun) {
 	logger := logging.FromContext(ctx)
 
-	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
-	resolver := &resources.LocalPipelineRefResolver{
-		Namespace:    pr.Namespace,
-		Tektonclient: c.PipelineClientSet,
+	getPipelineFunc, err := resources.GetPipelineFunc(c.KubeClientSet, c.PipelineClientSet, pr.Spec.PipelineRef, pr.Namespace, pr.Spec.ServiceAccountName)
+	if err != nil {
+		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
+		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
+			pr.Namespace, pr.Name, err)
+		return
 	}
-	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
+	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
@@ -257,12 +312,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
-	resolver := &resources.LocalPipelineRefResolver{
-		Namespace:    pr.Namespace,
-		Tektonclient: c.PipelineClientSet,
+	getPipelineFunc, err := resources.GetPipelineFunc(c.KubeClientSet, c.PipelineClientSet, pr.Spec.PipelineRef, pr.Namespace, pr.Spec.ServiceAccountName)
+	if err != nil {
+		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
+		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
+			pr.Namespace, pr.Name, err)
+		return controller.NewPermanentError(err)
 	}
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
@@ -390,40 +447,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
-	pipelineState, err := resources.ResolvePipelineRun(ctx,
-		*pr,
-		func(name string) (v1beta1.TaskInterface, error) {
-			return c.taskLister.Tasks(pr.Namespace).Get(name)
-		},
-		func(name string) (*v1beta1.TaskRun, error) {
-			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
-		},
-		func(name string) (v1beta1.TaskInterface, error) {
-			return c.clusterTaskLister.Get(name)
-		},
-		func(name string) (*v1alpha1.Condition, error) {
-			return c.conditionLister.Conditions(pr.Namespace).Get(name)
-		},
-		append(pipelineSpec.Tasks, pipelineSpec.Finally...), providedResources,
-	)
-
+	// Resolve the set of tasks (and possibly task runs).
+	pipelineState, err := c.resolvePipelineState(ctx, pipelineSpec.Tasks, pipelineMeta, pr, providedResources)
 	if err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		switch err := err.(type) {
-		case *resources.TaskNotFoundError:
-			pr.Status.MarkFailed(ReasonCouldntGetTask,
-				"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
-				pipelineMeta.Namespace, pipelineMeta.Name, err)
-		case *resources.ConditionNotFoundError:
-			pr.Status.MarkFailed(ReasonCouldntGetCondition,
-				"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
-				pipelineMeta.Namespace, pr.Name, err)
-		default:
-			pr.Status.MarkFailed(ReasonFailedValidation,
-				"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
-				pipelineMeta.Namespace, pr.Name, err)
-		}
-		return controller.NewPermanentError(err)
+		return err
 	}
 
 	for _, rprt := range pipelineState {
@@ -662,10 +689,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
-		tr.Spec.TaskRef = &v1beta1.TaskRef{
-			Name: rprt.ResolvedTaskResources.TaskName,
-			Kind: rprt.ResolvedTaskResources.Kind,
-		}
+		// We pass the entire, original task ref because it may contain additional references like a Bundle url.
+		tr.Spec.TaskRef = rprt.PipelineTask.TaskRef
 	} else if rprt.ResolvedTaskResources.TaskSpec != nil {
 		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
 	}

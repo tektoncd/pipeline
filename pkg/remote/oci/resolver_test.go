@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package oci
+package oci_test
 
 import (
 	"fmt"
@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,11 +84,7 @@ func TestOCIResolver(t *testing.T) {
 				t.Fatalf("could not push image: %#v", err)
 			}
 
-			resolver := Resolver{
-				imageReference: ref,
-				keychain:       authn.DefaultKeychain,
-			}
-
+			resolver := oci.NewResolver(ref, authn.DefaultKeychain)
 			listActual, err := resolver.List()
 			if err != nil {
 				t.Errorf("unexpected error listing contents of image: %#v", err)

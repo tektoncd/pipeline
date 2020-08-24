@@ -19,6 +19,8 @@ package pipelinerun
 import (
 	"context"
 	"fmt"
+	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -26,6 +28,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/go-containerregistry/pkg/registry"
 	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -336,8 +339,11 @@ func TestReconcile(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 5 actions are looking up all of the Tasks. The TaskRun is the 6th action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject()
+	actual := actions[5].(ktesting.CreateAction).GetObject()
 	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-mz4c7",
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
@@ -1172,8 +1178,11 @@ func TestReconcileWithTimeout(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 2 actions are looking up the task and pipeline. The TaskRun is the 3rd action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Fatalf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1386,8 +1395,11 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 2 actions are looking up the task and pipeline. The TaskRun is the 3rd action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1594,8 +1606,11 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 2 actions are looking up the task and pipeline. The TaskRun is the 3rd action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1752,8 +1767,11 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 2 actions are looking up the task and pipeline. The TaskRun is the 3rd action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
@@ -1858,9 +1876,12 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 		t.Fatalf("Expected client to have at least three action implementation but it has %d", len(actions))
 	}
 
+	// The first 2 actions are looking up the task and pipeline. The TaskRun is the 3rd action.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	condCheck0 := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
-	condCheck1 := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	condCheck0 := actions[2].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	condCheck1 := actions[3].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if condCheck0 == nil || condCheck1 == nil {
 		t.Errorf("Expected two ConditionCheck TaskRuns to be created, but it wasn't.")
 	}
@@ -1966,8 +1987,11 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 	}
 
+	// The first 4 actions are looking up the task.
+	t.Log("actions", clients.Pipeline.Actions())
+
 	// Check that the expected TaskRun was created
-	actual := actions[1].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
+	actual := actions[4].(ktesting.CreateAction).GetObject().(*v1beta1.TaskRun)
 	if actual == nil {
 		t.Errorf("Expected a ConditionCheck TaskRun to be created, but it wasn't.")
 	}
@@ -2752,7 +2776,10 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		t.Fatalf("Expected client to have at least three action implementation but it has %d", len(actions))
 	}
 
-	if _, ok := actions[2].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun); !ok {
+	// The first 5 actions are looking up the task and pipeline.
+	t.Log("actions", clients.Pipeline.Actions())
+
+	if _, ok := actions[5].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun); !ok {
 		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
 
@@ -3480,7 +3507,15 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
 			}
 
-			actual := actions[1].(ktesting.UpdateAction).GetObject().(*v1beta1.PipelineRun)
+			// The first update action should be updating the PipelineRun.
+			var actual *v1beta1.PipelineRun
+			for _, action := range actions {
+				if actualPrime, ok := action.(ktesting.UpdateAction); ok {
+					actual = actualPrime.GetObject().(*v1beta1.PipelineRun)
+					break
+				}
+			}
+
 			if actual == nil {
 				t.Errorf("Expected a PipelineRun to be updated, but it wasn't for %s", tt.name)
 			}
@@ -3780,6 +3815,236 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	}
 
 	return reconciledRun, clients
+}
+
+func TestReconcile_RemotePipelineRef(t *testing.T) {
+	names.TestingSeed()
+
+	// Set up a fake registry to push an image to.
+	s := httptest.NewServer(registry.New())
+	defer s.Close()
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ref := u.Host + "/testreconcile_remotepipelineref"
+
+	prs := []*v1beta1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-success",
+			tb.PipelineRunNamespace("foo"),
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunPipelineRefBundle(ref),
+				tb.PipelineRunServiceAccountName("test-sa"),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingResourceSpec(
+					&v1alpha1.PipelineResourceSpec{
+						Type: v1alpha1.PipelineResourceTypeImage,
+						Params: []v1alpha1.ResourceParam{{
+							Name:  "url",
+							Value: "gcr.io/sven",
+						}},
+					},
+				)),
+				tb.PipelineRunParam("bar", "somethingmorefun"),
+			),
+		),
+	}
+	funParam := tb.PipelineTaskParam("foo", "somethingfun")
+	moreFunParam := tb.PipelineTaskParam("bar", "$(params.bar)")
+	templatedParam := tb.PipelineTaskParam("templatedparam", "$(inputs.workspace.$(params.rev-param))")
+	ps := tb.Pipeline("test-pipeline",
+		tb.PipelineType(),
+		tb.PipelineNamespace("foo"),
+		tb.PipelineSpec(
+			tb.PipelineDeclaredResource("git-repo", "git"),
+			tb.PipelineDeclaredResource("best-image", "image"),
+			tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+			tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+			tb.PipelineParamSpec("bar", v1alpha1.ParamTypeString),
+			// unit-test-3 uses runAfter to indicate it should run last
+			tb.PipelineTask("unit-test-3", "unit-test-task",
+				funParam, moreFunParam, templatedParam,
+				tb.RunAfter("unit-test-2"),
+				tb.PipelineTaskInputResource("workspace", "git-repo"),
+				tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+				tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				tb.PipelineTaskRefBundle(ref),
+			),
+			// unit-test-1 can run right away because it has no dependencies
+			tb.PipelineTask("unit-test-1", "unit-test-task",
+				funParam, moreFunParam, templatedParam,
+				tb.PipelineTaskInputResource("workspace", "git-repo"),
+				tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+				tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				tb.PipelineTaskRefBundle(ref),
+			),
+			// unit-test-2 uses `from` to indicate it should run after `unit-test-1`
+			tb.PipelineTask("unit-test-2", "unit-test-followup-task",
+				tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("unit-test-1")),
+			),
+			// unit-test-cluster-task can run right away because it has no dependencies
+			tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
+				tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
+				funParam, moreFunParam, templatedParam,
+				tb.PipelineTaskInputResource("workspace", "git-repo"),
+				tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+				tb.PipelineTaskOutputResource("workspace", "git-repo"),
+			),
+		),
+	)
+
+	// This task will be uploaded along with the pipeline definition.
+	remoteTask := tb.Task("unit-test-task", tb.TaskType(), tb.TaskSpec(
+		tb.TaskParam("foo", v1beta1.ParamTypeString), tb.TaskParam("bar", v1beta1.ParamTypeString), tb.TaskParam("templatedparam", v1beta1.ParamTypeString),
+		tb.TaskResources(
+			tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
+			tb.TaskResourcesOutput("image-to-use", resourcev1alpha1.PipelineResourceTypeImage),
+			tb.TaskResourcesOutput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
+		),
+	), tb.TaskNamespace("foo"))
+
+	ts := []*v1beta1.Task{
+		tb.Task("unit-test-followup-task", tb.TaskSpec(
+			tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
+		), tb.TaskNamespace("foo")),
+	}
+	clusterTasks := []*v1beta1.ClusterTask{
+		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
+			tb.TaskParam("foo", v1beta1.ParamTypeString), tb.TaskParam("bar", v1beta1.ParamTypeString), tb.TaskParam("templatedparam", v1beta1.ParamTypeString),
+			tb.TaskResources(
+				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
+				tb.TaskResourcesOutput("image-to-use", resourcev1alpha1.PipelineResourceTypeImage),
+				tb.TaskResourcesOutput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
+			),
+		)),
+		tb.ClusterTask("unit-test-followup-task", tb.ClusterTaskSpec(
+			tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
+		)),
+	}
+	rs := []*resourcev1alpha1.PipelineResource{
+		tb.PipelineResource("some-repo", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
+			resourcev1alpha1.PipelineResourceTypeGit,
+			tb.PipelineResourceSpecParam("url", "https://github.com/kristoff/reindeer"),
+		)),
+	}
+
+	// Create a bundle from our pipeline and tasks.
+	if _, err := test.CreateImage(ref, ps, remoteTask); err != nil {
+		t.Fatalf("failed to create image in pipeline renconcile: %s", err.Error())
+	}
+
+	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
+	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
+	// after we have resolved them.
+	rs[0].SelfLink = "some/link"
+
+	// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
+	d := test.Data{
+		PipelineRuns:      prs,
+		Tasks:             ts,
+		ClusterTasks:      clusterTasks,
+		PipelineResources: rs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// Create the service account so we can get the empty auth chain.
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(prs[0].Namespace).Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName},
+	}); err != nil {
+		t.Fatalf("failed to create fake service account: %s", err.Error())
+	}
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success"); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) == 0 {
+		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
+	}
+
+	// Actions 1 & 2 should be fetching the Task definitions. Actions 3 & 4 should be creating the taskruns for the first
+	// two tasks that will run at the same time.
+	t.Log("actions", clients.Pipeline.Actions())
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[2].(ktesting.CreateAction).GetObject()
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-mz4c7",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-1"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("unit-test-task", tb.TaskRefBundle(ref)),
+			tb.TaskRunServiceAccountName("test-sa"),
+			tb.TaskRunParam("foo", "somethingfun"),
+			tb.TaskRunParam("bar", "somethingmorefun"),
+			tb.TaskRunParam("templatedparam", "$(inputs.workspace.revision)"),
+			tb.TaskRunResources(
+				tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("some-repo")),
+				tb.TaskRunResourcesOutput("image-to-use",
+					tb.TaskResourceBindingResourceSpec(
+						&v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeImage,
+							Params: []v1alpha1.ResourceParam{{
+								Name:  "url",
+								Value: "gcr.io/sven",
+							}},
+						},
+					),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
+				),
+				tb.TaskRunResourcesOutput("workspace", tb.TaskResourceBindingRef("some-repo"),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
+				),
+			),
+		),
+	)
+
+	// ignore IgnoreUnexported ignore both after and before steps fields
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+	// test taskrun is able to recreate correct pipeline-pvc-name
+	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
+		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
+	}
+
+	// This PipelineRun is in progress now and the status should reflect that
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
+	}
+	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
+		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
+	}
+
+	if len(reconciledRun.Status.TaskRuns) != 2 {
+		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
+	}
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-mz4c7"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+
+	// A PVC should have been created to deal with output -> input linking
+	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1beta1.TaskRun {

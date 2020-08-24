@@ -17,18 +17,26 @@
 package resources_test
 
 import (
+	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-containerregistry/pkg/registry"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestPipelineRef(t *testing.T) {
+func TestLocalPipelineRef(t *testing.T) {
 	testcases := []struct {
 		name      string
 		pipelines []runtime.Object
@@ -77,6 +85,86 @@ func TestPipelineRef(t *testing.T) {
 
 			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetPipelineFunc(t *testing.T) {
+	// Set up a fake registry to push an image to.
+	s := httptest.NewServer(registry.New())
+	defer s.Close()
+	u, err := url.Parse(s.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testcases := []struct {
+		name            string
+		localPipelines  []runtime.Object
+		remotePipelines []runtime.Object
+		ref             *v1beta1.PipelineRef
+		expected        runtime.Object
+	}{
+		{
+			name: "remote-pipeline",
+			localPipelines: []runtime.Object{
+				tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+				tb.Pipeline("dummy", tb.PipelineType(), tb.PipelineNamespace("default")),
+			},
+			remotePipelines: []runtime.Object{
+				tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default")),
+				tb.Pipeline("dummy", tb.PipelineType(), tb.PipelineNamespace("default")),
+			},
+			ref: &v1beta1.PipelineRef{
+				Name:   "simple",
+				Bundle: u.Host + "/remote-pipeline",
+			},
+			expected: tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default")),
+		}, {
+			name: "local-pipeline",
+			localPipelines: []runtime.Object{
+				tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+				tb.Pipeline("dummy", tb.PipelineType(), tb.PipelineNamespace("default")),
+			},
+			remotePipelines: []runtime.Object{
+				tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default")),
+				tb.Pipeline("dummy", tb.PipelineType(), tb.PipelineNamespace("default")),
+			},
+			ref: &v1beta1.PipelineRef{
+				Name: "simple",
+			},
+			expected: tb.Pipeline("simple", tb.PipelineType(), tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tektonclient := fake.NewSimpleClientset(tc.localPipelines...)
+			kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "default",
+				},
+			})
+
+			_, err := test.CreateImage(u.Host+"/"+tc.name, tc.remotePipelines...)
+			if err != nil {
+				t.Fatalf("failed to upload test image: %s", err.Error())
+			}
+
+			fn, err := resources.GetPipelineFunc(kubeclient, tektonclient, tc.ref, "default", "default")
+			if err != nil {
+				t.Fatalf("failed to get pipeline fn: %s", err.Error())
+			}
+
+			pipeline, err := fn(tc.ref.Name)
+			if err != nil {
+				t.Fatalf("failed to call pipelinefn: %s", err.Error())
+			}
+
+			if diff := cmp.Diff(pipeline, tc.expected); tc.expected != nil && diff != "" {
+				t.Error(diff)
 			}
 		})
 	}

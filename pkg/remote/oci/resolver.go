@@ -29,12 +29,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var _ remote.Resolver = (*Resolver)(nil)
-
 // Resolver implements the Resolver interface using OCI images.
 type Resolver struct {
 	imageReference string
 	keychain       authn.Keychain
+}
+
+// NewResolver is a convenience function to return a new OCI resolver instance as a remote.Resolver.
+func NewResolver(ref string, keychain authn.Keychain) remote.Resolver {
+	return &Resolver{imageReference: ref, keychain: keychain}
 }
 
 func (o *Resolver) List() ([]remote.ResolvedObject, error) {

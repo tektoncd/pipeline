@@ -200,6 +200,24 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.params.name"),
+	}, {
+		name: "bundle reference with no name",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Bundle: "docker.com/myorg/myrepo",
+			},
+			TaskSpec: &v1beta1.TaskSpec{},
+		},
+		wantErr: apis.ErrMissingField("spec.taskref.name"),
+	}, {
+		name: "invalid bundle reference",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "my-task",
+				Bundle: "invalid reference",
+			},
+		},
+		wantErr: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "spec.taskref.bundle"),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

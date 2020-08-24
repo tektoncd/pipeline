@@ -659,6 +659,13 @@ func TaskRefAPIVersion(version string) TaskRefOp {
 	}
 }
 
+// TaskRefBundle sets the specified ref to the TaskRef's bundle.
+func TaskRefBundle(url string) TaskRefOp {
+	return func(ref *v1beta1.TaskRef) {
+		ref.Bundle = url
+	}
+}
+
 // TaskRunTaskSpec sets the specified TaskRunSpec reference to the TaskRunSpec.
 // Any number of TaskRunSpec modifier can be passed to transform it.
 func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
