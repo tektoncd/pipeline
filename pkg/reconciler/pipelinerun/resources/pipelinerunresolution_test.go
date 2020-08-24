@@ -38,6 +38,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -78,6 +79,22 @@ var pts = []v1beta1.PipelineTask{{
 	Name:     "mytask9",
 	TaskRef:  &v1beta1.TaskRef{Name: "taskHasParentWithRunAfter"},
 	RunAfter: []string{"mytask8"},
+}, {
+	Name:    "mytask10",
+	TaskRef: &v1beta1.TaskRef{Name: "taskWithWhenExpressions"},
+	WhenExpressions: []v1beta1.WhenExpression{{
+		Input:    "foo",
+		Operator: selection.In,
+		Values:   []string{"foo", "bar"},
+	}},
+}, {
+	Name:    "mytask11",
+	TaskRef: &v1beta1.TaskRef{Name: "taskWithWhenExpressions"},
+	WhenExpressions: []v1beta1.WhenExpression{{
+		Input:    "foo",
+		Operator: selection.NotIn,
+		Values:   []string{"foo", "bar"},
+	}},
 }}
 
 var p = &v1beta1.Pipeline{
@@ -1134,6 +1151,30 @@ func TestIsSkipped(t *testing.T) {
 			},
 		}},
 		expected: true,
+	}, {
+		name:     "tasks-when-expressions-passed",
+		taskName: "mytask10",
+		state: PipelineRunState{{
+			PipelineTask: &pts[9],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: false,
+	}, {
+		name:     "tasks-when-expression-failed",
+		taskName: "mytask11",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: true,
 	}}
 
 	for _, tc := range tcs {
@@ -1147,7 +1188,7 @@ func TestIsSkipped(t *testing.T) {
 			if rprt == nil {
 				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
 			}
-			isSkipped := rprt.IsSkipped(tc.state, dag)
+			isSkipped := rprt.Skip(tc.state, dag)
 			if d := cmp.Diff(isSkipped, tc.expected); d != "" {
 				t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
 			}
@@ -2656,6 +2697,82 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 			next := tc.state.GetFinalTasks(dagGraph, finalGraph)
 			if d := cmp.Diff(tc.expectedFinalTasks, next); d != "" {
 				t.Errorf("Didn't get expected final Tasks for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolvePipeline_WhenExpressions(t *testing.T) {
+	names.TestingSeed()
+	tName1 := "pipelinerun-mytask1-9l9zj-always-true-mz4c7"
+	tName2 := "pipelinerun-mytask1-9l9zj-always-true-mssqb"
+
+	t1 := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tName1,
+		},
+	}
+
+	t2 := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: tName2,
+		},
+	}
+
+	ptwe1 := v1beta1.WhenExpression{
+		Input:    "foo",
+		Operator: selection.In,
+		Values:   []string{"foo"},
+	}
+
+	ptwe2 := v1beta1.WhenExpression{
+		Input:    "foo",
+		Operator: selection.NotIn,
+		Values:   []string{"bar"},
+	}
+
+	pts := []v1beta1.PipelineTask{{
+		Name:            "mytask1",
+		TaskRef:         &v1beta1.TaskRef{Name: "task"},
+		WhenExpressions: []v1beta1.WhenExpression{ptwe1, ptwe2},
+	}}
+
+	providedResources := map[string]*resourcev1alpha1.PipelineResource{}
+
+	getTask := func(name string) (v1beta1.TaskInterface, error) { return task, nil }
+	getClusterTask := func(name string) (v1beta1.TaskInterface, error) { return nil, errors.New("should not get called") }
+	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
+	pr := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+
+	tcs := []struct {
+		name       string
+		getTaskRun resources.GetTaskRun
+	}{
+		{
+			name: "When Expressions exist",
+			getTaskRun: func(name string) (*v1beta1.TaskRun, error) {
+				switch name {
+				case "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7":
+					return t1, nil
+				case "pipelinerun-mytask1-9l9zj":
+					return &trs[0], nil
+				case "pipelinerun-mytask1-9l9zj-always-true-1-mssqb":
+					return t2, nil
+				}
+				return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ResolvePipelineRun(context.Background(), pr, getTask, tc.getTaskRun, getClusterTask, getCondition, pts, providedResources)
+			if err != nil {
+				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
 		})
 	}

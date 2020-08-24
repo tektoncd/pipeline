@@ -352,6 +352,9 @@ type PipelineRunTaskRunStatus struct {
 	// ConditionChecks maps the name of a condition check to its Status
 	// +optional
 	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
+	// WhenExpressionsStatus is the results for the PipelineTask's when expressions
+	// +optional
+	WhenExpressionsResults *WhenExpressionsEvaluationStatus `json:"whenExpressionsResults,omitempty"`
 }
 
 // PipelineRunConditionCheckStatus returns the condition check status

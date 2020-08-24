@@ -127,6 +127,10 @@ type PipelineTask struct {
 	// +optional
 	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
 
+	// WhenExpressions is a list of when expressions that need to be true for the task to run
+	// +optional
+	WhenExpressions WhenExpressions `json:"when,omitempty"`
+
 	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
 	// +optional
 	Retries int `json:"retries,omitempty"`
@@ -190,6 +194,16 @@ func (pt PipelineTask) Deps() []string {
 	// Add any dependents from task results
 	for _, param := range pt.Params {
 		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+		if ok {
+			resultRefs := NewResultRefs(expressions)
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
+	}
+	// Add any dependents from when expressions
+	for _, whenExpression := range pt.WhenExpressions {
+		expressions, ok := whenExpression.GetVarSubstitutionExpressionsForWhenExpression()
 		if ok {
 			resultRefs := NewResultRefs(expressions)
 			for _, resultRef := range resultRefs {

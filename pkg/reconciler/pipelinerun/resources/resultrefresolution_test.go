@@ -11,6 +11,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -294,6 +295,263 @@ func resolvedSliceAsString(rs []*ResolvedResultRef) string {
 	return fmt.Sprintf("[\n%s\n]", strings.Join(s, ",\n"))
 }
 
+func TestTaskWhenExpressionsResolver_ResolveResultRefs(t *testing.T) {
+	type fields struct {
+		pipelineRunState PipelineRunState
+	}
+	type args struct {
+		we v1beta1.WhenExpression
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    ResolvedResultRefs
+		wantErr bool
+	}{
+		{
+			name: "successful resolution: when expression not using result reference",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						TaskRunName: "aTaskRun",
+						TaskRun:     tb.TaskRun("aTaskRun"),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "explicitValueNoResultReference",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "successful resolution: using result reference",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						TaskRunName: "aTaskRun",
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
+							tb.TaskRunResult("aResult", "aResultValue"),
+						)),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+			wantErr: false,
+		}, {
+			name: "successful resolution: using multiple result reference",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						TaskRunName: "aTaskRun",
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
+							tb.TaskRunResult("aResult", "aResultValue"),
+						)),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					}, {
+						TaskRunName: "bTaskRun",
+						TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
+							tb.TaskRunResult("bResult", "bResultValue"),
+						)),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "bTask",
+							TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult) $(tasks.bTask.results.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				}, {
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "bResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "bTask",
+						Result:       "bResult",
+					},
+					FromTaskRun: "bTaskRun",
+				},
+			},
+			wantErr: false,
+		}, {
+			name: "successful resolution: duplicate result references",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						TaskRunName: "aTaskRun",
+						TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
+							tb.TaskRunResult("aResult", "aResultValue"),
+						)),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult) $(tasks.aTask.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+			wantErr: false,
+		}, {
+			name: "unsuccessful resolution: referenced result doesn't exist in referenced task",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						TaskRunName: "aTaskRun",
+						TaskRun:     tb.TaskRun("aTaskRun"),
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "unsuccessful resolution: pipeline task missing",
+			fields: fields{
+				pipelineRunState: PipelineRunState{},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "unsuccessful resolution: task run missing",
+			fields: fields{
+				pipelineRunState: PipelineRunState{
+					{
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "aTask",
+							TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+						},
+					},
+				},
+			},
+			args: args{
+				we: v1beta1.WhenExpression{
+					Input:    "$(tasks.aTask.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Logf("test name: %s\n", tt.name)
+			got, err := extractResultRefsForWhenExpression(tt.fields.pipelineRunState, tt.args.we)
+			// sort result ref based on task name to guarantee an certain order
+			sort.SliceStable(got, func(i, j int) bool {
+				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ResolveResultRef() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if len(tt.want) != len(got) {
+				t.Fatalf("incorrect number of refs, want %d, got %d", len(tt.want), len(got))
+			}
+			for _, rGot := range got {
+				foundMatch := false
+				for _, rWant := range tt.want {
+					if d := cmp.Diff(rGot, rWant); d == "" {
+						foundMatch = true
+					}
+				}
+				if !foundMatch {
+					t.Fatalf("Expected resolved refs:\n%s\n\nbut received:\n%s\n", resolvedSliceAsString(tt.want), resolvedSliceAsString(got))
+				}
+			}
+		})
+	}
+}
+
 func TestResolveResultRefs(t *testing.T) {
 	type args struct {
 		pipelineRunState PipelineRunState
@@ -323,6 +581,44 @@ func TestResolveResultRefs(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{
+					{
+						Input:    "$(tasks.aTask.results.aResult)",
+						Operator: selection.In,
+						Values:   []string{"$(tasks.aTask.results.aResult)"},
+					},
+				},
+			},
+		}, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{
+					{
+						Input:    "$(tasks.aTask.results.missingResult)",
+						Operator: selection.In,
+						Values:   []string{"$(tasks.aTask.results.missingResult)"},
+					},
+				},
+			},
+		}, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{
+					{
+						Name: "bParam",
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "$(tasks.aTask.results.missingResult)",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -333,7 +629,7 @@ func TestResolveResultRefs(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test successful result references resolution",
+			name: "Test successful result references resolution - params",
 			args: args{
 				pipelineRunState: pipelineRunState,
 				targets: PipelineRunState{
@@ -354,8 +650,29 @@ func TestResolveResultRefs(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
+		}, {
+			name: "Test successful result references resolution - when expressions",
+			args: args{
+				pipelineRunState: pipelineRunState,
+				targets: PipelineRunState{
+					pipelineRunState[2],
+				},
+			},
+			want: ResolvedResultRefs{
+				{
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "aResultValue",
+					},
+					ResultReference: v1beta1.ResultRef{
+						PipelineTask: "aTask",
+						Result:       "aResult",
+					},
+					FromTaskRun: "aTaskRun",
+				},
+			},
+			wantErr: false,
+		}, {
 			name: "Test successful result references resolution non result references",
 			args: args{
 				pipelineRunState: pipelineRunState,
@@ -365,6 +682,26 @@ func TestResolveResultRefs(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: false,
+		}, {
+			name: "Test unsuccessful result references resolution - when expression",
+			args: args{
+				pipelineRunState: pipelineRunState,
+				targets: PipelineRunState{
+					pipelineRunState[3],
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		}, {
+			name: "Test unsuccessful result references resolution - params",
+			args: args{
+				pipelineRunState: pipelineRunState,
+				targets: PipelineRunState{
+					pipelineRunState[4],
+				},
+			},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {

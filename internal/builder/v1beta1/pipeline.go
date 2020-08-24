@@ -24,6 +24,7 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 )
 
@@ -53,6 +54,9 @@ type PipelineRunStatusOp func(*v1beta1.PipelineRunStatus)
 
 // PipelineTaskConditionOp is an operation which modifies a PipelineTaskCondition
 type PipelineTaskConditionOp func(condition *v1beta1.PipelineTaskCondition)
+
+// PipelineTaskWhenExpressionOp is an operation which modifies a WhenExpression.
+type PipelineTaskWhenExpressionOp func(*v1beta1.WhenExpression)
 
 // Pipeline creates a Pipeline with default values.
 // Any number of Pipeline modifier can be passed to transform it.
@@ -328,6 +332,17 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 			Name:     name,
 			Resource: resource,
 			From:     from,
+		})
+	}
+}
+
+// PipelineTaskWhenExpression adds a WhenExpression with the specified input, operator and values.
+func PipelineTaskWhenExpression(input string, operator selection.Operator, values []string) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.WhenExpressions = append(pt.WhenExpressions, v1beta1.WhenExpression{
+			Input:    input,
+			Operator: operator,
+			Values:   values,
 		})
 	}
 }

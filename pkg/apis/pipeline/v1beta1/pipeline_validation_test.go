@@ -23,6 +23,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestPipeline_Validate_Success(t *testing.T) {
@@ -155,6 +156,43 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:     "invalid-pipeline-task",
 				TaskRef:  &TaskRef{Name: "foo-task"},
 				TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+			}},
+		},
+	}, {
+		name: "invalid pipeline with one pipeline task having both conditions and when expressions",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+				Conditions: []PipelineTaskCondition{{
+					ConditionRef: "some-condition",
+					Resources: []PipelineTaskInputResource{{
+						Name: "some-workspace", Resource: "missing-great-resource",
+					}},
+				}},
+			}},
+		},
+	}, {
+		name: "invalid pipeline with one pipeline task having when expression with misconfigured result reference",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
 			}},
 		},
 	}, {
@@ -689,6 +727,46 @@ func TestValidateParamResults_Failure(t *testing.T) {
 	})
 }
 
+func TestValidateWhenExpressionsResults_Success(t *testing.T) {
+	desc := "valid pipeline task referencing task result along with parameter variable"
+	tasks := []PipelineTask{{
+		Name:     "a-task",
+		TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
+	}, {
+		Name:    "foo",
+		TaskRef: &TaskRef{Name: "foo-task"},
+		WhenExpressions: []WhenExpression{{
+			Input: "$(tasks.a-task.results.output)", Operator: selection.In, Values: []string{"bar"},
+		}},
+	}}
+	t.Run(desc, func(t *testing.T) {
+		err := validateWhenExpressionsReferencesToTaskResults(tasks)
+		if err != nil {
+			t.Errorf("Pipeline.validateWhenExpressionsResults() returned error for valid pipeline: %s: %v", desc, err)
+		}
+	})
+}
+
+func TestValidateWhenExpressionsResults_Failure(t *testing.T) {
+	desc := "invalid pipeline task referencing task results with malformed variable substitution expression"
+	tasks := []PipelineTask{{
+		Name:    "a-task",
+		TaskRef: &TaskRef{Name: "a-task"},
+	}, {
+		Name:    "bar",
+		TaskRef: &TaskRef{Name: "bar-task"},
+		WhenExpressions: []WhenExpression{{
+			Input: "$(tasks.a-task.resultTypo.bResult)", Operator: selection.In, Values: []string{"bar"},
+		}},
+	}}
+	t.Run(desc, func(t *testing.T) {
+		err := validateWhenExpressionsReferencesToTaskResults(tasks)
+		if err == nil {
+			t.Errorf("Pipeline.validateWhenExpressionsResults() did not return error for invalid pipeline: %s", desc)
+		}
+	})
+}
+
 func TestValidatePipelineResults_Success(t *testing.T) {
 	desc := "valid pipeline with valid pipeline results syntax"
 	results := []PipelineResult{{
@@ -736,6 +814,26 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
 				Name: "a-param", Value: ArrayOrString{StringVal: "$(baz) and $(foo-is-baz)"},
+			}},
+		}},
+	}, {
+		name: "valid string parameter variables in when expression",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeString,
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "$(params.baz)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}, {
+				Input:    "$(params.foo-is-baz)",
+				Operator: selection.In,
+				Values:   []string{"baz"},
 			}},
 		}},
 	}, {
@@ -801,6 +899,56 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
 				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
+			}},
+		}},
+	}, {
+		name: "invalid string parameter variables in when expression, missing input param from the param declarations",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "$(params.baz)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}},
+		}},
+	}, {
+		name: "invalid string parameter variables in when expression, missing values param from the param declarations",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "bax",
+				Operator: selection.In,
+				Values:   []string{"$(params.foo-is-baz)"},
+			}},
+		}},
+	}, {
+		name: "invalid string parameter variables in when expression, array reference in input",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "$(params.foo)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}},
+		}},
+	}, {
+		name: "invalid string parameter variables in when expression, array reference in values",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "bax",
+				Operator: selection.In,
+				Values:   []string{"$(params.foo)"},
 			}},
 		}},
 	}, {
@@ -1361,6 +1509,17 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.a-task.results.output)"},
 			}},
 		}},
+	}, {
+		name: "invalid pipeline with final task specifying when expressions",
+		finalTasks: []PipelineTask{{
+			Name:    "final-task",
+			TaskRef: &TaskRef{Name: "final-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1477,5 +1636,111 @@ func getTaskSpec() *TaskSpec {
 		Steps: []Step{{
 			Container: corev1.Container{Name: "foo", Image: "bar"},
 		}},
+	}
+}
+
+func TestWhenExpressionsValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "valid operator - In - and values",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}},
+		}},
+	}, {
+		name: "valid operator - NotIn - and values",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.NotIn,
+				Values:   []string{"bar"},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateWhenExpressions(tt.tasks); err != nil {
+				t.Errorf("Pipeline.validateWhenExpressions() returned an error for valid when expressions: %s, %s", tt.name, tt.tasks[0].WhenExpressions)
+			}
+		})
+	}
+}
+
+func TestWhenExpressionsInvalid(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "invalid operator - exists",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.Exists,
+				Values:   []string{"foo"},
+			}},
+		}},
+	}, {
+		name: "invalid values - empty",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{},
+			}},
+		}},
+	}, {
+		name: "missing Operator",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:  "foo",
+				Values: []string{"foo"},
+			}},
+		}},
+	}, {
+		name: "missing Values",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.NotIn,
+			}},
+		}},
+	}, {
+		name: "contains both when expressions and conditions",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"bar"},
+			}},
+			Conditions: []PipelineTaskCondition{{
+				ConditionRef: "some-condition",
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateWhenExpressions(tt.tasks); err == nil {
+				t.Errorf("Pipeline.validateWhenExpressions() did not return error for invalid when expressions: %s, %s, %s", tt.name, tt.tasks[0].WhenExpressions, err)
+			}
+		})
 	}
 }
