@@ -10,6 +10,7 @@ weight: 2
 - [Overview](#taskruns)
 - [Configuring a `TaskRun`](#configuring-a-taskrun)
   - [Specifying the target `Task`](#specifying-the-target-task)
+  - [Tekton Bundles](#tekton-bundles)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `ServiceAccount` credentials](#specifying-serviceaccount-credentials)
@@ -95,6 +96,52 @@ spec:
         args:
           - --destination=gcr.io/my-project/gohelloworld
 ```
+
+#### Tekton Bundles
+
+You may also reference `Tasks` that are defined outside of your cluster using `Tekton
+Bundles`. A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`
+which can be referenced within a `taskRef`.
+
+```yaml
+spec:
+taskRef:
+  name: echo-task
+  bundle: docker.io/myrepo/mycatalog
+```
+
+Here, the `bundle` field is the full reference url to the artifact. The name is the
+`metadata.name` field of the `Task`. 
+
+You may also specify a `tag` as you would with a Docker image which will give you a repeatable reference to a `Task`.
+
+```yaml
+spec:
+taskRef:
+  name: echo-task
+  bundle: docker.io/myrepo/mycatalog:v1.0.1
+```
+
+You may also specify a fixed digest instead of a tag which ensures the referenced task is constant.
+
+```yaml
+spec:
+taskRef:
+  name: echo-task
+  bundle: docker.io/myrepo/mycatalog@sha256:abc123
+```
+
+A working example can be found [here](../examples/v1beta1/taskruns/bundle.yaml).
+
+Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
+`ServiceAccount` specified in the `TaskRun`. See the [Service Account](#service-account) 
+section for details on how to configure a `ServiceAccount` on a `TaskRun`. The `TaskRun`
+will then run that `Task` without registering it in the cluster allowing multiple versions
+of the same named `Task` to be run at once.
+
+`Tekton Bundles` may be constructed with any toolsets that produces valid OCI image artifacts so long as
+the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the `tkn`
+cli *(coming soon)*.
 
 ### Specifying `Parameters`
 

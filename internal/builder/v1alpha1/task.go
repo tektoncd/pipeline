@@ -101,12 +101,10 @@ func Task(name string, ops ...TaskOp) *v1alpha1.Task {
 }
 
 // TaskType sets the TypeMeta on the Task which is useful for making it serializable/deserializable.
-func TaskType() TaskOp {
-	return func(t *v1alpha1.Task) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "Task",
-		}
+func TaskType(t *v1alpha1.Task) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1alpha1",
+		Kind:       "Task",
 	}
 }
 
@@ -134,12 +132,10 @@ func TaskNamespace(namespace string) TaskOp {
 }
 
 // ClusterTaskType sets the TypeMeta on the ClusterTask which is useful for making it serializable/deserializable.
-func ClusterTaskType() ClusterTaskOp {
-	return func(t *v1alpha1.ClusterTask) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1alpha1",
-			Kind:       "ClusterTask",
-		}
+func ClusterTaskType(t *v1alpha1.ClusterTask) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1alpha1",
+		Kind:       "ClusterTask",
 	}
 }
 

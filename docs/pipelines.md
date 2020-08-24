@@ -12,6 +12,7 @@ weight: 3
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
+    - [Using Tekton Bundles](#tekton-bundles)
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
@@ -227,6 +228,55 @@ spec:
         - name: pathToContext
           value: /workspace/examples/microservices/leeroy-web
 ```
+
+### Tekton Bundles
+
+You may also specify your `Task` reference using a `Tekton Bundle`. A `Tekton Bundle` is an OCI artifact that
+contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
+
+ ```yaml
+ spec:
+   tasks:
+     - name: hello-world
+       taskRef:
+         name: echo-task
+         bundle: docker.com/myrepo/mycatalog
+ ```
+
+Here, the `bundle` field is the full reference url to the artifact. The name is the
+`metadata.name` field of the `Task`. 
+
+You may also specify a `tag` as you would with a Docker image which will give you a fixed,
+repeatable reference to a `Task`.
+
+ ```yaml
+ spec:
+   tasks:
+   - name: hello-world
+     taskRef:
+       name: echo-task
+       bundle: docker.com/myrepo/mycatalog:v1.0.1
+ ```
+
+You may also specify a fixed digest instead of a tag.
+
+ ```yaml
+ spec:
+   tasks:
+   - name: hello-world  
+     taskRef:
+       name: echo-task
+       bundle: docker.io/myrepo/mycatalog@sha256:abc123
+ ```
+
+Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
+`ServiceAccount` specified in the `PipelineRun`. See the [Service Account](
+pipelineruns.md#service-accounts) section for details on how to configure a `ServiceAccount`
+on a `PipelineRun`. The `PipelineRun` will then run that `Task` without registering it in
+the cluster allowing multiple versions of the same named `Task` to be run at once.
+
+`Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
+so long as the artifact adheres to the [contract](tekton-bundle-contract.md).
 
 ### Using the `from` parameter
 

@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
 	"reflect"
@@ -28,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	remoteimg "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -48,7 +50,25 @@ func CreateImage(ref string, objs ...runtime.Object) (string, error) {
 			return "", fmt.Errorf("error serializing object: %w", err)
 		}
 
-		layer, err := tarball.LayerFromReader(bytes.NewReader(data))
+		// Compress the data into a tarball.
+		var tarbundle bytes.Buffer
+		writer := tar.NewWriter(&tarbundle)
+		if err := writer.WriteHeader(&tar.Header{
+			Name:     getObjectName(obj),
+			Mode:     0600,
+			Size:     int64(len(data)),
+			Typeflag: tar.TypeReg,
+		}); err != nil {
+			return "", err
+		}
+		if _, err := writer.Write(data); err != nil {
+			return "", err
+		}
+		if err := writer.Close(); err != nil {
+			return "", err
+		}
+
+		layer, err := tarball.LayerFromReader(&tarbundle)
 		if err != nil {
 			return "", fmt.Errorf("unexpected error adding layer to image %w", err)
 		}
@@ -56,9 +76,9 @@ func CreateImage(ref string, objs ...runtime.Object) (string, error) {
 		img, err = mutate.Append(img, mutate.Addendum{
 			Layer: layer,
 			Annotations: map[string]string{
-				"org.opencontainers.image.title": getObjectName(obj),
-				"cdf.tekton.image.kind":          strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind),
-				"cdf.tekton.image.apiVersion":    strings.ToLower(obj.GetObjectKind().GroupVersionKind().Version),
+				tkremote.TitleAnnotation:      getObjectName(obj),
+				tkremote.KindAnnotation:       strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind),
+				tkremote.APIVersionAnnotation: strings.ToLower(obj.GetObjectKind().GroupVersionKind().Version),
 			},
 		})
 		if err != nil {

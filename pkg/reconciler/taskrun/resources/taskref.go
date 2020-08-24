@@ -19,11 +19,80 @@ package resources
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
+
+// GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
+// also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
+// cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
+// a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
+func GetTaskFunc(k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, v1beta1.TaskKind, error) {
+	kind := v1alpha1.NamespacedTaskKind
+	if tr != nil && tr.Kind != "" {
+		kind = tr.Kind
+	}
+
+	switch {
+	case tr != nil && tr.Bundle != "":
+		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
+		// casting it to a TaskInterface.
+		return func(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
+			// If there is a bundle url at all, construct an OCI resolver to fetch the task.
+			kc, err := k8schain.New(ctx, k8s, k8schain.Options{
+				Namespace:          namespace,
+				ServiceAccountName: saName,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to get keychain: %w", err)
+			}
+			resolver := oci.NewResolver(tr.Bundle, kc)
+
+			// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
+			// don't accidentally return a Task with the same name but different kind.
+			obj, err := resolver.Get(strings.ToLower(string(kind)), name)
+			if err != nil {
+				return nil, err
+			}
+
+			// If the resolved object is already a v1beta1.{Cluster}Task, it should be returnable as a
+			// v1beta1.TaskInterface.
+			if ti, ok := obj.(v1beta1.TaskInterface); ok {
+				return ti, nil
+			}
+
+			// If this object is not already a v1beta1 object, figure out what type it is actually and try to coerce it
+			// into a v1beta1.TaskInterface compatible object.
+			switch tt := obj.(type) {
+			case *v1alpha1.Task:
+				betaTask := &v1beta1.Task{}
+				err := tt.ConvertTo(context.Background(), betaTask)
+				return betaTask, err
+			case *v1alpha1.ClusterTask:
+				betaTask := &v1beta1.ClusterTask{}
+				err := tt.ConvertTo(context.Background(), betaTask)
+				return betaTask, err
+			}
+
+			return nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
+		}, kind, nil
+	default:
+		// Even if there is no task ref, we should try to return a local resolver.
+		local := &LocalTaskRefResolver{
+			Namespace:    namespace,
+			Kind:         kind,
+			Tektonclient: tekton,
+		}
+		return local.GetTask, kind, nil
+	}
+}
 
 // LocalTaskRefResolver uses the current cluster to resolve a task reference.
 type LocalTaskRefResolver struct {

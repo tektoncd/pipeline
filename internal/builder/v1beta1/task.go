@@ -93,12 +93,10 @@ func Task(name string, ops ...TaskOp) *v1beta1.Task {
 }
 
 // TaskType sets the TypeMeta on the Task which is useful for making it serializable/deserializable.
-func TaskType() TaskOp {
-	return func(t *v1beta1.Task) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task",
-		}
+func TaskType(t *v1beta1.Task) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1beta1",
+		Kind:       "Task",
 	}
 }
 
@@ -126,12 +124,10 @@ func TaskNamespace(namespace string) TaskOp {
 }
 
 // ClusterTaskType sets the TypeMeta on the ClusterTask which is useful for making it serializable/deserializable.
-func ClusterTaskType() ClusterTaskOp {
-	return func(t *v1beta1.ClusterTask) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "ClusterTask",
-		}
+func ClusterTaskType(t *v1beta1.ClusterTask) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1beta1",
+		Kind:       "ClusterTask",
 	}
 }
 
@@ -613,6 +609,13 @@ func TaskRefKind(kind v1beta1.TaskKind) TaskRefOp {
 func TaskRefAPIVersion(version string) TaskRefOp {
 	return func(ref *v1beta1.TaskRef) {
 		ref.APIVersion = version
+	}
+}
+
+// TaskRefBundle sets the specified ref to the TaskRef's bundle.
+func TaskRefBundle(url string) TaskRefOp {
+	return func(ref *v1beta1.TaskRef) {
+		ref.Bundle = url
 	}
 }
 

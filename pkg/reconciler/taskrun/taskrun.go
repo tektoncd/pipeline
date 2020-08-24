@@ -213,19 +213,6 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	return multierror.Append(previousError, err).ErrorOrNil()
 }
 
-func (c *Reconciler) getTaskResolver(tr *v1beta1.TaskRun) (*resources.LocalTaskRefResolver, v1beta1.TaskKind) {
-	resolver := &resources.LocalTaskRefResolver{
-		Namespace:    tr.Namespace,
-		Tektonclient: c.PipelineClientSet,
-	}
-	kind := v1beta1.NamespacedTaskKind
-	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1beta1.ClusterTaskKind {
-		kind = v1beta1.ClusterTaskKind
-	}
-	resolver.Kind = kind
-	return resolver, kind
-}
-
 // `prepare` fetches resources the taskrun depends on, runs validation and conversion
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
@@ -242,8 +229,19 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	resolver, kind := c.getTaskResolver(tr)
-	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, resolver.GetTask)
+	getTaskfunc, kind, err := resources.GetTaskFunc(c.KubeClientSet, c.PipelineClientSet, tr.Spec.TaskRef, tr.Namespace, tr.Spec.ServiceAccountName)
+	if err != nil {
+		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  podconvert.ReasonFailedResolution,
+			Message: err.Error(),
+		})
+		return nil, nil, err
+	}
+
+	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
