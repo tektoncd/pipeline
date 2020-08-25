@@ -141,12 +141,13 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 	return true
 }
 
-// IsSkipped returns true if a PipelineTask will not be run because
-// (1) its Condition Checks failed or
-// (2) one of the parent task's conditions failed or
-// (3) Pipeline is in stopping state (one of the PipelineTasks failed)
-// Note that this means IsSkipped returns false if a conditionCheck is in progress
-func (t ResolvedPipelineRunTask) IsSkipped(state PipelineRunState, d *dag.Graph) bool {
+// Skip returns true if a PipelineTask will not be run because
+// (1) its When Expressions evaluated to false
+// (2) its Condition Checks failed
+// (3) its parent task was skipped
+// (4) Pipeline is in stopping state (one of the PipelineTasks failed)
+// Note that this means Skip returns false if a conditionCheck is in progress
+func (t *ResolvedPipelineRunTask) Skip(state PipelineRunState, d *dag.Graph) bool {
 	// it already has TaskRun associated with it - PipelineTask not skipped
 	if t.IsStarted() {
 		return false
@@ -156,6 +157,15 @@ func (t ResolvedPipelineRunTask) IsSkipped(state PipelineRunState, d *dag.Graph)
 	if len(t.ResolvedConditionChecks) > 0 {
 		if t.ResolvedConditionChecks.IsDone() && !t.ResolvedConditionChecks.IsSuccess() {
 			return true
+		}
+	}
+
+	// Check if the when expressions are false, based on the input's relationship to the values
+	if len(t.PipelineTask.WhenExpressions) > 0 {
+		if !t.PipelineTask.WhenExpressions.HaveVariables() {
+			if !t.PipelineTask.WhenExpressions.AllowsExecution() {
+				return true
+			}
 		}
 	}
 
@@ -170,7 +180,7 @@ func (t ResolvedPipelineRunTask) IsSkipped(state PipelineRunState, d *dag.Graph)
 	node := d.Nodes[t.PipelineTask.Name]
 	if isTaskInGraph(t.PipelineTask.Name, d) {
 		for _, p := range node.Prev {
-			if stateMap[p.Task.HashKey()].IsSkipped(state, d) {
+			if stateMap[p.Task.HashKey()].Skip(state, d) {
 				return true
 			}
 		}
@@ -253,7 +263,7 @@ func (state PipelineRunState) SuccessfulOrSkippedDAGTasks(d *dag.Graph) []string
 	tasks := []string{}
 	for _, t := range state {
 		if isTaskInGraph(t.PipelineTask.Name, d) {
-			if t.IsSuccessful() || t.IsSkipped(state, d) {
+			if t.IsSuccessful() || t.Skip(state, d) {
 				tasks = append(tasks, t.PipelineTask.Name)
 			}
 		}
@@ -270,7 +280,7 @@ func (state PipelineRunState) checkTasksDone(d *dag.Graph) bool {
 				// this task might have skipped if taskRun is nil
 				// continue and ignore if this task was skipped
 				// skipped task is considered part of done
-				if t.IsSkipped(state, d) {
+				if t.Skip(state, d) {
 					continue
 				}
 				return false
@@ -554,7 +564,7 @@ func GetPipelineConditionStatus(pr *v1beta1.PipelineRun, state PipelineRunState,
 		switch {
 		case rprt.IsSuccessful():
 			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
-		case rprt.IsSkipped(state, dag):
+		case rprt.Skip(state, dag):
 			skipTasks++
 			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
 			// At least one is skipped and no failure yet, mark as completed

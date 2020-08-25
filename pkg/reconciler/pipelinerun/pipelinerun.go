@@ -481,6 +481,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// Read the condition the way it was set by the Mark* helpers
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
 	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
+	pr.Status.SkippedTasks = getSkippedTasks(pr, pipelineState, d)
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
 	return nil
 }
@@ -611,6 +612,16 @@ func getTaskRunsStatus(pr *v1beta1.PipelineRun, state []*resources.ResolvedPipel
 		status[rprt.TaskRunName] = prtrs
 	}
 	return status
+}
+
+func getSkippedTasks(pr *v1beta1.PipelineRun, state []*resources.ResolvedPipelineRunTask, d *dag.Graph) []v1beta1.SkippedTask {
+	skipped := []v1beta1.SkippedTask{}
+	for _, rprt := range state {
+		if rprt.Skip(state, d) {
+			skipped = append(skipped, v1beta1.SkippedTask{Name: rprt.PipelineTask.Name})
+		}
+	}
+	return skipped
 }
 
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {

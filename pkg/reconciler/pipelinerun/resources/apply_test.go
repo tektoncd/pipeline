@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -58,6 +59,25 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("first-task-first-param", "default-value"),
 					tb.PipelineTaskParam("first-task-second-param", "second-value"),
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
+				))),
+	}, {
+		name: "single parameter with when expression",
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1beta1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1beta1.ParamTypeString),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskWhenExpression("$(params.first-param)", selection.In, []string{"$(params.second-param)"}),
+				))),
+		run: tb.PipelineRun("test-pipeline-run",
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunParam("second-param", "second-value"))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1beta1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1beta1.ParamTypeString),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskWhenExpression("default-value", selection.In, []string{"second-value"}),
 				))),
 	}, {
 		name: "pipeline parameter nested inside task parameter",
@@ -177,7 +197,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 		want PipelineRunState
 	}{
 		{
-			name: "Test result substitution on minimal variable substitution expression",
+			name: "Test result substitution on minimal variable substitution expression - params",
 			args: args{
 				resolvedResultRefs: ResolvedResultRefs{
 					{
@@ -227,6 +247,53 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					},
 				},
 			},
+		}, {
+			name: "Test result substitution on minimal variable substitution expression - when expressions",
+			args: args{
+				resolvedResultRefs: ResolvedResultRefs{
+					{
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "aResultValue",
+						},
+						ResultReference: v1beta1.ResultRef{
+							PipelineTask: "aTask",
+							Result:       "aResult",
+						},
+						FromTaskRun: "aTaskRun",
+					},
+				},
+				targets: PipelineRunState{
+					{
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "bTask",
+							TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+							WhenExpressions: []v1beta1.WhenExpression{
+								{
+									Input:    "$(tasks.aTask.results.aResult)",
+									Operator: selection.In,
+									Values:   []string{"$(tasks.aTask.results.aResult)"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: PipelineRunState{
+				{
+					PipelineTask: &v1beta1.PipelineTask{
+						Name:    "bTask",
+						TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+						WhenExpressions: []v1beta1.WhenExpression{
+							{
+								Input:    "aResultValue",
+								Operator: selection.In,
+								Values:   []string{"aResultValue"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -250,7 +317,7 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 		want PipelineRunState
 	}{
 		{
-			name: "Test result substitution on embedded variable substitution expression",
+			name: "Test result substitution on embedded variable substitution expression - params",
 			args: args{
 				resolvedResultRefs: ResolvedResultRefs{
 					{
@@ -295,6 +362,53 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 									Type:      v1beta1.ParamTypeString,
 									StringVal: "Result value --> aResultValue",
 								},
+							},
+						},
+					},
+				},
+			},
+		}, {
+			name: "Test result substitution on embedded variable substitution expression - when expressions",
+			args: args{
+				resolvedResultRefs: ResolvedResultRefs{
+					{
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "aResultValue",
+						},
+						ResultReference: v1beta1.ResultRef{
+							PipelineTask: "aTask",
+							Result:       "aResult",
+						},
+						FromTaskRun: "aTaskRun",
+					},
+				},
+				targets: PipelineRunState{
+					{
+						PipelineTask: &v1beta1.PipelineTask{
+							Name:    "bTask",
+							TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+							WhenExpressions: []v1beta1.WhenExpression{
+								{
+									Input:    "Result value --> $(tasks.aTask.results.aResult)",
+									Operator: selection.In,
+									Values:   []string{"Result value --> $(tasks.aTask.results.aResult)"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: PipelineRunState{
+				{
+					PipelineTask: &v1beta1.PipelineTask{
+						Name:    "bTask",
+						TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+						WhenExpressions: []v1beta1.WhenExpression{
+							{
+								Input:    "Result value --> aResultValue",
+								Operator: selection.In,
+								Values:   []string{"Result value --> aResultValue"},
 							},
 						},
 					},

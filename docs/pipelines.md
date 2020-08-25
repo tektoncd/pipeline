@@ -15,6 +15,7 @@ weight: 3
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
+    - [Guard `Task` execution using `When Expressions`](#guard-task-execution-using-whenexpressions)
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Using `Results`](#using-results)
@@ -316,7 +317,55 @@ tasks:
       name: build-push
 ```
 
+### Guard `Task` execution using `WhenExpressions`
+
+To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using the `when` field. The `when` field allows you to list a series of references to `WhenExpressions`.
+
+The components of `WhenExpressions` are `Input`, `Operator` and `Values`:
+- `Input` is the input for the `WhenExpression` which can be static inputs or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)). If the `Input` is not provided, it defaults to an empty string.
+- `Operator` represents an `Input`'s relationship to a set of `Values`. A valid `Operator` must be provided, which can be either `in` or `notin`.
+- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)).
+
+The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Results`](#using-results) are read directly from previous [`Tasks`](#adding-tasks-to-the-pipeline). Using [`Results`](#using-results) in a `WhenExpression` in a guarded `Task` introduces a resource dependency on the previous `Task` that produced the `Result`. 
+
+The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status). 
+
+In these examples, `create-readme-file` task will only be executed if the `path` parameter is `README.md` and `echo-file-exists` task will only be executed if the `status` result from `check-file` task is `exists`. 
+
+```yaml
+tasks:
+  - name: first-create-file
+    when:
+      - input: "$(params.path)"
+        operator: in
+        values: ["README.md"]
+    taskRef:
+      name: create-readme-file
+---
+tasks:
+  - name: echo-file-exists
+    when:
+      - input: "$(tasks.check-file.results.status)"
+        operator: in
+        values: ["exists"]
+    taskRef:
+        name: echo-file-exists
+```
+
+For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
+
+When `WhenExpressions` are specified in a `Task`, [`Conditions`](#guard-task-execution-using-conditions) should not be specified in the same `Task`. The `Pipeline` will be rejected as invalid if both `WhenExpressions` and `Conditions` are included.
+
+There are a lot of scenarios where `WhenExpressions` can be really useful. Some of these are:
+- Checking if the name of a git branch matches
+- Checking if the `Result` of a previous `Task` is as expected
+- Checking if a git file has changed in the previous commits
+- Checking if an image exists in the registry
+- Checking if the name of a CI job matches
+
 ### Guard `Task` execution using `Conditions`
+
+**Note:** `Conditions` are deprecated, use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead. 
 
 To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
 the `conditions` field. The `conditions` field allows you to list a series of references to

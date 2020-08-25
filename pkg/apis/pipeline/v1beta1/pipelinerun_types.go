@@ -331,6 +331,18 @@ type PipelineRunStatusFields struct {
 
 	// PipelineRunSpec contains the exact spec used to instantiate the run
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
+
+	// list of tasks that were skipped due to when expressions evaluating to false
+	// +optional
+	SkippedTasks []SkippedTask `json:"skippedTasks,omitempty"`
+}
+
+// SkippedTask is used to describe the Tasks that were skipped due to their When Expressions
+// evaluating to False. This is a struct because we are looking into including more details
+// about the When Expressions that caused this Task to be skipped.
+type SkippedTask struct {
+	// Name is the Pipeline Task name
+	Name string `json:"name"`
 }
 
 // PipelineRunResult used to describe the results of a pipeline

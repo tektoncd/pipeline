@@ -40,7 +40,7 @@ type ResolvedResultRef struct {
 func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, error) {
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
-		resolvedResultRefs, err := convertParamsToResultRefs(pipelineRunState, target)
+		resolvedResultRefs, err := convertToResultRefs(pipelineRunState, target)
 		if err != nil {
 			return nil, err
 		}
@@ -139,24 +139,30 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 	return deduped
 }
 
-// convertParamsToResultRefs converts all params of the resolved pipeline run task
-func convertParamsToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
-	var resolvedParams ResolvedResultRefs
+// convertToResultRefs replaces result references for all params and when expressions of the resolved pipeline run task
+func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
+	var resolvedResultRefs ResolvedResultRefs
 	for _, condition := range target.PipelineTask.Conditions {
 		condRefs, err := convertParams(condition.Params, pipelineRunState, condition.ConditionRef)
 		if err != nil {
 			return nil, err
 		}
-		resolvedParams = append(resolvedParams, condRefs...)
+		resolvedResultRefs = append(resolvedResultRefs, condRefs...)
 	}
 
 	taskParamsRefs, err := convertParams(target.PipelineTask.Params, pipelineRunState, target.PipelineTask.Name)
 	if err != nil {
 		return nil, err
 	}
-	resolvedParams = append(resolvedParams, taskParamsRefs...)
+	resolvedResultRefs = append(resolvedResultRefs, taskParamsRefs...)
 
-	return resolvedParams, nil
+	taskWhenExpressionsRefs, err := convertWhenExpressions(target.PipelineTask.WhenExpressions, pipelineRunState, target.PipelineTask.Name)
+	if err != nil {
+		return nil, err
+	}
+	resolvedResultRefs = append(resolvedResultRefs, taskWhenExpressionsRefs...)
+
+	return resolvedResultRefs, nil
 }
 
 func convertParams(params []v1beta1.Param, pipelineRunState PipelineRunState, name string) (ResolvedResultRefs, error) {
@@ -171,6 +177,23 @@ func convertParams(params []v1beta1.Param, pipelineRunState PipelineRunState, na
 		}
 	}
 	return resolvedParams, nil
+}
+
+func convertWhenExpressions(whenExpressions []v1beta1.WhenExpression, pipelineRunState PipelineRunState, name string) (ResolvedResultRefs, error) {
+	var resolvedWhenExpressions ResolvedResultRefs
+	for _, whenExpression := range whenExpressions {
+		expressions, ok := whenExpression.GetVarSubstitutionExpressions()
+		if ok {
+			resolvedResultRefs, err := extractResultRefs(expressions, pipelineRunState)
+			if err != nil {
+				return nil, fmt.Errorf("unable to find result referenced by when expression with input %q in task %q: %w", whenExpression.Input, name, err)
+			}
+			if resolvedResultRefs != nil {
+				resolvedWhenExpressions = append(resolvedWhenExpressions, resolvedResultRefs...)
+			}
+		}
+	}
+	return resolvedWhenExpressions, nil
 }
 
 // convertPipelineResultToResultRefs converts all params of the resolved pipeline run task

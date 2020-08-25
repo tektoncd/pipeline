@@ -24,6 +24,7 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 )
 
@@ -328,6 +329,18 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 			Name:     name,
 			Resource: resource,
 			From:     from,
+		})
+	}
+}
+
+// PipelineTaskWhenExpression adds a WhenExpression with the specified input, operator and values
+// which are used to determine whether the PipelineTask should be executed or skipped.
+func PipelineTaskWhenExpression(input string, operator selection.Operator, values []string) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.WhenExpressions = append(pt.WhenExpressions, v1beta1.WhenExpression{
+			Input:    input,
+			Operator: operator,
+			Values:   values,
 		})
 	}
 }
