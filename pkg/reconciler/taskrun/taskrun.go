@@ -41,7 +41,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
@@ -189,7 +188,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, tr, taskSpec, rtr); err != nil {
-		logger.Errorf("Reconcile error: %v", err.Error())
+		logger.Errorf("Reconcile: %v", err.Error())
 	}
 	// Emit events (only when ConditionSucceeded was changed)
 	return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
@@ -403,9 +402,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	}
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status = podconvert.MakeTaskRunStatus(logger, *tr, pod, *taskSpec)
-
-	if err := updateTaskRunResourceResult(tr, *pod); err != nil {
+	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod, *taskSpec)
+	if err != nil {
 		return err
 	}
 
@@ -632,62 +630,6 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
-
-func updateTaskRunResourceResult(taskRun *v1beta1.TaskRun, pod corev1.Pod) error {
-	podconvert.SortContainerStatuses(&pod)
-
-	if taskRun.IsSuccessful() {
-		for idx, cs := range pod.Status.ContainerStatuses {
-			if cs.State.Terminated != nil {
-				msg := cs.State.Terminated.Message
-				r, err := termination.ParseMessage(msg)
-				if err != nil {
-					return fmt.Errorf("parsing message for container status %d: %v", idx, err)
-				}
-				taskResults, pipelineResourceResults := getResults(r)
-				taskRun.Status.TaskRunResults = append(taskRun.Status.TaskRunResults, taskResults...)
-				taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, pipelineResourceResults...)
-			}
-		}
-		taskRun.Status.TaskRunResults = removeDuplicateResults(taskRun.Status.TaskRunResults)
-	}
-	return nil
-}
-
-func getResults(results []v1beta1.PipelineResourceResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult) {
-	var taskResults []v1beta1.TaskRunResult
-	var pipelineResourceResults []v1beta1.PipelineResourceResult
-	for _, r := range results {
-		switch r.ResultType {
-		case v1beta1.TaskRunResultType:
-			taskRunResult := v1beta1.TaskRunResult{
-				Name:  r.Key,
-				Value: r.Value,
-			}
-			taskResults = append(taskResults, taskRunResult)
-		case v1beta1.PipelineResourceResultType:
-			fallthrough
-		default:
-			pipelineResourceResults = append(pipelineResourceResults, r)
-		}
-	}
-	return taskResults, pipelineResourceResults
-}
-
-func removeDuplicateResults(taskRunResult []v1beta1.TaskRunResult) []v1beta1.TaskRunResult {
-	uniq := make([]v1beta1.TaskRunResult, 0)
-	latest := make(map[string]v1beta1.TaskRunResult, 0)
-	for _, res := range taskRunResult {
-		if _, seen := latest[res.Name]; !seen {
-			uniq = append(uniq, res)
-		}
-		latest[res.Name] = res
-	}
-	for i, res := range uniq {
-		uniq[i] = latest[res.Name]
-	}
-	return uniq
-}
 
 func isExceededResourceQuotaError(err error) bool {
 	return err != nil && k8serrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")

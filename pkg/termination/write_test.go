@@ -62,7 +62,7 @@ func TestExistingFile(t *testing.T) {
 	if fileContents, err := ioutil.ReadFile(tmpFile.Name()); err != nil {
 		logger.Fatalf("Unexpected error reading %v: %v", tmpFile.Name(), err)
 	} else {
-		want := `[{"key":"key1","value":"hello","resourceRef":{}},{"key":"key2","value":"world","resourceRef":{}}]`
+		want := `[{"key":"key1","value":"hello"},{"key":"key2","value":"world"}]`
 		if d := cmp.Diff(want, string(fileContents)); d != "" {
 			t.Fatalf("Diff %s", diff.PrintWantGot(d))
 		}
