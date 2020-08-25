@@ -26,6 +26,8 @@ const (
 	TaskRunResultType ResultType = "TaskRunResult"
 	// PipelineResourceResultType default pipeline result value
 	PipelineResourceResultType ResultType = "PipelineResourceResult"
+	// InternalTektonResultType default internal tekton result value
+	InternalTektonResultType ResultType = "InternalTektonResult"
 	// UnknownResultType default unknown result type value
 	UnknownResultType ResultType = ""
 )

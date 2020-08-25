@@ -62,7 +62,7 @@ func main() {
 		{
 			Key:   "commit",
 			Value: commit,
-			ResourceRef: v1beta1.PipelineResourceRef{
+			ResourceRef: &v1beta1.PipelineResourceRef{
 				Name: resourceName,
 			},
 			ResourceName: resourceName,
@@ -70,7 +70,7 @@ func main() {
 		{
 			Key:   "url",
 			Value: fetchSpec.URL,
-			ResourceRef: v1beta1.PipelineResourceRef{
+			ResourceRef: &v1beta1.PipelineResourceRef{
 				Name: resourceName,
 			},
 			ResourceName: resourceName,
