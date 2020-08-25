@@ -212,6 +212,10 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if err := validateWhenExpressions(ps.Tasks); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -364,6 +368,9 @@ func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, pa
 		if err := validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames); err != nil {
 			return err
 		}
+		if err := task.WhenExpressions.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -460,6 +467,9 @@ func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
 		if len(f.Conditions) != 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "spec.finally")
 		}
+		if len(f.WhenExpressions) != 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("no when expressions allowed under spec.finally, final task %s has when expressions specified", f.Name), "spec.finally")
+		}
 	}
 
 	if err := validateTaskResultReferenceNotUsed(finalTasks); err != nil {
@@ -500,6 +510,26 @@ func validateTasksInputFrom(tasks []PipelineTask) *apis.FieldError {
 					" final task %s has from specified", rd.Name), "spec.finally.task.resources.inputs")
 			}
 		}
+	}
+	return nil
+}
+
+func validateWhenExpressions(tasks []PipelineTask) *apis.FieldError {
+	for i, t := range tasks {
+		if err := validateOneOfWhenExpressionsOrConditions(i, t); err != nil {
+			return err
+		}
+		if err := t.WhenExpressions.validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateOneOfWhenExpressionsOrConditions(i int, t PipelineTask) *apis.FieldError {
+	prefix := "spec.tasks"
+	if t.WhenExpressions != nil && t.Conditions != nil {
+		return apis.ErrMultipleOneOf(fmt.Sprintf(fmt.Sprintf(prefix+"[%d].when", i), fmt.Sprintf(prefix+"[%d].conditions", i)))
 	}
 	return nil
 }

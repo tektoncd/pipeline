@@ -65,7 +65,7 @@ func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
-// ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params in targets
+// ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params and Pipeline.WhenExpressions in targets
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := map[string]string{}
 
@@ -84,6 +84,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -102,6 +103,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 			c := tasks[i].Conditions[j]
 			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
+		tasks[i].WhenExpressions = tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
 	}
 
 	return p

@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func TestNewResultReference(t *testing.T) {
@@ -429,6 +430,318 @@ func TestLooksLikeResultRef(t *testing.T) {
 				}
 			} else if tt.want {
 				t.Errorf("LooksLikeContainsResultRefs() = %v, want %v", false, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewResultReferenceWhenExpressions(t *testing.T) {
+	type args struct {
+		whenExpression v1beta1.WhenExpression
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*v1beta1.ResultRef
+	}{
+		{
+			name: "Test valid expression",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(tasks.sumTask.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "substitution within string",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "sum-will-go-here -> $(tasks.sumTask.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "multiple substitution",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				}, {
+					PipelineTask: "sumTask2",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "multiple substitution with param",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				}, {
+					PipelineTask: "sumTask2",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "first separator typo",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(task.sumTasks.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: nil,
+		}, {
+			name: "third separator typo",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(tasks.sumTasks.result.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: nil,
+		}, {
+			name: "param substitution shouldn't be considered result ref",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "$(params.paramName)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: nil,
+		}, {
+			name: "One bad and good result substitution",
+			args: args{
+				whenExpression: v1beta1.WhenExpression{
+					Input:    "good -> $(tasks.sumTask1.results.sumResult) bad-> $(task.sumTask2.results.sumResult)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				},
+			},
+			want: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask1",
+					Result:       "sumResult",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expressions, ok := tt.args.whenExpression.GetVarSubstitutionExpressions()
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			} else {
+				got := v1beta1.NewResultRefs(expressions)
+				if d := cmp.Diff(tt.want, got); d != "" {
+					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
+func TestHasResultReferenceWhenExpression(t *testing.T) {
+	tests := []struct {
+		name    string
+		we      v1beta1.WhenExpression
+		wantRef []*v1beta1.ResultRef
+	}{
+		{
+			name: "Test valid expression",
+			we: v1beta1.WhenExpression{
+				Input:    "sumResult",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.sumTask.results.sumResult)"},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask",
+					Result:       "sumResult",
+				},
+			},
+		}, {
+			name: "Test valid expression with dashes",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sum-task.results.sum-result)",
+				Operator: selection.In,
+				Values:   []string{"sum-result"},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sum-task",
+					Result:       "sum-result",
+				},
+			},
+		}, {
+			name: "Test valid expression with underscores",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sum-task.results.sum_result)",
+				Operator: selection.In,
+				Values:   []string{"sum-result"},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sum-task",
+					Result:       "sum_result",
+				},
+			},
+		}, {
+			name: "Test invalid expression: param substitution shouldn't be considered result ref",
+			we: v1beta1.WhenExpression{
+				Input:    "$(params.paramName)",
+				Operator: selection.In,
+				Values:   []string{"sum-result"},
+			},
+			wantRef: nil,
+		}, {
+			name: "Test valid expression in array",
+			we: v1beta1.WhenExpression{
+				Input:    "$sumResult",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"},
+			},
+			wantRef: []*v1beta1.ResultRef{
+				{
+					PipelineTask: "sumTask",
+					Result:       "sumResult",
+				},
+				{
+					PipelineTask: "sumTask2",
+					Result:       "sumResult2",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expressions, ok := tt.we.GetVarSubstitutionExpressions()
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			got := v1beta1.NewResultRefs(expressions)
+			if d := cmp.Diff(tt.wantRef, got); d != "" {
+				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestLooksLikeResultRefWhenExpressionTrue(t *testing.T) {
+	tests := []struct {
+		name string
+		we   v1beta1.WhenExpression
+	}{
+		{
+			name: "test expression that is a result ref",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sumTasks.results.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		}, {
+			name: "test expression: looks like result ref, but typo in 'task' separator",
+			we: v1beta1.WhenExpression{
+				Input:    "$(task.sumTasks.results.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		}, {
+			name: "test expression: looks like result ref, but typo in 'results' separator",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sumTasks.result.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		}, {
+			name: "test expression: one good ref, one bad one should return true",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sumTasks.results.sumResult) $(task.sumTasks.results.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expressions, ok := tt.we.GetVarSubstitutionExpressions()
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			if !v1beta1.LooksLikeContainsResultRefs(expressions) {
+				t.Errorf("expected expressions to look like they contain result refs")
+			}
+		})
+	}
+}
+
+func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
+	tests := []struct {
+		name string
+		we   v1beta1.WhenExpression
+	}{
+		{
+			name: "test expression: missing 'task' separator",
+			we: v1beta1.WhenExpression{
+				Input:    "$(sumTasks.results.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		}, {
+			name: "test expression: missing 'results' separator",
+			we: v1beta1.WhenExpression{
+				Input:    "$(tasks.sumTasks.sumResult)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		}, {
+			name: "test expression: param substitution shouldn't be considered result ref",
+			we: v1beta1.WhenExpression{
+				Input:    "$(params.someParam)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expressions, ok := tt.we.GetVarSubstitutionExpressions()
+			if !ok {
+				t.Fatalf("expected to find expressions but didn't find any")
+			}
+			if v1beta1.LooksLikeContainsResultRefs(expressions) {
+				t.Errorf("expected expressions to not look like they contain results refs")
 			}
 		})
 	}
