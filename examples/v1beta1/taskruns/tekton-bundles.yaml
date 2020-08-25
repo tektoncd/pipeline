@@ -5,4 +5,4 @@ metadata:
 spec:
   taskRef:
     name: hello-world
-    bundle: registry.hub.docker.com/ptasci67/test-oci@sha256:c50242c60570219e7d527f854eaec2577ad865727d7b74f411f51c38b67a045c
+    bundle: registry.hub.docker.com/ptasci67/test-oci@sha256:7a8e6b41d37e16c86dc38fbb395673fe496edb9ac759aee135df488b55b4c732
