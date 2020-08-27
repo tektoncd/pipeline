@@ -82,7 +82,6 @@ spec:
   - name: clone
     image: ko://github.com/tektoncd/pipeline/cmd/git-init
     script: |
-      #!/bin/ash
       CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
       cleandir() {
         # Delete any existing contents of the repo directory if it exists.
