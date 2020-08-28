@@ -49,6 +49,13 @@ To install Tekton Pipelines on a Kubernetes cluster:
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
+
+   Or, for the nightly release, use:
+
+   ```bash
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases-nightly/pipeline/latest/release.yaml
+   ```
+
    You can install a specific release using `previous/$VERSION_NUMBER`. For example:
 
    ```bash
