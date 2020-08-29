@@ -404,6 +404,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	pipelineContextNames := sets.NewString().Insert(
 		"name",
+		"namespace",
 	)
 	var paramValues []string
 	for _, task := range tasks {

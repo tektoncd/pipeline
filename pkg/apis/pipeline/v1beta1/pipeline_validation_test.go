@@ -1421,7 +1421,26 @@ func TestContextValid(t *testing.T) {
 				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
 			}},
 		}},
+	}, {
+		name: "valid string context variable for task namespace",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.task.namespace)"},
+			}},
+		}},
+	}, {
+		name: "valid string context variable for pipeline namespace",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipeline.namespace)"},
+			}},
+		}},
 	}}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validatePipelineContextVariables(tt.tasks); err != nil {

@@ -59,7 +59,6 @@ spec:
     - name: clone
       image: ko://github.com/tektoncd/pipeline/cmd/git-init
       script: |
-        #!/bin/ash
         CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
 
         cleandir() {

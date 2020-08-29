@@ -84,9 +84,7 @@ func ExampleTaskRun() {
 		tb.TaskRunTaskSpec(
 			tb.TaskResources(tb.TaskResourcesInput("workspace", resource.PipelineResourceTypeGit)),
 			tb.TaskParam("myarg", v1beta1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
-			tb.Step("myimage", tb.StepCommand("/mycmd"),
-				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
-			),
+			tb.Step("myimage", tb.StepScript("/mycmd --my-arg=$(inputs.params.myarg)")),
 		),
 	))
 	expectedTaskRun := &v1beta1.TaskRun{

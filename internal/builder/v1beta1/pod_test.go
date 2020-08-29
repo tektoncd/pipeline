@@ -45,7 +45,7 @@ func TestPod(t *testing.T) {
 			tb.PodServiceAccountName("sa"),
 			tb.PodRestartPolicy(corev1.RestartPolicyNever),
 			tb.PodContainer("nop", "nop:latest"),
-			tb.PodInitContainer("basic", "ubuntu",
+			tb.PodInitContainer("basic", "busybox",
 				tb.Command("ls", "-l"),
 				tb.Args(),
 				tb.WorkingDir("/workspace"),
@@ -97,7 +97,7 @@ func TestPod(t *testing.T) {
 			}},
 			InitContainers: []corev1.Container{{
 				Name:       "basic",
-				Image:      "ubuntu",
+				Image:      "busybox",
 				Command:    []string{"ls", "-l"},
 				WorkingDir: "/workspace",
 				Env: []corev1.EnvVar{{

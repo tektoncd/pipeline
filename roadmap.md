@@ -21,7 +21,7 @@ is a constant balancing act, and we want to be careful and deliberate with what 
 include.
 
 Features we don't have or aren't yet 100% satisfied with for "feature complete"
-Tekton:
+Tekton (also discoverable via [the area/roadmap label](https://github.com/tektoncd/pipeline/labels/area%2Froadmap)):
 
 - [Failure strategies](https://github.com/tektoncd/pipeline/issues/1684)
 - [Conditional execution](https://github.com/tektoncd/pipeline/blob/master/docs/conditions.md)
@@ -43,8 +43,9 @@ Tekton:
 - [Adding support for other architectures](https://github.com/tektoncd/pipeline/issues/856)
 - [Rich type support for params](https://github.com/tektoncd/pipeline/issues/1393)
 - Looping syntax (in [Tasks](https://github.com/tektoncd/pipeline/issues/2112) and/or [Pipelines](https://github.com/tektoncd/pipeline/issues/2050))- either implement or decide it is outside of scope (i.e. better suited for a DSL)
-- [Supplying credentials for authenticated actions in Tasks](https://github.com/tetkoncd/pipeline/issues/2343) - documented guidelines
+- [Supplying credentials for authenticated actions in Tasks](https://github.com/tektoncd/pipeline/issues/2343) - documented guidelines
   and implemented support for best practices when working with credentials.
+- [Provide a pipeline concurrency limit](https://github.com/tektoncd/pipeline/issues/1305)
 
 ## Beta for all components
 

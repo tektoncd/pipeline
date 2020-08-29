@@ -65,10 +65,7 @@ func getEmbeddedTask(args []string) *v1alpha1.Task {
 	return tb.Task(embedTaskName,
 		tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
-			tb.Step("ubuntu",
-				tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "cat /workspace/docs/LICENSE"),
-			),
+			tb.Step("busybox", tb.StepScript("cat /workspace/docs/LICENSE")),
 			tb.Step("busybox", tb.StepCommand(args...)),
 		))
 }

@@ -42,7 +42,7 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Image: "alpine"},
+				Container: corev1.Container{Image: "busybox"},
 				Script:    "echo foo > /workspace/test/file",
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
@@ -117,7 +117,7 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Image: "alpine"},
+				Container: corev1.Container{Image: "busybox"},
 				Script:    "cat /workspace/test/file",
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
@@ -186,7 +186,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Image: "alpine"},
+				Container: corev1.Container{Image: "busybox"},
 				Script:    "cat /workspace/test/file",
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{

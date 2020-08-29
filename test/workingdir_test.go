@@ -44,7 +44,7 @@ func TestWorkingDirCreated(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: wdTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:      "ubuntu",
+				Image:      "busybox",
 				WorkingDir: "/workspace/HELLOMOTO",
 				Args:       []string{"-c", "echo YES"},
 			}}},
@@ -109,7 +109,7 @@ func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: wdTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:      "ubuntu",
+				Image:      "busybox",
 				WorkingDir: "/HELLOMOTO",
 				Args:       []string{"-c", "echo YES"},
 			}}},

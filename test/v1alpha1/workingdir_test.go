@@ -41,7 +41,7 @@ func TestWorkingDirCreated(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	task := tb.Task(wdTaskName, tb.TaskSpec(
-		tb.Step("ubuntu", tb.StepWorkingDir("/workspace/HELLOMOTO"), tb.StepArgs("-c", "echo YES")),
+		tb.Step("busybox", tb.StepWorkingDir("/workspace/HELLOMOTO"), tb.StepScript("echo YES")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
@@ -95,7 +95,7 @@ func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 	defer tearDown(t, c, namespace)
 
 	task := tb.Task(wdTaskName, tb.TaskSpec(
-		tb.Step("ubuntu", tb.StepWorkingDir("/HELLOMOTO"), tb.StepArgs("-c", "echo YES")),
+		tb.Step("busybox", tb.StepWorkingDir("/HELLOMOTO"), tb.StepScript("echo YES")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)

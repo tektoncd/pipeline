@@ -35,7 +35,7 @@ func TestCondition(t *testing.T) {
 				"label-1": "label-value-1",
 				"label-2": "label-value-2",
 			}),
-		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
+		tb.ConditionSpec(tb.ConditionSpecCheck("", "busybox", tb.Command("exit 0")),
 			tb.ConditionDescription("Test Condition"),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
 				tb.ParamSpecDefault("default"),
@@ -57,7 +57,7 @@ func TestCondition(t *testing.T) {
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{
 				Container: corev1.Container{
-					Image:   "ubuntu",
+					Image:   "busybox",
 					Command: []string{"exit 0"},
 				},
 			},
@@ -88,7 +88,7 @@ func TestCondition(t *testing.T) {
 func TestConditionWithScript(t *testing.T) {
 	condition := tb.Condition("cond-name",
 		tb.ConditionNamespace("foo"),
-		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu"),
+		tb.ConditionSpec(tb.ConditionSpecCheck("", "busybox"),
 			tb.ConditionSpecCheckScript("ls /tmp"),
 		),
 	)
@@ -101,7 +101,7 @@ func TestConditionWithScript(t *testing.T) {
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{
 				Container: corev1.Container{
-					Image: "ubuntu",
+					Image: "busybox",
 				},
 				Script: "ls /tmp",
 			},

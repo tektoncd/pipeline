@@ -53,9 +53,7 @@ func TestTask(t *testing.T) {
 			tb.OutputsResource("myoptionalimage", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
 		),
 		tb.TaskDescription("Test Task"),
-		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
-			"--my-other-arg=$(inputs.resources.workspace.url)",
-		)),
+		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepScript("/mycmd --my-arg=$(inputs.params.myarg)")),
 		tb.Step("myimage2", tb.StepScript("echo foo")),
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
@@ -74,14 +72,19 @@ func TestTask(t *testing.T) {
 		Spec: v1alpha1.TaskSpec{
 			TaskSpec: v1beta1.TaskSpec{
 				Description: "Test Task",
-				Steps: []v1alpha1.Step{{Container: corev1.Container{
-					Name:    "mycontainer",
-					Image:   "myimage",
-					Command: []string{"/mycmd"},
-					Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
-				}}, {Script: "echo foo", Container: corev1.Container{
-					Image: "myimage2",
-				}}},
+				Steps: []v1alpha1.Step{{
+					Script: "/mycmd --my-arg=$(inputs.params.myarg)",
+					Container: corev1.Container{
+						Name:  "mycontainer",
+						Image: "myimage",
+					},
+				},
+					{
+						Script: "echo foo",
+						Container: corev1.Container{
+							Image: "myimage2",
+						},
+					}},
 				Volumes: []corev1.Volume{{
 					Name: "foo",
 					VolumeSource: corev1.VolumeSource{
@@ -147,9 +150,7 @@ func TestTask(t *testing.T) {
 
 func TestClusterTask(t *testing.T) {
 	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType(), tb.ClusterTaskSpec(
-		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
-			"--my-other-arg=$(inputs.resources.workspace.url)",
-		)),
+		tb.Step("myimage", tb.StepScript("/mycmd --my-arg=$(inputs.params.myarg)")),
 	))
 	expectedTask := &v1alpha1.ClusterTask{
 		TypeMeta: metav1.TypeMeta{
@@ -158,11 +159,12 @@ func TestClusterTask(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
 		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Image:   "myimage",
-				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
-			}}},
+			Steps: []v1alpha1.Step{{
+				Script: "/mycmd --my-arg=$(inputs.params.myarg)",
+				Container: corev1.Container{
+					Image: "myimage",
+				},
+			}},
 		}},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {
@@ -330,7 +332,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
-				tb.Step("image", tb.StepCommand("/mycmd")),
+				tb.Step("image", tb.StepScript("/mycmd")),
 				tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
 			),
 			tb.TaskRunServiceAccountName("sa"),
@@ -345,10 +347,11 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Image:   "image",
-						Command: []string{"/mycmd"},
-					}}},
+					Steps: []v1alpha1.Step{{
+						Script: "/mycmd",
+						Container: corev1.Container{
+							Image: "image",
+						}}},
 				},
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
@@ -376,7 +379,7 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 		tb.TaskRunNamespace("foo"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
-				tb.Step("image", tb.StepCommand("/mycmd")),
+				tb.Step("image", tb.StepScript("/mycmd")),
 				tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true))),
 			),
 			tb.TaskRunServiceAccountName("sa"),
@@ -394,10 +397,11 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{{Container: corev1.Container{
-						Image:   "image",
-						Command: []string{"/mycmd"},
-					}}},
+					Steps: []v1alpha1.Step{{
+						Script: "/mycmd",
+						Container: corev1.Container{
+							Image: "image",
+						}}},
 				},
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{

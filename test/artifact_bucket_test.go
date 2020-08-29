@@ -152,12 +152,12 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
-					Name: "addfile", Image: "ubuntu",
+					Name: "addfile", Image: "busybox",
 				},
-				Script: "echo '#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile",
+				Script: "echo '#!/bin/sh\necho hello' > /workspace/helloworldgit/newfile",
 			}, {
 				Container: corev1.Container{
-					Name: "make-executable", Image: "ubuntu",
+					Name: "make-executable", Image: "busybox",
 				},
 				Script: "chmod +x /workspace/helloworldgit/newfile",
 			}},
@@ -180,7 +180,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: runFileTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name: "runfile", Image: "ubuntu",
+				Name: "runfile", Image: "busybox",
 				Command: []string{"/workspace/hellowrld/newfile"},
 			}}},
 			Resources: &v1beta1.TaskResources{

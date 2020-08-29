@@ -864,7 +864,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskResources(
 				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
-			tb.Step("ubuntu", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
+			tb.Step("busybox", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
 		),
 	))
 
@@ -1326,7 +1326,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
-				tb.PodContainer("step-mystep", "ubuntu",
+				tb.PodContainer("step-mystep", "busybox",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/tekton/tools/0", "-post_file", "/tekton/tools/1", "-termination_path",
 						"/tekton/termination", "-entrypoint", "/mycmd", "--"),
@@ -3076,12 +3076,13 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 
 func TestFailTaskRun(t *testing.T) {
 	testCases := []struct {
-		name           string
-		taskRun        *v1beta1.TaskRun
-		pod            *corev1.Pod
-		reason         v1beta1.TaskRunReason
-		message        string
-		expectedStatus apis.Condition
+		name               string
+		taskRun            *v1beta1.TaskRun
+		pod                *corev1.Pod
+		reason             v1beta1.TaskRunReason
+		message            string
+		expectedStatus     apis.Condition
+		expectedStepStates []v1beta1.StepState
 	}{{
 		name: "no-pod-scheduled",
 		taskRun: tb.TaskRun("test-taskrun-run-failed", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
@@ -3120,6 +3121,180 @@ func TestFailTaskRun(t *testing.T) {
 			Reason:  "some reason",
 			Message: "some message",
 		},
+	}, {
+		name: "step-status-update-cancel",
+		taskRun: tb.TaskRun("test-taskrun-run-cancel", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunCancelled,
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}), tb.StepState(
+			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
+		), tb.PodName("foo-is-bar"))),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  v1beta1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel was cancelled",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel was cancelled",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-timeout",
+		taskRun: tb.TaskRun("test-taskrun-run-timeout", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunTimeout(time.Duration(10*time.Second)),
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}), tb.StepState(
+			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
+		), tb.PodName("foo-is-bar"))),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  v1beta1.TaskRunReasonTimedOut,
+		message: "TaskRun test-taskrun-run-timeout failed to finish within 10s",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonTimedOut.String(),
+			Message: "TaskRun test-taskrun-run-timeout failed to finish within 10s",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-multiple-steps",
+		taskRun: tb.TaskRun("test-taskrun-run-timeout-multiple-steps", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+			tb.TaskRunTaskRef(taskMultipleSteps.Name),
+			tb.TaskRunTimeout(time.Duration(10*time.Second)),
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}), tb.StepState(
+			tb.SetStepStateTerminated(corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed"}),
+		), tb.StepState(
+			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
+		), tb.StepState(
+			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
+		),
+			tb.PodName("foo-is-bar"))),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  v1beta1.TaskRunReasonTimedOut,
+		message: "TaskRun test-taskrun-run-timeout-multiple-steps failed to finish within 10s",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonTimedOut.String(),
+			Message: "TaskRun test-taskrun-run-timeout-multiple-steps failed to finish within 10s",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+						Reason:   "Completed",
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-multiple-steps-waiting-state",
+		taskRun: tb.TaskRun("test-taskrun-run-timeout-multiple-steps-waiting", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
+			tb.TaskRunTaskRef(taskMultipleSteps.Name),
+			tb.TaskRunTimeout(time.Duration(10*time.Second)),
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}), tb.StepState(
+			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
+		), tb.StepState(
+			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
+		), tb.StepState(
+			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
+		),
+			tb.PodName("foo-is-bar"))),
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+		}},
+		reason:  v1beta1.TaskRunReasonTimedOut,
+		message: "TaskRun test-taskrun-run-timeout-multiple-steps-waiting failed to finish within 10s",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonTimedOut.String(),
+			Message: "TaskRun test-taskrun-run-timeout-multiple-steps-waiting failed to finish within 10s",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonTimedOut.String(),
+					},
+				},
+			},
+		},
 	}}
 
 	for _, tc := range testCases {
@@ -3155,6 +3330,13 @@ func TestFailTaskRun(t *testing.T) {
 			}
 			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
+			}
+
+			if tc.expectedStepStates != nil {
+				ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")
+				if c := cmp.Diff(tc.expectedStepStates, tc.taskRun.Status.Steps, ignoreTerminatedFields); c != "" {
+					t.Errorf("test %s failed: %s", tc.name, diff.PrintWantGot(c))
+				}
 			}
 		})
 	}

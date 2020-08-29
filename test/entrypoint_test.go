@@ -48,10 +48,10 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: epTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "ubuntu",
+				Image: "busybox",
 				Args:  []string{"-c", "sleep 3 && touch foo"},
 			}}, {Container: corev1.Container{
-				Image: "ubuntu",
+				Image: "busybox",
 				Args:  []string{"-c", "ls", "foo"},
 			}}},
 		},

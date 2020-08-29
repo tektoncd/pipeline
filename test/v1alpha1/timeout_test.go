@@ -44,7 +44,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", tb.TaskSpec(
-		tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 10"))))
+		tb.Step("busybox", tb.StepScript("sleep 10"))))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
@@ -144,7 +144,7 @@ func TestTaskRunTimeout(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe",
-		tb.TaskSpec(tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 3000"))))); err != nil {
+		tb.TaskSpec(tb.Step("busybox", tb.StepCommand("sleep 3000"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
 	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
@@ -169,10 +169,10 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	t.Logf("Creating Tasks in namespace %s", namespace)
 	task1 := tb.Task("success", tb.TaskSpec(
-		tb.Step("busybox", tb.StepCommand("sleep"), tb.StepArgs("1s"))))
+		tb.Step("busybox", tb.StepScript("sleep 1s"))))
 
 	task2 := tb.Task("timeout", tb.TaskSpec(
-		tb.Step("busybox", tb.StepCommand("sleep"), tb.StepArgs("10s"))))
+		tb.Step("busybox", tb.StepScript("sleep 10s"))))
 
 	if _, err := c.TaskClient.Create(task1); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task1.Name, err)

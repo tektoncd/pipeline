@@ -215,7 +215,7 @@ func getTaskDef(n, namespace, script string) *v1beta1.Task {
 		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Image: "alpine"},
+				Container: corev1.Container{Image: "busybox"},
 				Script:    script,
 			}},
 		},
@@ -239,7 +239,7 @@ func getCondition(n, namespace string) *v1alpha1.Condition {
 		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: namespace},
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{
-				Container: corev1.Container{Image: "ubuntu"},
+				Container: corev1.Container{Image: "busybox"},
 				Script:    "exit 1",
 			},
 		},

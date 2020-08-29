@@ -31,7 +31,7 @@ import (
 func TestCondition_Validate(t *testing.T) {
 	c := tb.Condition("condname",
 		tb.ConditionSpec(
-			tb.ConditionSpecCheck("cname", "ubuntu"),
+			tb.ConditionSpecCheck("cname", "busybox"),
 			tb.ConditionParamSpec("paramname", v1alpha1.ParamTypeString),
 		))
 
