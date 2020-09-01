@@ -20,10 +20,10 @@ The following flags are available :
   content. It will continue watching for `wait_file` until it has
   content.
 
-The following example of usage for `entrypoint`, wait's for
-`/tekton/downward/ready` file to exists and have some content before
+The following example of usage for `entrypoint` waits for
+`/tekton/downward/ready` file to exist and have some content before
 executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/tekton/tools/0` in case of succes, or
+and will write to `/tekton/tools/0` in case of success, or
 `/tekton/tools/0.err` in case of failure.
 
 ```shell
