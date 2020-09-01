@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ $MY_VAR1 == foo ]]
       env:
       - name: MY_VAR1

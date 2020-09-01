@@ -12,9 +12,9 @@ spec:
               app: "example"
           steps:
             - name: echo
-              image: ubuntu
+              image: busybox
               script: |
-                #!/usr/bin/env bash
+                #!/usr/bin/env sh
                 echo "Good Morning!"
 ---
 
@@ -38,9 +38,9 @@ spec:
             default: "Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: busybox
               script: |
-                #!/usr/bin/env bash
+                #!/usr/bin/env sh
                 echo "$(params.MESSAGE)"
         params:
           - name: MESSAGE
@@ -70,9 +70,9 @@ spec:
             default: "Hello World!"
           steps:
             - name: echo
-              image: ubuntu
+              image: busybox
               script: |
-                #!/usr/bin/env bash
+                #!/usr/bin/env sh
                 echo "$(params.MESSAGE)"
         params:
           - name: MESSAGE

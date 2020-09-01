@@ -9,7 +9,7 @@ spec:
     - name: workspace
       type: git
   check:
-    image: alpine
+    image: busybox
     script: 'test -f $(resources.workspace.path)/$(params.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -35,7 +35,7 @@ spec:
         type: git
   steps:
     - name: write-new-stuff
-      image: ubuntu
+      image: busybox
       script: 'touch $(outputs.resources.workspace.path)/README.md'
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -45,7 +45,7 @@ metadata:
 spec:
   steps:
     - name: echo
-      image: ubuntu
+      image: busybox
       script: 'echo hello'
 ---
 apiVersion: tekton.dev/v1alpha1

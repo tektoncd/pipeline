@@ -12,9 +12,9 @@ spec:
         type: git
   steps:
     - name: list
-      image: ubuntu
+      image: busybox
       command:
-        - bash
+        - sh
       args:
         - -c
         - |
@@ -30,9 +30,9 @@ spec:
     - name: pipeline-git
       type: git
   check:
-    image: ubuntu
+    image: busybox
     command:
-      - bash
+      - sh
     args:
       - -c
       - |

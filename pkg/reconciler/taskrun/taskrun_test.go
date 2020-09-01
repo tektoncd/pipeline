@@ -864,7 +864,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskResources(
 				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
-			tb.Step("ubuntu", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
+			tb.Step("busybox", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
 		),
 	))
 
@@ -1326,7 +1326,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
-				tb.PodContainer("step-mystep", "ubuntu",
+				tb.PodContainer("step-mystep", "busybox",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/tekton/tools/0", "-post_file", "/tekton/tools/1", "-termination_path",
 						"/tekton/termination", "-entrypoint", "/mycmd", "--"),

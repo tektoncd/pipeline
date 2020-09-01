@@ -56,7 +56,7 @@ spec:
   - name: filedrop
   steps:
   - name: fetch-and-write
-    image: ubuntu
+    image: busybox
     script: |
       if [ "hunter2" = "$(cat $(workspaces.super-secret-password.path)/password)" ]; then
         cp $(workspaces.secure-store.path)/recipe.txt $(workspaces.filedrop.path)
@@ -78,7 +78,7 @@ spec:
     - name: filename
   steps:
   - name: print-secrets
-    image: ubuntu
+    image: busybox
     script: cat $(workspaces.storage.path)/$(inputs.params.filename)
 ---
 apiVersion: tekton.dev/v1alpha1

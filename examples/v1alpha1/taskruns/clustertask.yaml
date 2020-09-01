@@ -4,7 +4,7 @@ metadata:
   name: clustertask-v1alpha1
 spec:
   steps:
-  - image: ubuntu
+  - image: busybox
     script: echo hello
 ---
 apiVersion: tekton.dev/v1alpha1

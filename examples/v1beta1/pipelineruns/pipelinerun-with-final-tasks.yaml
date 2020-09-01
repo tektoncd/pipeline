@@ -115,18 +115,18 @@ spec:
     - name: source
   steps:
     - name: check-application-dir-has-source
-      image: ubuntu
+      image: busybox
       script: |
         if [ ! -d "$(workspaces.source.path)/application/" ]; then
           echo "Something went wrong and could not find application source under $(workspaces.source.path)/application/"
           exit 1
         fi
     - name: cleanup-workspace
-      image: ubuntu
+      image: busybox
       script: |
         rm -rf $(workspaces.source.path)/application/
     - name: verify-application-dir-has-gone
-      image: ubuntu
+      image: busybox
       script: |
         if [ -d "$(workspaces.source.path)/application/" ]; then
           echo "Something went wrong cleaning up and the application source still exists under $(workspaces.source.path)/application/"

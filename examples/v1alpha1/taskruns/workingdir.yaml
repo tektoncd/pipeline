@@ -6,14 +6,14 @@ spec:
   taskSpec:
     steps:
     - name: default
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ $PWD == /workspace ]]
 
     - name: override
-      image: ubuntu
+      image: busybox
       workingDir: '/a/path/too/far'
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ $PWD == /a/path/too/far ]]

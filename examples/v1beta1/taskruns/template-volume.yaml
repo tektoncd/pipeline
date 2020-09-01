@@ -6,17 +6,17 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         echo some stuff > /im/a/custom/mount/path/file
       volumeMounts:
       - name: custom
         mountPath: /im/a/custom/mount/path
     - name: read
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         cat /short/and/stout/file
       volumeMounts:
       - name: custom

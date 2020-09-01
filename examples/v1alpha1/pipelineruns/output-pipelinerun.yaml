@@ -27,12 +27,12 @@ spec:
       type: git
   steps:
   - name: read-docs-old
-    image: ubuntu
-    command: ["/bin/bash"]
+    image: busybox
+    command: ["/bin/sh"]
     args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md']  # tests that targetpath works
   - name: write-new-stuff
-    image: ubuntu
-    command: ['bash']
+    image: busybox
+    command: ['sh']
     args: ['-c', 'ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff']
 ---
 # Reads a file from a predefined path in the workspace git PipelineResource
@@ -51,8 +51,8 @@ spec:
       type: array
   steps:
   - name: read
-    image: ubuntu
-    command: ["/bin/bash"]
+    image: busybox
+    command: ["/bin/sh"]
     args: ['$(inputs.params.args[*])']  # tests that new targetpath and previous task output is dumped
 ---
 # The Output of the first Task (git resource) create-file is given as an `Input`

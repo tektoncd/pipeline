@@ -9,7 +9,7 @@ spec:
   - name: right
     type: string
   check:
-    image: alpine
+    image: busybox
     script: |
       #!/bin/sh
       if [ $(params.left) = $(params.right) ]; then
@@ -56,7 +56,7 @@ metadata:
 spec:
   steps:
     - name: echo
-      image: ubuntu
+      image: busybox
       script: 'echo hello'
 ---
 apiVersion: tekton.dev/v1beta1

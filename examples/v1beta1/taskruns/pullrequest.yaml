@@ -19,11 +19,11 @@ spec:
         type: pullRequest
     steps:
     - name: dump-workspace
-      image: ubuntu
+      image: busybox
       script: find $(resources.inputs.pr.path)/* -type f | xargs tail -n +1
 
     - name: ensure-approved
-      image: ubuntu
+      image: busybox
       script: |
         if [ -f "$(resources.inputs.pr.path)/labels/approved" ]; then
           echo "PR is approved!"

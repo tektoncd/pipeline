@@ -5,8 +5,8 @@ metadata:
 spec:
   steps:
   - name: task-two-step-one
-    image: ubuntu
-    command: ["/bin/bash"]
+    image: busybox
+    command: ["/bin/sh"]
     args: ['-c', 'echo success']
 ---
 apiVersion: tekton.dev/v1beta1

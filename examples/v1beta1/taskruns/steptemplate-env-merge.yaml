@@ -25,40 +25,40 @@ spec:
     steps:
       # Test the environment variables are set in the task
       - name: foo
-        image: ubuntu
+        image: busybox
         script: |
-          #!/usr/bin/env bash
+          #!/usr/bin/env sh
           [[ $FOO == "foo" ]]
         env:
         - name: FOO
           value: $(params.FOO)
       - name: foobar
-        image: ubuntu
+        image: busybox
         script: |
-          #!/usr/bin/env bash
+          #!/usr/bin/env sh
           [[ $FOOBAR == "foobar" ]]
         env:
         - name: FOOBAR
           value: $(params.FOOBAR)
       - name: bar
-        image: ubuntu
+        image: busybox
         script: |
-          #!/usr/bin/env bash
+          #!/usr/bin/env sh
           [[ $BAR == "bar" ]]
         env:
         - name: BAR
           value: $(params.BAR)
       # Use the env var from the stepTemplate
       - name: qux-no-override
-        image: ubuntu
+        image: busybox
         script: |
-          #!/usr/bin/env bash
+          #!/usr/bin/env sh
           [[ $QUX == "original" ]]
       # Override the env var in the stepTemplate
       - name: qux-override
-        image: ubuntu
+        image: busybox
         script: |
-          #!/usr/bin/env bash
+          #!/usr/bin/env sh
           [[ $QUX == "override" ]]
         env:
         - name: QUX

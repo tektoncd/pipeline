@@ -19,9 +19,9 @@ spec:
         optional: true
   steps:
     - name: task-echo-success
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         echo "success"
 ---
 

@@ -26,11 +26,11 @@ spec:
       type: git
   steps:
   - name: read-docs-old
-    image: ubuntu
-    command: ["/bin/bash"]
+    image: busybox
+    command: ["/bin/sh"]
     args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md']  # tests that targetpath works
   - name: write-new-stuff
-    image: ubuntu
+    image: busybox
     command: ['bash']
     args: ['-c', 'ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff']
 ---
@@ -50,8 +50,8 @@ spec:
       targetPath: newworkspace
   steps:
   - name: read
-    image: ubuntu
-    command: ["/bin/bash"]
+    image: busybox
+    command: ["/bin/sh"]
     args: ['$(inputs.params.args[*])']  # tests that new targetpath and previous task output is dumped
 ---
 # The Output of the first Task (git resource) create-file is given as an `Input`

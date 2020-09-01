@@ -10,7 +10,7 @@ spec:
       type: git
       optional: true
   check:
-    image: alpine
+    image: busybox
     script: 'test -f $(resources.git-repo.path)/$(params.path)'
 ---
 
@@ -24,7 +24,7 @@ spec:
       type: image
       optional: true
   check:
-    image: alpine
+    image: busybox
     script: 'test ! -z $(resources.built-image.url)'
 ---
 

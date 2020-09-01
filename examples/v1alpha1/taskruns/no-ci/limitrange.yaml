@@ -25,7 +25,7 @@ metadata:
 spec:
   steps:
     - name: echo
-      image: ubuntu
+      image: busybox
       command:
         - echo
       args:

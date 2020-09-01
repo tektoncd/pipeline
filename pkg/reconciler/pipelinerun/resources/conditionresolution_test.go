@@ -196,23 +196,23 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	}{{
 		name: "user-provided-container-name",
 		cond: tbv1alpha1.Condition("name", tbv1alpha1.ConditionSpec(
-			tbv1alpha1.ConditionSpecCheck("foo", "ubuntu"),
+			tbv1alpha1.ConditionSpecCheck("foo", "busybox"),
 		)),
 		want: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "foo",
-				Image: "ubuntu",
+				Image: "busybox",
 			}}},
 		},
 	}, {
 		name: "default-container-name",
 		cond: tbv1alpha1.Condition("bar", tbv1alpha1.ConditionSpec(
-			tbv1alpha1.ConditionSpecCheck("", "ubuntu"),
+			tbv1alpha1.ConditionSpecCheck("", "busybox"),
 		)),
 		want: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "condition-check-bar",
-				Image: "ubuntu",
+				Image: "busybox",
 			}}},
 		},
 	}, {
@@ -240,7 +240,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	}, {
 		name: "with-resources",
 		cond: tbv1alpha1.Condition("bar", tbv1alpha1.ConditionSpec(
-			tbv1alpha1.ConditionSpecCheck("name", "ubuntu",
+			tbv1alpha1.ConditionSpecCheck("name", "busybox",
 				tb.Args("$(resources.git-resource.revision)")),
 			tbv1alpha1.ConditionResource("git-resource", resourcev1alpha1.PipelineResourceTypeGit),
 		)),
@@ -253,7 +253,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		want: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "name",
-				Image: "ubuntu",
+				Image: "busybox",
 				Args:  []string{"master"},
 			}}},
 			Resources: &v1beta1.TaskResources{

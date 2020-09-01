@@ -35,7 +35,7 @@ func TestCondition_Validate(t *testing.T) {
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{Container: corev1.Container{
 				Name:  "cname",
-				Image: "ubuntu",
+				Image: "busybox",
 			}},
 			Params: []v1alpha1.ParamSpec{{
 				Name: "paramname",

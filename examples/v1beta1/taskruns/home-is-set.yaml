@@ -5,7 +5,7 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ $HOME == /tekton/home ]]

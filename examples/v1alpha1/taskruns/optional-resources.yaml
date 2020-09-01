@@ -21,9 +21,9 @@ spec:
         optional: true
   steps:
     - name: check-git-repo
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         if [ -d $(inputs.resources.git-repo.path) ]; then
           echo "Git repo was cloned at $(inputs.resources.git-repo.path)"
           if [ -f $(inputs.resources.git-repo.path)/$(inputs.params.filename) ]; then

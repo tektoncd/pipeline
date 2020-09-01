@@ -18,9 +18,9 @@ spec:
         type: string
     steps:
     - name: read
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         cat /configmap/test.data
       volumeMounts:
       - name: custom

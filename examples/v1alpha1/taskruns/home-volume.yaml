@@ -6,17 +6,17 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: busybox
       script: echo some stuff > /tekton/home/stuff
     - name: read
-      image: ubuntu
+      image: busybox
       script: cat /tekton/home/stuff
     - name: override-homevol
-      image: ubuntu
+      image: busybox
       # /tekton/home/stuff *doesn't* exist, because the specified volumeMount
       # conflicts with it, and the user's explicit declaration wins the tie.
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ ! -f /tekton/home/stuff ]]
       volumeMounts:
       - name: empty

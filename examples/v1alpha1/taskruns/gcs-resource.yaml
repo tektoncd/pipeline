@@ -9,7 +9,7 @@ spec:
       - name: source
         type: storage
     steps:
-    - image: alpine
+    - image: busybox
       script: unzip source/archive.zip && cat file.txt
   inputs:
     resources:

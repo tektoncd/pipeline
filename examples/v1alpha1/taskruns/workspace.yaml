@@ -55,30 +55,30 @@ spec:
   taskSpec:
     steps:
     - name: write
-      image: ubuntu
+      image: busybox
       script: echo $(workspaces.custom.volume) > $(workspaces.custom.path)/foo
     - name: read
-      image: ubuntu
+      image: busybox
       script: cat $(workspaces.custom.path)/foo | grep $(workspaces.custom.volume)
     - name: write2
-      image: ubuntu
+      image: busybox
       script: echo $(workspaces.custom2.path) > $(workspaces.custom2.path)/foo
     - name: read2
-      image: ubuntu
+      image: busybox
       script: cat $(workspaces.custom2.path)/foo | grep $(workspaces.custom2.path)
     - name: write3
-      image: ubuntu
+      image: busybox
       script: echo $(workspaces.custom3.path) > $(workspaces.custom3.path)/foo
     - name: read3
-      image: ubuntu
+      image: busybox
       script: cat $(workspaces.custom3.path)/foo | grep $(workspaces.custom3.path)
     - name: readconfigmap
-      image: ubuntu
+      image: busybox
       script: cat $(workspaces.custom4.path)/my-message.txt | grep "hello world"
     - name: readsecret
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         set -xe
         cat $(workspaces.custom5.path)/username | grep "user"
         cat $(workspaces.custom5.path)/message | grep "hello secret"

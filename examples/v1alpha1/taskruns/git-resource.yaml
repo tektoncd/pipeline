@@ -9,7 +9,7 @@ spec:
       - name: skaffold
         type: git
     steps:
-    - image: ubuntu
+    - image: busybox
       script: cat skaffold/README.md
   inputs:
     resources:
@@ -33,7 +33,7 @@ spec:
       - name: skaffold
         type: git
     steps:
-    - image: ubuntu
+    - image: busybox
       script: cat skaffold/README.md
   inputs:
     resources:
@@ -57,7 +57,7 @@ spec:
       - name: skaffold
         type: git
     steps:
-    - image: ubuntu
+    - image: busybox
       script: cat skaffold/README.md
   inputs:
     resources:
@@ -82,7 +82,7 @@ spec:
         - name: skaffold
           type: git
     steps:
-      - image: ubuntu
+      - image: busybox
         script: cat skaffold/README.md
   inputs:
     resources:
@@ -109,7 +109,7 @@ spec:
         - name: skaffold
           type: git
     steps:
-      - image: ubuntu
+      - image: busybox
         script: cat skaffold/README.md
   inputs:
     resources:

@@ -5,9 +5,9 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: busybox
       script: 'true'
-    - image: ubuntu
+    - image: busybox
       script: 'true'
-    - image: ubuntu
+    - image: busybox
       script: 'true'

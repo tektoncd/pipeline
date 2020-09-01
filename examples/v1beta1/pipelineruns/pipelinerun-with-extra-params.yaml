@@ -35,9 +35,9 @@ spec:
     description: The second integer
   steps:
   - name: sum
-    image: bash:latest
+    image: busybox:latest
     script: |
-      #!/usr/bin/env bash
+      #!/usr/bin/env sh
       echo -n $(( "$(inputs.params.a)" + "$(inputs.params.b)" ))
 ---
 apiVersion: tekton.dev/v1beta1

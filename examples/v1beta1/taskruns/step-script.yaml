@@ -10,15 +10,15 @@ spec:
 
     steps:
     - name: noshebang
-      image: ubuntu
+      image: busybox
       script: echo "no shebang"
     - name: bash
-      image: ubuntu
+      image: busybox
       env:
       - name: FOO
         value: foooooooo
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         set -euxo pipefail
         echo "Hello from Bash!"
         echo FOO is ${FOO}
@@ -28,21 +28,21 @@ spec:
         done
 
     - name: place-file
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         echo "echo Hello from script file" > /workspace/hello
         chmod +x /workspace/hello
     - name: run-file
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         /workspace/hello
 
     - name: contains-eof
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         cat > file << EOF
         this file has some contents
         EOF
@@ -79,10 +79,10 @@ spec:
 
     # Test that args are allowed and passed to the script as expected.
     - name: args-allowed
-      image: ubuntu
+      image: busybox
       args: ['hello', 'world']
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         [[ $# == 2 ]]
         [[ $1 == "hello" ]]
         [[ $2 == "world" ]]

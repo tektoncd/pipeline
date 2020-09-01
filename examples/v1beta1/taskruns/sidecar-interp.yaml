@@ -12,9 +12,9 @@ spec:
         emptyDir: {}
     sidecars:
       - name: value-sidecar
-        image: ubuntu
+        image: busybox
         command:
-          - /bin/bash
+          - /bin/sh
         args:
           - -c
           - "echo $(params.some-input) > /shared/value && sleep infinity"
@@ -23,9 +23,9 @@ spec:
             mountPath: /shared
     steps:
       - name: check-value
-        image: ubuntu
+        image: busybox
         script: |
-          #!/bin/bash
+          #!/bin/sh
           VALUE=$(cat /shared/value)
           [[ $VALUE == 'foo' ]]
         volumeMounts:

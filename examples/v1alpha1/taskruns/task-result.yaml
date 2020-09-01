@@ -13,12 +13,12 @@ spec:
       description: The current date in humand readable format
   steps:
     - name: print-date-unix-timestamp
-      image: bash:latest
+      image: busybox:latest
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         date +%s | tee /tekton/results/current-date-unix-timestamp
     - name: print-date-human-readable
-      image: bash:latest
+      image: busybox:latest
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         date | tee /tekton/results/current-date-human-readable

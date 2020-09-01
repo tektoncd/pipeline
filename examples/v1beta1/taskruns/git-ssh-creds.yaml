@@ -44,7 +44,7 @@ spec:
         type: git
     steps:
     - name: config
-      image: ubuntu
+      image: busybox
       script: |
-        #!/usr/bin/env bash
+        #!/usr/bin/env sh
         cat /workspace/gitssh/README.md

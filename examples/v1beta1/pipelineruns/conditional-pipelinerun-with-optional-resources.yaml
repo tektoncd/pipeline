@@ -10,7 +10,7 @@ spec:
       type: git
       optional: true
   check:
-    image: alpine
+    image: busybox
     script: 'test ! -f $(resources.optional-workspace.path)/$(params.path)'
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -37,7 +37,7 @@ spec:
         optional: true
   steps:
     - name: run-ls
-      image: ubuntu
+      image: busybox
       script: 'ls -al $(inputs.resources.optional-workspace.path)'
 ---
 apiVersion: tekton.dev/v1beta1
