@@ -446,7 +446,7 @@ spec:
     - name: build-the-image
       taskRef:
         name: build-push
-      Timeout: "0h1m30s"
+      timeout: "0h1m30s"
 ```
 
 ## Using `Results`
