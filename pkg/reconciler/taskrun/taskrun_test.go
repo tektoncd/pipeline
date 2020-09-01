@@ -359,7 +359,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		tb.TaskRunServiceAccountName("test-sa"),
 	))
 	taskruns := []*v1beta1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
-	defaultSAName := "pipelines"
+	defaultSAName := "default"
 	d := test.Data{
 		TaskRuns: taskruns,
 		Tasks:    []*v1beta1.Task{simpleTask, saTask},
