@@ -26,7 +26,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    ```bash
    #Example command for creating a cluster on GKE
    gcloud container clusters create $CLUSTER_NAME \
-     --zone=$CLUSTER_ZONE --cluster-version=1.16.9-gke.6
+     --zone=$CLUSTER_ZONE
    ```
 
 3. Grant `cluster-admin` permissions to the current user:
