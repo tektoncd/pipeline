@@ -90,6 +90,17 @@ spec:
           containerPort: 8008
         - name: https-webhook
           containerPort: 8443
+        livenessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
