@@ -19,6 +19,7 @@ package pod
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
@@ -43,8 +44,10 @@ const credsInitHomeMountPrefix = "tekton-creds-init-home"
 // caller. If no matching annotated secrets are found, nil lists with a
 // nil error are returned.
 func credsInit(serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+	// service account if not specified in pipeline/task spec, read it from the ConfigMap
+	// and defaults to `default` if its missing from the ConfigMap as well
 	if serviceAccountName == "" {
-		serviceAccountName = "default"
+		serviceAccountName = config.DefaultServiceAccountValue
 	}
 
 	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})

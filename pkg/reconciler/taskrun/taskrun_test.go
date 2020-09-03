@@ -566,6 +566,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-home-env",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -610,6 +611,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-working-dir",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -934,6 +936,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1029,6 +1032,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(
 					workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 						Name:         "tekton-creds-init-home-78c5n",
@@ -1162,6 +1166,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-mz4c7",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1235,6 +1240,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1281,6 +1287,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-mz4c7",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1354,6 +1361,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1399,6 +1407,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-credentials-variable",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-9l9zj",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
