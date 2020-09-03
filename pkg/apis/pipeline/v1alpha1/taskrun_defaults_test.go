@@ -43,8 +43,9 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 		want: &v1alpha1.TaskRunSpec{
-			TaskRef: nil,
-			Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
+			TaskRef:            nil,
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 	}, {
 		desc: "taskref kind is empty",
@@ -53,8 +54,9 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 		want: &v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{Kind: v1alpha1.NamespacedTaskKind},
-			Timeout: &metav1.Duration{Duration: 500 * time.Millisecond},
+			TaskRef:            &v1alpha1.TaskRef{Kind: v1alpha1.NamespacedTaskKind},
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: 500 * time.Millisecond},
 		},
 	}, {
 		desc: "timeout is nil",
@@ -62,14 +64,16 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			TaskRef: &v1alpha1.TaskRef{Kind: v1alpha1.ClusterTaskKind},
 		},
 		want: &v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{Kind: v1alpha1.ClusterTaskKind},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			TaskRef:            &v1alpha1.TaskRef{Kind: v1alpha1.ClusterTaskKind},
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 		},
 	}, {
 		desc: "pod template is nil",
 		trs:  &v1alpha1.TaskRunSpec{},
 		want: &v1alpha1.TaskRunSpec{
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 		},
 	}, {
 		desc: "pod template is not nil",
@@ -81,7 +85,8 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 			},
 		},
 		want: &v1alpha1.TaskRunSpec{
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			PodTemplate: &v1alpha1.PodTemplate{
 				NodeSelector: map[string]string{
 					"label": "value",
@@ -108,7 +113,8 @@ func TestTaskRunSpec_SetDefaults(t *testing.T) {
 					}},
 				},
 			},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			ServiceAccountName: config.DefaultServiceAccountValue,
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 		},
 	}}
 	for _, tc := range cases {
@@ -137,7 +143,8 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
 	}, {
@@ -152,8 +159,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
 	}, {
@@ -168,8 +176,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
 		wc: contexts.WithUpgradeViaDefaulting,
@@ -185,8 +194,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -243,8 +253,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "something-else"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -275,8 +286,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Labels: map[string]string{"app.kubernetes.io/managed-by": "user-specified"},
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				ServiceAccountName: config.DefaultServiceAccountValue,
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
