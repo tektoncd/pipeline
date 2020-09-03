@@ -22,6 +22,9 @@ import (
 	"fmt"
 
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/substitution"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"knative.dev/pkg/apis"
 )
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
@@ -141,4 +144,41 @@ func NewArrayOrString(value string, values ...string) ArrayOrString {
 		Type:      ParamTypeString,
 		StringVal: value,
 	}
+}
+
+func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix string, paramNames sets.String, arrayParamNames sets.String) *apis.FieldError {
+	for _, param := range params {
+		if param.Value.Type == ParamTypeString {
+			if err := validateStringVariableInTaskParameters(fmt.Sprintf("[%s]", param.Name), param.Value.StringVal, prefix, paramNames, arrayParamNames); err != nil {
+				return err
+			}
+		} else {
+			for _, arrayElement := range param.Value.ArrayVal {
+				if err := validateArrayVariableInTaskParameters(fmt.Sprintf("[%s]", param.Name), arrayElement, prefix, paramNames, arrayParamNames); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validateStringVariableInTaskParameters(name, value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
+	if err := substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", stringVars); err != nil {
+		return err
+	}
+	if err := substitution.ValidateVariableProhibited(name, value, prefix, "task parameter", "pipelinespec.params", arrayVars); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateArrayVariableInTaskParameters(name, value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
+	if err := substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", stringVars); err != nil {
+		return err
+	}
+	if err := substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", arrayVars); err != nil {
+		return err
+	}
+	return nil
 }
