@@ -67,13 +67,7 @@ func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.
 
 // ApplyTaskResults applies the ResolvedResultRef to each PipelineTask.Params in targets
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
-	stringReplacements := map[string]string{}
-
-	for _, resolvedResultRef := range resolvedResultRefs {
-		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
-		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
-	}
-
+	stringReplacements := resolvedResultRefs.getStringReplacements()
 	for _, resolvedPipelineRunTask := range targets {
 		// also make substitution for resolved condition checks
 		for _, resolvedConditionCheck := range resolvedPipelineRunTask.ResolvedConditionChecks {

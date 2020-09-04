@@ -266,3 +266,16 @@ func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultR
 	}
 	return nil, fmt.Errorf("Could not find result with name %s for task run %s", reference.Result, reference.PipelineTask)
 }
+
+func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
+	replacements := map[string]string{}
+	for _, r := range rs {
+		replaceTarget := r.getReplaceTarget()
+		replacements[replaceTarget] = r.Value.StringVal
+	}
+	return replacements
+}
+
+func (r *ResolvedResultRef) getReplaceTarget() string {
+	return fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result)
+}
