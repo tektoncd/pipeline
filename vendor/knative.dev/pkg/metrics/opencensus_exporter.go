@@ -17,10 +17,13 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"path"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
+	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
@@ -28,10 +31,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-func newOpenCensusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
+func newOpenCensusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
 	opts := []ocagent.ExporterOption{ocagent.WithServiceName(config.component)}
 	if config.collectorAddress != "" {
 		opts = append(opts, ocagent.WithAddress(config.collectorAddress))
+	}
+	metrixPrefix := path.Join(config.domain, config.component)
+	if metrixPrefix != "" {
+		opts = append(opts, ocagent.WithMetricNamePrefix(metrixPrefix))
 	}
 	if config.requireSecure {
 		opts = append(opts, ocagent.WithTLSCredentials(getCredentials(config.component, config.secret, logger)))
@@ -40,12 +47,26 @@ func newOpenCensusExporter(config *metricsConfig, logger *zap.SugaredLogger) (vi
 	}
 	e, err := ocagent.NewExporter(opts...)
 	if err != nil {
-		logger.Errorw("failed to create the OpenCensus exporter.", zap.Error(err))
-		return nil, err
+		logger.Errorw("Failed to create the OpenCensus exporter.", zap.Error(err))
+		return nil, nil, err
 	}
-	logger.Infof("created OpenCensus exporter with config: %+v.", *config)
+	logger.Infow("Created OpenCensus exporter with config:", zap.Any("config", *config))
 	view.RegisterExporter(e)
-	return e, nil
+	return e, getFactory(e, opts), nil
+}
+
+func getFactory(defaultExporter view.Exporter, stored []ocagent.ExporterOption) ResourceExporterFactory {
+	return func(r *resource.Resource) (view.Exporter, error) {
+		if r == nil || (r.Type == "" && len(r.Labels) == 0) {
+			// Don't create duplicate exporters for the default exporter.
+			return defaultExporter, nil
+		}
+		opts := append(stored, ocagent.WithResourceDetector(
+			func(context.Context) (*resource.Resource, error) {
+				return r, nil
+			}))
+		return ocagent.NewExporter(opts...)
+	}
 }
 
 // getOpenCensusSecret attempts to locate a secret containing TLS credentials
@@ -71,7 +92,7 @@ func getOpenCensusSecret(component string, lister SecretFetcher) (*corev1.Secret
 // for communicating with the OpenCensus Agent.
 func getCredentials(component string, secret *corev1.Secret, logger *zap.SugaredLogger) credentials.TransportCredentials {
 	if secret == nil {
-		logger.Errorf("no secret provided for component %q; cannot use requireSecure=true", component)
+		logger.Errorf("No secret provided for component %q; cannot use requireSecure=true", component)
 		return nil
 	}
 	return credentials.NewTLS(&tls.Config{

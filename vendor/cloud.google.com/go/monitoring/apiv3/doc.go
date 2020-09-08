@@ -34,6 +34,8 @@
 //
 // For information about setting deadlines, reusing contexts, and more
 // please visit godoc.org/cloud.google.com/go.
+//
+// Deprecated: Please use cloud.google.com/go/monitoring/apiv3/v2.
 package monitoring // import "cloud.google.com/go/monitoring/apiv3"
 
 import (

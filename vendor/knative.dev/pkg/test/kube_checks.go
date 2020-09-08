@@ -185,7 +185,7 @@ func WaitForLogContent(client *KubeClient, podName, containerName, namespace, co
 
 // WaitForAllPodsRunning waits for all the pods to be in running state
 func WaitForAllPodsRunning(client *KubeClient, namespace string) error {
-	return WaitForPodListState(client, PodsRunning, "PodsAreRunning", namespace)
+	return WaitForPodListState(client, podsRunning, "PodsAreRunning", namespace)
 }
 
 // WaitForPodRunning waits for the given pod to be in running state
@@ -196,22 +196,23 @@ func WaitForPodRunning(client *KubeClient, name string, namespace string) error 
 		if err != nil {
 			return true, err
 		}
-		return PodRunning(p), nil
+		return podRunning(p), nil
 	})
 }
 
-// PodsRunning will check the status conditions of the pod list and return true all pods are Running
-func PodsRunning(podList *corev1.PodList) (bool, error) {
-	for _, pod := range podList.Items {
-		if isRunning := PodRunning(&pod); !isRunning {
+// podsRunning will check the status conditions of the pod list and return true all pods are Running
+func podsRunning(podList *corev1.PodList) (bool, error) {
+	// Pods are big, so use indexing, to avoid copying.
+	for i := range podList.Items {
+		if isRunning := podRunning(&podList.Items[i]); !isRunning {
 			return false, nil
 		}
 	}
 	return true, nil
 }
 
-// PodRunning will check the status conditions of the pod and return true if it's Running
-func PodRunning(pod *corev1.Pod) bool {
+// podRunning will check the status conditions of the pod and return true if it's Running.
+func podRunning(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodRunning || pod.Status.Phase == corev1.PodSucceeded
 }
 

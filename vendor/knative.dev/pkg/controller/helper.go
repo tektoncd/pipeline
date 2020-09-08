@@ -23,8 +23,11 @@ import (
 	"knative.dev/pkg/kmeta"
 )
 
+// Callback is a function that is passed to an informer's event handler.
 type Callback func(interface{})
 
+// EnsureTypeMeta augments the passed-in callback, ensuring that all objects that pass
+// through this callback have their TypeMeta set according to the provided GVK.
 func EnsureTypeMeta(f Callback, gvk schema.GroupVersionKind) Callback {
 	apiVersion, kind := gvk.ToAPIVersionAndKind()
 
@@ -34,12 +37,23 @@ func EnsureTypeMeta(f Callback, gvk schema.GroupVersionKind) Callback {
 			// TODO: We should consider logging here.
 			return
 		}
-		// We need to populated TypeMeta, but cannot trample the
+
+		accessor, err := meta.TypeAccessor(typed)
+		if err != nil {
+			return
+		}
+
+		// If TypeMeta is already what we want, exit early.
+		if accessor.GetAPIVersion() == apiVersion && accessor.GetKind() == kind {
+			f(typed)
+			return
+		}
+
+		// We need to populate TypeMeta, but cannot trample the
 		// informer's copy.
-		// TODO(mattmoor): Avoid the copy if TypeMeta is set.
 		copy := typed.DeepCopyObject()
 
-		accessor, err := meta.TypeAccessor(copy)
+		accessor, err = meta.TypeAccessor(copy)
 		if err != nil {
 			return
 		}

@@ -213,6 +213,15 @@ func isNonNamespaced(tags map[string]map[string]string) bool {
 	return has
 }
 
+func stubs(tags map[string]map[string]string) bool {
+	vals, has := tags["genreconciler"]
+	if !has {
+		return false
+	}
+	_, has = vals["stubs"]
+	return has
+}
+
 func vendorless(p string) string {
 	if pos := strings.LastIndex(p, "/vendor/"); pos != -1 {
 		return p[pos+len("/vendor/"):]
@@ -414,6 +423,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 		reconcilerClass, hasReconcilerClass := extractReconcilerClassTag(extracted)
 		nonNamespaced := isNonNamespaced(extracted)
 		isKRShaped := isKRShaped(extracted)
+		stubs := stubs(extracted)
 
 		packagePath := filepath.Join(packagePath, strings.ToLower(t.Name.Name))
 
@@ -449,32 +459,34 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 			},
 		})
 
-		// Controller Stub
-		vers = append(vers, &generator.DefaultPackage{
-			PackageName: strings.ToLower(t.Name.Name),
-			PackagePath: filepath.Join(packagePath, "stub"),
-			HeaderText:  boilerplate,
-			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-				// Impl
-				generators = append(generators, &reconcilerControllerStubGenerator{
-					DefaultGen: generator.DefaultGen{
-						OptionalName: "controller",
-					},
-					typeToGenerate:      t,
-					reconcilerPkg:       packagePath,
-					outputPackage:       filepath.Join(packagePath, "stub"),
-					imports:             generator.NewImportTracker(),
-					informerPackagePath: informerPackagePath,
-					reconcilerClass:     reconcilerClass,
-					hasReconcilerClass:  hasReconcilerClass,
-				})
-				return generators
-			},
-			FilterFunc: func(c *generator.Context, t *types.Type) bool {
-				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
-				return tags.NeedsReconciler(t, customArgs)
-			},
-		})
+		if stubs {
+			// Controller Stub
+			vers = append(vers, &generator.DefaultPackage{
+				PackageName: strings.ToLower(t.Name.Name),
+				PackagePath: filepath.Join(packagePath, "stub"),
+				HeaderText:  boilerplate,
+				GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+					// Impl
+					generators = append(generators, &reconcilerControllerStubGenerator{
+						DefaultGen: generator.DefaultGen{
+							OptionalName: "controller",
+						},
+						typeToGenerate:      t,
+						reconcilerPkg:       packagePath,
+						outputPackage:       filepath.Join(packagePath, "stub"),
+						imports:             generator.NewImportTracker(),
+						informerPackagePath: informerPackagePath,
+						reconcilerClass:     reconcilerClass,
+						hasReconcilerClass:  hasReconcilerClass,
+					})
+					return generators
+				},
+				FilterFunc: func(c *generator.Context, t *types.Type) bool {
+					tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+					return tags.NeedsReconciler(t, customArgs)
+				},
+			})
+		}
 
 		// Reconciler
 		vers = append(vers, &generator.DefaultPackage{
@@ -508,20 +520,45 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 			},
 		})
 
-		// Reconciler Stub
+		if stubs {
+			// Reconciler Stub
+			vers = append(vers, &generator.DefaultPackage{
+				PackageName: strings.ToLower(t.Name.Name),
+				PackagePath: filepath.Join(packagePath, "stub"),
+				HeaderText:  boilerplate,
+				GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+					// Impl
+					generators = append(generators, &reconcilerReconcilerStubGenerator{
+						DefaultGen: generator.DefaultGen{
+							OptionalName: "reconciler",
+						},
+						typeToGenerate: t,
+						reconcilerPkg:  packagePath,
+						outputPackage:  filepath.Join(packagePath, "stub"),
+						imports:        generator.NewImportTracker(),
+					})
+					return generators
+				},
+				FilterFunc: func(c *generator.Context, t *types.Type) bool {
+					tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+					return tags.NeedsReconciler(t, customArgs)
+				},
+			})
+		}
+
+		// Reconciler State
 		vers = append(vers, &generator.DefaultPackage{
 			PackageName: strings.ToLower(t.Name.Name),
-			PackagePath: filepath.Join(packagePath, "stub"),
+			PackagePath: packagePath,
 			HeaderText:  boilerplate,
 			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
-				// Impl
-				generators = append(generators, &reconcilerReconcilerStubGenerator{
+				// state
+				generators = append(generators, &reconcilerStateGenerator{
 					DefaultGen: generator.DefaultGen{
-						OptionalName: "reconciler",
+						OptionalName: "state",
 					},
 					typeToGenerate: t,
-					reconcilerPkg:  packagePath,
-					outputPackage:  filepath.Join(packagePath, "stub"),
+					outputPackage:  packagePath,
 					imports:        generator.NewImportTracker(),
 				})
 				return generators

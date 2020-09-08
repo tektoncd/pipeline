@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/apis/duck/ducktypes"
 
 	"knative.dev/pkg/apis"
 )
@@ -65,6 +66,12 @@ func (t *KResource) Populate() {
 		Message:            "n3wScott, find your party hat :tada:",
 	}}
 }
+
+// Verify KResource resources meet duck contracts.
+var (
+	_ apis.Listable         = (*KResource)(nil)
+	_ ducktypes.Populatable = (*KResource)(nil)
+)
 
 // GetListType implements apis.Listable
 func (*KResource) GetListType() runtime.Object {

@@ -98,7 +98,18 @@ type TableRow struct {
 	// testing framework. Instead it is used in the test method. E.g. setting up the responses for a
 	// mock client can go in here.
 	OtherTestData map[string]interface{}
+
+	CmpOpts []cmp.Option
 }
+
+var (
+	ignoreLastTransitionTime = cmp.FilterPath(func(p cmp.Path) bool {
+		return strings.HasSuffix(p.String(), "LastTransitionTime.Inner.Time")
+	}, cmp.Ignore())
+
+	ignoreQuantity = cmpopts.IgnoreUnexported(resource.Quantity{})
+	defaultCmpOpts = []cmp.Option{ignoreLastTransitionTime, ignoreQuantity, cmpopts.EquateEmpty()}
+)
 
 func objKey(o runtime.Object) string {
 	on := o.(kmeta.Accessor)
@@ -156,6 +167,7 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		t.Errorf("Error capturing actions by verb: %q", err)
 	}
 
+	effectiveOpts := append(r.CmpOpts, defaultCmpOpts...)
 	// Previous state is used to diff resource expected state for update requests that were missed.
 	objPrevState := make(map[string]runtime.Object, len(r.Objects))
 	for _, o := range r.Objects {
@@ -175,8 +187,9 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 			t.Errorf("Unexpected action[%d]: %#v", i, got)
 		}
 
-		if diff := cmp.Diff(want, obj, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Unexpected create (-want, +got): %s", diff)
+		if !cmp.Equal(want, obj, effectiveOpts...) {
+			t.Errorf("Unexpected create (-want, +got):\n%s",
+				cmp.Diff(want, obj, effectiveOpts...))
 		}
 	}
 	if got, want := len(actions.Creates), len(r.WantCreates); got > want {
@@ -195,8 +208,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 				t.Errorf("Object %s was never created: want: %#v", key, wo)
 				continue
 			}
-			t.Errorf("Missing update for %s (-want, +prevState): %s", key,
-				cmp.Diff(wo, oldObj, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()))
+			t.Errorf("Missing update for %s (-want, +prevState):\n%s", key,
+				cmp.Diff(wo, oldObj, effectiveOpts...))
 			continue
 		}
 
@@ -209,8 +222,9 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		// Update the object state.
 		objPrevState[objKey(got)] = got
 
-		if diff := cmp.Diff(want.GetObject(), got, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Unexpected update (-want, +got): %s", diff)
+		if !cmp.Equal(want.GetObject(), got, effectiveOpts...) {
+			t.Errorf("Unexpected update (-want, +got):\n%s",
+				cmp.Diff(want.GetObject(), got, effectiveOpts...))
 		}
 	}
 	if got, want := len(updates), len(r.WantUpdates); got > want {
@@ -230,8 +244,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 				t.Errorf("Object %s was never created: want: %#v", key, wo)
 				continue
 			}
-			t.Errorf("Missing status update for %s (-want, +prevState): %s", key,
-				cmp.Diff(wo, oldObj, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()))
+			t.Errorf("Missing status update for %s (-want, +prevState):\n%s", key,
+				cmp.Diff(wo, oldObj, effectiveOpts...))
 			continue
 		}
 
@@ -240,8 +254,9 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		// Update the object state.
 		objPrevState[objKey(got)] = got
 
-		if diff := cmp.Diff(want.GetObject(), got, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Unexpected status update (-want, +got): %s\nFull: %v", diff, got)
+		if !cmp.Equal(want.GetObject(), got, effectiveOpts...) {
+			t.Errorf("Unexpected status update (-want, +got):\n%s\nFull: %v",
+				cmp.Diff(want.GetObject(), got, effectiveOpts...), got)
 		}
 	}
 	if got, want := len(statusUpdates), len(r.WantStatusUpdates); got > want {
@@ -253,8 +268,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 				t.Errorf("Object %s was never created: want: %#v", key, wo)
 				continue
 			}
-			t.Errorf("Extra status update for %s (-extra, +prevState): %s", key,
-				cmp.Diff(wo, oldObj, ignoreLastTransitionTime, safeDeployDiff, cmpopts.EquateEmpty()))
+			t.Errorf("Extra status update for %s (-extra, +prevState):\n%s", key,
+				cmp.Diff(wo, oldObj, effectiveOpts...))
 		}
 	}
 
@@ -326,8 +341,8 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 				got.GetName() != expectedNamespace) {
 			t.Errorf("Unexpected patch[%d]: %#v", i, got)
 		}
-		if diff := cmp.Diff(string(want.GetPatch()), string(got.GetPatch())); diff != "" {
-			t.Errorf("Unexpected patch(-want, +got): %s", diff)
+		if got, want := string(got.GetPatch()), string(want.GetPatch()); got != want {
+			t.Errorf("Unexpected patch(-want, +got):\n%s", cmp.Diff(want, got))
 		}
 	}
 	if got, want := len(actions.Patches), len(r.WantPatches); got > want {
@@ -339,17 +354,17 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 	gotEvents := eventList.Events()
 	for i, want := range r.WantEvents {
 		if i >= len(gotEvents) {
-			t.Errorf("Missing event: %s", want)
+			t.Error("Missing event:", want)
 			continue
 		}
 
-		if diff := cmp.Diff(want, gotEvents[i]); diff != "" {
-			t.Errorf("unexpected event(-want, +got): %s", diff)
+		if !cmp.Equal(want, gotEvents[i]) {
+			t.Errorf("Unexpected event(-want, +got):\n%s", cmp.Diff(want, gotEvents[i]))
 		}
 	}
 	if got, want := len(gotEvents), len(r.WantEvents); got > want {
 		for _, extra := range gotEvents[want:] {
-			t.Errorf("Extra event: %s", extra)
+			t.Error("Extra event:", extra)
 		}
 	}
 
@@ -377,25 +392,18 @@ func (tt TableTest) Test(t *testing.T, factory Factory) {
 	t.Helper()
 	for _, test := range tt {
 		// Record the original objects in table.
-		originObjects := make([]runtime.Object, 0, len(test.Objects))
-		for _, obj := range test.Objects {
-			originObjects = append(originObjects, obj.DeepCopyObject())
+		originObjects := make([]runtime.Object, len(test.Objects))
+		for i, obj := range test.Objects {
+			originObjects[i] = obj.DeepCopyObject()
 		}
 		t.Run(test.Name, func(t *testing.T) {
 			t.Helper()
 			test.Test(t, factory)
+			// Validate cached objects do not get soiled after controller loops.
+			if !cmp.Equal(originObjects, test.Objects, defaultCmpOpts...) {
+				t.Errorf("Unexpected objects (-want, +got):\n%s",
+					cmp.Diff(originObjects, test.Objects, defaultCmpOpts...))
+			}
 		})
-		// Validate cached objects do not get soiled after controller loops
-		if diff := cmp.Diff(originObjects, test.Objects, safeDeployDiff, cmpopts.EquateEmpty()); diff != "" {
-			t.Errorf("Unexpected objects in test %s (-want, +got): %v", test.Name, diff)
-		}
 	}
 }
-
-var (
-	ignoreLastTransitionTime = cmp.FilterPath(func(p cmp.Path) bool {
-		return strings.HasSuffix(p.String(), "LastTransitionTime.Inner.Time")
-	}, cmp.Ignore())
-
-	safeDeployDiff = cmpopts.IgnoreUnexported(resource.Quantity{})
-)

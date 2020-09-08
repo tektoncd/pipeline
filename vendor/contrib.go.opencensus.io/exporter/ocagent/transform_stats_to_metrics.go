@@ -33,12 +33,12 @@ var (
 	errNilViewData = errors.New("expecting a non-nil view.Data")
 )
 
-func viewDataToMetric(vd *view.Data) (*metricspb.Metric, error) {
+func viewDataToMetric(vd *view.Data, metricNamePrefix string) (*metricspb.Metric, error) {
 	if vd == nil {
 		return nil, errNilViewData
 	}
 
-	descriptor, err := viewToMetricDescriptor(vd.View)
+	descriptor, err := viewToMetricDescriptor(vd.View, metricNamePrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func viewDataToMetric(vd *view.Data) (*metricspb.Metric, error) {
 	return metric, nil
 }
 
-func viewToMetricDescriptor(v *view.View) (*metricspb.MetricDescriptor, error) {
+func viewToMetricDescriptor(v *view.View, metricNamePrefix string) (*metricspb.MetricDescriptor, error) {
 	if v == nil {
 		return nil, errNilView
 	}
@@ -63,8 +63,12 @@ func viewToMetricDescriptor(v *view.View) (*metricspb.MetricDescriptor, error) {
 		return nil, errNilMeasure
 	}
 
+	name := stringOrCall(v.Name, v.Measure.Name)
+	if len(metricNamePrefix) > 0 {
+		name = metricNamePrefix + "/" + name
+	}
 	desc := &metricspb.MetricDescriptor{
-		Name:        stringOrCall(v.Name, v.Measure.Name),
+		Name:        name,
 		Description: stringOrCall(v.Description, v.Measure.Description),
 		Unit:        v.Measure.Unit(),
 		Type:        aggregationToMetricDescriptorType(v),

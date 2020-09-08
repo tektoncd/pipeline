@@ -139,8 +139,9 @@ func (r *Reconciler) ReconcileKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}
 
 	{{if not .isKRShaped}}
 	// TODO: use this if the object has .status.ObservedGeneration.
-	// o.Status.ObservedGeneration = o.Generation{{end}}
-	return newReconciledNormal(o.Namespace, o.Name)
+	// o.Status.ObservedGeneration = o.Generation
+	{{end}}
+	return nil
 }
 
 // Optionally, use FinalizeKind to add finalizers. FinalizeKind will be called
