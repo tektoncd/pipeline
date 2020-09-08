@@ -134,6 +134,6 @@ func AsStructuredWatcher(wf cache.WatchFunc, obj runtime.Object) cache.WatchFunc
 			}
 		}()
 
-		return NewProxyWatcher(structuredCh), nil
+		return watch.NewProxyWatcher(structuredCh), nil
 	}
 }

@@ -102,7 +102,9 @@ func (client *KubeClient) PodLogs(podName, containerName, namespace string) ([]b
 	if err != nil {
 		return nil, err
 	}
-	for _, pod := range podList.Items {
+	for i := range podList.Items {
+		// Pods are big, so avoid copying.
+		pod := &podList.Items[i]
 		if strings.Contains(pod.Name, podName) {
 			result := pods.GetLogs(pod.Name, &corev1.PodLogOptions{
 				Container: containerName,
@@ -110,5 +112,5 @@ func (client *KubeClient) PodLogs(podName, containerName, namespace string) ([]b
 			return result.Raw()
 		}
 	}
-	return nil, fmt.Errorf("could not find logs for %s/%s", podName, containerName)
+	return nil, fmt.Errorf("could not find logs for %s/%s:%s", namespace, podName, containerName)
 }

@@ -181,6 +181,11 @@ func (o *TLogger) errorWithRuntimeCheck(stringThenKeysAndValues ...interface{}) 
 	}
 }
 
+// Cleanup registers a cleanup callback.
+func (o *TLogger) Cleanup(c func()) {
+	o.t.Cleanup(c)
+}
+
 // Run a subtest. Just like testing.T.Run but creates a TLogger.
 func (o *TLogger) Run(name string, f func(t *TLogger)) {
 	tfunc := func(ts *testing.T) {

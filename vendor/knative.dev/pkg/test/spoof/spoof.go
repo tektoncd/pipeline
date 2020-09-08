@@ -135,7 +135,7 @@ func New(
 	// Enable Zipkin tracing
 	roundTripper := &ochttp.Transport{
 		Base:        transport,
-		Propagation: tracecontextb3.TraceContextEgress,
+		Propagation: tracecontextb3.TraceContextB3Egress,
 	}
 
 	sc := SpoofingClient{

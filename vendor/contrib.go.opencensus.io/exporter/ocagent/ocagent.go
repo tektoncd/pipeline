@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2020, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ type Exporter struct {
 	compressor         string
 	headers            map[string]string
 	lastConnectErrPtr  unsafe.Pointer
+	metricNamePerfix   string
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -504,7 +505,7 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
 			Spans:    protoSpans,
-			Resource: resourceProtoFromEnv(),
+			Resource: ae.resource,
 		})
 		ae.senderMu.Unlock()
 		if err != nil {
@@ -513,14 +514,14 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 	}
 }
 
-func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {
+func ocViewDataToPbMetrics(vdl []*view.Data, metricNamePrefix string) []*metricspb.Metric {
 	if len(vdl) == 0 {
 		return nil
 	}
 	metrics := make([]*metricspb.Metric, 0, len(vdl))
 	for _, vd := range vdl {
 		if vd != nil {
-			vmetric, err := viewDataToMetric(vd)
+			vmetric, err := viewDataToMetric(vd, metricNamePrefix)
 			// TODO: (@odeke-em) somehow report this error, if it is non-nil.
 			if err == nil && vmetric != nil {
 				metrics = append(metrics, vmetric)
@@ -531,13 +532,13 @@ func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {
 }
 
 func (ae *Exporter) uploadViewData(vdl []*view.Data) {
-	protoMetrics := ocViewDataToPbMetrics(vdl)
+	protoMetrics := ocViewDataToPbMetrics(vdl, ae.metricNamePerfix)
 	if len(protoMetrics) == 0 {
 		return
 	}
 	req := &agentmetricspb.ExportMetricsServiceRequest{
 		Metrics:  protoMetrics,
-		Resource: resourceProtoFromEnv(),
+		Resource: ae.resource,
 		// TODO:(@odeke-em)
 		// a) Figure out how to derive a Node from the environment
 		// or better letting users of the exporter configure it.

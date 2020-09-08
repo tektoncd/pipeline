@@ -31,6 +31,7 @@ func Record(ctx context.Context, ms stats.Measurement, ros ...stats.Options) {
 }
 
 // RecordBatch stores the given Measurements from `mss` in the current metrics backend.
+// All metrics should be reported using the same Resource.
 func RecordBatch(ctx context.Context, mss ...stats.Measurement) {
 	getCurMetricsConfig().record(ctx, mss)
 }

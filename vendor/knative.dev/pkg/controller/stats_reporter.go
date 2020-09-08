@@ -46,7 +46,6 @@ var (
 	// - length between 1 and 255 inclusive
 	// - characters are printable US-ASCII
 	reconcilerTagKey = tag.MustNewKey("reconciler")
-	keyTagKey        = tag.MustNewKey("key")
 	successTagKey    = tag.MustNewKey("success")
 )
 
@@ -167,12 +166,12 @@ func init() {
 		Description: "Number of reconcile operations",
 		Measure:     reconcileCountStat,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
+		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey},
 	}, {
 		Description: "Latency of reconcile operations",
 		Measure:     reconcileLatencyStat,
 		Aggregation: reconcileDistribution,
-		TagKeys:     []tag.Key{reconcilerTagKey, keyTagKey, successTagKey},
+		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey},
 	}}
 	views = append(views, wp.DefaultViews()...)
 	views = append(views, rp.DefaultViews()...)
@@ -192,7 +191,7 @@ type StatsReporter interface {
 	ReportQueueDepth(v int64) error
 
 	// ReportReconcile reports the count and latency metrics for a reconcile operation
-	ReportReconcile(duration time.Duration, key, success string) error
+	ReportReconcile(duration time.Duration, success string) error
 }
 
 // Reporter holds cached metric objects to report metrics
@@ -234,11 +233,10 @@ func (r *reporter) ReportQueueDepth(v int64) error {
 }
 
 // ReportReconcile reports the count and latency metrics for a reconcile operation
-func (r *reporter) ReportReconcile(duration time.Duration, key, success string) error {
+func (r *reporter) ReportReconcile(duration time.Duration, success string) error {
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Insert(reconcilerTagKey, r.reconciler),
-		tag.Insert(keyTagKey, key),
 		tag.Insert(successTagKey, success))
 	if err != nil {
 		return err

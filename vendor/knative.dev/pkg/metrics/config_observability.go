@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"os"
+	"strings"
 	texttemplate "text/template"
 
 	corev1 "k8s.io/api/core/v1"
@@ -59,6 +60,9 @@ type ObservabilityConfig struct {
 	// EnableProfiling indicates whether it is allowed to retrieve runtime profiling data from
 	// the pods via an HTTP server in the format expected by the pprof visualization tool.
 	EnableProfiling bool
+
+	// EnableRequestLog enables activator/queue-proxy to write request logs.
+	EnableRequestLog bool
 }
 
 func defaultConfig() *ObservabilityConfig {
@@ -81,6 +85,17 @@ func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*Observab
 		cm.AsBool("profiling.enable", &oc.EnableProfiling),
 	); err != nil {
 		return nil, err
+	}
+
+	if raw, ok := configMap.Data["logging.enable-request-log"]; ok {
+		if strings.EqualFold(raw, "true") && oc.RequestLogTemplate != "" {
+			oc.EnableRequestLog = true
+		}
+	} else if oc.RequestLogTemplate != "" {
+		// TODO: remove this after 0.17 cuts, this is meant only for smooth transition to the new flag.
+		// Once 0.17 cuts we should set a proper default value and users will need to set the flag explicitly
+		// to enable request logging.
+		oc.EnableRequestLog = true
 	}
 
 	if oc.RequestLogTemplate != "" {

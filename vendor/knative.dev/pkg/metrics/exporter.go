@@ -85,26 +85,6 @@ func UpdateExporterFromConfigMap(component string, logger *zap.SugaredLogger) fu
 	return ConfigMapWatcher(component, nil, logger)
 }
 
-// RegisterResourceView is similar to view.Register(), except that it will
-// register the view across all Resources tracked by the system, rather than
-// simply the default view.
-// this is a placeholder for real implementation in https://github.com/knative/pkg/pull/1392.
-// That PR will introduce a breaking change, as we need to convert some view.Register to RegisterResourceView in
-// all callers, in serving, eventing, and eventing-contrib.
-// Since that PR is huge, a better approach is to introduce the breaking change up front, by creating this
-// passthrough method, and fixing all the callers before merging that PR.
-func RegisterResourceView(views ...*view.View) error {
-	return view.Register(views...)
-}
-
-// UnregisterResourceView is similar to view.unRegister(), except that it will
-// unregister the view across all Resources tracked by the system, rather than
-// simply the default view.
-// this is a placeholder for real implementation in https://github.com/knative/pkg/pull/1392.
-func UnregisterResourceView(views ...*view.View) {
-	view.Unregister(views...)
-}
-
 // ConfigMapWatcher returns a helper func which updates the exporter configuration based on
 // values in the supplied ConfigMap. This method captures a corev1.SecretLister which is used
 // to configure mTLS with the opencensus agent.
@@ -171,13 +151,17 @@ func UpdateExporter(ops ExporterOptions, logger *zap.SugaredLogger) error {
 	if isNewExporterRequired(newConfig) {
 		logger.Info("Flushing the existing exporter before setting up the new exporter.")
 		flushGivenExporter(curMetricsExporter)
-		e, err := newMetricsExporter(newConfig, logger)
+		e, f, err := newMetricsExporter(newConfig, logger)
 		if err != nil {
-			logger.Errorf("Failed to update a new metrics exporter based on metric config %v. error: %v", newConfig, err)
+			logger.Errorw("Failed to update a new metrics exporter based on metric config", newConfig, zap.Error(err))
 			return err
 		}
 		existingConfig := curMetricsConfig
 		curMetricsExporter = e
+		if err := setFactory(f); err != nil {
+			logger.Errorw("Failed to update metrics factory when loading metric config", newConfig, zap.Error(err))
+			return err
+		}
 		logger.Infof("Successfully updated the metrics exporter; old config: %v; new config %v", existingConfig, newConfig)
 	}
 
@@ -205,7 +189,7 @@ func isNewExporterRequired(newConfig *metricsConfig) bool {
 
 // newMetricsExporter gets a metrics exporter based on the config.
 // This function must be called with the metricsMux reader (or writer) locked.
-func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
+func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
 	// If there is a Prometheus Exporter server running, stop it.
 	resetCurPromSrv()
 
@@ -215,24 +199,20 @@ func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.
 		se.StopMetricsExporter()
 	}
 
-	var err error
-	var e view.Exporter
-	switch config.backendDestination {
-	case openCensus:
-		e, err = newOpenCensusExporter(config, logger)
-	case stackdriver:
-		e, err = newStackdriverExporter(config, logger)
-	case prometheus:
-		e, err = newPrometheusExporter(config, logger)
-	case none:
-		e, err = nil, nil
-	default:
-		err = fmt.Errorf("unsupported metrics backend %v", config.backendDestination)
+	factory := map[metricsBackend]func(*metricsConfig, *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error){
+		stackdriver: newStackdriverExporter,
+		openCensus:  newOpenCensusExporter,
+		prometheus:  newPrometheusExporter,
+		none: func(*metricsConfig, *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
+			return nil, nil, nil
+		},
 	}
-	if err != nil {
-		return nil, err
+
+	ff := factory[config.backendDestination]
+	if ff == nil {
+		return nil, nil, fmt.Errorf("unsuppored metrics backend %v", config.backendDestination)
 	}
-	return e, nil
+	return ff(config, logger)
 }
 
 func getCurMetricsExporter() view.Exporter {
@@ -260,12 +240,7 @@ func setCurMetricsConfig(c *metricsConfig) {
 }
 
 func setCurMetricsConfigUnlocked(c *metricsConfig) {
-	if c != nil {
-		view.SetReportingPeriod(c.reportingPeriod)
-	} else {
-		// Setting to 0 enables the default behavior.
-		view.SetReportingPeriod(0)
-	}
+	setReportingPeriod(c)
 	curMetricsConfig = c
 }
 
@@ -274,6 +249,7 @@ func setCurMetricsConfigUnlocked(c *metricsConfig) {
 // Return value indicates whether the exporter is flushable or not.
 func FlushExporter() bool {
 	e := getCurMetricsExporter()
+	flushResourceExporters()
 	return flushGivenExporter(e)
 }
 
