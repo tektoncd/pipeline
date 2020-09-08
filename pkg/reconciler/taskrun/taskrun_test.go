@@ -40,7 +40,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
@@ -61,7 +60,11 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
+
 	pkgreconciler "knative.dev/pkg/reconciler"
+	"knative.dev/pkg/system"
+
+	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
 const (
@@ -256,25 +259,25 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 	}
 	if !defaultsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !artifactBucketExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !artifactPVCExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
@@ -288,7 +291,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
-	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.GetNamespace())
+	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 
 	ctl := NewController(namespace, images)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
@@ -414,7 +417,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		Tasks:    []*v1beta1.Task{simpleTask, saTask},
 		ConfigMaps: []*corev1.ConfigMap{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 				Data: map[string]string{
 					"default-service-account":        defaultSAName,
 					"default-timeout-minutes":        "60",
@@ -696,7 +699,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			names.TestingSeed()
 			d.ConfigMaps = []*corev1.ConfigMap{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 					Data: map[string]string{
 						tc.featureFlag: "true",
 					},
@@ -782,7 +785,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 	names.TestingSeed()
 	d.ConfigMaps = []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"default-cloud-events-sink": "http://synk:8080",
 			},
@@ -2596,7 +2599,7 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
 			"default-task-run-workspace-binding": "emptyDir: {}",
 		},
@@ -2652,7 +2655,7 @@ func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
 			"default-task-run-workspace-binding": "emptyDir == {}",
 		},
@@ -2719,7 +2722,7 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
 			"default-task-run-workspace-binding": "emptyDir: {}",
 		},

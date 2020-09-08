@@ -41,7 +41,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -63,6 +62,9 @@ import (
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/reconciler"
+	"knative.dev/pkg/system"
+
+	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
 var (
@@ -109,25 +111,25 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 	}
 	if !defaultsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !artifactBucketExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
 	if !artifactPVCExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}
@@ -141,7 +143,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
-	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.GetNamespace())
+	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 
 	ctl := NewController(namespace, images)(ctx, configMapWatcher)
 
@@ -595,7 +597,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"enable-custom-tasks": "true",
 			},
@@ -1780,7 +1782,7 @@ func TestReconcileCustomTasksWithDifferentServiceAccounts(t *testing.T) {
 
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"enable-custom-tasks": "true",
 			},
@@ -2142,7 +2144,7 @@ func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
 
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"enable-custom-tasks": "true",
 			},
@@ -3412,7 +3414,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"enable-custom-tasks": "true",
 			},
@@ -4413,7 +4415,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 	}
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"default-cloud-events-sink": "http://synk:8080",
 			},
@@ -4638,7 +4640,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 	}
 	cms := []*corev1.ConfigMap{
 		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"enable-tekton-oci-bundles": "true",
 			},
