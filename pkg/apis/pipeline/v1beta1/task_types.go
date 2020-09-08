@@ -155,6 +155,17 @@ type TaskRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
+	// Metadata to be copied to TaskRun
+	// +optional
+	Metadata TaskRefMetadata `json:"metadata,omitempty"`
+}
+
+type TaskRefMetadata struct {
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.
