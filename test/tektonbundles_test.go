@@ -40,10 +40,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -519,7 +519,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 }
 
 func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
-	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
 	}

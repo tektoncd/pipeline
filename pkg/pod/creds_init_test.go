@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	logtesting "knative.dev/pkg/logging/testing"
+	"knative.dev/pkg/system"
 )
 
 const (
@@ -223,7 +223,7 @@ func TestCheckGitSSHSecret(t *testing.T) {
 	}{{
 		desc: "require known_hosts but secret does not include known_hosts",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagRequireKnownHosts: "true",
 			},
@@ -246,7 +246,7 @@ func TestCheckGitSSHSecret(t *testing.T) {
 	}, {
 		desc: "require known_hosts and secret includes known_hosts",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagRequireKnownHosts: "true",
 			},
@@ -268,7 +268,7 @@ func TestCheckGitSSHSecret(t *testing.T) {
 	}, {
 		desc: "not require known_hosts",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagRequireKnownHosts: "false",
 			},

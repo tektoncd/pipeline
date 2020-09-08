@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -36,6 +35,7 @@ import (
 	pkgleaderelection "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
+	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/configmaps"
@@ -206,7 +206,7 @@ func main() {
 	}
 
 	// Scope informers to the webhook's namespace instead of cluster-wide
-	ctx := injection.WithNamespaceScope(signals.NewContext(), system.GetNamespace())
+	ctx := injection.WithNamespaceScope(signals.NewContext(), system.Namespace())
 
 	// Set up a signal context with our webhook options
 	ctx = webhook.WithOptions(ctx, webhook.Options{

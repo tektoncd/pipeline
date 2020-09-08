@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -39,6 +38,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	logtesting "knative.dev/pkg/logging/testing"
+	"knative.dev/pkg/system"
+
+	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
 var (
@@ -1178,7 +1180,7 @@ script-heredoc-randomly-generated-78c5n
 			store := config.NewStore(logtesting.TestLogger(t))
 			store.OnConfigChanged(
 				&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 					Data:       c.featureFlags,
 				},
 			)
@@ -1284,14 +1286,14 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
 		expected: true,
 	}, {
 		description: "Setting disable-home-env-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableHomeEnvKey: "false",
 			},
@@ -1300,7 +1302,7 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 	}, {
 		description: "Setting disable-home-env-overwrite to true should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableHomeEnvKey: "true",
 			},
@@ -1325,14 +1327,14 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
 		expected: true,
 	}, {
 		description: "Setting disable-working-directory-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableWorkingDirKey: "false",
 			},
@@ -1341,7 +1343,7 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 	}, {
 		description: "Setting disable-working-directory-overwrite to true should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableWorkingDirKey: "true",
 			},
@@ -1374,7 +1376,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Default behavior with sidecars present: Ready annotation not set on pod create",
 		sidecars:    []v1beta1.Sidecar{sd},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
 		expected: false,
@@ -1382,7 +1384,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Default behavior with no sidecars present: Ready annotation not set on pod create",
 		sidecars:    []v1beta1.Sidecar{},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
 		expected: false,
@@ -1390,7 +1392,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Setting running-in-environment-with-injected-sidecars to true with sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{sd},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureInjectedSidecar: "true",
 			},
@@ -1400,7 +1402,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Setting running-in-environment-with-injected-sidecars to true with no sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureInjectedSidecar: "true",
 			},
@@ -1410,7 +1412,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Setting running-in-environment-with-injected-sidecars to false with sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{sd},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureInjectedSidecar: "false",
 			},
@@ -1420,7 +1422,7 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 		description: "Setting running-in-environment-with-injected-sidecars to false with no sidecars present results in true",
 		sidecars:    []v1beta1.Sidecar{},
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureInjectedSidecar: "false",
 			},
