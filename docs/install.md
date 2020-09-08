@@ -12,6 +12,13 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 ## Before you begin
 
+1. You must have a Kubernetes cluster running version 1.16 or later.
+
+   If you don't already have a cluster, you can create one for testing with `kind`.
+   [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and create a cluster by running [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster). This
+   will create a cluster running locally, with RBAC enabled and your user granted
+   the `cluster-admin` role.
+
 1. Choose the version of Tekton Pipelines you want to install. You have the following options:
 
    * **[Official](https://github.com/tektoncd/pipeline/releases)** - install this unless you have
@@ -21,21 +28,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    * **[`HEAD`]** - this is the bleeding edge. It contains unreleased code that may result
      in unpredictable behavior. To get started, see the [development guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md) instead of this page.
 
-2. If you don't have an existing Kubernetes cluster, set one up, version 1.16 or later:
-
-   ```bash
-   #Example command for creating a cluster on GKE
-   gcloud container clusters create $CLUSTER_NAME \
-     --zone=$CLUSTER_ZONE --cluster-version=latest
-   ```
-
-3. Grant `cluster-admin` permissions to the current user:
-
-   ```bash
-   kubectl create clusterrolebinding cluster-admin-binding \
-   --clusterrole=cluster-admin \
-   --user=$(gcloud config get-value core/account)
-   ```
+1. Grant `cluster-admin` permissions to the current user.
 
    See [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
    for more information.
