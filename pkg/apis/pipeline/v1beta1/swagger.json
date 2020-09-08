@@ -1270,6 +1270,10 @@
             "$ref": "#/definitions/v1beta1.WhenExpression"
           }
         },
+        "whenSkipped": {
+          "description": "WhenSkipped specifies what should happen when a Task is skipped because its WhenExpressions evaluated to false. WhenSkipped can be specified only in Tasks that are guarded with WhenExpressions and do not have resource dependencies. If WhenSkipped is not specified, the default policy is SkipBranch.",
+          "type": "string"
+        },
         "workspaces": {
           "description": "Workspaces maps workspaces from the pipeline spec to the workspaces declared in the Task.",
           "type": "array",

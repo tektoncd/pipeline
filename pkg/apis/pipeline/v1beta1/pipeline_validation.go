@@ -71,6 +71,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateWhenSkipped(ps.Tasks))
 	return errs
 }
 
@@ -617,4 +618,52 @@ func validateGraph(tasks []PipelineTask) *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "tasks")
 	}
 	return nil
+}
+
+func validateWhenSkipped(tasks []PipelineTask) (errs *apis.FieldError) {
+	d, err := dag.Build(PipelineTaskList(tasks), PipelineTaskList(tasks).Deps())
+	if err != nil {
+		return apis.ErrInvalidValue(err.Error(), "tasks")
+	}
+	for i, t := range tasks {
+		if t.WhenSkipped != "" {
+			if t.WhenExpressions == nil || hasResourceDependencies(t, toMap(tasks), d) {
+				errs = errs.Also(apis.ErrDisallowedFields("whenSkipped").ViaFieldIndex("tasks", i))
+			}
+			if t.WhenSkipped != RunBranch && t.WhenSkipped != SkipBranch {
+				errs = errs.Also(apis.ErrInvalidValue("RunBranch and SkipBranch only allowed in", "whenSkipped").ViaFieldIndex("tasks", i))
+			}
+		}
+	}
+	return errs
+}
+
+func toMap(tasks []PipelineTask) map[string]PipelineTask {
+	taskMap := make(map[string]PipelineTask)
+	for _, task := range tasks {
+		taskMap[task.Name] = task
+	}
+	return taskMap
+}
+
+func hasResourceDependencies(parentTask PipelineTask, taskMap map[string]PipelineTask, d *dag.Graph) bool {
+	if node, ok := d.Nodes[parentTask.Name]; ok {
+		for _, childNode := range node.Next {
+			childTask := taskMap[childNode.Task.HashKey()]
+			if isResourceDependent(parentTask, childTask) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isResourceDependent(parentTask PipelineTask, childTask PipelineTask) bool {
+	resourceDeps := childTask.resourceDeps()
+	for _, resourceParent := range resourceDeps {
+		if resourceParent == parentTask.Name {
+			return true
+		}
+	}
+	return false
 }

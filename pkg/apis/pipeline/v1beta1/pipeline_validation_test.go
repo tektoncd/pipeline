@@ -719,6 +719,69 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		},
 		expectedError: *apis.ErrGeneric(`invalid value: couldn't add link between foo and bar: task foo depends on bar but bar wasn't present in Pipeline`, "tasks").Also(
 			apis.ErrInvalidValue("expected resource great-resource to be from task bar, but task bar doesn't exist", "tasks[1].resources.inputs[0].from")),
+	}, {
+		name: "invalid pipeline with one pipeline task having whenSkipped without WhenExpressions",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:        "invalid-pipeline-task",
+				TaskRef:     &TaskRef{Name: "foo-task"},
+				WhenSkipped: RunBranch,
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `must not set the field(s)`,
+			Paths:   []string{"tasks[1].whenSkipped"},
+		},
+	}, {
+		name: "invalid pipeline with one pipeline task having whenSkipped with resource dependencies",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				}},
+				WhenSkipped: RunBranch,
+			}, {
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.invalid-pipeline-task.results.foo)",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `must not set the field(s)`,
+			Paths:   []string{"tasks[0].whenSkipped"},
+		},
+	}, {
+		name: "invalid pipeline with one pipeline task having whenSkipped with invalid value",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				}},
+				WhenSkipped: "invalidValue",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: RunBranch and SkipBranch only allowed in`,
+			Paths:   []string{"tasks[0].whenSkipped"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -745,6 +808,55 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 	err := ps.Validate(context.Background())
 	if err == nil {
 		t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", name)
+	}
+}
+
+func TestPipelineSpec_Validate_Success(t *testing.T) {
+	tests := []struct {
+		name string
+		ps   *PipelineSpec
+	}{{
+		name: "valid pipeline with one pipeline task having whenSkipped with valid when expression",
+		ps: &PipelineSpec{
+			Description: "this is an valid pipeline with valid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo"},
+				}},
+				WhenSkipped: RunBranch,
+			}},
+		},
+	}, {
+		name: "valid pipeline with one pipeline task having whenSkipped with ordering dependencies",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "a-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.NotIn,
+					Values:   []string{"foo"},
+				}},
+				WhenSkipped: RunBranch,
+			}, {
+				Name:     "b-task",
+				TaskRef:  &TaskRef{Name: "bar-task"},
+				RunAfter: []string{"a-task"},
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.ps.Validate(context.Background())
+			if err != nil {
+				t.Errorf("PipelineSpec.Validate() returned an error for valid pipelineSpec: %s, %s", tt.name, err)
+			}
+		})
 	}
 }
 

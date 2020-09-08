@@ -365,6 +365,15 @@ func PipelineTaskWhenExpression(input string, operator selection.Operator, value
 	}
 }
 
+// PipelineTaskWhenSkipped adds a WhenSkippedPolicy that describes should happen when a Task is skipped because its
+// WhenExpressions evaluated to false. WhenSkippedPolicy can be specified only in Tasks that are guarded with
+// WhenExpressions and do not have resource dependencies.
+func PipelineTaskWhenSkipped(whenSkippedPolicy v1beta1.WhenSkippedPolicy) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.WhenSkipped = whenSkippedPolicy
+	}
+}
+
 // PipelineTaskWorkspaceBinding adds a workspace with the specified name, workspace and subpath on a PipelineTask.
 func PipelineTaskWorkspaceBinding(name, workspace, subPath string) PipelineTaskOp {
 	return func(pt *v1beta1.PipelineTask) {

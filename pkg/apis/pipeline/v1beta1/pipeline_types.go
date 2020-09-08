@@ -132,6 +132,12 @@ type PipelineTask struct {
 	// +optional
 	WhenExpressions WhenExpressions `json:"when,omitempty"`
 
+	// WhenSkipped specifies what should happen when a Task is skipped because its WhenExpressions evaluated to false.
+	// WhenSkipped can be specified only in Tasks that are guarded with WhenExpressions and do not have resource dependencies.
+	// If WhenSkipped is not specified, the default policy is SkipBranch.
+	// +optional
+	WhenSkipped WhenSkippedPolicy `json:"whenSkipped,omitempty"`
+
 	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
 	// +optional
 	Retries int `json:"retries,omitempty"`

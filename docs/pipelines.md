@@ -437,6 +437,37 @@ tasks:
       name: lint-source
 ```
 
+When  `WhenExpressions` evaluate to `False`, the `Task` and its branch (of dependent `Tasks`) will be skipped by default while the rest of the `Pipeline` will execute. 
+
+A `Task` branch is made up of dependent `Tasks`, where there are two types of dependencies:
+- _Resource dependency_: based on resources needed from parent `Task`, which includes [`Results`](#using-results) and [`Resources`](#specifying-resources).
+- _Ordering dependency_: based on [`runAfter`](#using-the-runafter-parameter) which provides sequencing of `Tasks` when there may not be resource dependencies.
+
+In `Tasks` guarded using `WhenExpressions` and that have ordering dependencies only, use `whenSkipped` to specify what happens when the guarded `Task` is skipped.
+The `whenSkipped` take either `SkipBranch` or `RunBranch` policies. To allow execution of ordering-dependent `Tasks`, set `whenSkipped` to `RunBranch` in the guarded parent task.
+If neither `SkipBranch` nor `RunBranch` is specified, the default one is `SkipBranch`. 
+
+However, setting `whenSkipped` in `Tasks` without `WhenExpressions` or `Tasks` with resource dependencies is invalid and will cause `Pipeline` validation errors.
+
+In this example, `task-should-be-skipped` will be skipped and `task-should-be-executed` will be executed: 
+
+```yaml
+tasks:
+  - name: task-should-be-skipped
+    when:
+      - input: "foo"
+        operator: in
+        values: ["bar"]
+    whenSkipped: RunBranch
+    taskRef:
+        name: exit-1
+  - name: task-should-be-executed
+    runAfter:
+    - task-should-be-skipped
+    taskRef:
+        name: exit-0  
+```
+
 For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
 
 When `WhenExpressions` are specified in a `Task`, [`Conditions`](#guard-task-execution-using-conditions) should not be specified in the same `Task`. The `Pipeline` will be rejected as invalid if both `WhenExpressions` and `Conditions` are included.

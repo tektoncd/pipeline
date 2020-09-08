@@ -82,6 +82,7 @@ spec:
           - input: "$(params.path)"
             operator: notin
             values: ["README.md"]
+        whenSkipped: RunBranch
         taskSpec:
           steps:
             - name: echo
@@ -99,6 +100,18 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
+      - name: task-should-be-executed-after-skipped-parent-task # whenSkipped set to runBranch in parent task
+        runAfter:
+          - task-should-be-skipped-2
+        when:
+          - input: "$(params.path)"
+            operator: in
+            values: ["README.md"]
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: 'echo created README.md'
     finally:
       - name: finally-task-should-be-skipped-1 # when expression using execution status, evaluates to false
         when:

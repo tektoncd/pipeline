@@ -159,3 +159,13 @@ func (wes WhenExpressions) ReplaceWhenExpressionsVariables(replacements map[stri
 	}
 	return replaced
 }
+
+// WhenSkippedPolicy describes what should happen when a Task is skipped because its WhenExpressions evaluated to false.
+// WhenSkippedPolicy can be specified only in Tasks that are guarded with WhenExpressions and do not have resource dependencies.
+// If none of the following policies is specified, the default one is SkipBranch.
+type WhenSkippedPolicy string
+
+const (
+	SkipBranch WhenSkippedPolicy = "SkipBranch"
+	RunBranch  WhenSkippedPolicy = "RunBranch"
+)

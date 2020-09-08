@@ -2003,6 +2003,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"whenSkipped": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WhenSkipped specifies what should happen when a Task is skipped because its WhenExpressions evaluated to false. WhenSkipped can be specified only in Tasks that are guarded with WhenExpressions and do not have resource dependencies. If WhenSkipped is not specified, the default policy is SkipBranch.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"retries": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False",
