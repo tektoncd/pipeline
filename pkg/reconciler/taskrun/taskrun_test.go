@@ -468,24 +468,21 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
+			saName := tc.taskRun.Spec.ServiceAccountName
+			if saName == "" {
+				saName = defaultSAName
+			}
+			d.ServiceAccounts = append(d.ServiceAccounts, &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: tc.taskRun.Namespace,
+				},
+			})
 			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			saName := tc.taskRun.Spec.ServiceAccountName
-			if saName == "" {
-				saName = defaultSAName
-			}
-			t.Logf("Creating SA %s in %s", saName, tc.taskRun.Namespace)
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      saName,
-					Namespace: tc.taskRun.Namespace,
-				},
-			}); err != nil {
-				t.Fatal(err)
-			}
 
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
