@@ -38,8 +38,7 @@ To make a new release:
 
 To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipelines` `Task` and create a release:
 
-1. Pick the revision you want to release and update the
-   [`resources.yaml`](./resources.yaml) file to add a
+1. Pick the revision you want to release and add a
    `PipelineResoruce` for it, e.g.:
 
    ```yaml
@@ -113,6 +112,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtPullRequestInitImage=pull-request-init-image \
 		--resource=builtGcsFetcherImage=gcs-fetcher-image \
 		--resource=notification=post-release-trigger \
+		--resource=builtNopImage=nop-image \
 		pipeline-release
    ```
 
