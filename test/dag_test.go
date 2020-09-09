@@ -102,7 +102,7 @@ func TestDAGPipelineRun(t *testing.T) {
 				Name:    "pipeline-task-3",
 				TaskRef: &v1beta1.TaskRef{Name: "echo-task"},
 				Params: []v1beta1.Param{{
-					Name: "text", Value: v1beta1.NewArrayOrString("wow"),
+					Name: "text", Value: *v1beta1.NewArrayOrString("wow"),
 				}},
 				Resources: &v1beta1.PipelineTaskResources{
 					Inputs: []v1beta1.PipelineTaskInputResource{{
@@ -117,7 +117,7 @@ func TestDAGPipelineRun(t *testing.T) {
 				Name:    "pipeline-task-2-parallel-2",
 				TaskRef: &v1beta1.TaskRef{Name: "echo-task"},
 				Params: []v1beta1.Param{{
-					Name: "text", Value: v1beta1.NewArrayOrString("such parallel"),
+					Name: "text", Value: *v1beta1.NewArrayOrString("such parallel"),
 				}},
 				Resources: &v1beta1.PipelineTaskResources{
 					Inputs: []v1beta1.PipelineTaskInputResource{{
@@ -132,7 +132,7 @@ func TestDAGPipelineRun(t *testing.T) {
 				Name:    "pipeline-task-4",
 				TaskRef: &v1beta1.TaskRef{Name: "echo-task"},
 				Params: []v1beta1.Param{{
-					Name: "text", Value: v1beta1.NewArrayOrString("very cloud native"),
+					Name: "text", Value: *v1beta1.NewArrayOrString("very cloud native"),
 				}},
 				Resources: &v1beta1.PipelineTaskResources{
 					Inputs: []v1beta1.PipelineTaskInputResource{{
@@ -147,7 +147,7 @@ func TestDAGPipelineRun(t *testing.T) {
 				Name:    "pipeline-task-2-parallel-1",
 				TaskRef: &v1beta1.TaskRef{Name: "echo-task"},
 				Params: []v1beta1.Param{{
-					Name: "text", Value: v1beta1.NewArrayOrString("much graph"),
+					Name: "text", Value: *v1beta1.NewArrayOrString("much graph"),
 				}},
 				Resources: &v1beta1.PipelineTaskResources{
 					Inputs: []v1beta1.PipelineTaskInputResource{{
@@ -162,7 +162,7 @@ func TestDAGPipelineRun(t *testing.T) {
 				Name:    "pipeline-task-1",
 				TaskRef: &v1beta1.TaskRef{Name: "echo-task"},
 				Params: []v1beta1.Param{{
-					Name: "text", Value: v1beta1.NewArrayOrString("how to ci/cd?"),
+					Name: "text", Value: *v1beta1.NewArrayOrString("how to ci/cd?"),
 				}},
 				Resources: &v1beta1.PipelineTaskResources{
 					Inputs: []v1beta1.PipelineTaskInputResource{{

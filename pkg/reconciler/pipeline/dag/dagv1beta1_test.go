@@ -49,11 +49,8 @@ func testGraphv1beta1(t *testing.T) *dag.Graph {
 	}, {
 		Name: "w",
 		Params: []v1beta1.Param{{
-			Name: "foo",
-			Value: v1beta1.ArrayOrString{
-				Type:      v1beta1.ParamTypeString,
-				StringVal: "$(tasks.y.results.bar)",
-			},
+			Name:  "foo",
+			Value: *v1beta1.NewArrayOrString("$(tasks.y.results.bar)"),
 		}},
 		RunAfter: []string{"b"},
 	}, {
@@ -522,40 +519,25 @@ func TestBuild_TaskParamsFromTaskResults_v1beta1(t *testing.T) {
 	e := v1beta1.PipelineTask{Name: "e"}
 	xDependsOnA := v1beta1.PipelineTask{
 		Name: "x",
-		Params: []v1beta1.Param{
-			{
-				Name: "paramX",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1beta1.ParamTypeString,
-					StringVal: "$(tasks.a.results.resultA)",
-				},
-			},
-		},
+		Params: []v1beta1.Param{{
+			Name:  "paramX",
+			Value: *v1beta1.NewArrayOrString("$(tasks.a.results.resultA)"),
+		}},
 	}
 	yDependsOnBRunsAfterC := v1beta1.PipelineTask{
 		Name:     "y",
 		RunAfter: []string{"c"},
-		Params: []v1beta1.Param{
-			{
-				Name: "paramB",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1beta1.ParamTypeString,
-					StringVal: "$(tasks.b.results.resultB)",
-				},
-			},
-		},
+		Params: []v1beta1.Param{{
+			Name:  "paramB",
+			Value: *v1beta1.NewArrayOrString("$(tasks.b.results.resultB)"),
+		}},
 	}
 	zDependsOnDAndE := v1beta1.PipelineTask{
 		Name: "z",
-		Params: []v1beta1.Param{
-			{
-				Name: "paramZ",
-				Value: v1beta1.ArrayOrString{
-					Type:      v1beta1.ParamTypeString,
-					StringVal: "$(tasks.d.results.resultD) $(tasks.e.results.resultE)",
-				},
-			},
-		},
+		Params: []v1beta1.Param{{
+			Name:  "paramZ",
+			Value: *v1beta1.NewArrayOrString("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
+		}},
 	}
 
 	//   a  b   c  d   e
@@ -610,17 +592,11 @@ func TestBuild_ConditionsParamsFromTaskResults_v1beta1(t *testing.T) {
 		Name: "x",
 		Conditions: []v1beta1.PipelineTaskCondition{{
 			ConditionRef: "cond",
-			Params: []v1beta1.Param{
-				{
-					Name: "paramX",
-					Value: v1beta1.ArrayOrString{
-						Type:      v1beta1.ParamTypeString,
-						StringVal: "$(tasks.a.results.resultA)",
-					},
-				},
-			},
-		},
-		},
+			Params: []v1beta1.Param{{
+				Name:  "paramX",
+				Value: *v1beta1.NewArrayOrString("$(tasks.a.results.resultA)"),
+			}},
+		}},
 	}
 
 	//   a

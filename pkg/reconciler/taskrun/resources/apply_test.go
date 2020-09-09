@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
@@ -300,7 +299,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *tb.ArrayOrString("foo"),
+				Value: *v1beta1.NewArrayOrString("foo"),
 			}},
 		},
 	}
@@ -309,7 +308,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *tb.ArrayOrString("foo", "bar", "third"),
+				Value: *v1beta1.NewArrayOrString("foo", "bar", "third"),
 			}},
 		},
 	}
@@ -318,10 +317,10 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *tb.ArrayOrString("foo", "bar", "third"),
+				Value: *v1beta1.NewArrayOrString("foo", "bar", "third"),
 			}, {
 				Name:  "another-array-param",
-				Value: *tb.ArrayOrString("part1", "part2"),
+				Value: *v1beta1.NewArrayOrString("part1", "part2"),
 			}},
 		},
 	}
@@ -330,10 +329,10 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *tb.ArrayOrString("middlefirst", "middlesecond"),
+				Value: *v1beta1.NewArrayOrString("middlefirst", "middlesecond"),
 			}, {
 				Name:  "normal-param",
-				Value: *tb.ArrayOrString("foo"),
+				Value: *v1beta1.NewArrayOrString("foo"),
 			}},
 		},
 	}
@@ -342,16 +341,16 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param1",
-				Value: *tb.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *v1beta1.NewArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *tb.ArrayOrString("1-param2", "2-param2", "2-param3"),
+				Value: *v1beta1.NewArrayOrString("1-param2", "2-param2", "2-param3"),
 			}, {
 				Name:  "string-param1",
-				Value: *tb.ArrayOrString("foo"),
+				Value: *v1beta1.NewArrayOrString("foo"),
 			}, {
 				Name:  "string-param2",
-				Value: *tb.ArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 	}
@@ -486,12 +485,10 @@ func TestApplyArrayParameters(t *testing.T) {
 		args: args{
 			ts: arrayParamTaskSpec,
 			tr: &v1beta1.TaskRun{},
-			dp: []v1beta1.ParamSpec{
-				{
-					Name:    "array-param",
-					Default: tb.ArrayOrString("defaulted", "value!"),
-				},
-			},
+			dp: []v1beta1.ParamSpec{{
+				Name:    "array-param",
+				Default: v1beta1.NewArrayOrString("defaulted", "value!"),
+			}},
 		},
 		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].Args = []string{"first", "second", "defaulted", "value!", "last"}
@@ -512,19 +509,19 @@ func TestApplyParameters(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myimage",
-				Value: *tb.ArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}, {
 				Name:  "FOO",
-				Value: *tb.ArrayOrString("world"),
+				Value: *v1beta1.NewArrayOrString("world"),
 			}},
 		},
 	}
 	dp := []v1beta1.ParamSpec{{
 		Name:    "something",
-		Default: tb.ArrayOrString("mydefault"),
+		Default: v1beta1.NewArrayOrString("mydefault"),
 	}, {
 		Name:    "somethingelse",
-		Default: tb.ArrayOrString(""),
+		Default: v1beta1.NewArrayOrString(""),
 	}}
 	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
@@ -576,22 +573,17 @@ func TestApplyParameters(t *testing.T) {
 }
 
 func TestApplyResources(t *testing.T) {
-	type args struct {
+	tests := []struct {
+		name string
 		ts   *v1beta1.TaskSpec
 		r    map[string]v1beta1.PipelineResourceInterface
 		rStr string
-	}
-	tests := []struct {
-		name string
-		args args
 		want *v1beta1.TaskSpec
 	}{{
 		name: "no replacements specified",
-		args: args{
-			ts:   simpleTaskSpec,
-			r:    make(map[string]v1beta1.PipelineResourceInterface),
-			rStr: "inputs",
-		},
+		ts:   simpleTaskSpec,
+		r:    make(map[string]v1beta1.PipelineResourceInterface),
+		rStr: "inputs",
 		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
@@ -600,11 +592,9 @@ func TestApplyResources(t *testing.T) {
 		}),
 	}, {
 		name: "input resource specified",
-		args: args{
-			ts:   simpleTaskSpec,
-			r:    inputs,
-			rStr: "inputs",
-		},
+		ts:   simpleTaskSpec,
+		r:    inputs,
+		rStr: "inputs",
 		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[1].Args = []string{"https://git-repo"}
@@ -615,11 +605,9 @@ func TestApplyResources(t *testing.T) {
 		}),
 	}, {
 		name: "output resource specified",
-		args: args{
-			ts:   simpleTaskSpec,
-			r:    outputs,
-			rStr: "outputs",
-		},
+		ts:   simpleTaskSpec,
+		r:    outputs,
+		rStr: "outputs",
 		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
@@ -630,18 +618,16 @@ func TestApplyResources(t *testing.T) {
 		}),
 	}, {
 		name: "output resource specified with path replacement",
-		args: args{
-			ts:   gcsTaskSpec,
-			r:    outputs,
-			rStr: "outputs",
-		},
+		ts:   gcsTaskSpec,
+		r:    outputs,
+		rStr: "outputs",
 		want: applyMutation(gcsTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[0].Args = []string{"/workspace/output/bucket"}
 		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
+			got := resources.ApplyResources(tt.ts, tt.r, tt.rStr)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyResources() %s", diff.PrintWantGot(d))
 			}

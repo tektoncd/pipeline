@@ -18,22 +18,6 @@ import "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 // ParamSpecOp is an operation which modify a ParamSpec struct.
 type ParamSpecOp func(*v1beta1.ParamSpec)
 
-// ArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on
-// how many inputs are given (>1 input will create an array, not string).
-func ArrayOrString(value string, additionalValues ...string) *v1beta1.ArrayOrString {
-	if len(additionalValues) > 0 {
-		additionalValues = append([]string{value}, additionalValues...)
-		return &v1beta1.ArrayOrString{
-			Type:     v1beta1.ParamTypeArray,
-			ArrayVal: additionalValues,
-		}
-	}
-	return &v1beta1.ArrayOrString{
-		Type:      v1beta1.ParamTypeString,
-		StringVal: value,
-	}
-}
-
 // ParamSpecDescription sets the description of a ParamSpec.
 func ParamSpecDescription(desc string) ParamSpecOp {
 	return func(ps *v1beta1.ParamSpec) {
@@ -43,8 +27,7 @@ func ParamSpecDescription(desc string) ParamSpecOp {
 
 // ParamSpecDefault sets the default value of a ParamSpec.
 func ParamSpecDefault(value string, additionalValues ...string) ParamSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(ps *v1beta1.ParamSpec) {
-		ps.Default = arrayOrString
+		ps.Default = v1beta1.NewArrayOrString(value, additionalValues...)
 	}
 }

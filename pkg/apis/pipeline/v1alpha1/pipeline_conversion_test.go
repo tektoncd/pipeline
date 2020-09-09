@@ -95,7 +95,7 @@ func TestPipelineConversion_Success(t *testing.T) {
 					},
 					Params: []Param{{
 						Name:  "param1",
-						Value: v1beta1.ArrayOrString{StringVal: "str", Type: v1beta1.ParamTypeString},
+						Value: *v1beta1.NewArrayOrString("str"),
 					}},
 					Workspaces: []WorkspacePipelineTaskBinding{{
 						Name:      "w1",

@@ -76,7 +76,7 @@ func TestPipelineRunConversion(t *testing.T) {
 				}},
 				Params: []Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: *v1beta1.NewArrayOrString("baz"),
 				}},
 				Resources: []PipelineResourceBinding{{
 					Name:        "i1",
@@ -136,7 +136,7 @@ func TestPipelineRunConversion(t *testing.T) {
 				}},
 				Params: []Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: *v1beta1.NewArrayOrString("baz"),
 				}},
 				Resources: []PipelineResourceBinding{{
 					Name:        "i1",
