@@ -1,14 +1,63 @@
-# Builder package for tests
+# PLEASE AVOID USING THESE PACKAGES
 
-This package holds `Builder` functions that can be used to create struct in
-tests with less noise.
+See https://github.com/tektoncd/pipeline/issues/3178 for more information
 
-One of the most important characteristic of a unit test (and any type of test
-really) is **readability**. This means it should be easy to read but most
-importantly it should clearly show the intent of the test. The setup (and
-cleanup) of the tests should be as small as possible to avoid the noise. Those
-builders exists to help with that.
+Instead of using these packages to define a Pipeline:
 
-There is currently two versionned builder supported:
-- [`v1alpha1`](./v1alpha1)
-- [`v1beta1`](./v1beta1)
+```go
+import tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+
+p := tb.Pipeline("my-pipeline", tb.PipelineNamespace("my-namespace"), tb.PipelineSpec(
+	tb.PipelineDescription("Example Pipeline"),
+	tb.PipelineParamSpec("first-param", v1beta1.ParamTypeString, tb.ParamSpecDefault("default-value"), tb.ParamSpecDescription("default description")),
+	tb.PipelineTask("my-task", "task-name",
+		tb.PipelineTaskParam("stringparam", "value"),
+	),
+))
+```
+
+Just use the Go structs directly:
+
+```go
+import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+)
+
+p := &v1beta1.Pipeline{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-pipeline",
+		Namespace: "my-namespace",
+	},
+	Spec: v1beta1.PipelineSpec{
+		Description: "Test Pipeline",
+		Params: []v1beta1.ParamSpec{{
+			Name:        "first-param",
+			Type:        v1beta1.ParamTypeString,
+			Default: v1beta1.ArrayOrString{
+				Type:        v1beta1.ParamTypeString,
+				StringValue: "default-value",
+			},
+			Description: "default description",
+		}},
+		Tasks: []v1beta1.PipelineTask{{
+			Name:    "my-task",
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "task-name",
+				Params: []v1beta1.Param{{
+					Name: "stringparam",
+					Value: v1beta1.ArrayOrString{
+						Type:        v1beta1.ParamTypeString,
+						StringValue: "value",
+					},
+				}},
+			},
+		}},
+	},
+}
+```
+
+It's more typing, but it's more consistent with other Go code, all fields are
+clearly named, and nobody has to write and test and maintain the wrapper
+functions.
