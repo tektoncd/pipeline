@@ -106,6 +106,25 @@ spec:
           allowPrivilegeEscalation: false
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
+        ports:
+        - name: probes
+          containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
       volumes:
         - name: config-logging
           configMap:
@@ -133,6 +152,8 @@ spec:
     port: 9090
     protocol: TCP
     targetPort: 9090
+  - name: probes
+    port: 8080
   selector:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller
