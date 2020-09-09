@@ -215,10 +215,7 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 		return nil, err
 	}
 	return &ResolvedResultRef{
-		Value: v1beta1.ArrayOrString{
-			Type:      v1beta1.ParamTypeString,
-			StringVal: result.Value,
-		},
+		Value:           *v1beta1.NewArrayOrString(result.Value),
 		FromTaskRun:     referencedTaskRun.Name,
 		ResultReference: *resultRef,
 	}, nil
@@ -235,10 +232,7 @@ func resolveResultRefForPipelineResult(pipelineStatus v1beta1.PipelineRunStatus,
 		return nil, err
 	}
 	return &ResolvedResultRef{
-		Value: v1beta1.ArrayOrString{
-			Type:      v1beta1.ParamTypeString,
-			StringVal: result.Value,
-		},
+		Value:           *v1beta1.NewArrayOrString(result.Value),
 		FromTaskRun:     taskRunName,
 		ResultReference: *resultRef,
 	}, nil

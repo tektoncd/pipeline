@@ -680,11 +680,10 @@ func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 
 // TaskRunParam sets the Params to the TaskSpec
 func TaskRunParam(name, value string, additionalValues ...string) TaskRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(spec *v1beta1.TaskRunSpec) {
 		spec.Params = append(spec.Params, v1beta1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }

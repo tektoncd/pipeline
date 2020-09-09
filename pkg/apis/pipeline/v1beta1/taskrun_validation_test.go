@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -192,10 +191,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1alpha1.Param{{
 				Name:  "name",
-				Value: *tb.ArrayOrString("value"),
+				Value: *v1beta1.NewArrayOrString("value"),
 			}, {
 				Name:  "name",
-				Value: *tb.ArrayOrString("value"),
+				Value: *v1beta1.NewArrayOrString("value"),
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
@@ -242,7 +241,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 0},
 			Params: []v1beta1.Param{{
 				Name:  "name",
-				Value: *tb.ArrayOrString("value"),
+				Value: *v1beta1.NewArrayOrString("value"),
 			}},
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{Container: corev1.Container{

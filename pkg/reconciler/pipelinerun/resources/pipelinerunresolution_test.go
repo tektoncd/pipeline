@@ -2183,12 +2183,20 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 
 	ptc1 := v1beta1.PipelineTaskCondition{
 		ConditionRef: "always-true",
-		Params:       []v1beta1.Param{{Name: "path", Value: *tb.ArrayOrString("$(params.path)")}, {Name: "image", Value: *tb.ArrayOrString("$(params.image)")}},
+		Params: []v1beta1.Param{{
+			Name: "path", Value: *v1beta1.NewArrayOrString("$(params.path)"),
+		}, {
+			Name: "image", Value: *v1beta1.NewArrayOrString("$(params.image)"),
+		}},
 	}
 
 	ptc2 := v1beta1.PipelineTaskCondition{
 		ConditionRef: "always-true",
-		Params:       []v1beta1.Param{{Name: "path", Value: *tb.ArrayOrString("$(params.path-test)")}, {Name: "image", Value: *tb.ArrayOrString("$(params.image-test)")}},
+		Params: []v1beta1.Param{{
+			Name: "path", Value: *v1beta1.NewArrayOrString("$(params.path-test)"),
+		}, {
+			Name: "image", Value: *v1beta1.NewArrayOrString("$(params.image-test)"),
+		}},
 	}
 
 	pts := []v1beta1.PipelineTask{{

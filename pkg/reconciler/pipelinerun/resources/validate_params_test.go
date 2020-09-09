@@ -138,7 +138,7 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		prp: []v1beta1.Param{
 			{
 				Name:  "required-string-param",
-				Value: *tb.ArrayOrString("somestring"),
+				Value: *v1beta1.NewArrayOrString("somestring"),
 			},
 		},
 	}, {
@@ -152,7 +152,7 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 		prp: []v1beta1.Param{
 			{
 				Name:  "required-array-param",
-				Value: *tb.ArrayOrString("another", "array"),
+				Value: *v1beta1.NewArrayOrString("another", "array"),
 			},
 		},
 	}, {
@@ -161,13 +161,13 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 			{
 				Name:    "string-param",
 				Type:    v1beta1.ParamTypeString,
-				Default: tb.ArrayOrString("somedefault"),
+				Default: v1beta1.NewArrayOrString("somedefault"),
 			},
 		},
 		prp: []v1beta1.Param{
 			{
 				Name:  "another-string-param",
-				Value: *tb.ArrayOrString("somestring"),
+				Value: *v1beta1.NewArrayOrString("somestring"),
 			},
 		},
 	}}
@@ -196,7 +196,7 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		prp: []v1beta1.Param{
 			{
 				Name:  "another-string-param",
-				Value: *tb.ArrayOrString("anotherstring"),
+				Value: *v1beta1.NewArrayOrString("anotherstring"),
 			},
 		},
 	}, {
@@ -210,7 +210,7 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		prp: []v1beta1.Param{
 			{
 				Name:  "another-array-param",
-				Value: *tb.ArrayOrString("anotherstring"),
+				Value: *v1beta1.NewArrayOrString("anotherstring"),
 			},
 		},
 	}}

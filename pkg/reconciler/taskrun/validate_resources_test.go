@@ -71,10 +71,10 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	}
 	p := []v1beta1.Param{{
 		Name:  "foo",
-		Value: *tb.ArrayOrString("somethinggood"),
+		Value: *v1beta1.NewArrayOrString("somethinggood"),
 	}, {
 		Name:  "bar",
-		Value: *tb.ArrayOrString("somethinggood"),
+		Value: *v1beta1.NewArrayOrString("somethinggood"),
 	}}
 	if err := taskrun.ValidateResolvedTaskResources(p, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
@@ -97,7 +97,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 		params: []v1beta1.Param{{
 			Name:  "foobar",
-			Value: *tb.ArrayOrString("somethingfun"),
+			Value: *v1beta1.NewArrayOrString("somethingfun"),
 		}},
 	}, {
 		name: "missing-params",
@@ -106,10 +106,10 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 		params: []v1beta1.Param{{
 			Name:  "foo",
-			Value: *tb.ArrayOrString("i am a real param"),
+			Value: *v1beta1.NewArrayOrString("i am a real param"),
 		}, {
 			Name:  "extra",
-			Value: *tb.ArrayOrString("i am an extra param"),
+			Value: *v1beta1.NewArrayOrString("i am an extra param"),
 		}},
 	}}
 	for _, tc := range tcs {

@@ -146,7 +146,7 @@ func getCreateImageTask(namespace string) *v1beta1.Task {
 }
 
 func getHelmDeployTask(namespace string) *v1beta1.Task {
-	empty := v1beta1.NewArrayOrString("")
+	empty := *v1beta1.NewArrayOrString("")
 	return &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: helmDeployTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
@@ -246,15 +246,15 @@ func getHelmDeployPipeline(namespace string) *v1beta1.Pipeline {
 					}},
 				},
 				Params: []v1beta1.Param{{
-					Name: "pathToHelmCharts", Value: v1beta1.NewArrayOrString("/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
+					Name: "pathToHelmCharts", Value: *v1beta1.NewArrayOrString("/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
 				}, {
-					Name: "chartname", Value: v1beta1.NewArrayOrString("$(params.chartname)"),
+					Name: "chartname", Value: *v1beta1.NewArrayOrString("$(params.chartname)"),
 				}},
 			}, {
 				Name:    "check-service",
 				TaskRef: &v1beta1.TaskRef{Name: checkServiceTaskName},
 				Params: []v1beta1.Param{{
-					Name: "serviceUrl", Value: v1beta1.NewArrayOrString(fmt.Sprintf("http://%s:8080", helmDeployServiceName)),
+					Name: "serviceUrl", Value: *v1beta1.NewArrayOrString(fmt.Sprintf("http://%s:8080", helmDeployServiceName)),
 				}},
 				RunAfter: []string{"helm-deploy"},
 			}},
@@ -268,7 +268,7 @@ func getHelmDeployPipelineRun(namespace string) *v1beta1.PipelineRun {
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: helmDeployPipelineName},
 			Params: []v1beta1.Param{{
-				Name: "chartname", Value: v1beta1.NewArrayOrString("gohelloworld"),
+				Name: "chartname", Value: *v1beta1.NewArrayOrString("gohelloworld"),
 			}},
 			Resources: []v1beta1.PipelineResourceBinding{{
 				Name: "git-repo", ResourceRef: &v1beta1.PipelineResourceRef{Name: sourceResourceName},

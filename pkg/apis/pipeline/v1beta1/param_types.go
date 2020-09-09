@@ -132,15 +132,14 @@ func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[str
 
 // NewArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on
 // how many inputs are given (>1 input will create an array, not string).
-func NewArrayOrString(value string, values ...string) ArrayOrString {
+func NewArrayOrString(value string, values ...string) *ArrayOrString {
 	if len(values) > 0 {
-		values = append([]string{value}, values...)
-		return ArrayOrString{
+		return &ArrayOrString{
 			Type:     ParamTypeArray,
-			ArrayVal: values,
+			ArrayVal: append([]string{value}, values...),
 		}
 	}
-	return ArrayOrString{
+	return &ArrayOrString{
 		Type:      ParamTypeString,
 		StringVal: value,
 	}
