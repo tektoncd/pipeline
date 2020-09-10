@@ -20,6 +20,8 @@ import (
 	"os"
 	"runtime"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -29,9 +31,9 @@ var (
 
 const (
 	// Busybox image with specific sha
-	BusyboxSha = iota
+	busyboxImage = iota
 	// Registry image
-	Registry
+	registryImage
 )
 
 // return architecture of the cluster where test suites will be executed.
@@ -45,27 +47,22 @@ func getTestArch() string {
 }
 
 func initImageNames() map[int]string {
-	mapping := make(map[int]string)
-
-	switch getTestArch() {
-	case "s390x":
-		mapping[BusyboxSha] = "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977"
-		mapping[Registry] = "ibmcom/registry:2.6.2.5"
-
-	default:
-		mapping[BusyboxSha] = "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649"
-		mapping[Registry] = "registry"
+	if getTestArch() == "s390x" {
+		return map[int]string{
+			busyboxImage:  "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
+			registryImage: "ibmcom/registry:2.6.2.5",
+		}
 	}
-	return mapping
+	return map[int]string{
+		busyboxImage:  "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+		registryImage: "registry",
+	}
 }
 
-func initExcludedTests() map[string]bool {
-	mapping := make(map[string]bool)
-	tests := []string{}
-	switch getTestArch() {
-	case "s390x":
-		//examples
-		tests = []string{
+func initExcludedTests() sets.String {
+	if getTestArch() == "s390x" {
+		return sets.NewString(
+			//examples
 			"TestExamples/v1alpha1/taskruns/dind-sidecar",
 			"TestExamples/v1beta1/taskruns/dind-sidecar",
 			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
@@ -122,26 +119,19 @@ func initExcludedTests() map[string]bool {
 			"TestWorkingDirCreated",
 			"TestPipelineRun/service_account_propagation_and_pipeline_param",
 			"TestPipelineRun/pipelinerun_succeeds_with_LimitRange_minimum_in_namespace",
-		}
-	default:
-		// do nothing
+		)
 	}
-
-	for _, test := range tests {
-		mapping[test] = true
-	}
-
-	return mapping
+	return sets.NewString()
 }
 
 // get test image based on unique id
-func GetTestImage(image int) string {
+func getTestImage(image int) string {
 	return imageNames[image]
 }
 
 // check if test name is in the excluded list and skip it
-func SkipIfExcluded(t *testing.T) {
-	if excludedTests[t.Name()] {
+func skipIfExcluded(t *testing.T) {
+	if excludedTests.Has(t.Name()) {
 		t.Skipf("skip for %s architecture", getTestArch())
 	}
 }
