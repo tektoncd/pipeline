@@ -330,7 +330,7 @@ The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Re
 
 The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status). 
 
-In these examples, `create-readme-file` task will only be executed if the `path` parameter is `README.md` and `echo-file-exists` task will only be executed if the `status` result from `check-file` task is `exists`. 
+In these examples, `first-create-file` task will only be executed if the `path` parameter is `README.md` and `echo-file-exists` task will only be executed if the `exists` result from `check-file` task is `yes`. 
 
 ```yaml
 tasks:
@@ -340,14 +340,14 @@ tasks:
         operator: in
         values: ["README.md"]
     taskRef:
-      name: create-readme-file
+      name: first-create-file
 ---
 tasks:
   - name: echo-file-exists
     when:
-      - input: "$(tasks.check-file.results.status)"
+      - input: "$(tasks.check-file.results.exists)"
         operator: in
-        values: ["exists"]
+        values: ["yes"]
     taskRef:
         name: echo-file-exists
 ```
@@ -454,10 +454,10 @@ spec:
 Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipeline can use these
 `Results` for two different purposes:
 
-1. A Pipeline can pass the `Result` of a `Task` in to the `Parameters` of another.
+1. A Pipeline can pass the `Result` of a `Task` into the `Parameters` or `WhenExpressions` of another.
 2. A Pipeline can itself emit `Results` and include data from the `Results` of its Tasks.
 
-### Passing one Task's `Results` into the `Parameters` of another
+### Passing one Task's `Results` into the `Parameters` or `WhenExpressions` of another
 
 Sharing `Results` between `Tasks` in a `Pipeline` happens via
 [variable substitution](variables.md#variables-available-in-a-pipeline) - one `Task` emits
@@ -477,6 +477,16 @@ before this one.
 params:
   - name: foo
     value: "$(tasks.checkout-source.results.commit)"
+```
+
+In the snippet below, a `WhenExpression` is provided its value from the `exists` `Result` emitted by the
+`check-file` `Task`. Tekton will make sure that the `check-file` `Task` runs before this one.
+
+```yaml
+when:
+- input: "$(tasks.check-file.results.exists)"
+  operator: in
+  values: ["yes"]
 ```
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
