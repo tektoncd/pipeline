@@ -522,7 +522,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
 
 	for _, rprt := range nextRprts {
-		if rprt == nil {
+		if rprt == nil || rprt.Skip(pipelineState, d) {
 			continue
 		}
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
