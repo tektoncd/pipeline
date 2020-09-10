@@ -83,11 +83,6 @@ spec:
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
         $(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
-      baseBuildOverrides:
-        $(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url):
-          flags:
-            - name: ldflags
-              value: "-X $(inputs.params.pathToProject)/pkg/version.PipelineVersion=$(inputs.params.versionTag)"
       EOF
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
@@ -150,7 +145,7 @@ spec:
       done
 
       # Rewrite "devel" to inputs.params.versionTag
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(inputs.params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(inputs.params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
 
       OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(inputs.params.versionTag)"
 

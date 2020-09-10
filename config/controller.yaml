@@ -56,6 +56,8 @@ spec:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
+          # Version, to be replace at release time
+          "-version", "devel",
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
