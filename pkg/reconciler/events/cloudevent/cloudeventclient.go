@@ -18,6 +18,7 @@ package cloudevent
 
 import (
 	"context"
+	"net/http"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"k8s.io/client-go/rest"
@@ -35,11 +36,19 @@ type CECKey struct{}
 func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context {
 	logger := logging.FromContext(ctx)
 
-	p, err := cloudevents.NewHTTP()
+	// When KeepAlive is enabled the connections are not reused - see
+	// Bug https://github.com/tektoncd/pipeline/issues/3190. This causes the
+	// number of connections to keep growing, even if when we limit max idle
+	// connections in the transport.
+	// TODO(afrittoli) Re-enable keep alive and ensure connections are reused
+	// See feature https://github.com/tektoncd/pipeline/issues/3204
+	var useOnceTransport http.RoundTripper = &http.Transport{
+		DisableKeepAlives: true,
+	}
 
+	p, err := cloudevents.NewHTTP(cloudevents.WithRoundTripper(useOnceTransport))
 	if err != nil {
 		logger.Panicf("Error creating the cloudevents http protocol: %s", err)
-		return ctx
 	}
 
 	cloudEventClient, err := cloudevents.NewClient(p, cloudevents.WithUUIDs(), cloudevents.WithTimeNow())
