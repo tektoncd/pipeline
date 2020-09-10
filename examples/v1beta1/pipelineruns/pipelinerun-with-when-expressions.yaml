@@ -45,22 +45,22 @@ spec:
           - name: source
             description: The workspace to check for the file
         results:
-          - name: status
+          - name: exists
             description: indicates whether the file exists or is missing
         steps:
           - name: check-file
             image: alpine
             script: |
               if test -f $(workspaces.source.path)/$(params.path); then
-                printf exists | tee /tekton/results/status
+                printf yes | tee /tekton/results/exists
               else
-                printf missing | tee /tekton/results/status
+                printf no | tee /tekton/results/exists
               fi
     - name: echo-file-exists
       when:
-        - input: "$(tasks.check-file.results.status)"
+        - input: "$(tasks.check-file.results.exists)"
           operator: in
-          values: ["exists"]
+          values: ["yes"]
       taskSpec:
         steps:
           - name: echo
