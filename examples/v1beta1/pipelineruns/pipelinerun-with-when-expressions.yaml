@@ -66,6 +66,16 @@ spec:
           - name: echo
             image: ubuntu
             script: 'echo file exists'
+    - name: echo-file-missing
+      when:
+        - input: "$(tasks.check-file.results.exists)"
+          operator: in
+          values: ["missing"]
+      taskSpec:
+        steps:
+          - name: echo
+            image: ubuntu
+            script: 'echo file missing'
     - name: task-should-be-skipped
       when:
         - input: "$(params.path)"
