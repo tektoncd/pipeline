@@ -174,7 +174,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			}}},
 			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
 				Name:  "registry",
-				Image: GetTestImage(Registry),
+				Image: getTestImage(registryImage),
 			}}},
 		},
 	}

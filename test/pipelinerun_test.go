@@ -209,8 +209,6 @@ func TestPipelineRun(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			td := td
 
-			SkipIfExcluded(t)
-
 			t.Parallel()
 			c, namespace := setup(t)
 

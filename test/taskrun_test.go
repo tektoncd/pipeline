@@ -125,7 +125,7 @@ func TestTaskRunStatus(t *testing.T) {
 
 	taskRunName := "status-taskrun"
 
-	fqImageName := GetTestImage(BusyboxSha)
+	fqImageName := getTestImage(busyboxImage)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := &v1beta1.Task{
