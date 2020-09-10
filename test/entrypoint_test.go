@@ -27,10 +27,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-const (
-	epTaskName    = "ep-task"
-	epTaskRunName = "ep-task-run"
-)
+const epTaskRunName = "ep-task-run"
 
 // TestEntrypointRunningStepsInOrder is an integration test that will
 // verify attempt to the get the entrypoint of a container image
@@ -43,30 +40,21 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: epTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "ubuntu",
-				Args:  []string{"-c", "sleep 3 && touch foo"},
-			}}, {Container: corev1.Container{
-				Image: "ubuntu",
-				Args:  []string{"-c", "ls", "foo"},
-			}}},
-		},
-	}
-	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
-	taskRun := &v1beta1.TaskRun{
+	t.Logf("Creating TaskRun in namespace %s", namespace)
+	if _, err := c.TaskRunClient.Create(&v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: epTaskRunName, Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: epTaskName},
-			ServiceAccountName: "default",
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{Image: "busybox"},
+					Script:    "sleep 3 && touch foo",
+				}, {
+					Container: corev1.Container{Image: "ubuntu"},
+					Script:    "ls foo",
+				}},
+			},
 		},
-	}
-	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+	}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
