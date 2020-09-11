@@ -5,7 +5,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 * [Before you begin](#before-you-begin)
 * [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
 * [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
-* [Configuring artifact storage](#configuring-artifact-storage)
+* [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
 * [Next steps](#next-steps)
@@ -72,7 +72,7 @@ To install Tekton Pipelines on a Kubernetes cluster:
 
 Congratulations! You have successfully installed Tekton Pipelines on your Kubernetes cluster. Next, see the following topics:
 
-* [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
+* [Configuring PipelineResource storage](#configuring-pipelineresource-storage) to set up artifact storage for Tekton Pipelines.
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
 
 ### Installing Tekton Pipelines on OpenShift
@@ -117,21 +117,28 @@ for more information.
 
 Congratulations! You have successfully installed Tekton Pipelines on your OpenShift environment. Next, see the following topics:
 
-* [Configuring artifact storage](#configuring-artifact-storage) to set up artifact storage for Tekton Pipelines.
+* [Configuring PipelineResource storage](#configuring-pipelineresource-storage) to set up artifact storage for Tekton Pipelines.
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters) if you need to customize your service account, timeout, or Pod template values.
 
 If you want to run OpenShift 4.x on your laptop (or desktop), you
 should take a look at [Red Hat CodeReady Containers](https://github.com/code-ready/crc).
 
-## Configuring artifact storage
+## Configuring PipelineResource storage
 
-`Tasks` in Tekton Pipelines need to ingest inputs from and store outputs to one or more common locations.
- You can use one of the following solutions to set up resource storage for Tekton Pipelines:
+PipelineResources are one of the ways that Tekton passes data between Tasks. If you intend to
+use PipelineResources in your Pipelines then you'll need to configure a storage location
+for that data to be put so that it can be shared between Tasks in the Pipeline.
+
+**Note:** Pipeline Resources are in alpha and are currently undergoing considerable redesign. Therefore
+this storage configuration is possibly going to change in future. Writing Tasks and Pipelines today that rely
+on this feature may mean you'll need to rewrite those Tasks and Pipelines when the redesign is complete. See
+the [explanation for the redesign in the PipelineResources doc](./resources.md#why-arent-pipelineresources-in-beta)
+and [issue 1673](https://github.com/tektoncd/pipeline/issues/1673) to follow along with the redesign work.
+
+The storage options available for sharing PipelineResources between Tasks in a Pipeline are:
 
   * [A persistent volume](#configuring-a-persistent-volume)
   * [A cloud storage bucket](#configuring-a-cloud-storage-bucket)
-
-**Note:** Inputs and output locations for `Tasks` are defined via [`PipelineResources`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md).
 
 Either option provides the same functionality to Tekton Pipelines. Choose the option that
 best suits your business needs. For example:
