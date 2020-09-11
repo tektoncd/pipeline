@@ -67,7 +67,7 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		t.Errorf("unexpected error when retrieving StatefulSet: %v", err)
 	}
 
-	err = c.cleanupAffinityAssistants(testPipelineRun)
+	err = c.cleanupAffinityAssistants(context.Background(), testPipelineRun)
 	if err != nil {
 		t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
 	}
@@ -143,6 +143,50 @@ func TestThatAffinityAssistantNameIsNoLongerThan53(t *testing.T) {
 
 	if len(affinityAssistantName) > 53 {
 		t.Errorf("affinity assistant name can not be longer than 53 chars")
+	}
+}
+
+// TestThatCleanupIsAvoidedIfAssistantIsDisabled tests that
+// cleanup of Affinity Assistants is omitted when the
+// Affinity Assistant is disabled
+func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
+	testPipelineRun := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-pipelinerun",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name: "test-workspace",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "myclaim",
+				},
+			}},
+		},
+	}
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			featureFlagDisableAffinityAssistantKey: "true",
+		},
+	}
+
+	fakeClientSet := fakek8s.NewSimpleClientset(
+		configMap,
+	)
+
+	c := Reconciler{
+		KubeClientSet: fakeClientSet,
+		Images:        pipeline.Images{},
+	}
+	store := config.NewStore(logtesting.TestLogger(t))
+	store.OnConfigChanged(configMap)
+
+	_ = c.cleanupAffinityAssistants(store.ToContext(context.Background()), testPipelineRun)
+
+	if len(fakeClientSet.Actions()) != 0 {
+		t.Errorf("Expected 0 k8s client requests, did %d request", len(fakeClientSet.Actions()))
 	}
 }
 
