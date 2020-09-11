@@ -95,6 +95,15 @@ var pts = []v1beta1.PipelineTask{{
 		Operator: selection.NotIn,
 		Values:   []string{"foo", "bar"},
 	}},
+}, {
+	Name:    "mytask12",
+	TaskRef: &v1beta1.TaskRef{Name: "taskWithWhenExpressions"},
+	WhenExpressions: []v1beta1.WhenExpression{{
+		Input:    "foo",
+		Operator: selection.In,
+		Values:   []string{"foo", "bar"},
+	}},
+	RunAfter: []string{"mytask1"},
 }}
 
 var p = &v1beta1.Pipeline{
@@ -1175,6 +1184,23 @@ func TestIsSkipped(t *testing.T) {
 			},
 		}},
 		expected: true,
+	}, {
+		name:     "when-expression-task-but-without-parent-done",
+		taskName: "mytask12",
+		state: PipelineRunState{{
+			PipelineTask: &pts[0],
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[11],
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		expected: false,
 	}}
 
 	for _, tc := range tcs {

@@ -510,16 +510,17 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		nextRprts = pipelineState.GetNextTasks(candidateTasks)
 	}
 
-	// GetFinalTasks only returns tasks when a DAG is complete
-	nextRprts = append(nextRprts, pipelineState.GetFinalTasks(d, dfinally)...)
-
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
 	if err != nil {
 		logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
 		return controller.NewPermanentError(err)
 	}
+
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
+
+	// GetFinalTasks only returns tasks when a DAG is complete
+	nextRprts = append(nextRprts, pipelineState.GetFinalTasks(d, dfinally)...)
 
 	for _, rprt := range nextRprts {
 		if rprt == nil || rprt.Skip(pipelineState, d) {
