@@ -105,11 +105,11 @@ func (wes WhenExpressions) HaveVariables() bool {
 }
 
 // ReplaceWhenExpressionsVariables interpolates variables, such as Parameters and Results, in
-// the Input and Values. Returns a new instance of WhenExpressions.
+// the Input and Values.
 func (wes WhenExpressions) ReplaceWhenExpressionsVariables(replacements map[string]string) WhenExpressions {
-	var replaced []WhenExpression
-	for _, we := range wes {
-		replaced = append(replaced, we.applyReplacements(replacements))
+	replaced := wes
+	for i := range wes {
+		replaced[i] = wes[i].applyReplacements(replacements)
 	}
 	return replaced
 }
