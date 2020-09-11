@@ -84,7 +84,13 @@ func getClaimName(w v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReferen
 	return ""
 }
 
-func (c *Reconciler) cleanupAffinityAssistants(pr *v1beta1.PipelineRun) error {
+func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.PipelineRun) error {
+
+	// omit cleanup if the feature is disabled
+	if c.isAffinityAssistantDisabled(ctx) {
+		return nil
+	}
+
 	var errs []error
 	for _, w := range pr.Spec.Workspaces {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
