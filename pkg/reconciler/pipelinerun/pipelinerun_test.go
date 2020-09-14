@@ -1221,9 +1221,9 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 				Reason:  v1beta1.PipelineRunReasonRunning.String(),
 				Message: "running...",
 			}),
-			tb.PipelineRunTaskRunsStatus(prName+ptName, &v1alpha1.PipelineRunTaskRunStatus{
+			tb.PipelineRunTaskRunsStatus(prName+ptName, &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: ptName,
-				Status:           &v1alpha1.TaskRunStatus{},
+				Status:           &v1beta1.TaskRunStatus{},
 			}),
 			tb.PipelineRunStartTime(time.Now()),
 		),
