@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -129,7 +128,7 @@ func TestPodBuild(t *testing.T) {
 	}, {
 		desc: "simple with running-in-environment-with-injected-sidecar set to false",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "name",
 				Image:   "image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
@@ -570,12 +569,12 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 	}, {
 		desc: "sidecar container with enable-ready-annotation-on-pod-create",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "primary-name",
 				Image:   "primary-image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
-			Sidecars: []v1alpha1.Sidecar{{
+			Sidecars: []v1beta1.Sidecar{{
 				Container: corev1.Container{
 					Name:  "sc-name",
 					Image: "sidecar-image",
@@ -920,7 +919,7 @@ script-heredoc-randomly-generated-78c5n
 	}, {
 		desc: "setting image pull secret",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{
+			Steps: []v1beta1.Step{
 				{
 					Container: corev1.Container{
 						Name:    "image-pull",
@@ -931,7 +930,7 @@ script-heredoc-randomly-generated-78c5n
 			},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1alpha1.PodTemplate{
+			PodTemplate: &v1beta1.PodTemplate{
 				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
 			},
 		},

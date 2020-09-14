@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,7 +107,7 @@ func TestOrderContainers(t *testing.T) {
 }
 
 func TestEntryPointResults(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
+	results := []v1beta1.TaskResult{{
 		Name:        "sum",
 		Description: "This is the sum result of the task",
 	}, {
@@ -181,7 +181,7 @@ func TestEntryPointResults(t *testing.T) {
 }
 
 func TestEntryPointResultsSingleStep(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
+	results := []v1beta1.TaskResult{{
 		Name:        "sum",
 		Description: "This is the sum result of the task",
 	}, {
@@ -218,7 +218,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 	}
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
+	results := []v1beta1.TaskResult{{
 		Name:        "sum",
 		Description: "This is the sum result of the task",
 	}}
