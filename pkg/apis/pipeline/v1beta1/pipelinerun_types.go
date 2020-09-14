@@ -98,6 +98,11 @@ func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
 }
 
+// IsPaused returns true if the PipelineRun's spec status is set to Paused state
+func (pr *PipelineRun) IsPaused() bool {
+	return pr.Spec.Status == PipelineRunSpecStatusPaused
+}
+
 // GetNamespacedName returns a k8s namespaced name that identifies this PipelineRun
 func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}
@@ -192,6 +197,8 @@ const (
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
+
+	PipelineRunSpecStatusPaused = "PipelineRunPaused"
 )
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.
@@ -230,6 +237,8 @@ const (
 	// This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
 	// This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed
 	PipelineRunReasonCancelled PipelineRunReason = "Cancelled"
+	// PipelineRunReasonPaused is the reason set when the PipelineRun paused by the user
+	PipelineRunReasonPaused PipelineRunReason = "PipelineRunPaused"
 	// PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out
 	PipelineRunReasonTimedOut PipelineRunReason = "PipelineRunTimeout"
 	// PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the

@@ -20,6 +20,7 @@ weight: 4
   - [Configuring a failure timeout](#configuring-a-failure-timeout)
 - [Monitoring execution status](#monitoring-execution-status)
 - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+- [Pausing a `PipelineRun`](#pausing-a-pipelinerun)
 - [Events](events.md#pipelineruns)
 
 
@@ -491,6 +492,23 @@ metadata:
 spec:
   # […]
   status: "PipelineRunCancelled"
+```
+
+## Pausing a `PipelineRun`
+
+To pause a `PipelineRun` that's currently executing, update its definition to mark it paused.
+Note: `Pause` will only be valid in `runAfter` pipelines. When you do so, after the completion of the current pipeline, the next pipeline that runs after the previous one will be paused. For example:
+
+. For example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "PipelineRunPaused"
 ```
 
 ---

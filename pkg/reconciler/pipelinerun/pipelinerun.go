@@ -95,6 +95,8 @@ const (
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = "PipelineRunCancelled"
+	// ReasonPaused indicates that a PipelineRun was paused.
+	ReasonPaused = "PipelineRunPaused"
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
 	ReasonCouldntCancel = "PipelineRunCouldntCancel"
@@ -209,6 +211,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, pr); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
+	}
+
+	if pr.IsPaused() && before == nil {
+		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
 	return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
@@ -509,6 +515,18 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 		// nextRprts holds a list of pipeline tasks which should be executed next
 		nextRprts = pipelineRunState.GetNextTasks(candidateTasks)
+	}
+
+	// When pipeline run is paused, return to avoid creating the task
+	if pr.IsPaused() {
+		recorder.Eventf(pr, corev1.EventTypeNormal, ReasonPaused, "PipelineRun %q was paused", pr.Name)
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonPaused,
+			Message: fmt.Sprintf("PipelineRun %q was paused", pr.Name),
+		})
+		return nil
 	}
 
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineRunState, nextRprts)

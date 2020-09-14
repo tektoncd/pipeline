@@ -1106,6 +1106,52 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	}
 }
 
+func TestReconcileOnPausedPipelineRun(t *testing.T) {
+	// TestReconcileOnPausedPipelineRun runs "Reconcile" on a PipelineRun that has been paused.
+	// It verifies that reconcile is successful, the pipeline status updated and events generated.
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-paused",
+		tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineRunPaused,
+		),
+		tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+	)}
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world", "hello-world"),
+	))}
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+	trs := []*v1beta1.TaskRun{
+		tb.TaskRun("test-pipeline-run-paused-hello-world",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-paused"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+		),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal PipelineRunPaused PipelineRun \"test-pipeline-run-paused\" was paused",
+	}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-paused", wantEvents, false)
+
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() || condition.Reason != ReasonPaused {
+		t.Errorf("Expected PipelineRun condition to indicate the pause failed but reason was %s", condition.Reason)
+	}
+}
+
 func TestReconcileWithTimeout(t *testing.T) {
 	// TestReconcileWithTimeout runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.

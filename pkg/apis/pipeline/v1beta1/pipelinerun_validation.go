@@ -66,8 +66,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	if ps.Status != "" {
-		if ps.Status != PipelineRunSpecStatusCancelled {
-			return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ps.Status, PipelineRunSpecStatusCancelled), "spec.status")
+		if ps.Status != PipelineRunSpecStatusCancelled && ps.Status != PipelineRunSpecStatusPaused {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", ps.Status, PipelineRunSpecStatusCancelled, PipelineRunSpecStatusPaused), "spec.status")
 		}
 	}
 

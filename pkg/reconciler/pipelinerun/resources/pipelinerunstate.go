@@ -191,7 +191,6 @@ func (state PipelineRunState) GetPipelineConditionStatus(pr *v1beta1.PipelineRun
 	//
 	// - All successful: ReasonSucceeded
 	// - Some successful, some skipped: ReasonCompleted
-	// - Some cancelled, none failed: ReasonCancelled
 	// - At least one failed: ReasonFailed
 	for _, rprt := range state {
 		allTasks = append(allTasks, rprt.PipelineTask.Name)
@@ -235,10 +234,13 @@ func (state PipelineRunState) GetPipelineConditionStatus(pr *v1beta1.PipelineRun
 
 	// Hasn't timed out; not all tasks have finished.... Must keep running then....
 	// transition pipeline into stopping state when one of the tasks(dag/final) cancelled or one of the dag tasks failed
+	// transition pipeline into paused state when one of the tasks(dag/final) paused
 	// for a pipeline with final tasks, single dag task failure does not transition to interim stopping state
 	// pipeline stays in running state until all final tasks are done before transitioning to failed state
 	if cancelledTasks > 0 || (failedTasks > 0 && state.checkTasksDone(dfinally)) {
 		reason = v1beta1.PipelineRunReasonStopping.String()
+	} else if pr.IsPaused() {
+		reason = v1beta1.PipelineRunReasonPaused.String()
 	} else {
 		reason = v1beta1.PipelineRunReasonRunning.String()
 	}
