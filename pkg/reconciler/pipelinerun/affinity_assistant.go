@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -47,7 +46,7 @@ const (
 // createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1alpha1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
 
 	var errs []error
