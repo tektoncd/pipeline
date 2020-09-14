@@ -19,18 +19,18 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestParseMessage(t *testing.T) {
 	for _, c := range []struct {
 		desc, msg string
-		want      []v1alpha1.PipelineResourceResult
+		want      []v1beta1.PipelineResourceResult
 	}{{
 		desc: "valid message",
 		msg:  `[{"key": "digest","value":"hereisthedigest"},{"key":"foo","value":"bar"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "digest",
 			Value: "hereisthedigest",
 		}, {
@@ -47,7 +47,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"foo","value":"first"},
 		{"key":"foo","value":"middle"},
 		{"key":"foo","value":"last"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "foo",
 			Value: "last",
 		}},
@@ -57,7 +57,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"zzz","value":"last"},
 		{"key":"ddd","value":"middle"},
 		{"key":"aaa","value":"first"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "aaa",
 			Value: "first",
 		}, {

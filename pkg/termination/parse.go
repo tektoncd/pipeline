@@ -20,28 +20,28 @@ import (
 	"fmt"
 	"sort"
 
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // ParseMessage parses a termination message as results.
 //
 // If more than one item has the same key, only the latest is returned. Items
 // are sorted by their key.
-func ParseMessage(msg string) ([]v1alpha1.PipelineResourceResult, error) {
+func ParseMessage(msg string) ([]v1beta1.PipelineResourceResult, error) {
 	if msg == "" {
 		return nil, nil
 	}
-	var r []v1alpha1.PipelineResourceResult
+	var r []v1beta1.PipelineResourceResult
 	if err := json.Unmarshal([]byte(msg), &r); err != nil {
 		return nil, fmt.Errorf("parsing message json: %v", err)
 	}
 
 	// Remove duplicates (last one wins) and sort by key.
-	m := map[string]v1alpha1.PipelineResourceResult{}
+	m := map[string]v1beta1.PipelineResourceResult{}
 	for _, rr := range r {
 		m[rr.Key] = rr
 	}
-	var r2 []v1alpha1.PipelineResourceResult
+	var r2 []v1beta1.PipelineResourceResult
 	for _, v := range m {
 		r2 = append(r2, v)
 	}
