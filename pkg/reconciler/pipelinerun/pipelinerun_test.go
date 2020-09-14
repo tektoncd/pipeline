@@ -4644,6 +4644,187 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 	}
 }
 
+func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
+	names.TestingSeed()
+
+	ps := []*v1beta1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline", Namespace: "foo"},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name:    "dag-task-1",
+				TaskRef: &v1beta1.TaskRef{Name: "dag-task"},
+			}, {
+				Name:    "dag-task-2",
+				TaskRef: &v1beta1.TaskRef{Name: "dag-task"},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Name:    "final-task-1",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "$(tasks.dag-task-1.results.aResult)",
+					}},
+				},
+			}, {
+				Name:    "final-task-2",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "$(tasks.dag-task-2.results.aResult)",
+					}},
+				},
+			}},
+		},
+	}}
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-final-task-results", Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
+			ServiceAccountName: "test-sa-0",
+		},
+	}}
+
+	ts := []*v1beta1.Task{{
+		ObjectMeta: metav1.ObjectMeta{Name: "dag-task", Namespace: "foo"},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{Name: "final-task", Namespace: "foo"},
+		Spec: v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "finalParam",
+				Type: v1beta1.ParamTypeString,
+			}},
+		},
+	}}
+
+	trs := []*v1beta1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-final-task-results-dag-task-1-xxyyy",
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind:       "PipelineRun",
+				Name:       "test-pipeline-run-final-task-results",
+				APIVersion: "tekton.dev/v1beta1",
+			}},
+			Labels: map[string]string{
+				"tekton.dev/pipeline":     "test-pipeline",
+				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
+				"tekton.dev/pipelineTask": "dag-task-1",
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			ServiceAccountName: "test-sa",
+			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.PipelineRunReasonSuccessful.String(),
+				}},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunResults: []v1beta1.TaskRunResult{{Name: "aResult", Value: "aResultValue"}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-final-task-results-dag-task-2-xxyyy",
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind:       "PipelineRun",
+				Name:       "test-pipeline-run-final-task-results",
+				APIVersion: "tekton.dev/v1beta1",
+			}},
+			Labels: map[string]string{
+				"tekton.dev/pipeline":     "test-pipeline",
+				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
+				"tekton.dev/pipelineTask": "dag-task-2",
+			},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			ServiceAccountName: "test-sa",
+			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+	}}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-final-task-results", []string{}, false)
+
+	expectedTaskRunName := "test-pipeline-run-final-task-results-final-task-1-9l9zj"
+	expectedTaskRun := v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      expectedTaskRunName,
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind:               "PipelineRun",
+				Name:               "test-pipeline-run-final-task-results",
+				APIVersion:         "tekton.dev/v1beta1",
+				Controller:         &trueb,
+				BlockOwnerDeletion: &trueb,
+			}},
+			Labels: map[string]string{
+				"tekton.dev/pipeline":     "test-pipeline",
+				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
+				"tekton.dev/pipelineTask": "final-task-1",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			ServiceAccountName: "test-sa-0",
+			TaskRef:            &v1beta1.TaskRef{Name: "final-task"},
+			Params:             []v1beta1.Param{{Name: "finalParam", Value: v1beta1.ArrayOrString{Type: "string", StringVal: "aResultValue"}}},
+			Resources:          &v1beta1.TaskRunResources{},
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+		},
+	}
+
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=final-task-1,tekton.dev/pipelineRun=test-pipeline-run-final-task-results",
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(expectedTaskRun, actualTaskRun, ignoreResourceVersion); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+	expectedSkippedTasks := []v1beta1.SkippedTask{{
+		Name: "final-task-2",
+	}}
+
+	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
+		t.Fatalf("Expected to see only one final task (final-task-2) in the list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
+	}
+}
+
 // NewPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
 // This PipelineRunTest can be reused for multiple PipelineRuns by calling reconcileRun for each pipelineRun
 func NewPipelineRunTest(data test.Data, t *testing.T) *PipelineRunTest {

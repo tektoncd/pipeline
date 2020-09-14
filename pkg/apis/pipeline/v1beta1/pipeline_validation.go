@@ -68,7 +68,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
-	errs = errs.Also(validateFinalTasks(ps.Finally))
+	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks))
 	return errs
 }
@@ -420,7 +420,7 @@ func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
 	return nil
 }
 
-func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
+func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	for idx, f := range finalTasks {
 		if len(f.RunAfter) != 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "").ViaFieldIndex("finally", idx)
@@ -433,7 +433,10 @@ func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
 		}
 	}
 
-	if err := validateTaskResultReferenceNotUsed(finalTasks).ViaField("finally"); err != nil {
+	ts := PipelineTaskList(tasks).Names()
+	fts := PipelineTaskList(finalTasks).Names()
+
+	if err := validateTaskResultReference(finalTasks, ts, fts).ViaField("finally"); err != nil {
 		return err
 	}
 
@@ -444,14 +447,22 @@ func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
 	return nil
 }
 
-func validateTaskResultReferenceNotUsed(tasks []PipelineTask) *apis.FieldError {
-	for idx, t := range tasks {
+func validateTaskResultReference(finalTasks []PipelineTask, ts, fts sets.String) *apis.FieldError {
+	for idx, t := range finalTasks {
 		for _, p := range t.Params {
 			expressions, ok := GetVarSubstitutionExpressionsForParam(p)
 			if ok {
 				if LooksLikeContainsResultRefs(expressions) {
-					return apis.ErrInvalidValue(fmt.Sprintf("no task result allowed under params,"+
-						"final task param %s has set task result as its value", p.Name), "params").ViaIndex(idx)
+					resultRefs := NewResultRefs(expressions)
+					for _, resultRef := range resultRefs {
+						if fts.Has(resultRef.PipelineTask) {
+							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+								"final task param %s has task result reference from a final task", p.Name), "params").ViaIndex(idx)
+						} else if !ts.Has(resultRef.PipelineTask) {
+							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+								"final task param %s has task result reference from a task which is not defined in the pipeline", p.Name), "params").ViaIndex(idx)
+						}
+					}
 				}
 			}
 		}

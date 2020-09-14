@@ -216,6 +216,19 @@ func (t *ResolvedPipelineRunTask) parentTasksSkip(facts *PipelineRunFacts) bool 
 	return false
 }
 
+// IsFinallySkipped returns true if a finally task is not executed and skipped due to task result validation failure
+func (t *ResolvedPipelineRunTask) IsFinallySkipped(facts *PipelineRunFacts) bool {
+	if t.IsStarted() {
+		return false
+	}
+	if facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name) {
+		if _, err := ResolveResultRef(facts.State, t); err != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // GetRun is a function that will retrieve a Run by name.
 type GetRun func(name string) (*v1alpha1.Run, error)
 

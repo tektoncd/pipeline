@@ -1614,6 +1614,24 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid pipeline with final tasks referring to task results from a dag task",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &TaskRef{Name: "non-final-task"},
+				}},
+				Finally: []PipelineTask{{
+					Name:    "final-task-1",
+					TaskRef: &TaskRef{Name: "final-task"},
+					Params: []Param{{
+						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.non-final-task.results.output)"},
+					}},
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1918,6 +1936,7 @@ func TestValidateTasksAndFinallySection_Failure(t *testing.T) {
 func TestValidateFinalTasks_Failure(t *testing.T) {
 	tests := []struct {
 		name          string
+		tasks         []PipelineTask
 		finalTasks    []PipelineTask
 		expectedError apis.FieldError
 	}{{
@@ -1960,16 +1979,32 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 			Paths:   []string{"finally[0].resources.inputs[0]"},
 		},
 	}, {
-		name: "invalid pipeline with final tasks having reference to task results",
+		name: "invalid pipeline with final tasks having task results reference from a final task",
+		finalTasks: []PipelineTask{{
+			Name:    "final-task-1",
+			TaskRef: &TaskRef{Name: "final-task"},
+		}, {
+			Name:    "final-task-2",
+			TaskRef: &TaskRef{Name: "final-task"},
+			Params: []Param{{
+				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.final-task-1.results.output)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalid task result reference, final task param param1 has task result reference from a final task`,
+			Paths:   []string{"finally[1].params"},
+		},
+	}, {
+		name: "invalid pipeline with final tasks having task results reference from non existent dag task",
 		finalTasks: []PipelineTask{{
 			Name:    "final-task",
 			TaskRef: &TaskRef{Name: "final-task"},
 			Params: []Param{{
-				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.a-task.results.output)"},
+				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.no-dag-task-1.results.output)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
-			Message: `invalid value: no task result allowed under params,final task param param1 has set task result as its value`,
+			Message: `invalid value: invalid task result reference, final task param param1 has task result reference from a task which is not defined in the pipeline`,
 			Paths:   []string{"finally[0].params"},
 		},
 	}, {
@@ -1990,7 +2025,7 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateFinalTasks(tt.finalTasks)
+			err := validateFinalTasks(tt.tasks, tt.finalTasks)
 			if err == nil {
 				t.Errorf("Pipeline.ValidateFinalTasks() did not return error for invalid pipeline")
 			}
