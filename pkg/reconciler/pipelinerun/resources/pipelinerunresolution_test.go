@@ -120,6 +120,10 @@ var pts = []v1beta1.PipelineTask{{
 }, {
 	Name:    "mytask14",
 	TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+}, {
+	Name:    "mytask15",
+	TaskRef: &v1beta1.TaskRef{Name: "taskWithReferenceToTaskResult"},
+	Params:  []v1beta1.Param{{Name: "param1", Value: *v1beta1.NewArrayOrString("$(tasks.mytask1.results.result1)")}},
 }}
 
 var p = &v1beta1.Pipeline{
@@ -2203,5 +2207,69 @@ func TestIsCustomTask(t *testing.T) {
 				t.Errorf("IsCustomTask: %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
+	tr := tb.TaskRun("dag-task", tb.TaskRunStatus(
+		tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}),
+		tb.TaskRunResult("commit", "SHA2"),
+	))
+
+	state := PipelineRunState{{
+		TaskRunName: "dag-task",
+		TaskRun:     tr,
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "dag-task",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Params: []v1beta1.Param{{
+				Name:  "commit",
+				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.commit)"),
+			}},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-2",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Params: []v1beta1.Param{{
+				Name:  "commit",
+				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.missingResult)"),
+			}},
+		},
+	}}
+
+	tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*state[0].PipelineTask})
+	d, err := dag.Build(tasks, tasks.Deps())
+	if err != nil {
+		t.Fatalf("Could not get a dag from the dag tasks %#v: %v", state[0], err)
+	}
+
+	// build graph with finally tasks
+	pts := []v1beta1.PipelineTask{*state[1].PipelineTask, *state[2].PipelineTask}
+	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pts), map[string][]string{})
+	if err != nil {
+		t.Fatalf("Could not get a dag from the finally tasks %#v: %v", pts, err)
+	}
+
+	facts := &PipelineRunFacts{
+		State:           state,
+		TasksGraph:      d,
+		FinalTasksGraph: dfinally,
+	}
+
+	if state[1].IsFinallySkipped(facts) {
+		t.Fatalf("Didn't expect the finally task with a valid result reference to be skipped but it was skipped.")
+	}
+
+	if !state[2].IsFinallySkipped(facts) {
+		t.Fatal("Expected the finally task with an invalid result reference to be skipped but it was not skipped.")
 	}
 }

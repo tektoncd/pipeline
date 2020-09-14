@@ -1105,6 +1105,15 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 		TaskRun:      makeFailed(trs[0]),
 	}}
 
+	// pipeline state with one DAG failed, one final task skipped
+	dagFailedFinalSkipped := PipelineRunState{{
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[0],
+		TaskRun:      makeFailed(trs[0]),
+	}, {
+		PipelineTask: &pts[14],
+	}}
+
 	tcs := []struct {
 		name               string
 		state              PipelineRunState
@@ -1152,6 +1161,18 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 		expectedIncomplete: 0,
 		expectedSkipped:    0,
 		expectedFailed:     2,
+		expectedCancelled:  0,
+	}, {
+		name:               "pipeline with one failed DAG task and skipped final task",
+		state:              dagFailedFinalSkipped,
+		dagTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[14]},
+		expectedStatus:     corev1.ConditionFalse,
+		expectedReason:     v1beta1.PipelineRunReasonFailed.String(),
+		expectedSucceeded:  0,
+		expectedIncomplete: 0,
+		expectedSkipped:    1,
+		expectedFailed:     1,
 		expectedCancelled:  0,
 	}}
 
@@ -1437,5 +1458,33 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 				t.Fatalf("Test failed: %s Mismatch in pipelineTask execution state %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
+	dagFailedFinalSkipped := PipelineRunState{{
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[0],
+		TaskRun:      makeFailed(trs[0]),
+	}, {
+		PipelineTask: &pts[14],
+	}}
+	expectedSkippedTasks := []v1beta1.SkippedTask{{Name: pts[14].Name}}
+	d, err := dag.Build(v1beta1.PipelineTaskList{pts[0]}, v1beta1.PipelineTaskList{pts[0]}.Deps())
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", v1beta1.PipelineTaskList{pts[0]}, err)
+	}
+	df, err := dag.Build(v1beta1.PipelineTaskList{pts[14]}, map[string][]string{})
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for final tasks %v: %v", v1beta1.PipelineTaskList{pts[14]}, err)
+	}
+	facts := PipelineRunFacts{
+		State:           dagFailedFinalSkipped,
+		TasksGraph:      d,
+		FinalTasksGraph: df,
+	}
+	actualSkippedTasks := facts.GetSkippedTasks()
+	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
+		t.Fatalf("Mismatch skipped tasks %s", diff.PrintWantGot(d))
 	}
 }

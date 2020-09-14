@@ -164,6 +164,18 @@ spec:
       workspaces:
         - name: source
           workspace: git-source
+    - name: display-git-commit
+      params:
+        - name: commit
+          value: $(tasks.clone-app-repo.results.commit)
+      taskSpec:
+        params:
+          - name: commit
+        steps:
+          - name: display-commit
+            image: alpine
+            script: |
+              echo $(params.commit)
 ---
 
 # PipelineRun to execute pipeline - clone-into-workspace-and-cleanup-workspace
