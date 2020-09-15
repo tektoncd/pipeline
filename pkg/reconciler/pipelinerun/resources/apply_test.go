@@ -174,6 +174,35 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("final-task-first-param", "default-value"),
 					tb.PipelineTaskParam("final-task-second-param", "second-value"),
 				))),
+	}, {
+		name: "parameter evaluation with both tasks and final tasks",
+		original: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1beta1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1beta1.ParamTypeString),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "$(params.first-param)"),
+				),
+				tb.PipelineTask("first-task-2", "first-task",
+					tb.PipelineTaskWhenExpression("$(params.first-param)", selection.In, []string{"$(params.second-param)"})),
+				tb.FinalPipelineTask("final-task-1", "final-task",
+					tb.PipelineTaskParam("final-task-second-param", "$(params.second-param)"),
+				))),
+		run: tb.PipelineRun("test-pipeline-run",
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunParam("second-param", "second-value"))),
+		expected: tb.Pipeline("test-pipeline",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1beta1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1beta1.ParamTypeString),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "default-value"),
+				),
+				tb.PipelineTask("first-task-2", "first-task",
+					tb.PipelineTaskWhenExpression("default-value", selection.In, []string{"second-value"})),
+				tb.FinalPipelineTask("final-task-1", "final-task",
+					tb.PipelineTaskParam("final-task-second-param", "second-value"),
+				))),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
