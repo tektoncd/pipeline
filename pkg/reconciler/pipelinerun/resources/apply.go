@@ -88,16 +88,17 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 
-	// replace param values for both DAG and final tasks
-	tasks := append(p.Tasks, p.Finally...)
-
-	for i := range tasks {
-		tasks[i].Params = replaceParamValues(tasks[i].Params, replacements, arrayReplacements)
-		for j := range tasks[i].Conditions {
-			c := tasks[i].Conditions[j]
+	for i := range p.Tasks {
+		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements)
+		for j := range p.Tasks[i].Conditions {
+			c := p.Tasks[i].Conditions[j]
 			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
-		tasks[i].WhenExpressions = tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
+		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
+	}
+
+	for i := range p.Finally {
+		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements)
 	}
 
 	return p
