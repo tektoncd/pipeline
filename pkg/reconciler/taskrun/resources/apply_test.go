@@ -708,49 +708,91 @@ func TestApplyWorkspaces(t *testing.T) {
 			},
 		}},
 	}
-	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
-		spec.StepTemplate.Env[0].Value = "ws-9l9zj"
-		spec.StepTemplate.Env[1].Value = "foo"
-		spec.StepTemplate.Env[2].Value = ""
+	for _, tc := range []struct {
+		name  string
+		spec  *v1beta1.TaskSpec
+		decls []v1beta1.WorkspaceDeclaration
+		binds []v1beta1.WorkspaceBinding
+		want  *v1beta1.TaskSpec
+	}{{
+		name: "workspace-variable-replacement",
+		spec: ts.DeepCopy(),
+		decls: []v1beta1.WorkspaceDeclaration{{
+			Name: "myws",
+		}, {
+			Name:      "otherws",
+			MountPath: "/foo",
+		}},
+		binds: []v1beta1.WorkspaceBinding{{
+			Name: "myws",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "foo",
+			},
+		}, {
+			Name:     "otherws",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}},
+		want: applyMutation(ts, func(spec *v1beta1.TaskSpec) {
+			spec.StepTemplate.Env[0].Value = "ws-9l9zj"
+			spec.StepTemplate.Env[1].Value = "foo"
+			spec.StepTemplate.Env[2].Value = ""
 
-		spec.Steps[0].Name = "ws-9l9zj"
-		spec.Steps[0].Image = "ws-mz4c7"
-		spec.Steps[0].WorkingDir = "ws-mz4c7"
-		spec.Steps[0].Args = []string{"/workspace/myws"}
+			spec.Steps[0].Name = "ws-9l9zj"
+			spec.Steps[0].Image = "ws-mz4c7"
+			spec.Steps[0].WorkingDir = "ws-mz4c7"
+			spec.Steps[0].Args = []string{"/workspace/myws"}
 
-		spec.Steps[1].VolumeMounts[0].Name = "ws-9l9zj"
-		spec.Steps[1].VolumeMounts[0].MountPath = "path/to//foo"
-		spec.Steps[1].VolumeMounts[0].SubPath = "ws-9l9zj"
+			spec.Steps[1].VolumeMounts[0].Name = "ws-9l9zj"
+			spec.Steps[1].VolumeMounts[0].MountPath = "path/to//foo"
+			spec.Steps[1].VolumeMounts[0].SubPath = "ws-9l9zj"
 
-		spec.Steps[2].Env[0].Value = "ws-9l9zj"
-		spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "ws-9l9zj"
-		spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.Key = "ws-9l9zj"
-		spec.Steps[2].EnvFrom[0].Prefix = "ws-9l9zj"
-		spec.Steps[2].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "ws-9l9zj"
+			spec.Steps[2].Env[0].Value = "ws-9l9zj"
+			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "ws-9l9zj"
+			spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.Key = "ws-9l9zj"
+			spec.Steps[2].EnvFrom[0].Prefix = "ws-9l9zj"
+			spec.Steps[2].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "ws-9l9zj"
 
-		spec.Volumes[0].Name = "ws-9l9zj"
-		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "ws-9l9zj"
-		spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-9l9zj"
-		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-9l9zj"
-	})
-	w := []v1beta1.WorkspaceDeclaration{{
-		Name: "myws",
+			spec.Volumes[0].Name = "ws-9l9zj"
+			spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "ws-9l9zj"
+			spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-9l9zj"
+			spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-9l9zj"
+		}),
 	}, {
-		Name:      "otherws",
-		MountPath: "/foo",
-	}}
-	wb := []v1beta1.WorkspaceBinding{{
-		Name: "myws",
-		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-			ClaimName: "foo",
-		},
+		name: "optional-workspace-provided-variable-replacement",
+		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `test "$(workspaces.ows.bound)" = "true" && echo "$(workspaces.ows.path)"`,
+		}}},
+		decls: []v1beta1.WorkspaceDeclaration{{
+			Name:     "ows",
+			Optional: true,
+		}},
+		binds: []v1beta1.WorkspaceBinding{{
+			Name:     "ows",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}},
+		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `test "true" = "true" && echo "/workspace/ows"`,
+		}}},
 	}, {
-		Name:     "otherws",
-		EmptyDir: &corev1.EmptyDirVolumeSource{},
-	}}
-	got := resources.ApplyWorkspaces(ts, w, wb)
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
+		name: "optional-workspace-omitted-variable-replacement",
+		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `test "$(workspaces.ows.bound)" = "true" && echo "$(workspaces.ows.path)"`,
+		}}},
+		decls: []v1beta1.WorkspaceDeclaration{{
+			Name:     "ows",
+			Optional: true,
+		}},
+		binds: []v1beta1.WorkspaceBinding{}, // intentionally omitted ows binding
+		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `test "false" = "true" && echo ""`,
+		}}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resources.ApplyWorkspaces(tc.spec, tc.decls, tc.binds)
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

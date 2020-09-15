@@ -255,8 +255,11 @@ func ValidateWorkspaceBindings(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun)
 	}
 
 	for _, ws := range p.Workspaces {
+		if ws.Optional {
+			continue
+		}
 		if _, ok := pipelineRunWorkspaces[ws.Name]; !ok {
-			return fmt.Errorf("pipeline expects workspace with name %q be provided by pipelinerun", ws.Name)
+			return fmt.Errorf("pipeline requires workspace with name %q be provided by pipelinerun", ws.Name)
 		}
 	}
 	return nil

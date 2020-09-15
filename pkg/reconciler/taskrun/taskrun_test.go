@@ -2510,6 +2510,96 @@ func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
 	}
 }
 
+// TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace tests a reconcile
+// of a TaskRun that has omitted a Workspace that the Task has marked as optional
+// with a Default TaskRun workspace defined. The default workspace should not be
+// injected in place of the omitted optional workspace.
+func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
+	optionalWorkspaceMountPath := "/foo/bar/baz"
+	taskWithOptionalWorkspace := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-task-with-optional-workspace",
+			Namespace: "default",
+		},
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "optional-ws",
+				MountPath: optionalWorkspaceMountPath,
+				Optional:  true,
+			}},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "simple-step",
+				Image:   "foo",
+				Command: []string{"/mycmd"},
+			}}},
+		},
+	}
+	taskRunOmittingWorkspace := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "default",
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "test-task-with-optional-workspace",
+			},
+		},
+	}
+
+	d := test.Data{
+		Tasks:    []*v1beta1.Task{taskWithOptionalWorkspace},
+		TaskRuns: []*v1beta1.TaskRun{taskRunOmittingWorkspace},
+	}
+
+	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.GetNamespace()},
+		Data: map[string]string{
+			"default-task-run-workspace-binding": "emptyDir: {}",
+		},
+	})
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("default").Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "default",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRunOmittingWorkspace)); err != nil {
+		t.Errorf("Unexpected reconcile error for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
+	}
+
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRunOmittingWorkspace.Namespace).Get(taskRunOmittingWorkspace.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
+	}
+
+	pod, err := clients.Kube.CoreV1().Pods(taskRunOmittingWorkspace.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting Pod for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
+	}
+	for _, c := range pod.Spec.Containers {
+		for _, vm := range c.VolumeMounts {
+			if vm.MountPath == optionalWorkspaceMountPath {
+				t.Errorf("Workspace with VolumeMount at %s should not have been found for Optional Workspace but was injected by Default TaskRun Workspace", optionalWorkspaceMountPath)
+			}
+		}
+	}
+
+	for _, c := range tr.Status.Conditions {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse {
+			t.Errorf("Unexpected unsuccessful condition for TaskRun %q:\n%#v", taskRunOmittingWorkspace.Name, tr.Status.Conditions)
+		}
+	}
+}
+
 func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	for _, tt := range []struct {
 		desc             string

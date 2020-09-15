@@ -1711,15 +1711,73 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 	}
 }
 
-func TestValidateWorkspaceBindings(t *testing.T) {
-	p := tb.Pipeline("pipelines", tb.PipelineSpec(
-		tb.PipelineWorkspaceDeclaration("foo"),
-	))
-	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
-		tb.PipelineRunWorkspaceBindingEmptyDir("bar"),
-	))
-	if err := ValidateWorkspaceBindings(&p.Spec, pr); err == nil {
-		t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
+func TestValidateWorkspaceBindingsWithValidWorkspaces(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		spec *v1beta1.PipelineSpec
+		run  *v1beta1.PipelineRun
+		err  string
+	}{{
+		name: "include required workspace",
+		spec: &v1beta1.PipelineSpec{
+			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+				Name: "foo",
+			}},
+		},
+		run: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "foo",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+			},
+		},
+	}, {
+		name: "omit optional workspace",
+		spec: &v1beta1.PipelineSpec{
+			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+				Name:     "foo",
+				Optional: true,
+			}},
+		},
+		run: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateWorkspaceBindings(tc.spec, tc.run); err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestValidateWorkspaceBindingsWithInvalidWorkspaces(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		spec *v1beta1.PipelineSpec
+		run  *v1beta1.PipelineRun
+		err  string
+	}{{
+		name: "missing required workspace",
+		spec: &v1beta1.PipelineSpec{
+			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+				Name: "foo",
+			}},
+		},
+		run: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateWorkspaceBindings(tc.spec, tc.run); err == nil {
+				t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
+			}
+		})
 	}
 }
 
