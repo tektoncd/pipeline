@@ -72,6 +72,18 @@ specific `Volume` information to use for the `Workspaces` used by each `Pipeline
 `PipelineRuns` have the added responsibility of ensuring that whatever `Volume` type they
 provide can be safely and correctly shared across multiple `Tasks`.
 
+### Optional `Workspaces`
+
+Both Tasks and Pipelines can declare a Workspace "optional". When an optional Workspace
+is declared the TaskRun or PipelineRun may omit a Workspace Binding for that Workspace.
+The Task or Pipeline behaviour may change when the Binding is omitted. This feature has
+many uses:
+
+- A Task may optionally accept credentials to run authenticated commands.
+- A Pipeline may accept optional configuration that changes the linting or compilation
+parameters used.
+- An optional build cache may be provided to speed up compile times.
+
 ## Configuring `Workspaces`
 
 This section describes how to configure one or more `Workspaces` in a `TaskRun`.
@@ -82,14 +94,15 @@ To configure one or more `Workspaces` in a `Task`, add a `workspaces` list with 
 
 - `name` -  (**required**) A **unique** string identifier that can be used to refer to the workspace
 - `description` - An informative string describing the purpose of the `Workspace`
-- `readOnly` - A boolean declaring whether the `Task` will write to the `Workspace`.
+- `readOnly` - A boolean declaring whether the `Task` will write to the `Workspace`. Defaults to `false`.
+- `optional` - A boolean indicating whether a TaskRun can omit the `Workspace`. Defaults to `false`.
 - `mountPath` - A path to a location on disk where the workspace will be available to `Steps`. Relative
   paths will be prepended with `/workspace`. If a `mountPath` is not provided the workspace
   will be placed by default at `/workspace/<name>` where `<name>` is the workspace's
   unique name.
-  
+
 Note the following:
-  
+
 - A `Task` definition can include as many `Workspaces` as it needs. It is recommended that `Tasks` use
   **at most** one _writeable_ `Workspace`.
 - A `readOnly` `Workspace` will have its volume mounted as read-only. Attempting to write
@@ -98,9 +111,7 @@ Note the following:
   start with the name of a directory. For example, a `mountPath` of `"/foobar"` is  absolute and exposes
   the `Workspace` at `/foobar` inside the `Task's` `Steps`, but a `mountPath` of `"foobar"` is relative and
   exposes the `Workspace` at `/workspace/foobar`.
-- A default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun 
-  does not explicitly provide. It can be set in the `config-defaults` ConfigMap in `default-task-run-workspace-binding`.
-    
+
 Below is an example `Task` definition that includes a `Workspace` called `messages` to which the `Task` writes a message:
 
 ```yaml
@@ -111,19 +122,44 @@ spec:
     script: |
       #!/usr/bin/env bash
       set -xe
-      echo hello! > $(workspaces.messages.path)/message
+      if [ "$(workspaces.messages.bound)" == "true" ] ; then
+        echo hello! > $(workspaces.messages.path)/message
+      fi
   workspaces:
   - name: messages
-    description: The folder where we write the message to
+    description: |
+      The folder where we write the message to. If no workspace
+      is provided then the message will not be written.
+    optional: true
     mountPath: /custom/path/relative/to/root
 ```
+
+#### Setting a Default TaskRun Workspace Binding
+
+An organization may want to specify default Workspace configuration for TaskRuns. This allows users to
+use Tasks without having to know the specifics of Workspaces - they can simply rely on the platform
+to use the default configuration when a Workspace is missing. To support this Tekton allows a default
+Workspace Binding to be specified for TaskRuns. When the TaskRun executes, any Workspaces that a Task
+requires but which are not provided by the TaskRun will be bound with the default configuration.
+
+The configuration for the default Workspace Binding is added to the `config-defaults` ConfigMap, under
+the `default-task-run-workspace-binding` key. For an example, see the [Customizing basic execution
+parameters](./install.md#customizing-basic-execution-parameters) section of the install doc.
+
+**Note:** the default configuration is used for any _required_ Workspace declared by a Task. Optional
+Workspaces are not populated with the default binding. This is because a Task's behaviour will typically
+differ slightly when an optional Workspace is bound.
 
 #### Using `Workspace` variables in `Tasks`
 
 The following variables make information about `Workspaces` available to `Tasks`:
 
 - `$(workspaces.<name>.path)` - specifies the path to a `Workspace`
-   where `<name>` is the name of the `Workspace`.
+   where `<name>` is the name of the `Workspace`. This will be an
+   empty string when a Workspace is declared optional and not provided
+   by a TaskRun.
+- `$(workspaces.<name>.bound)` - either `true` or `false`, specifies
+   whether a workspace was bound. Always `true` if the workspace is required.
 - `$(workspaces.<name>.claim)` - specifies the name of the `PersistentVolumeClaim` used as a volume source for the `Workspace` 
    where `<name>` is the name of the `Workspace`. If a volume source other than `PersistentVolumeClaim` is used, an empty string is returned.
 - `$(workspaces.<name>.volume)`- specifies the name of the `Volume`
@@ -139,7 +175,7 @@ its own `workspaces` list. Each entry in the list contains the following fields:
 - `subPath` - An optional subdirectory on the `Volume` to store data for that `Workspace`
 
 The entry must also include one `VolumeSource`. See [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
-               
+
 **Caution:**
 - The `Workspaces` declared in a `Task` must be available when executing the associated `TaskRun`.
   Otherwise, the `TaskRun` will fail.
@@ -187,6 +223,8 @@ data within that `Workspace`.
 spec:
   workspaces:
     - name: pipeline-ws1 # Name of the workspace in the Pipeline
+    - name: pipeline-ws2
+      optional: true
   tasks:
     - name: use-ws-from-pipeline
       taskRef:

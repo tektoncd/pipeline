@@ -58,6 +58,23 @@ func TestValidateBindingsValid(t *testing.T) {
 			Name:     "beth",
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}},
+	}, {
+		name: "Included optional workspace",
+		declarations: []v1alpha1.WorkspaceDeclaration{{
+			Name:     "beth",
+			Optional: true,
+		}},
+		bindings: []v1alpha1.WorkspaceBinding{{
+			Name:     "beth",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}},
+	}, {
+		name: "Omitted optional workspace",
+		declarations: []v1alpha1.WorkspaceDeclaration{{
+			Name:     "beth",
+			Optional: true,
+		}},
+		bindings: []v1alpha1.WorkspaceBinding{},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateBindings(tc.declarations, tc.bindings); err != nil {

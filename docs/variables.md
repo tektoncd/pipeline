@@ -14,6 +14,7 @@ This page documents the variable substitutions supported by `Tasks` and `Pipelin
 | -------- | ----------- |
 | `params.<param name>` | The value of the parameter at runtime. |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
+| `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if the `Workspace` declaration has `optional: true` and the Workspace binding was omitted by the PipelineRun. |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.uid` | The uid of the `PipelineRun` that this `Pipeline` is running in. |
@@ -28,7 +29,8 @@ This page documents the variable substitutions supported by `Tasks` and `Pipelin
 | `resources.inputs.<resourceName>.path` | The path to the input resource's directory. |
 | `resources.outputs.<resourceName>.path` | The path to the output resource's directory. |
 | `results.<resultName>.path` | The path to the file where the `Task` writes its results data. |
-| `workspaces.<workspaceName>.path` | The path to the mounted `Workspace`. |
+| `workspaces.<workspaceName>.path` | The path to the mounted `Workspace`. Empty string if an optional `Workspace` has not been provided by the TaskRun. |
+| `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if an optional`Workspace` has not been provided by the TaskRun. |
 | `workspaces.<workspaceName>.claim` | The name of the `PersistentVolumeClaim` specified as a volume source for the `Workspace`. Empty string for other volume types. |
 | `workspaces.<workspaceName>.volume` | The name of the volume populating the `Workspace`. |
 | `credentials.path` | The path to credentials injected from Secrets with matching annotations. |

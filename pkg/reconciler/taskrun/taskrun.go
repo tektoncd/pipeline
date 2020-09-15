@@ -423,14 +423,16 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 		}
 		workspaceBindings := map[string]v1beta1.WorkspaceBinding{}
 		for _, tsWorkspace := range taskSpec.Workspaces {
-			workspaceBindings[tsWorkspace.Name] = v1beta1.WorkspaceBinding{
-				Name:                  tsWorkspace.Name,
-				SubPath:               defaultWS.SubPath,
-				VolumeClaimTemplate:   defaultWS.VolumeClaimTemplate,
-				PersistentVolumeClaim: defaultWS.PersistentVolumeClaim,
-				EmptyDir:              defaultWS.EmptyDir,
-				ConfigMap:             defaultWS.ConfigMap,
-				Secret:                defaultWS.Secret,
+			if !tsWorkspace.Optional {
+				workspaceBindings[tsWorkspace.Name] = v1beta1.WorkspaceBinding{
+					Name:                  tsWorkspace.Name,
+					SubPath:               defaultWS.SubPath,
+					VolumeClaimTemplate:   defaultWS.VolumeClaimTemplate,
+					PersistentVolumeClaim: defaultWS.PersistentVolumeClaim,
+					EmptyDir:              defaultWS.EmptyDir,
+					ConfigMap:             defaultWS.ConfigMap,
+					Secret:                defaultWS.Secret,
+				}
 			}
 		}
 

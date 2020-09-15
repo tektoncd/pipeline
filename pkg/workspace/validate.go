@@ -21,31 +21,43 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/list"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// ValidateBindings will return an error if the bound workspaces in wb don't satisfy the declared
-// workspaces in w.
-func ValidateBindings(w []v1beta1.WorkspaceDeclaration, wb []v1beta1.WorkspaceBinding) error {
+// ValidateBindings will return an error if the bound workspaces in binds don't satisfy the declared
+// workspaces in decls.
+func ValidateBindings(decls []v1beta1.WorkspaceDeclaration, binds []v1beta1.WorkspaceBinding) error {
 	// This will also be validated at webhook time but in case the webhook isn't invoked for some
 	// reason we'll invoke the same validation here.
-	for _, b := range wb {
+	for _, b := range binds {
 		if err := b.Validate(context.Background()); err != nil {
 			return fmt.Errorf("binding %q is invalid: %v", b.Name, err)
 		}
 	}
 
-	declNames := make([]string, len(w))
-	for i := range w {
-		declNames[i] = w[i].Name
+	declNames := sets.NewString()
+	bindNames := sets.NewString()
+	for _, decl := range decls {
+		declNames.Insert(decl.Name)
 	}
-	bindNames := make([]string, len(wb))
-	for i := range wb {
-		bindNames[i] = wb[i].Name
+	for _, bind := range binds {
+		bindNames.Insert(bind.Name)
 	}
-	if err := list.IsSame(declNames, bindNames); err != nil {
-		return fmt.Errorf("bound workspaces did not match declared workspaces: %v", err)
+
+	for _, decl := range decls {
+		if decl.Optional {
+			continue
+		}
+		if !bindNames.Has(decl.Name) {
+			return fmt.Errorf("declared workspace %q is required but has not been bound", decl.Name)
+		}
 	}
+	for _, bind := range binds {
+		if !declNames.Has(bind.Name) {
+			return fmt.Errorf("workspace binding %q does not match any declared workspace", bind.Name)
+		}
+	}
+
 	return nil
 }
 
