@@ -797,7 +797,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 	}
 
-	state := []*resources.ResolvedPipelineRunTask{{
+	state := resources.PipelineRunState{{
 		PipelineTask: &pipelineTask,
 		TaskRunName:  "test-pipeline-run-success-unit-test-1",
 		TaskRun:      taskrun,
@@ -806,7 +806,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 	}}
 	pr.Status.InitializeConditions()
-	status := getTaskRunsStatus(pr, state)
+	status := state.GetTaskRunsStatus(pr)
 	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
 	}
@@ -939,13 +939,13 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tb.PipelineRun("test-pipeline-run", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("test-pipeline"))
 
-			state := []*resources.ResolvedPipelineRunTask{{
+			state := resources.PipelineRunState{{
 				PipelineTask:            &pipelineTask,
 				TaskRunName:             taskrunName,
 				ResolvedConditionChecks: tc.rcc,
 			}}
 			pr.Status.InitializeConditions()
-			status := getTaskRunsStatus(pr, state)
+			status := state.GetTaskRunsStatus(pr)
 			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
 				taskrunName: &tc.expectedStatus,
 			}
