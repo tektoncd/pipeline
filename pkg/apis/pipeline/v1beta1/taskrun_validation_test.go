@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -189,7 +188,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "invalid params",
 		spec: v1beta1.TaskRunSpec{
-			Params: []v1alpha1.Param{{
+			Params: []v1beta1.Param{{
 				Name:  "name",
 				Value: *v1beta1.NewArrayOrString("value"),
 			}, {
@@ -254,7 +253,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "task spec with credentials.path variable",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1alpha1.Step{{
+				Steps: []v1beta1.Step{{
 					Container: corev1.Container{
 						Name:  "mystep",
 						Image: "myimage",
