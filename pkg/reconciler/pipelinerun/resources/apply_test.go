@@ -558,3 +558,54 @@ func TestContext(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyWorkspaces(t *testing.T) {
+	for _, tc := range []struct {
+		description         string
+		declarations        []v1beta1.PipelineWorkspaceDeclaration
+		bindings            []v1beta1.WorkspaceBinding
+		variableUsage       string
+		expectedReplacement string
+	}{{
+		description: "workspace declared and bound",
+		declarations: []v1beta1.PipelineWorkspaceDeclaration{{
+			Name: "foo",
+		}},
+		bindings: []v1beta1.WorkspaceBinding{{
+			Name: "foo",
+		}},
+		variableUsage:       "$(workspaces.foo.bound)",
+		expectedReplacement: "true",
+	}, {
+		description: "workspace declared not bound",
+		declarations: []v1beta1.PipelineWorkspaceDeclaration{{
+			Name:     "foo",
+			Optional: true,
+		}},
+		bindings:            []v1beta1.WorkspaceBinding{},
+		variableUsage:       "$(workspaces.foo.bound)",
+		expectedReplacement: "false",
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			p1 := v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Params: []v1beta1.Param{{Value: *v1beta1.NewArrayOrString(tc.variableUsage)}},
+				}},
+				Workspaces: tc.declarations,
+			}
+			pr := &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-pipeline",
+					},
+					Workspaces: tc.bindings,
+				},
+			}
+			p2 := ApplyWorkspaces(&p1, pr)
+			str := p2.Tasks[0].Params[0].Value.StringVal
+			if str != tc.expectedReplacement {
+				t.Errorf("expected %q, received %q", tc.expectedReplacement, str)
+			}
+		})
+	}
+}
