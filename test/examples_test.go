@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -33,18 +34,16 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+const pipelineRunTimeout = 10 * time.Minute
+
 var (
-	pipelineRunTimeout = 10 * time.Minute
+	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
+	defaultNamespaceRE    = regexp.MustCompile("namespace: default")
 )
 
-const (
-	DEFAULT_KO_DOCKER_REPO = `gcr.io\/christiewilson-catfactory`
-	DEFAULT_NAMESPACE      = `namespace: default`
-)
-
-// GetCreatedTektonCrd parses output of an external ko invocation provided as
+// getCreatedTektonCRD parses output of an external ko invocation provided as
 // input, as is the kind of Tekton CRD to search for (ie. taskrun)
-func GetCreatedTektonCrd(input []byte, kind string) (string, error) {
+func getCreatedTektonCRD(input []byte, kind string) (string, error) {
 	re := regexp.MustCompile(kind + `.tekton.dev\/(.+) created`)
 	submatch := re.FindSubmatch(input)
 	if submatch == nil || len(submatch) < 2 {
@@ -54,60 +53,52 @@ func GetCreatedTektonCrd(input []byte, kind string) (string, error) {
 }
 
 func waitValidatePipelineRunDone(t *testing.T, c *clients, pipelineRunName string) {
-	err := WaitForPipelineRunState(c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName)
-
-	if err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
 		t.Fatalf("Failed waiting for pipeline run done: %v", err)
 	}
-	return
 }
 
 func waitValidateTaskRunDone(t *testing.T, c *clients, taskRunName string) {
 	// Per test basis
-	err := WaitForTaskRunState(c, taskRunName, Succeed(taskRunName), taskRunName)
-
-	if err != nil {
+	if err := WaitForTaskRunState(c, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
 		t.Fatalf("Failed waiting for task run done: %v", err)
 	}
-	return
 }
 
-// SubstituteEnv substitutes docker repos and bucket paths from the system
-// environment for input to allow tests on local clusters. It also updates the
-// namespace for ServiceAccounts so that they work under test
-func SubstituteEnv(input []byte, namespace string) ([]byte, error) {
+// substituteEnv substitutes docker repos and bucket paths from the system
+// environment for input to allow tests on local clusters. It also unsets the
+// namespace for ServiceAccounts so that they work under test.
+func substituteEnv(input []byte, namespace string) ([]byte, error) {
+	// Replace the placeholder image repo with the value of the
+	// KO_DOCKER_REPO env var.
 	val, ok := os.LookupEnv("KO_DOCKER_REPO")
-	var output []byte
-	if ok {
-		re := regexp.MustCompile(DEFAULT_KO_DOCKER_REPO)
-		output = re.ReplaceAll(input, []byte(val))
-	} else {
+	if !ok {
 		return nil, errors.New("KO_DOCKER_REPO is not set")
 	}
+	output := defaultKoDockerRepoRE.ReplaceAll(input, []byte(val))
 
-	re := regexp.MustCompile(DEFAULT_NAMESPACE)
-	output = re.ReplaceAll(output, []byte(strings.ReplaceAll(DEFAULT_NAMESPACE, "default", namespace)))
+	// Strip any "namespace: default"s, all resources will be created in
+	// the test namespace using `ko create -n`
+	output = defaultNamespaceRE.ReplaceAll(output, []byte("namespace: "+namespace))
+
 	return output, nil
 }
 
-// KoCreate wraps the ko binary and invokes `ko create` for input within
+// koCreate wraps the ko binary and invokes `ko create` for input within
 // namespace
-func KoCreate(input []byte, namespace string) ([]byte, error) {
+func koCreate(input []byte, namespace string) ([]byte, error) {
 	cmd := exec.Command("ko", "create", "-n", namespace, "-f", "-")
-	cmd.Stdin = strings.NewReader(string(input))
-
-	out, err := cmd.CombinedOutput()
-	return out, err
+	cmd.Stdin = bytes.NewReader(input)
+	return cmd.CombinedOutput()
 }
 
-// DeleteClusterTask removes a single clustertask by name using provided
-// clientset. Test state is used for logging. DeleteClusterTask does not wait
+// deleteClusterTask removes a single clustertask by name using provided
+// clientset. Test state is used for logging. deleteClusterTask does not wait
 // for the clustertask to be deleted, so it is still possible to have name
 // conflicts during test
-func DeleteClusterTask(t *testing.T, c *clients, name string) {
+func deleteClusterTask(t *testing.T, c *clients, name string) {
 	t.Logf("Deleting clustertask %s", name)
-	err := c.ClusterTaskClient.Delete(name, &metav1.DeleteOptions{})
-	if err != nil {
+	if err := c.ClusterTaskClient.Delete(name, &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete clustertask: %v", err)
 	}
 }
@@ -126,23 +117,22 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 		defer tearDown(t, c, namespace)
 
 		inputExample, err := ioutil.ReadFile(path)
-
 		if err != nil {
 			t.Fatalf("Error reading file: %v", err)
 		}
 
-		subbedInput, err := SubstituteEnv(inputExample, namespace)
+		subbedInput, err := substituteEnv(inputExample, namespace)
 		if err != nil {
 			t.Skipf("Couldn't substitute environment: %v", err)
 		}
 
-		out, err := KoCreate(subbedInput, namespace)
+		out, err := koCreate(subbedInput, namespace)
 		if err != nil {
 			t.Fatalf("%s Output: %s", err, out)
 		}
 
-		// Parse from KoCreate for now
-		name, err := GetCreatedTektonCrd(out, kind)
+		// Parse from koCreate for now
+		name, err := getCreatedTektonCRD(out, kind)
 		if name == "" {
 			// Nothing to check from ko create, this is not a taskrun or pipeline
 			// run. Some examples in the directory do not directly output a TaskRun
@@ -154,10 +144,10 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 
 		// NOTE: If an example creates more than one clustertask, they will not all
 		// be cleaned up
-		clustertask, err := GetCreatedTektonCrd(out, "clustertask")
+		clustertask, err := getCreatedTektonCRD(out, "clustertask")
 		if clustertask != "" {
-			knativetest.CleanupOnInterrupt(func() { DeleteClusterTask(t, c, clustertask) }, t.Logf)
-			defer DeleteClusterTask(t, c, clustertask)
+			knativetest.CleanupOnInterrupt(func() { deleteClusterTask(t, c, clustertask) }, t.Logf)
+			defer deleteClusterTask(t, c, clustertask)
 		} else if err != nil {
 			t.Fatalf("Failed to get created clustertask: %v", err)
 		}
