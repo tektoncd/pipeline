@@ -20,33 +20,36 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	pipelineinformers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/metrics/metricstest"
-
-	// Required to setup metrics env for testing
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/metrics/metricstest" // Required to setup metrics env for testing
 	_ "knative.dev/pkg/metrics/testing"
 	rtesting "knative.dev/pkg/reconciler/testing"
+)
+
+var (
+	startTime      = metav1.Now()
+	completionTime = metav1.NewTime(startTime.Time.Add(time.Minute))
 )
 
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
 
-	durationCountError := metrics.DurationAndCount(&v1beta1.PipelineRun{})
-	prCountError := metrics.RunningPipelineRuns(nil)
-
-	assertErrNotNil(durationCountError, "DurationAndCount recording expected to return error but got nil", t)
-	assertErrNotNil(prCountError, "Current PR count recording expected to return error but got nil", t)
+	if err := metrics.DurationAndCount(&v1beta1.PipelineRun{}); err == nil {
+		t.Error("DurationAndCount recording expected to return error but got nil")
+	}
+	if err := metrics.RunningPipelineRuns(nil); err == nil {
+		t.Error("Current PR count recording expected to return error but got nil")
+	}
 }
 
 func TestRecordPipelineRunDurationCount(t *testing.T) {
-	startTime := time.Now()
-
-	testData := []struct {
+	for _, test := range []struct {
 		name              string
 		pipelineRun       *v1beta1.PipelineRun
 		expectedTags      map[string]string
@@ -54,17 +57,25 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration  float64
 		expectedCount     int64
 	}{{
-		name: "for_succeeded_pipeline",
-		pipelineRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
-			tb.PipelineRunSpec("pipeline-1"),
-			tb.PipelineRunStatus(
-				tb.PipelineRunStartTime(startTime),
-				tb.PipelineRunCompletionTime(startTime.Add(1*time.Minute)),
-				tb.PipelineRunStatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}),
-			)),
+		name: "for succeeded pipeline",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
 		expectedTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
@@ -77,17 +88,25 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 	}, {
-		name: "for_failed_pipeline",
-		pipelineRun: tb.PipelineRun("pipelinerun-1", tb.PipelineRunNamespace("ns"),
-			tb.PipelineRunSpec("pipeline-1"),
-			tb.PipelineRunStatus(
-				tb.PipelineRunStartTime(startTime),
-				tb.PipelineRunCompletionTime(startTime.Add(1*time.Minute)),
-				tb.PipelineRunStatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionFalse,
-				}),
-			)),
+		name: "for failed pipeline",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
 		expectedTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
@@ -99,17 +118,18 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
-	}}
-
-	for _, test := range testData {
+	}} {
 		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()
 
 			metrics, err := NewRecorder()
-			assertErrIsNil(err, "Recorder initialization failed", t)
+			if err != nil {
+				t.Fatalf("NewRecorder: %v", err)
+			}
 
-			err = metrics.DurationAndCount(test.pipelineRun)
-			assertErrIsNil(err, "DurationAndCount recording recording got an error", t)
+			if err := metrics.DurationAndCount(test.pipelineRun); err != nil {
+				t.Errorf("DurationAndCount: %v", err)
+			}
 			metricstest.CheckDistributionData(t, "pipelinerun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
 			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedCountTags, test.expectedCount)
 
@@ -120,50 +140,43 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 func TestRecordRunningPipelineRunsCount(t *testing.T) {
 	unregisterMetrics()
 
+	newPipelineRun := func(status corev1.ConditionStatus) *v1beta1.PipelineRun {
+		return &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: status,
+					}},
+				},
+			},
+		}
+	}
+
 	ctx, _ := rtesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
-	addPipelineRun(informer, "pipelinerun-1", "pipeline-1", "ns", corev1.ConditionTrue, t)
-	addPipelineRun(informer, "pipelinerun-2", "pipeline-2", "ns", corev1.ConditionFalse, t)
-	addPipelineRun(informer, "pipelinerun-3", "pipeline-3", "ns", corev1.ConditionUnknown, t)
+	// Add N randomly-named PipelineRuns with differently-succeeded statuses.
+	for _, tr := range []*v1beta1.PipelineRun{
+		newPipelineRun(corev1.ConditionTrue),
+		newPipelineRun(corev1.ConditionUnknown),
+		newPipelineRun(corev1.ConditionFalse),
+	} {
+		if err := informer.Informer().GetIndexer().Add(tr); err != nil {
+			t.Fatalf("Adding TaskRun to informer: %v", err)
+		}
+	}
 
 	metrics, err := NewRecorder()
-	assertErrIsNil(err, "Recorder initialization failed", t)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
 
-	err = metrics.RunningPipelineRuns(informer.Lister())
-	assertErrIsNil(err, "RunningPrsCount recording expected to return nil but got error", t)
+	if err := metrics.RunningPipelineRuns(informer.Lister()); err != nil {
+		t.Errorf("RunningPipelineRuns: %v", err)
+	}
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
 
-}
-
-func addPipelineRun(informer pipelineinformers.PipelineRunInformer, run, pipeline, ns string, status corev1.ConditionStatus, t *testing.T) {
-	t.Helper()
-
-	err := informer.Informer().GetIndexer().Add(tb.PipelineRun(run, tb.PipelineRunNamespace(ns),
-		tb.PipelineRunSpec(pipeline),
-		tb.PipelineRunStatus(
-			tb.PipelineRunStatusCondition(apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: status,
-			}),
-		)))
-
-	if err != nil {
-		t.Errorf("Failed to add the pipelinerun")
-	}
-}
-
-func assertErrNotNil(err error, message string, t *testing.T) {
-	t.Helper()
-	if err == nil {
-		t.Errorf(message)
-	}
-}
-
-func assertErrIsNil(err error, message string, t *testing.T) {
-	t.Helper()
-	if err != nil {
-		t.Errorf(message)
-	}
 }
 
 func unregisterMetrics() {
