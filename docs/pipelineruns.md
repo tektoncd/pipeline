@@ -128,16 +128,16 @@ spec:
   pipelineSpec:
     tasks:
     - name: task1
-      metadata:
-        labels:
-          pipeline-sdk-type: kfp
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: kfp
        ...
     - name: task2
-      metadata:
-        labels:
-          pipeline-sdk-type: tfx
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: tfx
        ...
 ```
 
