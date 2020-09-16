@@ -835,7 +835,7 @@ func TestIsSkipped(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			dag, err := DagFromState(tc.state)
+			d, err := DagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Could not get a dag from the TC state %#v: %v", tc.state, err)
 			}
@@ -844,7 +844,12 @@ func TestIsSkipped(t *testing.T) {
 			if rprt == nil {
 				t.Fatalf("Could not get task %s from the state: %v", tc.taskName, tc.state)
 			}
-			isSkipped := rprt.Skip(tc.state, dag)
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+			}
+			isSkipped := rprt.Skip(&facts)
 			if d := cmp.Diff(isSkipped, tc.expected); d != "" {
 				t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
 			}
