@@ -1,9 +1,5 @@
 # Tekton Pipelines Official Release Cheat Sheet
 
-This doc is a condensed version of our [tekton/README.md](./README.md) as
-well as instructions from
-[our plumbing repo](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release/README.md#create-draft-release).
-
 These steps provide a no-frills guide to performing an official release
 of Tekton Pipelines. To follow these steps you'll need a checkout of
 the pipelines repo, a terminal window and a text editor.
@@ -16,20 +12,20 @@ the pipelines repo, a terminal window and a text editor.
     gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
     ```
 
-3. Edit `tekton/resources.yaml`. Add pipeline resource for new version.
+3. Create PipelineResource for new version. e.g.
 
     ```yaml
     apiVersion: tekton.dev/v1alpha1
     kind: PipelineResource
     metadata:
-      name: # UPDATE THIS. Example: tekton-pipelines-v0-11-2
+      name: # Example: tekton-pipelines-v0-11-2
     spec:
       type: git
       params:
       - name: url
         value: https://github.com/tektoncd/pipeline
       - name: revision
-        value: # UPDATE THIS. Example: 33e0847e67fc9804689e50371746c3cdad4b0a9d
+        value: # Example: 33e0847e67fc9804689e50371746c3cdad4b0a9d
     ```
 
 4. `kubectl apply -f tekton/resources.yaml`
@@ -37,15 +33,15 @@ the pipelines repo, a terminal window and a text editor.
 5. Create environment variables for bash scripts in later steps.
 
     ```bash
-    VERSION_TAG=# UPDATE THIS. Example: v0.11.2
-    GIT_RESOURCE_NAME=# UPDATE THIS. Example: tekton-pipelines-v0-11-2
-    IMAGE_REGISTRY=gcr.io/tekton-releases
+    TEKTON_VERSION=# Example: v0.11.2
+    TEKTON_RELEASE_GIT_RESOURCE=# Example: tekton-pipelines-v0-11-2
+    TEKTON_IMAGE_REGISTRY=gcr.io/tekton-releases
     ```
 
 6. Confirm commit SHA matches what you want to release.
 
     ```bash
-    kubectl get pipelineresource "$GIT_RESOURCE_NAME" -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
+    kubectl get pipelineresource "$TEKTON_RELEASE_GIT_RESOURCE" -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
     ```
 
 7. Execute the release pipeline.
@@ -54,10 +50,10 @@ the pipelines repo, a terminal window and a text editor.
 
     ```bash
     tkn pipeline start \
-      --param=versionTag="${VERSION_TAG}" \
-      --param=imageRegistry="${IMAGE_REGISTRY}" \
+      --param=versionTag="${TEKTON_VERSION}" \
+      --param=imageRegistry="${TEKTON_IMAGE_REGISTRY}" \
       --serviceaccount=release-right-meow \
-      --resource=source-repo="${GIT_RESOURCE_NAME}" \
+      --resource=source-repo="${TEKTON_RELEASE_GIT_RESOURCE}" \
       --resource=bucket=pipeline-tekton-bucket \
       --resource=builtBaseImage=base-image \
       --resource=builtEntrypointImage=entrypoint-image \
@@ -70,6 +66,7 @@ the pipelines repo, a terminal window and a text editor.
       --resource=builtDigestExporterImage=digest-exporter-image \
       --resource=builtPullRequestInitImage=pull-request-init-image \
       --resource=builtGcsFetcherImage=gcs-fetcher-image \
+      --resource=builtNopImage=nop-image \
       --resource=notification=post-release-trigger \
     pipeline-release
     ```
@@ -78,48 +75,28 @@ the pipelines repo, a terminal window and a text editor.
 
 9. The YAMLs are now released! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
 
-    1. Create TaskRun YAML file to execute create-draft-release Task.
+    1. Create additional environment variables
 
-        ```yaml
-        apiVersion: tekton.dev/v1beta1
-        kind: TaskRun
-        metadata:
-          generateName: create-draft-release-run-
-        spec:
-          taskRef:
-            name: create-draft-release
-          params:
-          - name: release-name
-            value: # UPDATE THIS. Example: "Ragdoll Norby"
-          - name: package
-            value: tektoncd/pipeline
-          - name: release-tag
-            value: # UPDATE THIS. Example: v0.11.2
-          - name: previous-release-tag
-            value: # UPDATE THIS. Example: v0.11.1
-          resources:
-            inputs:
-            - name: source
-              resourceRef:
-                name: # UPDATE THIS WITH PIPELINE RESOURCE YOU CREATED EARLIER. Example: tekton-pipelines-v0-11-2
-            - name: release-bucket
-              resourceRef:
-                name: # UPDATE THIS WITH BUCKET RESOURCE NAME FROM EARLIER. Example: tekton-release-bucket-pipeline
-        ```
+    ```bash
+    TEKTON_OLD_VERSION=# Example: v0.11.1
+    TEKTON_RELEASE_NAME=# Example: "Ragdoll Norby"
+    TEKTON_PACKAGE=tektoncd/pipeline
+    ```
 
-    2. Save as `create-draft-release-run.yaml`
+    2. Execute the Draft Release task.
 
-    3. Run Draft Release Task.
+    ```bash
+    tkn task start \
+      -i source="${TEKTON_RELEASE_GIT_RESOURCE}" \
+      -i release-bucket=pipeline-tekton-bucket \
+      -p package="${TEKTON_PACKAGE}" \
+      -p release-tag="${TEKTON_VERSION}" \
+      -p previous-release-tag="${TEKTON_OLD_VERSION}" \
+      -p release-name="${TEKTON_RELEASE_NAME}" \
+      create-draft-release
+    ```
 
-        ```bash
-        kubectl create -f ./create-draft-release-run.yaml
-        ```
-
-    4. Watch logs of create-draft-release TaskRun for errors.
-
-        ```bash
-        tkn tr logs -f create-draft-release-run-# this will end with a random string of characters
-        ```
+    4. Watch logs of create-draft-release
 
     5. On successful completion, a URL will be logged. Visit that URL and sort the
     release notes. **Double-check that the list of commits here matches your expectations
@@ -151,5 +128,8 @@ the pipelines repo, a terminal window and a text editor.
     ```
 
 14. Announce the release in Slack channels #general and #pipelines.
+
+15. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
+to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/v1beta1/test/e2e-tests.sh).
 
 Congratulations, you're done!
