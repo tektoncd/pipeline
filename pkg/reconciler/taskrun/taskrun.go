@@ -190,6 +190,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	if err = c.reconcile(ctx, tr, taskSpec, rtr); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
 	}
+
 	// Emit events (only when ConditionSucceeded was changed)
 	return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 }
@@ -386,6 +387,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 		}
 		go c.timeoutHandler.Wait(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 	}
+
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
@@ -402,7 +404,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
 	}
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod, *taskSpec)
+	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod)
 	if err != nil {
 		return err
 	}
@@ -627,6 +629,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
+
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
