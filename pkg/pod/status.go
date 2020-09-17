@@ -25,7 +25,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -98,12 +97,14 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, taskSpec v1beta1.TaskSpec) (v1beta1.TaskRunStatus, error) {
+func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod) (v1beta1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
 		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	}
+
+	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
 
 	complete := areStepsComplete(pod) || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed
 
@@ -135,9 +136,6 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses, trs)
 
 	trs.TaskRunResults = removeDuplicateResults(trs.TaskRunResults)
-
-	// Sort step states according to the order specified in the TaskRun spec's steps.
-	trs.Steps = sortTaskRunStepOrder(trs.Steps, taskSpec.Steps)
 
 	return *trs, merr.ErrorOrNil()
 }
@@ -329,29 +327,7 @@ func areStepsComplete(pod *corev1.Pod) bool {
 	return stepsComplete
 }
 
-//SortContainerStatuses sort ContainerStatuses based on "FinishedAt"
-func SortContainerStatuses(podInstance *corev1.Pod) {
-	sort.Slice(podInstance.Status.ContainerStatuses, func(i, j int) bool {
-		var ifinish, istart, jfinish, jstart time.Time
-		if term := podInstance.Status.ContainerStatuses[i].State.Terminated; term != nil {
-			ifinish = term.FinishedAt.Time
-			istart = term.StartedAt.Time
-		}
-		if term := podInstance.Status.ContainerStatuses[j].State.Terminated; term != nil {
-			jfinish = term.FinishedAt.Time
-			jstart = term.StartedAt.Time
-		}
-
-		if ifinish.Equal(jfinish) {
-			return istart.Before(jstart)
-		}
-		return ifinish.Before(jfinish)
-	})
-
-}
-
 func getFailureMessage(pod *corev1.Pod) string {
-	SortContainerStatuses(pod)
 	// First, try to surface an error about the actual build step that failed.
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
@@ -459,53 +435,49 @@ func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	})
 }
 
-// sortTaskRunStepOrder sorts the StepStates in the same order as the original
+// sortPodContainerStatuses sorts the pod container statuses in the same order as the original
 // TaskSpec steps.
-func sortTaskRunStepOrder(taskRunSteps []v1beta1.StepState, taskSpecSteps []v1beta1.Step) []v1beta1.StepState {
-	trt := &stepStateSorter{
-		taskRunSteps: taskRunSteps,
+func sortPodContainerStatuses(podContainerStatuses []corev1.ContainerStatus, podSpecContainers []corev1.Container) []corev1.ContainerStatus {
+	trt := &podContainerStatusSorter{
+		podContainerStatuses: podContainerStatuses,
 	}
-	trt.mapForSort = trt.constructTaskStepsSorter(taskSpecSteps)
+	trt.mapForSort = trt.constructPodContainerStatusesSorter(podSpecContainers)
 	sort.Sort(trt)
-	return trt.taskRunSteps
+	return trt.podContainerStatuses
 }
 
-// stepStateSorter implements a sorting mechanism to align the order of the steps in TaskRun
+// podContainerStatusSorter implements a sorting mechanism to align the order of the pod container statuses in the pod
 // with the spec steps in Task.
-type stepStateSorter struct {
-	taskRunSteps []v1beta1.StepState
-	mapForSort   map[string]int
+type podContainerStatusSorter struct {
+	podContainerStatuses []corev1.ContainerStatus
+	mapForSort           map[string]int
 }
 
-// constructTaskStepsSorter constructs a map matching the names of
-// the steps to their indices for a task.
-func (trt *stepStateSorter) constructTaskStepsSorter(taskSpecSteps []v1beta1.Step) map[string]int {
+// constructPodContainerStatusesSorter constructs a map matching the names of
+// the containers to their step indices for a task.
+func (trt *podContainerStatusSorter) constructPodContainerStatusesSorter(podSpecContainers []corev1.Container) map[string]int {
 	sorter := make(map[string]int)
-	for index, step := range taskSpecSteps {
-		stepName := step.Name
-		if stepName == "" {
-			stepName = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("unnamed-%d", index))
-		}
-		sorter[stepName] = index
+	for index, container := range podSpecContainers {
+		sorter[container.Name] = index
 	}
 	return sorter
 }
 
-// changeIndex sorts the steps of the task run, based on the
+// changeIndex sorts the containers of a pod, based on the
 // order of the steps in the task. Instead of changing the element with the one next to it,
 // we directly swap it with the desired index.
-func (trt *stepStateSorter) changeIndex(index int) {
+func (trt *podContainerStatusSorter) changeIndex(index int) {
 	// Check if the current index is equal to the desired index. If they are equal, do not swap; if they
 	// are not equal, swap index j with the desired index.
-	desiredIndex, exist := trt.mapForSort[trt.taskRunSteps[index].Name]
+	desiredIndex, exist := trt.mapForSort[trt.podContainerStatuses[index].Name]
 	if exist && index != desiredIndex {
-		trt.taskRunSteps[desiredIndex], trt.taskRunSteps[index] = trt.taskRunSteps[index], trt.taskRunSteps[desiredIndex]
+		trt.podContainerStatuses[desiredIndex], trt.podContainerStatuses[index] = trt.podContainerStatuses[index], trt.podContainerStatuses[desiredIndex]
 	}
 }
 
-func (trt *stepStateSorter) Len() int { return len(trt.taskRunSteps) }
+func (trt *podContainerStatusSorter) Len() int { return len(trt.podContainerStatuses) }
 
-func (trt *stepStateSorter) Swap(i, j int) {
+func (trt *podContainerStatusSorter) Swap(i, j int) {
 	trt.changeIndex(j)
 	// The index j is unable to reach the last index.
 	// When i reaches the end of the array, we need to check whether the last one needs a swap.
@@ -514,7 +486,7 @@ func (trt *stepStateSorter) Swap(i, j int) {
 	}
 }
 
-func (trt *stepStateSorter) Less(i, j int) bool {
+func (trt *podContainerStatusSorter) Less(i, j int) bool {
 	// Since the logic is complicated, we move it into the Swap function to decide whether
 	// and how to change the index. We set it to true here in order to iterate all the
 	// elements of the array in the Swap function.
