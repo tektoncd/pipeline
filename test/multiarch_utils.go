@@ -106,7 +106,6 @@ func initExcludedTests() sets.String {
 			"TestTaskRunPipelineRunCancel",
 			"TestEntrypointRunningStepsInOrder",
 			"TestGitPipelineRun",
-			"TestGitPipelineRunFail",
 			"TestHelmDeployPipelineRun",
 			"TestKanikoTaskRun",
 			"TestPipelineRun",
