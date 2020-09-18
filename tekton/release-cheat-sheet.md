@@ -130,6 +130,13 @@ the pipelines repo, a terminal window and a text editor.
 14. Announce the release in Slack channels #general and #pipelines.
 
 15. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
-to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/v1beta1/test/e2e-tests.sh).
+to use the new release by updating:
+* The `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/master/test/e2e-tests.sh).
+* The images used in catalog Tasks that are built and published with Pipelines:
+  * [pull-request](https://github.com/tektoncd/catalog/blob/master/task/pull-request/0.1/pull-request.yaml)
+  * [git-batch-merge](https://github.com/tektoncd/catalog/blob/master/task/git-batch-merge/0.2/git-batch-merge.yaml)
+  * [git-clone](https://github.com/tektoncd/catalog/blob/master/task/git-clone/0.2/README.md)
+  * [kaniko](https://github.com/tektoncd/catalog/blob/master/task/kaniko/0.1/kaniko.yaml)
+  * [kubeconfig-creator](https://github.com/tektoncd/catalog/blob/master/task/kubeconfig-creator/0.1/kubeconfig-creator.yaml)
 
 Congratulations, you're done!
