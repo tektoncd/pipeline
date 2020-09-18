@@ -38,6 +38,8 @@ const (
 // is either fetched or pulled successfully under different resource
 // parameters.
 func TestGitPipelineRun(t *testing.T) {
+	skipIfExcluded(t)
+
 	for _, tc := range []struct {
 		name      string
 		repo      string
