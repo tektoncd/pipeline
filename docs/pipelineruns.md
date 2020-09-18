@@ -458,8 +458,8 @@ False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 
 When a `PipelineRun` has `Tasks` with [WhenExpressions](pipelines.md#guard-task-execution-using-whenexpressions):
-- If the `WhenExpressions` evaluate to `true`, the `Task` is executed and the `TaskRun` will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
-- If the `WhenExpressions` evaluate to `false`, the `Task` is skipped and it is listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`. 
+- If the `WhenExpressions` evaluate to `true`, the `Task` is executed then the `TaskRun` and its resolved `WhenExpressions` will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
+- If the `WhenExpressions` evaluate to `false`, the `Task` is skipped then its name and its resolved `WhenExpressions` will be listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`. 
 
 ```yaml
 Conditions:
@@ -470,11 +470,25 @@ Conditions:
   Type:                  Succeeded
 Skipped Tasks:
   Name:       skip-this-task
+  When Expressions:
+    Input:     foo
+    Operator:  in
+    Values:
+      bar
+    Input:     foo
+    Operator:  notin
+    Values:
+      foo
 Task Runs:
   pipelinerun-to-skip-task-run-this-task-r2djj:
     Pipeline Task Name:  run-this-task
     Status:
       ...
+    When Expressions:
+      Input:     foo
+      Operator:  in
+      Values:
+        foo
 ```
 
 ## Cancelling a `PipelineRun`

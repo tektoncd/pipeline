@@ -342,6 +342,9 @@ type PipelineRunStatusFields struct {
 type SkippedTask struct {
 	// Name is the Pipeline Task name
 	Name string `json:"name"`
+	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
+	// +optional
+	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
 // PipelineRunResult used to describe the results of a pipeline
@@ -363,6 +366,9 @@ type PipelineRunTaskRunStatus struct {
 	// ConditionChecks maps the name of a condition check to its Status
 	// +optional
 	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
+	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
+	// +optional
+	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
 // PipelineRunConditionCheckStatus returns the condition check status
