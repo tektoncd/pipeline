@@ -762,7 +762,12 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	// from a TaskRun associated to the PipelineRun
 	pr := tb.PipelineRun("test-pipeline-run", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("test-pipeline"))
 	pipelineTask := v1beta1.PipelineTask{
-		Name:    "unit-test-1",
+		Name: "unit-test-1",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
 		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
 	}
 	task := tb.Task("unit-test-task", tb.TaskSpec(
@@ -792,6 +797,11 @@ func TestUpdateTaskRunsState(t *testing.T) {
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 		},
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
 	}
 	expectedPipelineRunStatus := v1beta1.PipelineRunStatus{
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
@@ -809,7 +819,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	}}
 	pr.Status.InitializeConditions()
 	status := state.GetTaskRunsStatus(pr)
-	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
+	if d := cmp.Diff(expectedPipelineRunStatus.TaskRuns, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
 	}
 
@@ -2076,9 +2086,28 @@ func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 
+	actualWhenExpressionsInTaskRun := pipelineRun.Status.PipelineRunStatusFields.TaskRuns[expectedTaskRunName].WhenExpressions
+	expectedWhenExpressionsInTaskRun := []v1beta1.WhenExpression{{
+		Input:    "foo",
+		Operator: "notin",
+		Values:   []string{"bar"},
+	}, {
+		Input:    "yes",
+		Operator: "in",
+		Values:   []string{"yes"},
+	}}
+	if d := cmp.Diff(expectedWhenExpressionsInTaskRun, actualWhenExpressionsInTaskRun); d != "" {
+		t.Errorf("expected to see When Expressions %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name: "hello-world-2",
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "yes",
+			Operator: "notin",
+			Values:   []string{"yes"},
+		}},
 	}}
 	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
 		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
@@ -2197,9 +2226,28 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 
+	actualWhenExpressionsInTaskRun := pipelineRun.Status.PipelineRunStatusFields.TaskRuns[expectedTaskRunName].WhenExpressions
+	expectedWhenExpressionsInTaskRun := []v1beta1.WhenExpression{{
+		Input:    "aResultValue",
+		Operator: "in",
+		Values:   []string{"aResultValue"},
+	}, {
+		Input:    "aResultValue",
+		Operator: "in",
+		Values:   []string{"aResultValue"},
+	}}
+	if d := cmp.Diff(expectedWhenExpressionsInTaskRun, actualWhenExpressionsInTaskRun); d != "" {
+		t.Errorf("expected to see When Expressions %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name: "c-task",
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "aResultValue",
+			Operator: "in",
+			Values:   []string{"missing"},
+		}},
 	}, {
 		Name: "d-task",
 	}}

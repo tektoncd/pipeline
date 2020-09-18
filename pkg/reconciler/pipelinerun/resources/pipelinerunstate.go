@@ -75,6 +75,7 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 		if prtrs == nil {
 			prtrs = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: rprt.PipelineTask.Name,
+				WhenExpressions:  rprt.PipelineTask.WhenExpressions,
 			}
 		}
 
@@ -281,10 +282,14 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 }
 
 func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
-	skipped := []v1beta1.SkippedTask{}
+	var skipped []v1beta1.SkippedTask
 	for _, rprt := range facts.State {
 		if rprt.Skip(facts) {
-			skipped = append(skipped, v1beta1.SkippedTask{Name: rprt.PipelineTask.Name})
+			skippedTask := v1beta1.SkippedTask{
+				Name:            rprt.PipelineTask.Name,
+				WhenExpressions: rprt.PipelineTask.WhenExpressions,
+			}
+			skipped = append(skipped, skippedTask)
 		}
 	}
 	return skipped
