@@ -18,7 +18,6 @@ package resources
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -37,6 +36,20 @@ type PipelineRunFacts struct {
 	State           PipelineRunState
 	TasksGraph      *dag.Graph
 	FinalTasksGraph *dag.Graph
+}
+
+// pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks
+type pipelineRunStatusCount struct {
+	// skipped tasks count
+	Skipped int
+	// successful tasks count
+	Succeeded int
+	// failed tasks count
+	Failed int
+	// cancelled tasks count
+	Cancelled int
+	// number of tasks which are still pending, have not executed
+	Incomplete int
 }
 
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
@@ -204,53 +217,31 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 		}
 	}
 
-	allTasks := []string{}
-	withStatusTasks := []string{}
-	skipTasks := []v1beta1.SkippedTask{}
-	failedTasks := int(0)
-	cancelledTasks := int(0)
-	reason := v1beta1.PipelineRunReasonSuccessful.String()
+	// report the count in PipelineRun Status
+	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
+	s := facts.getPipelineTasksCount()
+	// completed task is a collection of successful, failed, cancelled tasks (skipped tasks are reported separately)
+	cmTasks := s.Succeeded + s.Failed + s.Cancelled
 
-	// Check to see if all tasks are success or skipped
-	//
-	// The completion reason is also calculated here, but it will only be used
-	// if all tasks are completed.
-	//
-	// The pipeline run completion reason is set from the taskrun completion reason
-	// according to the following logic:
-	//
-	// - All successful: ReasonSucceeded
-	// - Some successful, some skipped: ReasonCompleted
-	// - Some cancelled, none failed: ReasonCancelled
-	// - At least one failed: ReasonFailed
-	for _, rprt := range facts.State {
-		allTasks = append(allTasks, rprt.PipelineTask.Name)
-		switch {
-		case rprt.IsSuccessful():
-			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
-		case rprt.Skip(facts):
-			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
-			skipTasks = append(skipTasks, v1beta1.SkippedTask{Name: rprt.PipelineTask.Name})
-			// At least one is skipped and no failure yet, mark as completed
-			if reason == v1beta1.PipelineRunReasonSuccessful.String() {
-				reason = v1beta1.PipelineRunReasonCompleted.String()
-			}
-		case rprt.IsCancelled():
-			cancelledTasks++
-			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
-			if reason != v1beta1.PipelineRunReasonFailed.String() {
-				reason = v1beta1.PipelineRunReasonCancelled.String()
-			}
-		case rprt.IsFailure():
-			withStatusTasks = append(withStatusTasks, rprt.PipelineTask.Name)
-			failedTasks++
-			reason = v1beta1.PipelineRunReasonFailed.String()
-		}
-	}
+	// The completion reason is set from the TaskRun completion reason
+	// by default, set it to ReasonRunning
+	reason := v1beta1.PipelineRunReasonRunning.String()
 
-	if reflect.DeepEqual(allTasks, withStatusTasks) {
+	// check if the pipeline is finished executing all tasks i.e. no incomplete tasks
+	if s.Incomplete == 0 {
 		status := corev1.ConditionTrue
-		if failedTasks > 0 || cancelledTasks > 0 {
+		reason := v1beta1.PipelineRunReasonSuccessful.String()
+		// Set reason to ReasonCompleted - At least one is skipped
+		if s.Skipped > 0 {
+			reason = v1beta1.PipelineRunReasonCompleted.String()
+		}
+		// Set reason to ReasonFailed - At least one failed
+		if s.Failed > 0 {
+			reason = v1beta1.PipelineRunReasonFailed.String()
+			status = corev1.ConditionFalse
+			// Set reason to ReasonCancelled - At least one is cancelled and no failure yet
+		} else if s.Cancelled > 0 {
+			reason = v1beta1.PipelineRunReasonCancelled.String()
 			status = corev1.ConditionFalse
 		}
 		logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", pr.Name)
@@ -259,7 +250,7 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 			Status: status,
 			Reason: reason,
 			Message: fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
-				len(allTasks)-len(skipTasks), failedTasks, cancelledTasks, len(skipTasks)),
+				cmTasks, s.Failed, s.Cancelled, s.Skipped),
 		}
 	}
 
@@ -267,20 +258,21 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 	// transition pipeline into stopping state when one of the tasks(dag/final) cancelled or one of the dag tasks failed
 	// for a pipeline with final tasks, single dag task failure does not transition to interim stopping state
 	// pipeline stays in running state until all final tasks are done before transitioning to failed state
-	if cancelledTasks > 0 || (failedTasks > 0 && facts.checkFinalTasksDone()) {
+	if s.Cancelled > 0 || (s.Failed > 0 && facts.checkFinalTasksDone()) {
 		reason = v1beta1.PipelineRunReasonStopping.String()
-	} else {
-		reason = v1beta1.PipelineRunReasonRunning.String()
 	}
+
+	// return the status
 	return &apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown,
 		Reason: reason,
 		Message: fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Incomplete: %d, Skipped: %d",
-			len(withStatusTasks)-len(skipTasks), failedTasks, cancelledTasks, len(allTasks)-len(withStatusTasks), len(skipTasks)),
+			cmTasks, s.Failed, s.Cancelled, s.Incomplete, s.Skipped),
 	}
 }
 
+// GetSkippedTasks constructs a list of SkippedTask struct to be included in the PipelineRun Status
 func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 	var skipped []v1beta1.SkippedTask
 	for _, rprt := range facts.State {
@@ -339,6 +331,37 @@ func (facts *PipelineRunFacts) checkDAGTasksDone() bool {
 // check if all finally tasks done executing (succeeded or failed)
 func (facts *PipelineRunFacts) checkFinalTasksDone() bool {
 	return facts.checkTasksDone(facts.FinalTasksGraph)
+}
+
+// getPipelineTasksCount returns the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
+func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
+	s := pipelineRunStatusCount{
+		Skipped:    0,
+		Succeeded:  0,
+		Failed:     0,
+		Cancelled:  0,
+		Incomplete: 0,
+	}
+	for _, t := range facts.State {
+		switch {
+		// increment success counter since the task is successful
+		case t.IsSuccessful():
+			s.Succeeded++
+		// increment failure counter since the task has failed
+		case t.IsFailure():
+			s.Failed++
+		// increment cancelled counter since the task is cancelled
+		case t.IsCancelled():
+			s.Cancelled++
+		// increment skip counter since the task is skipped
+		case t.Skip(facts):
+			s.Skipped++
+		// increment incomplete counter since the task is pending and not executed yet
+		default:
+			s.Incomplete++
+		}
+	}
+	return s
 }
 
 // check if a specified pipelineTask is defined under tasks(DAG) section
