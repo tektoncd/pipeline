@@ -17,8 +17,6 @@ limitations under the License.
 package builder
 
 import (
-	"time"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -162,31 +160,5 @@ func PodInitContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 func PodVolumes(volumes ...corev1.Volume) PodSpecOp {
 	return func(spec *corev1.PodSpec) {
 		spec.Volumes = volumes
-	}
-}
-
-// PodCreationTimestamp sets the creation time of the pod
-func PodCreationTimestamp(t time.Time) PodOp {
-	return func(p *corev1.Pod) {
-		p.CreationTimestamp = metav1.Time{Time: t}
-	}
-}
-
-// PodStatus creates a PodStatus with default values.
-// Any number of PodStatus modifiers can be passed to transform it.
-func PodStatus(ops ...PodStatusOp) PodOp {
-	return func(pod *corev1.Pod) {
-		podStatus := &pod.Status
-		for _, op := range ops {
-			op(podStatus)
-		}
-		pod.Status = *podStatus
-	}
-}
-
-// PodStatusConditions adds a Conditions (set) to the Pod status.
-func PodStatusConditions(cond corev1.PodCondition) PodStatusOp {
-	return func(status *corev1.PodStatus) {
-		status.Conditions = append(status.Conditions, cond)
 	}
 }

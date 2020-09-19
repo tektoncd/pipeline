@@ -16,7 +16,6 @@ package builder
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // StepOp is an operation which modifies a Container struct.
@@ -85,66 +84,5 @@ func StepVolumeMount(name, mountPath string, ops ...VolumeMountOp) StepOp {
 func StepScript(script string) StepOp {
 	return func(step *v1beta1.Step) {
 		step.Script = script
-	}
-}
-
-// StepResources adds ResourceRequirements to the Container (step).
-func StepResources(ops ...ResourceRequirementsOp) StepOp {
-	return func(step *v1beta1.Step) {
-		rr := &corev1.ResourceRequirements{}
-		for _, op := range ops {
-			op(rr)
-		}
-		step.Resources = *rr
-	}
-}
-
-// StepLimits adds Limits to the ResourceRequirements.
-func StepLimits(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		limits := corev1.ResourceList{}
-		for _, op := range ops {
-			op(limits)
-		}
-		rr.Limits = limits
-	}
-}
-
-// StepRequests adds Requests to the ResourceRequirements.
-func StepRequests(ops ...ResourceListOp) ResourceRequirementsOp {
-	return func(rr *corev1.ResourceRequirements) {
-		requests := corev1.ResourceList{}
-		for _, op := range ops {
-			op(requests)
-		}
-		rr.Requests = requests
-	}
-}
-
-// StepCPU sets the CPU resource on the ResourceList.
-func StepCPU(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceCPU] = resource.MustParse(val)
-	}
-}
-
-// StepMemory sets the memory resource on the ResourceList.
-func StepMemory(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceMemory] = resource.MustParse(val)
-	}
-}
-
-// StepEphemeralStorage sets the ephemeral storage resource on the ResourceList.
-func StepEphemeralStorage(val string) ResourceListOp {
-	return func(r corev1.ResourceList) {
-		r[corev1.ResourceEphemeralStorage] = resource.MustParse(val)
-	}
-}
-
-// StepTerminationMessagePath sets the source of the termination message.
-func StepTerminationMessagePath(terminationMessagePath string) StepOp {
-	return func(step *v1beta1.Step) {
-		step.TerminationMessagePath = terminationMessagePath
 	}
 }
