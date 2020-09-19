@@ -305,19 +305,6 @@ func TaskResourcesOutput(name string, resourceType resource.PipelineResourceType
 	}
 }
 
-// TaskResultsOutput adds a TaskResult as Outputs to the TaskResources
-func TaskResultsOutput(name, desc string, ops ...TaskResultOp) TaskResultOp {
-	return func(result *v1beta1.TaskResult) {
-		r := &v1beta1.TaskResult{
-			Name:        name,
-			Description: desc,
-		}
-		for _, op := range ops {
-			op(r)
-		}
-	}
-}
-
 // ResourceOptional marks a TaskResource as optional.
 func ResourceOptional(optional bool) TaskResourceOp {
 	return func(r *v1beta1.TaskResource) {
@@ -471,36 +458,6 @@ func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 			spec.PodTemplate = &v1beta1.PodTemplate{}
 		}
 		spec.PodTemplate.NodeSelector = values
-	}
-}
-
-// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
-func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
-	return func(spec *v1beta1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		spec.PodTemplate.Tolerations = values
-	}
-}
-
-// TaskRunAffinity sets the Affinity to the TaskRunSpec.
-func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
-	return func(spec *v1beta1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		spec.PodTemplate.Affinity = affinity
-	}
-}
-
-// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
-func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
-	return func(spec *v1beta1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		spec.PodTemplate.SecurityContext = context
 	}
 }
 
