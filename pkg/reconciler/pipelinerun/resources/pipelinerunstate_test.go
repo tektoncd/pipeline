@@ -463,7 +463,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			dag, err := DagFromState(tc.state)
+			dag, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -878,7 +878,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tb.PipelineRun("somepipelinerun")
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -1010,7 +1010,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 
 // pipeline should result in timeout if its runtime exceeds its spec.Timeout based on its status.Timeout
 func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
-	d, err := DagFromState(oneFinishedState)
+	d, err := dagFromState(oneFinishedState)
 	if err != nil {
 		t.Fatalf("Unexpected error while buildig DAG for state %v: %v", oneFinishedState, err)
 	}

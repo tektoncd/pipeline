@@ -926,7 +926,7 @@ func TestSortContainerStatuses(t *testing.T) {
 
 func TestMarkStatusRunning(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+	markStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -942,7 +942,7 @@ func TestMarkStatusRunning(t *testing.T) {
 
 func TestMarkStatusFailure(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusFailure(&trs, "failure message")
+	markStatusFailure(&trs, "failure message")
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -958,7 +958,7 @@ func TestMarkStatusFailure(t *testing.T) {
 
 func TestMarkStatusSuccess(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusSuccess(&trs)
+	markStatusSuccess(&trs)
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,

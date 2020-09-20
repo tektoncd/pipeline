@@ -22,16 +22,16 @@ import "context"
 // with a context.Context.
 type hdcnKey struct{}
 
-// WithDefaultConfigurationName notes on the context for nested validation
+// withDefaultConfigurationName notes on the context for nested validation
 // that there is a default configuration name, which affects how an empty
 // configurationName is validated.
-func WithDefaultConfigurationName(ctx context.Context) context.Context {
+func withDefaultConfigurationName(ctx context.Context) context.Context {
 	return context.WithValue(ctx, hdcnKey{}, struct{}{})
 }
 
-// HasDefaultConfigurationName checks to see whether the given context has
+// hasDefaultConfigurationName checks to see whether the given context has
 // been marked as having a default configurationName.
-func HasDefaultConfigurationName(ctx context.Context) bool {
+func hasDefaultConfigurationName(ctx context.Context) bool {
 	return ctx.Value(hdcnKey{}) != nil
 }
 

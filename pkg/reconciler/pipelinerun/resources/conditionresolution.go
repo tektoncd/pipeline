@@ -114,7 +114,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1beta1.TaskSpec, err
 	}
 
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
-	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
+	err := applyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace resource template strings %w", err)
@@ -134,9 +134,9 @@ func convertParamTemplates(step *v1beta1.Step, params []v1beta1.ParamSpec) {
 	v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
-// ApplyResourceSubstitution applies the substitution from values in resources which are referenced
+// applyResourceSubstitution applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
-func ApplyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
+func applyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {

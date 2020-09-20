@@ -323,7 +323,7 @@ func TestReconcile(t *testing.T) {
 		ClusterTasks:      clusterTasks,
 		PipelineResources: rs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -437,7 +437,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		PipelineRuns: prs,
 		Pipelines:    ps,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -677,7 +677,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 				Pipelines:    ps,
 				Tasks:        ts,
 			}
-			prt := NewPipelineRunTest(d, t)
+			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
 			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred")
@@ -1001,7 +1001,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1088,7 +1088,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1128,7 +1128,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1180,7 +1180,7 @@ func TestReconcileWithoutPVC(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
@@ -1295,7 +1295,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1355,7 +1355,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
@@ -1397,7 +1397,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -1521,7 +1521,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 				Tasks:        ts,
 				TaskRuns:     trs,
 			}
-			prt := NewPipelineRunTest(d, t)
+			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-retry-run-with-timeout", []string{}, false)
@@ -1556,7 +1556,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-annotations", []string{}, false)
@@ -1714,7 +1714,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
@@ -1806,7 +1806,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 		Tasks:        ts,
 		Conditions:   conditions,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1924,7 +1924,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		TaskRuns:     trs,
 		Conditions:   conditions,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2033,7 +2033,7 @@ func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2154,7 +2154,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2250,7 +2250,7 @@ func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -2342,7 +2342,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -2418,7 +2418,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
@@ -2544,7 +2544,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -2615,7 +2615,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		PipelineRuns: prs,
 		Tasks:        ts,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -2723,7 +2723,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -2930,7 +2930,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		TaskRuns:     trs,
 		Conditions:   cs,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", prOutOfSync.Name, []string{}, false)
@@ -3658,7 +3658,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				Tasks:        tt.ts,
 				TaskRuns:     tt.trs,
 			}
-			prt := NewPipelineRunTest(d, t)
+			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
 			reconciledRun, clients := prt.reconcileRun("foo", tt.pipelineRunName, []string{}, false)
@@ -3801,7 +3801,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		Tasks:        ts,
 		ConfigMaps:   cms,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -3872,7 +3872,7 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 		PipelineRuns: prs,
 		Pipelines:    ps,
 	}
-	prt := NewPipelineRunTest(d, t)
+	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", []string{}, false)
@@ -3923,9 +3923,9 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 	}
 }
 
-// NewPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
+// newPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
 // This PipelineRunTest can be reused for multiple PipelineRuns by calling reconcileRun for each pipelineRun
-func NewPipelineRunTest(data test.Data, t *testing.T) *PipelineRunTest {
+func newPipelineRunTest(data test.Data, t *testing.T) *PipelineRunTest {
 	t.Helper()
 	testAssets, cancel := getPipelineRunController(t, data)
 	return &PipelineRunTest{

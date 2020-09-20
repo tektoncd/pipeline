@@ -539,7 +539,7 @@ var taskWithOptionalResources = &v1beta1.Task{
 	},
 }
 
-func DagFromState(state PipelineRunState) (*dag.Graph, error) {
+func dagFromState(state PipelineRunState) (*dag.Graph, error) {
 	pts := []v1beta1.PipelineTask{}
 	for _, rprt := range state {
 		pts = append(pts, *rprt.PipelineTask)
@@ -835,7 +835,7 @@ func TestIsSkipped(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			dag, err := DagFromState(tc.state)
+			dag, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Could not get a dag from the TC state %#v: %v", tc.state, err)
 			}

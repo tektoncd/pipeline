@@ -47,7 +47,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
-	if err := ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
+	if err := validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
@@ -91,7 +91,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
-	if err := ValidateResults(ts.Results); err != nil {
+	if err := validateResults(ts.Results); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-func ValidateResults(results []TaskResult) *apis.FieldError {
+func validateResults(results []TaskResult) *apis.FieldError {
 	for index, result := range results {
 		if !resultNameFormatRegex.MatchString(result.Name) {
 			return apis.ErrInvalidKeyName(result.Name, fmt.Sprintf("results[%d].name", index), fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
@@ -114,7 +114,7 @@ func ValidateResults(results []TaskResult) *apis.FieldError {
 
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
-func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
 	mountPaths := sets.NewString()
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {

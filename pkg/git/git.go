@@ -150,13 +150,13 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	if err != nil {
 		return err
 	}
-	ref, err := ShowRef(logger, "HEAD", spec.Path)
+	ref, err := showRef(logger, "HEAD", spec.Path)
 	if err != nil {
 		return err
 	}
 	logger.Infof("Successfully cloned %s @ %s (%s) in path %s", trimmedURL, commit, ref, spec.Path)
 	if spec.Submodules {
-		if err := SubmoduleFetch(logger, spec); err != nil {
+		if err := submoduleFetch(logger, spec); err != nil {
 			return err
 		}
 	}
@@ -171,7 +171,7 @@ func ShowCommit(logger *zap.SugaredLogger, revision, path string) (string, error
 	return strings.TrimSuffix(output, "\n"), nil
 }
 
-func ShowRef(logger *zap.SugaredLogger, revision, path string) (string, error) {
+func showRef(logger *zap.SugaredLogger, revision, path string) (string, error) {
 	output, err := run(logger, path, "show", "-q", "--pretty=format:%D", revision)
 	if err != nil {
 		return "", err
@@ -179,7 +179,7 @@ func ShowRef(logger *zap.SugaredLogger, revision, path string) (string, error) {
 	return strings.TrimSuffix(output, "\n"), nil
 }
 
-func SubmoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
+func submoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	if spec.Path != "" {
 		if err := os.Chdir(spec.Path); err != nil {
 			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)

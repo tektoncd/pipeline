@@ -76,7 +76,7 @@ func SendCloudEvents(tr *v1beta1.TaskRun, ceclient CEClient, logger *zap.Sugared
 	logger = logger.With(zap.String("taskrun", tr.Name))
 
 	// Make the event we would like to send:
-	event, err := EventForTaskRun(tr)
+	event, err := eventForTaskRun(tr)
 	if err != nil || event == nil {
 		logger.With(zap.Error(err)).Error("failed to produce a cloudevent from TaskRun.")
 		return err
@@ -132,7 +132,7 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	if ceClient == nil {
 		return errors.New("No cloud events client found in the context")
 	}
-	event, err := EventForObjectWithCondition(o)
+	event, err := eventForObjectWithCondition(o)
 	if err != nil {
 		return err
 	}
