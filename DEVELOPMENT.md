@@ -6,8 +6,8 @@
 1.  Create [a GitHub account](https://github.com/join)
 1.  Setup
     [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
+1.  Set up your [development environment](#environment-setup)
 1.  [Create and checkout a repo fork](#checkout-your-fork)
-1.  Set up your [shell environment](#environment-setup)
 1.  Install [requirements](#requirements)
 1.  [Set up a Kubernetes cluster](#kubernetes-cluster)
 1.  [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
@@ -45,6 +45,86 @@ At this point, you may find it useful to return to these `Tekton Pipeline` docs:
 -   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
     Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
     they are run
+    
+## Environment Setup
+
+You must install these tools:
+
+1.  [`git`](https://help.github.com/articles/set-up-git/): For source control
+
+1.  [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
+    built in
+
+Your [`$GOPATH`] setting is critical for `ko apply` to function properly: a
+successful run will typically involve building pushing images instead of only
+configuring Kubernetes resources.
+
+To [run your controllers with `ko`](#install-pipeline) you'll need to set these
+environment variables (we recommend adding them to your `.bashrc`):
+
+1.  `GOPATH`: If you don't have one, simply pick a directory and add `export
+    GOPATH=...`
+1.  `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
+    work properly.
+1.  `KO_DOCKER_REPO`: The docker repository to which developer images should be
+    pushed (e.g. `gcr.io/[gcloud-project]`). You can also
+    [run a local registry](https://docs.docker.com/registry/deploying/) and set
+    `KO_DOCKER_REPO` to reference the registry (e.g. at
+    `localhost:5000/mypipelineimages`).
+
+`.bashrc` example:
+
+```shell
+export GOPATH="$HOME/go"
+export PATH="${PATH}:${GOPATH}/bin"
+export KO_DOCKER_REPO='gcr.io/my-gcloud-project-name'
+```
+
+Make sure to configure
+[authentication](https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
+for your `KO_DOCKER_REPO` if required. To be able to push images to
+`gcr.io/<project>`, you need to run this once:
+
+```shell
+gcloud auth configure-docker
+```
+
+After setting `GOPATH` and putting `$GOPATH/bin` on your `PATH`, you must then install these tools:
+
+3.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or
+    higher is required for `pipeline` to work correctly.
+    
+4.  [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
+    interacting with your kube cluster
+
+The user you are using to interact with your k8s cluster must be a cluster admin
+to create role bindings:
+
+```shell
+# Using gcloud to get your current user
+USER=$(gcloud config get-value core/account)
+# Make that user a cluster admin
+kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole=cluster-admin \
+  --user="${USER}"
+```
+
+### Install in custom namespace
+
+1.  To install into a different namespace you can use this script :
+
+```shell
+#!/usr/bin/env bash
+set -e
+
+# Set your target namespace here
+TARGET_NAMESPACE=new-target-namespace
+
+ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
+    sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
+    kubectl apply -f-
+kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
+```
 
 ### Checkout your fork
 
@@ -69,22 +149,6 @@ git remote set-url --push upstream no_push
 
 _Adding the `upstream` remote sets you up nicely for regularly
 [syncing your fork](https://help.github.com/articles/syncing-a-fork/)._
-
-### Requirements
-
-You must install these tools:
-
-1.  [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
-    built in
-1.  [`git`](https://help.github.com/articles/set-up-git/): For source control
-1.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or
-    higher is required for `pipeline` to work correctly.
-1.  [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
-    interacting with your kube cluster
-
-Your [`$GOPATH`] setting is critical for `ko apply` to function properly: a
-successful run will typically involve building pushing images instead of only
-configuring Kubernetes resources.
 
 ## Kubernetes cluster
 
@@ -169,67 +233,6 @@ To enable the Kubernetes that comes with Docker Desktop:
     --clusterrole=cluster-admin \
     --user=$(gcloud config get-value core/account)
     ```
-
-## Environment Setup
-
-To [run your controllers with `ko`](#install-pipeline) you'll need to set these
-environment variables (we recommend adding them to your `.bashrc`):
-
-1.  `GOPATH`: If you don't have one, simply pick a directory and add `export
-    GOPATH=...`
-1.  `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
-    work properly.
-1.  `KO_DOCKER_REPO`: The docker repository to which developer images should be
-    pushed (e.g. `gcr.io/[gcloud-project]`). You can also
-    [run a local registry](https://docs.docker.com/registry/deploying/) and set
-    `KO_DOCKER_REPO` to reference the registry (e.g. at
-    `localhost:5000/mypipelineimages`).
-
-`.bashrc` example:
-
-```shell
-export GOPATH="$HOME/go"
-export PATH="${PATH}:${GOPATH}/bin"
-export KO_DOCKER_REPO='gcr.io/my-gcloud-project-name'
-```
-
-Make sure to configure
-[authentication](https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
-for your `KO_DOCKER_REPO` if required. To be able to push images to
-`gcr.io/<project>`, you need to run this once:
-
-```shell
-gcloud auth configure-docker
-```
-
-The user you are using to interact with your k8s cluster must be a cluster admin
-to create role bindings:
-
-```shell
-# Using gcloud to get your current user
-USER=$(gcloud config get-value core/account)
-# Make that user a cluster admin
-kubectl create clusterrolebinding cluster-admin-binding \
-  --clusterrole=cluster-admin \
-  --user="${USER}"
-```
-
-### Install in custom namespace
-
-1.  To install into a different namespace you can use this script :
-
-```shell
-#!/usr/bin/env bash
-set -e
-
-# Set your target namespace here
-TARGET_NAMESPACE=new-target-namespace
-
-ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
-    sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
-    kubectl apply -f-
-kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
-```
 
 ## Iterating
 
