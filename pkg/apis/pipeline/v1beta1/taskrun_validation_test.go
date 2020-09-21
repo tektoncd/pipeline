@@ -182,7 +182,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: &apis.FieldError{
 			Message: `invalid value "invalid-name-with-$weird-char/%"`,
-			Paths:   []string{"taskspec.steps.name"},
+			Paths:   []string{"taskspec.steps[0].name"},
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {

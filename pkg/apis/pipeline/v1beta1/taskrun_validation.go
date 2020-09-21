@@ -55,7 +55,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	// Validate TaskSpec if it's present
 	if ts.TaskSpec != nil {
-		if err := ts.TaskSpec.Validate(ctx); err != nil {
+		if err := ts.TaskSpec.Validate(ctx).ViaField("taskspec"); err != nil {
 			return err
 		}
 	}
