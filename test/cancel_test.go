@@ -47,7 +47,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 			pipelineRunName := "cancel-me"
 			pipelineRun := &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
+				ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName, Namespace: namespace},
 				Spec: v1beta1.PipelineRunSpec{
 					PipelineSpec: &v1beta1.PipelineSpec{
 						Tasks: []v1beta1.PipelineTask{{
@@ -82,10 +82,8 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 
 			var wg sync.WaitGroup
-			var trName []string
 			t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRunName, namespace)
 			for _, taskrunItem := range taskrunList.Items {
-				trName = append(trName, taskrunItem.Name)
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
@@ -132,6 +130,15 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				}(taskrunItem.Name)
 			}
 			wg.Wait()
+
+			var trName []string
+			taskrunList, err = c.TaskRunClient.List(metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRunName})
+			if err != nil {
+				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRunName, err)
+			}
+			for _, taskrunItem := range taskrunList.Items {
+				trName = append(trName, taskrunItem.Name)
+			}
 
 			matchKinds := map[string][]string{"PipelineRun": {pipelineRunName}, "TaskRun": trName}
 			// Expected failure events: 1 for the pipelinerun cancel, 1 for each TaskRun
