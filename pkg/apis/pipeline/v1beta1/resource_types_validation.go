@@ -25,29 +25,19 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func (tr *TaskResources) Validate(ctx context.Context) *apis.FieldError {
-	if tr == nil {
-		return nil
+func (tr *TaskResources) Validate(ctx context.Context) (errs *apis.FieldError) {
+	if tr != nil {
+		errs = errs.Also(validateTaskResources(tr.Inputs).ViaField("inputs"))
+		errs = errs.Also(validateTaskResources(tr.Outputs).ViaField("outputs"))
 	}
-	if err := validateTaskResources(tr.Inputs, "inputs"); err != nil {
-		return err
-	}
-	if err := validateTaskResources(tr.Outputs, "outputs"); err != nil {
-		return err
-	}
-	return nil
+	return errs
 }
 
-func validateTaskResources(resources []TaskResource, name string) *apis.FieldError {
-	for _, resource := range resources {
-		if err := validateResourceType(resource, fmt.Sprintf("taskspec.resources.%s.%s.type", name, resource.Name)); err != nil {
-			return err
-		}
+func validateTaskResources(resources []TaskResource) (errs *apis.FieldError) {
+	for idx, resource := range resources {
+		errs = errs.Also(validateResourceType(resource, fmt.Sprintf("%s.type", resource.Name))).ViaIndex(idx)
 	}
-	if err := checkForDuplicates(resources, fmt.Sprintf("taskspec.resources.%s.name", name)); err != nil {
-		return err
-	}
-	return nil
+	return errs.Also(checkForDuplicates(resources, "name"))
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
