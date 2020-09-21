@@ -52,7 +52,7 @@ You must install these tools:
 1.  [`git`](https://help.github.com/articles/set-up-git/): For source control
 
 1.  [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
-    built in
+    built in. You need go version [v1.15](https://golang.org/dl/) or higher.
 
 Your [`$GOPATH`] setting is critical for `ko apply` to function properly: a
 successful run will typically involve building pushing images instead of only
