@@ -8,7 +8,6 @@
     [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
 1.  Set up your [development environment](#environment-setup)
 1.  [Create and checkout a repo fork](#checkout-your-fork)
-1.  Install [requirements](#requirements)
 1.  [Set up a Kubernetes cluster](#kubernetes-cluster)
 1.  [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 1.  [Set up a docker repository you can push to](https://github.com/knative/serving/blob/4a8c859741a4454bdd62c2b60069b7d05f5468e7/docs/setting-up-a-docker-registry.md)
