@@ -108,7 +108,10 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("spec.workspaces.name"),
+		wantErr: &apis.FieldError{
+			Message: `item 1 value for field "Name" conflicts with value for item 0`,
+			Paths:   []string{"spec.workspaces.name"},
+		},
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -197,7 +200,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
-		wantErr: apis.ErrMultipleOneOf("spec.params.name"),
+		wantErr: &apis.FieldError{
+			Message: `item 1 value for field "Name" conflicts with value for item 0`,
+			Paths:   []string{"spec.params.name"},
+		},
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

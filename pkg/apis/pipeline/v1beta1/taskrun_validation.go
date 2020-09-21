@@ -19,11 +19,9 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -60,10 +58,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := validateParameters(ts.Params); err != nil {
+	if err := validate.KeyConflict(ts.Params, "Name", "spec.params.name"); err != nil {
 		return err
 	}
 
+	if err := validate.KeyConflict(ts.Workspaces, "Name", "spec.workspaces.name"); err != nil {
+		return err
+	}
 	if err := validateWorkspaceBindings(ctx, ts.Workspaces); err != nil {
 		return err
 	}
@@ -91,29 +92,11 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 
 // validateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
 func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis.FieldError {
-	seen := sets.NewString()
 	for _, w := range wb {
-		if seen.Has(w.Name) {
-			return apis.ErrMultipleOneOf("spec.workspaces.name")
-		}
-		seen.Insert(w.Name)
-
 		if err := w.Validate(ctx).ViaField("workspace"); err != nil {
 			return err
 		}
 	}
 
-	return nil
-}
-
-func validateParameters(params []Param) *apis.FieldError {
-	// Template must not duplicate parameter names.
-	seen := sets.NewString()
-	for _, p := range params {
-		if seen.Has(strings.ToLower(p.Name)) {
-			return apis.ErrMultipleOneOf("spec.params.name")
-		}
-		seen.Insert(p.Name)
-	}
 	return nil
 }
