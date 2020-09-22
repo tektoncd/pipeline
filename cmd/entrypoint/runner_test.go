@@ -55,15 +55,12 @@ func TestRealRunnerValidDeadline(t *testing.T) {
 // TestRealRunnerEmptyDeadline tests with valid Step timeout but empty TaskRun deadline.
 func TestRealRunnerEmptyDeadline(t *testing.T) {
 	rr := realRunner{}
-	timeout := "1ms"
+	timeout := "1s"
 	taskRunDeadline := ""
 	if err := rr.Run(timeout, taskRunDeadline, "sleep", "0.01"); err != nil {
-		if err != context.DeadlineExceeded {
-			t.Fatalf("unexpected error received: %v", err)
-		}
-	} else {
-		t.Fatalf("step didn't timeout")
+		t.Fatalf("unexpected error received: %v", err)
 	}
+	t.Logf("step finishes successfully")
 }
 
 // TestRealRunnerNegativeStepTimeout tests with negative Step timeout

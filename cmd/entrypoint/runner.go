@@ -89,7 +89,7 @@ func soonestTimeout(stepTimeout, taskRunDeadline string) time.Duration {
 
 	stepDuration, _ := time.ParseDuration(stepTimeout)
 
-	if stepTimeout == "" || taskRunEnd.Before(time.Now().Add(stepDuration)) {
+	if stepTimeout == "" || taskRunDeadline != "" && taskRunEnd.Before(time.Now().Add(stepDuration)) {
 		return taskRunDuration
 	}
 

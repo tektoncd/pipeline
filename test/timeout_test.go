@@ -384,6 +384,89 @@ func TestTaskRunStepTimeout(t *testing.T) {
 }
 
 func TestPipelineTaskTimeout(t *testing.T) {
+	c, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	configMapData := map[string]string{
+		config.EnforceTaskrunTimeoutsInStepKey: "true",
+	}
+
+	// Update configMap to enforce TaskRun timeout to Step.
+	originalConfigMap, configMapErr := c.KubeClient.GetConfigMap("tekton-pipelines").Get(config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+
+	if configMapErr != nil {
+		t.Fatalf("Failed to get configMap")
+	}
+
+	if err := updateConfigMap(c.KubeClient, "tekton-pipelines", config.GetFeatureFlagsConfigName(), configMapData); err != nil {
+		t.Fatalf("Failed updating configMap")
+	}
+
+	t.Logf("Creating Task with Step step-timeout, Step step-timeout, and Step step-canceled in namespace %s", namespace)
+
+	taskrunName := "taskrun-step-timeout"
+
+	t.Logf("Creating TaskRun %s in namespace %s", taskrunName, namespace)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: taskrunName, Namespace: namespace},
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Name:  "timeout",
+						Image: "busybox",
+					},
+					Script:  "sleep 1",
+					Timeout: "2s",
+				}, {
+					Container: corev1.Container{
+						Name:  "canceled",
+						Image: "busybox",
+					},
+				},
+				},
+			},
+			Timeout: &metav1.Duration{Duration: 1 * time.Second},
+		},
+	}
+
+	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", taskrunName, err)
+	}
+
+	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
+	t.Logf("Waiting for %s in namespace %s to time out", "taskrun-step-timeout", namespace)
+	if err := WaitForTaskRunState(c, taskrunName, FailedWithMessage(failMsg, "taskrun-step-timeout"), "StepTimeout"); err != nil {
+		t.Logf("Error in taskRun %s status: %s\n", taskrunName, err)
+		t.Errorf("Expected: %s", failMsg)
+	}
+
+	tr, err := c.TaskRunClient.Get(taskrunName, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Error getting Taskrun: %v", err)
+	}
+	if tr.Status.Steps[0].Terminated == nil {
+		if tr.Status.Steps[0].Terminated.Reason != "Completed" {
+			t.Errorf("step-timeout should not have been terminated")
+		}
+	}
+	if tr.Status.Steps[1].Terminated == nil {
+		t.Errorf("step-canceled should have been canceled after step-timeout timed out")
+	} else if exitcode := tr.Status.Steps[1].Terminated.ExitCode; exitcode != 1 {
+		t.Logf("step-canceled exited with exit code %d, expected exit code 1", exitcode)
+	}
+
+	// Resets configMap as it is shared across test cases.
+	if err := updateConfigMap(c.KubeClient, "tekton-pipelines", config.GetFeatureFlagsConfigName(), originalConfigMap.Data); err != nil {
+		t.Fatalf("Failed re-setting configMap")
+	}
+
+}
+
+func TestPipelineTaskTimeout(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
