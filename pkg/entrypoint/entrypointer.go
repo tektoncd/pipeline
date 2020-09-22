@@ -66,6 +66,8 @@ type Entrypointer struct {
 	Results []string
 	//Timeout is an optional user-specified flag for timing out Steps
 	Timeout string
+	// TaskRunDeadline is the timeout deadline in Time for entire TaskRun
+	TaskRunDeadline string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -76,7 +78,7 @@ type Waiter interface {
 
 // Runner encapsulates running commands.
 type Runner interface {
-	Run(timeout string, args ...string) error
+	Run(timeout string, taskRunDeadline string, args ...string) error
 }
 
 // PostWriter encapsulates writing a file when complete.
@@ -124,7 +126,7 @@ func (e Entrypointer) Go() error {
 		ResultType: v1beta1.InternalTektonResultType,
 	})
 
-	err := e.Runner.Run(e.Timeout, e.Args...)
+	err := e.Runner.Run(e.Timeout, e.TaskRunDeadline, e.Args...)
 	if err == context.DeadlineExceeded {
 		output = append(output, v1beta1.PipelineResourceResult{
 			Key:        "Reason",

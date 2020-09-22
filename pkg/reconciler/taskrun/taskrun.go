@@ -166,7 +166,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if tr.HasTimedOut() {
+	if tr.HasTimedOut() && !podconvert.ShouldCheckTaskRunStepTimeout(ctx) {
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)

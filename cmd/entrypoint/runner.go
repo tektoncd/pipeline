@@ -21,7 +21,7 @@ type realRunner struct {
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
-func (rr *realRunner) Run(timeout string, args ...string) error {
+func (rr *realRunner) Run(timeout string, taskRunDeadline string, args ...string) error {
 	if len(args) == 0 {
 		return nil
 	}
@@ -38,9 +38,10 @@ func (rr *realRunner) Run(timeout string, args ...string) error {
 	// Add timeout to context if a non-zero timeout is specified for a step
 	ctx := context.Background()
 	var cancel context.CancelFunc
-	timeoutContext, _ := time.ParseDuration(timeout)
-	if timeoutContext != time.Duration(0) {
-		ctx, cancel = context.WithTimeout(ctx, timeoutContext)
+
+	if timeout != "" || taskRunDeadline != "" {
+		timeoutDuration := soonestTimeout(timeout, taskRunDeadline)
+		ctx, cancel = context.WithTimeout(ctx, timeoutDuration)
 		defer cancel()
 	}
 
@@ -78,4 +79,19 @@ func (rr *realRunner) Run(timeout string, args ...string) error {
 	}
 
 	return nil
+}
+
+// soonestTimeout accepts a step timeout duration and taskrun timeout deadline in string format
+// and returns whichever one is non-zero (if any) or that which will occur soonest.
+func soonestTimeout(stepTimeout, taskRunDeadline string) time.Duration {
+	taskRunEnd, _ := time.Parse(time.UnixDate, taskRunDeadline)
+	taskRunDuration := time.Until(taskRunEnd)
+
+	stepDuration, _ := time.ParseDuration(stepTimeout)
+
+	if stepTimeout == "" || taskRunEnd.Before(time.Now().Add(stepDuration)) {
+		return taskRunDuration
+	}
+
+	return stepDuration
 }

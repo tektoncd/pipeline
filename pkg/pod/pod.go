@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -139,7 +140,12 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		return nil, err
 	}
 
-	extraEntrypointArgs := returnTimeoutArgs(taskSpec.Steps)
+	taskRunDeadline := ""
+	if taskRun.Spec.Timeout != nil && ShouldCheckTaskRunStepTimeout(ctx) {
+		taskRunDeadline = time.Now().Add(taskRun.Spec.Timeout.Duration).Format(time.UnixDate)
+	}
+
+	extraEntrypointArgs := returnTimeoutArgs(taskSpec.Steps, taskRunDeadline)
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary.
@@ -401,13 +407,24 @@ func shouldAddReadyAnnotationOnPodCreate(ctx context.Context, sidecars []v1beta1
 	return !cfg.FeatureFlags.RunningInEnvWithInjectedSidecars
 }
 
+// ShouldCheckTaskRunStepTimeout returns a bool indicating whether to check
+// TaskRun's timeout on the Step level.
+func ShouldCheckTaskRunStepTimeout(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.EnforceTaskrunTimeoutsInStep
+}
+
 // returnTimeoutArgs returns a string array of timeout arguments for steps
-func returnTimeoutArgs(steps []v1beta1.Step) [][]string {
+func returnTimeoutArgs(steps []v1beta1.Step, taskRunDeadline string) [][]string {
 	stepTimeouts := make([][]string, len(steps))
 	for i, s := range steps {
 		if s.Timeout != "" {
 			stepTimeouts[i] = append(stepTimeouts[i], "-timeout", s.Timeout)
 		}
+		if taskRunDeadline != "" {
+			stepTimeouts[i] = append(stepTimeouts[i], "-taskrun_deadline", taskRunDeadline)
+		}
 	}
+
 	return stepTimeouts
 }

@@ -28,11 +28,13 @@ const (
 	disableHomeEnvOverwriteKey              = "disable-home-env-overwrite"
 	disableWorkingDirOverwriteKey           = "disable-working-directory-overwrite"
 	disableAffinityAssistantKey             = "disable-affinity-assistant"
+	EnforceTaskrunTimeoutsInStepKey         = "enforce-taskrun-timeouts-in-step-entrypoint"
 	runningInEnvWithInjectedSidecarsKey     = "running-in-environment-with-injected-sidecars"
 	requireGitSSHSecretKnownHostsKey        = "require-git-ssh-secret-known-hosts" // nolint: gosec
 	DefaultDisableHomeEnvOverwrite          = false
 	DefaultDisableWorkingDirOverwrite       = false
 	DefaultDisableAffinityAssistant         = false
+	DefaultEnforceTaskrunTimeoutsInStep     = false
 	DefaultRunningInEnvWithInjectedSidecars = true
 	DefaultRequireGitSSHSecretKnownHosts    = false
 )
@@ -43,6 +45,7 @@ type FeatureFlags struct {
 	DisableHomeEnvOverwrite          bool
 	DisableWorkingDirOverwrite       bool
 	DisableAffinityAssistant         bool
+	EnforceTaskrunTimeoutsInStep     bool
 	RunningInEnvWithInjectedSidecars bool
 	RequireGitSSHSecretKnownHosts    bool
 }
@@ -79,6 +82,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(disableAffinityAssistantKey, DefaultDisableAffinityAssistant, &tc.DisableAffinityAssistant); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnforceTaskrunTimeoutsInStepKey, DefaultEnforceTaskrunTimeoutsInStep, &tc.EnforceTaskrunTimeoutsInStep); err != nil {
 		return nil, err
 	}
 	if err := setFeature(runningInEnvWithInjectedSidecarsKey, DefaultRunningInEnvWithInjectedSidecars, &tc.RunningInEnvWithInjectedSidecars); err != nil {

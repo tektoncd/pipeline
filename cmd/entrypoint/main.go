@@ -42,6 +42,7 @@ var (
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	waitPollingInterval = time.Second
 	timeout             = flag.String("timeout", "", "If specified, sets timeout for step")
+	taskRunDeadline     = flag.String("taskrun_deadline", "", "If specified, sets timeout for taskRun")
 )
 
 func cp(src, dst string) error {
@@ -106,9 +107,8 @@ func main() {
 		Results:         strings.Split(*results, ","),
 	}
 
-	if timeout != nil {
-		e.Timeout = *timeout
-	}
+	e.Timeout = *timeout
+	e.TaskRunDeadline = *taskRunDeadline
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
 	// user so that they're discoverable by git / ssh.

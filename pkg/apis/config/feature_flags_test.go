@@ -36,6 +36,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				EnforceTaskrunTimeoutsInStep:     config.DefaultEnforceTaskrunTimeoutsInStep,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -44,6 +45,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableHomeEnvOverwrite:          true,
 				DisableWorkingDirOverwrite:       true,
 				DisableAffinityAssistant:         true,
+				EnforceTaskrunTimeoutsInStep:     false,
 				RunningInEnvWithInjectedSidecars: false,
 				RequireGitSSHSecretKnownHosts:    true,
 			},
@@ -60,6 +62,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
 		RunningInEnvWithInjectedSidecars: true,
+		EnforceTaskrunTimeoutsInStep:     config.DefaultEnforceTaskrunTimeoutsInStep,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
