@@ -36,19 +36,15 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		want *apis.FieldError
 	}{
 		{
-			name: "invalid pipelinerun",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "prmetaname",
-				},
-			},
-			want: apis.ErrMissingField("spec"),
-		},
-		{
 			name: "invalid pipelinerun metadata",
 			pr: v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinerun.name",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
 				},
 			},
 			want: &apis.FieldError{
@@ -155,15 +151,11 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		spec    v1beta1.PipelineRunSpec
 		wantErr *apis.FieldError
 	}{{
-		name:    "Empty pipelineSpec",
-		spec:    v1beta1.PipelineRunSpec{},
-		wantErr: apis.ErrMissingField("spec"),
-	}, {
 		name: "pipelineRef without Pipeline Name",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{},
 		},
-		wantErr: apis.ErrMissingField("spec.pipelineref.name", "spec.pipelinespec"),
+		wantErr: apis.ErrMissingField("pipelineref.name", "pipelinespec"),
 	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1beta1.PipelineRunSpec{
@@ -178,7 +170,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 					},
 				}}},
 		},
-		wantErr: apis.ErrDisallowedFields("spec.pipelinespec", "spec.pipelineref"),
+		wantErr: apis.ErrDisallowedFields("pipelinespec", "pipelineref"),
 	}, {
 		name: "workspaces may only appear once",
 		spec: v1beta1.PipelineRunSpec{
@@ -195,7 +187,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: &apis.FieldError{
 			Message: `workspace "ws" provided by pipelinerun more than once, at index 0 and 1`,
-			Paths:   []string{"spec.workspaces"},
+			Paths:   []string{"workspaces[1].name"},
 		},
 	}, {
 		name: "workspaces must contain a valid volume config",
@@ -210,11 +202,11 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr: &apis.FieldError{
 			Message: "expected exactly one, got neither",
 			Paths: []string{
-				"spec.workspaces[0].configmap",
-				"spec.workspaces[0].emptydir",
-				"spec.workspaces[0].persistentvolumeclaim",
-				"spec.workspaces[0].secret",
-				"spec.workspaces[0].volumeclaimtemplate",
+				"workspaces[0].configmap",
+				"workspaces[0].emptydir",
+				"workspaces[0].persistentvolumeclaim",
+				"workspaces[0].secret",
+				"workspaces[0].volumeclaimtemplate",
 			},
 		},
 	}}
