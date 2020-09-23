@@ -73,7 +73,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "step1",
-				Image:   "google/cloud-sdk:alpine",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk:alpine",
 				Command: []string{"/bin/bash"},
 				Args:    []string{"-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)},
 				VolumeMounts: []corev1.VolumeMount{{
@@ -304,7 +304,7 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, buck
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "step1",
-				Image:   "google/cloud-sdk:alpine",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk:alpine",
 				Command: []string{"/bin/bash"},
 				Args:    []string{"-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil rm -r gs://%s", bucketName)},
 				VolumeMounts: []corev1.VolumeMount{{
