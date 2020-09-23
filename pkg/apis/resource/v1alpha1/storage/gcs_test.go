@@ -98,7 +98,7 @@ func TestValidNewGCSResource(t *testing.T) {
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
 		ShellImage:  "busybox",
-		GsutilImage: "google/cloud-sdk",
+		GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	gcsRes, err := storage.NewGCSResource("test-resource", images, pr)
@@ -167,7 +167,7 @@ func TestGetInputSteps(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
@@ -183,7 +183,7 @@ gsutil rsync -d -r gs://some-bucket /workspace
 `,
 			Container: corev1.Container{
 				Name:  "fetch-gcs-valid-mz4c7",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Env: []corev1.EnvVar{{
 					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 					Value: "/var/secret/secretName/key.json",
@@ -209,7 +209,7 @@ gsutil rsync -d -r gs://some-bucket /workspace
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
@@ -225,7 +225,7 @@ gsutil cp gs://some-bucket /workspace
 `,
 			Container: corev1.Container{
 				Name:  "fetch-gcs-valid-78c5n",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Env: []corev1.EnvVar{{
 					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 					Value: "/var/secret/secretName/key.json",
@@ -269,11 +269,11 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-9l9zj",
-			Image:   "google/cloud-sdk",
+			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"rsync", "-d", "-r", "/workspace/", "gs://some-bucket"},
 			Env:     []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
@@ -296,11 +296,11 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mz4c7",
-			Image:   "google/cloud-sdk",
+			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
 			Env: []corev1.EnvVar{
@@ -317,11 +317,11 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			Name:        "gcs-valid",
 			Location:    "gs://some-bucket",
 			TypeDir:     false,
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 		wantSteps: []v1beta1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mssqb",
-			Image:   "google/cloud-sdk",
+			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
 		}}},

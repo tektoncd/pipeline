@@ -43,7 +43,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "google/cloud-sdk",
+		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -211,7 +211,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "location empty",
@@ -256,7 +256,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "gs://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "valid bucket with boto config",
@@ -270,7 +270,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "s3://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "BOTO_CONFIG",
 				SecretKey:  "sakey",
@@ -524,7 +524,7 @@ func TestGetArtifactStorageWithConfig(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "location empty",

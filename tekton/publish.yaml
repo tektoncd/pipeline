@@ -176,7 +176,7 @@ spec:
       fi
 
   - name: tag-images
-    image: google/cloud-sdk
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk
     script: |
       #!/usr/bin/env bash
       set -ex

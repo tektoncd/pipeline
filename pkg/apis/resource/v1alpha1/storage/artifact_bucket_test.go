@@ -43,7 +43,7 @@ var (
 			SecretKey:  "serviceaccount",
 		}},
 		ShellImage:  "busybox",
-		GsutilImage: "google/cloud-sdk",
+		GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 )
 
@@ -56,7 +56,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
 	}}, {Container: corev1.Container{
 		Name:         "artifact-copy-from-workspace-mz4c7",
-		Image:        "google/cloud-sdk",
+		Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		Command:      []string{"gsutil"},
 		Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/src-path/*", "/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
@@ -73,7 +73,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
 	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:         "artifact-copy-to-workspace-9l9zj",
-		Image:        "google/cloud-sdk",
+		Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		Command:      []string{"gsutil"},
 		Args:         []string{"cp", "-P", "-r", "src-path", "gs://fake-bucket/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
