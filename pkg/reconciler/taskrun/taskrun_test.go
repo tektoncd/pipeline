@@ -2038,6 +2038,12 @@ func TestHandlePodCreationError(t *testing.T) {
 		expectedStatus: corev1.ConditionUnknown,
 		expectedReason: podconvert.ReasonExceededResourceQuota,
 	}, {
+		description:    "taskrun validation failed",
+		err:            errors.New("TaskRun validation failed"),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: podconvert.ReasonFailedValidation,
+	}, {
 		description:    "errors other than exceeded quota fail the taskrun",
 		err:            errors.New("this is a fatal error"),
 		expectedType:   apis.ConditionSucceeded,
