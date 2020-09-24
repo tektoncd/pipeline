@@ -462,34 +462,35 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1beta1.TaskRun) (*v1beta1.T
 }
 
 func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
-	var msg string
-	if isExceededResourceQuotaError(err) {
+	switch {
+	case isExceededResourceQuotaError(err):
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 		if !currentlyBackingOff {
 			go c.timeoutHandler.SetTimer(tr.GetNamespacedName(), time.Until(backoff.NextAttempt))
 		}
-		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
+		msg := fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  podconvert.ReasonExceededResourceQuota,
 			Message: fmt.Sprintf("%s: %v", msg, err),
 		})
-		// return a transient error, so that the key is requeued
-		return err
+	case isTaskRunValidationFailed(err):
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+	default:
+		// The pod creation failed with unknown reason. The most likely
+		// reason is that something is wrong with the spec of the Task, that we could
+		// not check with validation before - i.e. pod template fields
+		msg := fmt.Sprintf("failed to create task run pod %q: %v. Maybe ", tr.Name, err)
+		if tr.Spec.TaskRef != nil {
+			msg += fmt.Sprintf("missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
+		} else {
+			msg += "invalid TaskSpec"
+		}
+		err = controller.NewPermanentError(errors.New(msg))
+		tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, err)
 	}
-	// The pod creation failed, not because of quota issues. The most likely
-	// reason is that something is wrong with the spec of the Task, that we could
-	// not check with validation before - i.e. pod template fields
-	msg = fmt.Sprintf("failed to create task run pod %q: %v. Maybe ", tr.Name, err)
-	if tr.Spec.TaskRef != nil {
-		msg += fmt.Sprintf("missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
-	} else {
-		msg += "invalid TaskSpec"
-	}
-	newErr := controller.NewPermanentError(errors.New(msg))
-	tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, newErr)
-	return newErr
+	return err
 }
 
 // failTaskRun stops a TaskRun with the provided Reason
@@ -633,6 +634,10 @@ type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
 func isExceededResourceQuotaError(err error) bool {
 	return err != nil && k8serrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
+}
+
+func isTaskRunValidationFailed(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "TaskRun validation failed")
 }
 
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
