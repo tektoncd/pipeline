@@ -152,6 +152,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		Clients:    c,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Ctx:        ctx,
 	}, cancel
 }
 
@@ -747,7 +748,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 
-			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			err := c.Reconciler.Reconcile(testAssets.Ctx, tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
@@ -1244,7 +1245,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		return true, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
 	})
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-fails-to-cancel")
+	err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
 	if err == nil {
 		t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
 	}
@@ -3942,7 +3943,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	c := prt.TestAssets.Controller
 	clients := prt.TestAssets.Clients
 
-	reconcileError := c.Reconciler.Reconcile(context.Background(), namespace+"/"+pipelineRunName)
+	reconcileError := c.Reconciler.Reconcile(prt.TestAssets.Ctx, namespace+"/"+pipelineRunName)
 	if permanentError {
 		// When a PipelineRun is invalid and can't run, we expect a permanent error that will
 		// tell the Reconciler to not keep trying to reconcile.

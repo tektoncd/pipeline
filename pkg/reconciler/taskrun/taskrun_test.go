@@ -300,6 +300,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		Clients:    c,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Ctx:        ctx,
 	}, cancel
 }
 
@@ -483,7 +484,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			c := testAssets.Controller
 			clients := testAssets.Clients
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -668,7 +669,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -753,7 +754,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error. Got error %v", err)
 	}
 	if len(clients.Kube.Actions()) == 0 {
@@ -1458,7 +1459,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1616,7 +1617,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			reconcileErr := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
+			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
 
 			// When a TaskRun is invalid and can't run, we return a permanent error because
 			// a regular error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -1676,7 +1677,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 		return true, nil, errors.New("induce failure fetching pods")
 	})
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Pod but got nil")
 	}
 }
@@ -1734,7 +1735,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1770,7 +1771,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	// lister cache is update to reflect the result of the previous Reconcile.
 	testAssets.Informers.TaskRun.Informer().GetIndexer().Add(newTr)
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
@@ -1820,7 +1821,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1852,7 +1853,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
@@ -1967,7 +1968,7 @@ func TestReconcileTimeouts(t *testing.T) {
 			c := testAssets.Controller
 			clients := testAssets.Clients
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 			}
 			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
@@ -2224,7 +2225,7 @@ func TestReconcileCloudEvents(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
@@ -2566,7 +2567,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			clients := testAssets.Clients
 			c := testAssets.Controller
 
-			reconcileErr := c.Reconciler.Reconcile(context.Background(), getRunName(tt.d.TaskRuns[0]))
+			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.d.TaskRuns[0]))
 
 			// When a TaskRun is invalid and can't run, we return a permanent error because
 			// a regular error will tell the Reconciler to keep trying to reconcile; instead we want to stop
