@@ -948,7 +948,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
-			t.Logf("the error(s): %v (%v)", *err, err.Error())
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
