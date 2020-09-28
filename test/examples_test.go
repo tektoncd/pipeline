@@ -66,8 +66,9 @@ func waitValidateTaskRunDone(t *testing.T, c *clients, taskRunName string) {
 }
 
 // substituteEnv substitutes docker repos and bucket paths from the system
-// environment for input to allow tests on local clusters. It also unsets the
-// namespace for ServiceAccounts so that they work under test.
+// environment for input to allow tests on local clusters. It unsets the
+// namespace for ServiceAccounts so that they work under test. It also
+// replaces image names to arch specific ones, based on provided mapping.
 func substituteEnv(input []byte, namespace string) ([]byte, error) {
 	// Replace the placeholder image repo with the value of the
 	// KO_DOCKER_REPO env var.
@@ -81,6 +82,10 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 	// the test namespace using `ko create -n`
 	output = defaultNamespaceRE.ReplaceAll(output, []byte("namespace: "+namespace))
 
+	// Replace image names to arch specific ones, where it's necessary
+	for existingImage, archSpecificImage := range imagesMappingRE {
+		output = existingImage.ReplaceAll(output, archSpecificImage)
+	}
 	return output, nil
 }
 
