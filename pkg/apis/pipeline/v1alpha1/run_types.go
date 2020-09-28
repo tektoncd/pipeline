@@ -115,22 +115,22 @@ func (r *RunStatus) SetCondition(newCond *apis.Condition) {
 	}
 }
 
-// MarkSucceeded changes the Succeeded condition to True with the provided reason and message.
-func (r *RunStatus) MarkSucceeded(reason, messageFormat string, messageA ...interface{}) {
+// MarkRunSucceeded changes the Succeeded condition to True with the provided reason and message.
+func (r *RunStatus) MarkRunSucceeded(reason, messageFormat string, messageA ...interface{}) {
 	runCondSet.Manage(r).MarkTrueWithReason(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := r.GetCondition(apis.ConditionSucceeded)
 	r.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
-// MarkFailed changes the Succeeded condition to False with the provided reason and message.
-func (r *RunStatus) MarkFailed(reason, messageFormat string, messageA ...interface{}) {
+// MarkRunFailed changes the Succeeded condition to False with the provided reason and message.
+func (r *RunStatus) MarkRunFailed(reason, messageFormat string, messageA ...interface{}) {
 	runCondSet.Manage(r).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := r.GetCondition(apis.ConditionSucceeded)
 	r.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
-// MarkRunning changes the Succeeded condition to Unknown with the provided reason and message.
-func (r *RunStatus) MarkRunning(reason, messageFormat string, messageA ...interface{}) {
+// MarkRunRunning changes the Succeeded condition to Unknown with the provided reason and message.
+func (r *RunStatus) MarkRunRunning(reason, messageFormat string, messageA ...interface{}) {
 	runCondSet.Manage(r).MarkUnknown(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 }
 
