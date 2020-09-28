@@ -1098,7 +1098,7 @@ func TestSidecarsReady(t *testing.T) {
 
 func TestMarkStatusRunning(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+	markStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -1114,7 +1114,7 @@ func TestMarkStatusRunning(t *testing.T) {
 
 func TestMarkStatusFailure(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusFailure(&trs, v1beta1.TaskRunReasonFailed.String(), "failure message")
+	markStatusFailure(&trs, v1beta1.TaskRunReasonFailed.String(), "failure message")
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -1130,7 +1130,7 @@ func TestMarkStatusFailure(t *testing.T) {
 
 func TestMarkStatusSuccess(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusSuccess(&trs)
+	markStatusSuccess(&trs)
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -1146,19 +1146,19 @@ func TestMarkStatusSuccess(t *testing.T) {
 
 func statusRunning() duckv1beta1.Status {
 	var trs v1beta1.TaskRunStatus
-	MarkStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+	markStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	return trs.Status
 }
 
 func statusFailure(reason, message string) duckv1beta1.Status {
 	var trs v1beta1.TaskRunStatus
-	MarkStatusFailure(&trs, reason, message)
+	markStatusFailure(&trs, reason, message)
 	return trs.Status
 }
 
 func statusSuccess() duckv1beta1.Status {
 	var trs v1beta1.TaskRunStatus
-	MarkStatusSuccess(&trs)
+	markStatusSuccess(&trs)
 	return trs.Status
 }
 

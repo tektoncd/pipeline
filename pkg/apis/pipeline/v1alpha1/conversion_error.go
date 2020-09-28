@@ -35,5 +35,5 @@ type CannotConvertError = v1beta1.CannotConvertError
 
 var _ error = (*CannotConvertError)(nil)
 
-// ConvertErrorf creates a CannotConvertError from the field name and format string.
-var ConvertErrorf = v1beta1.ConvertErrorf
+// convertErrorf creates a CannotConvertError from the field name and format string.
+var convertErrorf = v1beta1.ConvertErrorf

@@ -123,7 +123,7 @@ func TestEventForTaskRun(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 
-			got, err := EventForTaskRun(c.taskRun)
+			got, err := eventForTaskRun(c.taskRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
@@ -134,7 +134,7 @@ func TestEventForTaskRun(t *testing.T) {
 				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
 					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
-				wantData := NewTektonCloudEventData(c.taskRun)
+				wantData := newTektonCloudEventData(c.taskRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)
@@ -182,7 +182,7 @@ func TestEventForPipelineRun(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 
-			got, err := EventForPipelineRun(c.pipelineRun)
+			got, err := eventForPipelineRun(c.pipelineRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
@@ -193,7 +193,7 @@ func TestEventForPipelineRun(t *testing.T) {
 				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
 					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
-				wantData := NewTektonCloudEventData(c.pipelineRun)
+				wantData := newTektonCloudEventData(c.pipelineRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)

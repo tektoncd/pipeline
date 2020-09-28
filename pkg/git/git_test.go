@@ -107,7 +107,7 @@ func TestValidateGitSSHURLFormat(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := ValidateGitSSHURLFormat(tt.url)
+		got := validateGitSSHURLFormat(tt.url)
 		if got != tt.want {
 			t.Errorf("Validate URL(%v)'s SSH format got %v, want %v", tt.url, got, tt.want)
 		}

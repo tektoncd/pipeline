@@ -39,8 +39,8 @@ type FakeClient struct {
 	Events chan string
 }
 
-// NewFakeClient is a FakeClient factory, it returns a client for the target
-func NewFakeClient(behaviour *FakeClientBehaviour) cloudevents.Client {
+// newFakeClient is a FakeClient factory, it returns a client for the target
+func newFakeClient(behaviour *FakeClientBehaviour) cloudevents.Client {
 	return FakeClient{
 		behaviour: behaviour,
 		Events:    make(chan string, bufferSize),
@@ -74,5 +74,5 @@ func (c FakeClient) StartReceiver(ctx context.Context, fn interface{}) error {
 
 // WithClient adds to the context a fake client with the desired behaviour
 func WithClient(ctx context.Context, behaviour *FakeClientBehaviour) context.Context {
-	return context.WithValue(ctx, CECKey{}, NewFakeClient(behaviour))
+	return context.WithValue(ctx, CECKey{}, newFakeClient(behaviour))
 }
