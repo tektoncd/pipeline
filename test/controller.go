@@ -105,6 +105,7 @@ type Assets struct {
 	Clients    Clients
 	Informers  Informers
 	Recorder   *record.FakeRecorder
+	Ctx        context.Context
 }
 
 func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
