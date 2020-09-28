@@ -137,6 +137,24 @@ func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration,
 	})
 }
 
+// WaitForRunState polls the status of the Run called name from client every
+// interval until inState returns `true` indicating it is done, returns an
+// error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took for name to get into the state checked by inState.
+func WaitForRunState(c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
+	metricName := fmt.Sprintf("WaitForRunState/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	return wait.PollImmediate(interval, polltimeout, func() (bool, error) {
+		r, err := c.RunClient.Get(name, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return inState(&r.Status)
+	})
+}
+
 // WaitForServiceExternalIPState polls the status of the a k8s Service called name from client every
 // interval until an external ip is assigned indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to

@@ -168,3 +168,22 @@ status:
 		t.Fatalf("Diff(-want,+got): %s", d)
 	}
 }
+
+func TestEncodeDecodeExtraFields(t *testing.T) {
+	type Mystatus struct {
+		S string
+		I int
+	}
+	status := Mystatus{S: "one", I: 1}
+	r := &v1alpha1.RunStatus{}
+	if err := r.EncodeExtraFields(&status); err != nil {
+		t.Fatalf("EncodeExtraFields failed: %s", err)
+	}
+	newStatus := Mystatus{}
+	if err := r.DecodeExtraFields(&newStatus); err != nil {
+		t.Fatalf("DecodeExtraFields failed: %s", err)
+	}
+	if d := cmp.Diff(status, newStatus); d != "" {
+		t.Fatalf("Diff(-want,+got): %s", d)
+	}
+}
