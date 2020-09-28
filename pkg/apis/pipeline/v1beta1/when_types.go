@@ -24,12 +24,12 @@ import (
 // to determine whether the Task should be executed or skipped
 type WhenExpression struct {
 	// Input is the string for guard checking which can be a static input or an output from a parent Task
-	Input string
+	Input string `json:"input"`
 	// Operator that represents an Input's relationship to the values
-	Operator selection.Operator
+	Operator selection.Operator `json:"operator"`
 	// Values is an array of strings, which is compared against the input, for guard checking
 	// It must be non-empty
-	Values []string
+	Values []string `json:"values"`
 }
 
 func (we *WhenExpression) isInputInValues() bool {
