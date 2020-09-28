@@ -104,7 +104,7 @@ func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *
 		return &ArtifactStorageNone{}, nil
 	}
 
-	if NeedsPVC(ctx) {
+	if needsPVC(ctx) {
 		pvc, err := createPVC(ctx, pr, c)
 		if err != nil {
 			return nil, err
@@ -112,14 +112,14 @@ func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *
 		return &storage.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
 	}
 
-	return NewArtifactBucketFromConfig(ctx, images), nil
+	return newArtifactBucketFromConfig(ctx, images), nil
 }
 
 // CleanupArtifactStorage will delete the PipelineRun's artifact storage PVC if it exists. The PVC is created for using
 // an output workspace or artifacts from one Task to another Task. No other PVCs will be impacted by this cleanup.
 func CleanupArtifactStorage(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
 
-	if NeedsPVC(ctx) {
+	if needsPVC(ctx) {
 		err := deletePVC(ctx, pr, c)
 		if err != nil {
 			return err
@@ -128,9 +128,9 @@ func CleanupArtifactStorage(ctx context.Context, pr *v1beta1.PipelineRun, c kube
 	return nil
 }
 
-// NeedsPVC checks if the Tekton is is configured to use a bucket for artifact storage,
+// needsPVC checks if the Tekton is is configured to use a bucket for artifact storage,
 // returning true if instead a PVC is needed.
-func NeedsPVC(ctx context.Context) bool {
+func needsPVC(ctx context.Context) bool {
 	bucketConfig := config.FromContextOrDefaults(ctx).ArtifactBucket
 	if bucketConfig == nil {
 		return true
@@ -145,14 +145,14 @@ func NeedsPVC(ctx context.Context) bool {
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
 func GetArtifactStorage(ctx context.Context, images pipeline.Images, prName string, c kubernetes.Interface) ArtifactStorageInterface {
-	if NeedsPVC(ctx) {
+	if needsPVC(ctx) {
 		return &storage.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}
 	}
-	return NewArtifactBucketFromConfig(ctx, images)
+	return newArtifactBucketFromConfig(ctx, images)
 }
 
-// NewArtifactBucketFromConfig creates a Bucket from the supplied ConfigMap
-func NewArtifactBucketFromConfig(ctx context.Context, images pipeline.Images) *storage.ArtifactBucket {
+// newArtifactBucketFromConfig creates a Bucket from the supplied ConfigMap
+func newArtifactBucketFromConfig(ctx context.Context, images pipeline.Images) *storage.ArtifactBucket {
 	c := &storage.ArtifactBucket{
 		ShellImage:  images.ShellImage,
 		GsutilImage: images.GsutilImage,
@@ -191,7 +191,7 @@ func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 				pvcStorageClassName = &pvcConfig.StorageClassName
 			}
 
-			pvcSpec := GetPVCSpec(pr, pvcSize, pvcStorageClassName)
+			pvcSpec := getPVCSpec(pr, pvcSize, pvcStorageClassName)
 			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(ctx, pvcSpec, metav1.CreateOptions{})
 			if err != nil {
 				return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %w", pr.Name, err)
@@ -214,8 +214,8 @@ func deletePVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 	return nil
 }
 
-// GetPVCSpec returns the PVC to create for a given PipelineRun
-func GetPVCSpec(pr *v1beta1.PipelineRun, pvcSize resource.Quantity, storageClassName *string) *corev1.PersistentVolumeClaim {
+// getPVCSpec returns the PVC to create for a given PipelineRun
+func getPVCSpec(pr *v1beta1.PipelineRun, pvcSize resource.Quantity, storageClassName *string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,

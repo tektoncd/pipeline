@@ -61,7 +61,7 @@ const (
 	ReasonPodCreationFailed = "PodCreationFailed"
 
 	// ReasonPending indicates that the pod is in corev1.Pending, and the reason is not
-	// ReasonExceededNodeResources or IsPodHitConfigError
+	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPending = "Pending"
 
 	//timeFormat is RFC3339 with millisecond
@@ -100,7 +100,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
-		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	}
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
@@ -271,9 +271,9 @@ func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (
 func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
-		MarkStatusFailure(trs, v1beta1.TaskRunReasonFailed.String(), msg)
+		markStatusFailure(trs, v1beta1.TaskRunReasonFailed.String(), msg)
 	} else {
-		MarkStatusSuccess(trs)
+		markStatusSuccess(trs)
 	}
 
 	// update tr completed time
@@ -283,15 +283,15 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRu
 func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
-		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	case corev1.PodPending:
 		switch {
 		case IsPodExceedingNodeResources(pod):
-			MarkStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
-		case IsPodHitConfigError(pod):
-			MarkStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
+			markStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
+		case isPodHitConfigError(pod):
+			markStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
 		default:
-			MarkStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
+			markStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
 		}
 	}
 }
@@ -374,8 +374,8 @@ func IsPodExceedingNodeResources(pod *corev1.Pod) bool {
 	return false
 }
 
-// IsPodHitConfigError returns true if the Pod's status undicates there are config error raised
-func IsPodHitConfigError(pod *corev1.Pod) bool {
+// isPodHitConfigError returns true if the Pod's status undicates there are config error raised
+func isPodHitConfigError(pod *corev1.Pod) bool {
 	for _, containerStatus := range pod.Status.ContainerStatuses {
 		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == ReasonCreateContainerConfigError {
 			return true
@@ -411,8 +411,8 @@ func getWaitingMessage(pod *corev1.Pod) string {
 	return "Pending"
 }
 
-// MarkStatusRunning sets taskrun status to running
-func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
+// markStatusRunning sets taskrun status to running
+func markStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
@@ -421,8 +421,8 @@ func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 	})
 }
 
-// MarkStatusFailure sets taskrun status to failure with specified reason
-func MarkStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string) {
+// markStatusFailure sets taskrun status to failure with specified reason
+func markStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
@@ -431,8 +431,8 @@ func MarkStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string
 	})
 }
 
-// MarkStatusSuccess sets taskrun status to success
-func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
+// markStatusSuccess sets taskrun status to success
+func markStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,

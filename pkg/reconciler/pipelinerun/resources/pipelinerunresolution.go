@@ -396,7 +396,7 @@ func ResolvePipelineRunTask(
 			spec = task.TaskSpec.TaskSpec
 		}
 		spec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-		rtr, err := ResolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
+		rtr, err := resolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't match referenced resources with declared resources: %w", err)
 		}
@@ -510,9 +510,9 @@ func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*
 	return rccs, nil
 }
 
-// ResolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
+// resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
 // providedResources and returns an instance of ResolvedTaskResources.
-func ResolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind, providedResources map[string]*resourcev1alpha1.PipelineResource) (*resources.ResolvedTaskResources, error) {
+func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind, providedResources map[string]*resourcev1alpha1.PipelineResource) (*resources.ResolvedTaskResources, error) {
 	rtr := resources.ResolvedTaskResources{
 		TaskName: taskName,
 		TaskSpec: ts,

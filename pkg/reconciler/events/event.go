@@ -106,7 +106,7 @@ func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 	}
 }
 
-// EmitEvent emits an event for object if afterCondition is different from beforeCondition
+// emitEvent emits an event for object if afterCondition is different from beforeCondition
 //
 // Status "ConditionUnknown":
 //   beforeCondition == nil, emit EventReasonStarted
@@ -115,12 +115,12 @@ func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 //  Status "ConditionTrue": emit EventReasonSucceded
 //  Status "ConditionFalse": emit EventReasonFailed
 // Deprecated: use Emit
-func EmitEvent(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+func emitEvent(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	Emit(ctx, beforeCondition, afterCondition, object)
 }
 
-// EmitErrorEvent emits a failure associated to an error
+// emitErrorEvent emits a failure associated to an error
 // Deprecated: use EmitError instead
-func EmitErrorEvent(c record.EventRecorder, err error, object runtime.Object) {
+func emitErrorEvent(c record.EventRecorder, err error, object runtime.Object) {
 	EmitError(c, err, object)
 }
