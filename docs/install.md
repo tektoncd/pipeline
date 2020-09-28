@@ -327,6 +327,12 @@ TaskRuns with no Sidecars specified. Enabling this option should decrease the ti
 start running. However, for clusters that use injected sidecars e.g. istio
 enabling this option can lead to unexpected behavior.
 
+- `require-git-ssh-secret-known-hosts`: set this flag to `"true"` to require that
+Git SSH Secrets include a `known_hosts` field. This ensures that a git remote server's
+key is validated before data is accepted from it when authenticating over SSH. Secrets
+that don't include a `known_hosts` will result in the TaskRun failing validation and
+not running. 
+
 For example:
 
 ```yaml

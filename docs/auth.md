@@ -504,9 +504,12 @@ https://user2:pass2@url2.com
 Given hostnames, private keys, and `known_hosts` of the form: `url{n}.com`,
 `key{n}`, and `known_hosts{n}`, Tekton generates the following. 
 
-If no value is specified for `known_hosts`, Tekton configures SSH to accept
+By default, if no value is specified for `known_hosts`, Tekton configures SSH to accept
 **any public key** returned by the server on first query. Tekton does this
 by setting Git's `core.sshCommand` variable to `ssh -o StrictHostKeyChecking=accept-new`.
+This behaviour can be prevented
+[using a feature-flag: `require-git-ssh-secret-known-hosts`](./install.md#customizing-the-pipelines-controller-behavior).
+Set this flag to `true` and all Git SSH Secrets _must_ include a `known_hosts`.
 
 ```
 === ~/.ssh/id_key1 ===
