@@ -237,6 +237,7 @@ kubectl create secret docker-registry regcred \
                     --docker-password=<your-pword> \
                     --docker-email=<your-email>
 ```
+(If Docker Hub is used, then arg docker-server must be set to 'index.docker.io')
 
 You must also specify a `ServiceAccount` that uses this `secret` to execute your `TaskRun`:
 
