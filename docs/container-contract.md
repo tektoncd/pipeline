@@ -28,7 +28,7 @@ embed a script within a `Step`, **do not** specify a `command` value. For exampl
 If you do not specify a `command` value, the Pipelines controller performs a lookup for
 the `entrypoint` value in the associated remote container registry. If the image is in
 a private registry, you must include an [`ImagePullSecret`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
-value in the the service account definition used by the `Task`.
+value in the service account definition used by the `Task`.
 The Pipelines controller uses this value unless the service account is not 
 defined, at which point it assumes the value of `default`.
 
