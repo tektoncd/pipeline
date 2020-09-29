@@ -176,15 +176,15 @@ about where the files come from that it builds from._
 
 ### Replacing a `git` resource
 
-You can replace a `git` resource with the [`git-clone` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/git).
+You can replace a `git` resource with the [`git-clone` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/git-clone).
 
 ### Replacing a `pullrequest` resource
 
-You can replace a `pullrequest` resource with the [`pullrequest` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/pullrequest).
+You can replace a `pullrequest` resource with the [`pullrequest` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/pull-request).
 
 ### Replacing a `gcs` resource
 
-You can replace a `gcs` resource with the [`gcs` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/gcs).
+You can replace a `gcs` resource with the [`gcs` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/gcs-generic).
 
 ### Replacing an `image` resource
 
@@ -201,7 +201,7 @@ For examples of replacing an `image` resource, see the following Catalog `Tasks`
 
 ### Replacing a `cluster` resource
 
-You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/kubeconfig-creator).
+You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/kubeconfig-creator).
 
 ## Changes to PipelineResources
 
