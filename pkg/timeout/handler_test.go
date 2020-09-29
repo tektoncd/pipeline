@@ -111,7 +111,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	}
 
 	th.SetCallbackFunc(f)
-	th.CheckTimeouts(context.Background(), testNs, c.Kube, c.Pipeline)
+	go th.CheckTimeouts(context.Background(), testNs, c.Kube, c.Pipeline)
 
 	for _, tc := range []struct {
 		name           string
@@ -203,7 +203,7 @@ func TestTaskRunSingleNamespaceCheckTimeouts(t *testing.T) {
 	// Note that since f843899a11d5d09b29fac750f72f4a7e4882f615 CheckTimeouts is always called
 	// with a namespace so there is no reason to maintain all namespaces functionality;
 	// however in #2905 we should remove CheckTimeouts completely
-	th.CheckTimeouts(context.Background(), "", c.Kube, c.Pipeline)
+	go th.CheckTimeouts(context.Background(), "", c.Kube, c.Pipeline)
 
 	for _, tc := range []struct {
 		name           string
@@ -316,7 +316,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	}
 
 	th.SetCallbackFunc(f)
-	th.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
+	go th.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
 	for _, tc := range []struct {
 		name           string
 		pr             *v1beta1.PipelineRun
@@ -395,7 +395,7 @@ func TestWithNoFunc(t *testing.T) {
 			t.Fatal("Expected CheckTimeouts function not to panic")
 		}
 	}()
-	testHandler.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
+	go testHandler.CheckTimeouts(context.Background(), allNs, c.Kube, c.Pipeline)
 
 }
 

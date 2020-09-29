@@ -88,7 +88,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		})
 
 		timeoutHandler.SetCallbackFunc(impl.EnqueueKey)
-		timeoutHandler.CheckTimeouts(ctx, namespace, kubeclientset, pipelineclientset)
+		go timeoutHandler.CheckTimeouts(ctx, namespace, kubeclientset, pipelineclientset)
 
 		logger.Info("Setting up event handlers")
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
