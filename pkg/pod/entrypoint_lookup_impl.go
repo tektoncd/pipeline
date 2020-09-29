@@ -19,6 +19,7 @@ package pod
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
@@ -68,7 +69,15 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
+	// By default go-containerregistry pulls amd64 images.
+	// Setting correct image pull architecture based on the underlying platform
+	// _of the node that Tekton's controller is running on_. If the cluster
+	// is comprised of nodes of heterogeneous architectures, this might cause issues.
+	var pf = v1.Platform{
+		Architecture: runtime.GOARCH,
+		OS:           runtime.GOOS,
+	}
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc), remote.WithPlatform(pf))
 	if err != nil {
 		return nil, fmt.Errorf("error getting image manifest: %v", err)
 	}
