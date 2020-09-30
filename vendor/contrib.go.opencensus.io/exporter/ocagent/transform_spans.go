@@ -25,12 +25,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-const (
-	maxAnnotationEventsPerSpan = 32
-	maxMessageEventsPerSpan    = 128
-)
-
-func ocSpanToProtoSpan(sd *trace.SpanData) *tracepb.Span {
+func ocSpanToProtoSpan(sd *trace.SpanData, spanConfig SpanConfig) *tracepb.Span {
 	if sd == nil {
 		return nil
 	}
@@ -49,7 +44,7 @@ func ocSpanToProtoSpan(sd *trace.SpanData) *tracepb.Span {
 		Kind:         ocSpanKindToProtoSpanKind(sd.SpanKind),
 		Name:         namePtr,
 		Attributes:   ocAttributesToProtoAttributes(sd.Attributes),
-		TimeEvents:   ocTimeEventsToProtoTimeEvents(sd.Annotations, sd.MessageEvents),
+		TimeEvents:   ocTimeEventsToProtoTimeEvents(sd.Annotations, sd.MessageEvents, spanConfig),
 		Tracestate:   ocTracestateToProtoTracestate(sd.Tracestate),
 	}
 }
@@ -131,7 +126,7 @@ func ocAttributesToProtoAttributes(attrs map[string]interface{}) *tracepb.Span_A
 
 // This code is mostly copied from
 // https://github.com/census-ecosystem/opencensus-go-exporter-stackdriver/blob/master/trace_proto.go#L46
-func ocTimeEventsToProtoTimeEvents(as []trace.Annotation, es []trace.MessageEvent) *tracepb.Span_TimeEvents {
+func ocTimeEventsToProtoTimeEvents(as []trace.Annotation, es []trace.MessageEvent, spanConfig SpanConfig) *tracepb.Span_TimeEvents {
 	if len(as) == 0 && len(es) == 0 {
 		return nil
 	}
@@ -142,7 +137,7 @@ func ocTimeEventsToProtoTimeEvents(as []trace.Annotation, es []trace.MessageEven
 
 	// Transform annotations
 	for i, a := range as {
-		if annotations >= maxAnnotationEventsPerSpan {
+		if annotations >= spanConfig.GetAnnotationEventsPerSpan() {
 			droppedAnnotationsCount = len(as) - i
 			break
 		}
@@ -157,7 +152,7 @@ func ocTimeEventsToProtoTimeEvents(as []trace.Annotation, es []trace.MessageEven
 
 	// Transform message events
 	for i, e := range es {
-		if messageEvents >= maxMessageEventsPerSpan {
+		if messageEvents >= spanConfig.GetMessageEventsPerSpan() {
 			droppedMessageEventsCount = len(es) - i
 			break
 		}

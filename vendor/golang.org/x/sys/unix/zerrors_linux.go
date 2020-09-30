@@ -2043,6 +2043,7 @@ const (
 	SOL_ATM                                     = 0x108
 	SOL_CAIF                                    = 0x116
 	SOL_CAN_BASE                                = 0x64
+	SOL_CAN_RAW                                 = 0x65
 	SOL_DCCP                                    = 0x10d
 	SOL_DECNET                                  = 0x105
 	SOL_ICMPV6                                  = 0x3a

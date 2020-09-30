@@ -17,8 +17,8 @@ limitations under the License.
 package metrics
 
 import (
+	"fmt"
 	"os"
-	"strings"
 	texttemplate "text/template"
 
 	corev1 "k8s.io/api/core/v1"
@@ -28,12 +28,20 @@ import (
 const (
 	// The following is used to set the default log url template
 	DefaultLogURLTemplate = "http://localhost:8001/api/v1/namespaces/knative-monitoring/services/kibana-logging/proxy/app/kibana#/discover?_a=(query:(match:(kubernetes.labels.knative-dev%2FrevisionUID:(query:'${REVISION_UID}',type:phrase))))"
+	// DefaultRequestLogTemplate is the default format for emitting request logs.
+	DefaultRequestLogTemplate = `{"httpRequest": {"requestMethod": "{{.Request.Method}}", "requestUrl": "{{js .Request.RequestURI}}", "requestSize": "{{.Request.ContentLength}}", "status": {{.Response.Code}}, "responseSize": "{{.Response.Size}}", "userAgent": "{{js .Request.UserAgent}}", "remoteIp": "{{js .Request.RemoteAddr}}", "serverIp": "{{.Revision.PodIP}}", "referer": "{{js .Request.Referer}}", "latency": "{{.Response.Latency}}s", "protocol": "{{.Request.Proto}}"}, "traceId": "{{index .Request.Header "X-B3-Traceid"}}"}`
 
 	// The following is used to set the default metrics backend
 	defaultRequestMetricsBackend = "prometheus"
 
 	// The env var name for config-observability
 	configMapNameEnv = "CONFIG_OBSERVABILITY_NAME"
+
+	// ReqLogTemplateKey is the CM key for the request log template.
+	ReqLogTemplateKey = "logging.request-log-template"
+
+	// EnableReqLogKey is the CM key to enable request log.
+	EnableReqLogKey = "logging.enable-request-log"
 )
 
 // ObservabilityConfig contains the configuration defined in the observability ConfigMap.
@@ -63,11 +71,16 @@ type ObservabilityConfig struct {
 
 	// EnableRequestLog enables activator/queue-proxy to write request logs.
 	EnableRequestLog bool
+
+	// MetricsCollectorAddress specifies the metrics collector address. This is only used
+	// when the metrics backend is opencensus.
+	MetricsCollectorAddress string
 }
 
 func defaultConfig() *ObservabilityConfig {
 	return &ObservabilityConfig{
 		LoggingURLTemplate:    DefaultLogURLTemplate,
+		RequestLogTemplate:    DefaultRequestLogTemplate,
 		RequestMetricsBackend: defaultRequestMetricsBackend,
 	}
 }
@@ -79,23 +92,18 @@ func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*Observab
 	if err := cm.Parse(configMap.Data,
 		cm.AsBool("logging.enable-var-log-collection", &oc.EnableVarLogCollection),
 		cm.AsString("logging.revision-url-template", &oc.LoggingURLTemplate),
-		cm.AsString("logging.request-log-template", &oc.RequestLogTemplate),
+		cm.AsString(ReqLogTemplateKey, &oc.RequestLogTemplate),
+		cm.AsBool(EnableReqLogKey, &oc.EnableRequestLog),
 		cm.AsBool("logging.enable-probe-request-log", &oc.EnableProbeRequestLog),
 		cm.AsString("metrics.request-metrics-backend-destination", &oc.RequestMetricsBackend),
 		cm.AsBool("profiling.enable", &oc.EnableProfiling),
+		cm.AsString("metrics.opencensus-address", &oc.MetricsCollectorAddress),
 	); err != nil {
 		return nil, err
 	}
 
-	if raw, ok := configMap.Data["logging.enable-request-log"]; ok {
-		if strings.EqualFold(raw, "true") && oc.RequestLogTemplate != "" {
-			oc.EnableRequestLog = true
-		}
-	} else if oc.RequestLogTemplate != "" {
-		// TODO: remove this after 0.17 cuts, this is meant only for smooth transition to the new flag.
-		// Once 0.17 cuts we should set a proper default value and users will need to set the flag explicitly
-		// to enable request logging.
-		oc.EnableRequestLog = true
+	if oc.RequestLogTemplate == "" && oc.EnableRequestLog {
+		return nil, fmt.Errorf("%q was set to true, but no %q was specified", EnableReqLogKey, ReqLogTemplateKey)
 	}
 
 	if oc.RequestLogTemplate != "" {
@@ -110,9 +118,8 @@ func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*Observab
 
 // ConfigMapName gets the name of the metrics ConfigMap
 func ConfigMapName() string {
-	cm := os.Getenv(configMapNameEnv)
-	if cm == "" {
-		return "config-observability"
+	if cm := os.Getenv(configMapNameEnv); cm != "" {
+		return cm
 	}
-	return cm
+	return "config-observability"
 }

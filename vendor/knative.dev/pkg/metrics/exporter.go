@@ -17,6 +17,7 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -81,22 +82,23 @@ type ExporterOptions struct {
 // UpdateExporterFromConfigMap returns a helper func that can be used to update the exporter
 // when a config map is updated.
 // DEPRECATED: Callers should migrate to ConfigMapWatcher.
-func UpdateExporterFromConfigMap(component string, logger *zap.SugaredLogger) func(configMap *corev1.ConfigMap) {
-	return ConfigMapWatcher(component, nil, logger)
+func UpdateExporterFromConfigMap(ctx context.Context, component string, logger *zap.SugaredLogger) func(configMap *corev1.ConfigMap) {
+	return ConfigMapWatcher(ctx, component, nil, logger)
 }
 
 // ConfigMapWatcher returns a helper func which updates the exporter configuration based on
 // values in the supplied ConfigMap. This method captures a corev1.SecretLister which is used
 // to configure mTLS with the opencensus agent.
-func ConfigMapWatcher(component string, secrets SecretFetcher, logger *zap.SugaredLogger) func(*corev1.ConfigMap) {
+func ConfigMapWatcher(ctx context.Context, component string, secrets SecretFetcher, logger *zap.SugaredLogger) func(*corev1.ConfigMap) {
 	domain := Domain()
 	return func(configMap *corev1.ConfigMap) {
-		UpdateExporter(ExporterOptions{
-			Domain:    domain,
-			Component: strings.ReplaceAll(component, "-", "_"),
-			ConfigMap: configMap.Data,
-			Secrets:   secrets,
-		}, logger)
+		UpdateExporter(ctx,
+			ExporterOptions{
+				Domain:    domain,
+				Component: strings.ReplaceAll(component, "-", "_"),
+				ConfigMap: configMap.Data,
+				Secrets:   secrets,
+			}, logger)
 	}
 }
 
@@ -104,7 +106,7 @@ func ConfigMapWatcher(component string, secrets SecretFetcher, logger *zap.Sugar
 // when a config map is updated.
 // opts.Component must be present.
 // opts.ConfigMap must not be present as the value from the ConfigMap will be used instead.
-func UpdateExporterFromConfigMapWithOpts(opts ExporterOptions, logger *zap.SugaredLogger) (func(configMap *corev1.ConfigMap), error) {
+func UpdateExporterFromConfigMapWithOpts(ctx context.Context, opts ExporterOptions, logger *zap.SugaredLogger) (func(configMap *corev1.ConfigMap), error) {
 	if opts.Component == "" {
 		return nil, errors.New("UpdateExporterFromConfigMapWithDefaults must provide Component")
 	}
@@ -116,13 +118,14 @@ func UpdateExporterFromConfigMapWithOpts(opts ExporterOptions, logger *zap.Sugar
 		domain = Domain()
 	}
 	return func(configMap *corev1.ConfigMap) {
-		UpdateExporter(ExporterOptions{
-			Domain:         domain,
-			Component:      opts.Component,
-			ConfigMap:      configMap.Data,
-			PrometheusPort: opts.PrometheusPort,
-			Secrets:        opts.Secrets,
-		}, logger)
+		UpdateExporter(ctx,
+			ExporterOptions{
+				Domain:         domain,
+				Component:      opts.Component,
+				ConfigMap:      configMap.Data,
+				PrometheusPort: opts.PrometheusPort,
+				Secrets:        opts.Secrets,
+			}, logger)
 	}, nil
 }
 
@@ -130,9 +133,9 @@ func UpdateExporterFromConfigMapWithOpts(opts ExporterOptions, logger *zap.Sugar
 // This is a thread-safe function. The entire series of operations is locked
 // to prevent a race condition between reading the current configuration
 // and updating the current exporter.
-func UpdateExporter(ops ExporterOptions, logger *zap.SugaredLogger) error {
+func UpdateExporter(ctx context.Context, ops ExporterOptions, logger *zap.SugaredLogger) error {
 	// TODO(https://github.com/knative/pkg/issues/1273): check if ops.secrets is `nil` after new metrics plan lands
-	newConfig, err := createMetricsConfig(ops, logger)
+	newConfig, err := createMetricsConfig(ctx, ops)
 	if err != nil {
 		if getCurMetricsConfig() == nil {
 			// Fail the process if there doesn't exist an exporter.

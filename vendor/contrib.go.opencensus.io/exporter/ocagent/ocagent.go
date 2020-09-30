@@ -90,9 +90,15 @@ type Exporter struct {
 	// Please do not confuse it with metricsBundler!
 	viewDataBundler *bundler.Bundler
 
+	// Bundler configuration options managed by viewDataBundler
+	viewDataDelay       time.Duration
+	viewDataBundleCount int
+
 	clientTransportCredentials credentials.TransportCredentials
 
 	grpcDialOptions []grpc.DialOption
+
+	spanConfig SpanConfig
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {
@@ -110,6 +116,8 @@ const spanDataBufferSize = 300
 
 func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	e := new(Exporter)
+	e.viewDataDelay = 2 * time.Second
+	e.viewDataBundleCount = 500
 	for _, opt := range opts {
 		opt.withExporter(e)
 	}
@@ -123,8 +131,8 @@ func NewUnstartedExporter(opts ...ExporterOption) (*Exporter, error) {
 	viewDataBundler := bundler.NewBundler((*view.Data)(nil), func(bundle interface{}) {
 		e.uploadViewData(bundle.([]*view.Data))
 	})
-	viewDataBundler.DelayThreshold = 2 * time.Second
-	viewDataBundler.BundleCountThreshold = 500 // TODO: (@odeke-em) make this configurable.
+	viewDataBundler.DelayThreshold = e.viewDataDelay
+	viewDataBundler.BundleCountThreshold = e.viewDataBundleCount
 	e.viewDataBundler = viewDataBundler
 	e.nodeInfo = NodeWithStartTime(e.serviceName)
 	if e.resourceDetector != nil {
@@ -475,14 +483,14 @@ func (ae *Exporter) ExportMetricsServiceRequest(batch *agentmetricspb.ExportMetr
 	}
 }
 
-func ocSpanDataToPbSpans(sdl []*trace.SpanData) []*tracepb.Span {
+func ocSpanDataToPbSpans(sdl []*trace.SpanData, spanConfig SpanConfig) []*tracepb.Span {
 	if len(sdl) == 0 {
 		return nil
 	}
 	protoSpans := make([]*tracepb.Span, 0, len(sdl))
 	for _, sd := range sdl {
 		if sd != nil {
-			protoSpans = append(protoSpans, ocSpanToProtoSpan(sd))
+			protoSpans = append(protoSpans, ocSpanToProtoSpan(sd, spanConfig))
 		}
 	}
 	return protoSpans
@@ -498,7 +506,7 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 			return
 		}
 
-		protoSpans := ocSpanDataToPbSpans(sdl)
+		protoSpans := ocSpanDataToPbSpans(sdl, ae.spanConfig)
 		if len(protoSpans) == 0 {
 			return
 		}

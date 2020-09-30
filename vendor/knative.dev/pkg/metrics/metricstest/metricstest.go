@@ -91,10 +91,10 @@ func CheckDistributionData(t test.T, name string, wantTags map[string]string, ex
 			t.Error("reporter count wrong", "metric", name, "got", s.Count, "want", expectedCount)
 		}
 		if s.Min != expectedMin {
-			t.Error("reporter count wrong", "metric", name, "got", s.Min, "want", expectedMin)
+			t.Error("reporter min wrong", "metric", name, "got", s.Min, "want", expectedMin)
 		}
 		if s.Max != expectedMax {
-			t.Error("reporter count wrong", "metric", name, "got", s.Max, "want", expectedMax)
+			t.Error("reporter max wrong", "metric", name, "got", s.Max, "want", expectedMax)
 		}
 	}
 }

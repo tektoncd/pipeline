@@ -168,7 +168,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 	} else if !ok {
 		logger.Info("Updating webhook")
 		vwhclient := ac.client.AdmissionregistrationV1().ValidatingWebhookConfigurations()
-		if _, err := vwhclient.Update(webhook); err != nil {
+		if _, err := vwhclient.Update(ctx, webhook, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}
 	} else {

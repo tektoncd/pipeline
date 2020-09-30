@@ -2527,3 +2527,12 @@ const (
 	NHA_GROUPS     = 0x9
 	NHA_MASTER     = 0xa
 )
+
+const (
+	CAN_RAW_FILTER        = 0x1
+	CAN_RAW_ERR_FILTER    = 0x2
+	CAN_RAW_LOOPBACK      = 0x3
+	CAN_RAW_RECV_OWN_MSGS = 0x4
+	CAN_RAW_FD_FRAMES     = 0x5
+	CAN_RAW_JOIN_FILTERS  = 0x6
+)

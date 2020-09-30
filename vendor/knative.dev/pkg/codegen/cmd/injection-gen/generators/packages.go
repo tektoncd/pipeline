@@ -572,7 +572,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 	return vers
 }
 
-func versionDuckPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
+func versionDuckPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, _ *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "ducks", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
 	vers := make([]generator.Package, 0, 2*len(typesToGenerate))

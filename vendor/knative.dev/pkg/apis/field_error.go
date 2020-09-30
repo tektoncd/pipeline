@@ -103,7 +103,7 @@ func (fe *FieldError) ViaKey(key string) *FieldError {
 }
 
 // ViaFieldKey is the short way to chain: err.ViaKey(bar).ViaField(foo)
-func (fe *FieldError) ViaFieldKey(field string, key string) *FieldError {
+func (fe *FieldError) ViaFieldKey(field, key string) *FieldError {
 	return fe.ViaKey(key).ViaField(field)
 }
 

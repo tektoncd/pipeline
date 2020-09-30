@@ -31,7 +31,7 @@ const (
 )
 
 // ServiceAccount returns ServiceAccount object in given namespace
-func ServiceAccount(name string, namespace string) *corev1.ServiceAccount {
+func ServiceAccount(name, namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

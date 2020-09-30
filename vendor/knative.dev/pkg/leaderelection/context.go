@@ -109,9 +109,13 @@ func (b *standardBuilder) buildElector(ctx context.Context, la reconciler.Leader
 	queueName string, enq func(reconciler.Bucket, types.NamespacedName)) (Elector, error) {
 	logger := logging.FromContext(ctx)
 
-	id, err := UniqueID()
-	if err != nil {
-		return nil, err
+	id := b.lec.Identity
+	if id == "" {
+		uid, err := UniqueID()
+		if err != nil {
+			return nil, err
+		}
+		id = uid
 	}
 
 	bkts := newStandardBuckets(queueName, b.lec)
@@ -169,9 +173,15 @@ func (b *standardBuilder) buildElector(ctx context.Context, la reconciler.Leader
 }
 
 func newStandardBuckets(queueName string, cc ComponentConfig) []reconciler.Bucket {
+	ln := cc.LeaseName
+	if ln == nil {
+		ln = func(i uint32) string {
+			return standardBucketName(i, queueName, cc)
+		}
+	}
 	names := make(sets.String, cc.Buckets)
 	for i := uint32(0); i < cc.Buckets; i++ {
-		names.Insert(standardBucketName(i, queueName, cc))
+		names.Insert(ln(i))
 	}
 
 	return hash.NewBucketSet(names).Buckets()
