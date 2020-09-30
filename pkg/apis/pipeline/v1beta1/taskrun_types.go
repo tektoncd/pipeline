@@ -309,6 +309,12 @@ type CloudEventDeliveryState struct {
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Succeeded",type=string,JSONPath=`.status.conditions[?(@.type==\"Succeeded\")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type==\"Succeeded\")].reason`
+// +kubebuilder:printcolumn:name="StartTime",type=date,JSONPath=`.status.startTime`
+// +kubebuilder:printcolumn:name="CompletionTime",type=date,JSONPath=`.status.completionTime`
 
 // TaskRun represents a single execution of a Task. TaskRuns are how the steps
 // specified in a Task are executed; they specify the parameters and resources

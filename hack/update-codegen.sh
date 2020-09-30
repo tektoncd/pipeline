@@ -74,3 +74,6 @@ GOFLAGS="${OLDGOFLAGS}"
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh
+
+# Create CRDs from go definitions
+bash ${REPO_ROOT_DIR}/hack/generate-crds.sh "${REPO_ROOT_DIR}/pkg/apis/..." "${REPO_ROOT_DIR}/config"

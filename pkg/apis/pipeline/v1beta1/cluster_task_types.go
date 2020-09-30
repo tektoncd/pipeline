@@ -24,6 +24,8 @@ import (
 // +genclient:noStatus
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:subresource:status
 
 // ClusterTask is a Task with a cluster scope. ClusterTasks are used to
 // represent Tasks that should be publicly addressable from any namespace in the

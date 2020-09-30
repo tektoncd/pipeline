@@ -35,6 +35,8 @@ const (
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:subresource:status
 
 // Task represents a collection of sequential steps that are run as part of a
 // Pipeline using a set of inputs and producing a set of outputs. Tasks execute

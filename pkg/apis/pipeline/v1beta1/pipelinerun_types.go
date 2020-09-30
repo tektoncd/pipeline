@@ -40,6 +40,12 @@ var (
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:storageversion
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Succeeded",type=string,JSONPath=`.status.conditions[?(@.type==\"Succeeded\")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type==\"Succeeded\")].reason`
+// +kubebuilder:printcolumn:name="StartTime",type=date,JSONPath=`.status.startTime`
+// +kubebuilder:printcolumn:name="CompletionTime",type=date,JSONPath=`.status.completionTime`
 
 // PipelineRun represents a single execution of a Pipeline. PipelineRuns are how
 // the graph of Tasks declared in a Pipeline are executed; they specify inputs

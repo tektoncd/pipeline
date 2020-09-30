@@ -65,6 +65,8 @@ var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineR
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:noStatus
+// +kubebuilder:storageversion
+// +kubebuilder:subresource:status
 
 // PipelineResource describes a resource that is an input to or output from a
 // Task.

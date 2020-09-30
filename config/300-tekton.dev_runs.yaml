@@ -1,0 +1,142 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+    pipeline.tekton.dev/release: devel
+    version: devel
+  name: runs.tekton.dev
+spec:
+  group: tekton.dev
+  names:
+    categories:
+    - tekton
+    - tekton-pipelines
+    kind: Run
+    listKind: RunList
+    plural: runs
+    singular: run
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Run represents a single execution of a Custom Task.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: RunSpec defines the desired state of Run
+            properties:
+              params:
+                items:
+                  description: Param declares an ArrayOrString to use for the parameter called name.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: Any
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              ref:
+                description: 'TaskRef can be used to refer to a specific instance of a task. Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64'
+                properties:
+                  apiVersion:
+                    description: API version of the referent
+                    type: string
+                  kind:
+                    description: TaskKind indicates the kind of the task, namespaced or cluster scoped.
+                    type: string
+                  name:
+                    description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                    type: string
+                type: object
+            type: object
+          status:
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.
+                type: object
+              completionTime:
+                description: CompletionTime is the time the build completed.
+                format: date-time
+                type: string
+              conditions:
+                description: Conditions the latest available observations of a resource's current state.
+                items:
+                  description: 'Conditions defines a readiness condition for a Knative resource. See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties'
+                  properties:
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time the condition transitioned from one status to another. We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic differences (all other things held constant).
+                      type: Any
+                    message:
+                      description: A human readable message indicating details about the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    severity:
+                      description: Severity with which to treat failures of this type of condition. When this is not specified, it defaults to Error.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              extraFields:
+                description: ExtraFields holds arbitrary fields provided by the custom task controller.
+                type: object
+              observedGeneration:
+                description: ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.
+                format: int64
+                type: integer
+              results:
+                description: Results reports any output result values to be consumed by later tasks in a pipeline.
+                items:
+                  description: TaskRunResult used to describe the results of a task
+                  properties:
+                    name:
+                      description: Name the given name
+                      type: string
+                    value:
+                      description: Value the given value of the result
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              startTime:
+                description: StartTime is the time the build is actually started.
+                format: date-time
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
