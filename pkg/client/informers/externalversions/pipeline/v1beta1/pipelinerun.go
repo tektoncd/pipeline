@@ -19,6 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	time "time"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -61,13 +62,13 @@ func NewFilteredPipelineRunInformer(client versioned.Interface, namespace string
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1beta1().PipelineRuns(namespace).List(options)
+				return client.TektonV1beta1().PipelineRuns(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1beta1().PipelineRuns(namespace).Watch(options)
+				return client.TektonV1beta1().PipelineRuns(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&pipelinev1beta1.PipelineRun{},

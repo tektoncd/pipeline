@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -37,14 +38,14 @@ type ClusterTasksGetter interface {
 
 // ClusterTaskInterface has methods to work with ClusterTask resources.
 type ClusterTaskInterface interface {
-	Create(*v1alpha1.ClusterTask) (*v1alpha1.ClusterTask, error)
-	Update(*v1alpha1.ClusterTask) (*v1alpha1.ClusterTask, error)
-	Delete(name string, options *v1.DeleteOptions) error
-	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
-	Get(name string, options v1.GetOptions) (*v1alpha1.ClusterTask, error)
-	List(opts v1.ListOptions) (*v1alpha1.ClusterTaskList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterTask, err error)
+	Create(ctx context.Context, clusterTask *v1alpha1.ClusterTask, opts v1.CreateOptions) (*v1alpha1.ClusterTask, error)
+	Update(ctx context.Context, clusterTask *v1alpha1.ClusterTask, opts v1.UpdateOptions) (*v1alpha1.ClusterTask, error)
+	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterTask, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterTaskList, error)
+	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTask, err error)
 	ClusterTaskExpansion
 }
 
@@ -61,19 +62,19 @@ func newClusterTasks(c *TektonV1alpha1Client) *clusterTasks {
 }
 
 // Get takes name of the clusterTask, and returns the corresponding clusterTask object, and an error if there is any.
-func (c *clusterTasks) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterTask, err error) {
+func (c *clusterTasks) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterTask, err error) {
 	result = &v1alpha1.ClusterTask{}
 	err = c.client.Get().
 		Resource("clustertasks").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of ClusterTasks that match those selectors.
-func (c *clusterTasks) List(opts v1.ListOptions) (result *v1alpha1.ClusterTaskList, err error) {
+func (c *clusterTasks) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ClusterTaskList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -83,13 +84,13 @@ func (c *clusterTasks) List(opts v1.ListOptions) (result *v1alpha1.ClusterTaskLi
 		Resource("clustertasks").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested clusterTasks.
-func (c *clusterTasks) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *clusterTasks) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -99,66 +100,69 @@ func (c *clusterTasks) Watch(opts v1.ListOptions) (watch.Interface, error) {
 		Resource("clustertasks").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a clusterTask and creates it.  Returns the server's representation of the clusterTask, and an error, if there is any.
-func (c *clusterTasks) Create(clusterTask *v1alpha1.ClusterTask) (result *v1alpha1.ClusterTask, err error) {
+func (c *clusterTasks) Create(ctx context.Context, clusterTask *v1alpha1.ClusterTask, opts v1.CreateOptions) (result *v1alpha1.ClusterTask, err error) {
 	result = &v1alpha1.ClusterTask{}
 	err = c.client.Post().
 		Resource("clustertasks").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(clusterTask).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a clusterTask and updates it. Returns the server's representation of the clusterTask, and an error, if there is any.
-func (c *clusterTasks) Update(clusterTask *v1alpha1.ClusterTask) (result *v1alpha1.ClusterTask, err error) {
+func (c *clusterTasks) Update(ctx context.Context, clusterTask *v1alpha1.ClusterTask, opts v1.UpdateOptions) (result *v1alpha1.ClusterTask, err error) {
 	result = &v1alpha1.ClusterTask{}
 	err = c.client.Put().
 		Resource("clustertasks").
 		Name(clusterTask.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(clusterTask).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the clusterTask and deletes it. Returns an error if one occurs.
-func (c *clusterTasks) Delete(name string, options *v1.DeleteOptions) error {
+func (c *clusterTasks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Resource("clustertasks").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *clusterTasks) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+func (c *clusterTasks) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Resource("clustertasks").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched clusterTask.
-func (c *clusterTasks) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterTask, err error) {
+func (c *clusterTasks) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterTask, err error) {
 	result = &v1alpha1.ClusterTask{}
 	err = c.client.Patch(pt).
 		Resource("clustertasks").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
