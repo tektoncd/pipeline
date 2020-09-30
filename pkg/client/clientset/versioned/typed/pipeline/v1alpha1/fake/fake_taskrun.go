@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var taskrunsResource = schema.GroupVersionResource{Group: "tekton.dev", Version:
 var taskrunsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskRun"}
 
 // Get takes name of the taskRun, and returns the corresponding taskRun object, and an error if there is any.
-func (c *FakeTaskRuns) Get(name string, options v1.GetOptions) (result *v1alpha1.TaskRun, err error) {
+func (c *FakeTaskRuns) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TaskRun, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(taskrunsResource, c.ns, name), &v1alpha1.TaskRun{})
 
@@ -50,7 +52,7 @@ func (c *FakeTaskRuns) Get(name string, options v1.GetOptions) (result *v1alpha1
 }
 
 // List takes label and field selectors, and returns the list of TaskRuns that match those selectors.
-func (c *FakeTaskRuns) List(opts v1.ListOptions) (result *v1alpha1.TaskRunList, err error) {
+func (c *FakeTaskRuns) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TaskRunList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(taskrunsResource, taskrunsKind, c.ns, opts), &v1alpha1.TaskRunList{})
 
@@ -72,14 +74,14 @@ func (c *FakeTaskRuns) List(opts v1.ListOptions) (result *v1alpha1.TaskRunList, 
 }
 
 // Watch returns a watch.Interface that watches the requested taskRuns.
-func (c *FakeTaskRuns) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTaskRuns) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(taskrunsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a taskRun and creates it.  Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Create(taskRun *v1alpha1.TaskRun) (result *v1alpha1.TaskRun, err error) {
+func (c *FakeTaskRuns) Create(ctx context.Context, taskRun *v1alpha1.TaskRun, opts v1.CreateOptions) (result *v1alpha1.TaskRun, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(taskrunsResource, c.ns, taskRun), &v1alpha1.TaskRun{})
 
@@ -90,7 +92,7 @@ func (c *FakeTaskRuns) Create(taskRun *v1alpha1.TaskRun) (result *v1alpha1.TaskR
 }
 
 // Update takes the representation of a taskRun and updates it. Returns the server's representation of the taskRun, and an error, if there is any.
-func (c *FakeTaskRuns) Update(taskRun *v1alpha1.TaskRun) (result *v1alpha1.TaskRun, err error) {
+func (c *FakeTaskRuns) Update(ctx context.Context, taskRun *v1alpha1.TaskRun, opts v1.UpdateOptions) (result *v1alpha1.TaskRun, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(taskrunsResource, c.ns, taskRun), &v1alpha1.TaskRun{})
 
@@ -102,7 +104,7 @@ func (c *FakeTaskRuns) Update(taskRun *v1alpha1.TaskRun) (result *v1alpha1.TaskR
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTaskRuns) UpdateStatus(taskRun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1alpha1.TaskRun, opts v1.UpdateOptions) (*v1alpha1.TaskRun, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(taskrunsResource, "status", c.ns, taskRun), &v1alpha1.TaskRun{})
 
@@ -113,7 +115,7 @@ func (c *FakeTaskRuns) UpdateStatus(taskRun *v1alpha1.TaskRun) (*v1alpha1.TaskRu
 }
 
 // Delete takes name of the taskRun and deletes it. Returns an error if one occurs.
-func (c *FakeTaskRuns) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(taskrunsResource, c.ns, name), &v1alpha1.TaskRun{})
 
@@ -121,15 +123,15 @@ func (c *FakeTaskRuns) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTaskRuns) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(taskrunsResource, c.ns, listOptions)
+func (c *FakeTaskRuns) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(taskrunsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TaskRunList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched taskRun.
-func (c *FakeTaskRuns) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TaskRun, err error) {
+func (c *FakeTaskRuns) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TaskRun, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TaskRun{})
 

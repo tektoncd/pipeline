@@ -307,7 +307,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta1.Tas
 
 			getter := r.Client.TektonV1beta1().TaskRuns(desired.Namespace)
 
-			existing, err = getter.Get(desired.Name, metav1.GetOptions{})
+			existing, err = getter.Get(ctx, desired.Name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1beta1.Tas
 
 		updater := r.Client.TektonV1beta1().TaskRuns(existing.Namespace)
 
-		_, err = updater.UpdateStatus(existing)
+		_, err = updater.UpdateStatus(ctx, existing, metav1.UpdateOptions{})
 		return err
 	})
 }
@@ -384,7 +384,7 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	patcher := r.Client.TektonV1beta1().TaskRuns(resource.Namespace)
 
 	resourceName := resource.Name
-	resource, err = patcher.Patch(resourceName, types.MergePatchType, patch)
+	resource, err = patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
 		r.Recorder.Eventf(resource, v1.EventTypeWarning, "FinalizerUpdateFailed",
 			"Failed to update finalizers for %q: %v", resourceName, err)
