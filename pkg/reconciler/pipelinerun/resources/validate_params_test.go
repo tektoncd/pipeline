@@ -19,103 +19,92 @@ package resources
 import (
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestValidateParamTypesMatching_Valid(t *testing.T) {
-	tcs := []struct {
-		name          string
-		p             *v1beta1.Pipeline
-		pr            *v1beta1.PipelineRun
-		errorExpected bool
+
+	stringValue := *v1beta1.NewArrayOrString("stringValue")
+	arrayValue := *v1beta1.NewArrayOrString("arrayValue", "arrayValue")
+
+	for _, tc := range []struct {
+		name        string
+		description string
+		pp          []v1beta1.ParamSpec
+		prp         []v1beta1.Param
 	}{{
 		name: "proper param types",
-		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
-		pr: tb.PipelineRun("a-pipelinerun", tb.PipelineRunSpec(
-			"test-pipeline",
-			tb.PipelineRunParam("correct-type-1", "somestring"),
-			tb.PipelineRunParam("mismatching-type", "astring"),
-			tb.PipelineRunParam("correct-type-2", "another", "array"))),
-		errorExpected: false,
+		pp: []v1beta1.ParamSpec{
+			{Name: "correct-type-1", Type: v1beta1.ParamTypeString},
+			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
+		},
+		prp: []v1beta1.Param{
+			{Name: "correct-type-1", Value: stringValue},
+			{Name: "correct-type-2", Value: arrayValue},
+		},
 	}, {
-		name:          "no params to get wrong",
-		p:             tb.Pipeline("a-pipeline"),
-		pr:            tb.PipelineRun("a-pipelinerun"),
-		errorExpected: false,
-	}, {
-		name: "string-array mismatch",
-		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
-		pr: tb.PipelineRun("a-pipelinerun",
-			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunParam("correct-type-1", "somestring"),
-				tb.PipelineRunParam("mismatching-type", "an", "array"),
-				tb.PipelineRunParam("correct-type-2", "another", "array"))),
-		errorExpected: true,
-	}, {
-		name: "array-string mismatch",
-		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeArray),
-			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
-		pr: tb.PipelineRun("a-pipelinerun",
-			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunParam("correct-type-1", "somestring"),
-				tb.PipelineRunParam("mismatching-type", "astring"),
-				tb.PipelineRunParam("correct-type-2", "another", "array"))),
-		errorExpected: true,
-	}}
-	for _, tc := range tcs {
+		name: "no params to get wrong",
+		pp:   []v1beta1.ParamSpec{},
+		prp:  []v1beta1.Param{},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateParamTypesMatching(&tc.p.Spec, tc.pr)
-			if (!tc.errorExpected) && (err != nil) {
-				t.Errorf("Pipeline.Validate() returned error: %v", err)
+			ps := &v1beta1.PipelineSpec{Params: tc.pp}
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+				Spec:       v1beta1.PipelineRunSpec{Params: tc.prp},
 			}
 
-			if tc.errorExpected && (err == nil) {
-				t.Error("Pipeline.Validate() did not return error, wanted error")
+			if err := ValidateParamTypesMatching(ps, pr); err != nil {
+				t.Errorf("Pipeline.Validate() returned error: %v", err)
 			}
 		})
 	}
 }
 
 func TestValidateParamTypesMatching_Invalid(t *testing.T) {
-	tcs := []struct {
-		name string
-		p    *v1beta1.Pipeline
-		pr   *v1beta1.PipelineRun
+
+	stringValue := *v1beta1.NewArrayOrString("stringValue")
+	arrayValue := *v1beta1.NewArrayOrString("arrayValue", "arrayValue")
+
+	for _, tc := range []struct {
+		name        string
+		description string
+		pp          []v1beta1.ParamSpec
+		prp         []v1beta1.Param
 	}{{
 		name: "string-array mismatch",
-		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
-		pr: tb.PipelineRun("a-pipelinerun",
-			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunParam("correct-type-1", "somestring"),
-				tb.PipelineRunParam("mismatching-type", "an", "array"),
-				tb.PipelineRunParam("correct-type-2", "another", "array"))),
+		pp: []v1beta1.ParamSpec{
+			{Name: "correct-type-1", Type: v1beta1.ParamTypeString},
+			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
+			{Name: "incorrect-type", Type: v1beta1.ParamTypeString},
+		},
+		prp: []v1beta1.Param{
+			{Name: "correct-type-1", Value: stringValue},
+			{Name: "correct-type-2", Value: arrayValue},
+			{Name: "incorrect-type", Value: arrayValue},
+		},
 	}, {
 		name: "array-string mismatch",
-		p: tb.Pipeline("a-pipeline", tb.PipelineSpec(
-			tb.PipelineParamSpec("correct-type-1", v1beta1.ParamTypeString),
-			tb.PipelineParamSpec("mismatching-type", v1beta1.ParamTypeArray),
-			tb.PipelineParamSpec("correct-type-2", v1beta1.ParamTypeArray))),
-		pr: tb.PipelineRun("a-pipelinerun",
-			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunParam("correct-type-1", "somestring"),
-				tb.PipelineRunParam("mismatching-type", "astring"),
-				tb.PipelineRunParam("correct-type-2", "another", "array"))),
-	}}
-	for _, tc := range tcs {
+		pp: []v1beta1.ParamSpec{
+			{Name: "correct-type-1", Type: v1beta1.ParamTypeString},
+			{Name: "correct-type-2", Type: v1beta1.ParamTypeArray},
+			{Name: "incorrect-type", Type: v1beta1.ParamTypeArray},
+		},
+		prp: []v1beta1.Param{
+			{Name: "correct-type-1", Value: stringValue},
+			{Name: "correct-type-2", Value: arrayValue},
+			{Name: "incorrect-type", Value: stringValue},
+		},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateParamTypesMatching(&tc.p.Spec, tc.pr); err == nil {
+			ps := &v1beta1.PipelineSpec{Params: tc.pp}
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+				Spec:       v1beta1.PipelineRunSpec{Params: tc.prp},
+			}
+
+			if err := ValidateParamTypesMatching(ps, pr); err == nil {
 				t.Errorf("Expected to see error when validating PipelineRun/Pipeline param types but saw none")
 			}
 		})
@@ -123,55 +112,40 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 }
 
 func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
-	tcs := []struct {
-		name string
-		pp   []v1beta1.ParamSpec
-		prp  []v1beta1.Param
+
+	stringValue := *v1beta1.NewArrayOrString("stringValue")
+	arrayValue := *v1beta1.NewArrayOrString("arrayValue", "arrayValue")
+
+	for _, tc := range []struct {
+		name        string
+		description string
+		pp          []v1beta1.ParamSpec
+		prp         []v1beta1.Param
 	}{{
 		name: "required string params provided",
 		pp: []v1beta1.ParamSpec{
-			{
-				Name: "required-string-param",
-				Type: v1beta1.ParamTypeString,
-			},
+			{Name: "required-string-param", Type: v1beta1.ParamTypeString},
 		},
 		prp: []v1beta1.Param{
-			{
-				Name:  "required-string-param",
-				Value: *v1beta1.NewArrayOrString("somestring"),
-			},
+			{Name: "required-string-param", Value: stringValue},
 		},
 	}, {
 		name: "required array params provided",
 		pp: []v1beta1.ParamSpec{
-			{
-				Name: "required-array-param",
-				Type: v1beta1.ParamTypeArray,
-			},
+			{Name: "required-array-param", Type: v1beta1.ParamTypeArray},
 		},
 		prp: []v1beta1.Param{
-			{
-				Name:  "required-array-param",
-				Value: *v1beta1.NewArrayOrString("another", "array"),
-			},
+			{Name: "required-array-param", Value: arrayValue},
 		},
 	}, {
 		name: "string params provided in default",
 		pp: []v1beta1.ParamSpec{
-			{
-				Name:    "string-param",
-				Type:    v1beta1.ParamTypeString,
-				Default: v1beta1.NewArrayOrString("somedefault"),
-			},
+			{Name: "string-param", Type: v1beta1.ParamTypeString, Default: &stringValue},
 		},
 		prp: []v1beta1.Param{
-			{
-				Name:  "another-string-param",
-				Value: *v1beta1.NewArrayOrString("somestring"),
-			},
+			{Name: "another-string-param", Value: stringValue},
 		},
-	}}
-	for _, tc := range tcs {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err != nil {
 				t.Errorf("Didn't expect to see error when validating valid PipelineRun parameters but got: %v", err)
@@ -181,40 +155,32 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 }
 
 func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
-	tcs := []struct {
-		name string
-		pp   []v1beta1.ParamSpec
-		prp  []v1beta1.Param
+
+	stringValue := *v1beta1.NewArrayOrString("stringValue")
+	arrayValue := *v1beta1.NewArrayOrString("arrayValue", "arrayValue")
+
+	for _, tc := range []struct {
+		name        string
+		description string
+		pp          []v1beta1.ParamSpec
+		prp         []v1beta1.Param
 	}{{
 		name: "required string param missing",
 		pp: []v1beta1.ParamSpec{
-			{
-				Name: "required-string-param",
-				Type: v1beta1.ParamTypeString,
-			},
+			{Name: "required-string-param", Type: v1beta1.ParamTypeString},
 		},
 		prp: []v1beta1.Param{
-			{
-				Name:  "another-string-param",
-				Value: *v1beta1.NewArrayOrString("anotherstring"),
-			},
+			{Name: "another-string-param", Value: stringValue},
 		},
 	}, {
 		name: "required array param missing",
 		pp: []v1beta1.ParamSpec{
-			{
-				Name: "required-array-param",
-				Type: v1beta1.ParamTypeArray,
-			},
+			{Name: "required-array-param", Type: v1beta1.ParamTypeArray},
 		},
 		prp: []v1beta1.Param{
-			{
-				Name:  "another-array-param",
-				Value: *v1beta1.NewArrayOrString("anotherstring"),
-			},
+			{Name: "another-array-param", Value: arrayValue},
 		},
-	}}
-	for _, tc := range tcs {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateRequiredParametersProvided(&tc.pp, &tc.prp); err == nil {
 				t.Errorf("Expected to see error when validating invalid PipelineRun parameters but saw none")
