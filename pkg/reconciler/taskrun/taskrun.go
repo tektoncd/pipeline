@@ -122,6 +122,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		c.timeoutHandler.Release(tr.GetNamespacedName())
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
+			logger.Debugf("Stopping sidecars for TaskRun %q of Pod %q", tr.Name, tr.Status.PodName)
 			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
 			if err == nil {
 				// Check if any SidecarStatuses are still shown as Running after stopping
@@ -502,7 +503,7 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reason v1beta1.TaskRunReason, message string) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Warn("stopping task run %q because of %q", tr.Name, reason)
+	logger.Warnf("stopping task run %q because of %q", tr.Name, reason)
 	tr.Status.MarkResourceFailed(reason, errors.New(message))
 
 	completionTime := metav1.Time{Time: time.Now()}

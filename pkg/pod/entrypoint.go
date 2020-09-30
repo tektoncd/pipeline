@@ -209,7 +209,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	}
 	if updated {
 		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
+			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, err)
 		}
 	}
 	return nil
