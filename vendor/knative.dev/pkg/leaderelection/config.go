@@ -112,6 +112,18 @@ type ComponentConfig struct {
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
+	// LeaseName is a function to customize the lease name given the index i.
+	// If not present, a name in format {Component}.{queue-name}.{i}-of-{Buckets}
+	// will be use.
+	// Autoscaler need to know the Lease names to filter out Leases which are not
+	// used for Autoscaler. Instead of exposing the names from leadelection package,
+	// we let Autoscaler to pass them in.
+	LeaseName func(i uint32) string `json:"-"`
+	// Identity is the unique string identifying a resource lock holder across
+	// all participants in an election. If not present, a new unique string will
+	// be generated to be used as identity for each BuildElector call.
+	// Autoscaler uses the pod IP as identity.
+	Identity string
 }
 
 // statefulSetID is a envconfig Decodable controller ordinal and name.

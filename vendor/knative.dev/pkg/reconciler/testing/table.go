@@ -29,6 +29,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientgotesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 
@@ -285,44 +286,31 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 		t.Errorf("Unexpected subresource updates occurred %#v", unexpected)
 	}
 
-	for i, want := range r.WantDeletes {
-		if i >= len(actions.Deletes) {
-			t.Errorf("Missing delete: %#v", want)
-			continue
+	// Build a set of unique strings that represent type-name{-namespace}.
+	// Adding type will help catch the bugs where several similarly named
+	// resources are deleted (and some should or should not).
+	gotDeletes := make(sets.String, len(actions.Deletes))
+	for _, w := range actions.Deletes {
+		n := w.GetResource().Resource + "~~" + w.GetName()
+		if !r.SkipNamespaceValidation {
+			n += "~~" + w.GetNamespace()
 		}
-		got := actions.Deletes[i]
-		if got.GetName() != want.GetName() {
-			t.Errorf("Unexpected delete[%d]: %#v", i, got)
-		}
-		if !r.SkipNamespaceValidation && got.GetNamespace() != expectedNamespace {
-			t.Errorf("Unexpected delete[%d]: %#v", i, got)
-		}
+		gotDeletes.Insert(n)
 	}
-	if got, want := len(actions.Deletes), len(r.WantDeletes); got > want {
-		for _, extra := range actions.Deletes[want:] {
-			t.Errorf("Extra delete: %s/%s", extra.GetNamespace(), extra.GetName())
+	wantDeletes := make(sets.String, len(actions.Deletes))
+	for _, w := range r.WantDeletes {
+		n := w.GetResource().Resource + "~~" + w.GetName()
+		if !r.SkipNamespaceValidation {
+			n += "~~" + w.GetNamespace()
 		}
+		wantDeletes.Insert(n)
 	}
-
-	for i, want := range r.WantDeleteCollections {
-		if i >= len(actions.DeleteCollections) {
-			t.Errorf("Missing delete-collection: %#v", want)
-			continue
+	if !gotDeletes.Equal(wantDeletes) {
+		if extra := gotDeletes.Difference(wantDeletes); len(extra) > 0 {
+			t.Errorf("Extra or unexpected deletes: %v", extra.UnsortedList())
 		}
-		got := actions.DeleteCollections[i]
-		if got, want := got.GetListRestrictions().Labels, want.GetListRestrictions().Labels; (got != nil) != (want != nil) || got.String() != want.String() {
-			t.Errorf("Unexpected delete-collection[%d].Labels = %v, wanted %v", i, got, want)
-		}
-		if got, want := got.GetListRestrictions().Fields, want.GetListRestrictions().Fields; (got != nil) != (want != nil) || got.String() != want.String() {
-			t.Errorf("Unexpected delete-collection[%d].Fields = %v, wanted %v", i, got, want)
-		}
-		if !r.SkipNamespaceValidation && got.GetNamespace() != expectedNamespace {
-			t.Errorf("Unexpected delete-collection[%d]: %#v, wanted %s", i, got, expectedNamespace)
-		}
-	}
-	if got, want := len(actions.DeleteCollections), len(r.WantDeleteCollections); got > want {
-		for _, extra := range actions.DeleteCollections[want:] {
-			t.Errorf("Extra delete-collection: %#v", extra)
+		if missing := wantDeletes.Difference(gotDeletes); len(missing) > 0 {
+			t.Errorf("Missing deletes: %v", missing.UnsortedList())
 		}
 	}
 

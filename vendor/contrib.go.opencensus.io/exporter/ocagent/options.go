@@ -172,3 +172,35 @@ func (p metricNamePrefixSetter) withExporter(e *Exporter) {
 func WithMetricNamePrefix(prefix string) ExporterOption {
 	return metricNamePrefixSetter(prefix)
 }
+
+type dataBundlerOptions struct {
+	delay time.Duration
+	count int
+}
+
+var _ ExporterOption = (*dataBundlerOptions)(nil)
+
+func (b dataBundlerOptions) withExporter(e *Exporter) {
+	if b.delay > 0 {
+		e.viewDataDelay = b.delay
+	}
+	if b.count > 0 {
+		e.viewDataBundleCount = b.count
+	}
+}
+
+// WithDataBundlerOptions provides an option for the caller to configure the metrics data bundler.
+func WithDataBundlerOptions(delay time.Duration, count int) ExporterOption {
+	return dataBundlerOptions{delay, count}
+}
+
+func (spanConfig SpanConfig) withExporter(e *Exporter) {
+	e.spanConfig = spanConfig
+}
+
+var _ ExporterOption = (*SpanConfig)(nil)
+
+// WithSpanConfig allows one to set the AnnotationEventsPerSpan and MessageEventsPerSpan
+func WithSpanConfig(spanConfig SpanConfig) ExporterOption {
+	return spanConfig
+}

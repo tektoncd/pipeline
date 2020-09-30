@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	domainName string
+	domainName = defaultDomainName
 	once       sync.Once
 )
 
 // GetServiceHostname returns the fully qualified service hostname
-func GetServiceHostname(name string, namespace string) string {
+func GetServiceHostname(name, namespace string) string {
 	return fmt.Sprintf("%s.%s.svc.%s", name, namespace, GetClusterDomainName())
 }
 
@@ -45,31 +45,27 @@ func GetServiceHostname(name string, namespace string) string {
 func GetClusterDomainName() string {
 	once.Do(func() {
 		f, err := os.Open(resolverFileName)
-		if err == nil {
-			defer f.Close()
-			domainName = getClusterDomainName(f)
-
-		} else {
-			domainName = defaultDomainName
+		if err != nil {
+			return
 		}
+		defer f.Close()
+		domainName = getClusterDomainName(f)
 	})
-
 	return domainName
 }
 
 func getClusterDomainName(r io.Reader) string {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
+	for scanner := bufio.NewScanner(r); scanner.Scan(); {
 		elements := strings.Split(scanner.Text(), " ")
 		if elements[0] != "search" {
 			continue
 		}
-		for i := 1; i < len(elements)-1; i++ {
-			if strings.HasPrefix(elements[i], "svc.") {
-				return strings.TrimSuffix(elements[i][4:], ".")
+		for _, e := range elements[1:] {
+			if strings.HasPrefix(e, "svc.") {
+				return strings.TrimSuffix(e[4:], ".")
 			}
 		}
 	}
-	// For all abnormal cases return default domain name
+	// For all abnormal cases return default domain name.
 	return defaultDomainName
 }

@@ -36,7 +36,7 @@ type ConversionController interface {
 	Convert(context.Context, *apixv1.ConversionRequest) *apixv1.ConversionResponse
 }
 
-func conversionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c ConversionController) http.HandlerFunc {
+func conversionHandler(rootLogger *zap.SugaredLogger, _ StatsReporter, c ConversionController) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := rootLogger
 		logger.Infof("Webhook ServeHTTP request=%#v", r)

@@ -88,6 +88,10 @@ var (
 	// metricToResourceLabels provides a quick lookup from a custom metric name to the set of tags
 	// which should be promoted to Stackdriver Resource labels via opencensus resources.
 	metricToResourceLabels = map[string]*resourceTemplate{}
+
+	// A variable for testing to reduce the size (number of metrics) buffered before
+	// Stackdriver will send a bundled metric report. Only applies if non-zero.
+	TestOverrideBundleCount = 0
 )
 
 type resourceTemplate struct {
@@ -190,6 +194,7 @@ func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (v
 		ReportingInterval:       config.reportingPeriod,
 		DefaultMonitoringLabels: &sd.Labels{},
 		Timeout:                 stackdriverApiTimeout,
+		BundleCountThreshold:    TestOverrideBundleCount,
 	})
 	if err != nil {
 		logger.Errorw("Failed to create the Stackdriver exporter: ", zap.Error(err))
@@ -336,7 +341,7 @@ func getMetricPrefixFunc(metricTypePrefix, customMetricTypePrefix string) func(n
 // getStackdriverSecret returns the Kubernetes Secret specified in the given config.
 // SetStackdriverSecretLocation must have been called by calling package for this to work.
 // TODO(anniefu): Update exporter if Secret changes (https://github.com/knative/pkg/issues/842)
-func getStackdriverSecret(secretFetcher SecretFetcher) (*corev1.Secret, error) {
+func getStackdriverSecret(ctx context.Context, secretFetcher SecretFetcher) (*corev1.Secret, error) {
 	stackdriverMtx.RLock()
 	defer stackdriverMtx.RUnlock()
 
@@ -354,7 +359,7 @@ func getStackdriverSecret(secretFetcher SecretFetcher) (*corev1.Secret, error) {
 			return nil, err
 		}
 
-		sec, secErr = kubeclient.CoreV1().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
+		sec, secErr = kubeclient.CoreV1().Secrets(secretNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	}
 
 	if secErr != nil {

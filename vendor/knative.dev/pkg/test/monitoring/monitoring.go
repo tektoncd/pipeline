@@ -17,11 +17,13 @@ limitations under the License.
 package monitoring
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,31 +33,43 @@ import (
 
 // CheckPortAvailability checks to see if the port is available on the machine.
 func CheckPortAvailability(port int) error {
-	server, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	server, err := net.Listen("tcp", fmt.Sprint(":", port))
 	if err != nil {
 		// Port is likely taken
 		return err
 	}
-	server.Close()
-
-	return nil
+	return server.Close()
 }
 
 // GetPods retrieves the current existing podlist for the app in monitoring namespace
 // This uses app=<app> as labelselector for selecting pods
-func GetPods(kubeClientset *kubernetes.Clientset, app, namespace string) (*v1.PodList, error) {
-	pods, err := kubeClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", app)})
+func GetPods(ctx context.Context, kubeClientset *kubernetes.Clientset, app, namespace string) (*v1.PodList, error) {
+	pods, err := kubeClientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "app=" + app})
 	if err == nil && len(pods.Items) == 0 {
-		err = fmt.Errorf("no %s Pod found on the cluster. Ensure monitoring is switched on for your Knative Setup", app)
+		err = fmt.Errorf("pod %s not found on the cluster. Ensure monitoring is switched on for your Knative Setup", app)
 	}
-
 	return pods, err
 }
 
 // Cleanup will clean the background process used for port forwarding
 func Cleanup(pid int) error {
 	ps := os.Process{Pid: pid}
-	return ps.Kill()
+	if err := ps.Kill(); err != nil {
+		return err
+	}
+
+	errCh := make(chan error)
+	go func() {
+		_, err := ps.Wait()
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("timed out waiting for process %d to exit", pid)
+	}
 }
 
 // PortForward sets up local port forward to the pod specified by the "app" label in the given namespace
@@ -68,7 +82,7 @@ func PortForward(logf logging.FormatLogger, podList *v1.PodList, localPort, remo
 		return 0, fmt.Errorf("failed to port forward: %w", err)
 	}
 
-	logf("running %s port-forward in background, pid = %d", podName, portFwdProcess.Pid)
+	logf("Running %s port-forward in background, pid = %d", podName, portFwdProcess.Pid)
 	return portFwdProcess.Pid, nil
 }
 

@@ -111,6 +111,11 @@ func (bs *BucketSet) Owner(key string) string {
 	return ret
 }
 
+// HasBucket returns true if this BucketSet has the given bucket name.
+func (bs *BucketSet) HasBucket(bkt string) bool {
+	return bs.buckets.Has(bkt)
+}
+
 // BucketList returns the bucket names of this BucketSet in random order.
 func (bs *BucketSet) BucketList() []string {
 	bs.mu.RLock()

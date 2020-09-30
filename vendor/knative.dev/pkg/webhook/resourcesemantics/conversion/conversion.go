@@ -130,7 +130,6 @@ func (r *reconciler) convert(
 	} else {
 		logger.Infof("Could not get Accessor for %s: %v", formatGK(inGVK.GroupKind()), err)
 	}
-	logger.Infof("Converting %s to version %s", formatGVK(inGVK), targetVersion)
 	ctx = logging.WithLogger(ctx, logger)
 
 	if inGVK.Version == conv.HubVersion {

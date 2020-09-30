@@ -23,5 +23,8 @@ import (
 )
 
 func init() {
+	if ns := os.Getenv(system.NamespaceEnvKey); ns != "" {
+		return
+	}
 	os.Setenv(system.NamespaceEnvKey, "knative-testing")
 }
