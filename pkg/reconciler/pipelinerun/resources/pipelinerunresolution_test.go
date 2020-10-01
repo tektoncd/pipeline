@@ -1252,7 +1252,9 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 		},
 	}
 
-	getTask := func(ctx context.Context, name string) (v1beta1.TaskInterface, error) { return taskWithOptionalResourcesDeprecated, nil }
+	getTask := func(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
+		return taskWithOptionalResourcesDeprecated, nil
+	}
 	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1beta1.TaskInterface, error) { return nil, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
