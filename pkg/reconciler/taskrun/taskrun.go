@@ -603,13 +603,16 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
+	// Get the randomized volume names assigned to workspace bindings
+	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+
 	// Apply workspace resource substitution
-	ts = resources.ApplyWorkspaces(ts, ts.Workspaces, tr.Spec.Workspaces)
+	ts = resources.ApplyWorkspaces(ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
 	// Apply task result substitution
 	ts = resources.ApplyTaskResults(ts)
 
-	ts, err = workspace.Apply(*ts, tr.Spec.Workspaces)
+	ts, err = workspace.Apply(*ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
 		return nil, err
