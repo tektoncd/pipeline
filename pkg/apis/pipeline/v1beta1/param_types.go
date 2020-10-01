@@ -165,5 +165,5 @@ func validateStringVariableInTaskParameters(value, prefix string, stringVars set
 
 func validateArrayVariableInTaskParameters(value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
 	errs := substitution.ValidateVariableP(value, prefix, stringVars)
-	return errs.Also(substitution.ValidateVariableProhibitedP(value, prefix, arrayVars))
+	return errs.Also(substitution.ValidateVariableIsolatedP(value, prefix, arrayVars))
 }
