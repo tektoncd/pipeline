@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -36,16 +37,19 @@ import (
 // verify that pipelinerun timeout works and leads to the the correct TaskRun statuses
 // and pod deletions.
 func TestPipelineRunTimeout(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", tb.TaskSpec(
 		tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 10"))))
-	if _, err := c.TaskClient.Create(task); err != nil {
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
 
@@ -55,19 +59,19 @@ func TestPipelineRunTimeout(t *testing.T) {
 	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunSpec(pipeline.Name,
 		tb.PipelineRunTimeout(5*time.Second),
 	))
-	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
-	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -78,7 +82,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	for _, taskrunItem := range taskrunList.Items {
 		go func(name string) {
-			err := WaitForTaskRunState(c, name, Running(name), "TaskRunRunning")
+			err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning")
 			errChan <- err
 		}(taskrunItem.Name)
 	}
@@ -89,12 +93,12 @@ func TestPipelineRunTimeout(t *testing.T) {
 		}
 	}
 
-	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
+	if _, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason("PipelineRunTimeout", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason("PipelineRunTimeout", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -104,7 +108,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			err := WaitForTaskRunState(c, name, FailedWithReason("TaskRunTimeout", name), "TaskRunTimeout")
+			err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunTimeout", name), "TaskRunTimeout")
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
@@ -112,7 +116,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 	wg.Wait()
 
-	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
+	if _, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -121,51 +125,57 @@ func TestPipelineRunTimeout(t *testing.T) {
 	secondPipeline := tb.Pipeline("peppers",
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")))
 	secondPipelineRun := tb.PipelineRun("kiwi", tb.PipelineRunSpec("peppers"))
-	if _, err := c.PipelineClient.Create(secondPipeline); err != nil {
+	if _, err := c.PipelineClient.Create(ctx, secondPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", secondPipeline.Name, err)
 	}
-	if _, err := c.PipelineRunClient.Create(secondPipelineRun); err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, secondPipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", secondPipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", secondPipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", secondPipelineRun.Name, err)
 	}
 }
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(tb.Task("giraffe",
-		tb.TaskSpec(tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 3000"))))); err != nil {
+	if _, err := c.TaskClient.Create(ctx, tb.Task("giraffe",
+		tb.TaskSpec(tb.Step("busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 3000")))), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
-	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
+	if _, err := c.TaskRunClient.Create(ctx, tb.TaskRun("run-giraffe", tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
 		// Do not reduce this timeout. Taskrun e2e test is also verifying
 		// if reconcile is triggered from timeout handler and not by pod informers
-		tb.TaskRunTimeout(30*time.Second)))); err != nil {
+		tb.TaskRunTimeout(30*time.Second))), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
-	if err := WaitForTaskRunState(c, "run-giraffe", FailedWithReason("TaskRunTimeout", "run-giraffe"), "TaskRunTimeout"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, "run-giraffe", FailedWithReason("TaskRunTimeout", "run-giraffe"), "TaskRunTimeout"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 	}
 }
 
 func TestPipelineTaskTimeout(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Tasks in namespace %s", namespace)
 	task1 := tb.Task("success", tb.TaskSpec(
@@ -174,10 +184,10 @@ func TestPipelineTaskTimeout(t *testing.T) {
 	task2 := tb.Task("timeout", tb.TaskSpec(
 		tb.Step("busybox", tb.StepCommand("sleep"), tb.StepArgs("10s"))))
 
-	if _, err := c.TaskClient.Create(task1); err != nil {
+	if _, err := c.TaskClient.Create(ctx, task1, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task1.Name, err)
 	}
-	if _, err := c.TaskClient.Create(task2); err != nil {
+	if _, err := c.TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", task2.Name, err)
 	}
 
@@ -190,19 +200,19 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	pipelineRun := tb.PipelineRun("prtasktimeout", tb.PipelineRunSpec(pipeline.Name))
 
-	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
-	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -213,7 +223,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 
 	for _, taskrunItem := range taskrunList.Items {
 		go func(name string) {
-			err := WaitForTaskRunState(c, name, Running(name), "TaskRunRunning")
+			err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning")
 			errChan <- err
 		}(taskrunItem.Name)
 	}
@@ -224,12 +234,12 @@ func TestPipelineTaskTimeout(t *testing.T) {
 		}
 	}
 
-	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
+	if _, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s with PipelineTask timeout in namespace %s to fail", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, FailedWithReason("Failed", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason("Failed", pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -240,7 +250,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 		go func(tr v1alpha1.TaskRun) {
 			defer wg.Done()
 			name := tr.Name
-			err := WaitForTaskRunState(c, name, func(ca apis.ConditionAccessor) (bool, error) {
+			err := WaitForTaskRunState(ctx, c, name, func(ca apis.ConditionAccessor) (bool, error) {
 				cond := ca.GetCondition(apis.ConditionSucceeded)
 				if cond != nil {
 					if tr.Spec.TaskRef.Name == task1.Name && cond.Status == corev1.ConditionTrue {

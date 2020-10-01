@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -33,15 +34,18 @@ import (
 // TestTaskRunRetry tests that retries behave as expected, by creating multiple
 // Pods for the same TaskRun each time it fails, up to the configured max.
 func TestTaskRunRetry(t *testing.T) {
-	c, namespace := setup(t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// Create a PipelineRun with a single TaskRun that can only fail,
 	// configured to retry 5 times.
 	pipelineRunName := "retry-pipeline"
 	numRetries := 5
-	if _, err := c.PipelineRunClient.Create(&v1beta1.PipelineRun{
+	if _, err := c.PipelineRunClient.Create(ctx, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineSpec: &v1beta1.PipelineSpec{
@@ -57,17 +61,17 @@ func TestTaskRunRetry(t *testing.T) {
 				}},
 			},
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
 	}
 
 	// Wait for the PipelineRun to fail, when retries are exhausted.
-	if err := WaitForPipelineRunState(c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Waiting for PipelineRun to fail: %v", err)
 	}
 
 	// Get the status of the PipelineRun.
-	pr, err := c.PipelineRunClient.Get(pipelineRunName, metav1.GetOptions{})
+	pr, err := c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -83,7 +87,7 @@ func TestTaskRunRetry(t *testing.T) {
 	}
 
 	// There should only be one TaskRun created.
-	trs, err := c.TaskRunClient.List(metav1.ListOptions{})
+	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Failed to list TaskRuns: %v", err)
 	} else if len(trs.Items) != 1 {
@@ -105,7 +109,7 @@ func TestTaskRunRetry(t *testing.T) {
 	}
 
 	// There should be N Pods created, all failed, all owned by the TaskRun.
-	pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+	pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	// We expect N+1 Pods total, one for each failed and retried attempt, and one for the final attempt.
 	wantPods := numRetries + 1
 

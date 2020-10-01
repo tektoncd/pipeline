@@ -17,6 +17,7 @@
 package resources_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -61,6 +62,9 @@ func TestPipelineRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.pipelines...)
 
 			lc := &resources.LocalPipelineRefResolver{
@@ -68,7 +72,7 @@ func TestPipelineRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetPipeline(tc.ref.Name)
+			task, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {

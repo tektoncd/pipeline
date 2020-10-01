@@ -407,7 +407,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// A PVC should have been created to deal with output -> input linking
-	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
+	ensurePVCCreated(prt.TestAssets.Ctx, t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
 func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
@@ -1251,7 +1251,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 	}
 
 	// Check that the PipelineRun is still running with correct error message
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get("test-pipeline-fails-to-cancel", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-to-cancel", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
@@ -1438,7 +1438,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	}
 	for i := range ps[0].Spec.Tasks {
 		// Check that the expected TaskRun was created
-		actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(taskRunNames[i], metav1.GetOptions{})
+		actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(prt.TestAssets.Ctx, taskRunNames[i], metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
@@ -1990,9 +1990,9 @@ func makeExpectedTr(condName, ccName string, labels, annotations map[string]stri
 	)
 }
 
-func ensurePVCCreated(t *testing.T, clients test.Clients, name, namespace string) {
+func ensurePVCCreated(ctx context.Context, t *testing.T, clients test.Clients, name, namespace string) {
 	t.Helper()
-	_, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	_, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Expected PVC %s to be created for VolumeResource but did not exist", name)
 	}
@@ -2045,7 +2045,7 @@ func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
 	pipelineRun, clients := prt.reconcileRun("foo", prName, wantEvents, false)
 
 	// Check that the expected TaskRun was created
-	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=hello-world-1,tekton.dev/pipelineRun=test-pipeline-run",
 		Limit:         1,
 	})
@@ -2087,7 +2087,7 @@ func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
 	skippedTasks := []string{"hello-world-2"}
 	for _, skippedTask := range skippedTasks {
 		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
-		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{
+		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 			Limit:         1,
 		})
@@ -2181,7 +2181,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		),
 	)
 	// Check that the expected TaskRun was created
-	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
 		Limit:         1,
 	})
@@ -2210,7 +2210,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 	skippedTasks := []string{"c-task", "d-task"}
 	for _, skippedTask := range skippedTasks {
 		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
-		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{
+		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 			Limit:         1,
 		})
@@ -2284,7 +2284,7 @@ func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 		}
 	}
 
-	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
+	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
 	}
@@ -2369,7 +2369,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 		t.Errorf("expected the created PVC to be named %s. It was named %s", expectedPVCName, pvcNames[0])
 	}
 
-	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
+	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
 	}
@@ -2425,7 +2425,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
 
-	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
+	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
 	}
@@ -2568,7 +2568,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		),
 	)
 	// Check that the expected TaskRun was created
-	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
 		Limit:         1,
 	})
@@ -2643,7 +2643,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		),
 	)
 	// Check that the expected TaskRun was created (only)
-	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(metav1.ListOptions{})
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failure to list TaskRun's %s", err)
 	}
@@ -3957,7 +3957,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 		prt.Test.Fatalf("Error reconciling: %s", reconcileError)
 	}
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns(namespace).Get(pipelineRunName, metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns(namespace).Get(prt.TestAssets.Ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		prt.Test.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}

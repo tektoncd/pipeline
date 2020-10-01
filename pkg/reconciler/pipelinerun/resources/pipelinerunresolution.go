@@ -332,7 +332,7 @@ func ResolvePipelineRun(
 			if pt.TaskRef.Kind == v1beta1.ClusterTaskKind {
 				t, err = getClusterTask(pt.TaskRef.Name)
 			} else {
-				t, err = getTask(pt.TaskRef.Name)
+				t, err = getTask(ctx, pt.TaskRef.Name)
 			}
 			if err != nil {
 				return nil, &TaskNotFoundError{

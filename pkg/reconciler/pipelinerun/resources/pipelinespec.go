@@ -25,7 +25,7 @@ import (
 )
 
 // GetPipeline is a function used to retrieve Pipelines.
-type GetPipeline func(string) (v1beta1.PipelineInterface, error)
+type GetPipeline func(context.Context, string) (v1beta1.PipelineInterface, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's
@@ -36,7 +36,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
-		t, err := getPipeline(pipelineRun.Spec.PipelineRef.Name)
+		t, err := getPipeline(ctx, pipelineRun.Spec.PipelineRef.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when listing pipelines for pipelineRun %s: %w", pipelineRun.Name, err)
 		}

@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -296,12 +297,15 @@ func TestUpdateReady(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := UpdateReady(kubeclient, c.pod); err != nil {
+			if err := UpdateReady(ctx, kubeclient, c.pod); err != nil {
 				t.Errorf("UpdateReady: %v", err)
 			}
 
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
+			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantAnnotations, got.Annotations); d != "" {
@@ -411,12 +415,15 @@ func TestStopSidecars(t *testing.T) {
 		wantContainers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := StopSidecars(nopImage, kubeclient, c.pod); err != nil {
+			if err := StopSidecars(ctx, nopImage, kubeclient, c.pod); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
 			}
 
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
+			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {

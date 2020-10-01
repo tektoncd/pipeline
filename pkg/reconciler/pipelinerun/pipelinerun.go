@@ -188,7 +188,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	if pr.IsCancelled() {
 		// If the pipelinerun is cancelled, cancel tasks and update status
-		err := cancelPipelineRun(logger, pr, c.PipelineClientSet)
+		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
@@ -219,7 +219,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
-	_, err := c.updateLabelsAndAnnotations(pr)
+	_, err := c.updateLabelsAndAnnotations(ctx, pr)
 	if err != nil {
 		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
 		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
@@ -394,7 +394,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// pipelineRunState is instantiated and updated on every reconcile cycle
 	pipelineRunState, err := resources.ResolvePipelineRun(ctx,
 		*pr,
-		func(name string) (v1beta1.TaskInterface, error) {
+		func(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
 		},
 		func(name string) (*v1beta1.TaskRun, error) {
@@ -448,7 +448,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
 		if pr.HasVolumeClaimTemplate() {
 			// create workspace PVC from template
-			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
+			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
 				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
@@ -596,7 +596,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		})
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(tr)
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
 
 	serviceAccountName, podTemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
@@ -647,7 +647,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
+	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
@@ -808,7 +808,7 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 	return taskRunTimeout
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -820,7 +820,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1bet
 		newPr = newPr.DeepCopy()
 		newPr.Labels = pr.Labels
 		newPr.Annotations = pr.Annotations
-		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(newPr)
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
 	}
 	return newPr, nil
 }
@@ -865,7 +865,7 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 			PodTemplate: podTemplate,
 		}}
 
-	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
+	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
 }

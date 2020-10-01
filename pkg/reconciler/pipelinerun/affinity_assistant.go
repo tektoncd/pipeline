@@ -53,12 +53,12 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.
 	for _, w := range wb {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantName := getAffinityAssistantName(w.Name, pr.Name)
-			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(affinityAssistantName, metav1.GetOptions{})
+			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(ctx, affinityAssistantName, metav1.GetOptions{})
 			claimName := getClaimName(w, pr.GetOwnerReference())
 			switch {
 			case apierrors.IsNotFound(err):
 				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage)
-				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(affinityAssistantStatefulSet)
+				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
 				}
@@ -94,7 +94,7 @@ func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.
 	for _, w := range pr.Spec.Workspaces {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantStsName := getAffinityAssistantName(w.Name, pr.Name)
-			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(affinityAssistantStsName, &metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantStsName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %s", affinityAssistantStsName, err))
 			}
 		}

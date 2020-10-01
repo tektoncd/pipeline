@@ -20,6 +20,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -52,15 +53,15 @@ func getCreatedTektonCRD(input []byte, kind string) (string, error) {
 	return string(submatch[1]), nil
 }
 
-func waitValidatePipelineRunDone(t *testing.T, c *clients, pipelineRunName string) {
-	if err := WaitForPipelineRunState(c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
+func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients, pipelineRunName string) {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
 		t.Fatalf("Failed waiting for pipeline run done: %v", err)
 	}
 }
 
-func waitValidateTaskRunDone(t *testing.T, c *clients, taskRunName string) {
+func waitValidateTaskRunDone(ctx context.Context, t *testing.T, c *clients, taskRunName string) {
 	// Per test basis
-	if err := WaitForTaskRunState(c, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
 		t.Fatalf("Failed waiting for task run done: %v", err)
 	}
 }
@@ -101,25 +102,28 @@ func koCreate(input []byte, namespace string) ([]byte, error) {
 // clientset. Test state is used for logging. deleteClusterTask does not wait
 // for the clustertask to be deleted, so it is still possible to have name
 // conflicts during test
-func deleteClusterTask(t *testing.T, c *clients, name string) {
+func deleteClusterTask(ctx context.Context, t *testing.T, c *clients, name string) {
 	t.Logf("Deleting clustertask %s", name)
-	if err := c.ClusterTaskClient.Delete(name, &metav1.DeleteOptions{}); err != nil {
+	if err := c.ClusterTaskClient.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete clustertask: %v", err)
 	}
 }
 
-type waitFunc func(t *testing.T, c *clients, name string)
+type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
 
 func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		// Setup unique namespaces for each test so they can run in complete
 		// isolation
-		c, namespace := setup(t)
+		c, namespace := setup(ctx, t)
 
-		knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-		defer tearDown(t, c, namespace)
+		knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+		defer tearDown(ctx, t, c, namespace)
 
 		inputExample, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -151,13 +155,13 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 		// be cleaned up
 		clustertask, err := getCreatedTektonCRD(out, "clustertask")
 		if clustertask != "" {
-			knativetest.CleanupOnInterrupt(func() { deleteClusterTask(t, c, clustertask) }, t.Logf)
-			defer deleteClusterTask(t, c, clustertask)
+			knativetest.CleanupOnInterrupt(func() { deleteClusterTask(ctx, t, c, clustertask) }, t.Logf)
+			defer deleteClusterTask(ctx, t, c, clustertask)
 		} else if err != nil {
 			t.Fatalf("Failed to get created clustertask: %v", err)
 		}
 
-		waitValidateFunc(t, c, name)
+		waitValidateFunc(ctx, t, c, name)
 	}
 }
 

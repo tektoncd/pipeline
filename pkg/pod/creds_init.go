@@ -54,7 +54,7 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 		serviceAccountName = config.DefaultServiceAccountValue
 	}
 
-	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})
+	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(ctx, serviceAccountName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -65,7 +65,7 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 	var volumes []corev1.Volume
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
-		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
+		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(ctx, secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, nil, err
 		}

@@ -87,7 +87,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)
-			if err := cancelPipelineRun(logtesting.TestLogger(t), tc.pipelineRun, c.Pipeline); err != nil {
+			if err := cancelPipelineRun(ctx, logtesting.TestLogger(t), tc.pipelineRun, c.Pipeline); err != nil {
 				t.Fatal(err)
 			}
 			// This PipelineRun should still be complete and false, and the status should reflect that
@@ -95,7 +95,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			if cond.IsTrue() {
 				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", cond)
 			}
-			l, err := c.Pipeline.TektonV1beta1().TaskRuns("").List(metav1.ListOptions{})
+			l, err := c.Pipeline.TektonV1beta1().TaskRuns("").List(ctx, metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,6 +36,9 @@ import (
 // otherwise.
 func CreateGCPServiceAccountSecret(t *testing.T, c *knativetest.KubeClient, namespace string, secretName string) (bool, error) {
 	t.Helper()
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	file := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
 	if file == "" {
 		t.Logf("Not creating service account secret, relying on default credentials in namespace %s.", namespace)
@@ -56,7 +60,7 @@ func CreateGCPServiceAccountSecret(t *testing.T, c *knativetest.KubeClient, name
 	sec.Data = map[string][]byte{
 		"config.json": bs,
 	}
-	_, err = c.Kube.CoreV1().Secrets(namespace).Create(sec)
+	_, err = c.Kube.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
 
 	t.Log("Creating service account secret")
 	return true, err

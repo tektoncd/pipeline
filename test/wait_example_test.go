@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -39,8 +40,12 @@ type testingT interface {
 }
 
 func ExampleWaitForTaskRunState() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// […] setup the test, get clients
-	if err := WaitForTaskRunState(c, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForTaskRunState(ctx, c, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
@@ -54,8 +59,12 @@ func ExampleWaitForTaskRunState() {
 }
 
 func ExampleWaitForPipelineRunState() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// […] setup the test, get clients
-	if err := WaitForPipelineRunState(c, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForPipelineRunState(ctx, c, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {

@@ -17,6 +17,7 @@ limitations under the License.
 package volumeclaim
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -36,7 +37,7 @@ const (
 )
 
 type PvcHandler interface {
-	CreatePersistentVolumeClaimsForWorkspaces(wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
+	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
 
 type defaultPVCHandler struct {
@@ -52,13 +53,13 @@ func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) Pvc
 // where claim-name is provided by the user in the volumeClaimTemplate, and owner-name is the name of the
 // resource with the volumeClaimTemplate declared, a PipelineRun or TaskRun. If the PVC did not exist, a new PVC
 // with that name is created with the provided OwnerReference.
-func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
+func (c *defaultPVCHandler) CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error {
 	var errs []error
 	for _, claim := range getPersistentVolumeClaims(wb, ownerReference, namespace) {
-		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(claim.Name, metav1.GetOptions{})
+		_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Get(ctx, claim.Name, metav1.GetOptions{})
 		switch {
 		case apierrors.IsNotFound(err):
-			_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(claim)
+			_, err := c.clientset.CoreV1().PersistentVolumeClaims(claim.Namespace).Create(ctx, claim, metav1.CreateOptions{})
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to create PVC %s: %s", claim.Name, err))
 			}

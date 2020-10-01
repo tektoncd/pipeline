@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"math"
 	"sort"
 	"strings"
@@ -44,11 +45,14 @@ import (
 //                               |
 //                        pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// Create the Task that echoes text
 	repoTaskResource := v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -74,7 +78,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.TaskClient.Create(echoTask); err != nil {
+	if _, err := c.TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
@@ -89,7 +93,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineResourceClient.Create(repoResource); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
@@ -178,7 +182,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
 	pipelineRun := &v1beta1.PipelineRun{
@@ -191,21 +195,21 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	verifyExpectedOrder(t, c.TaskRunClient)
+	verifyExpectedOrder(ctx, t, c.TaskRunClient)
 }
 
-func verifyExpectedOrder(t *testing.T, c clientset.TaskRunInterface) {
+func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface) {
 	t.Logf("Verifying order of execution")
 
-	taskRunsResp, err := c.List(metav1.ListOptions{})
+	taskRunsResp, err := c.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get TaskRuns (so that we could check when they executed): %v", err)
 	}

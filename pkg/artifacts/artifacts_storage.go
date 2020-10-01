@@ -120,7 +120,7 @@ func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *
 func CleanupArtifactStorage(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
 
 	if NeedsPVC(ctx) {
-		err := deletePVC(pr, c)
+		err := deletePVC(ctx, pr, c)
 		if err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func NewArtifactBucketFromConfig(ctx context.Context, images pipeline.Images) *s
 }
 
 func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {
-	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(GetPVCName(pr), metav1.GetOptions{}); err != nil {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			pvcConfig := config.FromContextOrDefaults(ctx).ArtifactPVC
 			pvcSize, err := resource.ParseQuantity(pvcConfig.Size)
@@ -192,7 +192,7 @@ func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 			}
 
 			pvcSpec := GetPVCSpec(pr, pvcSize, pvcStorageClassName)
-			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvcSpec)
+			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(ctx, pvcSpec, metav1.CreateOptions{})
 			if err != nil {
 				return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %w", pr.Name, err)
 			}
@@ -203,12 +203,12 @@ func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 	return nil, nil
 }
 
-func deletePVC(pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
-	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(GetPVCName(pr), metav1.GetOptions{}); err != nil {
+func deletePVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get Persistent Volume %q due to error: %w", GetPVCName(pr), err)
 		}
-	} else if err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(GetPVCName(pr), &metav1.DeleteOptions{}); err != nil {
+	} else if err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(ctx, GetPVCName(pr), metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("failed to delete Persistent Volume %q due to error: %w", pr.Name, err)
 	}
 	return nil

@@ -296,7 +296,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 			}
 			// If the expected storage type is PVC, make sure we're actually creating that PVC.
 			if c.storagetype == "pvc" {
-				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 				}
@@ -456,14 +456,14 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				ArtifactBucket: ab,
 			}
 			ctx := config.ToContext(context.Background(), &configs)
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
 			if err := CleanupArtifactStorage(ctx, pipelinerun, fakekubeclient); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err == nil {
 				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(pipelinerun), pipelinerun.Name)
 			} else if !errors.IsNotFound(err) {
