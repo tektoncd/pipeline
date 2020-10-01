@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -30,6 +31,10 @@ import (
 )
 
 func TestResolveEntrypoints(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// Generate a random image with entrypoint configured.
 	img, err := random.Image(1, 1)
 	if err != nil {
@@ -53,7 +58,7 @@ func TestResolveEntrypoints(t *testing.T) {
 		"gcr.io/my/image:latest":          &data{img: img},
 	}
 
-	got, err := resolveEntrypoints(cache, "namespace", "serviceAccountName", []corev1.Container{{
+	got, err := resolveEntrypoints(ctx, cache, "namespace", "serviceAccountName", []corev1.Container{{
 		// This step specifies its command, so there's nothing to
 		// resolve.
 		Image:   "fully-specified",
@@ -110,7 +115,7 @@ type data struct {
 	seen bool // Whether the image has been looked up before.
 }
 
-func (f fakeCache) Get(ref name.Reference, _, _ string) (v1.Image, error) {
+func (f fakeCache) Get(ctx context.Context, ref name.Reference, _, _ string) (v1.Image, error) {
 	if d, ok := ref.(name.Digest); ok {
 		if data, found := f[d.String()]; found {
 			return data.img, nil

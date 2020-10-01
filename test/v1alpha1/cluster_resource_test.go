@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
@@ -35,39 +36,42 @@ func TestClusterResource(t *testing.T) {
 	taskName := "helloworld-cluster-task"
 	taskRunName := "helloworld-cluster-taskrun"
 
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating secret %s", secretName)
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getClusterResourceTaskSecret(namespace, secretName)); err != nil {
+	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, getClusterResourceTaskSecret(namespace, secretName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Secret `%s`: %s", secretName, err)
 	}
 
 	t.Logf("Creating configMap %s", configName)
-	if _, err := c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(getClusterConfigMap(namespace, configName)); err != nil {
+	if _, err := c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, getClusterConfigMap(namespace, configName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create configMap `%s`: %s", configName, err)
 	}
 
 	t.Logf("Creating cluster PipelineResource %s", resourceName)
-	if _, err := c.PipelineResourceClient.Create(getClusterResource(namespace, resourceName, secretName)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, getClusterResource(namespace, resourceName, secretName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create cluster Pipeline Resource `%s`: %s", resourceName, err)
 	}
 
 	t.Logf("Creating Task %s", taskName)
-	if _, err := c.TaskClient.Create(getClusterResourceTask(taskName, configName)); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getClusterResourceTask(taskName, configName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", taskRunName)
-	if _, err := c.TaskRunClient.Create(getClusterResourceTaskRun(namespace, taskRunName, taskName, resourceName)); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, getClusterResourceTaskRun(namespace, taskRunName, taskName, resourceName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Taskrun `%s`: %s", taskRunName, err)
 	}
 
 	// Verify status of TaskRun (wait for it)
-	if err := WaitForTaskRunState(c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
 }

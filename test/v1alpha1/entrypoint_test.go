@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -35,14 +36,17 @@ const epTaskRunName = "ep-task-run"
 // that doesn't have a cmd defined. In addition to making sure the steps
 // are executed in the order specified
 func TestEntrypointRunningStepsInOrder(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating TaskRun in namespace %s", namespace)
-	if _, err := c.TaskRunClient.Create(&v1alpha1.TaskRun{
+	if _, err := c.TaskRunClient.Create(ctx, &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: epTaskRunName, Namespace: namespace},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
@@ -55,12 +59,12 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 				}},
 			}},
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 

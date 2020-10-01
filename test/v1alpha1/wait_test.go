@@ -43,9 +43,9 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 			}},
 		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	if err := WaitForTaskRunState(c, "foo", Succeed("foo"), "TestTaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, "foo", Succeed("foo"), "TestTaskRunSucceed"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -58,9 +58,9 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 			}},
 		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForTaskRunState(c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
+	err := WaitForTaskRunState(ctx, c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,9 +75,9 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 			}},
 		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
+	err := WaitForPipelineRunState(ctx, c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,15 +92,15 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 			}},
 		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForPipelineRunState(c, "bar", 2*time.Second, Failed("bar"), "TestWaitForPipelineRunFailed")
+	err := WaitForPipelineRunState(ctx, c, "bar", 2*time.Second, Failed("bar"), "TestWaitForPipelineRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func fakeClients(t *testing.T, d Data) (*clients, func()) {
+func fakeClients(t *testing.T, d Data) (*clients, context.Context, func()) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	fakeClients, _ := SeedTestData(t, ctx, d)
@@ -110,5 +110,5 @@ func fakeClients(t *testing.T, d Data) (*clients, func()) {
 		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(""),
 		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(""),
 		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(""),
-	}, cancel
+	}, ctx, cancel
 }

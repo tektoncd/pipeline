@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -30,7 +31,7 @@ type EntrypointCache interface {
 	// Get the Image data for the given image reference. If the value is
 	// not found in the cache, it will be fetched from the image registry,
 	// possibly using K8s service account imagePullSecrets.
-	Get(ref name.Reference, namespace, serviceAccountName string) (v1.Image, error)
+	Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error)
 	// Update the cache with a new digest->Image mapping. This will avoid a
 	// remote registry lookup next time Get is called.
 	Set(digest name.Digest, img v1.Image)
@@ -41,7 +42,7 @@ type EntrypointCache interface {
 //
 // Images that are not specified by digest will be specified by digest after
 // lookup in the resulting list of containers.
-func resolveEntrypoints(cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
+func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
 	// Keep a local cache of name->image lookups, just for the scope of
 	// resolving this set of steps. If the image is pushed to before the
 	// next run, we need to resolve its digest and entrypoint again, but we
@@ -63,7 +64,7 @@ func resolveEntrypoints(cache EntrypointCache, namespace, serviceAccountName str
 		} else {
 			// Look it up in the cache. If it's not found in the
 			// cache, it will be resolved from the registry.
-			img, err = cache.Get(origRef, namespace, serviceAccountName)
+			img, err = cache.Get(ctx, origRef, namespace, serviceAccountName)
 			if err != nil {
 				return nil, err
 			}

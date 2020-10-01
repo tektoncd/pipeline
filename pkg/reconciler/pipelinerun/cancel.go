@@ -17,6 +17,7 @@ limitations under the License.
 package pipelinerun
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -48,7 +49,7 @@ func init() {
 }
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
-func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
+func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
 	errs := []string{}
 
 	// Loop over the TaskRuns in the PipelineRun status.
@@ -56,7 +57,7 @@ func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clien
 	for taskRunName := range pr.Status.TaskRuns {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(taskRunName, types.JSONPatchType, cancelPatchBytes, ""); err != nil {
+		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelPatchBytes, metav1.PatchOptions{}, ""); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}

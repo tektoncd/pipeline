@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -97,12 +98,15 @@ func TestGitPipelineRun(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, namespace := setup(t)
-			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-			defer tearDown(t, c, namespace)
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			c, namespace := setup(ctx, t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(&v1alpha1.PipelineResource{
+			if _, err := c.PipelineResourceClient.Create(ctx, &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{Name: gitSourceResourceName},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeGit,
@@ -113,12 +117,12 @@ func TestGitPipelineRun(t *testing.T) {
 						{Name: "sslVerify", Value: tc.sslVerify},
 					},
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-			if _, err := c.PipelineRunClient.Create(&v1beta1.PipelineRun{
+			if _, err := c.PipelineRunClient.Create(ctx, &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineRunName},
 				Spec: v1beta1.PipelineRunSpec{
 					Resources: []v1beta1.PipelineResourceBinding{{
@@ -151,11 +155,11 @@ func TestGitPipelineRun(t *testing.T) {
 						}},
 					},
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 
-			if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
 				t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
 				t.Fatalf("PipelineRun execution failed")
 			}
@@ -180,12 +184,15 @@ func TestGitPipelineRunFail(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			c, namespace := setup(t)
-			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-			defer tearDown(t, c, namespace)
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			c, namespace := setup(ctx, t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
-			if _, err := c.PipelineResourceClient.Create(&v1alpha1.PipelineResource{
+			if _, err := c.PipelineResourceClient.Create(ctx, &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{Name: gitSourceResourceName},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeGit,
@@ -195,12 +202,12 @@ func TestGitPipelineRunFail(t *testing.T) {
 						{Name: "httpsProxy", Value: tc.httpsproxy},
 					},
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", gitSourceResourceName, err)
 			}
 
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-			if _, err := c.PipelineRunClient.Create(&v1beta1.PipelineRun{
+			if _, err := c.PipelineRunClient.Create(ctx, &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineRunName},
 				Spec: v1beta1.PipelineRunSpec{
 					Resources: []v1beta1.PipelineResourceBinding{{
@@ -233,18 +240,18 @@ func TestGitPipelineRunFail(t *testing.T) {
 						}},
 					},
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 
-			if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
-				taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
+			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+				taskruns, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
 				if err != nil {
 					t.Errorf("Error getting TaskRun list for PipelineRun %s %s", gitTestPipelineRunName, err)
 				}
 				for _, tr := range taskruns.Items {
 					if tr.Status.PodName != "" {
-						p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+						p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 						if err != nil {
 							t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 						}
@@ -253,7 +260,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 							if strings.HasPrefix(stat.Name, "step-git-source-"+gitSourceResourceName) {
 								if stat.State.Terminated != nil {
 									req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
-									logContent, err := req.Do().Raw()
+									logContent, err := req.Do(ctx).Raw()
 									if err != nil {
 										t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 									}

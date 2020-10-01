@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -162,8 +163,8 @@ func collectResultsName(results []v1beta1.TaskResult) string {
 
 // UpdateReady updates the Pod's annotations to signal the first step to start
 // by projecting the ready annotation via the Downward API.
-func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
 	}
@@ -175,7 +176,7 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	}
 	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
 		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
+		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
 		}
 	}
@@ -184,8 +185,8 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 
 // StopSidecars updates sidecar containers in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
 	}
@@ -208,7 +209,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 		}
 	}
 	if updated {
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
+		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, err)
 		}
 	}

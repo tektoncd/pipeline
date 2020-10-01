@@ -170,7 +170,7 @@ func backoffDuration(count uint, jf jitterFunc) time.Duration {
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *Handler) checkPipelineRunTimeouts(ctx context.Context, namespace string, pipelineclientset clientset.Interface) {
-	pipelineRuns, err := pipelineclientset.TektonV1beta1().PipelineRuns(namespace).List(metav1.ListOptions{})
+	pipelineRuns, err := pipelineclientset.TektonV1beta1().PipelineRuns(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
 		return
@@ -194,7 +194,7 @@ func (t *Handler) CheckTimeouts(ctx context.Context, namespace string, kubeclien
 	namespaceNames := []string{namespace}
 	// all namespaces
 	if namespace == "" {
-		namespaces, err := kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+		namespaces, err := kubeclientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.logger.Errorf("Can't get namespaces list: %s", err)
 			return
@@ -214,7 +214,7 @@ func (t *Handler) CheckTimeouts(ctx context.Context, namespace string, kubeclien
 // checkTaskRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *Handler) checkTaskRunTimeouts(ctx context.Context, namespace string, pipelineclientset clientset.Interface) {
-	taskruns, err := pipelineclientset.TektonV1beta1().TaskRuns(namespace).List(metav1.ListOptions{})
+	taskruns, err := pipelineclientset.TektonV1beta1().TaskRuns(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
 		return

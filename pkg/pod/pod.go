@@ -134,7 +134,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
-	stepContainers, err = resolveEntrypoints(b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
+	stepContainers, err = resolveEntrypoints(ctx, b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
-	limitRangeMin, err := getLimitRangeMinimum(taskRun.Namespace, b.KubeClient)
+	limitRangeMin, err := getLimitRangeMinimum(ctx, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -337,8 +337,8 @@ func nodeAffinityUsingAffinityAssistant(affinityAssistantName string) *corev1.Af
 // https://github.com/kubernetes/kubernetes/issues/79496, the
 // max LimitRange minimum must be found in the event of conflicting
 // container minimums specified.
-func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (corev1.ResourceList, error) {
-	limitRanges, err := kubeclient.CoreV1().LimitRanges(namespace).List(metav1.ListOptions{})
+func getLimitRangeMinimum(ctx context.Context, namespace string, kubeclient kubernetes.Interface) (corev1.ResourceList, error) {
+	limitRanges, err := kubeclient.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

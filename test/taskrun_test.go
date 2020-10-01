@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -31,11 +32,15 @@ import (
 )
 
 func TestTaskRunFailure(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	taskRunName := "failing-taskrun"
 
@@ -58,7 +63,7 @@ func TestTaskRunFailure(t *testing.T) {
 			}}},
 		},
 	}
-	if _, err := c.TaskClient.Create(task); err != nil {
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := &v1beta1.TaskRun{
@@ -67,16 +72,16 @@ func TestTaskRunFailure(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "failing-task"},
 		},
 	}
-	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
@@ -117,11 +122,14 @@ func TestTaskRunFailure(t *testing.T) {
 }
 
 func TestTaskRunStatus(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	taskRunName := "status-taskrun"
 
@@ -139,7 +147,7 @@ func TestTaskRunStatus(t *testing.T) {
 			}}},
 		},
 	}
-	if _, err := c.TaskClient.Create(task); err != nil {
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := &v1beta1.TaskRun{
@@ -148,16 +156,16 @@ func TestTaskRunStatus(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "status-task"},
 		},
 	}
-	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}

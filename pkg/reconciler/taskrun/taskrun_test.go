@@ -535,7 +535,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Errorf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -551,7 +551,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Fatalf("Reconcile didn't set pod name")
 			}
 
-			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
@@ -705,12 +705,12 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			if saName == "" {
 				saName = "default"
 			}
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      saName,
 					Namespace: tc.taskRun.Namespace,
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatal(err)
 			}
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
@@ -720,7 +720,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 				t.Errorf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -736,7 +736,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 				t.Fatalf("Reconcile didn't set pod name")
 			}
 
-			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
@@ -789,12 +789,12 @@ func TestReconcile_CloudEvents(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 	saName := "default"
-	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName,
 			Namespace: taskRun.Namespace,
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -805,7 +805,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		t.Errorf("Expected actions to be logged in the kubeclient, got none")
 	}
 
-	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("getting updated taskrun: %v", err)
 	}
@@ -1494,12 +1494,12 @@ func TestReconcile(t *testing.T) {
 			if saName == "" {
 				saName = "default"
 			}
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      saName,
 					Namespace: tc.taskRun.Namespace,
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -1510,7 +1510,7 @@ func TestReconcile(t *testing.T) {
 				t.Errorf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -1526,7 +1526,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Reconcile didn't set pod name")
 			}
 
-			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
@@ -1564,12 +1564,12 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "foo",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1577,7 +1577,7 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1684,7 +1684,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf(err.Error())
 			}
 
-			newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			newTr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
 			}
@@ -1782,7 +1782,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1807,7 +1807,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	pod.Status = corev1.PodStatus{
 		Phase: corev1.PodSucceeded,
 	}
-	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).UpdateStatus(pod); err != nil {
+	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).UpdateStatus(testAssets.Ctx, pod, metav1.UpdateOptions{}); err != nil {
 		t.Errorf("Unexpected error while updating build: %v", err)
 	}
 
@@ -1819,7 +1819,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
-	newTr, err = clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err = clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
@@ -1868,7 +1868,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1900,7 +1900,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2015,7 +2015,7 @@ func TestReconcileTimeouts(t *testing.T) {
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
 				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 			}
-			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
 			}
@@ -2266,12 +2266,12 @@ func TestReconcileCloudEvents(t *testing.T) {
 			if saName == "" {
 				saName = "default"
 			}
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      saName,
 					Namespace: tc.taskRun.Namespace,
 				},
-			}); err != nil {
+			}, metav1.CreateOptions{}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -2279,7 +2279,7 @@ func TestReconcileCloudEvents(t *testing.T) {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
@@ -2321,7 +2321,7 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2378,7 +2378,7 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	getTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2438,7 +2438,7 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", err)
 	}
 
-	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2484,12 +2484,12 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "foo",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2497,7 +2497,7 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2540,12 +2540,12 @@ func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "foo",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2607,12 +2607,12 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("default").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("default").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "default",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2620,12 +2620,12 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 		t.Errorf("Unexpected reconcile error for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
 	}
 
-	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRunOmittingWorkspace.Namespace).Get(taskRunOmittingWorkspace.Name, metav1.GetOptions{})
+	tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRunOmittingWorkspace.Namespace).Get(testAssets.Ctx, taskRunOmittingWorkspace.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
 	}
 
-	pod, err := clients.Kube.CoreV1().Pods(taskRunOmittingWorkspace.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+	pod, err := clients.Kube.CoreV1().Pods(taskRunOmittingWorkspace.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting Pod for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
 	}
@@ -2719,7 +2719,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
 			}
 
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(tt.d.TaskRuns[0].Name, metav1.GetOptions{})
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(testAssets.Ctx, tt.d.TaskRuns[0].Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tt.d.TaskRuns[0].Name, err)
 			}
@@ -2773,23 +2773,23 @@ func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) 
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "foo",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
 	_ = testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
 
-	_, err := clients.Pipeline.TektonV1beta1().Tasks(taskRun.Namespace).Get(taskWithTwoWorkspaces.Name, metav1.GetOptions{})
+	_, err := clients.Pipeline.TektonV1beta1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("krux: %v", err)
 	}
 
-	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2836,12 +2836,12 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 	clients := testAssets.Clients
 
 	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(&corev1.ServiceAccount{
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: "foo",
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2849,7 +2849,7 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
-	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	ttt, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -2861,7 +2861,7 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 	}
 
 	expectedPVCName := fmt.Sprintf("%s-%s", claimName, "a521418087")
-	_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(expectedPVCName, metav1.GetOptions{})
+	_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(testAssets.Ctx, expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
 	}

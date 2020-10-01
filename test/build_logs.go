@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -28,16 +29,16 @@ import (
 )
 
 // CollectPodLogs will get the logs for all containers in a Pod
-func CollectPodLogs(c *clients, podName, namespace string, logf logging.FormatLogger) {
-	logs, err := getContainersLogsFromPod(c.KubeClient.Kube, podName, namespace)
+func CollectPodLogs(ctx context.Context, c *clients, podName, namespace string, logf logging.FormatLogger) {
+	logs, err := getContainersLogsFromPod(ctx, c.KubeClient.Kube, podName, namespace)
 	if err != nil {
 		logf("Could not get logs for pod %s: %s", podName, err)
 	}
 	logf("build logs %s", logs)
 }
 
-func getContainersLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {
-	p, err := c.CoreV1().Pods(namespace).Get(pod, metav1.GetOptions{})
+func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, namespace string) (string, error) {
+	p, err := c.CoreV1().Pods(namespace).Get(ctx, pod, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +46,7 @@ func getContainersLogsFromPod(c kubernetes.Interface, pod, namespace string) (st
 	sb := strings.Builder{}
 	for _, container := range p.Spec.Containers {
 		sb.WriteString(fmt.Sprintf("\n>>> Container %s:\n", container.Name))
-		logs, err := getContainerLogsFromPod(c, pod, container.Name, namespace)
+		logs, err := getContainerLogsFromPod(ctx, c, pod, container.Name, namespace)
 		if err != nil {
 			return "", err
 		}
@@ -54,10 +55,10 @@ func getContainersLogsFromPod(c kubernetes.Interface, pod, namespace string) (st
 	return sb.String(), nil
 }
 
-func getContainerLogsFromPod(c kubernetes.Interface, pod, container, namespace string) (string, error) {
+func getContainerLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, container, namespace string) (string, error) {
 	sb := strings.Builder{}
 	req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: true, Container: container})
-	rc, err := req.Stream()
+	rc, err := req.Stream(ctx)
 	if err != nil {
 		return "", err
 	}

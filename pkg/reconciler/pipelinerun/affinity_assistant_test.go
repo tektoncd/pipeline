@@ -34,6 +34,10 @@ import (
 // TestCreateAndDeleteOfAffinityAssistant tests to create and delete an Affinity Assistant
 // for a given PipelineRun with a PVC workspace
 func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	c := Reconciler{
 		KubeClientSet: fakek8s.NewSimpleClientset(),
 		Images:        pipeline.Images{},
@@ -56,23 +60,23 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 		},
 	}
 
-	err := c.createAffinityAssistants(context.Background(), testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
+	err := c.createAffinityAssistants(ctx, testPipelineRun.Spec.Workspaces, testPipelineRun, testPipelineRun.Namespace)
 	if err != nil {
 		t.Errorf("unexpected error from createAffinityAssistants: %v", err)
 	}
 
 	expectedAffinityAssistantName := getAffinityAssistantName(workspaceName, testPipelineRun.Name)
-	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(expectedAffinityAssistantName, metav1.GetOptions{})
+	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("unexpected error when retrieving StatefulSet: %v", err)
 	}
 
-	err = c.cleanupAffinityAssistants(context.Background(), testPipelineRun)
+	err = c.cleanupAffinityAssistants(ctx, testPipelineRun)
 	if err != nil {
 		t.Errorf("unexpected error from cleanupAffinityAssistants: %v", err)
 	}
 
-	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(expectedAffinityAssistantName, metav1.GetOptions{})
+	_, err = c.KubeClientSet.AppsV1().StatefulSets(testPipelineRun.Namespace).Get(ctx, expectedAffinityAssistantName, metav1.GetOptions{})
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("expected a NotFound response, got: %v", err)
 	}

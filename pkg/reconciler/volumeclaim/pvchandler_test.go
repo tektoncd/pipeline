@@ -17,6 +17,7 @@ limitations under the License.
 package volumeclaim
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -64,6 +65,9 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 			Spec: corev1.PersistentVolumeClaimSpec{},
 		},
 	}}
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	ownerRef := metav1.OwnerReference{Name: ownerName}
 	namespace := "ns"
@@ -72,13 +76,13 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
 	expectedPVCName := claimName1 + "-ad02547921"
-	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
+	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,6 +130,9 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 			Spec: corev1.PersistentVolumeClaimSpec{},
 		},
 	}}
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	ownerRef := metav1.OwnerReference{Name: ownerName}
 	namespace := "ns"
@@ -134,13 +141,13 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
 	expectedPVCName := fmt.Sprintf("%s-%s", "pvc", "3fc56c2bb2")
-	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
+	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
