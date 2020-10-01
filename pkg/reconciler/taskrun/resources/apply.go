@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/tektoncd/pipeline/pkg/workspace"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -112,7 +112,7 @@ func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1bet
 // ApplyWorkspaces applies the substitution from paths that the workspaces in declarations mounted to, the
 // volumes that bindings are realized with in the task spec and the PersistentVolumeClaim names for the
 // workspaces.
-func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDeclaration, bindings []v1beta1.WorkspaceBinding) *v1beta1.TaskSpec {
+func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDeclaration, bindings []v1beta1.WorkspaceBinding, vols map[string]corev1.Volume) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{}
 
 	bindNames := sets.NewString()
@@ -131,7 +131,6 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 		}
 	}
 
-	vols := workspace.GetVolumes(bindings)
 	for name, vol := range vols {
 		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vol.Name
 	}
