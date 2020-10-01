@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -788,7 +789,8 @@ func TestApplyWorkspaces(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := resources.ApplyWorkspaces(tc.spec, tc.decls, tc.binds)
+			vols := workspace.CreateVolumes(tc.binds)
+			got := resources.ApplyWorkspaces(tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 			}
