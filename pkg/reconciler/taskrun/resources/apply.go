@@ -228,7 +228,7 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 	// Apply variable substitution to the sidecar definitions
 	sidecars := spec.Sidecars
 	for i := range sidecars {
-		v1beta1.ApplyContainerReplacements(&sidecars[i].Container, stringReplacements, arrayReplacements)
+		v1beta1.ApplySidecarReplacements(&sidecars[i], stringReplacements, arrayReplacements)
 	}
 
 	return spec
