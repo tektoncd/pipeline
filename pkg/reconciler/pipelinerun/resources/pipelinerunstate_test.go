@@ -293,7 +293,7 @@ func TestGetNextTasks(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			next := tc.state.GetNextTasks(tc.candidates)
+			next := tc.state.getNextTasks(tc.candidates)
 			if d := cmp.Diff(next, tc.expectedNext); d != "" {
 				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
 			}
@@ -399,7 +399,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			next := tc.state.GetNextTasks(tc.candidates)
+			next := tc.state.getNextTasks(tc.candidates)
 			if d := cmp.Diff(next, tc.expectedNext); d != "" {
 				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
 			}
@@ -466,7 +466,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
 			}
-			names := facts.SuccessfulOrSkippedDAGTasks()
+			names := facts.successfulOrSkippedDAGTasks()
 			if d := cmp.Diff(names, tc.expectedNames); d != "" {
 				t.Errorf("Expected to get completed names %v but got something different %s", tc.expectedNames, diff.PrintWantGot(d))
 			}
