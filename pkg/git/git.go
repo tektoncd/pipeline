@@ -192,10 +192,7 @@ func SubmoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
 		}
 	}
-	if _, err := run(logger, "", "submodule", "init"); err != nil {
-		return err
-	}
-	updateArgs := []string{"submodule", "update", "--recursive"}
+	updateArgs := []string{"submodule", "update", "--recursive", "--init"}
 	if spec.Depth > 0 {
 		updateArgs = append(updateArgs, fmt.Sprintf("--depth=%d", spec.Depth))
 	}
