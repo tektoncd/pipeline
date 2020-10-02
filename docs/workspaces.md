@@ -58,6 +58,10 @@ data for the `Task` to process. In both scenarios the `Task's`
 `Workspace` declaration remains the same and only the runtime
 information in the `TaskRun` changes.
 
+Tasks can also share Workspaces with their Sidecars, though there's a little more
+configuration involved to add the required `volumeMount`. This allows for a
+long-running process in a Sidecar to share data with the executing Steps of a Task.
+
 ### `Workspaces` in `Pipelines` and `PipelineRuns`
 
 A `Pipeline` can use `Workspaces` to show how storage will be shared through
@@ -133,6 +137,39 @@ spec:
     optional: true
     mountPath: /custom/path/relative/to/root
 ```
+
+#### Sharing `Workspaces` with `Sidecars`
+
+A `Task's` `Sidecars` are also able to access the `Workspaces` the `Task` defines but must have their
+`volumeMount` configuration set explicitly. Below is an example `Task` that shares a `Workspace` between
+its `Steps` and its `Sidecar`. In the example a `Sidecar` sleeps for a short amount of time and then writes
+a `ready` file which the `Step` is waiting for:
+
+```yaml
+spec:
+  workspaces:
+  - name: signals
+  steps:
+  - image: alpine
+    script: |
+      while [ ! -f "$(workspaces.signals.path)/ready" ]; do
+        echo "Waiting for ready file..."
+        sleep 1
+      done
+      echo "Saw ready file!"
+  sidecars:
+  - image: alpine
+    # Note: must explicitly include volumeMount for the workspace to be accessible in the Sidecar
+    volumeMounts:
+    - name: $(workspaces.signals.volume)
+      mountPath: $(workspaces.signals.path)
+    script: |
+      sleep 3
+      touch "$(workspaces.signals.path)/ready"
+```
+
+**Note:** Sidecars _must_ explicitly opt-in to receiving the Workspace volume. Injected Sidecars from
+non-Tekton sources will not receive access to Workspaces.
 
 #### Setting a Default TaskRun Workspace Binding
 
