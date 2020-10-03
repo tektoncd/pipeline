@@ -84,6 +84,20 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 }
 
+func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+	p = p.DeepCopy()
+	replacements := map[string]string{}
+	for _, declaredWorkspace := range p.Workspaces {
+		key := fmt.Sprintf("workspaces.%s.bound", declaredWorkspace.Name)
+		replacements[key] = "false"
+	}
+	for _, boundWorkspace := range pr.Spec.Workspaces {
+		key := fmt.Sprintf("workspaces.%s.bound", boundWorkspace.Name)
+		replacements[key] = "true"
+	}
+	return ApplyReplacements(p, replacements, map[string][]string{})
+}
+
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
 func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()

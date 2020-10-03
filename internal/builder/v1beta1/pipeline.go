@@ -518,26 +518,6 @@ func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	}
 }
 
-// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
-func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Tolerations = values
-	}
-}
-
-// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
-func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Affinity = affinity
-	}
-}
-
 // PipelineRunPipelineSpec adds a PipelineSpec to the PipelineRunSpec.
 // Any number of PipelineSpec modifiers can be passed to transform it.
 func PipelineRunPipelineSpec(ops ...PipelineSpecOp) PipelineRunSpecOp {

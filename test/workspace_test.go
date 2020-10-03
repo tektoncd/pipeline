@@ -231,7 +231,89 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
-	if err := WaitForPipelineRunState(c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline expects workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition"); err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline requires workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition"); err != nil {
 		t.Fatalf("Failed to wait for PipelineRun %q to finish: %s", pipelineRunName, err)
 	}
+}
+
+func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
+	c, namespace := setup(t)
+
+	taskName := "foo-task"
+	taskRunName := "foo-taskrun"
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	task := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "foo",
+				Image:   "alpine",
+				Command: []string{"echo"},
+				Args:    []string{"$(workspaces.test.volume)"},
+			}}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "test",
+				Description: "test workspace",
+				MountPath:   "/workspace/test/file",
+				ReadOnly:    true,
+			}},
+		},
+	}
+	if _, err := c.TaskClient.Create(task); err != nil {
+		t.Fatalf("Failed to create Task: %s", err)
+	}
+
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef:            &v1beta1.TaskRef{Name: taskName},
+			ServiceAccountName: "default",
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name:     "test",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}},
+		},
+	}
+	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+		t.Fatalf("Failed to create TaskRun: %s", err)
+	}
+
+	t.Logf("Waiting for TaskRun in namespace %s to finish", namespace)
+	if err := WaitForTaskRunState(c, taskRunName, TaskRunSucceed(taskRunName), "success"); err != nil {
+		t.Errorf("Error waiting for TaskRun to finish with error: %s", err)
+	}
+
+	tr, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Error retrieving taskrun: %s", err)
+	}
+	if tr.Status.PodName == "" {
+		t.Fatal("Error getting a PodName (empty)")
+	}
+	p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+
+	if err != nil {
+		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
+	}
+
+	workspaceVariableValue := ""
+	for _, container := range p.Spec.Containers {
+		if container.Name == "step-foo" {
+			argsLen := len(container.Args)
+			workspaceVariableValue = container.Args[argsLen-1]
+			break
+		}
+	}
+
+	volumeNames := []string{}
+	for _, volume := range p.Spec.Volumes {
+		if volume.Name == workspaceVariableValue {
+			return
+		}
+		volumeNames = append(volumeNames, volume.Name)
+	}
+	t.Fatalf("Workspace volume variable %q does not match any volume name in Pod volumes list %#v", workspaceVariableValue, volumeNames)
 }

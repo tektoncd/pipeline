@@ -81,6 +81,7 @@ func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	expectedConfig := &config.Defaults{
 		DefaultTimeoutMinutes:      60,
 		DefaultManagedByLabelValue: "tekton-pipelines",
+		DefaultServiceAccount:      "default",
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
@@ -205,6 +206,7 @@ func TestEquals(t *testing.T) {
 }
 
 func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedConfig *config.Defaults) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if Defaults, err := config.NewDefaultsFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(Defaults, expectedConfig); d != "" {

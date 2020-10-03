@@ -123,10 +123,10 @@ type PipelineResourceResult struct {
 	Key          string `json:"key"`
 	Value        string `json:"value"`
 	ResourceName string `json:"resourceName,omitempty"`
-	// This field should be deprecated and removed in the next API version.
+	// The field ResourceRef should be deprecated and removed in the next API version.
 	// See https://github.com/tektoncd/pipeline/issues/2694 for more information.
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
-	ResultType  ResultType          `json:"type,omitempty"`
+	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
+	ResultType  ResultType           `json:"type,omitempty"`
 }
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not

@@ -17,8 +17,10 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
@@ -29,7 +31,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const credsInitHomeMountPrefix = "tekton-creds-init-home"
+const (
+	credsInitHomeMountPrefix = "tekton-creds-init-home"
+	sshKnownHosts            = "known_hosts"
+)
 
 // credsInit reads secrets available to the given service account and
 // searches for annotations matching a specific format (documented in
@@ -42,9 +47,11 @@ const credsInitHomeMountPrefix = "tekton-creds-init-home"
 // Any errors encountered during this process are returned to the
 // caller. If no matching annotated secrets are found, nil lists with a
 // nil error are returned.
-func credsInit(serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+func credsInit(ctx context.Context, serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+	// service account if not specified in pipeline/task spec, read it from the ConfigMap
+	// and defaults to `default` if its missing from the ConfigMap as well
 	if serviceAccountName == "" {
-		serviceAccountName = "default"
+		serviceAccountName = config.DefaultServiceAccountValue
 	}
 
 	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})
@@ -60,6 +67,10 @@ func credsInit(serviceAccountName, namespace string, kubeclient kubernetes.Inter
 	for _, secretEntry := range sa.Secrets {
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		if err := checkGitSSHSecret(ctx, secret); err != nil {
 			return nil, nil, nil, err
 		}
 
@@ -111,4 +122,18 @@ func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
 		MountPath: pipeline.CredsDir,
 	}
 	return v, vm
+}
+
+// checkGitSSHSecret requires `known_host` field must be included in Git SSH Secret when feature flag
+// `require-git-ssh-secret-known-hosts` is true.
+func checkGitSSHSecret(ctx context.Context, secret *corev1.Secret) error {
+	cfg := config.FromContextOrDefaults(ctx)
+
+	if secret.Type == corev1.SecretTypeSSHAuth && cfg.FeatureFlags.RequireGitSSHSecretKnownHosts {
+		if _, ok := secret.Data[sshKnownHosts]; !ok {
+			return fmt.Errorf("TaskRun validation failed. Git SSH Secret must have \"known_hosts\" included " +
+				"when feature flag \"require-git-ssh-secret-known-hosts\" is set to true")
+		}
+	}
+	return nil
 }

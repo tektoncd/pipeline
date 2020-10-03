@@ -271,7 +271,7 @@ The example below customizes the following:
 - the default service account from `default` to `tekton`.
 - the default timeout from 60 minutes to 20 minutes.
 - the default `app.kubernetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
-- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default.
+- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. A list of supported fields is available [here](https://github.com/tektoncd/pipeline/blob/master/docs/podtemplates.md#supported-fields).
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
 - the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide
 
@@ -326,6 +326,12 @@ Tekton controller to set the `tekton.dev/ready` annotation at pod creation time 
 TaskRuns with no Sidecars specified. Enabling this option should decrease the time it takes for a TaskRun to
 start running. However, for clusters that use injected sidecars e.g. istio
 enabling this option can lead to unexpected behavior.
+
+- `require-git-ssh-secret-known-hosts`: set this flag to `"true"` to require that
+Git SSH Secrets include a `known_hosts` field. This ensures that a git remote server's
+key is validated before data is accepted from it when authenticating over SSH. Secrets
+that don't include a `known_hosts` will result in the TaskRun failing validation and
+not running. 
 
 For example:
 

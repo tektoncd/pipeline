@@ -69,7 +69,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "google/cloud-sdk",
+		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -152,6 +152,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 		Clients:    c,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Ctx:        ctx,
 	}, cancel
 }
 
@@ -462,7 +463,8 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep")))),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),
+			tb.TaskRunServiceAccountName(config.DefaultServiceAccountValue)),
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
@@ -746,7 +748,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 
-			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			err := c.Reconciler.Reconcile(testAssets.Ctx, tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
@@ -1243,7 +1245,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		return true, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
 	})
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-fails-to-cancel")
+	err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
 	if err == nil {
 		t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
 	}
@@ -3941,7 +3943,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	c := prt.TestAssets.Controller
 	clients := prt.TestAssets.Clients
 
-	reconcileError := c.Reconciler.Reconcile(context.Background(), namespace+"/"+pipelineRunName)
+	reconcileError := c.Reconciler.Reconcile(prt.TestAssets.Ctx, namespace+"/"+pipelineRunName)
 	if permanentError {
 		// When a PipelineRun is invalid and can't run, we expect a permanent error that will
 		// tell the Reconciler to not keep trying to reconcile.
@@ -3981,5 +3983,7 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, t),
 		tb.TaskRunLabels(labels),
 		tb.TaskRunAnnotations(annotations),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep")))))
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),
+			tb.TaskRunServiceAccountName(config.DefaultServiceAccountValue),
+		))
 }

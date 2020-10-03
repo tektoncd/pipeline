@@ -98,7 +98,7 @@ func TestOrderContainers(t *testing.T) {
 	wantInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {

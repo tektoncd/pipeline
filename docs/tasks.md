@@ -403,6 +403,8 @@ a `results` field but it's the responsibility of the `Task` to generate its cont
 It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
+You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/master/docs/variables.md#variables-available-in-a-task)
+to avoid having to hardcode this path.
 
 In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
@@ -426,12 +428,12 @@ spec:
       image: bash:latest
       script: |
         #!/usr/bin/env bash
-        date +%s | tee /tekton/results/current-date-unix-timestamp
+        date +%s | tee $(results.current-date-unix-timestamp.path)
     - name: print-date-human-readable
       image: bash:latest
       script: |
         #!/usr/bin/env bash
-        date | tee /tekton/results/current-date-human-readable
+        date | tee $(results.current-date-human-readable.path)
 ```
 
 The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)

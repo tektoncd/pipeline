@@ -1,4 +1,4 @@
-FROM google/cloud-sdk:latest
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest
 
 # Install golang
 RUN curl https://dl.google.com/go/go1.14.linux-amd64.tar.gz > go1.14.tar.gz

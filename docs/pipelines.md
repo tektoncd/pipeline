@@ -115,6 +115,7 @@ spec:
 For more information, see:
 - [Using `Workspaces` in `Pipelines`](workspaces.md#using-workspaces-in-pipelines)
 - The [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) code example
+- The [variables available in a `PipelineRun`](variables.md#variables-available-in-a-pipeline), including `workspaces.<name>.bound`.
 
 ## Specifying `Parameters`
 
@@ -324,13 +325,13 @@ To run a `Task` only when certain conditions are met, it is possible to _guard_ 
 The components of `WhenExpressions` are `Input`, `Operator` and `Values`:
 - `Input` is the input for the `WhenExpression` which can be static inputs or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)). If the `Input` is not provided, it defaults to an empty string.
 - `Operator` represents an `Input`'s relationship to a set of `Values`. A valid `Operator` must be provided, which can be either `in` or `notin`.
-- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)).
+- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters), [`Results`](#using-results) or [a Workspaces's `bound` state](#specifying-workspaces)).
 
 The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Results`](#using-results) are read directly from previous [`Tasks`](#adding-tasks-to-the-pipeline). Using [`Results`](#using-results) in a `WhenExpression` in a guarded `Task` introduces a resource dependency on the previous `Task` that produced the `Result`. 
 
 The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status). 
 
-In these examples, `first-create-file` task will only be executed if the `path` parameter is `README.md` and `echo-file-exists` task will only be executed if the `exists` result from `check-file` task is `yes`. 
+In these examples, `first-create-file` task will only be executed if the `path` parameter is `README.md`, `echo-file-exists` task will only be executed if the `exists` result from `check-file` task is `yes` and `run-lint` task will only be executed if the `lint-config` optional workspace has been provided by a PipelineRun. 
 
 ```yaml
 tasks:
@@ -350,6 +351,15 @@ tasks:
         values: ["yes"]
     taskRef:
         name: echo-file-exists
+---
+tasks:
+  - name: run-lint
+    when:
+      - input: "$(workspaces.lint-config.bound)"
+        operator: in
+        values: ["true"]
+    taskRef:
+      name: lint-source
 ```
 
 For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
@@ -362,6 +372,7 @@ There are a lot of scenarios where `WhenExpressions` can be really useful. Some 
 - Checking if a git file has changed in the previous commits
 - Checking if an image exists in the registry
 - Checking if the name of a CI job matches
+- Checking if an optional Workspace has been provided
 
 ### Guard `Task` execution using `Conditions`
 

@@ -161,7 +161,7 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
-	if err := WaitForPipelineRunState(c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline expects workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition"); err != nil {
+	if err := WaitForPipelineRunState(c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline requires workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition"); err != nil {
 		t.Fatalf("Failed to wait for PipelineRun %q to finish: %s", pipelineRunName, err)
 	}
 

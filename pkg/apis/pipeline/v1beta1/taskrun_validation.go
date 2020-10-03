@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -31,89 +30,69 @@ var _ apis.Validatable = (*TaskRun)(nil)
 
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
-	if err := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
-		return err
-	}
-	return tr.Spec.Validate(ctx)
+	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
+	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
 // Validate taskrun spec
-func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
-	if equality.Semantic.DeepEqual(ts, &TaskRunSpec{}) {
-		return apis.ErrMissingField("spec")
-	}
-
+func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// can't have both taskRef and taskSpec at the same time
 	if (ts.TaskRef != nil && ts.TaskRef.Name != "") && ts.TaskSpec != nil {
-		return apis.ErrDisallowedFields("spec.taskref", "spec.taskspec")
+		errs = errs.Also(apis.ErrDisallowedFields("taskref", "taskspec"))
 	}
 
 	// Check that one of TaskRef and TaskSpec is present
 	if (ts.TaskRef == nil || (ts.TaskRef != nil && ts.TaskRef.Name == "")) && ts.TaskSpec == nil {
-		return apis.ErrMissingField("spec.taskref.name", "spec.taskspec")
+		errs = errs.Also(apis.ErrMissingField("taskref.name", "taskspec"))
 	}
 
 	// Validate TaskSpec if it's present
 	if ts.TaskSpec != nil {
-		if err := ts.TaskSpec.Validate(ctx); err != nil {
-			return err
-		}
+		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskspec"))
 	}
 
-	if err := validateParameters(ts.Params); err != nil {
-		return err
-	}
-
-	if err := validateWorkspaceBindings(ctx, ts.Workspaces); err != nil {
-		return err
-	}
-
-	// Validate Resources declaration
-	if err := ts.Resources.Validate(ctx); err != nil {
-		return err
-	}
+	errs = errs.Also(validateParameters(ts.Params).ViaField("params"))
+	errs = errs.Also(validateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
+	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 
 	if ts.Status != "" {
 		if ts.Status != TaskRunSpecStatusCancelled {
-			return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ts.Status, TaskRunSpecStatusCancelled), "spec.status")
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ts.Status, TaskRunSpecStatusCancelled), "status"))
 		}
 	}
-
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "spec.timeout")
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "timeout"))
 		}
 	}
 
-	return nil
+	return errs
 }
 
 // validateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
-func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) *apis.FieldError {
+func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs *apis.FieldError) {
 	seen := sets.NewString()
-	for _, w := range wb {
+	for idx, w := range wb {
 		if seen.Has(w.Name) {
-			return apis.ErrMultipleOneOf("spec.workspaces.name")
+			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaIndex(idx))
 		}
 		seen.Insert(w.Name)
 
-		if err := w.Validate(ctx).ViaField("workspace"); err != nil {
-			return err
-		}
+		errs = errs.Also(w.Validate(ctx).ViaIndex(idx))
 	}
 
-	return nil
+	return errs
 }
 
-func validateParameters(params []Param) *apis.FieldError {
+func validateParameters(params []Param) (errs *apis.FieldError) {
 	// Template must not duplicate parameter names.
 	seen := sets.NewString()
 	for _, p := range params {
 		if seen.Has(strings.ToLower(p.Name)) {
-			return apis.ErrMultipleOneOf("spec.params.name")
+			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaKey(p.Name))
 		}
 		seen.Insert(p.Name)
 	}
-	return nil
+	return errs
 }
