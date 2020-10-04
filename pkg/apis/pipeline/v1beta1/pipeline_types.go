@@ -121,7 +121,7 @@ type PipelineTask struct {
 
 	// TaskSpec is a specification of a task
 	// +optional
-	TaskSpec *EmbeddedTask `json:"taskSpec,inline,omitempty"`
+	TaskSpec *EmbeddedTask `json:"taskSpec,omitempty"`
 
 	// Conditions is a list of conditions that need to be true for the task to run
 	// Conditions are deprecated, use WhenExpressions instead
