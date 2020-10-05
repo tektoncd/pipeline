@@ -26,6 +26,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -169,15 +172,29 @@ func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev
 		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
 	}
 
-	// Update the Pod's "READY" annotation to signal the first step to
-	// start.
-	if newPod.ObjectMeta.Annotations == nil {
-		newPod.ObjectMeta.Annotations = map[string]string{}
+	updatedPod := newPod.DeepCopy()
+
+	if updatedPod.ObjectMeta.Annotations == nil {
+		updatedPod.ObjectMeta.Annotations = map[string]string{}
 	}
-	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
-		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
+
+	oldAnnotations := newPod.ObjectMeta.Annotations
+	newAnnotations := updatedPod.ObjectMeta.Annotations
+
+	if oldAnnotations == nil {
+		oldAnnotations = map[string]string{}
+	}
+
+	if newAnnotations[readyAnnotation] != readyAnnotationValue {
+		newAnnotations[readyAnnotation] = readyAnnotationValue
+		patchData, patchDataErr := preparePatchBytesforPod(pod.Namespace, pod.Name, *newPod, *updatedPod)
+		if patchDataErr != nil {
+			return fmt.Errorf("error preparing patch data for annotations in Pod %q: %w", pod.Name, patchDataErr)
+		}
+
+		_, patchOperationErr := kubeclient.CoreV1().Pods(newPod.Namespace).Patch(ctx, pod.Name, types.StrategicMergePatchType, patchData, metav1.PatchOptions{})
+		if patchOperationErr != nil {
+			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, patchOperationErr)
 		}
 	}
 	return nil
@@ -192,25 +209,32 @@ func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.In
 	}
 
 	updated := false
-	if newPod.Status.Phase == corev1.PodRunning {
-		for _, s := range newPod.Status.ContainerStatuses {
+	updatedPod := newPod.DeepCopy()
+	if updatedPod.Status.Phase == corev1.PodRunning {
+		for _, s := range updatedPod.Status.ContainerStatuses {
 			// Stop any running container that isn't a step.
 			// An injected sidecar container might not have the
 			// "sidecar-" prefix, so we can't just look for that
 			// prefix.
 			if !IsContainerStep(s.Name) && s.State.Running != nil {
-				for j, c := range newPod.Spec.Containers {
+				for j, c := range updatedPod.Spec.Containers {
 					if c.Name == s.Name && c.Image != nopImage {
 						updated = true
-						newPod.Spec.Containers[j].Image = nopImage
+						updatedPod.Spec.Containers[j].Image = nopImage
 					}
 				}
 			}
 		}
 	}
 	if updated {
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, err)
+		patchData, patchDataErr := preparePatchBytesforPod(pod.Namespace, pod.Name, *newPod, *updatedPod)
+		if patchDataErr != nil {
+			return fmt.Errorf("error preparing patch data for images in Pod %q: %w", pod.Name, patchDataErr)
+		}
+
+		_, patchOperationErr := kubeclient.CoreV1().Pods(newPod.Namespace).Patch(ctx, pod.Name, types.StrategicMergePatchType, patchData, metav1.PatchOptions{})
+		if patchOperationErr != nil {
+			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, patchOperationErr)
 		}
 	}
 	return nil
@@ -228,7 +252,7 @@ func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	return false
 }
 
-// isContainerStep returns true if the container name indicates that it
+// IsContainerStep returns true if the container name indicates that it
 // represents a step.
 func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 
@@ -239,6 +263,27 @@ func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidec
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar
+// TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }
+
+// preparePatchBytesforPod compares the old and new Pod and creates a Patch data.
+func preparePatchBytesforPod(namespace, name string, oldPod, newPod corev1.Pod) ([]byte, error) {
+	oldData, err := json.Marshal(oldPod)
+	if err != nil {
+		return nil, fmt.Errorf("failed to Marshal old pod %q/%q: %v", namespace, name, err)
+	}
+
+	newData, err := json.Marshal(newPod)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to Marshal new pod %q/%q: %v", namespace, name, err)
+	}
+
+	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, corev1.Pod{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to CreateTwoWayMergePatch for pod %q/%q: %v", namespace, name, err)
+	}
+
+	return patchBytes, nil
+}
