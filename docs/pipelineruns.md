@@ -440,7 +440,8 @@ taskRuns:
           startedAt: "2020-05-04T02:06:24Z"
   ```
 
-The following tables shows how to read the overall status of a `PipelineRun`:
+The following tables shows how to read the overall status of a `PipelineRun`.
+Completion time is set once a `PipelineRun` reaches status `True` or `False`:
 
 `status`|`reason`|`completionTime` is set|Description
 :-------|:-------|:---------------------:|--------------:
@@ -450,7 +451,6 @@ Unknown|PipelineRunCancelled|No|The user requested the PipelineRun to be cancell
 True|Succeeded|Yes|The `PipelineRun` completed successfully.
 True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
 False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
-False|\[Error message\]|No|The `PipelineRun` encountered an non-permanent error, but it's still running and it may ultimately succeed.
 False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
 False|PipelineRunCancelled|Yes|The `PipelineRun` was cancelled successfully.
 False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
