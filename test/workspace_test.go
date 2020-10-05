@@ -236,6 +236,9 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	}
 }
 
+// TestWorkspaceVolumeNameMatchesVolumeVariableReplacement checks that a workspace's
+// randomized volume name matches the workspaces.<name>.volume variable injected into
+// a user's task specs.
 func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
 	c, namespace := setup(t)
 
@@ -311,6 +314,7 @@ func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
 	volumeNames := []string{}
 	for _, volume := range p.Spec.Volumes {
 		if volume.Name == workspaceVariableValue {
+			// Success: the volume's generated name matches the workspace.<name>.volume variable.
 			return
 		}
 		volumeNames = append(volumeNames, volume.Name)
