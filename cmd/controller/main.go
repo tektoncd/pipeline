@@ -84,7 +84,7 @@ func main() {
 	cfg.Burst = 2 * *burst
 
 	ctx := injection.WithNamespaceScope(signals.NewContext(), *namespace)
-	if !*disableHighAvailability {
+	if *disableHighAvailability {
 		ctx = sharedmain.WithHADisabled(ctx)
 	}
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
