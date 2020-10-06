@@ -104,7 +104,8 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
-          runAsUser: 1001
+          # User 65532 is the distroless nonroot user ID
+          runAsUser: 65532
       volumes:
         - name: config-logging
           configMap:
