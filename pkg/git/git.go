@@ -207,9 +207,11 @@ func SubmoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	return nil
 }
 
+// ensureHomeEnv works around an issue where ssh doesn't respect the HOME env variable. If HOME is set and
+// different from the user's detected home directory then symlink .ssh from the home directory to the HOME env
+// var. This way ssh will see the .ssh directory in the user's home directory even though it ignores
+// the HOME env var.
 func ensureHomeEnv(logger *zap.SugaredLogger) error {
-	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
-	// env variable.
 	homepath, err := homedir.Dir()
 	if err != nil {
 		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
@@ -217,23 +219,32 @@ func ensureHomeEnv(logger *zap.SugaredLogger) error {
 	}
 	homeenv := os.Getenv("HOME")
 	euid := os.Geteuid()
-	// Special case the root user/directory
+	if _, err := os.Stat(filepath.Join(homeenv, ".ssh")); err != nil {
+		// There's no $HOME/.ssh directory to access or the user doesn't have permissions
+		// to read it, or something else; in any event there's no need to try creating a
+		// symlink to it.
+		return nil
+	}
 	if euid == 0 {
-		if err := os.Symlink(homeenv+"/.ssh", "/root/.ssh"); err != nil {
-			// Only do a warning, in case we don't have a real home
-			// directory writable in our image
-			logger.Warnf("Unexpected error: creating symlink: %v", err)
-		}
-	} else if homeenv != "" && homeenv != homepath {
-		if _, err := os.Stat(homepath + "/.ssh"); os.IsNotExist(err) {
-			if err := os.Symlink(homeenv+"/.ssh", homepath+"/.ssh"); err != nil {
+		ensureHomeEnvSSHLinkedFromPath(logger, homeenv, "/root")
+	} else if homeenv != "" {
+		ensureHomeEnvSSHLinkedFromPath(logger, homeenv, homepath)
+	}
+	return nil
+}
+
+func ensureHomeEnvSSHLinkedFromPath(logger *zap.SugaredLogger, homeenv string, homepath string) {
+	if filepath.Clean(homeenv) != filepath.Clean(homepath) {
+		homeEnvSSH := filepath.Join(homeenv, ".ssh")
+		homePathSSH := filepath.Join(homepath, ".ssh")
+		if _, err := os.Stat(homePathSSH); os.IsNotExist(err) {
+			if err := os.Symlink(homeEnvSSH, homePathSSH); err != nil {
 				// Only do a warning, in case we don't have a real home
 				// directory writable in our image
 				logger.Warnf("Unexpected error: creating symlink: %v", err)
 			}
 		}
 	}
-	return nil
 }
 
 func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
