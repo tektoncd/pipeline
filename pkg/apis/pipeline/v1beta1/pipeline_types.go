@@ -103,8 +103,7 @@ type EmbeddedTask struct {
 	Metadata PipelineTaskMetadata `json:"metadata,omitempty"`
 
 	// TaskSpec is a specification of a task
-	// +optional
-	*TaskSpec `json:",inline,omitempty"`
+	TaskSpec `json:",inline,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both

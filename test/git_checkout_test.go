@@ -135,7 +135,7 @@ func TestGitPipelineRun(t *testing.T) {
 						}},
 						Tasks: []v1beta1.PipelineTask{{
 							Name: "git-check",
-							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{
+							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
 								Resources: &v1beta1.TaskResources{
 									Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 										Name: "gitsource", Type: v1alpha1.PipelineResourceTypeGit,
@@ -220,7 +220,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 						}},
 						Tasks: []v1beta1.PipelineTask{{
 							Name: "git-check",
-							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{
+							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
 								Resources: &v1beta1.TaskResources{
 									Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 										Name: "gitsource", Type: v1alpha1.PipelineResourceTypeGit,

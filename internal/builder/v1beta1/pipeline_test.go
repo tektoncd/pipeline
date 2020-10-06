@@ -438,8 +438,8 @@ func TestPipelineRunWithFinalTask(t *testing.T) {
 	}
 }
 
-func getTaskSpec() *v1beta1.TaskSpec {
-	return &v1beta1.TaskSpec{
+func getTaskSpec() v1beta1.TaskSpec {
+	return v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "step",
 			Image: "myimage",

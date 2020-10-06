@@ -152,7 +152,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 								ArrayVal: []string{"$(params.pipeline-words)"},
 							},
 						}},
-						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
 							Params: []v1beta1.ParamSpec{{
 								Name: "task-words",
 								Type: v1beta1.ParamTypeArray,
