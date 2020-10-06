@@ -425,7 +425,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		tb.Pipeline("test-pipeline",
 			tb.PipelineNamespace("foo"),
 			tb.PipelineSpec(
-				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1beta1.TaskSpec{
+				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(v1beta1.TaskSpec{
 					Steps: []v1beta1.Step{{Container: corev1.Container{
 						Name:  "mystep",
 						Image: "myimage"}}},
@@ -3908,8 +3908,8 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 		tb.Pipeline("test-pipeline",
 			tb.PipelineNamespace("foo"),
 			tb.PipelineSpec(
-				tb.PipelineTask("task-without-metadata", "", tb.PipelineTaskSpec(&ts)),
-				tb.PipelineTask("task-with-metadata", "", tb.PipelineTaskSpec(&ts),
+				tb.PipelineTask("task-without-metadata", "", tb.PipelineTaskSpec(ts)),
+				tb.PipelineTask("task-with-metadata", "", tb.PipelineTaskSpec(ts),
 					tb.TaskSpecMetadata(v1beta1.PipelineTaskMetadata{
 						Labels:      labels,
 						Annotations: annotations}),

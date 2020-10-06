@@ -465,7 +465,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		name: "pipeline task with invalid taskspec",
 		tasks: []PipelineTask{{
 			Name:     "foo",
-			TaskSpec: &EmbeddedTask{TaskSpec: &TaskSpec{}},
+			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{}},
 		}},
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
@@ -903,7 +903,7 @@ func TestValidateGraph_Failure(t *testing.T) {
 func TestValidateParamResults_Success(t *testing.T) {
 	desc := "valid pipeline task referencing task result along with parameter variable"
 	tasks := []PipelineTask{{
-		TaskSpec: &EmbeddedTask{TaskSpec: &TaskSpec{
+		TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
 			Results: []TaskResult{{
 				Name: "output",
 			}},
@@ -1995,8 +1995,8 @@ func TestContextInvalid(t *testing.T) {
 	}
 }
 
-func getTaskSpec() *TaskSpec {
-	return &TaskSpec{
+func getTaskSpec() TaskSpec {
+	return TaskSpec{
 		Steps: []Step{{
 			Container: corev1.Container{Name: "foo", Image: "bar"},
 		}},

@@ -86,7 +86,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		ps: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
-					TaskSpec: &v1beta1.TaskSpec{
+					TaskSpec: v1beta1.TaskSpec{
 						Params: []v1beta1.ParamSpec{{
 							Name: "string-param",
 						}},
@@ -97,7 +97,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		want: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
-					TaskSpec: &v1beta1.TaskSpec{
+					TaskSpec: v1beta1.TaskSpec{
 						Params: []v1beta1.ParamSpec{{
 							Name: "string-param",
 							Type: v1beta1.ParamTypeString,
@@ -111,7 +111,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		ps: &v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
-					TaskSpec: &v1beta1.TaskSpec{
+					TaskSpec: v1beta1.TaskSpec{
 						Params: []v1beta1.ParamSpec{{
 							Name: "string-param",
 						}},
@@ -122,7 +122,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		want: &v1beta1.PipelineSpec{
 			Finally: []v1beta1.PipelineTask{{
 				Name: "foo", TaskSpec: &v1beta1.EmbeddedTask{
-					TaskSpec: &v1beta1.TaskSpec{
+					TaskSpec: v1beta1.TaskSpec{
 						Params: []v1beta1.ParamSpec{{
 							Name: "string-param",
 							Type: v1beta1.ParamTypeString,

@@ -57,7 +57,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 						Tasks: []v1beta1.PipelineTask{{
 							Name:    "task",
 							Retries: numRetries,
-							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{
+							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
 								Steps: []v1beta1.Step{{
 									Container: corev1.Container{
 										Image: "busybox",

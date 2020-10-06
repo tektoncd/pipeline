@@ -954,7 +954,7 @@ func TestResolvePipelineRun(t *testing.T) {
 			tb.PipelineTaskOutputResource("output1", "git-resource"),
 		),
 		tb.PipelineTask("mytask4", "",
-			tb.PipelineTaskSpec(&v1beta1.TaskSpec{
+			tb.PipelineTaskSpec(v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{Container: corev1.Container{
 					Name: "step1",
 				}}},

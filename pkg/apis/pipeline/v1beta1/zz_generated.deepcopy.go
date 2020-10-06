@@ -229,11 +229,7 @@ func (in *ConditionCheckStatusFields) DeepCopy() *ConditionCheckStatusFields {
 func (in *EmbeddedTask) DeepCopyInto(out *EmbeddedTask) {
 	*out = *in
 	in.Metadata.DeepCopyInto(&out.Metadata)
-	if in.TaskSpec != nil {
-		in, out := &in.TaskSpec, &out.TaskSpec
-		*out = new(TaskSpec)
-		(*in).DeepCopyInto(*out)
-	}
+	in.TaskSpec.DeepCopyInto(&out.TaskSpec)
 	return
 }
 
