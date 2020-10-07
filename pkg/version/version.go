@@ -15,3 +15,7 @@
 package version
 
 var PipelineVersion = ""
+
+func SetVersion(version string) {
+	PipelineVersion = version
+}
