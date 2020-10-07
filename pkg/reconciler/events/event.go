@@ -58,9 +58,12 @@ func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *
 	sendKubernetesEvents(recorder, beforeCondition, afterCondition, object)
 
 	if sendCloudEvents {
-		err := cloudevent.SendCloudEventWithRetries(ctx, object)
-		if err != nil {
-			logger.Warnf("Failed to emit cloud events %v", err.Error())
+		// Only send events if the new condition represents a change
+		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
+			err := cloudevent.SendCloudEventWithRetries(ctx, object)
+			if err != nil {
+				logger.Warnf("Failed to emit cloud events %v", err.Error())
+			}
 		}
 	}
 }

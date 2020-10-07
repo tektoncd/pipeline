@@ -51,6 +51,11 @@ retrieving those events using the `kubectl describe` command. Tekton can also em
 When you [configure a sink](install.md#configuring-cloudevents-notifications), Tekton emits
 events as described in the table below.
 
+Tekton sends cloud events in a parallel routine to allow for retries without blocking the
+reconciler. A routine is started every time the `Succeeded` condition changes - either state,
+reason or message. Retries are sent using an exponential back-off strategy. 
+Because of retries, events are not guaranteed to be sent to the target sink in the order they happened.
+
 Resource      |Event    |Event Type
 :-------------|:-------:|:----------------------------------------------------------
 `TaskRun`     | `Started` | `dev.tekton.event.taskrun.started.v1`
