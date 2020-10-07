@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -113,6 +114,11 @@ func TestTaskRunFailure(t *testing.T) {
 	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
+	}
+
+	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
+	if !ok || releaseAnnotation != "devel" {
+		t.Fatalf("expected Taskrun to be annotated with %s=devel, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
 	}
 }
 

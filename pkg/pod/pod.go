@@ -44,8 +44,7 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation      = "pipeline.tekton.dev/release"
-	ReleaseAnnotationValue = version.PipelineVersion
+	ReleaseAnnotation = "pipeline.tekton.dev/release"
 
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1beta1.SchemeGroupVersion.Group,
@@ -250,7 +249,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	podAnnotations := taskRun.Annotations
-	podAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+	podAnnotations[ReleaseAnnotation] = version.PipelineVersion
 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue

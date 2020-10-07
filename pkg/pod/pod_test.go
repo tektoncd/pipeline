@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -1121,11 +1122,11 @@ script-heredoc-randomly-generated-78c5n
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: ReleaseAnnotationValue,
+					ReleaseAnnotation: version.PipelineVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+				trAnnotations[ReleaseAnnotation] = version.PipelineVersion
 			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{

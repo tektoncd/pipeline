@@ -60,7 +60,7 @@ var (
 
 func main() {
 	flag.Parse()
-	version.PipelineVersion = *versionGiven
+	version.SetVersion(*versionGiven)
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
