@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
 	"os"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
@@ -213,6 +215,23 @@ func main() {
 		SecretName:  secretName,
 	})
 
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", handler)
+	mux.HandleFunc("/health", handler)
+	mux.HandleFunc("/readiness", handler)
+
+	port := os.Getenv("PROBES_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	go func() {
+		// start the web server on port and accept requests
+		log.Printf("Readiness and health check server listening on port %s", port)
+		log.Fatal(http.ListenAndServe(":"+port, mux))
+	}()
+
 	sharedmain.WebhookMainWithConfig(ctx, "webhook",
 		sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
@@ -221,4 +240,8 @@ func main() {
 		newConfigValidationController,
 		newConversionController,
 	)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
