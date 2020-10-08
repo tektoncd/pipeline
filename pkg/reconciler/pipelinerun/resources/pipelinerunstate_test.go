@@ -154,12 +154,12 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 
 			isDone := facts.checkTasksDone(d)
 			if d := cmp.Diff(isDone, tc.expected); d != "" {
-				t.Errorf("Didn't get expected IsDone %s", diff.PrintWantGot(d))
+				t.Errorf("Didn't get expected checkTasksDone %s", diff.PrintWantGot(d))
 			}
 			for i, pt := range tc.state {
-				isDone = pt.IsDone()
+				isDone = pt.IsDone(&facts)
 				if d := cmp.Diff(isDone, tc.ptExpected[i]); d != "" {
-					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) checkTasksDone %s", diff.PrintWantGot(d))
+					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone %s", diff.PrintWantGot(d))
 				}
 
 			}

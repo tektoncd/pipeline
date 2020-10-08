@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strconv"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
 
@@ -70,15 +69,9 @@ type ResolvedPipelineRunTask struct {
 	ResolvedConditionChecks TaskConditionCheckState // Could also be a TaskRun or maybe just a Pod?
 }
 
-func (t ResolvedPipelineRunTask) IsDone() bool {
-	if t.TaskRun == nil || t.PipelineTask == nil {
-		return false
-	}
-
-	status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	retriesDone := len(t.TaskRun.Status.RetriesStatus)
-	retries := t.PipelineTask.Retries
-	return status.IsTrue() || status.IsFalse() && retriesDone >= retries
+// IsDone returns true only if the task is skipped, succeeded or failed
+func (t ResolvedPipelineRunTask) IsDone(facts *PipelineRunFacts) bool {
+	return t.Skip(facts) || t.IsSuccessful() || t.IsFailure()
 }
 
 // IsSuccessful returns true only if the taskrun itself has completed successfully
@@ -87,11 +80,7 @@ func (t ResolvedPipelineRunTask) IsSuccessful() bool {
 		return false
 	}
 	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	if c == nil {
-		return false
-	}
-
-	return c.Status == corev1.ConditionTrue
+	return c.IsTrue()
 }
 
 // IsFailure returns true only if the taskrun itself has failed
@@ -135,12 +124,9 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 
 func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
-	// check if parent tasks are done executing,
-	// if any of the parents is not yet scheduled or still running,
-	// wait for it to complete before evaluating when expressions
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		if !stateMap[p.Task.HashKey()].IsDone() {
+		if !stateMap[p.Task.HashKey()].IsDone(facts) {
 			return false
 		}
 	}

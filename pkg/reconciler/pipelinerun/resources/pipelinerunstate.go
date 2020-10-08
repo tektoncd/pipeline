@@ -306,16 +306,7 @@ func (facts *PipelineRunFacts) successfulOrSkippedDAGTasks() []string {
 func (facts *PipelineRunFacts) checkTasksDone(d *dag.Graph) bool {
 	for _, t := range facts.State {
 		if isTaskInGraph(t.PipelineTask.Name, d) {
-			if t.TaskRun == nil {
-				// this task might have skipped if taskRun is nil
-				// continue and ignore if this task was skipped
-				// skipped task is considered part of done
-				if t.Skip(facts) {
-					continue
-				}
-				return false
-			}
-			if !t.IsDone() {
+			if !t.IsDone(facts) {
 				return false
 			}
 		}
