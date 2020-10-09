@@ -163,22 +163,26 @@ func (o *TLogger) interfacesToFields(things ...interface{}) []interface{} {
 func (o *TLogger) errorWithRuntimeCheck(stringThenKeysAndValues ...interface{}) (error, string, []interface{}) {
 	if len(stringThenKeysAndValues) == 0 {
 		return nil, "", nil
-	} else {
-		s, isString := stringThenKeysAndValues[0].(string)
-		e, isError := stringThenKeysAndValues[0].(error)
-		if isString {
-			// Desired case (hopefully)
-			remainder := stringThenKeysAndValues[1:]
-			if !validateKeysAndValues(remainder...) {
-				remainder = o.interfacesToFields(remainder...)
-			}
-			return nil, s, remainder
-		} else if isError && len(stringThenKeysAndValues) == 1 {
-			return e, "", nil
-		} else {
-			return nil, "unstructured error", o.interfacesToFields(stringThenKeysAndValues...)
-		}
 	}
+	s, isString := stringThenKeysAndValues[0].(string)
+	if isString {
+		// Desired case (hopefully)
+		remainder := stringThenKeysAndValues[1:]
+		if !validateKeysAndValues(remainder...) {
+			remainder = o.interfacesToFields(remainder...)
+		}
+		return nil, s, remainder
+	}
+	e, isError := stringThenKeysAndValues[0].(error)
+	if isError && len(stringThenKeysAndValues) == 1 {
+		return e, "", nil
+	}
+	return nil, "unstructured error", o.interfacesToFields(stringThenKeysAndValues...)
+}
+
+// Cleanup registers a cleanup callback.
+func (o *TLogger) Cleanup(c func()) {
+	o.t.Cleanup(c)
 }
 
 // Run a subtest. Just like testing.T.Run but creates a TLogger.

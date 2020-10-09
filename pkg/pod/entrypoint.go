@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -84,13 +85,14 @@ var (
 // Containers must have Command specified; if the user didn't specify a
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
-//
-// TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
+// Additionally, Step timeouts are added as entrypoint flag.
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
-		Name:         "place-tools",
-		Image:        entrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
+		Name:  "place-tools",
+		Image: entrypointImage,
+		// Invoke the entrypoint binary in "cp mode" to copy itself
+		// into the correct location for later steps.
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
@@ -118,8 +120,13 @@ func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps
 				"-termination_path", terminationPath,
 			}
 		}
-		argsForEntrypoint = append(argsForEntrypoint, extraEntrypointArgs...)
-		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)
+		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
+		if taskSpec != nil {
+			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 && taskSpec.Steps[i].Timeout != nil {
+				argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
+			}
+			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+		}
 
 		cmd, args := s.Command, s.Args
 		if len(cmd) == 0 {
@@ -160,8 +167,8 @@ func collectResultsName(results []v1beta1.TaskResult) string {
 
 // UpdateReady updates the Pod's annotations to signal the first step to start
 // by projecting the ready annotation via the Downward API.
-func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
 	}
@@ -173,7 +180,7 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	}
 	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
 		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
+		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
 		}
 	}
@@ -182,8 +189,8 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 
 // StopSidecars updates sidecar containers in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
+func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
 	}
@@ -206,8 +213,8 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 		}
 	}
 	if updated {
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
+		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
+			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, err)
 		}
 	}
 	return nil
@@ -236,6 +243,6 @@ func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidec
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar
+// TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

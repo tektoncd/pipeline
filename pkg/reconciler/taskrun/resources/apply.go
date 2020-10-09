@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/tektoncd/pipeline/pkg/workspace"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -108,24 +109,36 @@ func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1bet
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
-// ApplyWorkspaces applies the substitution from paths that the workspaces in w are mounted to, the
-// volumes that wb are realized with in the task spec ts and the PersistentVolumeClaim names for the
+// ApplyWorkspaces applies the substitution from paths that the workspaces in declarations mounted to, the
+// volumes that bindings are realized with in the task spec and the PersistentVolumeClaim names for the
 // workspaces.
-func ApplyWorkspaces(spec *v1beta1.TaskSpec, w []v1beta1.WorkspaceDeclaration, wb []v1beta1.WorkspaceBinding) *v1beta1.TaskSpec {
+func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDeclaration, bindings []v1beta1.WorkspaceBinding, vols map[string]corev1.Volume) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{}
 
-	for _, ww := range w {
-		stringReplacements[fmt.Sprintf("workspaces.%s.path", ww.Name)] = ww.GetMountPath()
+	bindNames := sets.NewString()
+	for _, binding := range bindings {
+		bindNames.Insert(binding.Name)
 	}
-	v := workspace.GetVolumes(wb)
-	for name, vv := range v {
-		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vv.Name
-	}
-	for _, w := range wb {
-		if w.PersistentVolumeClaim != nil {
-			stringReplacements[fmt.Sprintf("workspaces.%s.claim", w.Name)] = w.PersistentVolumeClaim.ClaimName
+
+	for _, declaration := range declarations {
+		prefix := fmt.Sprintf("workspaces.%s.", declaration.Name)
+		if declaration.Optional && !bindNames.Has(declaration.Name) {
+			stringReplacements[prefix+"bound"] = "false"
+			stringReplacements[prefix+"path"] = ""
 		} else {
-			stringReplacements[fmt.Sprintf("workspaces.%s.claim", w.Name)] = ""
+			stringReplacements[prefix+"bound"] = "true"
+			stringReplacements[prefix+"path"] = declaration.GetMountPath()
+		}
+	}
+
+	for name, vol := range vols {
+		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vol.Name
+	}
+	for _, binding := range bindings {
+		if binding.PersistentVolumeClaim != nil {
+			stringReplacements[fmt.Sprintf("workspaces.%s.claim", binding.Name)] = binding.PersistentVolumeClaim.ClaimName
+		} else {
+			stringReplacements[fmt.Sprintf("workspaces.%s.claim", binding.Name)] = ""
 		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
@@ -214,7 +227,7 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 	// Apply variable substitution to the sidecar definitions
 	sidecars := spec.Sidecars
 	for i := range sidecars {
-		v1beta1.ApplyContainerReplacements(&sidecars[i].Container, stringReplacements, arrayReplacements)
+		v1beta1.ApplySidecarReplacements(&sidecars[i], stringReplacements, arrayReplacements)
 	}
 
 	return spec

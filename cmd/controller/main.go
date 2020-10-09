@@ -23,7 +23,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/version"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
@@ -46,10 +49,18 @@ var (
 	prImage                  = flag.String("pr-image", "", "The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
 	namespace                = flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
+	versionGiven             = flag.String("version", "devel", "Version of Tekton running")
+	qps                      = flag.Int("kube-api-qps", int(rest.DefaultQPS), "Maximum QPS to the master from this client")
+	burst                    = flag.Int("kube-api-burst", rest.DefaultBurst, "Maximum burst for throttle")
+	threadsPerController     = flag.Int("threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
+	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
+		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
+		"issue upstream!")
 )
 
 func main() {
 	flag.Parse()
+	version.SetVersion(*versionGiven)
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
@@ -65,7 +76,18 @@ func main() {
 	if err := images.Validate(); err != nil {
 		log.Fatal(err)
 	}
-	sharedmain.MainWithContext(injection.WithNamespaceScope(signals.NewContext(), *namespace), ControllerLogKey,
+	controller.DefaultThreadsPerController = *threadsPerController
+
+	cfg := sharedmain.ParseAndGetConfigOrDie()
+	// multiply by 2, no of controllers being created
+	cfg.QPS = 2 * float32(*qps)
+	cfg.Burst = 2 * *burst
+
+	ctx := injection.WithNamespaceScope(signals.NewContext(), *namespace)
+	if *disableHighAvailability {
+		ctx = sharedmain.WithHADisabled(ctx)
+	}
+	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
 		taskrun.NewController(*namespace, images),
 		pipelinerun.NewController(*namespace, images),
 	)

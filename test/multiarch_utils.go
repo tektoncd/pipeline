@@ -18,23 +18,31 @@ package test
 
 import (
 	"os"
+	"regexp"
 	"runtime"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
-	imageNames    = initImageNames()
-	excludedTests = initExcludedTests()
+	imageNames      = initImageNames()
+	excludedTests   = initExcludedTests()
+	imagesMappingRE map[*regexp.Regexp][]byte
 )
 
 const (
 	// Busybox image with specific sha
-	BusyboxSha = iota
+	busyboxImage = iota
 	// Registry image
-	Registry
+	registryImage
 )
 
-// return architecture of the cluster where test suites will be executed.
+func init() {
+	imagesMappingRE = getImagesMappingRE()
+}
+
+// getTestArch returns architecture of the cluster where test suites will be executed.
 // default value is similar to build architecture, TEST_RUNTIME_ARCH is used when test target cluster has another architecture
 func getTestArch() string {
 	val, ok := os.LookupEnv("TEST_RUNTIME_ARCH")
@@ -44,28 +52,51 @@ func getTestArch() string {
 	return runtime.GOARCH
 }
 
+// initImageNames returns the map with arch dependent image names for e2e tests
 func initImageNames() map[int]string {
-	mapping := make(map[int]string)
-
-	switch getTestArch() {
-	case "s390x":
-		mapping[BusyboxSha] = "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977"
-		mapping[Registry] = "ibmcom/registry:2.6.2.5"
-
-	default:
-		mapping[BusyboxSha] = "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649"
-		mapping[Registry] = "registry"
+	if getTestArch() == "s390x" {
+		return map[int]string{
+			busyboxImage:  "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
+			registryImage: "ibmcom/registry:2.6.2.5",
+		}
 	}
-	return mapping
+	return map[int]string{
+		busyboxImage:  "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+		registryImage: "registry",
+	}
 }
 
-func initExcludedTests() map[string]bool {
-	mapping := make(map[string]bool)
-	tests := []string{}
-	switch getTestArch() {
-	case "s390x":
-		//examples
-		tests = []string{
+// getImagesMappingRE generates the map ready to search and replace image names with regexp for examples files.
+// search is done using "image: <name>" pattern.
+func getImagesMappingRE() map[*regexp.Regexp][]byte {
+	imageNamesMapping := imageNamesMapping()
+	imageMappingRE := make(map[*regexp.Regexp][]byte, len(imageNamesMapping))
+
+	for existingImage, archSpecificImage := range imageNamesMapping {
+		imageMappingRE[regexp.MustCompile("(?im)image: "+existingImage+"$")] = []byte("image: " + archSpecificImage)
+	}
+
+	return imageMappingRE
+}
+
+// imageNamesMapping provides mapping between image name in the examples yaml files and desired image name for specific arch.
+// by default empty map is returned.
+func imageNamesMapping() map[string]string {
+	if getTestArch() == "s390x" {
+		return map[string]string{
+			"registry": getTestImage(registryImage),
+			"node":     "node:alpine3.11",
+		}
+	}
+
+	return make(map[string]string)
+}
+
+// initExcludedTests provides list of excluded tests for e2e and exanples tests
+func initExcludedTests() sets.String {
+	if getTestArch() == "s390x" {
+		return sets.NewString(
+			//examples
 			"TestExamples/v1alpha1/taskruns/dind-sidecar",
 			"TestExamples/v1beta1/taskruns/dind-sidecar",
 			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
@@ -93,8 +124,6 @@ func initExcludedTests() map[string]bool {
 			"TestExamples/v1alpha1/taskruns/pullrequest_input_copystep_output",
 			"TestExamples/v1beta1/taskruns/pullrequest",
 			"TestExamples/v1alpha1/taskruns/pullrequest",
-			"TestExamples/v1beta1/taskruns/step-script",
-			"TestExamples/v1alpha1/taskruns/step-script",
 			"TestExamples/v1beta1/pipelineruns/conditional-pipelinerun",
 			"TestExamples/v1alpha1/pipelineruns/pipelinerun-with-resourcespec",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun-with-resourcespec",
@@ -109,10 +138,6 @@ func initExcludedTests() map[string]bool {
 			"TestTaskRunPipelineRunCancel",
 			"TestEntrypointRunningStepsInOrder",
 			"TestGitPipelineRun",
-			"TestGitPipelineRunFail",
-			"TestGitPipelineRunWithRefspec",
-			"TestGitPipelineRun_Disable_SSLVerify",
-			"TestGitPipelineRunWithNonMasterBranch",
 			"TestHelmDeployPipelineRun",
 			"TestKanikoTaskRun",
 			"TestPipelineRun",
@@ -122,26 +147,19 @@ func initExcludedTests() map[string]bool {
 			"TestWorkingDirCreated",
 			"TestPipelineRun/service_account_propagation_and_pipeline_param",
 			"TestPipelineRun/pipelinerun_succeeds_with_LimitRange_minimum_in_namespace",
-		}
-	default:
-		// do nothing
+		)
 	}
-
-	for _, test := range tests {
-		mapping[test] = true
-	}
-
-	return mapping
+	return sets.NewString()
 }
 
-// get test image based on unique id
-func GetTestImage(image int) string {
+// getTestImage gets test image based on unique id
+func getTestImage(image int) string {
 	return imageNames[image]
 }
 
-// check if test name is in the excluded list and skip it
-func SkipIfExcluded(t *testing.T) {
-	if excludedTests[t.Name()] {
+// skipIfExcluded checks if test name is in the excluded list and skip it
+func skipIfExcluded(t *testing.T) {
+	if excludedTests.Has(t.Name()) {
 		t.Skipf("skip for %s architecture", getTestArch())
 	}
 }

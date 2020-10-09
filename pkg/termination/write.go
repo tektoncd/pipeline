@@ -20,7 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 const (
@@ -30,12 +30,12 @@ const (
 )
 
 // WriteMessage writes the results to the termination message path.
-func WriteMessage(path string, pro []v1alpha1.PipelineResourceResult) error {
+func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	// if the file at path exists, concatenate the new values otherwise create it
 	// file at path already exists
 	fileContents, err := ioutil.ReadFile(path)
 	if err == nil {
-		var existingEntries []v1alpha1.PipelineResourceResult
+		var existingEntries []v1beta1.PipelineResourceResult
 		if err := json.Unmarshal([]byte(fileContents), &existingEntries); err == nil {
 			// append new entries to existing entries
 			pro = append(existingEntries, pro...)

@@ -128,16 +128,16 @@ spec:
   pipelineSpec:
     tasks:
     - name: task1
-      metadata:
-        labels:
-          pipeline-sdk-type: kfp
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: kfp
        ...
     - name: task2
-      metadata:
-        labels:
-          pipeline-sdk-type: tfx
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: tfx
        ...
 ```
 
@@ -440,7 +440,8 @@ taskRuns:
           startedAt: "2020-05-04T02:06:24Z"
   ```
 
-The following tables shows how to read the overall status of a `PipelineRun`:
+The following tables shows how to read the overall status of a `PipelineRun`.
+Completion time is set once a `PipelineRun` reaches status `True` or `False`:
 
 `status`|`reason`|`completionTime` is set|Description
 :-------|:-------|:---------------------:|--------------:
@@ -450,12 +451,45 @@ Unknown|PipelineRunCancelled|No|The user requested the PipelineRun to be cancell
 True|Succeeded|Yes|The `PipelineRun` completed successfully.
 True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
 False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
-False|\[Error message\]|No|The `PipelineRun` encountered an non-permanent error, but it's still running and it may ultimately succeed.
 False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
 False|PipelineRunCancelled|Yes|The `PipelineRun` was cancelled successfully.
 False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
 
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
+
+When a `PipelineRun` has `Tasks` with [WhenExpressions](pipelines.md#guard-task-execution-using-whenexpressions):
+- If the `WhenExpressions` evaluate to `true`, the `Task` is executed then the `TaskRun` and its resolved `WhenExpressions` will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
+- If the `WhenExpressions` evaluate to `false`, the `Task` is skipped then its name and its resolved `WhenExpressions` will be listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`. 
+
+```yaml
+Conditions:
+  Last Transition Time:  2020-08-27T15:07:34Z
+  Message:               Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 1
+  Reason:                Completed
+  Status:                True
+  Type:                  Succeeded
+Skipped Tasks:
+  Name:       skip-this-task
+  When Expressions:
+    Input:     foo
+    Operator:  in
+    Values:
+      bar
+    Input:     foo
+    Operator:  notin
+    Values:
+      foo
+Task Runs:
+  pipelinerun-to-skip-task-run-this-task-r2djj:
+    Pipeline Task Name:  run-this-task
+    Status:
+      ...
+    When Expressions:
+      Input:     foo
+      Operator:  in
+      Values:
+        foo
+```
 
 ## Cancelling a `PipelineRun`
 

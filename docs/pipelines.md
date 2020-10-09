@@ -15,6 +15,7 @@ weight: 3
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
+    - [Guard `Task` execution using `When Expressions`](#guard-task-execution-using-whenexpressions)
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Using `Results`](#using-results)
@@ -114,6 +115,7 @@ spec:
 For more information, see:
 - [Using `Workspaces` in `Pipelines`](workspaces.md#using-workspaces-in-pipelines)
 - The [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) code example
+- The [variables available in a `PipelineRun`](variables.md#variables-available-in-a-pipeline), including `workspaces.<name>.bound`.
 
 ## Specifying `Parameters`
 
@@ -316,7 +318,65 @@ tasks:
       name: build-push
 ```
 
+### Guard `Task` execution using `WhenExpressions`
+
+To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using the `when` field. The `when` field allows you to list a series of references to `WhenExpressions`.
+
+The components of `WhenExpressions` are `Input`, `Operator` and `Values`:
+- `Input` is the input for the `WhenExpression` which can be static inputs or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)). If the `Input` is not provided, it defaults to an empty string.
+- `Operator` represents an `Input`'s relationship to a set of `Values`. A valid `Operator` must be provided, which can be either `in` or `notin`.
+- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters), [`Results`](#using-results) or [a Workspaces's `bound` state](#specifying-workspaces)).
+
+The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Results`](#using-results) are read directly from previous [`Tasks`](#adding-tasks-to-the-pipeline). Using [`Results`](#using-results) in a `WhenExpression` in a guarded `Task` introduces a resource dependency on the previous `Task` that produced the `Result`. 
+
+The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status). 
+
+In these examples, `first-create-file` task will only be executed if the `path` parameter is `README.md`, `echo-file-exists` task will only be executed if the `exists` result from `check-file` task is `yes` and `run-lint` task will only be executed if the `lint-config` optional workspace has been provided by a PipelineRun. 
+
+```yaml
+tasks:
+  - name: first-create-file
+    when:
+      - input: "$(params.path)"
+        operator: in
+        values: ["README.md"]
+    taskRef:
+      name: first-create-file
+---
+tasks:
+  - name: echo-file-exists
+    when:
+      - input: "$(tasks.check-file.results.exists)"
+        operator: in
+        values: ["yes"]
+    taskRef:
+        name: echo-file-exists
+---
+tasks:
+  - name: run-lint
+    when:
+      - input: "$(workspaces.lint-config.bound)"
+        operator: in
+        values: ["true"]
+    taskRef:
+      name: lint-source
+```
+
+For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
+
+When `WhenExpressions` are specified in a `Task`, [`Conditions`](#guard-task-execution-using-conditions) should not be specified in the same `Task`. The `Pipeline` will be rejected as invalid if both `WhenExpressions` and `Conditions` are included.
+
+There are a lot of scenarios where `WhenExpressions` can be really useful. Some of these are:
+- Checking if the name of a git branch matches
+- Checking if the `Result` of a previous `Task` is as expected
+- Checking if a git file has changed in the previous commits
+- Checking if an image exists in the registry
+- Checking if the name of a CI job matches
+- Checking if an optional Workspace has been provided
+
 ### Guard `Task` execution using `Conditions`
+
+**Note:** `Conditions` are deprecated, use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead. 
 
 To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
 the `conditions` field. The `conditions` field allows you to list a series of references to
@@ -397,7 +457,7 @@ spec:
     - name: build-the-image
       taskRef:
         name: build-push
-      Timeout: "0h1m30s"
+      timeout: "0h1m30s"
 ```
 
 ## Using `Results`
@@ -405,10 +465,10 @@ spec:
 Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipeline can use these
 `Results` for two different purposes:
 
-1. A Pipeline can pass the `Result` of a `Task` in to the `Parameters` of another.
+1. A Pipeline can pass the `Result` of a `Task` into the `Parameters` or `WhenExpressions` of another.
 2. A Pipeline can itself emit `Results` and include data from the `Results` of its Tasks.
 
-### Passing one Task's `Results` into the `Parameters` of another
+### Passing one Task's `Results` into the `Parameters` or `WhenExpressions` of another
 
 Sharing `Results` between `Tasks` in a `Pipeline` happens via
 [variable substitution](variables.md#variables-available-in-a-pipeline) - one `Task` emits
@@ -428,6 +488,16 @@ before this one.
 params:
   - name: foo
     value: "$(tasks.checkout-source.results.commit)"
+```
+
+In the snippet below, a `WhenExpression` is provided its value from the `exists` `Result` emitted by the
+`check-file` `Task`. Tekton will make sure that the `check-file` `Task` runs before this one.
+
+```yaml
+when:
+- input: "$(tasks.check-file.results.exists)"
+  operator: in
+  values: ["yes"]
 ```
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).

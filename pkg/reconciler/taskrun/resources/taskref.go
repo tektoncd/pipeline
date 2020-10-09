@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -33,9 +34,9 @@ type LocalTaskRefResolver struct {
 
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
-func (l *LocalTaskRefResolver) GetTask(name string) (v1beta1.TaskInterface, error) {
+func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
 	if l.Kind == v1beta1.ClusterTaskKind {
-		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(name, metav1.GetOptions{})
+		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -46,5 +47,5 @@ func (l *LocalTaskRefResolver) GetTask(name string) (v1beta1.TaskInterface, erro
 	if l.Namespace == "" {
 		return nil, fmt.Errorf("Must specify namespace to resolve reference to task %s", name)
 	}
-	return l.Tektonclient.TektonV1beta1().Tasks(l.Namespace).Get(name, metav1.GetOptions{})
+	return l.Tektonclient.TektonV1beta1().Tasks(l.Namespace).Get(ctx, name, metav1.GetOptions{})
 }

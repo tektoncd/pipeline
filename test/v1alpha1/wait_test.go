@@ -21,15 +21,12 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	rtesting "knative.dev/pkg/reconciler/testing"
-)
-
-const (
-	waitNamespace = "wait"
 )
 
 var (
@@ -39,34 +36,31 @@ var (
 
 func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	d := Data{
-		TaskRuns: []*v1alpha1.TaskRun{
-			tb.TaskRun("foo",
-				tb.TaskRunNamespace(waitNamespace),
-				tb.TaskRunStatus(
-					tb.StatusCondition(success),
-				)),
-		},
+		TaskRuns: []*v1alpha1.TaskRun{{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{success},
+			}},
+		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForTaskRunState(c, "foo", Succeed("foo"), "TestTaskRunSucceed")
-	if err != nil {
+	if err := WaitForTaskRunState(ctx, c, "foo", Succeed("foo"), "TestTaskRunSucceed"); err != nil {
 		t.Fatal(err)
 	}
 }
 func TestWaitForTaskRunStateFailed(t *testing.T) {
 	d := Data{
-		TaskRuns: []*v1alpha1.TaskRun{
-			tb.TaskRun("foo",
-				tb.TaskRunNamespace(waitNamespace),
-				tb.TaskRunStatus(
-					tb.StatusCondition(failure),
-				)),
-		},
+		TaskRuns: []*v1alpha1.TaskRun{{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{failure},
+			}},
+		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForTaskRunState(c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
+	err := WaitForTaskRunState(ctx, c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,15 +68,16 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 
 func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 	d := Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{
-			tb.PipelineRun("bar", tb.PipelineRunNamespace(waitNamespace), tb.PipelineRunStatus(
-				tb.PipelineRunStatusCondition(success),
-			)),
-		},
+		PipelineRuns: []*v1alpha1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+			Status: v1alpha1.PipelineRunStatus{Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{success},
+			}},
+		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
+	err := WaitForPipelineRunState(ctx, c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,30 +85,30 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 
 func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	d := Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{
-			tb.PipelineRun("bar", tb.PipelineRunNamespace(waitNamespace), tb.PipelineRunStatus(
-				tb.PipelineRunStatusCondition(failure),
-			)),
-		},
+		PipelineRuns: []*v1alpha1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{Name: "bar"},
+			Status: v1alpha1.PipelineRunStatus{Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{failure},
+			}},
+		}},
 	}
-	c, cancel := fakeClients(t, d)
+	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
-	err := WaitForPipelineRunState(c, "bar", 2*time.Second, Failed("bar"), "TestWaitForPipelineRunFailed")
+	err := WaitForPipelineRunState(ctx, c, "bar", 2*time.Second, Failed("bar"), "TestWaitForPipelineRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func fakeClients(t *testing.T, d Data) (*clients, func()) {
+func fakeClients(t *testing.T, d Data) (*clients, context.Context, func()) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	fakeClients, _ := SeedTestData(t, ctx, d)
-	// 	c.KubeClient = fakeClients.Kube
 	return &clients{
-		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),
-		PipelineResourceClient: fakeClients.Resource.TektonV1alpha1().PipelineResources(waitNamespace),
-		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(waitNamespace),
-		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(waitNamespace),
-		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(waitNamespace),
-	}, cancel
+		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(""),
+		PipelineResourceClient: fakeClients.Resource.TektonV1alpha1().PipelineResources(""),
+		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(""),
+		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(""),
+		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(""),
+	}, ctx, cancel
 }

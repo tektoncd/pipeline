@@ -32,6 +32,7 @@ const (
 	NoTimeoutDuration              = 0 * time.Minute
 	defaultTimeoutMinutesKey       = "default-timeout-minutes"
 	defaultServiceAccountKey       = "default-service-account"
+	DefaultServiceAccountValue     = "default"
 	defaultManagedByLabelValueKey  = "default-managed-by-label-value"
 	DefaultManagedByLabelValue     = "tekton-pipelines"
 	defaultPodTemplateKey          = "default-pod-template"
@@ -82,6 +83,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	tc := Defaults{
 		DefaultTimeoutMinutes:      DefaultTimeoutMinutes,
+		DefaultServiceAccount:      DefaultServiceAccountValue,
 		DefaultManagedByLabelValue: DefaultManagedByLabelValue,
 		DefaultCloudEventsSink:     DefaultCloudEventSinkValue,
 	}

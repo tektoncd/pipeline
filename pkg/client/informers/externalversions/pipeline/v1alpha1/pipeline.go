@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -61,13 +62,13 @@ func NewFilteredPipelineInformer(client versioned.Interface, namespace string, r
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().Pipelines(namespace).List(options)
+				return client.TektonV1alpha1().Pipelines(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().Pipelines(namespace).Watch(options)
+				return client.TektonV1alpha1().Pipelines(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&pipelinev1alpha1.Pipeline{},

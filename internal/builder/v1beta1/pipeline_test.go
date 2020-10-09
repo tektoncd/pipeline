@@ -21,14 +21,14 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestPipeline(t *testing.T) {
@@ -54,6 +54,7 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
 		tb.PipelineTask("never-gonna", "give-you-up",
+			tb.PipelineTaskWhenExpression("foo", selection.In, []string{"foo", "bar"}),
 			tb.RunAfter("foo"),
 			tb.PipelineTaskTimeout(5*time.Second),
 		),
@@ -86,7 +87,7 @@ func TestPipeline(t *testing.T) {
 			Params: []v1beta1.ParamSpec{{
 				Name:        "first-param",
 				Type:        v1beta1.ParamTypeString,
-				Default:     tb.ArrayOrString("default-value"),
+				Default:     v1beta1.NewArrayOrString("default-value"),
 				Description: "default description",
 			}},
 			Tasks: []v1beta1.PipelineTask{{
@@ -94,10 +95,10 @@ func TestPipeline(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "banana"},
 				Params: []v1beta1.Param{{
 					Name:  "stringparam",
-					Value: *tb.ArrayOrString("value"),
+					Value: *v1beta1.NewArrayOrString("value"),
 				}, {
 					Name:  "arrayparam",
-					Value: *tb.ArrayOrString("array", "value"),
+					Value: *v1beta1.NewArrayOrString("array", "value"),
 				}},
 				Conditions: []v1beta1.PipelineTaskCondition{{
 					ConditionRef: "some-condition-ref",
@@ -133,10 +134,11 @@ func TestPipeline(t *testing.T) {
 					}},
 				},
 			}, {
-				Name:     "never-gonna",
-				TaskRef:  &v1beta1.TaskRef{Name: "give-you-up"},
-				RunAfter: []string{"foo"},
-				Timeout:  &metav1.Duration{Duration: 5 * time.Second},
+				Name:            "never-gonna",
+				TaskRef:         &v1beta1.TaskRef{Name: "give-you-up"},
+				WhenExpressions: []v1beta1.WhenExpression{{Input: "foo", Operator: selection.In, Values: []string{"foo", "bar"}}},
+				RunAfter:        []string{"foo"},
+				Timeout:         &metav1.Duration{Duration: 5 * time.Second},
 			}, {
 				Name: "foo",
 				TaskSpec: &v1beta1.EmbeddedTask{
@@ -195,10 +197,10 @@ func TestPipelineRun(t *testing.T) {
 			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1beta1.Param{{
 				Name:  "first-param-string",
-				Value: *tb.ArrayOrString("first-value"),
+				Value: *v1beta1.NewArrayOrString("first-value"),
 			}, {
 				Name:  "second-param-array",
-				Value: *tb.ArrayOrString("some", "array"),
+				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1beta1.PipelineResourceBinding{{
@@ -262,10 +264,10 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1beta1.Param{{
 				Name:  "first-param-string",
-				Value: *tb.ArrayOrString("first-value"),
+				Value: *v1beta1.NewArrayOrString("first-value"),
 			}, {
 				Name:  "second-param-array",
-				Value: *tb.ArrayOrString("some", "array"),
+				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1beta1.PipelineResourceBinding{{
@@ -337,10 +339,10 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1beta1.Param{{
 				Name:  "first-param-string",
-				Value: *tb.ArrayOrString("first-value"),
+				Value: *v1beta1.NewArrayOrString("first-value"),
 			}, {
 				Name:  "second-param-array",
-				Value: *tb.ArrayOrString("some", "array"),
+				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1beta1.PipelineResourceBinding{{
@@ -436,8 +438,8 @@ func TestPipelineRunWithFinalTask(t *testing.T) {
 	}
 }
 
-func getTaskSpec() *v1beta1.TaskSpec {
-	return &v1beta1.TaskSpec{
+func getTaskSpec() v1beta1.TaskSpec {
+	return v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "step",
 			Image: "myimage",

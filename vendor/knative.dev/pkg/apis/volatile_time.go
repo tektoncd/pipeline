@@ -29,7 +29,7 @@ import (
 // Note, go-cmp will still return inequality, see unit test if you
 // need this behavior for go-cmp.
 type VolatileTime struct {
-	Inner metav1.Time
+	Inner metav1.Time `json:",inline"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.

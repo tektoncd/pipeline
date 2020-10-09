@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/logging"
 )
@@ -41,7 +41,7 @@ func TestExistingFile(t *testing.T) {
 	defer func() {
 		_ = logger.Sync()
 	}()
-	output := []v1alpha1.PipelineResourceResult{{
+	output := []v1beta1.PipelineResourceResult{{
 		Key:   "key1",
 		Value: "hello",
 	}}
@@ -50,7 +50,7 @@ func TestExistingFile(t *testing.T) {
 		logger.Fatalf("Errot while writing message: %s", err)
 	}
 
-	output = []v1alpha1.PipelineResourceResult{{
+	output = []v1beta1.PipelineResourceResult{{
 		Key:   "key2",
 		Value: "world",
 	}}
@@ -62,7 +62,7 @@ func TestExistingFile(t *testing.T) {
 	if fileContents, err := ioutil.ReadFile(tmpFile.Name()); err != nil {
 		logger.Fatalf("Unexpected error reading %v: %v", tmpFile.Name(), err)
 	} else {
-		want := `[{"key":"key1","value":"hello","resourceRef":{}},{"key":"key2","value":"world","resourceRef":{}}]`
+		want := `[{"key":"key1","value":"hello"},{"key":"key2","value":"world"}]`
 		if d := cmp.Diff(want, string(fileContents)); d != "" {
 			t.Fatalf("Diff %s", diff.PrintWantGot(d))
 		}
@@ -78,7 +78,7 @@ func TestMaxSizeFile(t *testing.T) {
 	// Remember to clean up the file afterwards
 	defer os.Remove(tmpFile.Name())
 
-	output := []v1alpha1.PipelineResourceResult{{
+	output := []v1beta1.PipelineResourceResult{{
 		Key:   "key1",
 		Value: value,
 	}}

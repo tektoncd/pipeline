@@ -213,11 +213,10 @@ func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
 
 // PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
 func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(pt *v1alpha1.PipelineTask) {
 		pt.Params = append(pt.Params, v1alpha1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -287,7 +286,7 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 		}
 		condition.Params = append(condition.Params, v1alpha1.Param{
 			Name:  name,
-			Value: *ArrayOrString(val),
+			Value: *v1beta1.NewArrayOrString(val),
 		})
 	}
 }
@@ -436,11 +435,10 @@ func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
 
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		prs.Params = append(prs.Params, v1alpha1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -464,26 +462,6 @@ func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 			prs.PodTemplate = &v1alpha1.PodTemplate{}
 		}
 		prs.PodTemplate.NodeSelector = values
-	}
-}
-
-// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
-func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		prs.PodTemplate.Tolerations = values
-	}
-}
-
-// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
-func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		prs.PodTemplate.Affinity = affinity
 	}
 }
 

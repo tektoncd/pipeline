@@ -30,6 +30,13 @@ import (
 
 const failedGenerationBump = "NewObservedGenFailure"
 
+const (
+	DoReconcileKind       = "ReconcileKind"
+	DoFinalizeKind        = "FinalizeKind"
+	DoObserveKind         = "ObserveKind"
+	DoObserveFinalizeKind = "ObserveFinalizeKind"
+)
+
 // PreProcessReconcile contains logic to apply before reconciliation of a resource.
 func PreProcessReconcile(ctx context.Context, resource duckv1.KRShaped) {
 	newStatus := resource.GetStatus()

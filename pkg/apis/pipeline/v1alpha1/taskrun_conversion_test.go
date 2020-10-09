@@ -72,7 +72,7 @@ func TestTaskRunConversion(t *testing.T) {
 				}},
 				Params: []Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: *v1beta1.NewArrayOrString("baz"),
 				}},
 				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1beta1.TaskResourceBinding{{
@@ -127,7 +127,7 @@ func TestTaskRunConversion(t *testing.T) {
 				}},
 				Params: []Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: *v1beta1.NewArrayOrString("baz"),
 				}},
 				Resources: &v1beta1.TaskRunResources{
 					Inputs: []v1beta1.TaskResourceBinding{{
@@ -172,13 +172,13 @@ func TestTaskRunConversion(t *testing.T) {
 				}},
 				Params: []Param{{
 					Name:  "p1",
-					Value: v1beta1.ArrayOrString{StringVal: "baz"},
+					Value: *v1beta1.NewArrayOrString("baz"),
 				}},
 				Inputs: &TaskRunInputs{
 					Params: []Param{{
 						Name:  "p2",
-						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
-					},
+						Value: *v1beta1.NewArrayOrString("bar"),
+					}},
 				},
 			},
 		},
@@ -318,8 +318,8 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Inputs: &TaskRunInputs{
 					Params: []Param{{
 						Name:  "p2",
-						Value: v1beta1.ArrayOrString{StringVal: "bar"}},
-					},
+						Value: *v1beta1.NewArrayOrString("bar"),
+					}},
 				},
 			},
 		},
@@ -332,8 +332,8 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 			Spec: TaskRunSpec{
 				Params: []Param{{
 					Name:  "p2",
-					Value: v1beta1.ArrayOrString{StringVal: "bar"}},
-				},
+					Value: *v1beta1.NewArrayOrString("bar"),
+				}},
 			},
 		},
 	}, {

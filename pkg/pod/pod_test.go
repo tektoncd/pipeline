@@ -22,14 +22,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -67,7 +68,7 @@ func TestPodBuild(t *testing.T) {
 	placeToolsInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	runtimeClassName := "gvisor"
@@ -129,7 +130,7 @@ func TestPodBuild(t *testing.T) {
 	}, {
 		desc: "simple with running-in-environment-with-injected-sidecar set to false",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "name",
 				Image:   "image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
@@ -570,12 +571,12 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 	}, {
 		desc: "sidecar container with enable-ready-annotation-on-pod-create",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "primary-name",
 				Image:   "primary-image",
 				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
-			Sidecars: []v1alpha1.Sidecar{{
+			Sidecars: []v1beta1.Sidecar{{
 				Container: corev1.Container{
 					Name:  "sc-name",
 					Image: "sidecar-image",
@@ -773,7 +774,7 @@ script-heredoc-randomly-generated-78c5n
 				{
 					Name:         "place-tools",
 					Image:        images.EntrypointImage,
-					Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+					Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 					VolumeMounts: []corev1.VolumeMount{toolsMount},
 				}},
 			Containers: []corev1.Container{{
@@ -920,7 +921,7 @@ script-heredoc-randomly-generated-78c5n
 	}, {
 		desc: "setting image pull secret",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1alpha1.Step{
+			Steps: []v1beta1.Step{
 				{
 					Container: corev1.Container{
 						Name:    "image-pull",
@@ -931,7 +932,7 @@ script-heredoc-randomly-generated-78c5n
 			},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1alpha1.PodTemplate{
+			PodTemplate: &v1beta1.PodTemplate{
 				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
 			},
 		},
@@ -1085,7 +1086,54 @@ script-heredoc-randomly-generated-78c5n
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
-		}}} {
+		},
+	}, {
+		desc: "step-with-timeout",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			},
+				Timeout: &metav1.Duration{Duration: time.Second},
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-timeout",
+					"1s",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env: implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-9l9zj",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-9l9zj",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			store := config.NewStore(logtesting.TestLogger(t))
@@ -1122,11 +1170,11 @@ script-heredoc-randomly-generated-78c5n
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: ReleaseAnnotationValue,
+					ReleaseAnnotation: version.PipelineVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+				trAnnotations[ReleaseAnnotation] = version.PipelineVersion
 			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{

@@ -17,10 +17,9 @@ limitations under the License.
 package builder
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // ConditionOp is an operation which modifies a Condition struct.

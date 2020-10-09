@@ -17,7 +17,9 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
@@ -48,7 +50,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 	}, nil
 }
 
-func (e *entrypointCache) Get(ref name.Reference, namespace, serviceAccountName string) (v1.Image, error) {
+func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
 		if img, ok := e.lru.Get(digest.String()); ok {
@@ -59,7 +61,7 @@ func (e *entrypointCache) Get(ref name.Reference, namespace, serviceAccountName 
 	// If the image wasn't specified by digest, or if the entrypoint
 	// wasn't found, we have to consult the remote registry, using
 	// imagePullSecrets.
-	kc, err := k8schain.New(e.kubeclient, k8schain.Options{
+	kc, err := k8schain.New(ctx, e.kubeclient, k8schain.Options{
 		Namespace:          namespace,
 		ServiceAccountName: serviceAccountName,
 	})
@@ -67,7 +69,15 @@ func (e *entrypointCache) Get(ref name.Reference, namespace, serviceAccountName 
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
+	// By default go-containerregistry pulls amd64 images.
+	// Setting correct image pull architecture based on the underlying platform
+	// _of the node that Tekton's controller is running on_. If the cluster
+	// is comprised of nodes of heterogeneous architectures, this might cause issues.
+	var pf = v1.Platform{
+		Architecture: runtime.GOARCH,
+		OS:           runtime.GOOS,
+	}
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc), remote.WithPlatform(pf))
 	if err != nil {
 		return nil, fmt.Errorf("error getting image manifest: %v", err)
 	}

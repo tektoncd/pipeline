@@ -24,6 +24,7 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 )
 
@@ -196,7 +197,7 @@ func PipelineRunResult(name, value string) PipelineRunStatusOp {
 }
 
 // PipelineTaskSpec sets the TaskSpec on a PipelineTask.
-func PipelineTaskSpec(spec *v1beta1.TaskSpec) PipelineTaskOp {
+func PipelineTaskSpec(spec v1beta1.TaskSpec) PipelineTaskOp {
 	return func(pt *v1beta1.PipelineTask) {
 		if pt.TaskSpec == nil {
 			pt.TaskSpec = &v1beta1.EmbeddedTask{}
@@ -239,11 +240,10 @@ func PipelineTaskRefKind(kind v1beta1.TaskKind) PipelineTaskOp {
 
 // PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
 func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(pt *v1beta1.PipelineTask) {
 		pt.Params = append(pt.Params, v1beta1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -313,7 +313,7 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 		}
 		condition.Params = append(condition.Params, v1beta1.Param{
 			Name:  name,
-			Value: *ArrayOrString(val),
+			Value: *v1beta1.NewArrayOrString(val),
 		})
 	}
 }
@@ -328,6 +328,18 @@ func PipelineTaskConditionResource(name, resource string, from ...string) Pipeli
 			Name:     name,
 			Resource: resource,
 			From:     from,
+		})
+	}
+}
+
+// PipelineTaskWhenExpression adds a WhenExpression with the specified input, operator and values
+// which are used to determine whether the PipelineTask should be executed or skipped.
+func PipelineTaskWhenExpression(input string, operator selection.Operator, values []string) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.WhenExpressions = append(pt.WhenExpressions, v1beta1.WhenExpression{
+			Input:    input,
+			Operator: operator,
+			Values:   values,
 		})
 	}
 }
@@ -476,11 +488,10 @@ func PipelineTaskRunSpecs(taskRunSpecs []v1beta1.PipelineTaskRunSpec) PipelineRu
 
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(prs *v1beta1.PipelineRunSpec) {
 		prs.Params = append(prs.Params, v1beta1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -504,26 +515,6 @@ func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 			prs.PodTemplate = &v1beta1.PodTemplate{}
 		}
 		prs.PodTemplate.NodeSelector = values
-	}
-}
-
-// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
-func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Tolerations = values
-	}
-}
-
-// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
-func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Affinity = affinity
 	}
 }
 

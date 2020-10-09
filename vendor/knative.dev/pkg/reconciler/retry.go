@@ -16,16 +16,51 @@ limitations under the License.
 package reconciler
 
 import (
+	"strings"
+
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/util/retry"
 )
 
 // RetryUpdateConflicts retries the inner function if it returns conflict errors.
 // This can be used to retry status updates without constantly reenqueuing keys.
 func RetryUpdateConflicts(updater func(int) error) error {
+	return RetryErrors(updater, apierrs.IsConflict)
+}
+
+// RetryErrors retries the inner function if it returns matching errors.
+func RetryErrors(updater func(int) error, fns ...func(error) bool) error {
 	attempts := 0
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.OnError(retry.DefaultRetry, func(err error) bool {
+		for _, fn := range fns {
+			if fn(err) {
+				return true
+			}
+		}
+		return false
+	}, func() error {
 		err := updater(attempts)
 		attempts++
 		return err
 	})
+}
+
+// RetryTestErrors retries the inner function if it hits an error type that is
+// common in our test environments.
+func RetryTestErrors(updater func(int) error) error {
+	return RetryErrors(updater,
+		// Example: conflicts updating `gke-resource-quotas` (implicit on Service/Pod/Ingress creations)
+		apierrs.IsConflict,
+
+		// Example: https://github.com/knative/test-infra/issues/2346#issuecomment-687220045
+		func(err error) bool {
+			return strings.Contains(err.Error(), "gke-resource-quotas")
+		},
+
+		// Example: `etcdserver: request timed out`
+		// TODO(mattmoor): Does apierrs.IsServerTimeout catch the above?
+		func(err error) bool {
+			return strings.Contains(err.Error(), "etcdserver")
+		},
+	)
 }

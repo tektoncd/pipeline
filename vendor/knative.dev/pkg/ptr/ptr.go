@@ -30,6 +30,18 @@ func Int64(i int64) *int64 {
 	return &i
 }
 
+// Float32 is a helper for turning floats into pointers for use in
+// API types that want *float32.
+func Float32(f float32) *float32 {
+	return &f
+}
+
+// Float64 is a helper for turning floats into pointers for use in
+// API types that want *float64.
+func Float64(f float64) *float64 {
+	return &f
+}
+
 // Bool is a helper for turning bools into pointers for use in
 // API types that want *bool.
 func Bool(b bool) *bool {

@@ -17,39 +17,47 @@ limitations under the License.
 package pipelinerun
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-	jsonpatch "gomodules.xyz/jsonpatch/v2"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"go.uber.org/zap"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 )
 
-// cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
-func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
-	errs := []string{}
+var cancelPatchBytes []byte
 
-	// Use Patch to update the TaskRuns since the TaskRun controller may be operating on the
-	// TaskRuns at the same time and trying to update the entire object may cause a race
-	b, err := getCancelPatch()
+func init() {
+	var err error
+	cancelPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "add",
+		Path:      "/spec/status",
+		Value:     v1beta1.TaskRunSpecStatusCancelled,
+	}})
 	if err != nil {
-		return fmt.Errorf("couldn't make patch to update TaskRun cancellation: %v", err)
+		log.Fatalf("failed to marshal cancel patch bytes: %v", err)
 	}
+}
+
+// cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
+func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
+	errs := []string{}
 
 	// Loop over the TaskRuns in the PipelineRun status.
 	// If a TaskRun is not in the status yet we should not cancel it anyways.
 	for taskRunName := range pr.Status.TaskRuns {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(taskRunName, types.JSONPatchType, b, ""); err != nil {
+		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelPatchBytes, metav1.PatchOptions{}, ""); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
@@ -76,17 +84,4 @@ func cancelPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clien
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
 	}
 	return nil
-}
-
-func getCancelPatch() ([]byte, error) {
-	patches := []jsonpatch.JsonPatchOperation{{
-		Operation: "add",
-		Path:      "/spec/status",
-		Value:     v1beta1.TaskRunSpecStatusCancelled,
-	}}
-	patchBytes, err := json.Marshal(patches)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal patch bytes in order to cancel: %v", err)
-	}
-	return patchBytes, nil
 }

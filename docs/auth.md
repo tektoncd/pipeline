@@ -121,7 +121,7 @@ The following are considerations for executing `Runs` as a non-root user:
   Specifying a UID that has no valid home directory results in authentication failure.
 - Since SSH authentication ignores the `$HOME` environment variable, you must either move or symlink
   the appropriate `Secret` files from the `$HOME` directory defined by Tekton (`/tekton/home`) to
-  the the non-root user's valid home directory to use SSH authentication for either Git or Docker.
+  the non-root user's valid home directory to use SSH authentication for either Git or Docker.
 
 For an example of configuring SSH authentication in a non-root `securityContext`,
 see [`authenticating-git-commands`](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
@@ -147,7 +147,7 @@ This section describes how to configure the following authentication schemes for
 
 ### Configuring `basic-auth` authentication for Git
 
-This section descibes how to configure a `basic-auth` type `Secret` for use with Git. In the example below,
+This section describes how to configure a `basic-auth` type `Secret` for use with Git. In the example below,
 before executing any `Steps` in the `Run`, Tekton creates a `~/.gitconfig` file containing the credentials
 specified in the `Secret`. When the `Steps` execute, Tekton uses those credentials to retrieve
 `PipelineResources` specified in the `Run`.
@@ -218,7 +218,7 @@ specified in the `Secret`. When the `Steps` execute, Tekton uses those credentia
 
 ### Configuring `ssh-auth` authentication for Git
 
-This section descibes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
+This section describes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
 specified in the `Secret`. When the `Steps` execute, Tekton uses this key to retrieve `PipelineResources`
 specified in the `Run`.
@@ -504,9 +504,12 @@ https://user2:pass2@url2.com
 Given hostnames, private keys, and `known_hosts` of the form: `url{n}.com`,
 `key{n}`, and `known_hosts{n}`, Tekton generates the following. 
 
-If no value is specified for `known_hosts`, Tekton configures SSH to accept
+By default, if no value is specified for `known_hosts`, Tekton configures SSH to accept
 **any public key** returned by the server on first query. Tekton does this
 by setting Git's `core.sshCommand` variable to `ssh -o StrictHostKeyChecking=accept-new`.
+This behaviour can be prevented
+[using a feature-flag: `require-git-ssh-secret-known-hosts`](./install.md#customizing-the-pipelines-controller-behavior).
+Set this flag to `true` and all Git SSH Secrets _must_ include a `known_hosts`.
 
 ```
 === ~/.ssh/id_key1 ===

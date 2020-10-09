@@ -1,5 +1,5 @@
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release
@@ -80,7 +80,7 @@ spec:
         - name: package
           value: $(params.package)
         - name: flags
-          value: -mod=vendor -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
+          value: -mod=vendor
       resources:
         inputs:
           - name: source

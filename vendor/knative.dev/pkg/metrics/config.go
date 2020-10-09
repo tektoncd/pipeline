@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"go.opencensus.io/stats"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/metrics/metricskey"
 )
@@ -156,18 +155,25 @@ func NewStackdriverClientConfigFromMap(config map[string]string) *StackdriverCli
 // record applies the `ros` Options to each measurement in `mss` and then records the resulting
 // measurements in the metricsConfig's designated backend.
 func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
-	if mc == nil {
-		// Don't record data points if the metric config is not initialized yet.
-		// At this point, it's unclear whether should record or not.
+	if mc == nil || mc.backendDestination == none {
+		// Don't record data points if the metric config is not initialized yet or if
+		// the defined backend is "none" explicitly.
 		return nil
 	}
+
 	if mc.recorder == nil {
+		opt, err := optionForResource(metricskey.GetResource(ctx))
+		if err != nil {
+			return err
+		}
+		ros = append(ros, opt)
+
 		return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 	}
 	return mc.recorder(ctx, mss, ros...)
 }
 
-func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metricsConfig, error) {
+func createMetricsConfig(ctx context.Context, ops ExporterOptions) (*metricsConfig, error) {
 	var mc metricsConfig
 
 	if ops.Domain == "" {
@@ -260,32 +266,10 @@ func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metri
 			}
 		}
 
-		if !allowCustomMetrics {
-			servingOrEventing := metricskey.KnativeRevisionMetrics.Union(
-				metricskey.KnativeTriggerMetrics).Union(metricskey.KnativeBrokerMetrics)
-			mc.recorder = func(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
-				// Perform array filtering in place using two indices: w(rite)Index and r(ead)Index.
-				wIdx := 0
-				for rIdx := 0; rIdx < len(mss); rIdx++ {
-					metricType := path.Join(mc.stackdriverMetricTypePrefix, mss[rIdx].Measure().Name())
-					if servingOrEventing.Has(metricType) {
-						mss[wIdx] = mss[rIdx]
-						wIdx++
-					}
-					// Otherwise, skip the measurement (because it won't be accepted).
-				}
-				// Found no matched metrics.
-				if wIdx == 0 {
-					return nil
-				}
-				// Trim the list to the number of written objects.
-				mss = mss[:wIdx]
-				return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
-			}
-		}
+		mc.recorder = sdCustomMetricsRecorder(mc, allowCustomMetrics)
 
 		if scc.UseSecret {
-			secret, err := getStackdriverSecret(ops.Secrets)
+			secret, err := getStackdriverSecret(ctx, ops.Secrets)
 			if err != nil {
 				return nil, err
 			}
@@ -307,12 +291,14 @@ func createMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metri
 			return nil, fmt.Errorf("invalid %s value %q", reportingPeriodKey, repStr)
 		}
 		mc.reportingPeriod = time.Duration(repInt) * time.Second
-	} else if mc.backendDestination == stackdriver {
-		mc.reportingPeriod = 60 * time.Second
-	} else if mc.backendDestination == prometheus {
-		mc.reportingPeriod = 5 * time.Second
+	} else {
+		switch mc.backendDestination {
+		case stackdriver, openCensus:
+			mc.reportingPeriod = time.Minute
+		case prometheus:
+			mc.reportingPeriod = 5 * time.Second
+		}
 	}
-
 	return &mc, nil
 }
 

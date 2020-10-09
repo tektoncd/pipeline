@@ -56,6 +56,8 @@ spec:
       - name: tekton-pipelines-controller
         image: ko://github.com/tektoncd/pipeline/cmd/controller
         args: [
+          # Version, to be replace at release time
+          "-version", "devel",
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
@@ -67,11 +69,11 @@ spec:
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
-          # This is google/cloud-sdk:302.0.0-slim
-          "-gsutil-image", "google/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
+          # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
+          "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug-nonroot as of July 23, 2020
-          "-shell-image", "gcr.io/distroless/base@sha256:60f5ffe6fc481e9102747b043b3873a01893a5a8138f970c5f5fc06fb7494656"
+          # gcr.io/distroless/base:debug as of October 5, 2020
+          "-shell-image", "gcr.io/distroless/base:debug@sha256:2c12bde3d050850e976fe682193b94f0855866ea4f37a12ed7db8668e8071047"
         ]
         volumeMounts:
         - name: config-logging
@@ -102,7 +104,8 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
-          runAsUser: 1001
+          # User 65532 is the distroless nonroot user ID
+          runAsUser: 65532
       volumes:
         - name: config-logging
           configMap:

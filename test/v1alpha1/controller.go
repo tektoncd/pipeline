@@ -36,6 +36,7 @@ import (
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
@@ -107,7 +108,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.PipelineRun.Informer().GetIndexer().Add(pr); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().PipelineRuns(pr.Namespace).Create(pr); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().PipelineRuns(pr.Namespace).Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -115,7 +116,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.Pipeline.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().Pipelines(p.Namespace).Create(p); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().Pipelines(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -123,7 +124,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.TaskRun.Informer().GetIndexer().Add(tr); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().TaskRuns(tr.Namespace).Create(tr); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -131,7 +132,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.Task.Informer().GetIndexer().Add(ta); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().Tasks(ta.Namespace).Create(ta); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().Tasks(ta.Namespace).Create(ctx, ta, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -139,7 +140,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.ClusterTask.Informer().GetIndexer().Add(ct); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().ClusterTasks().Create(ct); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().ClusterTasks().Create(ctx, ct, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -147,7 +148,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
+		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(ctx, r, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -155,7 +156,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.Condition.Informer().GetIndexer().Add(cond); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(cond); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -163,12 +164,12 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		if err := i.Pod.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(p); err != nil {
+		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, n := range d.Namespaces {
-		if _, err := c.Kube.CoreV1().Namespaces().Create(n); err != nil {
+		if _, err := c.Kube.CoreV1().Namespaces().Create(ctx, n, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

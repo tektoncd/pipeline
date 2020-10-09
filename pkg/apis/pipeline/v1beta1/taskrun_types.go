@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -411,10 +412,9 @@ func (tr *TaskRun) GetTimeout() time.Duration {
 	return tr.Spec.Timeout.Duration
 }
 
-// GetRunKey return the taskrun key for timeout handler map
-func (tr *TaskRun) GetRunKey() string {
-	// The address of the pointer is a threadsafe unique identifier for the taskrun
-	return fmt.Sprintf("%s/%p", pipeline.TaskRunControllerName, tr)
+// GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
+func (tr *TaskRun) GetNamespacedName() types.NamespacedName {
+	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}
 }
 
 // IsPartOfPipeline return true if TaskRun is a part of a Pipeline.

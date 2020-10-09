@@ -41,7 +41,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "google/cloud-sdk",
+		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -683,7 +683,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 `,
 				Container: corev1.Container{
 					Name:  "fetch-storage1-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -1075,7 +1075,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
 				Container: corev1.Container{
 					Name:  "fetch-gcs-input-resource-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -1145,7 +1145,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
 				Container: corev1.Container{
 					Name:  "fetch-storage-gcs-keys-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 					},
@@ -1300,7 +1300,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-gitspace-mz4c7",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gitspace"},
 				Env:          gcsEnv,
@@ -1344,7 +1344,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace-78c5n",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
@@ -1396,7 +1396,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace-l22wn",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
@@ -1407,7 +1407,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace2-j2tds",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path2/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,

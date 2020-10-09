@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -106,7 +105,10 @@ func TestTaskSpecValidate(t *testing.T) {
 				Params: []v1alpha1.ParamSpec{{
 					Name:        "task",
 					Description: "param",
-					Default:     tb.ArrayOrString("default"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
+					},
 				}},
 			},
 			Steps: validSteps,
@@ -120,7 +122,10 @@ func TestTaskSpecValidate(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "param",
-					Default:     tb.ArrayOrString("default"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
+					},
 				}},
 			},
 			Steps: validSteps,
@@ -411,12 +416,18 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "validparam",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "parameter",
-					Default:     tb.ArrayOrString("default"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
+					},
 				}, {
 					Name:        "param-with-invalid-type",
 					Type:        "invalidtype",
 					Description: "invalidtypedesc",
-					Default:     tb.ArrayOrString("default"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
+					},
 				}},
 			},
 			Steps: validSteps,
@@ -434,7 +445,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeArray,
 					Description: "param",
-					Default:     tb.ArrayOrString("default"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
+					},
 				}},
 			},
 			Steps: validSteps,
@@ -452,7 +466,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 					Name:        "task",
 					Type:        v1alpha1.ParamTypeString,
 					Description: "param",
-					Default:     tb.ArrayOrString("default", "array"),
+					Default: &v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{"default", "array"},
+					},
 				}},
 			},
 			Steps: validSteps,
@@ -746,13 +763,14 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "Inexistent param variable with existing",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Params: []v1alpha1.ParamSpec{
-					{
-						Name:        "foo",
-						Description: "param",
-						Default:     tb.ArrayOrString("default"),
+				Params: []v1alpha1.ParamSpec{{
+					Name:        "foo",
+					Description: "param",
+					Default: &v1alpha1.ArrayOrString{
+						Type:      v1alpha1.ParamTypeString,
+						StringVal: "default",
 					},
-				},
+				}},
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "mystep",

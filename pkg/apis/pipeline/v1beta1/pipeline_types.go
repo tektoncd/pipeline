@@ -103,8 +103,7 @@ type EmbeddedTask struct {
 	Metadata PipelineTaskMetadata `json:"metadata,omitempty"`
 
 	// TaskSpec is a specification of a task
-	// +optional
-	*TaskSpec `json:",inline,omitempty"`
+	TaskSpec `json:",inline,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -121,11 +120,16 @@ type PipelineTask struct {
 
 	// TaskSpec is a specification of a task
 	// +optional
-	TaskSpec *EmbeddedTask `json:"taskSpec,inline,omitempty"`
+	TaskSpec *EmbeddedTask `json:"taskSpec,omitempty"`
 
 	// Conditions is a list of conditions that need to be true for the task to run
+	// Conditions are deprecated, use WhenExpressions instead
 	// +optional
 	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
+
+	// WhenExpressions is a list of when expressions that need to be true for the task to run
+	// +optional
+	WhenExpressions WhenExpressions `json:"when,omitempty"`
 
 	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
 	// +optional
@@ -190,6 +194,16 @@ func (pt PipelineTask) Deps() []string {
 	// Add any dependents from task results
 	for _, param := range pt.Params {
 		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+		if ok {
+			resultRefs := NewResultRefs(expressions)
+			for _, resultRef := range resultRefs {
+				deps = append(deps, resultRef.PipelineTask)
+			}
+		}
+	}
+	// Add any dependents from when expressions
+	for _, whenExpression := range pt.WhenExpressions {
+		expressions, ok := whenExpression.GetVarSubstitutionExpressions()
 		if ok {
 			resultRefs := NewResultRefs(expressions)
 			for _, resultRef := range resultRefs {

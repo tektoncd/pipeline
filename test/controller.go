@@ -44,6 +44,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -53,6 +54,7 @@ import (
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
+	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
 )
 
@@ -69,6 +71,7 @@ type Data struct {
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace
 	ConfigMaps        []*corev1.ConfigMap
+	ServiceAccounts   []*corev1.ServiceAccount
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -90,6 +93,7 @@ type Informers struct {
 	Condition        informersv1alpha1.ConditionInformer
 	Pod              coreinformers.PodInformer
 	ConfigMap        coreinformers.ConfigMapInformer
+	ServiceAccount   coreinformers.ServiceAccountInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -99,6 +103,7 @@ type Assets struct {
 	Clients    Clients
 	Informers  Informers
 	Recorder   *record.FakeRecorder
+	Ctx        context.Context
 }
 
 func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
@@ -167,6 +172,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Condition:        fakeconditioninformer.Get(ctx),
 		Pod:              fakepodinformer.Get(ctx),
 		ConfigMap:        fakeconfigmapinformer.Get(ctx),
+		ServiceAccount:   fakeserviceaccountinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -175,69 +181,76 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	c.Pipeline.PrependReactor("*", "pipelineruns", AddToInformer(t, i.PipelineRun.Informer().GetIndexer()))
 	for _, pr := range d.PipelineRuns {
 		pr := pr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().PipelineRuns(pr.Namespace).Create(pr); err != nil {
+		if _, err := c.Pipeline.TektonV1beta1().PipelineRuns(pr.Namespace).Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Pipeline.PrependReactor("*", "pipelines", AddToInformer(t, i.Pipeline.Informer().GetIndexer()))
 	for _, p := range d.Pipelines {
 		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().Pipelines(p.Namespace).Create(p); err != nil {
+		if _, err := c.Pipeline.TektonV1beta1().Pipelines(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Pipeline.PrependReactor("*", "taskruns", AddToInformer(t, i.TaskRun.Informer().GetIndexer()))
 	for _, tr := range d.TaskRuns {
 		tr := tr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Create(tr); err != nil {
+		if _, err := c.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Create(ctx, tr, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Pipeline.PrependReactor("*", "tasks", AddToInformer(t, i.Task.Informer().GetIndexer()))
 	for _, ta := range d.Tasks {
 		ta := ta.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().Tasks(ta.Namespace).Create(ta); err != nil {
+		if _, err := c.Pipeline.TektonV1beta1().Tasks(ta.Namespace).Create(ctx, ta, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Pipeline.PrependReactor("*", "clustertasks", AddToInformer(t, i.ClusterTask.Informer().GetIndexer()))
 	for _, ct := range d.ClusterTasks {
 		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ct); err != nil {
+		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ctx, ct, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Resource.PrependReactor("*", "pipelineresources", AddToInformer(t, i.PipelineResource.Informer().GetIndexer()))
 	for _, r := range d.PipelineResources {
 		r := r.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
+		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(ctx, r, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Pipeline.PrependReactor("*", "conditions", AddToInformer(t, i.Condition.Informer().GetIndexer()))
 	for _, cond := range d.Conditions {
 		cond := cond.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(cond); err != nil {
+		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Kube.PrependReactor("*", "pods", AddToInformer(t, i.Pod.Informer().GetIndexer()))
 	for _, p := range d.Pods {
 		p := p.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(p); err != nil {
+		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, n := range d.Namespaces {
 		n := n.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Kube.CoreV1().Namespaces().Create(n); err != nil {
+		if _, err := c.Kube.CoreV1().Namespaces().Create(ctx, n, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	c.Kube.PrependReactor("*", "configmaps", AddToInformer(t, i.ConfigMap.Informer().GetIndexer()))
 	for _, cm := range d.ConfigMaps {
 		cm := cm.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Kube.CoreV1().ConfigMaps(cm.Namespace).Create(cm); err != nil {
+		if _, err := c.Kube.CoreV1().ConfigMaps(cm.Namespace).Create(ctx, cm, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Kube.PrependReactor("*", "serviceaccounts", AddToInformer(t, i.ServiceAccount.Informer().GetIndexer()))
+	for _, sa := range d.ServiceAccounts {
+		sa := sa.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Kube.CoreV1().ServiceAccounts(sa.Namespace).Create(ctx, sa, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

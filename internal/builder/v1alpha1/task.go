@@ -313,19 +313,6 @@ func TaskResourcesOutput(name string, resourceType v1alpha1.PipelineResourceType
 	}
 }
 
-// TaskResultsOutput adds a TaskResult as Outputs to the TaskResources
-func TaskResultsOutput(name, desc string, ops ...TaskResultOp) TaskResultOp {
-	return func(result *v1beta1.TaskResult) {
-		r := &v1beta1.TaskResult{
-			Name:        name,
-			Description: desc,
-		}
-		for _, op := range ops {
-			op(r)
-		}
-	}
-}
-
 // TaskInputs sets inputs to the TaskSpec.
 // Any number of Inputs modifier can be passed to transform it.
 func TaskInputs(ops ...InputsOp) TaskSpecOp {
@@ -551,36 +538,6 @@ func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	}
 }
 
-// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
-func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		spec.PodTemplate.Tolerations = values
-	}
-}
-
-// TaskRunAffinity sets the Affinity to the TaskRunSpec.
-func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		spec.PodTemplate.Affinity = affinity
-	}
-}
-
-// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
-func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1alpha1.PodTemplate{}
-		}
-		spec.PodTemplate.SecurityContext = context
-	}
-}
-
 // StateTerminated sets Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {
@@ -757,11 +714,10 @@ func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 
 // TaskRunParam sets the Params to the TaskSpec
 func TaskRunParam(name, value string, additionalValues ...string) TaskRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.Params = append(spec.Params, v1alpha1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -817,17 +773,6 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 		for _, op := range ops {
 			op(spec.Inputs)
 		}
-	}
-}
-
-// TaskRunInputsParam add a param, with specified name and value, to the TaskRunInputs.
-func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.Param{
-			Name:  name,
-			Value: *arrayOrString,
-		})
 	}
 }
 

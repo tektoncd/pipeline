@@ -12,6 +12,7 @@ weight: 1
   - [Defining `Steps`](#defining-steps)
     - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
+    - [Specifying a timeout](#specifying-a-timeout)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
@@ -241,7 +242,27 @@ steps:
     #!/usr/bin/env bash
     /bin/my-binary
 ```
+#### Specifying a timeout
 
+A `Step` can specify a `timeout` field.
+If the `Step` execution time exceeds the specified timeout, the `Step` kills
+its running process and any subsequent `Steps` in the `TaskRun` will not be
+executed. The `TaskRun` is placed into a `Failed` condition.  An accompanying log
+describing which `Step` timed out is written as the `Failed` condition's message.
+
+The timeout specification follows the duration format as specified in the [Go time package](https://golang.org/pkg/time/#ParseDuration) (e.g. 1s or 1ms).
+
+The example `Step` below is supposed to sleep for 60 seconds but will be canceled by the specified 5 second timeout.
+```yaml
+steps:
+  - name: sleep-then-timeout
+    image: ubuntu
+    script: | 
+      #!/usr/bin/env bash
+      echo "I am supposed to sleep for 60 seconds!"
+      sleep 60
+    timeout: 5s
+``` 
 ### Specifying `Parameters`
 
 You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.
@@ -403,6 +424,8 @@ a `results` field but it's the responsibility of the `Task` to generate its cont
 It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
+You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/master/docs/variables.md#variables-available-in-a-task)
+to avoid having to hardcode this path.
 
 In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
@@ -426,12 +449,12 @@ spec:
       image: bash:latest
       script: |
         #!/usr/bin/env bash
-        date +%s | tee /tekton/results/current-date-unix-timestamp
+        date +%s | tee $(results.current-date-unix-timestamp.path)
     - name: print-date-human-readable
       image: bash:latest
       script: |
         #!/usr/bin/env bash
-        date | tee /tekton/results/current-date-human-readable
+        date | tee $(results.current-date-human-readable.path)
 ```
 
 The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)

@@ -101,12 +101,12 @@ func TestTask(t *testing.T) {
 				Name:        "param",
 				Type:        v1beta1.ParamTypeString,
 				Description: "mydesc",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}, {
 				Name:        "array-param",
 				Type:        v1beta1.ParamTypeString,
 				Description: "desc",
-				Default:     tb.ArrayOrString("array", "values"),
+				Default:     v1beta1.NewArrayOrString("array", "values"),
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: []v1beta1.TaskResource{{
@@ -240,10 +240,10 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "iparam",
-				Value: *tb.ArrayOrString("ivalue"),
+				Value: *v1beta1.NewArrayOrString("ivalue"),
 			}, {
 				Name:  "arrayparam",
-				Value: *tb.ArrayOrString("array", "values"),
+				Value: *v1beta1.NewArrayOrString("array", "values"),
 			}},
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: []v1beta1.TaskResourceBinding{{

@@ -17,13 +17,14 @@
 package resources_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -33,7 +34,7 @@ func TestTaskRef(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tasks    []runtime.Object
-		ref      *v1alpha1.TaskRef
+		ref      *v1beta1.TaskRef
 		expected runtime.Object
 		wantErr  bool
 	}{
@@ -43,7 +44,7 @@ func TestTaskRef(t *testing.T) {
 				tb.Task("simple", tb.TaskNamespace("default")),
 				tb.Task("dummy", tb.TaskNamespace("default")),
 			},
-			ref: &v1alpha1.TaskRef{
+			ref: &v1beta1.TaskRef{
 				Name: "simple",
 			},
 			expected: tb.Task("simple", tb.TaskNamespace("default")),
@@ -55,7 +56,7 @@ func TestTaskRef(t *testing.T) {
 				tb.ClusterTask("cluster-task"),
 				tb.ClusterTask("dummy-task"),
 			},
-			ref: &v1alpha1.TaskRef{
+			ref: &v1beta1.TaskRef{
 				Name: "cluster-task",
 				Kind: "ClusterTask",
 			},
@@ -65,7 +66,7 @@ func TestTaskRef(t *testing.T) {
 		{
 			name:  "task-not-found",
 			tasks: []runtime.Object{},
-			ref: &v1alpha1.TaskRef{
+			ref: &v1beta1.TaskRef{
 				Name: "simple",
 			},
 			expected: nil,
@@ -75,6 +76,9 @@ func TestTaskRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.tasks...)
 
 			lc := &resources.LocalTaskRefResolver{
@@ -83,7 +87,7 @@ func TestTaskRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetTask(tc.ref.Name)
+			task, err := lc.GetTask(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {

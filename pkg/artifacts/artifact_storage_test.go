@@ -43,7 +43,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "google/cloud-sdk",
+		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -211,7 +211,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "location empty",
@@ -256,7 +256,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "gs://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "valid bucket with boto config",
@@ -270,7 +270,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		expectedArtifactStorage: &storage.ArtifactBucket{
 			Location:    "s3://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Secrets: []resourcev1alpha1.SecretParam{{
 				FieldName:  "BOTO_CONFIG",
 				SecretKey:  "sakey",
@@ -296,7 +296,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 			}
 			// If the expected storage type is PVC, make sure we're actually creating that PVC.
 			if c.storagetype == "pvc" {
-				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 				}
@@ -456,14 +456,14 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				ArtifactBucket: ab,
 			}
 			ctx := config.ToContext(context.Background(), &configs)
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
 			if err := CleanupArtifactStorage(ctx, pipelinerun, fakekubeclient); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err == nil {
 				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(pipelinerun), pipelinerun.Name)
 			} else if !errors.IsNotFound(err) {
@@ -524,7 +524,7 @@ func TestGetArtifactStorageWithConfig(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "google/cloud-sdk",
+			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
 	}, {
 		desc: "location empty",

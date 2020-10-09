@@ -30,6 +30,23 @@ import (
 	"knative.dev/pkg/logging/logkey"
 )
 
+const (
+	// AdmissionReviewUID is the key used to represent the admission review
+	// request/response UID in logs
+	AdmissionReviewUID = "admissionreview/uid"
+
+	// AdmissionReviewAllowed is the key used to represent whether or not
+	// the admission request was permitted in logs
+	AdmissionReviewAllowed = "admissionreview/allowed"
+
+	// AdmissionReviewResult is the key used to represent extra details into
+	// why an admission request was denied in logs
+	AdmissionReviewResult = "admissionreview/result"
+
+	// AdmissionReviewPatchType is the key used to represent the type of Patch in logs
+	AdmissionReviewPatchType = "admissionreview/patchtype"
+)
+
 // AdmissionController provides the interface for different admission controllers
 type AdmissionController interface {
 	// Path returns the path that this particular admission controller serves on.
@@ -78,13 +95,13 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		}
 
 		logger = logger.With(
-			zap.String(logkey.Kind, review.Request.Kind.String()),
-			zap.String(logkey.Namespace, review.Request.Namespace),
-			zap.String(logkey.Name, review.Request.Name),
-			zap.String(logkey.Operation, string(review.Request.Operation)),
-			zap.String(logkey.Resource, review.Request.Resource.String()),
-			zap.String(logkey.SubResource, review.Request.SubResource),
-			zap.String(logkey.UserInfo, fmt.Sprint(review.Request.UserInfo)))
+			logkey.Kind, review.Request.Kind.String(),
+			logkey.Namespace, review.Request.Namespace,
+			logkey.Name, review.Request.Name,
+			logkey.Operation, string(review.Request.Operation),
+			logkey.Resource, review.Request.Resource.String(),
+			logkey.SubResource, review.Request.SubResource,
+			logkey.UserInfo, fmt.Sprint(review.Request.UserInfo))
 
 		ctx := logging.WithLogger(r.Context(), logger)
 
@@ -101,14 +118,18 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			patchType = string(*reviewResponse.PatchType)
 		}
 
-		logger.Infof("AdmissionReview for %#v: %s/%s response={ UID: %#v, Allowed: %t, Status: %#v, Patch: %s, PatchType: %s, AuditAnnotations: %#v}",
-			review.Request.Kind, review.Request.Namespace, review.Request.Name,
-			reviewResponse.UID, reviewResponse.Allowed, reviewResponse.Result, string(reviewResponse.Patch), patchType, reviewResponse.AuditAnnotations)
-
 		if !reviewResponse.Allowed || reviewResponse.PatchType != nil || response.Response == nil {
 			response.Response = reviewResponse
 		}
 		response.Response.UID = review.Request.UID
+
+		logger = logger.With(
+			AdmissionReviewUID, string(reviewResponse.UID),
+			AdmissionReviewAllowed, reviewResponse.Allowed,
+			AdmissionReviewResult, reviewResponse.Result.String())
+
+		logger.Infof("remote admission controller audit annotations=%#v", reviewResponse.AuditAnnotations)
+		logger.Debugf("AdmissionReview patch={ type: %s, body: %s }", patchType, string(reviewResponse.Patch))
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)

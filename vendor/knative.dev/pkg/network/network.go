@@ -40,7 +40,10 @@ const (
 	// path will wait before shutting down server, but after starting to fail
 	// readiness probes to ensure network layer propagation and so that no requests
 	// are routed to this pod.
-	DefaultDrainTimeout = 30 * time.Second
+	// Note that this was bumped from 30s due to intermittent issues where
+	// the webhook would get a bad request from the API Server when running
+	// under chaos.
+	DefaultDrainTimeout = 45 * time.Second
 
 	// UserAgentKey is the constant for header "User-Agent".
 	UserAgentKey = "User-Agent"

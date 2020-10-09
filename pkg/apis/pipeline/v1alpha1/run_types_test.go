@@ -46,26 +46,26 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewArrayOrString("bar"),
 		},
 	}, {
 		desc: "not found",
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		name: "bar",
@@ -78,19 +78,19 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("second bar"),
+				Value: *v1beta1.NewArrayOrString("second bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewArrayOrString("bar"),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -165,6 +165,25 @@ status:
 		},
 	}
 	if d := cmp.Diff(want, &r); d != "" {
+		t.Fatalf("Diff(-want,+got): %s", d)
+	}
+}
+
+func TestEncodeDecodeExtraFields(t *testing.T) {
+	type Mystatus struct {
+		S string
+		I int
+	}
+	status := Mystatus{S: "one", I: 1}
+	r := &v1alpha1.RunStatus{}
+	if err := r.EncodeExtraFields(&status); err != nil {
+		t.Fatalf("EncodeExtraFields failed: %s", err)
+	}
+	newStatus := Mystatus{}
+	if err := r.DecodeExtraFields(&newStatus); err != nil {
+		t.Fatalf("DecodeExtraFields failed: %s", err)
+	}
+	if d := cmp.Diff(status, newStatus); d != "" {
 		t.Fatalf("Diff(-want,+got): %s", d)
 	}
 }

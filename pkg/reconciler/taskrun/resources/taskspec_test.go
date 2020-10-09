@@ -47,7 +47,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1beta1.TaskInterface, error) { return task, nil }
+	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) { return task, nil }
 	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
@@ -76,7 +76,9 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1beta1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
+	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+		return nil, errors.New("shouldn't be called")
+	}
 	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
@@ -98,7 +100,9 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(n string) (v1beta1.TaskInterface, error) { return nil, errors.New("shouldn't be called") }
+	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+		return nil, errors.New("shouldn't be called")
+	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
@@ -116,7 +120,9 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1beta1.TaskInterface, error) { return nil, errors.New("something went wrong") }
+	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+		return nil, errors.New("something went wrong")
+	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")

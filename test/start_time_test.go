@@ -15,6 +15,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -31,12 +32,15 @@ import (
 // Scheduling and reporting specifics can result in start times being reported
 // more than 10s apart, but they shouldn't be less than 10s apart.
 func TestStartTime(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating TaskRun in namespace %q", namespace)
-	tr, err := c.TaskRunClient.Create(&v1beta1.TaskRun{
+	tr, err := c.TaskRunClient.Create(ctx, &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "start-time-test-",
 			Namespace:    namespace,
@@ -61,16 +65,16 @@ func TestStartTime(t *testing.T) {
 				}},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Error creating TaskRun: %v", err)
 	}
 	t.Logf("Created TaskRun %q in namespace %q", tr.Name, namespace)
 	// Wait for the TaskRun to complete.
-	if err := WaitForTaskRunState(c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 	}
-	tr, err = c.TaskRunClient.Get(tr.Name, metav1.GetOptions{})
+	tr, err = c.TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting TaskRun: %v", err)
 	}

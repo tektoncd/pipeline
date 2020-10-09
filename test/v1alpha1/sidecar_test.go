@@ -19,11 +19,13 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -54,58 +56,66 @@ func TestSidecarTaskSupport(t *testing.T) {
 		sidecarCommand: []string{"echo", "\"hello from sidecar\""},
 	}}
 
-	clients, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	clients, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, clients, namespace) }, t.Logf)
-	defer tearDown(t, clients, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, clients, namespace) }, t.Logf)
+	defer tearDown(ctx, t, clients, namespace)
 
 	for i, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
 			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
-			task := tb.Task(sidecarTaskName,
-				tb.TaskSpec(
-					tb.Step(
-						"busybox",
-						tb.StepName(primaryContainerName),
-						tb.StepCommand(test.stepCommand...),
-					),
-					tb.Sidecar(
-						sidecarContainerName,
-						"busybox",
-						tb.Command(test.sidecarCommand...),
-					),
-				),
-			)
+			task := &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskName},
+				Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{Container: corev1.Container{
+						Image:   "busybox",
+						Name:    primaryContainerName,
+						Command: test.stepCommand,
+					}}},
+					Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
+						Image:   "busybox",
+						Name:    sidecarContainerName,
+						Command: test.sidecarCommand,
+					}}},
+				}},
+			}
 
-			taskRun := tb.TaskRun(sidecarTaskRunName,
-				tb.TaskRunSpec(tb.TaskRunTaskRef(sidecarTaskName),
-					tb.TaskRunTimeout(1*time.Minute),
-				),
-			)
+			taskRun := &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskRunName},
+				Spec: v1alpha1.TaskRunSpec{
+					TaskRef: &v1alpha1.TaskRef{
+						Name: sidecarTaskName,
+					},
+					Timeout: &metav1.Duration{time.Minute},
+				},
+			}
 
 			t.Logf("Creating Task %q", sidecarTaskName)
-			if _, err := clients.TaskClient.Create(task); err != nil {
+			if _, err := clients.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create Task %q: %v", sidecarTaskName, err)
 			}
 
 			t.Logf("Creating TaskRun %q", sidecarTaskRunName)
-			if _, err := clients.TaskRunClient.Create(taskRun); err != nil {
+			if _, err := clients.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
 			}
 
-			if err := WaitForTaskRunState(clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed"); err != nil {
+			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed"); err != nil {
 				t.Errorf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
 			}
 
-			tr, err := clients.TaskRunClient.Get(sidecarTaskRunName, metav1.GetOptions{})
+			tr, err := clients.TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Error getting Taskrun: %v", err)
 			}
 			podName := tr.Status.PodName
 
-			if err := WaitForPodState(clients, podName, namespace, func(pod *corev1.Pod) (bool, error) {
+			if err := WaitForPodState(ctx, clients, podName, namespace, func(pod *corev1.Pod) (bool, error) {
 				terminatedCount := 0
 				for _, c := range pod.Status.ContainerStatuses {
 					if c.State.Terminated != nil {
@@ -117,7 +127,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 				t.Errorf("Error waiting for Pod %q to terminate both the primary and sidecar containers: %v", podName, err)
 			}
 
-			pod, err := clients.KubeClient.Kube.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+			pod, err := clients.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Error getting TaskRun pod: %v", err)
 			}
@@ -146,7 +156,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 				t.Errorf("Either the primary or sidecar containers did not terminate")
 			}
 
-			trCheckSidecarStatus, err := clients.TaskRunClient.Get(sidecarTaskRunName, metav1.GetOptions{})
+			trCheckSidecarStatus, err := clients.TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Error getting TaskRun: %v", err)
 			}

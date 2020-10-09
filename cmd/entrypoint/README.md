@@ -1,10 +1,14 @@
 # entrypoint
 
 This binary is used to override the entrypoint of a container by
-wrapping it. In `tektoncd/pipeline` this is used to make sure `Task`'s
-steps are executed in order, or for sidecars.
+wrapping it and executing original entrypoint command in a subprocess.
 
-The following flags are available :
+Tekton uses this to make sure `TaskRun`s' steps are executed in order, only
+after sidecars are ready and previous steps have completed successfully.
+
+## Flags
+
+The following flags are available:
 
 - `-entrypoint`: "original" command to be executed (as
   entrypoint). This will be executed as a sub-process on `entrypoint`
@@ -16,20 +20,97 @@ The following flags are available :
   will either execute the sub-process (in case of `{{wait_file}}`) or
   skip the execution, write to `{{post_file}}.err` and return an error
   (`exitCode` >= 0)
-- `-wait_file_content`: excepts the `wait_file` to add actual
-  content. It will continue watching for `wait_file` until it has
+- `-wait_file_content`: expects the `wait_file` to contain actual
+  contents. It will continue watching for `wait_file` until it has
   content.
 
-The following example of usage for `entrypoint`, wait's for
-`/tekton/downward/ready` file to exists and have some content before
-executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/tekton/tools/0` in case of succes, or
-`/tekton/tools/0.err` in case of failure.
+Any extra positional arguments are passed to the original entrypoint command.
+
+## Example
+
+The following example of usage for `entrypoint` waits for
+`/tekton/tools/3` file to exist and executes the command `bash` with args
+`echo` and `hello`, then writes the file `/tekton/tools/4`, or
+`/tekton/tools/4.err` in case the command fails.
 
 ```shell
 entrypoint \
- -wait_file /tekton/downward/ready \
- -post_file /tekton/tools/0" \
- -wait_file_content  \
- -entrypoint /ko-app/bash -- -args mkdir -p /workspace/git-resource
+  -wait_file /tekton/tools/3 \
+  -post_file /tekton/tools/4 \
+  -entrypoint bash -- \
+  echo hello
+```
+
+## Waiting for Sidecars
+
+In cases where the TaskRun's Pod has sidecar containers -- including, possibly,
+injected sidecars that Tekton itself didn't specify -- the first step should
+also wait until all those sidecars have reported as ready. Starting before
+sidecars are ready could lead to flaky errors if steps rely on the sidecar
+being ready to succeed.
+
+To account for this, the Tekton controller starts TaskRun Pods with the first
+step's entrypoint binary configured to wait for a special file provided by the
+[Kubernetes Downward
+API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api).
+This allows Tekton to write a Pod annotation when all sidecars report as ready,
+and for the value of that annotation to appear to the Pod as a file in a
+Volume. To the Pod, that file always exists, but without content until the
+annotation is set, so we instruct the entrypoint to wait for the `-wait_file`
+to contain contents before proceeding.
+
+### Example
+
+The following example of usage for `entrypoint` waits for
+`/tekton/downward/ready` file to exist and contain actual contents
+(`-wait_file_contents`), and executes the command `bash` with args
+`echo` and `hello`, then writes the file `/tekton/tools/1`, or
+`/tekton/tools/1.err` in case the command fails.
+
+```shell
+entrypoint \
+  -wait_file /tekton/downward/ready \
+  -wait_file_contents \
+  -post_file /tekton/tools/1 \
+  -entrypoint bash -- \
+  echo hello
+```
+
+## `cp` Mode
+
+In order to make the `entrypoint` binary available to the user's steps, it gets
+copied to a Volume that's shared with all the steps' containers. This is done
+in an `initContainer` pre-step, that runs before steps start.
+
+To reduce external dependencies, the `entrypoint` binary actually copies
+_itself_ to the shared Volume. When executed with the positional args of `cp
+<src> <dst>`, the `entrypoint` binary copies the `<src>` file to `<dst>` and
+exits.
+
+It's executed as an `initContainer` in the TaskRun's Pod like:
+
+```
+initContainers:
+- image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint
+  args:
+  - cp
+  - /ko-app/entrypoint  # <-- path to the entrypoint binary inside the image
+  - /tekton/tools/entrypoint
+  volumeMounts:
+  - name: tekton-internal-tools
+    mountPath: /tekton/tools
+
+containers:
+- image: user-image
+  command:
+  - /tekton/tools/entrypoint
+  ... args to entrypoint ...
+  volumeMounts:
+  - name: tekton-internal-tools
+    mountPath: /tekton/tools
+
+volumes:
+- name: tekton-internal-tools
+  volumeSource:
+    emptyDir: {}
 ```

@@ -20,7 +20,8 @@ spec:
         - |
           ls -al $(resources.inputs.pipeline-git.path)
 ---
-
+# `Conditions` are deprecated, use `WhenExpressions` instead
+# https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#guard-task-execution-using-whenexpressions
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
 metadata:

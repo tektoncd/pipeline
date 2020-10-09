@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -27,51 +28,42 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-const (
-	epTaskName    = "ep-task"
-	epTaskRunName = "ep-task-run"
-)
+const epTaskRunName = "ep-task-run"
 
 // TestEntrypointRunningStepsInOrder is an integration test that will
 // verify attempt to the get the entrypoint of a container image
 // that doesn't have a cmd defined. In addition to making sure the steps
 // are executed in the order specified
 func TestEntrypointRunningStepsInOrder(t *testing.T) {
-	c, namespace := setup(t)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
-	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: epTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "ubuntu",
-				Args:  []string{"-c", "sleep 3 && touch foo"},
-			}}, {Container: corev1.Container{
-				Image: "ubuntu",
-				Args:  []string{"-c", "ls", "foo"},
-			}}},
-		},
-	}
-	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
-	taskRun := &v1beta1.TaskRun{
+	t.Logf("Creating TaskRun in namespace %s", namespace)
+	if _, err := c.TaskRunClient.Create(ctx, &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: epTaskRunName, Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: epTaskName},
-			ServiceAccountName: "default",
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{Image: "busybox"},
+					Script:    "sleep 3 && touch foo",
+				}, {
+					Container: corev1.Container{Image: "ubuntu"},
+					Script:    "ls foo",
+				}},
+			},
 		},
-	}
-	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 

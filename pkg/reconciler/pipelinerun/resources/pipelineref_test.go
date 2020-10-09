@@ -17,11 +17,12 @@
 package resources_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -32,7 +33,7 @@ func TestPipelineRef(t *testing.T) {
 	testcases := []struct {
 		name      string
 		pipelines []runtime.Object
-		ref       *v1alpha1.PipelineRef
+		ref       *v1beta1.PipelineRef
 		expected  runtime.Object
 		wantErr   bool
 	}{
@@ -42,7 +43,7 @@ func TestPipelineRef(t *testing.T) {
 				tb.Pipeline("simple", tb.PipelineNamespace("default")),
 				tb.Pipeline("dummy", tb.PipelineNamespace("default")),
 			},
-			ref: &v1alpha1.PipelineRef{
+			ref: &v1beta1.PipelineRef{
 				Name: "simple",
 			},
 			expected: tb.Pipeline("simple", tb.PipelineNamespace("default")),
@@ -51,7 +52,7 @@ func TestPipelineRef(t *testing.T) {
 		{
 			name:      "pipeline-not-found",
 			pipelines: []runtime.Object{},
-			ref: &v1alpha1.PipelineRef{
+			ref: &v1beta1.PipelineRef{
 				Name: "simple",
 			},
 			expected: nil,
@@ -61,6 +62,9 @@ func TestPipelineRef(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			tektonclient := fake.NewSimpleClientset(tc.pipelines...)
 
 			lc := &resources.LocalPipelineRefResolver{
@@ -68,7 +72,7 @@ func TestPipelineRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetPipeline(tc.ref.Name)
+			task, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {

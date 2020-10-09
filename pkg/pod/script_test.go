@@ -20,14 +20,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -35,7 +35,7 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 		Container: corev1.Container{
 			Image: "step-2",
 		},
-	}}, []v1alpha1.Sidecar{})
+	}}, []v1beta1.Sidecar{})
 	want := []corev1.Container{{
 		Image: "step-1",
 	}, {
@@ -54,7 +54,7 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 }
 
 func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -81,7 +81,7 @@ func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 }
 
 func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -89,7 +89,7 @@ func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
 		Container: corev1.Container{
 			Image: "step-2",
 		},
-	}}, []v1alpha1.Sidecar{{
+	}}, []v1beta1.Sidecar{{
 		Container: corev1.Container{
 			Image: "sidecar-1",
 		},
@@ -130,7 +130,7 @@ func TestConvertScripts(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -153,7 +153,7 @@ script-3`,
 			VolumeMounts: preExistingVolumeMounts,
 			Args:         []string{"my", "args"},
 		},
-	}}, []v1alpha1.Sidecar{})
+	}}, []v1beta1.Sidecar{})
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
@@ -225,7 +225,7 @@ func TestConvertScripts_WithSidecar(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1alpha1.Step{{
+	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -240,7 +240,7 @@ script-3`,
 			VolumeMounts: preExistingVolumeMounts,
 			Args:         []string{"my", "args"},
 		},
-	}}, []v1alpha1.Sidecar{{
+	}}, []v1beta1.Sidecar{{
 		Script: `#!/bin/sh
 sidecar-1`,
 		Container: corev1.Container{Image: "sidecar-1"},
