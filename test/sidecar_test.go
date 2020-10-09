@@ -48,7 +48,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 	}{{
 		desc:           "A sidecar that runs forever is terminated when Steps complete",
 		stepCommand:    []string{"echo", "\"hello world\""},
-		sidecarCommand: []string{"sh", "-c", "while [[ true ]] ; do echo \"hello from sidecar\" ; done"},
+		sidecarCommand: []string{"sh", "-c", "while [[ true ]] ; do echo \"hello from sidecar\" ; [[ -f /ko-app/nop ]] && break; done; ./ko-app/nop"},
 	}, {
 		desc:           "A sidecar that terminates early does not cause problems running Steps",
 		stepCommand:    []string{"echo", "\"hello world\""},
