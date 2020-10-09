@@ -183,7 +183,7 @@ func getHelmDeployTask(namespace string) *v1beta1.Task {
 					"service.type=ClusterIP",
 				},
 			}}, {Container: corev1.Container{
-				Image:   "lachlanevenson/k8s-kubectl",
+				Image:   getTestImage(kubectlImage),
 				Command: []string{"kubectl"},
 				Args: []string{
 					"get",

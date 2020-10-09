@@ -36,6 +36,8 @@ const (
 	busyboxImage = iota
 	// Registry image
 	registryImage
+	//kubectl image
+	kubectlImage
 )
 
 func init() {
@@ -58,11 +60,13 @@ func initImageNames() map[int]string {
 		return map[int]string{
 			busyboxImage:  "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
 			registryImage: "ibmcom/registry:2.6.2.5",
+			kubectlImage:  "ibmcom/kubectl:v1.13.9",
 		}
 	}
 	return map[int]string{
 		busyboxImage:  "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
 		registryImage: "registry",
+		kubectlImage:  "lachlanevenson/k8s-kubectl",
 	}
 }
 
@@ -84,8 +88,10 @@ func getImagesMappingRE() map[*regexp.Regexp][]byte {
 func imageNamesMapping() map[string]string {
 	if getTestArch() == "s390x" {
 		return map[string]string{
-			"registry": getTestImage(registryImage),
-			"node":     "node:alpine3.11",
+			"registry":                   getTestImage(registryImage),
+			"node":                       "node:alpine3.11",
+			"lachlanevenson/k8s-kubectl": getTestImage(kubectlImage),
+			"gcr.io/cloud-builders/git":  "alpine/git:latest",
 		}
 	}
 
@@ -108,43 +114,16 @@ func initExcludedTests() sets.String {
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",
 			"TestExamples/v1beta1/taskruns/build-gcs-zip",
 			"TestExamples/v1alpha1/taskruns/build-gcs-zip",
-			"TestExamples/v1alpha1/taskruns/git-volume",
-			"TestExamples/v1beta1/taskruns/git-volume",
 			"TestExamples/v1beta1/taskruns/docker-creds",
 			"TestExamples/v1alpha1/taskruns/docker-creds",
-			"TestExamples/v1beta1/taskruns/steps-run-in-order",
-			"TestExamples/v1alpha1/taskruns/steps-run-in-order",
-			"TestExamples/v1beta1/taskruns/step-by-digest",
-			"TestExamples/v1alpha1/taskruns/step-by-digest",
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/authenticating-git-commands",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun-with-final-tasks",
-			"TestExamples/v1beta1/taskruns/pullrequest_input_copystep_output",
-			"TestExamples/v1alpha1/taskruns/pullrequest_input_copystep_output",
-			"TestExamples/v1beta1/taskruns/pullrequest",
-			"TestExamples/v1alpha1/taskruns/pullrequest",
-			"TestExamples/v1beta1/pipelineruns/conditional-pipelinerun",
-			"TestExamples/v1alpha1/pipelineruns/pipelinerun-with-resourcespec",
-			"TestExamples/v1beta1/pipelineruns/pipelinerun-with-resourcespec",
-			"TestExamples/v1beta1/taskruns/git-ssh-creds-without-known_hosts",
-			"TestExamples/v1alpha1/taskruns/optional-resources",
-			"TestExamples/v1beta1/taskruns/optional-resources",
-			"TestExamples/v1beta1/taskruns/task-output-image",
+			"TestExamples/v1beta1/taskruns/workspace-in-sidecar",
 			//e2e
-			"TestEntrypointRunningStepsInOrder",
-			"TestWorkingDirIgnoredNonSlashWorkspace",
-			"TestTaskRun_EmbeddedResource",
-			"TestTaskRunPipelineRunCancel",
-			"TestEntrypointRunningStepsInOrder",
-			"TestGitPipelineRun",
 			"TestHelmDeployPipelineRun",
 			"TestKanikoTaskRun",
-			"TestPipelineRun",
-			"TestSidecarTaskSupport",
-			"TestWorstkingDirCreated",
-			"TestWorkingDirIgnoredNonSlashWorkspace",
-			"TestWorkingDirCreated",
 			"TestPipelineRun/service_account_propagation_and_pipeline_param",
 			"TestPipelineRun/pipelinerun_succeeds_with_LimitRange_minimum_in_namespace",
 		)
