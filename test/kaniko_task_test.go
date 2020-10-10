@@ -40,8 +40,8 @@ const (
 	kanikoTaskRunName       = "kanikotask-run"
 	kanikoGitResourceName   = "go-example-git"
 	kanikoImageResourceName = "go-example-image"
-	// This is a random revision chosen on 10/11/2019
-	revision = "1c9d566ecd13535f93789595740f20932f655905"
+	// This is a random revision chosen on 2020/10/09
+	revision = "a310cc6d1cd449f95cedd23393de766fdc649651"
 )
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
