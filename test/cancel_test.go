@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -144,23 +145,35 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				trName = append(trName, taskrunItem.Name)
 			}
 
-			matchKinds := map[string][]string{"PipelineRun": {pipelineRun.Name}, "TaskRun": trName}
-			// Expected failure events: 1 for the pipelinerun cancel, 1 for each TaskRun
-			expectedNumberOfEvents := 1 + len(trName)
+			matchKinds := map[string][]string{"PipelineRun": {pipelineRun.Name}}
+			// Expected failure events: 1 for the pipelinerun cancel
+			expectedNumberOfEvents := 1
 			t.Logf("Making sure %d events were created from pipelinerun with kinds %v", expectedNumberOfEvents, matchKinds)
 			events, err := collectMatchingEvents(ctx, c.KubeClient, namespace, matchKinds, "Failed")
 			if err != nil {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
-			if len(events) != expectedNumberOfEvents {
-				collectedEvents := ""
-				for i, event := range events {
-					collectedEvents += fmt.Sprintf("%#v", event)
-					if i < (len(events) - 1) {
-						collectedEvents += ", "
-					}
+			if len(events) < expectedNumberOfEvents {
+				collectedEvents := make([]string, 0, len(events))
+				for _, event := range events {
+					collectedEvents = append(collectedEvents, fmt.Sprintf("%#v", event))
 				}
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", expectedNumberOfEvents, len(events), collectedEvents)
+				t.Fatalf("Expected %d number of failed events from pipelinerun but got %d; list of received events : %s", expectedNumberOfEvents, len(events), strings.Join(collectedEvents, ", "))
+			}
+			matchKinds = map[string][]string{"TaskRun": trName}
+			// Expected failure events: 1 for each TaskRun
+			expectedNumberOfEvents = len(trName)
+			t.Logf("Making sure %d events were created from taskruns with kinds %v", expectedNumberOfEvents, matchKinds)
+			events, err = collectMatchingEvents(ctx, c.KubeClient, namespace, matchKinds, "Failed")
+			if err != nil {
+				t.Fatalf("Failed to collect matching events: %q", err)
+			}
+			if len(events) < expectedNumberOfEvents {
+				collectedEvents := make([]string, 0, len(events))
+				for _, event := range events {
+					collectedEvents = append(collectedEvents, fmt.Sprintf("%#v", event))
+				}
+				t.Fatalf("Expected %d number of failed events from taskrun but got %d; list of received events : %s", expectedNumberOfEvents, len(events), strings.Join(collectedEvents, ", "))
 			}
 		})
 	}
