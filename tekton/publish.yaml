@@ -3,25 +3,24 @@ kind: Task
 metadata:
   name: publish-tekton-pipelines
 spec:
-  inputs:
-    resources:
+  params:
+  - name: versionTag
+    description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+  - name: imageRegistry
+    description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
+  - name: pathToProject
+    description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+  - name: releaseAsLatest
+    description: Whether to tag and publish this release as Pipelines' latest
+    default: "true"
+  resources:
+    inputs:
     - name: source
       type: git
       targetPath: go/src/github.com/tektoncd/pipeline
     - name: bucket
       type: storage
-    params:
-    - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
-    - name: imageRegistry
-      description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
-    - name: pathToProject
-      description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
-    - name: releaseAsLatest
-      description: Whether to tag and publish this release as Pipelines' latest
-      default: "true"
-  outputs:
-    resources:
+    outputs:
     - name: bucket
       type: storage
     - name: builtBaseImage
@@ -80,9 +79,9 @@ spec:
         $(params.pathToProject)/$(resources.outputs.builtGitInitImage.url): $(params.imageRegistry)/$(params.pathToProject)/build-base:latest
 
         # These match values configured in .ko.yaml
-        $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
-        $(inputs.params.pathToProject)/$(outputs.resources.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
-        $(inputs.params.pathToProject)/$(outputs.resources.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
+        $(params.pathToProject)/$(resources.outputs.builtEntrypointImage.url): gcr.io/distroless/base:debug-nonroot
+        $(params.pathToProject)/$(resources.outputs.builtGcsFetcherImage.url): gcr.io/distroless/static:latest
+        $(params.pathToProject)/$(resources.outputs.builtPullRequestInitImage.url): gcr.io/distroless/static:latest
       EOF
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
@@ -144,8 +143,8 @@ spec:
         ln -s ${TMPDIR}/source.tar.gz ${d}/kodata/
       done
 
-      # Rewrite "devel" to inputs.params.versionTag
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(inputs.params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(inputs.params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
+      # Rewrite "devel" to params.versionTag
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' /workspace/go/src/github.com/tektoncd/pipeline/config/*.yaml
 
       OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
 
