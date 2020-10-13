@@ -48,6 +48,11 @@ const (
 // caller. If no matching annotated secrets are found, nil lists with a
 // nil error are returned.
 func credsInit(ctx context.Context, serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
+		return nil, nil, nil, nil
+	}
+
 	// service account if not specified in pipeline/task spec, read it from the ConfigMap
 	// and defaults to `default` if its missing from the ConfigMap as well
 	if serviceAccountName == "" {
@@ -109,7 +114,11 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 
 // getCredsInitVolume returns a Volume and VolumeMount for /tekton/creds. Each call
 // will return a new volume and volume mount with randomized name.
-func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
+func getCredsInitVolume(ctx context.Context) (*corev1.Volume, *corev1.VolumeMount) {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
+		return nil, nil
+	}
 	name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(credsInitHomeMountPrefix)
 	v := corev1.Volume{
 		Name: name,
@@ -121,7 +130,7 @@ func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
 		Name:      name,
 		MountPath: pipeline.CredsDir,
 	}
-	return v, vm
+	return &v, &vm
 }
 
 // checkGitSSHSecret requires `known_host` field must be included in Git SSH Secret when feature flag

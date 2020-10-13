@@ -1133,6 +1133,45 @@ script-heredoc-randomly-generated-78c5n
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
+	}, {
+		desc: "task-with-creds-init-disabled",
+		featureFlags: map[string]string{
+			"disable-creds-init": "true",
+		},
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:                    implicitEnvVars,
+				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

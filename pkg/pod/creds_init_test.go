@@ -43,13 +43,13 @@ func TestCredsInit(t *testing.T) {
 		Name:  "HOME",
 		Value: "/users/home/my-test-user",
 	}
-
 	for _, c := range []struct {
 		desc             string
 		wantArgs         []string
 		wantVolumeMounts []corev1.VolumeMount
 		objs             []runtime.Object
 		envVars          []corev1.EnvVar
+		ctx              context.Context
 	}{{
 		desc: "service account exists with no secrets; nothing to initialize",
 		objs: []runtime.Object{
@@ -57,6 +57,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		wantArgs:         nil,
 		wantVolumeMounts: nil,
+		ctx:              context.Background(),
 	}, {
 		desc: "service account has no annotated secrets; nothing to initialize",
 		objs: []runtime.Object{
@@ -78,6 +79,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		wantArgs:         nil,
 		wantVolumeMounts: nil,
+		ctx:              context.Background(),
 	}, {
 		desc: "service account has annotated secret and no HOME env var passed in; initialize creds in /tekton/creds",
 		objs: []runtime.Object{
@@ -116,6 +118,7 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
+		ctx: context.Background(),
 	}, {
 		desc: "service account with secret and HOME env var passed in",
 		objs: []runtime.Object{
@@ -154,11 +157,47 @@ func TestCredsInit(t *testing.T) {
 			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
 			MountPath: "/tekton/creds-secrets/my-creds",
 		}},
+		ctx: context.Background(),
+	}, {
+		desc: "disabling creds-init via feature-flag results in no args or volumes",
+		objs: []runtime.Object{
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+				Secrets: []corev1.ObjectReference{{
+					Name: "my-creds",
+				}},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/docker-0": "https://us.gcr.io",
+						"tekton.dev/docker-1": "https://docker.io",
+						"tekton.dev/git-0":    "github.com",
+						"tekton.dev/git-1":    "gitlab.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+				Data: map[string][]byte{
+					"username": []byte("foo"),
+					"password": []byte("BestEver"),
+				},
+			},
+		},
+		envVars:          []corev1.EnvVar{customHomeEnvVar},
+		wantArgs:         nil,
+		wantVolumeMounts: nil,
+		ctx: config.ToContext(context.Background(), &config.Config{
+			FeatureFlags: &config.FeatureFlags{
+				DisableCredsInit: true,
+			},
+		}),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			args, volumes, volumeMounts, err := credsInit(context.Background(), serviceAccountName, namespace, kubeclient)
+			args, volumes, volumeMounts, err := credsInit(c.ctx, serviceAccountName, namespace, kubeclient)
 			if err != nil {
 				t.Fatalf("credsInit: %v", err)
 			}
