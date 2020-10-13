@@ -78,6 +78,8 @@ spec:
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
+        - name: config-registry-cert
+          mountPath: /etc/config-registry-cert
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -100,6 +102,10 @@ spec:
           value: feature-flags
         - name: CONFIG_LEADERELECTION_NAME
           value: config-leader-election
+        - name: SSL_CERT_FILE
+          value: /etc/config-registry-cert/cert
+        - name: SSL_CERT_DIR
+          value: /etc/ssl/certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
         securityContext:
@@ -110,6 +116,9 @@ spec:
         - name: config-logging
           configMap:
             name: config-logging
+        - name: config-registry-cert
+          configMap:
+            name: config-registry-cert
 ---
 apiVersion: v1
 kind: Service
