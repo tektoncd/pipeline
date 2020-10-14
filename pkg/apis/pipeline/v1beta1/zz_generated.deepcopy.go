@@ -1750,6 +1750,11 @@ func (in *WhenExpression) DeepCopyInto(out *WhenExpression) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.DeprecatedValues != nil {
+		in, out := &in.DeprecatedValues, &out.DeprecatedValues
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

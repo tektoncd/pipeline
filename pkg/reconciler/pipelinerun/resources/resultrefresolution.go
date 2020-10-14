@@ -186,7 +186,7 @@ func convertWhenExpressions(whenExpressions []v1beta1.WhenExpression, pipelineRu
 		if ok {
 			resolvedResultRefs, err := extractResultRefs(expressions, pipelineRunState)
 			if err != nil {
-				return nil, fmt.Errorf("unable to find result referenced by when expression with input %q in task %q: %w", whenExpression.Input, name, err)
+				return nil, fmt.Errorf("unable to find result referenced by when expression with input %q in task %q: %w", whenExpression.GetInput(), name, err)
 			}
 			if resolvedResultRefs != nil {
 				resolvedWhenExpressions = append(resolvedWhenExpressions, resolvedResultRefs...)
