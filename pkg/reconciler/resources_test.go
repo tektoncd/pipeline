@@ -36,7 +36,7 @@ func TestIsYoungResource(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				CreationTimestamp: metav1.Time{
 					// The age is Min-1 seconds
-					Time: time.Now().Add(-MinimumResourceAge + 1*time.Second),
+					Time: time.Now().Add(-minimumResourceAge + 1*time.Second),
 				},
 			},
 		},
@@ -47,7 +47,7 @@ func TestIsYoungResource(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				CreationTimestamp: metav1.Time{
 					// The age is Min+1 seconds
-					Time: time.Now().Add(-MinimumResourceAge - 1*time.Second),
+					Time: time.Now().Add(-minimumResourceAge - 1*time.Second),
 				},
 			},
 		},
