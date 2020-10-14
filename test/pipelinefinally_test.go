@@ -30,6 +30,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
@@ -40,57 +41,56 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	cond := getCondition("failedcondition", namespace)
+	cond := getCondition(t, namespace)
 	if _, err := c.ConditionClient.Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 	}
 
-	task := getFailTask("failtask", namespace)
+	task := getFailTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
-	delayedTask := getDelaySuccessTask("delayed-task", namespace)
+	delayedTask := getDelaySuccessTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, delayedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
-	finalTask := getSuccessTask("successtask", namespace)
+	finalTask := getSuccessTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pipeline := getPipeline(
+	pipeline := getPipeline(t,
 		namespace,
-		"pipeline-failed-dag-tasks",
 		map[string]string{
-			"dagtask1": "failtask",
-			"dagtask2": "delayed-task",
-			"dagtask3": "successtask",
+			"dagtask1": task.Name,
+			"dagtask2": delayedTask.Name,
+			"dagtask3": finalTask.Name,
 		},
 		map[string]string{
-			"dagtask3": "failedcondition",
+			"dagtask3": cond.Name,
 		},
 		map[string]string{
-			"finaltask1": "successtask",
+			"finaltask1": finalTask.Name,
 		},
 	)
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := getPipelineRun(namespace, "pipelinerun-failed-dag-tasks", "pipeline-failed-dag-tasks")
+	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline Run `%s`: %s", "pipelinerun-failed-dag-tasks", err)
+		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, "pipelinerun-failed-dag-tasks", timeout, PipelineRunFailed("pipelinerun-failed-dag-tasks"), "PipelineRunFailed"); err != nil {
-		t.Fatalf("Waiting for PipelineRun %s to fail: %v", "pipelinerun-failed-dag-tasks", err)
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+		t.Fatalf("Waiting for PipelineRun %s to fail: %v", pipelineRun.Name, err)
 	}
 
 	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pipelinerun-failed-dag-tasks"})
 	if err != nil {
-		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pipelinerun-failed-dag-tasks", err)
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
 	var dagTask1EndTime, dagTask2EndTime, finalTaskStartTime *metav1.Time
@@ -134,44 +134,43 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	task := getSuccessTask("successtask", namespace)
+	task := getSuccessTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
-	finalTask := getFailTask("failtask", namespace)
+	finalTask := getFailTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pipeline := getPipeline(
+	pipeline := getPipeline(t,
 		namespace,
-		"pipeline-failed-final-tasks",
 		map[string]string{
-			"dagtask1": "successtask",
+			"dagtask1": task.Name,
 		},
 		map[string]string{},
 		map[string]string{
-			"finaltask1": "failtask",
+			"finaltask1": finalTask.Name,
 		},
 	)
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := getPipelineRun(namespace, "pipelinerun-failed-final-tasks", "pipeline-failed-final-tasks")
+	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline Run `%s`: %s", "pipelinerun-failed-final-tasks", err)
+		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, "pipelinerun-failed-final-tasks", timeout, PipelineRunFailed("pipelinerun-failed-final-tasks"), "PipelineRunFailed"); err != nil {
-		t.Errorf("Error waiting for PipelineRun %s to finish: %s", "pipelinerun-failed-final-tasks", err)
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
 
 	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pipelinerun-failed-final-tasks"})
 	if err != nil {
-		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pipelinerun-failed-final-tasks", err)
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
 	// verify dag task succeeded and final task failed
@@ -229,21 +228,21 @@ func getTaskDef(n, namespace, script string) *v1beta1.Task {
 	}
 }
 
-func getSuccessTask(n, namespace string) *v1beta1.Task {
-	return getTaskDef(n, namespace, "exit 0")
+func getSuccessTask(t *testing.T, namespace string) *v1beta1.Task {
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0")
 }
 
-func getFailTask(n, namespace string) *v1beta1.Task {
-	return getTaskDef(n, namespace, "exit 1")
+func getFailTask(t *testing.T, namespace string) *v1beta1.Task {
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 1")
 }
 
-func getDelaySuccessTask(n, namespace string) *v1beta1.Task {
-	return getTaskDef(n, namespace, "sleep 5; exit 0")
+func getDelaySuccessTask(t *testing.T, namespace string) *v1beta1.Task {
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "sleep 5; exit 0")
 }
 
-func getCondition(n, namespace string) *v1alpha1.Condition {
+func getCondition(t *testing.T, namespace string) *v1alpha1.Condition {
 	return &v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1alpha1.ConditionSpec{
 			Check: v1alpha1.Step{
 				Container: corev1.Container{Image: "ubuntu"},
@@ -253,10 +252,10 @@ func getCondition(n, namespace string) *v1alpha1.Condition {
 	}
 }
 
-func getPipeline(namespace, p string, t map[string]string, c map[string]string, f map[string]string) *v1beta1.Pipeline {
+func getPipeline(t *testing.T, namespace string, ts map[string]string, c map[string]string, f map[string]string) *v1beta1.Pipeline {
 	var pt []v1beta1.PipelineTask
 	var fpt []v1beta1.PipelineTask
-	for k, v := range t {
+	for k, v := range ts {
 		task := v1beta1.PipelineTask{
 			Name:    k,
 			TaskRef: &v1beta1.TaskRef{Name: v},
@@ -275,7 +274,7 @@ func getPipeline(namespace, p string, t map[string]string, c map[string]string, 
 		})
 	}
 	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: p, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks:   pt,
 			Finally: fpt,
@@ -284,9 +283,9 @@ func getPipeline(namespace, p string, t map[string]string, c map[string]string, 
 	return pipeline
 }
 
-func getPipelineRun(namespace, pr, p string) *v1beta1.PipelineRun {
+func getPipelineRun(t *testing.T, namespace, p string) *v1beta1.PipelineRun {
 	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pr, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: p},
 		},
