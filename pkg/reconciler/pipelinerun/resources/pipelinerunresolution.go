@@ -196,7 +196,7 @@ func GetResourcesFromBindings(pr *v1beta1.PipelineRun, getResource resources.Get
 	for _, resource := range pr.Spec.Resources {
 		r, err := resources.GetResourceFromBinding(resource, getResource)
 		if err != nil {
-			return rs, fmt.Errorf("error following resource reference for %s: %w", resource.Name, err)
+			return rs, err
 		}
 		rs[resource.Name] = r
 	}

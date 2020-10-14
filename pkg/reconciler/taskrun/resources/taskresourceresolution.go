@@ -18,7 +18,6 @@ package resources
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -57,7 +56,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 	for _, r := range inputs {
 		rr, err := GetResourceFromBinding(r.PipelineResourceBinding, gr)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource: %w", err)
+			return nil, err
 		}
 
 		rtr.Inputs[r.Name] = rr
@@ -67,7 +66,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 		rr, err := GetResourceFromBinding(r.PipelineResourceBinding, gr)
 
 		if err != nil {
-			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource: %w", err)
+			return nil, err
 		}
 
 		rtr.Outputs[r.Name] = rr

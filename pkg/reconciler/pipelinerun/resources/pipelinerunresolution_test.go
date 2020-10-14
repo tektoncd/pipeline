@@ -918,11 +918,13 @@ func TestGetResourcesFromBindings_Missing(t *testing.T) {
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
 	getResource := func(name string) (*resourcev1alpha1.PipelineResource, error) {
-		return nil, fmt.Errorf("request for unexpected resource %s", name)
+		return nil, kerrors.NewNotFound(resourcev1alpha1.Resource("pipelineresources"), name)
 	}
 	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {
 		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
+	} else if !kerrors.IsNotFound(err) {
+		t.Fatalf("GetResourcesFromBindings() = %v, wanted IsNotFound", err)
 	}
 }
 
