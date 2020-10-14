@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	// MinimumResourceAge is the age at which resources stop being IsYoungResource.
-	MinimumResourceAge = 30 * time.Second
+	// minimumResourceAge is the age at which resources stop being IsYoungResource.
+	minimumResourceAge = 30 * time.Second
 )
 
-// IsYoungResource checks whether the resource is younger than MinimumResourceAge, based on its creation timestamp.
+// IsYoungResource checks whether the resource is younger than minimumResourceAge, based on its creation timestamp.
 func IsYoungResource(obj kmeta.Accessor) bool {
-	return time.Now().Sub(obj.GetCreationTimestamp().Time) < MinimumResourceAge
+	return time.Now().Sub(obj.GetCreationTimestamp().Time) < minimumResourceAge
 }
