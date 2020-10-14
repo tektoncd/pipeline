@@ -2170,7 +2170,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-	
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
@@ -2211,7 +2211,6 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 		t.Errorf("Expected to fail validation for duplicate Workspace mount paths, error was %v", err)
 	}
 }
-
 
 func TestHandlePodCreationError(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-pod-creation-failed", tb.TaskRunSpec(
@@ -3407,7 +3406,4 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 		})
 	}
 
-	
 }
-
-

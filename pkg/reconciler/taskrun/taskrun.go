@@ -615,7 +615,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr
-	} 
+	}
 
 	ts, err = workspace.Apply(*ts, tr.Spec.Workspaces, workspaceVolumes)
 	if err != nil {
