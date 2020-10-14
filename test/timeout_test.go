@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestPipelineRunTimeout is an integration test that will
@@ -48,7 +49,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "banana", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Image:   "busybox",
@@ -58,20 +59,20 @@ func TestPipelineRunTimeout(t *testing.T) {
 		},
 	}
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
 
 	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
+				TaskRef: &v1beta1.TaskRef{Name: task.Name},
 			}},
 		},
 	}
 	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
 			Timeout:     &metav1.Duration{Duration: 5 * time.Second},
@@ -141,18 +142,18 @@ func TestPipelineRunTimeout(t *testing.T) {
 	// Verify that we can create a second Pipeline using the same Task without a Pipeline-level timeout that will not
 	// time out
 	secondPipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "peppers", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
+				TaskRef: &v1beta1.TaskRef{Name: task.Name},
 			}},
 		},
 	}
 	secondPipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "kiwi", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "peppers"},
+			PipelineRef: &v1beta1.PipelineRef{Name: secondPipeline.Name},
 		},
 	}
 	if _, err := c.PipelineClient.Create(ctx, secondPipeline, metav1.CreateOptions{}); err != nil {
@@ -208,8 +209,7 @@ func TestStepTimeout(t *testing.T) {
 						Image: "busybox",
 					},
 					Script: "sleep 1",
-				},
-				},
+				}},
 			},
 		},
 	}
