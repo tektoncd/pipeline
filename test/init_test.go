@@ -39,6 +39,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging" // Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
+	"knative.dev/pkg/test/logstream"
 )
 
 var initMetrics sync.Once
@@ -55,6 +56,10 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
 	initializeLogsAndMetrics(t)
+
+	// Inline controller logs from SYSTEM_NAMESPACE into the t.Log output.
+	cancel := logstream.Start(t)
+	t.Cleanup(cancel)
 
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(ctx, t, namespace, c.KubeClient)
