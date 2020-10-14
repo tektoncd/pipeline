@@ -60,6 +60,11 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
+	finalTaskWithStatus := getTaskVerifyingStatus(t, namespace)
+	if _, err := c.TaskClient.Create(ctx, finalTaskWithStatus, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create final Task checking executing status: %s", err)
+	}
+
 	pipeline := getPipeline(t,
 		namespace,
 		map[string]string{
@@ -72,6 +77,28 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 		},
 		map[string]string{
 			"finaltask1": finalTask.Name,
+			"finaltask2": finalTaskWithStatus.Name,
+		},
+		map[string][]v1beta1.Param{
+			"finaltask2": {{
+				Name: "dagtask1-status",
+				Value: v1beta1.ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.dagtask1.status)",
+				},
+			}, {
+				Name: "dagtask2-status",
+				Value: v1beta1.ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.dagtask2.status)",
+				},
+			}, {
+				Name: "dagtask3-status",
+				Value: v1beta1.ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.dagtask3.status)",
+				},
+			}},
 		},
 	)
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
@@ -115,6 +142,27 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			finalTaskStartTime = taskrunItem.Status.StartTime
+		case n == "finaltask2":
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
+			}
+			for _, p := range taskrunItem.Spec.Params {
+				switch param := p.Name; param {
+				case "dagtask1-status":
+					if p.Value.StringVal != v1beta1.TaskRunReasonFailed.String() {
+						t.Errorf("Task param \"%s\" is set to \"%s\", expected it to resolve to \"%s\"", param, p.Value.StringVal, v1beta1.TaskRunReasonFailed.String())
+					}
+				case "dagtask2-status":
+					if p.Value.StringVal != v1beta1.TaskRunReasonSuccessful.String() {
+						t.Errorf("Task param \"%s\" is set to \"%s\", expected it to resolve to \"%s\"", param, p.Value.StringVal, v1beta1.TaskRunReasonSuccessful.String())
+					}
+
+				case "dagtask3-status":
+					if p.Value.StringVal != resources.PipelineTaskStateNone {
+						t.Errorf("Task param \"%s\" is set to \"%s\", expected it to resolve to \"%s\"", param, p.Value.StringVal, resources.PipelineTaskStateNone)
+					}
+				}
+			}
 		default:
 			t.Fatalf("TaskRuns were not found for both final and dag tasks")
 		}
@@ -152,6 +200,7 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 		map[string]string{
 			"finaltask1": finalTask.Name,
 		},
+		map[string][]v1beta1.Param{},
 	)
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
@@ -215,7 +264,7 @@ func isSkipped(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) b
 	return false
 }
 
-func getTaskDef(n, namespace, script string) *v1beta1.Task {
+func getTaskDef(n, namespace, script string, params []v1beta1.ParamSpec) *v1beta1.Task {
 	return &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
@@ -223,20 +272,33 @@ func getTaskDef(n, namespace, script string) *v1beta1.Task {
 				Container: corev1.Container{Image: "alpine"},
 				Script:    script,
 			}},
+			Params: params,
 		},
 	}
 }
 
 func getSuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0")
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0", []v1beta1.ParamSpec{})
 }
 
 func getFailTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 1")
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 1", []v1beta1.ParamSpec{})
 }
 
 func getDelaySuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "sleep 5; exit 0")
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "sleep 5; exit 0", []v1beta1.ParamSpec{})
+}
+
+func getTaskVerifyingStatus(t *testing.T, namespace string) *v1beta1.Task {
+	params := []v1beta1.ParamSpec{{
+		Name: "dagtask1-status",
+	}, {
+		Name: "dagtask2-status",
+	}, {
+		Name: "dagtask3-status",
+	}}
+	script := "exit 0"
+	return getTaskDef(helpers.ObjectNameForTest(t), namespace, script, params)
 }
 
 func getCondition(t *testing.T, namespace string) *v1alpha1.Condition {
@@ -251,7 +313,7 @@ func getCondition(t *testing.T, namespace string) *v1alpha1.Condition {
 	}
 }
 
-func getPipeline(t *testing.T, namespace string, ts map[string]string, c map[string]string, f map[string]string) *v1beta1.Pipeline {
+func getPipeline(t *testing.T, namespace string, ts map[string]string, c map[string]string, f map[string]string, p map[string][]v1beta1.Param) *v1beta1.Pipeline {
 	var pt []v1beta1.PipelineTask
 	var fpt []v1beta1.PipelineTask
 	for k, v := range ts {
@@ -270,6 +332,7 @@ func getPipeline(t *testing.T, namespace string, ts map[string]string, c map[str
 		fpt = append(fpt, v1beta1.PipelineTask{
 			Name:    k,
 			TaskRef: &v1beta1.TaskRef{Name: v},
+			Params:  p[k],
 		})
 	}
 	pipeline := &v1beta1.Pipeline{

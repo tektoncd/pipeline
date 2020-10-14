@@ -2116,6 +2116,80 @@ func TestContextInvalid(t *testing.T) {
 	}
 }
 
+func TestPipelineTasksExecutionStatus(t *testing.T) {
+	tests := []struct {
+		name          string
+		tasks         []PipelineTask
+		finalTasks    []PipelineTask
+		expectedError apis.FieldError
+	}{{
+		name: "valid string variable in finally accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name: "foo",
+		}},
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
+			}},
+		}},
+	}, {
+		name: "invalid string variable in dag task accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Params: []Param{{
+				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.bar.status)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task`,
+			Paths:   []string{"tasks[0].params[bar-status].value"},
+		},
+	}, {
+		name: "invalid array variable in dag task accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Params: []Param{{
+				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar.status)"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task`,
+			Paths:   []string{"tasks[0].params[bar-status].value"},
+		},
+	}, {
+		name: "invalid string variable in finally accessing missing pipelineTask status",
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
+			}},
+		}},
+		expectedError: *apis.ErrGeneric(`non-existent variable in "$(tasks.notask.status)"`, "value"),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateExecutionStatusVariables(tt.tasks, tt.finalTasks)
+			if len(tt.expectedError.Error()) == 0 {
+				if err != nil {
+					t.Errorf("Pipeline.validateExecutionStatusVariables() returned error for valid pipeline variable accessing execution status: %s: %v", tt.name, err)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("Pipeline.validateExecutionStatusVariables() did not return error for invalid pipeline parameters accessing execution status: %s, %s", tt.name, tt.tasks[0].Params)
+				}
+				if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+					t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}
+
 func getTaskSpec() TaskSpec {
 	return TaskSpec{
 		Steps: []Step{{

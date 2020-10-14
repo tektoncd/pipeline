@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -26,6 +27,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+)
+
+const (
+	// ReasonUnknown indicates that the execution status of a pipelineTask is unknown
+	PipelineTaskStateNone = "None"
+	// PipelineTaskStatusPrefix is a prefix of the param representing execution state of pipelineTask
+	PipelineTaskStatusPrefix = "tasks."
+	// PipelineTaskStatusSuffix is a suffix of the param representing execution state of pipelineTask
+	PipelineTaskStatusSuffix = ".status"
 )
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -368,6 +378,31 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 		}
 	}
 	return skipped
+}
+
+// GetPipelineTaskStatus returns the status of a PipelineTask depending on its taskRun
+// the checks are implemented such that the finally tasks are requesting status of the dag tasks
+func (facts *PipelineRunFacts) GetPipelineTaskStatus(ctx context.Context) map[string]string {
+	// construct a map of tasks.<pipelineTask>.status and its state
+	tStatus := make(map[string]string)
+	for _, t := range facts.State {
+		if facts.isDAGTask(t.PipelineTask.Name) {
+			var s string
+			switch {
+			// execution status is Succeeded when a task has succeeded condition with status set to true
+			case t.IsSuccessful():
+				s = v1beta1.TaskRunReasonSuccessful.String()
+			// execution status is Failed when a task has succeeded condition with status set to false
+			case t.IsConditionStatusFalse():
+				s = v1beta1.TaskRunReasonFailed.String()
+			default:
+				// None includes skipped as well
+				s = PipelineTaskStateNone
+			}
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
+		}
+	}
+	return tStatus
 }
 
 // successfulOrSkippedTasks returns a list of the names of all of the PipelineTasks in state

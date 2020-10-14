@@ -882,4 +882,42 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			}
 		})
 	}
+
+}
+
+func TestApplyTaskRunContext(t *testing.T) {
+	r := map[string]string{
+		"tasks.task1.status": "succeeded",
+		"tasks.task3.status": "none",
+	}
+	state := PipelineRunState{{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "task4",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Params: []v1beta1.Param{{
+				Name:  "task1",
+				Value: *v1beta1.NewArrayOrString("$(tasks.task1.status)"),
+			}, {
+				Name:  "task3",
+				Value: *v1beta1.NewArrayOrString("$(tasks.task3.status)"),
+			}},
+		},
+	}}
+	expectedState := PipelineRunState{{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "task4",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Params: []v1beta1.Param{{
+				Name:  "task1",
+				Value: *v1beta1.NewArrayOrString("succeeded"),
+			}, {
+				Name:  "task3",
+				Value: *v1beta1.NewArrayOrString("none"),
+			}},
+		},
+	}}
+	ApplyPipelineTaskContext(state, r)
+	if d := cmp.Diff(expectedState, state); d != "" {
+		t.Fatalf("ApplyTaskRunContext() %s", diff.PrintWantGot(d))
+	}
 }

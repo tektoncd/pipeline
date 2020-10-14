@@ -4548,6 +4548,103 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 	}
 }
 
+func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
+	names.TestingSeed()
+
+	pipelineName := "p-pipelinetask-status"
+	pipelineRunName := "pr-pipelinetask-status"
+
+	ps := []*v1beta1.Pipeline{tb.Pipeline(pipelineName, tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("task1", "mytask"),
+		tb.FinalPipelineTask("finaltask", "finaltask",
+			tb.PipelineTaskParam("pipelineRun-tasks-task1", "$(tasks.task1.status)"),
+		),
+	))}
+
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun(pipelineRunName, tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec(pipelineName, tb.PipelineRunServiceAccountName("test-sa")),
+	)}
+
+	ts := []*v1beta1.Task{
+		tb.Task("mytask", tb.TaskNamespace("foo")),
+		tb.Task("finaltask", tb.TaskNamespace("foo"),
+			tb.TaskSpec(
+				tb.TaskParam("pipelineRun-tasks-task1", v1beta1.ParamTypeString),
+			),
+		),
+	}
+
+	trs := []*v1beta1.TaskRun{
+		tb.TaskRun(pipelineRunName+"-task1-xxyyy",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("PipelineRun", pipelineRunName,
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", pipelineName),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", pipelineRunName),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "task1"),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("mytask"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+			tb.TaskRunStatus(
+				tb.StatusCondition(
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: v1beta1.TaskRunReasonFailed.String(),
+					},
+				),
+			),
+		),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
+
+	expectedTaskRunName := pipelineRunName + "-finaltask-9l9zj"
+	expectedTaskRun := tb.TaskRun(expectedTaskRunName,
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", pipelineRunName,
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", pipelineName),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", pipelineRunName),
+		tb.TaskRunLabel("tekton.dev/pipelineTask", "finaltask"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("finaltask"),
+			tb.TaskRunServiceAccountName("test-sa"),
+			tb.TaskRunParam("pipelineRun-tasks-task1", "Failed"),
+		),
+	)
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=finaltask,tekton.dev/pipelineRun=" + pipelineRunName,
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+}
+
 // NewPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
 // This PipelineRunTest can be reused for multiple PipelineRuns by calling reconcileRun for each pipelineRun
 func NewPipelineRunTest(data test.Data, t *testing.T) *PipelineRunTest {
