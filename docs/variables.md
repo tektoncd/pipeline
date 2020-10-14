@@ -23,6 +23,7 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.uid` | The uid of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipeline.name` | The name of this `Pipeline` . |
+| `tasks.<pipelineTaskName>.status` | The execution status of the specified `pipelineTask`, only available in `finally` tasks. |
 
 
 ## Variables available in a `Task`

@@ -116,6 +116,39 @@ func TestValidateVariables(t *testing.T) {
 	}
 }
 
+func TestValidateVariablePS(t *testing.T) {
+	type args struct {
+		paramValue string
+		vars       sets.String
+	}
+	for _, tc := range []struct {
+		name          string
+		paramValue    string
+		vars          sets.String
+		expectedError *apis.FieldError
+	}{{
+		name:          "valid pipeline task in variable",
+		paramValue:    "--flag=$(tasks.task1.status)",
+		vars:          sets.NewString("task1"),
+		expectedError: nil,
+	}, {
+		name:       "undefined pipeline task",
+		paramValue: "--flag=$(tasks.task1.status)",
+		vars:       sets.NewString("foo"),
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=$(tasks.task1.status)"`,
+			Paths:   []string{""},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateVariablePS(tc.paramValue, "tasks", "status", tc.vars)
+			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("ValidateVariablePS() error did not match expected error for %s: %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyReplacements(t *testing.T) {
 	type args struct {
 		input        string

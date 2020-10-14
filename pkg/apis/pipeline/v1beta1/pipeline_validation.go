@@ -62,6 +62,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineParameterVariables(ps.Tasks, ps.Params).ViaField("tasks"))
 	errs = errs.Also(validatePipelineParameterVariables(ps.Finally, ps.Params).ViaField("finally"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks))
+	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspaces(ps.Workspaces, ps.Tasks, ps.Finally))
 	// Validate the pipeline's results
@@ -288,6 +289,40 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	}
 	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames)
 	return errs.Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames))
+}
+
+func validateExecutionStatusVariables(tasks []PipelineTask, finallyTasks []PipelineTask) (errs *apis.FieldError) {
+	// creating a list of pipelineTask names to validate tasks.<name>.status
+	pipelineRunTasksContextNames := sets.String{}
+	for idx, t := range tasks {
+		for _, param := range t.Params {
+			// validate dag pipeline tasks not accessing execution status of other pipeline task
+			if ps, ok := GetVarSubstitutionExpressionsForParam(param); ok {
+				for _, p := range ps {
+					if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
+						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status of any other pipeline task"),
+							"value").ViaFieldKey("params", param.Name).ViaFieldIndex("tasks", idx))
+					}
+				}
+			}
+		}
+		pipelineRunTasksContextNames.Insert(t.Name)
+	}
+
+	// validate finally tasks accessing execution status of a dag task specified in the pipeline
+	var paramValues []string
+	for _, t := range finallyTasks {
+		for _, param := range t.Params {
+			paramValues = append(paramValues, param.Value.StringVal)
+			paramValues = append(paramValues, param.Value.ArrayVal...)
+		}
+	}
+	for _, paramValue := range paramValues {
+		if strings.HasPrefix(stripVarSubExpression(paramValue), "tasks.") && strings.HasSuffix(stripVarSubExpression(paramValue), ".status") {
+			errs = errs.Also(substitution.ValidateVariablePS(paramValue, "tasks", "status", pipelineRunTasksContextNames).ViaField("value"))
+		}
+	}
+	return errs
 }
 
 func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.String) (errs *apis.FieldError) {

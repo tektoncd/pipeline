@@ -820,6 +820,44 @@ Overall, `PipelineRun` state transitioning is explained below for respective sce
 Please refer to the [table](pipelineruns.md#monitoring-execution-status) under Monitoring Execution Status to learn about
 what kind of events are triggered based on the `Pipelinerun` status.
 
+
+### Using Execution `Status` of `pipelineTask`
+
+Finally Task can utilize execution status of any of the `pipelineTasks` under `tasks` section using param:
+
+```yaml
+    finally:
+    - name: finaltask
+      params:
+        - name: task1Status
+          value: "$(tasks.task1.status)"
+      taskSpec:
+        params:
+          - name: task1Status
+        steps:
+          - image: ubuntu
+            name: print-task-status
+            script: |
+              if [ $(params.task1Status) == "Failed" ]
+              then
+                echo "Task1 has failed, continue processing the failure"
+              fi
+```
+
+This kind of variable can have any one of the values from the following table:
+
+| Status | Description |
+| ------- | -----------|
+| Succeeded | `taskRun` for the `pipelineTask` completed successfully |
+| Failed | `taskRun` for the `pipelineTask` completed with a failure or cancelled by the user |
+| None | the `pipelineTask` has been skipped or no execution information available for the `pipelineTask` |
+
+For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-task-execution-status.yaml).
+
+**Note:** `$(tasks.<pipelineTask>.status)` is instantiated and available at runtime and must be used as a param value
+as is without concatenating it with any other param or string, for example, this kind of usage is not validated/supported
+`task status is $(tasks.<pipelineTask>.status)`.
+
 ### Known Limitations
 
 ### Specifying `Resources` in Final Tasks

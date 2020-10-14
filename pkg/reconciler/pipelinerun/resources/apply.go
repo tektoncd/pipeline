@@ -87,6 +87,17 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 }
 
+//ApplyPipelineTaskContext replaces context variables referring to execution status with the specified status
+func ApplyPipelineTaskContext(state PipelineRunState, replacements map[string]string) {
+	for _, resolvedPipelineRunTask := range state {
+		if resolvedPipelineRunTask.PipelineTask != nil {
+			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
+			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil)
+			resolvedPipelineRunTask.PipelineTask = pipelineTask
+		}
+	}
+}
+
 // ApplyWorkspaces replaces workspace variables in the given pipeline spec with their
 // concrete values.
 func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {

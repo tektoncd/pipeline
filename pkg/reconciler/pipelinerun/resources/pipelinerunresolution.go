@@ -132,6 +132,18 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
 
+// IsConditionStatusFalse returns true when a task has succeeded condition with status set to false
+// it includes task failed after retries are exhausted, cancelled tasks, and time outs
+func (t ResolvedPipelineRunTask) IsConditionStatusFalse() bool {
+	if t.IsStarted() {
+		if t.IsCustomTask() {
+			return t.Run.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+		}
+		return t.TaskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
+	}
+	return false
+}
+
 func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
