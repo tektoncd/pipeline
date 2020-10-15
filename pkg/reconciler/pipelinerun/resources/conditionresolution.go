@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -96,7 +97,7 @@ func (state TaskConditionCheckState) IsSuccess() bool {
 // ConditionToTaskSpec creates a TaskSpec from a given Condition
 func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1beta1.TaskSpec, error) {
 	if rcc.Condition.Spec.Check.Name == "" {
-		rcc.Condition.Spec.Check.Name = unnamedCheckNamePrefix + rcc.Condition.Name
+		rcc.Condition.Spec.Check.Name = names.SimpleNameGenerator.RestrictLength(unnamedCheckNamePrefix + rcc.Condition.Name)
 	}
 
 	t := &v1beta1.TaskSpec{
