@@ -75,6 +75,11 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 	defer span.End()
 
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
 		r, err := c.TaskRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -93,6 +98,11 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 	defer span.End()
 
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
 		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -111,6 +121,11 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 	defer span.End()
 
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
 		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -129,6 +144,11 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 	defer span.End()
 
 	return wait.PollImmediate(interval, polltimeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
 		r, err := c.PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -147,6 +167,11 @@ func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, n
 	defer span.End()
 
 	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
 		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
