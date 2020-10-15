@@ -27,6 +27,12 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
   - [`basic-auth` for Git](#basic-auth-for-git)
   - [`ssh-auth` for Git](#ssh-auth-for-git)
   - [`basic-auth` for Docker](#basic-auth-for-docker)
+  - [Errors and their meaning](#errors-and-their-meaning)
+    - ["unsuccessful cred copy" Warning](#unsuccessful-cred-copy-warning)
+      - [Multiple Steps with varying UIDs](#multiple-steps-with-varying-uids)
+      - [A Workspace or Volume is also Mounted for the same credentials](#a-workspace-or-volume-is-also-mounted-for-the-same-credentials)
+      - [A Task employes a read-only-Workspace or Volume for `$HOME`](#a-task-employs-a-read-only-workspace-or-volume-for-home)
+      - [The Step is named `image-digest-exporter`](#the-step-is-named-image-digest-exporter)
 
 ## Overview
 
@@ -554,6 +560,59 @@ on `Secrets` of that type.
   }
 }
 ```
+
+## Errors and their meaning
+
+### "unsuccessful cred copy" Warning
+
+This message has the following format:
+
+> `warning: unsuccessful cred copy: ".docker" from "/tekton/creds" to
+> "/tekton/home": unable to open destination: open
+> /tekton/home/.docker/config.json: permission denied`
+
+The precise credential and paths mentioned can vary. This message is only a
+warning but can be indicative of the following problems:
+
+#### Multiple Steps with varying UIDs
+
+Multiple Steps with different users / UIDs are trying to initialize docker
+or git credentials in the same Task. If those Steps need access to the
+credentials then they may fail as they might not have permission to access them.
+
+If the Steps reporting this warning do not use the credentials mentioned
+in the message then you can safely ignore it.
+
+This can most easily be resolved by ensuring that each Step executing in your
+Task and TaskRun runs with the same UID. A blanket UID can be set with [a
+TaskRun's `Pod template` field](./taskruns.md#specifying-a-pod-template).
+
+#### A Workspace or Volume is also Mounted for the same credentials
+
+A Task has mounted both a Workspace (or Volume) for credentials and the TaskRun
+has attached a service account with git or docker credentials that Tekton will
+try to initialize.
+
+The simplest solution to this problem is to not mix credentials mounted via
+Workspace with those initialized using the process descibed in this document.
+
+#### A Task employs a read-only Workspace or Volume for `$HOME`
+
+A Task has mounted a read-only Workspace (or Volume) for the user's `HOME`
+directory and the TaskRun attaches a service account with git or docker
+credentials that Tekton will try to initialize.
+
+The simplest solution to this problem is to not mix credentials mounted via
+Workspace with those initialized using the process described in this document.
+
+#### The Step is named `image-digest-exporter`
+
+If you see this warning reported specifically by an `image-digest-exporter` Step
+you can safely ignore this message. The reason it appears is that this Step is
+injected by Tekton for Image PipelineResources and it runs with a non-root UID
+that can differ from those of the Steps in the Task. The Step does not use
+these credentials.
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
