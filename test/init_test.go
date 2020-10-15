@@ -72,14 +72,15 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	return c, namespace
 }
 
-func header(logf logging.FormatLogger, text string) {
+func header(t *testing.T, text string) {
+	t.Helper()
 	left := "### "
 	right := " ###"
 	txt := left + text + right
 	bar := strings.Repeat("#", len(txt))
-	logf(bar)
-	logf(txt)
-	logf(bar)
+	t.Logf(bar)
+	t.Logf(txt)
+	t.Logf(bar)
 }
 
 func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) {
@@ -88,14 +89,14 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 		return
 	}
 	if t.Failed() {
-		header(t.Logf, fmt.Sprintf("Dumping objects from %s", namespace))
+		header(t, fmt.Sprintf("Dumping objects from %s", namespace))
 		bs, err := getCRDYaml(ctx, cs, namespace)
 		if err != nil {
 			t.Error(err)
 		} else {
 			t.Log(string(bs))
 		}
-		header(t.Logf, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
+		header(t, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
 		taskruns, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("Error getting TaskRun list %s", err)
