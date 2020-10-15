@@ -95,7 +95,7 @@ func CopyCredsToHome(credPaths []string) error {
 		destination := filepath.Join(homepath, cred)
 		err := tryCopyCred(source, destination)
 		if err != nil {
-			log.Printf("unsuccessful cred copy: %q from %q to %q: %v", cred, pipeline.CredsDir, homepath, err)
+			log.Printf("warning: unsuccessful cred copy: %q from %q to %q: %v", cred, pipeline.CredsDir, homepath, err)
 		}
 	}
 	return nil
