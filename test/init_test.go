@@ -1,4 +1,4 @@
-// +build e2e examples
+// +build conformance e2e examples
 
 /*
 Copyright 2019 The Tekton Authors
