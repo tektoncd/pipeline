@@ -252,15 +252,14 @@ func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
 		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
 		return false, err
 	}
-	f, err := os.Open(filepath.Join(homepath, sshKnownHostsUserPath))
+	f, err := os.Stat(filepath.Join(homepath, sshKnownHostsUserPath))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, err
 	}
-	f.Close()
-	return true, nil
+	return !f.IsDir(), nil
 }
 
 func validateGitAuth(logger *zap.SugaredLogger, url string) {
