@@ -49,22 +49,6 @@ spec:
       type: cloudEvent
   steps:
 
-  - name: build-push-base-images
-    image: gcr.io/kaniko-project/executor:v0.17.1
-    command:
-    - /kaniko/executor
-    args:
-    - --dockerfile=/workspace/go/src/github.com/tektoncd/pipeline/images/Dockerfile
-    - --destination=$(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtBaseImage.url)
-    - --context=/workspace/go/src/github.com/tektoncd/pipeline
-
-    volumeMounts:
-      - name: gcp-secret
-        mountPath: /secret
-    env:
-      - name: GOOGLE_APPLICATION_CREDENTIALS
-        value: /secret/release.json
-
   - name: create-ko-yaml
     image: busybox
     script: |
