@@ -72,6 +72,14 @@ spec:
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: ko://github.com/tektoncd/pipeline/cmd/webhook
+        # Resource request required for autoscaler to take any action for a metric
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
