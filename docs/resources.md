@@ -784,7 +784,7 @@ spec:
         type: git
       - name: dockerimage
         type: image
-      - name: testcluster
+      - name: test-cluster
         type: cluster
   steps:
     - name: deploy
@@ -793,8 +793,8 @@ spec:
       args:
         - "-c"
         - kubectl --kubeconfig
-          /workspace/$(resources.inputs.testcluster.name)/kubeconfig --context
-          $(resources.inputs.testcluster.name) apply -f /workspace/service.yaml'
+          /workspace/$(resources.inputs.test-cluster.name)/kubeconfig --context
+          $(resources.inputs.test-cluster.name) apply -f /workspace/service.yaml'
 ```
 
 To use the `cluster` resource with Google Kubernetes Engine, you should use the
