@@ -62,9 +62,13 @@ def parse_release(base: str, path: str) -> List[str]:
     images = []
     with open(path) as f:
         for line in f:
-            match = re.search(base + ".*" + DIGEST_MARKER + ":[0-9a-f]*", line)
-            if match:
-                images.append(match.group(0))
+            pattern = base + "[0-9a-z\-]+" + DIGEST_MARKER + ":[0-9a-f]*"
+            match = re.search(pattern, line)
+            while match is not None:
+                image = match.group(0)
+                images.append(image)
+                line = re.sub(image, "found", line)
+                match = re.search(pattern, line)
     return images
 
 
