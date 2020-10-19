@@ -19,6 +19,8 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    will create a cluster running locally, with RBAC enabled and your user granted
    the `cluster-admin` role.
 
+1. If you want to support high availability usecases, install a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) on your cluster. 
+
 1. Choose the version of Tekton Pipelines you want to install. You have the following options:
 
    * **[Official](https://github.com/tektoncd/pipeline/releases)** - install this unless you have
@@ -352,6 +354,12 @@ data:
 ## Creating a custom release of Tekton Pipelines
 
 You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
+
+## Configuring High Availability
+
+If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support high concurrency scenarios, you need to run a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) in your Kubernetes cluster. This is required by the [Horizontal Pod Autoscalers](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) to compute the replica count. 
+
+**Note:** The default configuration is defined in [webhook-hpa.yaml](./../config/webhook-hpa.yaml) which could be customized to better fit a  specific usecase.
 
 ## Next steps
 
