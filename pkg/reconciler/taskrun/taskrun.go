@@ -289,6 +289,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 			// For newly created resources, don't fail immediately.
 			// Instead return an (non-permanent) error, which will prompt the
 			// controller to requeue the key with backoff.
+			logger.Warnf("References for taskrun %s not found: %v", tr.Name, err)
+			tr.Status.MarkResourceOngoing(podconvert.ReasonFailedResolution,
+				fmt.Sprintf("Unable to resolve dependencies for %q: %v", tr.Name, err))
 			return nil, nil, err
 		}
 		logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)

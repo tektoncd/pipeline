@@ -24,7 +24,7 @@ import (
 
 const (
 	// minimumResourceAge is the age at which resources stop being IsYoungResource.
-	minimumResourceAge = 30 * time.Second
+	minimumResourceAge = 5 * time.Second
 )
 
 // IsYoungResource checks whether the resource is younger than minimumResourceAge, based on its creation timestamp.
