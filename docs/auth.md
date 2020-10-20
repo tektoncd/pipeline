@@ -594,7 +594,7 @@ has attached a service account with git or docker credentials that Tekton will
 try to initialize.
 
 The simplest solution to this problem is to not mix credentials mounted via
-Workspace with those initialized using the process descibed in this document.
+Workspace with those initialized using the process described in this document.
 
 #### A Task employs a read-only Workspace or Volume for `$HOME`
 
