@@ -338,6 +338,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 			// For newly created resources, don't fail immediately.
 			// Instead return an (non-permanent) error, which will prompt the
 			// controller to requeue the key with backoff.
+			logger.Warnf("References for pipelinerun %s not found: %v", pr.Name, err)
+			pr.Status.MarkRunning(ReasonCouldntGetResource,
+				"Unable to resolve dependencies for %q: %v", pr.Name, err)
 			return err
 		}
 		// This Run has failed, so we need to mark it as failed and stop reconciling it

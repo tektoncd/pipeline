@@ -148,6 +148,17 @@ func (trs *TaskRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
 	})
 }
 
+// MarkResourceOngoing sets the ConditionSucceeded condition to ConditionUnknown
+// with the reason and message.
+func (trs *TaskRunStatus) MarkResourceOngoing(reason TaskRunReason, message string) {
+	taskRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  reason.String(),
+		Message: message,
+	})
+}
+
 // MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse
 // based on an error that occurred and a reason
 func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
