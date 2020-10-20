@@ -60,15 +60,12 @@ def parse_release(base: str, path: str) -> List[str]:
         list of the images parsed from the file
     """
     images = []
+    pattern = re.compile(base + r"[0-9a-z\-]+" + DIGEST_MARKER + r":[0-9a-f]*")
     with open(path) as f:
         for line in f:
-            pattern = base + "[0-9a-z\-]+" + DIGEST_MARKER + ":[0-9a-f]*"
-            match = re.search(pattern, line)
-            while match is not None:
-                image = match.group(0)
+            found = re.findall(pattern, line)
+            for image in found:
                 images.append(image)
-                line = re.sub(image, "found", line)
-                match = re.search(pattern, line)
     return images
 
 
