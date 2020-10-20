@@ -351,6 +351,10 @@ data:
   disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
 ```
 
+### Customizing High Availability for the Pipelines Controller
+
+To customize the behavior of HA for the Tekton Pipelines controller, please refer to the related [documentation](developers/enabling-ha.md).
+
 ## Creating a custom release of Tekton Pipelines
 
 You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
