@@ -4,7 +4,7 @@
 addpermissions.py gives users access to the Tekton GCP projects
 
 In order to interact with GCP resources
-(https://github.com/tektoncd/plumbing/blob/master/gcp.md)
+(https://github.com/tektoncd/plumbing/blob/master/README.md#gcp-projects)
 folks sometimes need to be able to do actions like push images and view
 a project in the web console.
 
@@ -17,7 +17,7 @@ This script requires the `gcloud` command line tool and the python
 `PyYaml` library.
 
 Example usage:
-  python3 addpermissions.py --users "andrea.frittoli@gmail.com, andrew.bayer@gmail.com, dlorenc@google.com, klewandowski@google.com, vdemeest@redhat.com, dibyajyoti@google.com, sbws@google.com"
+  python3 addpermissions.py --users "foo@something.com,bar@something.com"
 """
 import argparse
 import shlex
