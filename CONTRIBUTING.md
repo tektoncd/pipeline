@@ -28,7 +28,7 @@ To set up your environment and begin working on our code, see [Developing for Te
 Additionally, please read the following resources specific to Tekton Pipelines:
 
 - [Tekton Pipelines GitHub project](https://github.com/orgs/tektoncd/projects/3)
-- [Tekton Pipelines roadmap](roadmap-2019.md)
+- [Tekton Pipelines roadmap](roadmap.md)
 - [Tekton Pipelines API compatibility policy](api_compatibility_policy.md)
 
 ## Contributing to Tekton documentation
