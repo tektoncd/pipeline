@@ -16,11 +16,5 @@ limitations under the License.
 
 package scripts
 
-import (
-	"fmt"
-)
-
-func main() {
-	fmt.Println("This is a dummy go file so `go dep` or go modules can be used with tektoncd/plumbing or sub-packages")
-	fmt.Println("This file can be safely removed if one day this directory contains real, useful go code")
-}
+// This is a dummy go file so `go dep` or go modules can be used with tektoncd/plumbing or sub-packages
+// This file can be safely removed if one day this directory contains real, useful go code

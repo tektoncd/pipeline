@@ -15,7 +15,7 @@ require (
 	github.com/jenkins-x/go-scm v1.5.117
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
+	github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5
 	go.opencensus.io v0.22.4
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
