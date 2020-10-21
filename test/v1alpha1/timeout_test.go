@@ -37,10 +37,10 @@ import (
 // verify that pipelinerun timeout works and leads to the the correct TaskRun statuses
 // and pod deletions.
 func TestPipelineRunTimeout(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
@@ -139,10 +139,10 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
@@ -166,10 +166,10 @@ func TestTaskRunTimeout(t *testing.T) {
 }
 
 func TestPipelineTaskTimeout(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
