@@ -193,7 +193,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	taskName := "hello-world"
 	pipelineName := "hello-world-pipeline"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("registry.%s.svc.cluster.local:5000/tektonbundlessimple", namespace)
+	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {
@@ -333,7 +333,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	taskName := "hello-world-dne"
 	pipelineName := "hello-world-pipeline-dne"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("registry.%s.svc.cluster.local:5000/tektonbundlesregularimage", namespace)
+	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {
@@ -418,7 +418,7 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	taskName := "hello-world"
 	pipelineName := "hello-world-pipeline"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("registry.%s.svc.cluster.local:5000/tektonbundlesimproperformat", namespace)
+	repo := fmt.Sprintf("%s:5000/tektonbundlesimproperformat", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {

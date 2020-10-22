@@ -92,3 +92,13 @@ func getRegistryService(namespace string) *corev1.Service {
 		},
 	}
 }
+
+// getRegistryServiceIP fetches the registry service's current IP.
+func getRegistryServiceIP(ctx context.Context, t *testing.T, c *clients, namespace string) string {
+	t.Helper()
+	svc, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, "registry", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to lookup registry service: %q", err)
+	}
+	return svc.Spec.ClusterIP
+}
