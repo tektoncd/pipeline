@@ -170,23 +170,31 @@ func (pt PipelineTask) HashKey() string {
 
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
-	deps = append(deps, pt.RunAfter...)
+
+	deps = append(deps, pt.resourceDeps()...)
+	deps = append(deps, pt.orderingDeps()...)
+
+	return deps
+}
+
+func (pt PipelineTask) resourceDeps() []string {
+	resourceDeps := []string{}
 	if pt.Resources != nil {
 		for _, rd := range pt.Resources.Inputs {
-			deps = append(deps, rd.From...)
+			resourceDeps = append(resourceDeps, rd.From...)
 		}
 	}
 	// Add any dependents from conditional resources.
 	for _, cond := range pt.Conditions {
 		for _, rd := range cond.Resources {
-			deps = append(deps, rd.From...)
+			resourceDeps = append(resourceDeps, rd.From...)
 		}
 		for _, param := range cond.Params {
 			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
 			if ok {
 				resultRefs := NewResultRefs(expressions)
 				for _, resultRef := range resultRefs {
-					deps = append(deps, resultRef.PipelineTask)
+					resourceDeps = append(resourceDeps, resultRef.PipelineTask)
 				}
 			}
 		}
@@ -197,7 +205,7 @@ func (pt PipelineTask) Deps() []string {
 		if ok {
 			resultRefs := NewResultRefs(expressions)
 			for _, resultRef := range resultRefs {
-				deps = append(deps, resultRef.PipelineTask)
+				resourceDeps = append(resourceDeps, resultRef.PipelineTask)
 			}
 		}
 	}
@@ -207,11 +215,31 @@ func (pt PipelineTask) Deps() []string {
 		if ok {
 			resultRefs := NewResultRefs(expressions)
 			for _, resultRef := range resultRefs {
-				deps = append(deps, resultRef.PipelineTask)
+				resourceDeps = append(resourceDeps, resultRef.PipelineTask)
 			}
 		}
 	}
-	return deps
+	return resourceDeps
+}
+
+func (pt PipelineTask) orderingDeps() []string {
+	orderingDeps := []string{}
+	resourceDeps := pt.resourceDeps()
+	for _, runAfter := range pt.RunAfter {
+		if !contains(runAfter, resourceDeps) {
+			orderingDeps = append(orderingDeps, runAfter)
+		}
+	}
+	return orderingDeps
+}
+
+func contains(s string, arr []string) bool {
+	for _, elem := range arr {
+		if elem == s {
+			return true
+		}
+	}
+	return false
 }
 
 type PipelineTaskList []PipelineTask
