@@ -202,3 +202,112 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 		}
 	}
 }
+
+func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	c, namespace := setup(ctx, t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	// Create Secrets and Service Accounts
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "secret1",
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"foo1": []byte("bar1"),
+		},
+	}
+	serviceAccount := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "sa1",
+		},
+		Secrets: []corev1.ObjectReference{{
+			Name: "secret1",
+		}},
+	}
+	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create secret `%s`: %s", secret.Name, err)
+	}
+	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(ctx, serviceAccount, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create SA `%s`: %s", serviceAccount.Name, err)
+	}
+
+	// Create a Pipeline with multiple tasks
+	pipeline := &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinewithsas", Namespace: namespace},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "task1",
+				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Image: "ubuntu",
+						},
+						Script: `echo task1`,
+					}},
+				}},
+			}},
+		},
+	}
+	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
+	}
+
+	// Create a PipelineRun that uses those ServiceAccount
+	pipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerunwithasas", Namespace: namespace},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        &v1beta1.PipelineRef{Name: "pipelinewithsas"},
+			ServiceAccountName: "sa1",
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName: "task1",
+				TaskPodTemplate: &v1beta1.PodTemplate{
+					HostNetwork: true,
+				},
+			}},
+		},
+	}
+
+	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", pipelineRun.Name, namespace)
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
+	}
+
+	// Verify it used those serviceAccount
+	taskRuns, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	if err != nil {
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+	}
+	for _, taskRun := range taskRuns.Items {
+		sa := taskRun.Spec.ServiceAccountName
+		expectedSA := "sa1"
+		if sa != expectedSA {
+			t.Fatalf("TaskRun %s expected SA %s, got %s", taskRun.Name, expectedSA, sa)
+		}
+		pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/taskRun=%s", taskRun.Name)})
+		if err != nil {
+			t.Fatalf("Error listing Pods for TaskRun %s: %s", taskRun.Name, err)
+		}
+		if len(pods.Items) != 1 {
+			t.Fatalf("TaskRun %s should have only 1 pod association, got %+v", taskRun.Name, pods.Items)
+		}
+		podSA := pods.Items[0].Spec.ServiceAccountName
+		if podSA != expectedSA {
+			t.Fatalf("TaskRun's pod %s expected SA %s, got %s", pods.Items[0].Name, expectedSA, podSA)
+		}
+	}
+}
