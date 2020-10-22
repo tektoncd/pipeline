@@ -11,6 +11,9 @@ go test ./...
 
 # Integration tests (against your current kube cluster)
 go test -v -count=1 -tags=e2e -timeout=20m ./test
+
+#conformance tests  (against your current kube cluster)
+go test -v -count=1 -tags=conformance -timeout=10m ./test
 ```
 
 ## Unit tests
@@ -330,6 +333,21 @@ err = WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, er
 
 _[Metrics will be emitted](https://github.com/knative/pkg/tree/master/test#emit-metrics)
 for these `Wait` methods tracking how long test poll for._
+
+## Conformance tests
+
+Conformance tests live in this directory. These tests are used to check [API specs](../docs/api-spec.md)
+of Pipelines. To run these tests, you must provide `go` with `-tags=conformance`. By default, the tests
+run against your current kubeconfig context, but you can change that and other settings with the flags like
+the end to end tests:
+
+```shell
+go test -v -count=1 -tags=conformace -timeout=10m ./test
+go test -v -count=1 -tags=conformace -timeout=10m ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
+```
+
+Flags that could be set in conformance tests are exactly the same as [flags in end to end tests](#flags).
+Just note that the build tags should be `-tags=conformance`.
 
 ## Presubmit tests
 
