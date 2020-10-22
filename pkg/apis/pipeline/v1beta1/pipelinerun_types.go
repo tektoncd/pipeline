@@ -422,8 +422,12 @@ func (pr *PipelineRun) GetTaskRunSpecs(pipelineTaskName string) (string, *PodTem
 	taskPodTemplate := pr.Spec.PodTemplate
 	for _, task := range pr.Spec.TaskRunSpecs {
 		if task.PipelineTaskName == pipelineTaskName {
-			taskPodTemplate = task.TaskPodTemplate
-			serviceAccountName = task.TaskServiceAccountName
+			if task.TaskPodTemplate != nil {
+				taskPodTemplate = task.TaskPodTemplate
+			}
+			if task.TaskServiceAccountName != "" {
+				serviceAccountName = task.TaskServiceAccountName
+			}
 		}
 	}
 	return serviceAccountName, taskPodTemplate

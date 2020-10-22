@@ -338,8 +338,7 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 				"unknown":  "defaultSA",
 				"taskName": "newTaskSA",
 			},
-		},
-		{
+		}, {
 			name: "mixed default SA backward compatibility",
 			pr: &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
@@ -358,6 +357,26 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 			expectedSAs: map[string]string{
 				"unknown":     "defaultSA",
 				"taskNameOne": "TaskSAOne",
+				"taskNameTwo": "newTaskTwo",
+			},
+		}, {
+			name: "mixed SA and TaskRunSpec",
+			pr: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
+					ServiceAccountName: "defaultSA",
+					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+						PipelineTaskName: "taskNameOne",
+					}, {
+						PipelineTaskName:       "taskNameTwo",
+						TaskServiceAccountName: "newTaskTwo",
+					}},
+				},
+			},
+			expectedSAs: map[string]string{
+				"unknown":     "defaultSA",
+				"taskNameOne": "defaultSA",
 				"taskNameTwo": "newTaskTwo",
 			},
 		},
