@@ -580,6 +580,11 @@ Multiple Steps with different users / UIDs are trying to initialize docker
 or git credentials in the same Task. If those Steps need access to the
 credentials then they may fail as they might not have permission to access them.
 
+This happens because, by default, `/tekton/home` is set to be a Step user's home
+directory and Tekton makes this directory a shared volume that all Steps in a
+Task have access to. Any credentials initialized by one Step are overwritten
+by subsequent Steps also initializing credentials.
+
 If the Steps reporting this warning do not use the credentials mentioned
 in the message then you can safely ignore it.
 
@@ -604,6 +609,14 @@ credentials that Tekton will try to initialize.
 
 The simplest solution to this problem is to not mix credentials mounted via
 Workspace with those initialized using the process described in this document.
+
+#### The contents of `$HOME` are `chown`ed to a different user
+
+A Task Step that modifies the ownership of files in the user home directory
+may prevent subsequent Steps from initializing credentials in that same home
+directory. The simplest solution to this problem is to avoid running chown
+on files and directories under `/tekton`. Another option is to run all Steps
+with the same UID.
 
 #### The Step is named `image-digest-exporter`
 
