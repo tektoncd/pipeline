@@ -2566,7 +2566,7 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
 	}
 
