@@ -210,7 +210,7 @@ func FailedWithReason(reason, name string) ConditionAccessorFn {
 				if c.Reason == reason {
 					return true, nil
 				}
-				return true, fmt.Errorf("%q completed with the wrong reason: %s", name, c.Reason)
+				return true, fmt.Errorf("%q completed with the wrong reason: %s (message: %s)", name, c.Reason, c.Message)
 			} else if c.Status == corev1.ConditionTrue {
 				return true, fmt.Errorf("%q completed successfully, should have been failed with reason %q", name, reason)
 			}
