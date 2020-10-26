@@ -73,6 +73,10 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 }
 
 // AdjustStartTime adjusts potential drift in the PipelineRun's start time.
+//
+// The StartTime will only adjust earlier, so that the PipelineRun's StartTime
+// is no later than any of its constituent TaskRuns.
+//
 // This drift could be due to us either failing to record the Run's start time
 // previously, or our own failure to observe a prior update before reconciling
 // the resource again.
