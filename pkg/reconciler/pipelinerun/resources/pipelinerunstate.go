@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -69,6 +70,23 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 		}
 	}
 	return true
+}
+
+// AdjustStartTime adjusts potential drift in the PipelineRun's start time.
+// This drift could be due to us either failing to record the Run's start time
+// previously, or our own failure to observe a prior update before reconciling
+// the resource again.
+func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
+	adjustedStartTime := unadjustedStartTime
+	for _, rprt := range state {
+		if rprt.TaskRun == nil {
+			continue
+		}
+		if rprt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+			adjustedStartTime = &rprt.TaskRun.CreationTimestamp
+		}
+	}
+	return adjustedStartTime.DeepCopy()
 }
 
 // GetTaskRunsStatus returns a map of taskrun name and the taskrun
