@@ -133,11 +133,11 @@ spec:
       OUTPUT_BUCKET_RELEASE_DIR="/workspace/output/bucket/previous/$(params.versionTag)"
 
       # Publish images and create release.yaml
-      ko resolve --preserve-import-paths -t $(params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
+      ko resolve --platform=all --preserve-import-paths -t $(params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.yaml
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
-      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.notags.yaml
+      ko resolve --platform=all --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.notags.yaml
     volumeMounts:
       - name: gcp-secret
         mountPath: /secret
