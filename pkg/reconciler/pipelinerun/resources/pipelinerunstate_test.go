@@ -1049,3 +1049,85 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
 }
+
+func TestAdjustStartTime(t *testing.T) {
+	baseline := metav1.Time{Time: time.Now()}
+
+	tests := []struct {
+		name string
+		prs  PipelineRunState
+		want time.Time
+	}{{
+		name: "same times",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: baseline,
+				},
+			},
+		}},
+		want: baseline.Time,
+	}, {
+		name: "taskrun starts later",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(1 * time.Second)},
+				},
+			},
+		}},
+		// Stay where you are, you are before the TaskRun.
+		want: baseline.Time,
+	}, {
+		name: "taskrun starts earlier",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-1 * time.Second),
+	}, {
+		name: "multiple taskruns, some earlier",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah1",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}, {
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah2",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-2 * time.Second)},
+				},
+			},
+		}, {
+			TaskRun: nil,
+		}, {
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah3",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(2 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-2 * time.Second),
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := test.prs.AdjustStartTime(&baseline)
+			if got.Time != test.want {
+				t.Errorf("AdjustStartTime() = %v, wanted %v", got.Time, test.want)
+			}
+		})
+	}
+}
