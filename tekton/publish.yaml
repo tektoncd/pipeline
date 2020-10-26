@@ -23,8 +23,6 @@ spec:
     outputs:
     - name: bucket
       type: storage
-    - name: builtBaseImage
-      type: image
     - name: builtEntrypointImage
       type: image
     - name: builtNopImage

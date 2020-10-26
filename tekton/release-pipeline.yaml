@@ -85,6 +85,22 @@ spec:
         inputs:
           - name: source
             resource: source-repo
+    - name: build-base-image
+      runAfter: [build, unit-tests]
+      taskRef:
+        name: build-multiarch-base-image
+      params:
+        - name: pathToProject
+          value: $(params.package)
+        - name: imageRegistry
+          value: $(params.imageRegistry)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+        outputs:
+          - name: builtBaseImage
+            resource: builtBaseImage
     - name: publish-images
       runAfter: [build, unit-tests]
       taskRef:
@@ -107,8 +123,6 @@ spec:
         outputs:
           - name: bucket
             resource: bucket
-          - name: builtBaseImage
-            resource: builtBaseImage
           - name: builtEntrypointImage
             resource: builtEntrypointImage
           - name: builtNopImage
