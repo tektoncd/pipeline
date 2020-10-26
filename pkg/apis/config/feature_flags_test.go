@@ -47,6 +47,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: false,
 				RequireGitSSHSecretKnownHosts:    true,
 				EnableTektonOCIBundles:           true,
+				EnableCustomTasks:                true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

@@ -25,6 +25,7 @@ weight: 3
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
   - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
+  - [Using Custom Tasks](#using-custom-tasks)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -887,6 +888,90 @@ In this example, `PipelineResults` is set to:
   }
 ],
 ```
+
+## Using Custom Tasks
+
+**Note: This is only allowed if `enable-custom-tasks` is set to
+`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+
+[Custom Tasks](https://github.com/tektoncd/community/blob/master/teps/0002-custom-tasks.md)
+can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
+For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.
+
+A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/master/docs/runs.md) instead of a `TaskRun`.
+In order for a custom task to execute, there must be a custom task controller running on the cluster
+that is responsible for watching and updating `Run`s which reference their type. 
+If no such controller is running, those `Run`s will never complete and Pipelines using them will time out.
+
+Custom tasks are an **_experimental alpha feature_** and should be expected to change
+in breaking ways or even be removed.
+
+### Specifying the target Custom Task
+
+To specify the custom task type you want to execute, the `taskRef` field
+must include the custom task's `apiVersion` and `kind` as shown below:
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+```
+
+This creates a `Run` of a custom task of type `Example` in the `example.dev` API group with the version `v1alpha1`.
+
+You can also specify the `name` of a custom task resource object previously defined in the cluster.
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+```
+
+If the `taskRef` specifies a name, the custom task controller should look up the
+`Example` resource with that name and use that object to configure the execution.
+
+If the `taskRef` does not specify a name, the custom task controller might support
+some default behavior for executing unnamed tasks.
+
+### Specifying `Parameters`
+
+If a custom task supports [`parameters`](tasks.md#parameters), you can use the
+`params` field to specify their values:
+
+```yaml
+spec:
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+      params:
+      - name: foo
+        value: bah
+```
+
+### Using `Results`
+
+If the custom task produces results, you can reference them in a Pipeline using the normal syntax,
+`$(tasks.<task-name>.results.<result-name>)`.
+
+### Limitations
+
+Pipelines do not directly support passing the following items to custom tasks:
+* Pipeline Resources
+* Workspaces
+* Service account name
+* Pod templates
+
 
 ## Code examples
 

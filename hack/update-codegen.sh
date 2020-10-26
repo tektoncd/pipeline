@@ -58,6 +58,11 @@ ${PREFIX}/deepcopy-gen \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
 -i github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage
 
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+-i github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1
+
 # Knative Injection
 # This generates the knative injection packages for the resource package (v1alpha1).
 # This is separate from the pipeline package for the same reason as client and all (see above).

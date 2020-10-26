@@ -832,6 +832,27 @@
         }
       }
     },
+    "v1beta1.PipelineRunRunStatus": {
+      "description": "PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status",
+      "type": "object",
+      "properties": {
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the RunStatus for the corresponding Run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        }
+      }
+    },
     "v1beta1.PipelineRunSpec": {
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
@@ -946,6 +967,13 @@
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
+        "runs": {
+          "description": "map of PipelineRunRunStatus with the run name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
+          }
+        },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
@@ -984,6 +1012,13 @@
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
+        },
+        "runs": {
+          "description": "map of PipelineRunRunStatus with the run name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
+          }
         },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",

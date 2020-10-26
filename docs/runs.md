@@ -35,10 +35,6 @@ will have no `.status` value and no further action will be taken.
 `Run`s are an **_experimental alpha feature_** and should be expected to change
 in breaking ways or even be removed.
 
-`Run`s are not currently integrated with Pipelines, and require a running
-third-party controller to actually perform any work. Without a third-party
-controller, `Run`s will just exist without a status indefinitely.
-
 ## Configuring a `Run`
 
 A `Run` definition supports the following fields:

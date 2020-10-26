@@ -20,8 +20,9 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
-	"testing" // Link in the fakes so they get injected into injection.Fake
+	"testing"
 
+	// Link in the fakes so they get injected into injection.Fake
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -68,6 +69,7 @@ type Data struct {
 	ClusterTasks      []*v1beta1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
 	Conditions        []*v1alpha1.Condition
+	Runs              []*v1alpha1.Run
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace
 	ConfigMaps        []*corev1.ConfigMap
@@ -226,6 +228,13 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, cond := range d.Conditions {
 		cond := cond.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(ctx, cond, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.PrependReactor("*", "runs", AddToInformer(t, i.Run.Informer().GetIndexer()))
+	for _, run := range d.Runs {
+		run := run.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().Runs(run.Namespace).Create(ctx, run, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -32,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
@@ -99,6 +101,27 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
+	var runRunningState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunStarted(runs[0]),
+	}}
+
+	var runSucceededState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunSucceeded(runs[0]),
+	}}
+
+	var runFailedState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunFailed(runs[0]),
+	}}
+
 	tcs := []struct {
 		name       string
 		state      PipelineRunState
@@ -139,11 +162,26 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		state:      noTaskRunState,
 		expected:   false,
 		ptExpected: []bool{false},
+	}, {
+		name:       "run-running-no-candidates",
+		state:      runRunningState,
+		expected:   false,
+		ptExpected: []bool{false},
+	}, {
+		name:       "run-succeeded-no-candidates",
+		state:      runSucceededState,
+		expected:   true,
+		ptExpected: []bool{true},
+	}, {
+		name:       "run-failed-no-candidates",
+		state:      runFailedState,
+		expected:   true,
+		ptExpected: []bool{true},
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -174,9 +212,21 @@ func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
 	}
 }
 
+func TestIsBeforeFirstTaskRun_WithNotStartedRun(t *testing.T) {
+	if !noRunStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be before first taskrun (Run test)")
+	}
+}
+
 func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
 	if oneStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be after first taskrun")
+	}
+}
+
+func TestIsBeforeFirstTaskRun_WithStartedRun(t *testing.T) {
+	if oneRunStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be after first taskrun (Run test)")
 	}
 }
 
@@ -291,6 +341,21 @@ func TestGetNextTasks(t *testing.T) {
 		state:        taskCancelled,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "no-runs-started-both-candidates",
+		state:        noRunStartedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{noRunStartedState[0], noRunStartedState[1]},
+	}, {
+		name:         "one-run-started-both-candidates",
+		state:        oneRunStartedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{oneRunStartedState[1]},
+	}, {
+		name:         "one-run-failed-both-candidates",
+		state:        oneRunFailedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{oneRunFailedState[1]},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -460,10 +525,22 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 		name:          "large deps, not started",
 		state:         largePipelineState,
 		expectedNames: []string{},
+	}, {
+		name:          "one-run-started",
+		state:         oneRunStartedState,
+		expectedNames: []string{},
+	}, {
+		name:          "one-run-finished",
+		state:         oneRunFinishedState,
+		expectedNames: []string{pts[12].Name},
+	}, {
+		name:          "one-run-failed",
+		state:         oneRunFailedState,
+		expectedNames: []string{pts[13].Name},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -743,6 +820,21 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 	}}
 
+	var cancelledRun = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1alpha1.RunReasonCancelled,
+				}}},
+			},
+		},
+	}}
+
 	// 6 Tasks, 4 that run in parallel in the beginning
 	// Of the 4, 1 passed, 1 cancelled, 2 failed
 	// 1 runAfter the passed one, currently running
@@ -943,11 +1035,17 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedStatus:    corev1.ConditionFalse,
 		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
 		expectedCancelled: 1,
+	}, {
+		name:              "cancelled run should result in cancelled pipeline",
+		state:             cancelledRun,
+		expectedStatus:    corev1.ConditionFalse,
+		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
+		expectedCancelled: 1,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tb.PipelineRun("somepipelinerun")
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -1089,7 +1187,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 
 // pipeline should result in timeout if its runtime exceeds its spec.Timeout based on its status.Timeout
 func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
-	d, err := DagFromState(oneFinishedState)
+	d, err := dagFromState(oneFinishedState)
 	if err != nil {
 		t.Fatalf("Unexpected error while buildig DAG for state %v: %v", oneFinishedState, err)
 	}
@@ -1185,6 +1283,30 @@ func TestAdjustStartTime(t *testing.T) {
 		}},
 		// We expect this to adjust to the earlier time.
 		want: baseline.Time.Add(-2 * time.Second),
+	}, {
+		name: "run starts later",
+		prs: PipelineRunState{{
+			Run: &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(1 * time.Second)},
+				},
+			},
+		}},
+		// Stay where you are, you are before the Run.
+		want: baseline.Time,
+	}, {
+		name: "run starts earlier",
+		prs: PipelineRunState{{
+			Run: &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-1 * time.Second),
 	}}
 
 	for _, test := range tests {

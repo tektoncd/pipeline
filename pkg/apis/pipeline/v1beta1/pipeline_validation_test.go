@@ -36,6 +36,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 	tests := []struct {
 		name string
 		p    *Pipeline
+		wc   func(context.Context) context.Context
 	}{{
 		name: "valid metadata",
 		p: &Pipeline{
@@ -51,6 +52,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
 		},
+		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
 		name: "valid pipeline with params, resources, workspaces, task results, and pipeline results",
 		p: &Pipeline{
@@ -113,7 +115,11 @@ func TestPipeline_Validate_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate(context.Background())
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.Validate(ctx)
 			if err != nil {
 				t.Errorf("Pipeline.Validate() returned error for valid Pipeline: %v", err)
 			}
@@ -190,7 +196,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: *apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "spec.tasks[0].taskref.bundle"),
-		wc:            enableTektonOCIBundles(t),
+		wc:            enableFeature(t, "enable-tekton-oci-bundles"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -482,10 +488,11 @@ func TestValidatePipelineTasks_Success(t *testing.T) {
 }
 
 func TestValidatePipelineTasks_Failure(t *testing.T) {
-	for _, tc := range []struct {
+	tests := []struct {
 		name          string
 		tasks         []PipelineTask
 		expectedError apis.FieldError
+		wc            func(context.Context) context.Context
 	}{{
 		name: "pipeline task missing taskref and taskspec",
 		tasks: []PipelineTask{{
@@ -520,7 +527,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		name: "pipeline tasks invalid (duplicate tasks)",
 		tasks: []PipelineTask{
 			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
-			{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}},
+			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
 		},
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
@@ -564,16 +571,17 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		name:  "pipelinetask taskRef without name",
 		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: ""}}},
 		expectedError: apis.FieldError{
-			Message: `GMD FIX ME`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
+			Message: `invalid value: taskRef must specify name`,
+			Paths:   []string{"tasks[0].taskRef.name"},
 		},
 	}, {
-		name:  "pipelinetask custom task taskRef without name",
+		name:  "pipelinetask custom task taskRef without kind",
 		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "", Name: ""}}},
 		expectedError: apis.FieldError{
-			Message: `GMD FIX ME -- i think this one is not an error though`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
+			Message: `invalid value: custom task ref must specify kind`,
+			Paths:   []string{"tasks[0].taskRef.kind"},
 		},
+		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
 		name: "pipelinetask custom task doesn't support retries",
 		tasks: []PipelineTask{{
@@ -582,9 +590,10 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 		}},
 		expectedError: apis.FieldError{
-			Message: `GMD FIX ME`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
+			Message: `invalid value: custom tasks do not support retries`,
+			Paths:   []string{"tasks[0].retries"},
 		},
+		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
 		name: "pipelinetask custom task doesn't support pipeline resources",
 		tasks: []PipelineTask{{
@@ -593,9 +602,10 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			TaskRef:   &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 		}},
 		expectedError: apis.FieldError{
-			Message: `GMD FIX ME`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
+			Message: `invalid value: custom tasks do not support PipelineResources`,
+			Paths:   []string{"tasks[0].resources"},
 		},
+		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
 		name: "pipelinetask custom task doesn't support workspaces",
 		tasks: []PipelineTask{{
@@ -603,20 +613,31 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			Workspaces: []WorkspacePipelineTaskBinding{{}},
 			TaskRef:    &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: custom tasks do not support Workspaces`,
+			Paths:   []string{"tasks[0].workspaces"},
+		},
+		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
 		name: "pipelinetask custom task doesn't support timeout",
 		tasks: []PipelineTask{{
 			Name:    "foo",
-			Timeout: &metav1.Duration{time.Duration(3)},
+			Timeout: &metav1.Duration{Duration: time.Duration(3)},
 			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 		}},
 		expectedError: apis.FieldError{
-			Message: `GMD FIX ME`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
+			Message: `invalid value: custom tasks do not support timeout`,
+			Paths:   []string{"tasks[0].timeout"},
 		},
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			err := validatePipelineTasks(context.Background(), tc.tasks, []PipelineTask{})
+		wc: enableFeature(t, "enable-custom-tasks"),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := validatePipelineTasks(ctx, tt.tasks, []PipelineTask{})
 			if err == nil {
 				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
@@ -2101,13 +2122,13 @@ func getTaskSpec() TaskSpec {
 	}
 }
 
-func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+func enableFeature(t *testing.T, feature string) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		s := config.NewStore(logtesting.TestLogger(t))
 		s.OnConfigChanged(&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
 			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
+				feature: "true",
 			},
 		})
 		return s.ToContext(ctx)

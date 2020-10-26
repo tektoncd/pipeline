@@ -105,7 +105,7 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 
 	hasTaskRef := t.TaskRef != nil
 	hasTaskSpec := t.TaskSpec != nil
-	isCustomTask := hasTaskRef && t.TaskRef.APIVersion != ""
+	isCustomTask := cfg.FeatureFlags.EnableCustomTasks && hasTaskRef && t.TaskRef.APIVersion != ""
 
 	// can't have both taskRef and taskSpec at the same time
 	if hasTaskRef && hasTaskSpec {
@@ -126,34 +126,36 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 	}
 	taskNames[t.Name] = struct{}{}
 
-	// Custom Task refs are allowed to have no name.
-	if hasTaskRef && t.TaskRef.Name != "" {
-		// TaskRef name must be a valid k8s name
-		if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
-			errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+	if hasTaskRef {
+		if t.TaskRef.Name != "" {
+			// TaskRef name must be a valid k8s name
+			if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
+				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+			}
+		} else {
+			// Custom Task refs are allowed to have no name.
+			if !isCustomTask {
+				errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
+			}
 		}
 	}
 
-	if hasTaskRef && !isCustomTask && t.TaskRef.Name == "" {
-		return apis.ErrInvalidValue(t.TaskRef, "taskRef must specify name")
-	}
-	if isCustomTask && t.TaskRef.Kind == "" {
-		return apis.ErrInvalidValue(t.TaskRef, "custom task ref must specify apiVersion and kind")
-	}
-
-	// TODO(#3133): Support these features if possible.
 	if isCustomTask {
+		if t.TaskRef.Kind == "" {
+			errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify kind", "taskRef.kind"))
+		}
+		// TODO(#3133): Support these features if possible.
 		if t.Retries > 0 {
-			return apis.ErrInvalidValue(t.Retries, "custom tasks do not support Retries")
+			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support retries", "retries"))
 		}
 		if t.Resources != nil {
-			return apis.ErrInvalidValue(t.Resources, "custom tasks do not support PipelineResources")
+			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support PipelineResources", "resources"))
 		}
 		if len(t.Workspaces) > 0 {
-			return apis.ErrInvalidValue(t.Workspaces, "custom tasks do not support Workspaces")
+			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support Workspaces", "workspaces"))
 		}
 		if t.Timeout != nil {
-			return apis.ErrInvalidValue(t.Timeout, "custom tasks do not support Timeout")
+			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support timeout", "timeout"))
 		}
 	}
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
@@ -33,6 +34,7 @@ func TestCancelPipelineRun(t *testing.T) {
 		name        string
 		pipelineRun *v1beta1.PipelineRun
 		taskRuns    []*v1beta1.TaskRun
+		runs        []*v1alpha1.Run
 	}{{
 		name: "no-resolved-taskrun",
 		pipelineRun: &v1beta1.PipelineRun{
@@ -75,6 +77,24 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},
+	}, {
+		name: "multiple-runs",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelled,
+			},
+			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				Runs: map[string]*v1beta1.PipelineRunRunStatus{
+					"t1": {PipelineTaskName: "task-1"},
+					"t2": {PipelineTaskName: "task-2"},
+				},
+			}},
+		},
+		runs: []*v1alpha1.Run{
+			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
+		},
 	}}
 	for _, tc := range testCases {
 		tc := tc
@@ -82,6 +102,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,
+				Runs:         tc.runs,
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
 			ctx, cancel := context.WithCancel(ctx)
@@ -95,13 +116,26 @@ func TestCancelPipelineRun(t *testing.T) {
 			if cond.IsTrue() {
 				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", cond)
 			}
-			l, err := c.Pipeline.TektonV1beta1().TaskRuns("").List(ctx, metav1.ListOptions{})
-			if err != nil {
-				t.Fatal(err)
+			if tc.taskRuns != nil {
+				l, err := c.Pipeline.TektonV1beta1().TaskRuns("").List(ctx, metav1.ListOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, tr := range l.Items {
+					if tr.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
+						t.Errorf("expected task %q to be marked as cancelled, was %q", tr.Name, tr.Spec.Status)
+					}
+				}
 			}
-			for _, tr := range l.Items {
-				if tr.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
-					t.Errorf("expected task %q to be marked as cancelled, was %q", tr.Name, tr.Spec.Status)
+			if tc.runs != nil {
+				l, err := c.Pipeline.TektonV1alpha1().Runs("").List(ctx, metav1.ListOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, r := range l.Items {
+					if r.Spec.Status != v1alpha1.RunSpecStatusCancelled {
+						t.Errorf("expected Run %q to be marked as cancelled, was %q", r.Name, r.Spec.Status)
+					}
 				}
 			}
 		})

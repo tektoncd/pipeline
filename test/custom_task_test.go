@@ -19,11 +19,16 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -37,36 +42,61 @@ const (
 )
 
 func TestCustomTask(t *testing.T) {
-	c, namespace := setup(t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t, skipIfCustomTasksDisabled)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	// Create a PipelineRun that runs a Custom Task.
 	pipelineRunName := "custom-task-pipeline"
-	if _, err := c.PipelineRunClient.Create(&v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "example",
-					TaskRef: &v1beta1.TaskRef{
-						APIVersion: apiVersion,
-						Kind:       kind,
-					},
-				}},
+	if _, err := c.PipelineRunClient.Create(
+		ctx,
+		&v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "custom-task",
+						TaskRef: &v1beta1.TaskRef{
+							APIVersion: apiVersion,
+							Kind:       kind,
+						},
+					}, {
+						Name: "result-consumer",
+						Params: []v1beta1.Param{{
+							Name: "input-result-from-custom-task", Value: *v1beta1.NewArrayOrString("$(tasks.custom-task.results.runResult)"),
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "input-result-from-custom-task", Type: v1beta1.ParamTypeString,
+							}},
+							Steps: []v1beta1.Step{{Container: corev1.Container{
+								Image:   "ubuntu",
+								Command: []string{"/bin/bash"},
+								Args:    []string{"-c", "echo $(input-result-from-custom-task)"},
+							}}},
+						}},
+					}},
+					Results: []v1beta1.PipelineResult{{
+						Name:  "prResult",
+						Value: "$(tasks.custom-task.results.runResult)",
+					}},
+				},
 			},
 		},
-	}); err != nil {
+		metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
 	}
 
 	// Wait for the PipelineRun to start.
-	if err := WaitForPipelineRunState(c, pipelineRunName, time.Minute, Running(pipelineRunName), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, time.Minute, Running(pipelineRunName), "PipelineRunRunning"); err != nil {
 		t.Fatalf("Waiting for PipelineRun to start running: %v", err)
 	}
 
 	// Get the status of the PipelineRun.
-	pr, err := c.PipelineRunClient.Get(pipelineRunName, metav1.GetOptions{})
+	pr, err := c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -82,7 +112,7 @@ func TestCustomTask(t *testing.T) {
 	}
 
 	// Get the Run.
-	r, err := c.RunClient.Get(runName, metav1.GetOptions{})
+	r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get Run %q: %v", runName, err)
 	}
@@ -90,20 +120,28 @@ func TestCustomTask(t *testing.T) {
 		t.Fatalf("Run unexpectedly done: %v", r.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
-	// Simulate a Custom Task controller updating the Run to
-	// done/successful.
-	r.Status = v1alpha1.RunStatus{Status: duckv1.Status{
-		Conditions: duckv1.Conditions{{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
-		}},
-	}}
-	if _, err := c.RunClient.UpdateStatus(r); err != nil {
+	// Simulate a Custom Task controller updating the Run to done/successful.
+	r.Status = v1alpha1.RunStatus{
+		Status: duckv1.Status{
+			Conditions: duckv1.Conditions{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}},
+		},
+		RunStatusFields: v1alpha1.RunStatusFields{
+			Results: []v1alpha1.RunResult{{
+				Name:  "runResult",
+				Value: "aResultValue",
+			}},
+		},
+	}
+
+	if _, err := c.RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
 		t.Fatalf("Failed to update Run to successful: %v", err)
 	}
 
 	// Get the Run.
-	r, err = c.RunClient.Get(runName, metav1.GetOptions{})
+	r, err = c.RunClient.Get(ctx, runName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get Run %q: %v", runName, err)
 	}
@@ -112,7 +150,68 @@ func TestCustomTask(t *testing.T) {
 	}
 
 	// Wait for the PipelineRun to become done/successful.
-	if err := WaitForPipelineRunState(c, pipelineRunName, time.Minute, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, time.Minute, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Fatalf("Waiting for PipelineRun to complete successfully: %v", err)
+	}
+
+	// Get the updated status of the PipelineRun.
+	pr, err = c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get PipelineRun %q after it completed: %v", pipelineRunName, err)
+	}
+
+	// Get the TaskRun name.
+	if len(pr.Status.TaskRuns) != 1 {
+		t.Fatalf("PipelineRun had unexpected .status.taskRuns; got %d, want 1", len(pr.Status.TaskRuns))
+	}
+	var taskRunName string
+	for k := range pr.Status.TaskRuns {
+		taskRunName = k
+		break
+	}
+
+	// Get the TaskRun.
+	taskRun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
+	}
+
+	// Validate the task's result reference to the custom task's result was resolved.
+	expectedTaskRunParams := []v1beta1.Param{{
+		Name: "input-result-from-custom-task", Value: *v1beta1.NewArrayOrString("aResultValue"),
+	}}
+
+	if d := cmp.Diff(expectedTaskRunParams, taskRun.Spec.Params); d != "" {
+		t.Fatalf("Unexpected TaskRun Params: %s", diff.PrintWantGot(d))
+	}
+
+	// Validate that the pipeline's result reference to the custom task's result was resolved.
+	// This validation has been commented out because of a race condition.
+	// The pipelinerun reconciler updates the pipelinerun results AFTER the pipelinerun is marked DONE.
+	// So when the test case sees the pipelinerun is done, the results may or may not have been
+	// updated yet.  The FUBAR logic in the pipelinerun reconciler needs to be fixed to not mark
+	// the PR done before all the status updates are made.
+
+	// expectedPipelineResults := []v1beta1.PipelineRunResult{{
+	//	Name:  "prResult",
+	//	Value: "aResultValue",
+	// }}
+
+	// if len(pr.Status.PipelineResults) == 0 {
+	//	t.Fatalf("Expected PipelineResults but there are none")
+	// }
+	// if d := cmp.Diff(expectedPipelineResults, pr.Status.PipelineResults); d != "" {
+	// 	t.Fatalf("Unexpected PipelineResults: %s", diff.PrintWantGot(d))
+	// }
+}
+
+func skipIfCustomTasksDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	featureFlagsCM, err := c.KubeClient.Kube.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+	}
+	enableCustomTasks, ok := featureFlagsCM.Data["enable-custom-tasks"]
+	if !ok || enableCustomTasks != "true" {
+		t.Skip("Skip because enable-custom-tasks != true")
 	}
 }

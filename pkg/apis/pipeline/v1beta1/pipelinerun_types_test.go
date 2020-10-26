@@ -72,7 +72,11 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 	p.Status.InitializeConditions()
 
 	if p.Status.TaskRuns == nil {
-		t.Fatalf("PipelineRun status not initialized correctly")
+		t.Fatalf("PipelineRun TaskRun status not initialized correctly")
+	}
+
+	if p.Status.Runs == nil {
+		t.Fatalf("PipelineRun Run status not initialized correctly")
 	}
 
 	if p.Status.StartTime.IsZero() {
@@ -84,6 +88,7 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 		t.Fatalf("PipelineRun initialize reason should be %s, got %s instead", v1beta1.PipelineRunReasonStarted.String(), condition.Reason)
 	}
 	p.Status.TaskRuns["fooTask"] = &v1beta1.PipelineRunTaskRunStatus{}
+	p.Status.Runs["bahTask"] = &v1beta1.PipelineRunRunStatus{}
 
 	// Change the reason before we initialize again
 	p.Status.SetCondition(&apis.Condition{
@@ -95,7 +100,10 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
-		t.Fatalf("PipelineRun status getting reset")
+		t.Fatalf("PipelineRun TaskRun status getting reset")
+	}
+	if len(p.Status.Runs) != 1 {
+		t.Fatalf("PipelineRun Run status getting reset")
 	}
 
 	newCondition := p.Status.GetCondition(apis.ConditionSucceeded)
