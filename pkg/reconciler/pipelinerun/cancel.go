@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"go.uber.org/zap"
@@ -34,17 +35,25 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var cancelPatchBytes []byte
+var cancelTaskRunPatchBytes, cancelRunPatchBytes []byte
 
 func init() {
 	var err error
-	cancelPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+	cancelTaskRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
 		Operation: "add",
 		Path:      "/spec/status",
 		Value:     v1beta1.TaskRunSpecStatusCancelled,
 	}})
 	if err != nil {
-		log.Fatalf("failed to marshal cancel patch bytes: %v", err)
+		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
+	}
+	cancelRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "add",
+		Path:      "/spec/status",
+		Value:     v1alpha1.RunSpecStatusCancelled,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal Run cancel patch bytes: %v", err)
 	}
 }
 
@@ -57,12 +66,21 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 	for taskRunName := range pr.Status.TaskRuns {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
 	}
-	// If we successfully cancelled all the TaskRuns, we can consider the PipelineRun cancelled.
+	// Loop over the Runs in the PipelineRun status.
+	for runName := range pr.Status.Runs {
+		logger.Infof("cancelling Run %s", runName)
+
+		if _, err := clientSet.TektonV1alpha1().Runs(pr.Namespace).Patch(ctx, runName, types.JSONPatchType, cancelRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+			continue
+		}
+	}
+	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
 	if len(errs) == 0 {
 		pr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -79,7 +97,7 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  ReasonCouldntCancel,
-			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns: %s", pr.Name, e),
+			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
 		})
 		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
 	}

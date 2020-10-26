@@ -80,7 +80,9 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if t.TaskRun != nil {
+		if t.IsCustomTask() && t.Run != nil {
+			return false
+		} else if t.TaskRun != nil {
 			return false
 		}
 	}
@@ -99,10 +101,15 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 	adjustedStartTime := unadjustedStartTime
 	for _, rprt := range state {
 		if rprt.TaskRun == nil {
-			continue
-		}
-		if rprt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
-			adjustedStartTime = &rprt.TaskRun.CreationTimestamp
+			if rprt.Run != nil {
+				if rprt.Run.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &rprt.Run.CreationTimestamp
+				}
+			}
+		} else {
+			if rprt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+				adjustedStartTime = &rprt.TaskRun.CreationTimestamp
+			}
 		}
 	}
 	return adjustedStartTime.DeepCopy()
@@ -114,6 +121,9 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunTaskRunStatus {
 	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	for _, rprt := range state {
+		if rprt.IsCustomTask() {
+			continue
+		}
 		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
@@ -161,21 +171,57 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 	return status
 }
 
+// GetRunsStatus returns a map of run name and the run.
+// Ignore a nil run in pipelineRunState, otherwise, capture run object from PipelineRun Status.
+// Update run status based on the pipelineRunState before returning it in the map.
+func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunRunStatus {
+	status := map[string]*v1beta1.PipelineRunRunStatus{}
+	for _, rprt := range state {
+		if !rprt.IsCustomTask() {
+			continue
+		}
+		if rprt.Run == nil && rprt.ResolvedConditionChecks == nil {
+			continue
+		}
+
+		var prrs *v1beta1.PipelineRunRunStatus
+		if rprt.Run != nil {
+			prrs = pr.Status.Runs[rprt.RunName]
+		}
+
+		if prrs == nil {
+			prrs = &v1beta1.PipelineRunRunStatus{
+				PipelineTaskName: rprt.PipelineTask.Name,
+				WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+			}
+		}
+
+		if rprt.Run != nil {
+			prrs.Status = &rprt.Run.Status
+		}
+
+		// TODO(#3133): Include any condition check statuses here too.
+		status[rprt.RunName] = prrs
+	}
+	return status
+}
+
 // getNextTasks returns a list of tasks which should be executed next i.e.
 // a list of tasks from candidateTasks which aren't yet indicated in state to be running and
 // a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
 func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
 	tasks := []*ResolvedPipelineRunTask{}
 	for _, t := range state {
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
-			tasks = append(tasks, t)
-		}
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
-			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-			if status != nil && status.IsFalse() {
-				if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
-					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
-						tasks = append(tasks, t)
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
+			if t.TaskRun == nil && t.Run == nil {
+				tasks = append(tasks, t)
+			} else if t.TaskRun != nil { // only TaskRun currently supports retry
+				status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+				if status != nil && status.IsFalse() {
+					if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
+						if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
+							tasks = append(tasks, t)
+						}
 					}
 				}
 			}
@@ -375,12 +421,12 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		// increment success counter since the task is successful
 		case t.IsSuccessful():
 			s.Succeeded++
-		// increment failure counter since the task has failed
-		case t.IsFailure():
-			s.Failed++
 		// increment cancelled counter since the task is cancelled
 		case t.IsCancelled():
 			s.Cancelled++
+		// increment failure counter since the task has failed
+		case t.IsFailure():
+			s.Failed++
 		// increment skip counter since the task is skipped
 		case t.Skip(facts):
 			s.Skipped++

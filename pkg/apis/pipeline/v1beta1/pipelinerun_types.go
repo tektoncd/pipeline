@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -256,6 +257,9 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
 	}
+	if pr.Runs == nil {
+		pr.Runs = make(map[string]*PipelineRunRunStatus)
+	}
 	if pr.StartTime.IsZero() {
 		pr.StartTime = &metav1.Time{Time: time.Now()}
 		started = true
@@ -380,8 +384,12 @@ type PipelineRunTaskRunStatus struct {
 type PipelineRunRunStatus struct {
 	// PipelineTaskName is the name of the PipelineTask.
 	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
-
-	// TODO(#3133): Add v1alpha1.RunStatus here, without introducing an import cycle.
+	// Status is the RunStatus for the corresponding Run
+	// +optional
+	Status *runv1alpha1.RunStatus `json:"status,omitempty"`
+	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
+	// +optional
+	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
 // PipelineRunConditionCheckStatus returns the condition check status

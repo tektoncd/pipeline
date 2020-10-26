@@ -56,6 +56,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -464,23 +465,36 @@ func TestReconcile_CustomTask(t *testing.T) {
 	names.TestingSeed()
 	const pipelineRunName = "test-pipelinerun-custom-task"
 	const namespace = "namespace"
-	prt := NewPipelineRunTest(test.Data{PipelineRuns: []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pipelineRunName,
-			Namespace: namespace,
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "custom-task",
-					TaskRef: &v1beta1.TaskRef{
-						APIVersion: "example.dev/v0",
-						Kind:       "Example",
-					},
-				}},
+	prt := NewPipelineRunTest(test.Data{
+		PipelineRuns: []*v1beta1.PipelineRun{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pipelineRunName,
+				Namespace: namespace,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "custom-task",
+						Params: []v1beta1.Param{{
+							Name:  "param1",
+							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
+						}},
+						TaskRef: &v1beta1.TaskRef{
+							APIVersion: "example.dev/v0",
+							Kind:       "Example",
+						},
+					}},
+				},
+			},
+		}},
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+				Data: map[string]string{
+					"enable-custom-tasks": "true",
+				},
 			},
 		},
-	}},
 	}, t)
 	defer prt.Cancel()
 
@@ -517,6 +531,10 @@ func TestReconcile_CustomTask(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.RunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "param1",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
+			}},
 			Ref: &v1beta1.TaskRef{
 				APIVersion: "example.dev/v0",
 				Kind:       "Example",
@@ -955,6 +973,79 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	status := state.GetTaskRunsStatus(pr)
 	if d := cmp.Diff(expectedPipelineRunStatus.TaskRuns, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
+	}
+
+}
+
+func TestUpdateRunsState(t *testing.T) {
+	// TestUpdateRunsState runs "getRunsStatus" and verifies how it updates a PipelineRun status
+	// from a Run associated to the PipelineRun
+	pr := tb.PipelineRun("test-pipeline-run", tb.PipelineRunNamespace("foo"), tb.PipelineRunSpec("test-pipeline"))
+	pipelineTask := v1beta1.PipelineTask{
+		Name: "unit-test-1",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+		TaskRef: &v1beta1.TaskRef{
+			APIVersion: "example.dev/v0",
+			Kind:       "Example",
+			Name:       "unit-test-run",
+		},
+	}
+	run := v1alpha1.Run{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "example.dev/v0",
+			Kind:       "Example",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-run",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.RunSpec{},
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}},
+			},
+		},
+	}
+	expectedRunsStatus := make(map[string]*v1beta1.PipelineRunRunStatus)
+	expectedRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1beta1.PipelineRunRunStatus{
+		PipelineTaskName: "unit-test-1",
+		Status: &v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}},
+			},
+		},
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+	}
+	expectedPipelineRunStatus := v1beta1.PipelineRunStatus{
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			Runs: expectedRunsStatus,
+		},
+	}
+
+	state := resources.PipelineRunState{{
+		PipelineTask: &pipelineTask,
+		CustomTask:   true,
+		RunName:      "test-pipeline-run-success-unit-test-1",
+		Run:          &run,
+	}}
+	pr.Status.InitializeConditions()
+	status := state.GetRunsStatus(pr)
+	if d := cmp.Diff(expectedPipelineRunStatus.Runs, status); d != "" {
+		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
 	}
 
 }
@@ -2962,7 +3053,12 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		tb.PipelineTask("hello-world-1", helloWorldTask.Name),
 		tb.PipelineTask("hello-world-2", helloWorldTask.Name),
 		tb.PipelineTask("hello-world-3", helloWorldTask.Name, tb.PipelineTaskCondition("always-true")),
-		tb.PipelineTask("hello-world-4", helloWorldTask.Name, tb.PipelineTaskCondition("always-true"))))
+		tb.PipelineTask("hello-world-4", helloWorldTask.Name, tb.PipelineTaskCondition("always-true")),
+		tb.PipelineTask("hello-world-5", helloWorldTask.Name), // custom task (corrected below)
+	))
+
+	// Update the fifth pipeline task to be a custom task (builder does not support this case).
+	testPipeline.Spec.Tasks[4].TaskRef = &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}
 
 	// This taskrun is in the pipelinerun status. It completed successfully.
 	taskRunDone := tb.TaskRun("test-pipeline-run-out-of-sync-hello-world-1",
@@ -3051,6 +3147,39 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		),
 	)
 
+	orphanedRun := &v1alpha1.Run{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-out-of-sync-hello-world-5",
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind: "PipelineRun",
+				Name: prOutOfSyncName,
+			}},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:     testPipeline.Name,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey:  prOutOfSyncName,
+				pipeline.GroupName + pipeline.PipelineTaskLabelKey: "hello-world-5",
+			},
+			Annotations: map[string]string{},
+		},
+		Spec: v1alpha1.RunSpec{
+			Ref: &v1beta1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "Example",
+			},
+		},
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+		},
+	}
+
 	prOutOfSync := tb.PipelineRun(prOutOfSyncName,
 		tb.PipelineRunNamespace("foo"),
 		tb.PipelineRunSpec(testPipeline.Name, tb.PipelineRunServiceAccountName("test-sa")),
@@ -3076,10 +3205,20 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	ts := []*v1beta1.Task{helloWorldTask}
 	trs := []*v1beta1.TaskRun{taskRunDone, taskRunOrphaned, taskRunWithCondition,
 		taskRunForOrphanedCondition, taskRunForConditionOfOrphanedTaskRun}
+	runs := []*v1alpha1.Run{orphanedRun}
 	cs := []*v1alpha1.Condition{
 		tbv1alpha1.Condition("always-true", tbv1alpha1.ConditionNamespace("foo"), tbv1alpha1.ConditionSpec(
 			tbv1alpha1.ConditionSpecCheck("", "foo", tbv1alpha1.Args("bar")),
 		)),
+	}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				"enable-custom-tasks": "true",
+			},
+		},
 	}
 
 	d := test.Data{
@@ -3088,6 +3227,8 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		Tasks:        ts,
 		TaskRuns:     trs,
 		Conditions:   cs,
+		Runs:         runs,
+		ConfigMaps:   cms,
 	}
 	prt := NewPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -3106,6 +3247,8 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 			switch {
 			case action.Matches("create", "taskruns"):
 				t.Errorf("Expected client to not have created a TaskRun, but it did")
+			case action.Matches("create", "runs"):
+				t.Errorf("Expected client to not have created a Run, but it did")
 			case action.Matches("update", "pipelineruns"):
 				pipelineUpdates++
 			case action.Matches("patch", "pipelineruns"):
@@ -3130,6 +3273,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	}
 
 	expectedTaskRunsStatus := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	expectedRunsStatus := make(map[string]*v1beta1.PipelineRunRunStatus)
 	// taskRunDone did not change
 	expectedTaskRunsStatus[taskRunDone.Name] = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "hello-world-1",
@@ -3178,6 +3322,20 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		PipelineTaskName: "hello-world-4",
 		ConditionChecks:  prccs4,
 	}
+	// orphanedRun was recovered into the status
+	expectedRunsStatus[orphanedRun.Name] = &v1beta1.PipelineRunRunStatus{
+		PipelineTaskName: "hello-world-5",
+		Status: &v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+		},
+	}
 
 	// We cannot just diff status directly because the taskrun name for the orphaned condition
 	// is dynamically generated, but we can change the name to allow us to then diff.
@@ -3190,6 +3348,9 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	}
 	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+	}
+	if d := cmp.Diff(reconciledRun.Status.Runs, expectedRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", d)
 	}
 }
 
@@ -3582,7 +3743,9 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
 				Status:     tc.prStatus,
 			}
-			actualPrStatus := updatePipelineRunStatusFromTaskRuns(logger, pr, tc.prStatus, tc.trs)
+
+			updatePipelineRunStatusFromTaskRuns(logger, pr, tc.trs)
+			actualPrStatus := pr.Status
 
 			// The TaskRun keys for recovered taskruns will contain a new random key, appended to the
 			// base name that we expect. Replace the random part so we can diff the whole structure

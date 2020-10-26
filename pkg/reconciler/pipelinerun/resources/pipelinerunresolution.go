@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -28,10 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -66,11 +64,10 @@ func (e *ConditionNotFoundError) Error() string {
 type ResolvedPipelineRunTask struct {
 	TaskRunName string
 	TaskRun     *v1beta1.TaskRun
-
 	// If the PipelineTask is a Custom Task, RunName and Run will be set.
-	RunName string
-	Run     *v1alpha1.Run
-
+	CustomTask            bool
+	RunName               string
+	Run                   *v1alpha1.Run
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
 	// ConditionChecks ~~TaskRuns but for evaling conditions
@@ -84,77 +81,55 @@ func (t ResolvedPipelineRunTask) IsDone(facts *PipelineRunFacts) bool {
 
 // IsCustomTask returns true if the PipelineTask references a Custom Task.
 func (t ResolvedPipelineRunTask) IsCustomTask() bool {
-	return t.PipelineTask.TaskRef != nil &&
-		t.PipelineTask.TaskRef.APIVersion != ""
+	return t.CustomTask
 }
 
-func (t ResolvedPipelineRunTask) IsDone() bool {
-	if t.PipelineTask == nil {
-		return false
-	}
-
-	if !t.IsCustomTask() {
-		if t.TaskRun == nil {
-			return false
-		}
-		status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-		retriesDone := len(t.TaskRun.Status.RetriesStatus)
-		retries := t.PipelineTask.Retries
-		return status.IsTrue() || status.IsFalse() && retriesDone >= retries
-	}
-	return t.Run != nil && t.Run.IsDone()
-}
-
-// IsSuccessful returns true only if the taskrun itself has completed successfully
+// IsSuccessful returns true only if the run has completed successfully
 func (t ResolvedPipelineRunTask) IsSuccessful() bool {
-	if !t.IsCustomTask() {
-		if t.TaskRun == nil {
-			return false
-		}
-		return t.TaskRun.IsSuccessful()
+	if t.IsCustomTask() {
+		return t.Run != nil && t.Run.IsSuccessful()
 	}
-	return t.Run != nil && t.Run.IsSuccessful()
+	return t.TaskRun != nil && t.TaskRun.IsSuccessful()
 }
 
 // IsFailure returns true only if the run has failed and will not be retried.
 func (t ResolvedPipelineRunTask) IsFailure() bool {
-	if !t.IsCustomTask() {
-		if t.TaskRun == nil {
-			return false
-		}
-		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-		retriesDone := len(t.TaskRun.Status.RetriesStatus)
-		retries := t.PipelineTask.Retries
-		return c.IsFalse() && retriesDone >= retries
+	if t.IsCustomTask() {
+		return t.Run != nil && t.Run.IsDone() && !t.Run.IsSuccessful()
 	}
-	return t.Run != nil && t.Run.IsDone() && !t.Run.IsSuccessful()
+	if t.TaskRun == nil {
+		return false
+	}
+	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	retriesDone := len(t.TaskRun.Status.RetriesStatus)
+	retries := t.PipelineTask.Retries
+	return c.IsFalse() && retriesDone >= retries
 }
 
-// IsCancelled returns true only if the taskrun itself has cancelled
+// IsCancelled returns true only if the run is cancelled
 func (t ResolvedPipelineRunTask) IsCancelled() bool {
-	if !t.IsCustomTask() {
-		if t.TaskRun == nil {
+	if t.IsCustomTask() {
+		if t.Run == nil {
 			return false
 		}
-
-		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-		if c == nil {
-			return false
-		}
-
-		return c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
+		c := t.Run.Status.GetCondition(apis.ConditionSucceeded)
+		return c != nil && c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled
 	}
-	// TODO(#3133): Support cancellation of Custom Task runs.
-	return false
+	if t.TaskRun == nil {
+		return false
+	}
+	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	return c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
 }
 
 // IsStarted returns true only if the PipelineRunTask itself has a TaskRun or
 // Run associated that has a Succeeded-type condition.
 func (t ResolvedPipelineRunTask) IsStarted() bool {
-	if !t.IsCustomTask() {
-		return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
+	if t.IsCustomTask() {
+		return t.Run != nil && t.Run.Status.GetCondition(apis.ConditionSucceeded) != nil
+
 	}
-	return t.Run != nil && t.Run.Status.GetCondition(apis.ConditionSucceeded) != nil
+	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
 
 func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool {
@@ -337,10 +312,6 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 // the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
 // an error, otherwise it returns a list of all of the Tasks retrieved.  It will retrieve
 // the Resources needed for the TaskRun using the mapping of providedResources.
-//
-// TODO: The proliferation of Get* methods here is a smell. This method should
-// take a versioned clientset instead which includes methods to retrieve these
-// resources, with generated fakes for testing.
 func ResolvePipelineRunTask(
 	ctx context.Context,
 	pipelineRun v1beta1.PipelineRun,
@@ -355,6 +326,10 @@ func ResolvePipelineRunTask(
 	rprt := ResolvedPipelineRunTask{
 		PipelineTask: &task,
 	}
+
+	cfg := config.FromContextOrDefaults(ctx)
+	rprt.CustomTask = cfg.FeatureFlags.EnableCustomTasks && rprt.PipelineTask.TaskRef != nil &&
+		rprt.PipelineTask.TaskRef.APIVersion != "" && rprt.PipelineTask.TaskRef.Kind != ""
 
 	if rprt.IsCustomTask() {
 		rprt.RunName = GetRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
