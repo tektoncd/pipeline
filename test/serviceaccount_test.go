@@ -262,6 +262,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
 
+	dnsPolicy := corev1.DNSClusterFirst
 	// Create a PipelineRun that uses those ServiceAccount
 	pipelineRun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerunwithasas", Namespace: namespace},
@@ -271,14 +272,13 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
 				PipelineTaskName: "task1",
 				TaskPodTemplate: &v1beta1.PodTemplate{
-					HostNetwork: true,
+					DNSPolicy: &dnsPolicy,
 				},
 			}},
 		},
 	}
 
-	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
-	if err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
