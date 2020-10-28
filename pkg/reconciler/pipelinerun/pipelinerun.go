@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -176,7 +175,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		// and may not have had all of the assumed default specified.
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-		c.updatePipelineResults(ctx, pr, getPipelineFunc)
+		if _, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc); err != nil {
+			msg := fmt.Sprintf("Failed to get Pipeline Spec to process Pipeline Results for PipelineRun %s/%s: %v", pr.Namespace, pr.Name, err)
+			logger.Error(msg)
+			logger.Warnf("An error processing Pipeline Results overwrites existing Succeeded Condition for PipelineRun %s/%s: %v", pr.Namespace, pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
+			pr.Status.MarkFailed(ReasonCouldntGetPipeline, msg)
+		} else {
+			pr.Status.PipelineResults = resources.ApplyTaskResultsToPipelineResults(pipelineSpec.Results, pr.Status.TaskRuns)
+		}
+
 		if err := artifacts.CleanupArtifactStorage(ctx, pr, c.KubeClientSet); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
@@ -315,21 +322,6 @@ func (c *Reconciler) resolvePipelineState(
 		pst = append(pst, resolvedTask)
 	}
 	return pst, nil
-}
-
-func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) {
-	logger := logging.FromContext(ctx)
-
-	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
-	if err != nil {
-		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
-			"Error retrieving pipeline for pipelinerun %s/%s: %s",
-			pr.Namespace, pr.Name, err)
-		return
-	}
-	resolvedResultRefs := resources.ResolvePipelineResultRefs(pr.Status, pipelineSpec.Results)
-	pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) error {
@@ -620,27 +612,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		}
 	}
 	return nil
-}
-
-func getPipelineRunResults(pipelineSpec *v1beta1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
-	var results []v1beta1.PipelineRunResult
-	stringReplacements := map[string]string{}
-
-	for _, resolvedResultRef := range resolvedResultRefs {
-		replaceTarget := fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, resolvedResultRef.ResultReference.PipelineTask, v1beta1.ResultResultPart, resolvedResultRef.ResultReference.Result)
-		stringReplacements[replaceTarget] = resolvedResultRef.Value.StringVal
-	}
-	for _, result := range pipelineSpec.Results {
-		in := result.Value
-		for k, v := range stringReplacements {
-			in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
-		}
-		results = append(results, v1beta1.PipelineRunResult{
-			Name:  result.Name,
-			Value: in,
-		})
-	}
-	return results
 }
 
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {

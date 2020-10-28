@@ -22,7 +22,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"knative.dev/pkg/apis"
 )
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task
@@ -51,19 +50,6 @@ func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunSta
 	return removeDup(allResolvedResultRefs), nil
 }
 
-// ResolvePipelineResultRefs takes a list of PipelineResults and resolves any references they
-// include to Task results in the given PipelineRunStatus
-func ResolvePipelineResultRefs(pipelineStatus v1beta1.PipelineRunStatus, pipelineResults []v1beta1.PipelineResult) ResolvedResultRefs {
-	var allResolvedResultRefs ResolvedResultRefs
-	for _, result := range pipelineResults {
-		resolvedResultRefs := convertPipelineResultToResultRefs(pipelineStatus, result)
-		if resolvedResultRefs != nil {
-			allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
-		}
-	}
-	return removeDup(allResolvedResultRefs)
-}
-
 // extractResultRefs resolves any ResultReference that are found in param or pipeline result
 // Returns nil if none are found
 func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
@@ -72,29 +58,6 @@ func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.
 		return extractResultRefs(expressions, pipelineRunState)
 	}
 	return nil, nil
-}
-
-// extractResultRefs resolves any ResultReference that are found in param or pipeline result
-// Returns nil if none are found
-func extractResultRefsForPipelineResult(pipelineStatus v1beta1.PipelineRunStatus, result v1beta1.PipelineResult) (ResolvedResultRefs, error) {
-	expressions, ok := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(result)
-	if ok {
-		return extractResultRefsForPipelineResults(expressions, pipelineStatus)
-	}
-	return nil, nil
-}
-
-func extractResultRefsForPipelineResults(expressions []string, pipelineStatus v1beta1.PipelineRunStatus) (ResolvedResultRefs, error) {
-	resultRefs := v1beta1.NewResultRefs(expressions)
-	var resolvedResultRefs ResolvedResultRefs
-	for _, resultRef := range resultRefs {
-		resolvedResultRef, err := resolveResultRefForPipelineResult(pipelineStatus, resultRef)
-		if err != nil {
-			return nil, err
-		}
-		resolvedResultRefs = append(resolvedResultRefs, resolvedResultRef)
-	}
-	return removeDup(resolvedResultRefs), nil
 }
 
 func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
@@ -198,15 +161,6 @@ func convertWhenExpressions(whenExpressions []v1beta1.WhenExpression, pipelineRu
 	return resolvedWhenExpressions, nil
 }
 
-// convertPipelineResultToResultRefs converts all params of the resolved pipeline run task
-func convertPipelineResultToResultRefs(pipelineStatus v1beta1.PipelineRunStatus, pipelineResult v1beta1.PipelineResult) ResolvedResultRefs {
-	resolvedResultRefs, err := extractResultRefsForPipelineResult(pipelineStatus, pipelineResult)
-	if err != nil {
-		return nil
-	}
-	return resolvedResultRefs
-}
-
 func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, error) {
 
 	referencedPipelineTask := pipelineState.ToMap()[resultRef.PipelineTask]
@@ -239,47 +193,6 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 		FromRun:         runName,
 		ResultReference: *resultRef,
 	}, nil
-}
-
-func resolveResultRefForPipelineResult(pipelineStatus v1beta1.PipelineRunStatus, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, error) {
-	taskRunStatus, taskRunName, err := getTaskRunStatus(pipelineStatus, resultRef.PipelineTask)
-
-	if err != nil {
-		return nil, err
-	}
-	result, err := findTaskResultForPipelineResult(taskRunStatus, resultRef)
-	if err != nil {
-		return nil, err
-	}
-	return &ResolvedResultRef{
-		Value:           *v1beta1.NewArrayOrString(result.Value),
-		FromTaskRun:     taskRunName,
-		ResultReference: *resultRef,
-	}, nil
-}
-
-func getTaskRunStatus(pipelineStatus v1beta1.PipelineRunStatus, pipelineTaskName string) (*v1beta1.TaskRunStatus, string, error) {
-	for key, taskRun := range pipelineStatus.PipelineRunStatusFields.TaskRuns {
-		// check if the task run was successful
-		if taskRun.PipelineTaskName == pipelineTaskName {
-			c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
-			if c == nil {
-				return nil, "", fmt.Errorf("could not find a successful task run status for task %q referenced by result", pipelineTaskName)
-			}
-			return taskRun.Status, key, nil
-		}
-	}
-	return nil, "", fmt.Errorf("could not find task run status for task %q referenced by result", pipelineTaskName)
-}
-
-func findTaskResultForPipelineResult(taskStatus *v1beta1.TaskRunStatus, reference *v1beta1.ResultRef) (*v1beta1.TaskRunResult, error) {
-	results := taskStatus.TaskRunStatusFields.TaskRunResults
-	for _, result := range results {
-		if result.Name == reference.Result {
-			return &result, nil
-		}
-	}
-	return nil, fmt.Errorf("Could not find result with name %s for task run %s", reference.Result, reference.PipelineTask)
 }
 
 func findRunResultForParam(run *v1alpha1.Run, reference *v1beta1.ResultRef) (string, error) {

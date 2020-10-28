@@ -177,6 +177,8 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1beta1.ConditionC
 	}
 }
 
+// ToTaskResourceBindings converts pipeline resources in a ResolvedConditionCheck to a list of TaskResourceBinding
+// and returns them.
 func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1beta1.TaskResourceBinding {
 	var trb []v1beta1.TaskResourceBinding
 

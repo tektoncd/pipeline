@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var (
@@ -488,115 +487,6 @@ func TestResolveResultRefs(t *testing.T) {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestResolvePipelineResultRefs(t *testing.T) {
-	taskrunStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{}
-	taskrunStatus["aTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "aTask",
-		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{
-					{
-						Name:  "aResult",
-						Value: "aResultValue",
-					},
-				},
-			},
-		},
-	}
-	taskrunStatus["bTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "bTask",
-		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionFalse,
-				}},
-			},
-		},
-	}
-	taskrunStatus["cTaskRun"] = &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "cTask",
-		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionUnknown,
-				}},
-			},
-		},
-	}
-	status := v1beta1.PipelineRunStatus{
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: taskrunStatus,
-		},
-	}
-
-	tests := []struct {
-		name            string
-		status          v1beta1.PipelineRunStatus
-		pipelineResults []v1beta1.PipelineResult
-		want            ResolvedResultRefs
-	}{{
-		name:   "Test pipeline result from a successful task",
-		status: status,
-		pipelineResults: []v1beta1.PipelineResult{{
-			Name:        "from-a",
-			Value:       "$(tasks.aTask.results.aResult)",
-			Description: "a result from a",
-		}},
-		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
-			ResultReference: v1beta1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-	}, {
-		name:   "Test results from a task that did not run and one and failed",
-		status: status,
-		pipelineResults: []v1beta1.PipelineResult{{
-			Name:        "from-a",
-			Value:       "$(tasks.aTask.results.aResult)",
-			Description: "a result from a",
-		}, {
-			Name:        "from-b",
-			Value:       "$(tasks.bTask.results.bResult)",
-			Description: "a result from b",
-		}, {
-			Name:        "from-c",
-			Value:       "$(tasks.cTask.results.cResult)",
-			Description: "a result from c",
-		}},
-		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
-			ResultReference: v1beta1.ResultRef{
-				PipelineTask: "aTask",
-				Result:       "aResult",
-			},
-			FromTaskRun: "aTaskRun",
-		}},
-	},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ResolvePipelineResultRefs(tt.status, tt.pipelineResults)
-			sort.SliceStable(got, func(i, j int) bool {
-				return strings.Compare(got[i].FromTaskRun, got[j].FromTaskRun) < 0
-			})
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
