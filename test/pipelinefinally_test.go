@@ -17,7 +17,6 @@ package test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -88,7 +87,7 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 		t.Fatalf("Waiting for PipelineRun %s to fail: %v", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pipelinerun-failed-dag-tasks"})
+	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -96,23 +95,23 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 	var dagTask1EndTime, dagTask2EndTime, finalTaskStartTime *metav1.Time
 	// verify dag task failed, parallel dag task succeeded, and final task succeeded
 	for _, taskrunItem := range taskrunList.Items {
-		switch n := taskrunItem.Name; {
-		case strings.HasPrefix(n, "pipelinerun-failed-dag-tasks-dagtask1"):
+		switch n := taskrunItem.Labels["tekton.dev/pipelineTask"]; {
+		case n == "dagtask1":
 			if !isFailed(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("TaskRun %s for dag task should have failed", n)
+				t.Fatalf("dag task %s should have failed", n)
 			}
 			dagTask1EndTime = taskrunItem.Status.CompletionTime
-		case strings.HasPrefix(n, "pipelinerun-failed-dag-tasks-dagtask2"):
-			if err := WaitForTaskRunState(ctx, c, n, TaskRunSucceed(n), "TaskRunSuccess"); err != nil {
+		case n == "dagtask2":
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			dagTask2EndTime = taskrunItem.Status.CompletionTime
-		case strings.HasPrefix(n, "pipelinerun-failed-dag-tasks-dagtask3"):
+		case n == "dagtask3":
 			if !isSkipped(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("TaskRun %s for dag task should have skipped due to condition failure", n)
+				t.Fatalf("dag task %s should have skipped due to condition failure", n)
 			}
-		case strings.HasPrefix(n, "pipelinerun-failed-dag-tasks-finaltask1"):
-			if err := WaitForTaskRunState(ctx, c, n, TaskRunSucceed(n), "TaskRunSuccess"); err != nil {
+		case n == "finaltask1":
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			finalTaskStartTime = taskrunItem.Status.StartTime
@@ -168,21 +167,21 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 		t.Fatalf("PipelineRun execution failed")
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pipelinerun-failed-final-tasks"})
+	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
 	// verify dag task succeeded and final task failed
 	for _, taskrunItem := range taskrunList.Items {
-		switch n := taskrunItem.Name; {
-		case strings.HasPrefix(n, "pipelinerun-failed-final-tasks-dagtask1"):
+		switch n := taskrunItem.Labels["tekton.dev/pipelineTask"]; {
+		case n == "dagtask1":
 			if !isSuccessful(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("TaskRun %s for dag task should have succeeded", n)
+				t.Fatalf("dag task %s should have succeeded", n)
 			}
-		case strings.HasPrefix(n, "pipelinerun-failed-final-tasks-finaltask1"):
+		case n == "finaltask1":
 			if !isFailed(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("TaskRun %s for final task should have failed", n)
+				t.Fatalf("final task %s should have failed", n)
 			}
 		default:
 			t.Fatalf("TaskRuns were not found for both final and dag tasks")
