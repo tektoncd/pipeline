@@ -604,6 +604,20 @@ references the `outputValue` `Result` emitted by the `calculate-sum` `Task`.
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
 
+A `Pipeline Result` is not emitted if any of the following are true:
+- A `PipelineTask` referenced by the `Pipeline Result` failed. The `PipelineRun` will also
+have failed.
+- A `PipelineTask` referenced by the `Pipeline Result` was skipped.
+- A `PipelineTask` referenced by the `Pipeline Result` didn't emit the referenced `Task Result`. This
+should be considered a bug in the `Task` and [may fail a `PipelineTask` in future](https://github.com/tektoncd/pipeline/issues/3497).
+- The `Pipeline Result` uses a variable that doesn't point to an actual `PipelineTask`. This will
+result in an `InvalidTaskResultReference` validation error during `PipelineRun` execution.
+- The `Pipeline Result` uses a variable that doesn't point to an actual result in a `PipelineTask`.
+This will cause an `InvalidTaskResultReference` validation error during `PipelineRun` execution.
+
+**Note:** Since a `Pipeline Result` can contain references to multiple `Task Results`, if any of those
+`Task Result` references are invalid the entire `Pipeline Result` is not emitted.
+
 ## Configuring the `Task` execution order
 
 You can connect `Tasks` in a `Pipeline` so that they execute in a Directed Acyclic Graph (DAG).
