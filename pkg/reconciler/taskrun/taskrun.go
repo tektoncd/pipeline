@@ -176,7 +176,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API convertions. Errors that come out of prepare are
 	// permanent one, so in case of error we update, emit events and return
-	taskSpec, rtr, err := c.prepare(ctx, tr)
+	_, rtr, err := c.prepare(ctx, tr)
 	if err != nil {
 		logger.Errorf("TaskRun prepare error: %v", err.Error())
 		// We only return an error if update failed, otherwise we don't want to
@@ -189,7 +189,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, tr, taskSpec, rtr); err != nil {
+	if err = c.reconcile(ctx, tr, rtr); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
 	}
 
@@ -338,8 +338,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // It reports errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
-func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun,
-	taskSpec *v1beta1.TaskSpec, rtr *resources.ResolvedTaskResources) error {
+func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
