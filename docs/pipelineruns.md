@@ -94,6 +94,9 @@ You may also use a `Tekton Bundle` to reference a pipeline defined remotely.
 The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
 in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bundles).
 
+`Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
+so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
+
 To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` field:
 
 ```yaml

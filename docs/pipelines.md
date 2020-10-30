@@ -276,7 +276,7 @@ on a `PipelineRun`. The `PipelineRun` will then run that `Task` without register
 the cluster allowing multiple versions of the same named `Task` to be run at once.
 
 `Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
-so long as the artifact adheres to the [contract](tekton-bundle-contract.md).
+so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 ### Using the `from` parameter
 
