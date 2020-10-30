@@ -230,8 +230,8 @@ func TestPipelineTaskTimeout(t *testing.T) {
 	}
 
 	for i := 1; i <= len(taskrunList.Items); i++ {
-		if <-errChan != nil {
-			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+		if err := <-errChan; err != nil {
+			t.Errorf("Error waiting for TaskRun %s to be running: %v", taskrunList.Items[i-1].Name, err)
 		}
 	}
 
