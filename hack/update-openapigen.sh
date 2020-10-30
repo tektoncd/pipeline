@@ -24,5 +24,5 @@ go run k8s.io/kube-openapi/cmd/openapi-gen \
     --go-header-file hack/boilerplate/boilerplate.go.txt >> /dev/null
 
 echo "Generating swagger file ..."
-go run cmd/spec-gen/main.go v0.17.2 > pkg/apis/pipeline/v1beta1/swagger.json
+go run hack/spec-gen/main.go v0.17.2 > pkg/apis/pipeline/v1beta1/swagger.json
 
