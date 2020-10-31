@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/logging/logkey"
 )
 
 const (
@@ -235,12 +236,13 @@ func (t *Handler) checkTaskRunTimeouts(ctx context.Context, namespace string, pi
 // 1. Stop signal, 2. Completion 3. Or duration to elapse since startTime
 // time out, which is determined by checking if the timeout has occurred since the startTime
 func (t *Handler) Wait(n types.NamespacedName, startTime metav1.Time, timeout metav1.Duration) {
+	logger := t.logger.With(zap.String(logkey.Key, n.String()))
 	if t.callbackFunc == nil {
-		t.logger.Errorf("somehow the timeout handler was not initialized with a callback function")
+		logger.Errorf("somehow the timeout handler was not initialized with a callback function")
 		return
 	}
 	runtime := time.Since(startTime.Time)
-	t.logger.Infof("About to start timeout timer for %s. started at %s, timeout is %s, running for %s", n.String(), startTime.Time, timeout, runtime)
+	logger.Infof("About to start timeout timer for %s. started at %s, timeout is %s, running for %s", n.String(), startTime.Time, timeout, runtime)
 	defer t.Release(n)
 	t.setTimer(n, timeout.Duration-runtime, t.callbackFunc)
 }
@@ -253,25 +255,27 @@ func (t *Handler) Wait(n types.NamespacedName, startTime metav1.Time, timeout me
 // fires. It is the caller's responsibility to Release() the run when
 // work with it has completed.
 func (t *Handler) SetTimer(n types.NamespacedName, d time.Duration) {
+	logger := t.logger.With(zap.String(logkey.Key, n.String()))
 	if t.callbackFunc == nil {
-		t.logger.Errorf("somehow the timeout handler was not initialized with a callback function")
+		logger.Errorf("somehow the timeout handler was not initialized with a callback function")
 		return
 	}
 	t.setTimer(n, d, t.callbackFunc)
 }
 
 func (t *Handler) setTimer(n types.NamespacedName, timeout time.Duration, callback func(types.NamespacedName)) {
+	logger := t.logger.With(zap.String(logkey.Key, n.String()))
 	done := t.getOrCreateDoneChan(n)
 	started := time.Now()
 	select {
 	case <-t.stopCh:
-		t.logger.Infof("stopping timer for %q", n.String())
+		logger.Infof("stopping timer for %q", n.String())
 		return
 	case <-done:
-		t.logger.Infof("%q finished, stopping timer", n.String())
+		logger.Infof("%q finished, stopping timer", n.String())
 		return
 	case <-time.After(timeout):
-		t.logger.Infof("timer for %q has activated after %s", n.String(), time.Since(started).String())
+		logger.Infof("timer for %q has activated after %s", n.String(), time.Since(started).String())
 		callback(n)
 	}
 }
