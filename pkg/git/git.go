@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"go.uber.org/zap"
 )
 
@@ -253,9 +254,8 @@ func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
 }
 
 func validateGitAuth(logger *zap.SugaredLogger, url string) {
-	homeenv := os.Getenv("HOME")
 	sshCred := true
-	if _, err := os.Stat(homeenv + "/.ssh"); os.IsNotExist(err) {
+	if _, err := os.Stat(pipeline.CredsDir + "/.ssh"); os.IsNotExist(err) {
 		sshCred = false
 	}
 	urlSSHFormat := ValidateGitSSHURLFormat(url)
