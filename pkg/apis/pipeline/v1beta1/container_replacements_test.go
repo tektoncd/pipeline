@@ -34,11 +34,12 @@ func TestApplyContainerReplacements(t *testing.T) {
 	}
 
 	s := corev1.Container{
-		Name:       "$(replace.me)",
-		Image:      "$(replace.me)",
-		Command:    []string{"$(array.replace.me)"},
-		Args:       []string{"$(array.replace.me)"},
-		WorkingDir: "$(replace.me)",
+		Name:            "$(replace.me)",
+		Image:           "$(replace.me)",
+		ImagePullPolicy: "$(replace.me)",
+		Command:         []string{"$(array.replace.me)"},
+		Args:            []string{"$(array.replace.me)"},
+		WorkingDir:      "$(replace.me)",
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
@@ -77,11 +78,12 @@ func TestApplyContainerReplacements(t *testing.T) {
 	}
 
 	expected := corev1.Container{
-		Name:       "replaced!",
-		Image:      "replaced!",
-		Command:    []string{"val1", "val2"},
-		Args:       []string{"val1", "val2"},
-		WorkingDir: "replaced!",
+		Name:            "replaced!",
+		Image:           "replaced!",
+		ImagePullPolicy: "replaced!",
+		Command:         []string{"val1", "val2"},
+		Args:            []string{"val1", "val2"},
+		WorkingDir:      "replaced!",
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
