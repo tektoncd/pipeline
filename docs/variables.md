@@ -127,6 +127,7 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | --- | ----- |
 | `Task` | `spec.steps[].name` |
 | `Task` | `spec.steps[].image` |
+| `Task` | `spec.steps[].imagePullPolicy` |
 | `Task` | `spec.steps[].env.value` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.name` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.key` |
@@ -150,6 +151,7 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.volumes[].csi.volumeattributes.* `|
 | `Task` | `spec.sidecars[].name` |
 | `Task` | `spec.sidecars[].image` |
+| `Task` | `spec.sidecars[].imagePullPolicy` |
 | `Task` | `spec.sidecars[].env.value` |
 | `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.name` |
 | `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.key` |
