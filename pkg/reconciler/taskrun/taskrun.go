@@ -194,22 +194,19 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	if tr.Status.PodName == "" {
 		return nil, nil
 	}
-	pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	pod, err := podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	if err == nil {
-		err = podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, *pod)
-		if err == nil {
-			// Check if any SidecarStatuses are still shown as Running after stopping
-			// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
-			if podconvert.IsSidecarStatusRunning(tr) {
-				err = updateStoppedSidecarStatus(ctx, pod, tr, c)
-			}
+		// Check if any SidecarStatuses are still shown as Running after stopping
+		// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
+		if podconvert.IsSidecarStatusRunning(tr) {
+			err = updateStoppedSidecarStatus(ctx, pod, tr, c)
 		}
-	} else if k8serrors.IsNotFound(err) {
-		// failed to get the pod, return error without any sidecars
-		return nil, err
 	}
 
-	if err != nil {
+	if k8serrors.IsNotFound(err) {
+		// failed to get the pod, return error without any sidecars
+		return nil, err
+	} else if err != nil {
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 	}

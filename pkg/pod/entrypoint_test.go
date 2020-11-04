@@ -425,13 +425,8 @@ func TestStopSidecars(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := StopSidecars(ctx, nopImage, kubeclient, c.pod); err != nil {
+			if got, err := StopSidecars(ctx, nopImage, kubeclient, c.pod.Namespace, c.pod.Name); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
-			}
-
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 			}
