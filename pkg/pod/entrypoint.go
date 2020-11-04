@@ -25,6 +25,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -189,10 +190,13 @@ func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev
 
 // StopSidecars updates sidecar containers in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
+func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, namespace, name string) (*corev1.Pod, error) {
+	newPod, err := kubeclient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if k8serrors.IsNotFound(err) {
+		// return NotFound as-is, since the K8s error checks don't handle wrapping.
+		return nil, err
+	} else if err != nil {
+		return nil, fmt.Errorf("error getting Pod %q when stopping sidecars: %w", name, err)
 	}
 
 	updated := false
@@ -213,11 +217,11 @@ func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.In
 		}
 	}
 	if updated {
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("error stopping sidecars of Pod %q: %w", pod.Name, err)
+		if newPod, err = kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
+			return nil, fmt.Errorf("error stopping sidecars of Pod %q: %w", name, err)
 		}
 	}
-	return nil
+	return newPod, nil
 }
 
 // IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
