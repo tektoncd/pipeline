@@ -145,8 +145,9 @@ func TestPipelineRun(t *testing.T) {
 	}}
 
 	for i, td := range tds {
+		i := i   // capture range variable
+		td := td // capture range variable
 		t.Run(td.name, func(t *testing.T) {
-			td := td
 			t.Parallel()
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)

@@ -218,6 +218,7 @@ func TestExamples(t *testing.T) {
 
 	t.Parallel()
 	for _, path := range getExamplePaths(t, baseDir) {
+		path := path // capture range variable
 		testName := extractTestName(baseDir, path)
 		waitValidateFunc := waitValidatePipelineRunDone
 		kind := "pipelinerun"

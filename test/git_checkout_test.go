@@ -96,6 +96,7 @@ func TestGitPipelineRun(t *testing.T) {
 		repo:     "https://github.com/spring-projects/spring-petclinic",
 		revision: "main",
 	}} {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -182,6 +183,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 		name:       "invalid httpsproxy",
 		httpsproxy: "invalid.https.proxy.example.com",
 	}} {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
