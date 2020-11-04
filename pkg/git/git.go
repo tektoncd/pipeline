@@ -59,16 +59,17 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 
 // FetchSpec describes how to initialize and fetch from a Git repository.
 type FetchSpec struct {
-	URL        string
-	Revision   string
-	Refspec    string
-	Path       string
-	Depth      uint
-	Submodules bool
-	SSLVerify  bool
-	HTTPProxy  string
-	HTTPSProxy string
-	NOProxy    string
+	URL                 string
+	Revision            string
+	Refspec             string
+	Path                string
+	Depth               uint
+	Submodules          bool
+	SSLVerify           bool
+	HTTPProxy           string
+	HTTPSProxy          string
+	HTTPSProxySSLCAInfo string
+	NOProxy             string
 }
 
 // Fetch fetches the specified git repository at the revision into path, using the refspec to fetch if provided.
@@ -108,6 +109,22 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
 		return err
 	}
+
+	if _, err := run(logger, "", "config", "--global", "http.proxy", spec.HTTPProxy); err != nil {
+		logger.Warnf("Failed to set http.proxy in git config: %s", err)
+		return err
+	}
+
+	if _, err := run(logger, "", "config", "--global", "http.proxySSLCAInfo", spec.HTTPSProxySSLCAInfo); err != nil {
+		logger.Warnf("Failed to set http.proxySSLCAInfo in git config: %s", err)
+		return err
+	}
+
+	if _, err := run(logger, "", "config", "--global", "https.proxy", spec.HTTPSProxy); err != nil {
+		logger.Warnf("Failed to set https.proxy in git config: %s", err)
+		return err
+	}
+
 	if spec.Revision == "" {
 		spec.Revision = "HEAD"
 		if _, err := run(logger, "", "symbolic-ref", spec.Revision, "refs/remotes/origin/HEAD"); err != nil {

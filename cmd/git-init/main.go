@@ -36,6 +36,9 @@ func init() {
 	flag.StringVar(&fetchSpec.Refspec, "refspec", "", "The Git refspec to fetch the revision from (optional)")
 	flag.StringVar(&fetchSpec.Path, "path", "", "Path of directory under which Git repository will be copied")
 	flag.BoolVar(&fetchSpec.SSLVerify, "sslVerify", true, "Enable/Disable SSL verification in the git config")
+	flag.StringVar(&fetchSpec.HTTPProxy, "httpProxy", "", "Set an http proxy to use")
+	flag.StringVar(&fetchSpec.HTTPSProxy, "httpsProxy", "", "Set an https proxy to use")
+	flag.StringVar(&fetchSpec.HTTPSProxySSLCAInfo, "httpsCAInfo", "", "File containing the certificate bundle that should be used to verify the proxy with when using an HTTPS proxy")
 	flag.BoolVar(&fetchSpec.Submodules, "submodules", true, "Initialize and fetch Git submodules")
 	flag.UintVar(&fetchSpec.Depth, "depth", 1, "Perform a shallow clone to this depth")
 	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
@@ -48,6 +51,18 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+
+	if httpProxy := os.Getenv("HTTP_PROXY"); httpProxy != "" {
+		fetchSpec.HTTPProxy = httpProxy
+	}
+
+	if httpsProxy := os.Getenv("HTTPS_PROXY"); httpsProxy != "" {
+		fetchSpec.HTTPSProxy = httpsProxy
+	}
+
+	if sslCainfo := os.Getenv("GIT_PROXY_SSL_CAINFO"); sslCainfo != "" {
+		fetchSpec.HTTPSProxySSLCAInfo = sslCainfo
+	}
 
 	if err := git.Fetch(logger, fetchSpec); err != nil {
 		logger.Fatalf("Error fetching git repository: %s", err)

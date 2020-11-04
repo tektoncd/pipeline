@@ -139,7 +139,7 @@ see [`authenticating-git-commands`](../examples/v1beta1/taskruns/authenticating-
 ## Limiting `Secret` access to specific `Steps`
 
 As described earlier in this document, Tekton stores supported `Secrets` in
-`$HOME/tekton/home` and makes them available to all `Steps` within a `Task`. 
+`$HOME/tekton/home` and makes them available to all `Steps` within a `Task`.
 
 If you want to limit a `Secret` to only be accessible to specific `Steps` but not
 others, you must explicitly specify a `Volume` using the `Secret` definition and
@@ -332,10 +332,16 @@ directly in the `Steps` of a `Task`. Since `ssh` ignores the `$HOME` variable an
 user's home directory specified in `/etc/passwd`, each `Step` must symlink `/tekton/home/.ssh`
 to the home directory of its associated user.
 
-**Note:** This explicit symlinking is not necessary when using a `git` type `PipelineResource` or the
+:** This explicit symlinking is not necessary when using a `git` type `PipelineResource` or the
 [`git-clone` `Task`](https://github.com/tektoncd/catalog/tree/v1beta1/git) from Tekton Catalog.
 
 For example usage, see [`authenticating-git-commands`](../examples/v1beta1/taskruns/authenticating-git-commands.yaml).
+
+### Using Proxy with `git` type `Tasks`
+
+You can use an `http` or `https` proxy with the `git-clone` task [`git-clone`
+`Task`](https://github.com/tektoncd/catalog/tree/v1beta1/git) when passing the
+`http_proxy` or `https_proxy` argument.
 
 ## Configuring authentication for Docker
 
@@ -429,7 +435,7 @@ credentials from all specified `Secrets` but Tekton's `basic-auth` `Secret` over
 Kubernetes `Secrets`.
 
 1. Define a `Secret` based on your Docker client configuration file.
-   
+
    ```bash
    kubectl create secret generic regcred \
     --from-file=.dockerconfigjson=<path/to/.docker/config.json> \
@@ -512,7 +518,7 @@ https://user2:pass2@url2.com
 ### `ssh-auth` for Git
 
 Given hostnames, private keys, and `known_hosts` of the form: `url{n}.com`,
-`key{n}`, and `known_hosts{n}`, Tekton generates the following. 
+`key{n}`, and `known_hosts{n}`, Tekton generates the following.
 
 By default, if no value is specified for `known_hosts`, Tekton configures SSH to accept
 **any public key** returned by the server on first query. Tekton does this
