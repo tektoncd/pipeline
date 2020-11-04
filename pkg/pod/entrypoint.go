@@ -18,15 +18,19 @@ package pod
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -166,26 +170,29 @@ func collectResultsName(results []v1beta1.TaskResult) string {
 	return strings.Join(resultNames, ",")
 }
 
+var replaceReadyPatchBytes []byte
+
+func init() {
+	// https://stackoverflow.com/questions/55573724/create-a-patch-to-add-a-kubernetes-annotation
+	readyAnnotationPath := "/metadata/annotations/" + strings.Replace(readyAnnotation, "/", "~1", 1)
+	var err error
+	replaceReadyPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "replace",
+		Path:      readyAnnotationPath,
+		Value:     readyAnnotationValue,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal replace ready patch bytes: %v", err)
+	}
+}
+
 // UpdateReady updates the Pod's annotations to signal the first step to start
 // by projecting the ready annotation via the Downward API.
 func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
-	}
-
-	// Update the Pod's "READY" annotation to signal the first step to
-	// start.
-	if newPod.ObjectMeta.Annotations == nil {
-		newPod.ObjectMeta.Annotations = map[string]string{}
-	}
-	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
-		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
-		}
-	}
-	return nil
+	// PATCH the Pod's annotations to replace the ready annotation with the
+	// "READY" value, to signal the first step to start.
+	_, err := kubeclient.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.JSONPatchType, replaceReadyPatchBytes, metav1.PatchOptions{})
+	return err
 }
 
 // StopSidecars updates sidecar containers in the Pod to a nop image, which
