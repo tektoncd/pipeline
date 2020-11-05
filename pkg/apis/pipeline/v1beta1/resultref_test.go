@@ -116,7 +116,7 @@ func TestNewResultReference(t *testing.T) {
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -205,7 +205,7 @@ func TestHasResultReference(t *testing.T) {
 				return true
 			})
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -384,7 +384,7 @@ func TestNewResultReferenceWhenExpressions(t *testing.T) {
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -459,7 +459,7 @@ func TestHasResultReferenceWhenExpression(t *testing.T) {
 			}
 			got := v1beta1.NewResultRefs(expressions)
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
 	}

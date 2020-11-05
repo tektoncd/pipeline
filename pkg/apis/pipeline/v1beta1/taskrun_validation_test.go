@@ -58,7 +58,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("TaskRun.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -120,7 +120,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -240,7 +240,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}
 			err := ts.spec.Validate(ctx)
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -303,7 +303,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.spec.Validate(context.Background()); err != nil {
-				t.Errorf("TaskRunSpec.Validate()/%s error = %v", ts.name, err)
+				t.Error(err)
 			}
 		})
 	}
@@ -536,7 +536,7 @@ func TestResources_Invalidate(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.resources.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("TaskRunInputs.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

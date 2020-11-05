@@ -108,7 +108,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.p.Validate(context.Background())
 			if err != nil {
-				t.Errorf("Pipeline.Validate() returned error for valid Pipeline: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.Validate() returned error for valid Pipeline: %v", err)
 			}
 		})
 	}
@@ -193,7 +193,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			}
 			err := tt.p.Validate(ctx)
 			if err == nil {
-				t.Errorf("Pipeline.Validate() did not return error for invalid pipeline: %s", tt.name)
+				t.Error("Pipeline.Validate() did not return error for invalid pipeline")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("Pipeline.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -423,7 +423,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.ps.Validate(context.Background())
 			if err == nil {
-				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", tt.name)
+				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -468,7 +468,7 @@ func TestValidatePipelineTasks_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
 			if err != nil {
-				t.Errorf("Pipeline.validatePipelineTasks() returned error for valid pipeline tasks: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.validatePipelineTasks() returned error for valid pipeline tasks: %v", err)
 			}
 		})
 	}
@@ -558,7 +558,7 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
 			if err == nil {
-				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks:", tt.name)
+				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -592,7 +592,7 @@ func TestValidateFrom_Success(t *testing.T) {
 	t.Run(desc, func(t *testing.T) {
 		err := validateFrom(tasks)
 		if err != nil {
-			t.Errorf("Pipeline.validateFrom() returned error for: %s: %v", desc, err)
+			t.Errorf("Pipeline.validateFrom() returned error for: %v", err)
 		}
 	})
 }
@@ -706,7 +706,7 @@ func TestValidateFrom_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateFrom(tt.tasks)
 			if err == nil {
-				t.Error("Pipeline.validateFrom() did not return error for invalid pipeline task resources: ", tt.name)
+				t.Error("Pipeline.validateFrom() did not return error for invalid pipeline task resources")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -802,7 +802,7 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateDeclaredResources(tt.resources, tt.tasks, []PipelineTask{})
 			if err != nil {
-				t.Errorf("Pipeline.validateDeclaredResources() returned error for valid resource declarations: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.validateDeclaredResources() returned error for valid resource declarations: %v", err)
 			}
 		})
 	}
@@ -898,7 +898,7 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateDeclaredResources(tt.resources, tt.tasks, []PipelineTask{})
 			if err == nil {
-				t.Errorf("Pipeline.validateDeclaredResources() did not return error for invalid resource declarations: %s", tt.name)
+				t.Errorf("Pipeline.validateDeclaredResources() did not return error for invalid resource declarations")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1100,7 +1100,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineParameterVariables(tt.tasks, tt.params)
 			if err != nil {
-				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
 			}
 		})
 	}
@@ -1378,7 +1378,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineParameterVariables(tt.tasks, tt.params)
 			if err == nil {
-				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters: %s", tt.name)
+				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1400,7 +1400,7 @@ func TestValidatePipelineWorkspaces_Success(t *testing.T) {
 	t.Run(desc, func(t *testing.T) {
 		err := validatePipelineWorkspaces(workspaces, tasks, []PipelineTask{})
 		if err != nil {
-			t.Errorf("Pipeline.validatePipelineWorkspaces() returned error for valid pipeline workspaces: %s: %v", desc, err)
+			t.Errorf("Pipeline.validatePipelineWorkspaces() returned error for valid pipeline workspaces: %v", err)
 		}
 	})
 }
@@ -1458,7 +1458,7 @@ func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineWorkspaces(tt.workspaces, tt.tasks, []PipelineTask{})
 			if err == nil {
-				t.Errorf("Pipeline.validatePipelineWorkspaces() did not return error for invalid pipeline workspaces: %s", tt.name)
+				t.Errorf("Pipeline.validatePipelineWorkspaces() did not return error for invalid pipeline workspaces")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1536,7 +1536,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.p.Validate(context.Background())
 			if err != nil {
-				t.Errorf("Pipeline.Validate() returned error for valid pipeline with finally: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.Validate() returned error for valid pipeline with finally: %v", err)
 			}
 		})
 	}
@@ -1769,7 +1769,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.p.Validate(context.Background())
 			if err == nil {
-				t.Errorf("Pipeline.Validate() did not return error for invalid pipeline with finally: %s", tt.name)
+				t.Errorf("Pipeline.Validate() did not return error for invalid pipeline with finally")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1805,7 +1805,7 @@ func TestValidateTasksAndFinallySection_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateTasksAndFinallySection(tt.ps)
 			if err != nil {
-				t.Errorf("Pipeline.ValidateTasksAndFinallySection() returned error for valid pipeline with finally: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.ValidateTasksAndFinallySection() returned error for valid pipeline with finally: %v", err)
 			}
 		})
 	}
@@ -1909,7 +1909,7 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateFinalTasks(tt.finalTasks)
 			if err == nil {
-				t.Errorf("Pipeline.ValidateFinalTasks() did not return error for invalid pipeline: %s", tt.name)
+				t.Errorf("Pipeline.ValidateFinalTasks() did not return error for invalid pipeline")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
@@ -1971,7 +1971,7 @@ func TestContextValid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validatePipelineContextVariables(tt.tasks); err != nil {
-				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %s: %v", tt.name, err)
+				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %v", err)
 			}
 		})
 	}
@@ -2024,7 +2024,7 @@ func TestContextInvalid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validatePipelineContextVariables(tt.tasks)
 			if err == nil {
-				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s, %s", tt.name, tt.tasks[0].Params)
+				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s", tt.tasks[0].Params)
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
