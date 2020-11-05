@@ -140,24 +140,27 @@ func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool
 // (4) Pipeline is in stopping state (one of the PipelineTasks failed)
 // Note that this means Skip returns false if a conditionCheck is in progress
 func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) bool {
-	// finally tasks are never skipped. If this is a final task, return false
-	if facts.isFinalTask(t.PipelineTask.Name) {
+	if facts.isFinalTask(t.PipelineTask.Name) || t.IsStarted() {
 		return false
 	}
 
-	// it already has TaskRun associated with it - PipelineTask not skipped
-	if t.IsStarted() {
-		return false
+	if t.conditionsSkip() || t.whenExpressionsSkip(facts) || t.parentTasksSkip(facts) || facts.IsStopping() {
+		return true
 	}
 
-	// Check if conditionChecks have failed, if so task is skipped
+	return false
+}
+
+func (t *ResolvedPipelineRunTask) conditionsSkip() bool {
 	if len(t.ResolvedConditionChecks) > 0 {
 		if t.ResolvedConditionChecks.IsDone() && !t.ResolvedConditionChecks.IsSuccess() {
 			return true
 		}
 	}
+	return false
+}
 
-	// Check if the when expressions are false, based on the input's relationship to the values
+func (t *ResolvedPipelineRunTask) whenExpressionsSkip(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) {
 		if len(t.PipelineTask.WhenExpressions) > 0 {
 			if !t.PipelineTask.WhenExpressions.HaveVariables() {
@@ -167,15 +170,11 @@ func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) bool {
 			}
 		}
 	}
+	return false
+}
 
-	// Skip the PipelineTask if pipeline is in stopping state
-	if facts.IsStopping() {
-		return true
-	}
-
+func (t *ResolvedPipelineRunTask) parentTasksSkip(facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
-	// Recursively look at parent tasks to see if they have been skipped,
-	// if any of the parents have been skipped, skip as well
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
 		if stateMap[p.Task.HashKey()].Skip(facts) {
