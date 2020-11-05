@@ -137,7 +137,7 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 			ctx := context.Background()
 			tc.ps.SetDefaults(ctx)
 			if d := cmp.Diff(tc.want, tc.ps); d != "" {
-				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s: %s", tc.desc, diff.PrintWantGot(d))
+				t.Errorf("Mismatch of pipelineSpec after setting defaults: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

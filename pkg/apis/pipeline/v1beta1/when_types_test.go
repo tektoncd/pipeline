@@ -82,7 +82,7 @@ func TestAllowsExecution(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.whenExpressions.AllowsExecution()
 			if d := cmp.Diff(tc.expected, got); d != "" {
-				t.Errorf("Error evaluating AllowsExecution() for When Expressions in test case %s: %s", tc.name, diff.PrintWantGot(d))
+				t.Errorf("Error evaluating AllowsExecution() for When Expressions in test case %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -142,7 +142,7 @@ func TestHaveVariables(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.whenExpressions.HaveVariables()
 			if d := cmp.Diff(tc.expected, got); d != "" {
-				t.Errorf("Error evaluating HaveVariables() for When Expressions in test case %s: %s", tc.name, diff.PrintWantGot(d))
+				t.Errorf("Error evaluating HaveVariables() for When Expressions in test case %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -263,7 +263,7 @@ func TestReplaceWhenExpressionsVariables(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.whenExpressions.ReplaceWhenExpressionsVariables(tc.replacements)
 			if d := cmp.Diff(tc.expected, got); d != "" {
-				t.Errorf("Error evaluating When Expressions in test case %s: %s", tc.name, diff.PrintWantGot(d))
+				t.Errorf("Error evaluating When Expressions in test case %s", diff.PrintWantGot(d))
 			}
 		})
 	}

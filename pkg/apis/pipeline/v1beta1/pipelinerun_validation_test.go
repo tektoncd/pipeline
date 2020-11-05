@@ -148,7 +148,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 			}
 			err := tc.pr.Validate(ctx)
 			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s %s", tc.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -226,7 +226,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.pr.Validate(context.Background()); err != nil {
-				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+				t.Error(err)
 			}
 		})
 	}
@@ -301,7 +301,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.spec.Validate(context.Background())
 			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -327,7 +327,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			if err := ps.spec.Validate(context.Background()); err != nil {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, err)
+				t.Error(err)
 			}
 		})
 	}

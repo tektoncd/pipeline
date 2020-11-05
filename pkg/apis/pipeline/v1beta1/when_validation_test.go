@@ -55,7 +55,7 @@ func TestWhenExpressions_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.wes.validate(); err != nil {
-				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s, %s", tt.name, tt.wes)
+				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s", tt.wes)
 			}
 		})
 	}
@@ -129,7 +129,7 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.wes.validate(); err == nil {
-				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s, %s", tt.name, tt.wes, err)
+				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s", tt.wes, err)
 			}
 		})
 	}
