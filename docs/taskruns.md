@@ -95,9 +95,12 @@ spec:
           - /kaniko/executor
         args:
           - --destination=gcr.io/my-project/gohelloworld
-```
+``**
 
 #### Tekton Bundles
+
+**Note: This is only allowed if `enable-tekton-oci-bundles` is set to
+`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
 
 You may also reference `Tasks` that are defined outside of your cluster using `Tekton
 Bundles`. A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`
@@ -111,7 +114,7 @@ taskRef:
 ```
 
 Here, the `bundle` field is the full reference url to the artifact. The name is the
-`metadata.name` field of the `Task`. 
+`metadata.name` field of the `Task`.
 
 You may also specify a `tag` as you would with a Docker image which will give you a repeatable reference to a `Task`.
 
@@ -134,7 +137,7 @@ taskRef:
 A working example can be found [here](../examples/v1beta1/taskruns/tekton-bundles.yaml).
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
-`ServiceAccount` specified in the `TaskRun`. See the [Service Account](#service-account) 
+`ServiceAccount` specified in the `TaskRun`. See the [Service Account](#service-account)
 section for details on how to configure a `ServiceAccount` on a `TaskRun`. The `TaskRun`
 will then run that `Task` without registering it in the cluster allowing multiple versions
 of the same named `Task` to be run at once.
@@ -268,8 +271,8 @@ that updates files on a shared volume, or a network proxy.
 
 Tekton supports the injection of `Sidecars` into a `Pod` belonging to
 a `TaskRun` with the condition that each `Sidecar` running inside the
-`Pod` are terminated as soon as all `Steps` in the `Task` complete execution. 
-This might result in the `Pod` including each affected `Sidecar` with a 
+`Pod` are terminated as soon as all `Steps` in the `Task` complete execution.
+This might result in the `Pod` including each affected `Sidecar` with a
 retry count of 1 and a different container image than expected.
 
 We are aware of the following issues affecting Tekton's implementation of `Sidecars`:
@@ -301,27 +304,27 @@ For more information, see the [`LimitRange` code example](../examples/v1beta1/ta
 
 ## Configuring the failure timeout
 
-You can use the `timeout` field to set the `TaskRun's` desired timeout value. If you do not specify this 
-value for the `TaskRun`, the global default timeout value applies. If you set the timeout to 0, the `TaskRun` will 
+You can use the `timeout` field to set the `TaskRun's` desired timeout value. If you do not specify this
+value for the `TaskRun`, the global default timeout value applies. If you set the timeout to 0, the `TaskRun` will
 have no timeout and will run until it completes successfully or fails from an error.
 
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml). If you set the global timeout to 0, 
-all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully 
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml). If you set the global timeout to 0,
+all `TaskRuns` that do not have a timeout set will have no timeout and will run until it completes successfully
 or fails from an error.
 
 The `timeout` value is a `duration` conforming to Go's
 [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
-values are `1h30m`, `1h`, `1m`, `60s`, and `0`. 
+values are `1h30m`, `1h`, `1m`, `60s`, and `0`.
 
-If a `TaskRun` runs longer than its timeout value, the pod associated with the `TaskRun` will be deleted. This 
-means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary in order to 
-stop `TaskRun` step containers from running. 
+If a `TaskRun` runs longer than its timeout value, the pod associated with the `TaskRun` will be deleted. This
+means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary in order to
+stop `TaskRun` step containers from running.
 
 ### Specifying `ServiceAccount' credentials
 
-You can execute the `Task` in your `TaskRun` with a specific set of credentials by 
+You can execute the `Task` in your `TaskRun` with a specific set of credentials by
 specifying a `ServiceAccount` object name in the `serviceAccountName` field in your `TaskRun`
 definition. If you do not explicitly specify this, the `TaskRun` executes with the credentials
 specified in the `configmap-defaults` `ConfigMap`. If this default is not specified, `TaskRuns`
@@ -419,11 +422,11 @@ Status:
 
 ## Cancelling a `TaskRun`
 
-To cancel a `TaskRun` that's currently executing, update its status to mark it as cancelled. 
+To cancel a `TaskRun` that's currently executing, update its status to mark it as cancelled.
 
-When you cancel a TaskRun, the running pod associated with that `TaskRun` is deleted. This 
-means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary 
-in order to stop `TaskRun` step containers from running. 
+When you cancel a TaskRun, the running pod associated with that `TaskRun` is deleted. This
+means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary
+in order to stop `TaskRun` step containers from running.
 
 Example of cancelling a `TaskRun`:
 
@@ -711,14 +714,14 @@ data:
 
 ### Running Step Containers as a Non Root User
 
-All steps that do not require to be run as a root user should make use of TaskRun features to 
-designate the container for a step runs as a user without root permissions. As a best practice, 
-running containers as non root should be built into the container image to avoid any possibility 
-of the container being run as root. However, as a further measure of enforcing this practice, 
-TaskRun pod templates can be used to specify how containers should be run within a TaskRun pod. 
+All steps that do not require to be run as a root user should make use of TaskRun features to
+designate the container for a step runs as a user without root permissions. As a best practice,
+running containers as non root should be built into the container image to avoid any possibility
+of the container being run as root. However, as a further measure of enforcing this practice,
+TaskRun pod templates can be used to specify how containers should be run within a TaskRun pod.
 
-An example of using a TaskRun pod template is shown below to specify that containers running via this 
-TaskRun's pod should run as non root and run as user 1001 if the container itself does not specify what 
+An example of using a TaskRun pod template is shown below to specify that containers running via this
+TaskRun's pod should run as non root and run as user 1001 if the container itself does not specify what
 user to run as:
 
 ```yaml
@@ -735,8 +738,8 @@ spec:
       runAsUser: 1001
 ```
 
-If a Task step specifies that it is to run as a different user than what is specified in the pod template, 
-the step's `securityContext` will be applied instead of what is specified at the pod level. An example of 
+If a Task step specifies that it is to run as a different user than what is specified in the pod template,
+the step's `securityContext` will be applied instead of what is specified at the pod level. An example of
 this is available as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
 
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).

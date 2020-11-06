@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -32,16 +33,19 @@ import (
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
 // looks up the pipeline. It uses as context a k8s client, tekton client, namespace, and service account name to return
 // the pipeline. It knows whether it needs to look in the cluster or in a remote image to fetch the reference.
-func GetPipelineFunc(k8s kubernetes.Interface, tekton clientset.Interface, pr *v1beta1.PipelineRef, namespace, saName string) (GetPipeline, error) {
+func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, pipelineRun *v1beta1.PipelineRun) (GetPipeline, error) {
+	cfg := config.FromContextOrDefaults(ctx)
+	pr := pipelineRun.Spec.PipelineRef
+	namespace := pipelineRun.Namespace
 	switch {
-	case pr != nil && pr.Bundle != "":
+	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a PipelineInterface.
 		return func(ctx context.Context, name string) (v1beta1.PipelineInterface, error) {
 			// If there is a bundle url at all, construct an OCI resolver to fetch the pipeline.
 			kc, err := k8schain.New(ctx, k8s, k8schain.Options{
 				Namespace:          namespace,
-				ServiceAccountName: saName,
+				ServiceAccountName: pipelineRun.Spec.ServiceAccountName,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to get keychain: %w", err)
@@ -58,7 +62,7 @@ func GetPipelineFunc(k8s kubernetes.Interface, tekton clientset.Interface, pr *v
 
 			if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
 				betaPipeline := &v1beta1.Pipeline{}
-				err := pipeline.ConvertTo(context.Background(), betaPipeline)
+				err := pipeline.ConvertTo(ctx, betaPipeline)
 				return betaPipeline, err
 			}
 

@@ -78,3 +78,7 @@ data:
   # See https://github.com/tektoncd/pipeline/issues/2981 for more
   # info.
   require-git-ssh-secret-known-hosts: "false"
+  # Setting this flag to "true" enables the use of Tekton OCI bundle.
+  # This is an experimental feature and thus should still be considered
+  # an alpha feature.
+  enable-tekton-oci-bundles: "false"

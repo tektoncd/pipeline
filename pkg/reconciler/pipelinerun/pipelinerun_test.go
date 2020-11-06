@@ -59,6 +59,7 @@ import (
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
+	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/reconciler"
 )
 
@@ -4048,6 +4049,16 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 func TestReconcile_RemotePipelineRef(t *testing.T) {
 	names.TestingSeed()
 
+	ctx := context.Background()
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	cfg.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-tekton-oci-bundles": "true",
+		},
+	})
+	ctx = cfg.ToContext(ctx)
+
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
 	defer s.Close()
@@ -4076,6 +4087,14 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 			},
 		},
 	}
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		},
+	}
 
 	// This task will be uploaded along with the pipeline definition.
 	remoteTask := tb.Task("unit-test-task", tb.TaskType, tb.TaskSpec(), tb.TaskNamespace("foo"))
@@ -4087,13 +4106,11 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 
 	// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
 	d := test.Data{
-		PipelineRuns:      prs,
-		Tasks:             []*v1beta1.Task{},
-		ClusterTasks:      []*v1beta1.ClusterTask{},
-		PipelineResources: []*v1alpha1.PipelineResource{},
+		PipelineRuns: prs,
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
 		}},
+		ConfigMaps: cms,
 	}
 
 	prt := NewPipelineRunTest(d, t)

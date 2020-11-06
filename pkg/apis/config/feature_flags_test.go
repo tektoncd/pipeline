@@ -46,6 +46,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableAffinityAssistant:         true,
 				RunningInEnvWithInjectedSidecars: false,
 				RequireGitSSHSecretKnownHosts:    true,
+				EnableTektonOCIBundles:           true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

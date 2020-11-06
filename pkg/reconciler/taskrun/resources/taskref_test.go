@@ -25,16 +25,19 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestLocalTaskRef(t *testing.T) {
@@ -116,6 +119,16 @@ func TestGetTaskFunc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	ctx := context.Background()
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	cfg.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-tekton-oci-bundles": "true",
+		},
+	})
+	ctx = cfg.ToContext(ctx)
 
 	testcases := []struct {
 		name         string
@@ -213,7 +226,7 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Fatalf("failed to upload test image: %s", err.Error())
 			}
 
-			fn, kind, err := resources.GetTaskFunc(kubeclient, tektonclient, tc.ref, "default", "default")
+			fn, kind, err := resources.GetTaskFunc(ctx, kubeclient, tektonclient, tc.ref, "default", "default")
 			if err != nil {
 				t.Fatalf("failed to get task fn: %s", err.Error())
 			}
@@ -222,7 +235,7 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Errorf("expected kind %s did not match actual kind %s", tc.expectedKind, kind)
 			}
 
-			task, err := fn(context.Background(), tc.ref.Name)
+			task, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call taskfn: %s", err.Error())
 			}

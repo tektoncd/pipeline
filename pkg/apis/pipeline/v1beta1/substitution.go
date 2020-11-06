@@ -115,7 +115,7 @@ func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
 
 func ApplyReplacements(in string, replacements map[string]string) string {
 	for k, v := range replacements {
-		in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
+		in = strings.ReplaceAll(in, fmt.Sprintf("$(%s)", k), v)
 	}
 	return in
 }

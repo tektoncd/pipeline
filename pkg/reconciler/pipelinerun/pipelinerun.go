@@ -163,7 +163,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	getPipelineFunc, err := resources.GetPipelineFunc(c.KubeClientSet, c.PipelineClientSet, pr.Spec.PipelineRef, pr.Namespace, pr.Spec.ServiceAccountName)
+	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, pr)
 	if err != nil {
 		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
@@ -256,7 +256,7 @@ func (c *Reconciler) resolvePipelineState(
 	pst := resources.PipelineRunState{}
 	// Resolve each task individually because they each could have a different reference context (remote or local).
 	for _, task := range tasks {
-		fn, _, err := tresources.GetTaskFunc(c.KubeClientSet, c.PipelineClientSet, task.TaskRef, pr.Namespace, pr.Spec.ServiceAccountName)
+		fn, _, err := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, task.TaskRef, pr.Namespace, pr.Spec.ServiceAccountName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			pr.Status.MarkFailed(ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
