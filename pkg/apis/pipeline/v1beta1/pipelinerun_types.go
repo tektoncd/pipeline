@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -96,6 +97,15 @@ func (pr *PipelineRun) HasStarted() bool {
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
+}
+
+func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
+	// Use the platform default is no timeout is set
+	if pr.Spec.Timeout == nil {
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		return defaultTimeout * time.Minute
+	}
+	return pr.Spec.Timeout.Duration
 }
 
 // GetNamespacedName returns a k8s namespaced name that identifies this PipelineRun

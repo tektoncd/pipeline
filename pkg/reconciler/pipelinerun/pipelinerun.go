@@ -46,7 +46,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -56,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -121,9 +121,10 @@ type Reconciler struct {
 	conditionLister   listersv1alpha1.ConditionLister
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
-	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+
+	snooze func(kmeta.Accessor, time.Duration)
 }
 
 var (
@@ -149,8 +150,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			pr.Status.StartTime = &pr.CreationTimestamp
 		}
 
-		// start goroutine to track pipelinerun timeout only startTime is not set
-		go c.timeoutHandler.Wait(pr.GetNamespacedName(), *pr.Status.StartTime, getPipelineRunTimeout(ctx, pr))
 		// Emit events. During the first reconcile the status of the PipelineRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
@@ -185,7 +184,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		c.timeoutHandler.Release(pr.GetNamespacedName())
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
@@ -217,6 +215,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
+	defer func() {
+		if pr.Status.StartTime == nil {
+			return
+		}
+		// Compute the time since the task started.
+		elapsed := time.Since(pr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		c.snooze(pr, pr.GetTimeout(ctx)-elapsed)
+	}()
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
@@ -795,14 +802,6 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 		}
 	}
 	return annotations
-}
-
-func getPipelineRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun) metav1.Duration {
-	if pr.Spec.Timeout == nil {
-		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-		return metav1.Duration{Duration: defaultTimeout * time.Minute}
-	}
-	return *pr.Spec.Timeout
 }
 
 func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
