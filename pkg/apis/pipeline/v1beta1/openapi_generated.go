@@ -77,6 +77,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState":                      schema_pkg_apis_pipeline_v1beta1_SidecarState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask":                       schema_pkg_apis_pipeline_v1beta1_SkippedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step":                              schema_pkg_apis_pipeline_v1beta1_Step(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig":                  schema_pkg_apis_pipeline_v1beta1_StepOutputConfig(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState":                         schema_pkg_apis_pipeline_v1beta1_StepState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Task":                              schema_pkg_apis_pipeline_v1beta1_Task(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskList":                          schema_pkg_apis_pipeline_v1beta1_TaskList(ref),
@@ -3020,12 +3021,44 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"stdoutConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Stores configuration for the stdout stream of the step.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig"),
+						},
+					},
+					"stderrConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Stores configuration for the stderr stream of the step.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.ContainerPort", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig", "k8s.io/api/core/v1.ContainerPort", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_StepOutputConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StepOutputConfig stores configuration for a step output stream.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to duplicate stdout stream to on container's local filesystem.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

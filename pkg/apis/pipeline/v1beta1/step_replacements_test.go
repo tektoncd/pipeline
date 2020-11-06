@@ -77,6 +77,12 @@ func TestApplyStepReplacements(t *testing.T) {
 				SubPath:   "$(replace.me)",
 			}},
 		},
+		StdoutConfig: &v1beta1.StepOutputConfig{
+			Path: "$(replace.me)",
+		},
+		StderrConfig: &v1beta1.StepOutputConfig{
+			Path: "$(replace.me)",
+		},
 	}
 
 	expected := v1beta1.Step{
@@ -122,6 +128,12 @@ func TestApplyStepReplacements(t *testing.T) {
 				MountPath: "replaced!",
 				SubPath:   "replaced!",
 			}},
+		},
+		StdoutConfig: &v1beta1.StepOutputConfig{
+			Path: "replaced!",
+		},
+		StderrConfig: &v1beta1.StepOutputConfig{
+			Path: "replaced!",
 		},
 	}
 	v1beta1.ApplyStepReplacements(&s, replacements, arrayReplacements)

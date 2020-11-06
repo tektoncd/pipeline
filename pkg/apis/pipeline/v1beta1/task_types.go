@@ -116,6 +116,13 @@ type TaskResult struct {
 	Description string `json:"description"`
 }
 
+// StepOutputConfig stores configuration for a step output stream.
+type StepOutputConfig struct {
+	// Path to duplicate stdout stream to on container's local filesystem.
+	// +optional
+	Path string `json:"path,omitempty"`
+}
+
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
 type Step struct {
@@ -128,6 +135,12 @@ type Step struct {
 	// Timeout is the time after which the step times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// Stores configuration for the stdout stream of the step.
+	// +optional
+	StdoutConfig *StepOutputConfig `json:"stdoutConfig,omitempty"`
+	// Stores configuration for the stderr stream of the step.
+	// +optional
+	StderrConfig *StepOutputConfig `json:"stderrConfig,omitempty"`
 }
 
 // Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.
