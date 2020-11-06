@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -34,14 +35,15 @@ import (
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFunc(k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, v1beta1.TaskKind, error) {
+func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, v1beta1.TaskKind, error) {
+	cfg := config.FromContextOrDefaults(ctx)
 	kind := v1alpha1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
 		kind = tr.Kind
 	}
 
 	switch {
-	case tr != nil && tr.Bundle != "":
+	case cfg.FeatureFlags.EnableTektonOCIBundles && tr != nil && tr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskInterface.
 		return func(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
@@ -73,11 +75,11 @@ func GetTaskFunc(k8s kubernetes.Interface, tekton clientset.Interface, tr *v1bet
 			switch tt := obj.(type) {
 			case *v1alpha1.Task:
 				betaTask := &v1beta1.Task{}
-				err := tt.ConvertTo(context.Background(), betaTask)
+				err := tt.ConvertTo(ctx, betaTask)
 				return betaTask, err
 			case *v1alpha1.ClusterTask:
 				betaTask := &v1beta1.ClusterTask{}
-				err := tt.ConvertTo(context.Background(), betaTask)
+				err := tt.ConvertTo(ctx, betaTask)
 				return betaTask, err
 			}
 

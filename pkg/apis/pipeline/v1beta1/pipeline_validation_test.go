@@ -23,11 +23,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipeline_Validate_Success(t *testing.T) {
@@ -117,6 +119,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		name          string
 		p             *Pipeline
 		expectedError apis.FieldError
+		wc            func(context.Context) context.Context
 	}{{
 		name: "period in name",
 		p: &Pipeline{
@@ -150,10 +153,45 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `expected at least one, got none`,
 			Paths:   []string{"spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"},
 		},
+	}, {
+		name: "use of bundle without the feature flag set",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					TaskRef: &TaskRef{
+						Name:   "bar",
+						Bundle: "docker.io/foo",
+					},
+				}},
+			},
+		},
+		expectedError: *apis.ErrDisallowedFields("spec.tasks[0].taskref.bundle"),
+	}, {
+		name: "bundle invalid reference",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					TaskRef: &TaskRef{
+						Name:   "bar",
+						Bundle: "invalid reference",
+					},
+				}},
+			},
+		},
+		expectedError: *apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "spec.tasks[0].taskref.bundle"),
+		wc:            enableTektonOCIBundles(t),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.p.Validate(context.Background())
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.Validate(ctx)
 			if err == nil {
 				t.Errorf("Pipeline.Validate() did not return error for invalid pipeline: %s", tt.name)
 			}
@@ -2000,5 +2038,18 @@ func getTaskSpec() TaskSpec {
 		Steps: []Step{{
 			Container: corev1.Container{Name: "foo", Image: "bar"},
 		}},
+	}
+}
+
+func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := config.NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		})
+		return s.ToContext(ctx)
 	}
 }

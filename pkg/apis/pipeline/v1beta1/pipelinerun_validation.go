@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
@@ -35,6 +36,7 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate pipelinerun spec
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	cfg := config.FromContextOrDefaults(ctx)
 	// can't have both pipelineRef and pipelineSpec at the same time
 	if (ps.PipelineRef != nil && ps.PipelineRef.Name != "") && ps.PipelineSpec != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("pipelineref", "pipelinespec"))
@@ -45,16 +47,22 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(apis.ErrMissingField("pipelineref.name", "pipelinespec"))
 	}
 
-	// Check that if a bundle is specified, that a PipelineRef is specified as well.
-	if (ps.PipelineRef != nil && ps.PipelineRef.Bundle != "") && ps.PipelineRef.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("pipelineref.name"))
-	}
-
-	// If a bundle url is specified, ensure it is parseable.
-	if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
-		if _, err := name.ParseReference(ps.PipelineRef.Bundle); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "pipelineref.bundle"))
+	// If EnableTektonOCIBundles feature flag is on validate it.
+	// Otherwise, fail if it is present (as it won't be allowed nor used)
+	if cfg.FeatureFlags.EnableTektonOCIBundles {
+		// Check that if a bundle is specified, that a PipelineRef is specified as well.
+		if (ps.PipelineRef != nil && ps.PipelineRef.Bundle != "") && ps.PipelineRef.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("pipelineref.name"))
 		}
+
+		// If a bundle url is specified, ensure it is parseable.
+		if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
+			if _, err := name.ParseReference(ps.PipelineRef.Bundle); err != nil {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "pipelineref.bundle"))
+			}
+		}
+	} else if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
+		errs = errs.Also(apis.ErrDisallowedFields("pipelineref.bundle"))
 	}
 
 	// Validate PipelineSpec if it's present

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -98,6 +100,7 @@ func validatePipelineTaskName(name string) *apis.FieldError {
 }
 
 func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.String) *apis.FieldError {
+	cfg := config.FromContextOrDefaults(ctx)
 	errs := validatePipelineTaskName(t.Name)
 	// can't have both taskRef and taskSpec at the same time
 	if (t.TaskRef != nil && t.TaskRef.Name != "") && t.TaskSpec != nil {
@@ -120,6 +123,24 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 			errs = errs.Also(apis.ErrMultipleOneOf("name"))
 		}
 		taskNames[t.Name] = struct{}{}
+	}
+
+	// If EnableTektonOCIBundles feature flag is on validate it.
+	// Otherwise, fail if it is present (as it won't be allowed nor used)
+	if cfg.FeatureFlags.EnableTektonOCIBundles {
+		// Check that if a bundle is specified, that a TaskRef is specified as well.
+		if (t.TaskRef != nil && t.TaskRef.Bundle != "") && t.TaskRef.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("taskref.name"))
+		}
+
+		// If a bundle url is specified, ensure it is parseable.
+		if t.TaskRef != nil && t.TaskRef.Bundle != "" {
+			if _, err := name.ParseReference(t.TaskRef.Bundle); err != nil {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskref.bundle"))
+			}
+		}
+	} else if t.TaskRef != nil && t.TaskRef.Bundle != "" {
+		errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 	}
 	return errs
 }

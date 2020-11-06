@@ -31,12 +31,14 @@ const (
 	disableCredsInitKey                     = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey     = "running-in-environment-with-injected-sidecars"
 	requireGitSSHSecretKnownHostsKey        = "require-git-ssh-secret-known-hosts" // nolint: gosec
+	enableTektonOCIBundles                  = "enable-tekton-oci-bundles"
 	DefaultDisableHomeEnvOverwrite          = false
 	DefaultDisableWorkingDirOverwrite       = false
 	DefaultDisableAffinityAssistant         = false
 	DefaultDisableCredsInit                 = false
 	DefaultRunningInEnvWithInjectedSidecars = true
 	DefaultRequireGitSSHSecretKnownHosts    = false
+	DefaultEnableTektonOciBundles           = false
 )
 
 // FeatureFlags holds the features configurations
@@ -48,6 +50,7 @@ type FeatureFlags struct {
 	DisableCredsInit                 bool
 	RunningInEnvWithInjectedSidecars bool
 	RequireGitSSHSecretKnownHosts    bool
+	EnableTektonOCIBundles           bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -91,6 +94,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(requireGitSSHSecretKnownHostsKey, DefaultRequireGitSSHSecretKnownHosts, &tc.RequireGitSSHSecretKnownHosts); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
 		return nil, err
 	}
 	return &tc, nil

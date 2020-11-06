@@ -37,153 +37,21 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
 )
 
-func tarImageInOCIFormat(namespace string, img v1.Image) ([]byte, error) {
-	// Write the image in the OCI layout and then tar it up.
-	dir, err := ioutil.TempDir(os.TempDir(), namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := layout.Write(dir, empty.Index)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := p.AppendImage(img); err != nil {
-		return nil, err
-	}
-
-	// Now that the layout is correct, package this up as a tarball.
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		// Generate the initial tar header.
-		header, err := tar.FileInfoHeader(info, path)
-		if err != nil {
-			return err
-		}
-		// Rewrite the filename with a relative path to the root dir.
-		header.Name = strings.Replace(path, dir, "", 1)
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-		// If not a dir, write file content as is.
-		if !info.IsDir() {
-			data, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(tw, data); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	if err := tw.Close(); err != nil {
-		return nil, err
-	}
-
-	// Pull out the tar bundle into a bytes object.
-	return ioutil.ReadAll(&buf)
-}
-
-// publishImg will generate a Pod that runs in the namespace to publish an OCI compliant image into the local registry
-// that runs in the cluster. We can't speak to the in-cluster registry from the test so we need to run a Pod to do it
-// for us.
-func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string, img v1.Image, ref name.Reference) {
-	t.Helper()
-	podName := "publish-tekton-bundle"
-
-	tb, err := tarImageInOCIFormat(namespace, img)
-	if err != nil {
-		t.Fatalf("Failed to create OCI tar bundle: %s", err)
-	}
-
-	// Create a configmap to contain the tarball which we will mount in the pod.
-	cmName := namespace + "uploadimage-cm"
-	if _, err = c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: cmName},
-		BinaryData: map[string][]byte{
-			"image.tar": tb,
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create configmap to upload image: %s", err)
-	}
-
-	po, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    namespace,
-			GenerateName: podName,
-		},
-		Spec: corev1.PodSpec{
-			Volumes: []corev1.Volume{{
-				Name: "cm",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: cmName}},
-				},
-			}, {
-				Name:         "scratch",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-			}},
-			InitContainers: []corev1.Container{{
-				Name:    "untar",
-				Image:   "busybox",
-				Command: []string{"/bin/sh", "-c"},
-				Args:    []string{"mkdir -p /var/image && tar xvf /var/cm/image.tar -C /var/image"},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "cm",
-					MountPath: "/var/cm",
-				}, {
-					Name:      "scratch",
-					MountPath: "/var/image",
-				}},
-			}},
-			Containers: []corev1.Container{{
-				Name:       "skopeo",
-				Image:      "gcr.io/tekton-releases/dogfooding/skopeo:latest",
-				WorkingDir: "/var",
-				Command:    []string{"/bin/sh", "-c"},
-				Args:       []string{"skopeo copy --dest-tls-verify=false oci:image docker://" + ref.String()},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "scratch",
-					MountPath: "/var/image",
-				}},
-			}},
-			RestartPolicy: corev1.RestartPolicyNever,
-		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create the skopeo pod: %v", err)
-	}
-	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
-		return pod.Status.Phase == "Succeeded", nil
-	}, "PodContainersTerminated"); err != nil {
-		req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
-		logs, err := req.DoRaw(ctx)
-		if err != nil {
-			t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
-		} else {
-			t.Fatalf("Failed to create image. Pod logs are: \n%s", string(logs))
-		}
-	}
-}
-
 // TestTektonBundlesSimpleWorkingExample is an integration test which tests a simple, working Tekton bundle using OCI
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry)
+	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
 
 	t.Parallel()
 
@@ -323,7 +191,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 // TestTektonBundlesUsingRegularImage is an integration test which passes a non-Tekton bundle as a task reference.
 func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry)
+	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
 
 	t.Parallel()
 
@@ -408,7 +276,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 // task reference.
 func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry)
+	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
 
 	t.Parallel()
 
@@ -513,5 +381,150 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 			FailedWithMessage("could not find object in image with kind: task and name: hello-world", pipelineRunName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
+	}
+}
+
+func tarImageInOCIFormat(namespace string, img v1.Image) ([]byte, error) {
+	// Write the image in the OCI layout and then tar it up.
+	dir, err := ioutil.TempDir(os.TempDir(), namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := layout.Write(dir, empty.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := p.AppendImage(img); err != nil {
+		return nil, err
+	}
+
+	// Now that the layout is correct, package this up as a tarball.
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		// Generate the initial tar header.
+		header, err := tar.FileInfoHeader(info, path)
+		if err != nil {
+			return err
+		}
+		// Rewrite the filename with a relative path to the root dir.
+		header.Name = strings.Replace(path, dir, "", 1)
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		// If not a dir, write file content as is.
+		if !info.IsDir() {
+			data, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(tw, data); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+
+	// Pull out the tar bundle into a bytes object.
+	return ioutil.ReadAll(&buf)
+}
+
+// publishImg will generate a Pod that runs in the namespace to publish an OCI compliant image into the local registry
+// that runs in the cluster. We can't speak to the in-cluster registry from the test so we need to run a Pod to do it
+// for us.
+func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string, img v1.Image, ref name.Reference) {
+	t.Helper()
+	podName := "publish-tekton-bundle"
+
+	tb, err := tarImageInOCIFormat(namespace, img)
+	if err != nil {
+		t.Fatalf("Failed to create OCI tar bundle: %s", err)
+	}
+
+	// Create a configmap to contain the tarball which we will mount in the pod.
+	cmName := namespace + "uploadimage-cm"
+	if _, err = c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: cmName},
+		BinaryData: map[string][]byte{
+			"image.tar": tb,
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create configmap to upload image: %s", err)
+	}
+
+	po, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:    namespace,
+			GenerateName: podName,
+		},
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{{
+				Name: "cm",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: cmName}},
+				},
+			}, {
+				Name:         "scratch",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+			}},
+			InitContainers: []corev1.Container{{
+				Name:    "untar",
+				Image:   "busybox",
+				Command: []string{"/bin/sh", "-c"},
+				Args:    []string{"mkdir -p /var/image && tar xvf /var/cm/image.tar -C /var/image"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "cm",
+					MountPath: "/var/cm",
+				}, {
+					Name:      "scratch",
+					MountPath: "/var/image",
+				}},
+			}},
+			Containers: []corev1.Container{{
+				Name:       "skopeo",
+				Image:      "gcr.io/tekton-releases/dogfooding/skopeo:latest",
+				WorkingDir: "/var",
+				Command:    []string{"/bin/sh", "-c"},
+				Args:       []string{"skopeo copy --dest-tls-verify=false oci:image docker://" + ref.String()},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "scratch",
+					MountPath: "/var/image",
+				}},
+			}},
+			RestartPolicy: corev1.RestartPolicyNever,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create the skopeo pod: %v", err)
+	}
+	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
+		return pod.Status.Phase == "Succeeded", nil
+	}, "PodContainersTerminated"); err != nil {
+		req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
+		logs, err := req.DoRaw(ctx)
+		if err != nil {
+			t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
+		} else {
+			t.Fatalf("Failed to create image. Pod logs are: \n%s", string(logs))
+		}
+	}
+}
+
+func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	featureFlagsCM, err := c.KubeClient.Kube.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+	}
+	enableTetkonOCIBundle, ok := featureFlagsCM.Data["enable-tekton-oci-bundles"]
+	if !ok || enableTetkonOCIBundle != "true" {
+		t.Skip("Skip because enable-tekton-oci-bundles != true")
 	}
 }

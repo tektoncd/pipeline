@@ -131,6 +131,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name    string
 		spec    v1beta1.TaskRunSpec
 		wantErr *apis.FieldError
+		wc      func(context.Context) context.Context
 	}{{
 		name:    "invalid taskspec",
 		spec:    v1beta1.TaskRunSpec{},
@@ -202,6 +203,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myname].name"),
 	}, {
+		name: "use of bundle without the feature flag set",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "my-task",
+				Bundle: "docker.io/foo",
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskref.bundle"),
+	}, {
 		name: "bundle missing name",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
@@ -210,6 +220,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{Container: corev1.Container{Image: "foo"}}}},
 		},
 		wantErr: apis.ErrMissingField("taskref.name"),
+		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
 		spec: v1beta1.TaskRunSpec{
@@ -219,10 +230,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "taskref.bundle"),
+		wc:      enableTektonOCIBundles(t),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.spec.Validate(context.Background())
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			err := ts.spec.Validate(ctx)
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
 				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
 			}
