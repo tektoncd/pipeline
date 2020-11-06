@@ -105,7 +105,9 @@ func TestPipeline_Validate_Success(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.p.Validate(context.Background())
 			if err != nil {
 				t.Errorf("Pipeline.Validate() returned error for valid Pipeline: %s: %v", tt.name, err)
@@ -186,7 +188,9 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		wc:            enableTektonOCIBundles(t),
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := context.Background()
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
@@ -420,7 +424,9 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			apis.ErrInvalidValue("expected resource great-resource to be from task bar, but task bar doesn't exist", "tasks[1].resources.inputs[0].from")),
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.ps.Validate(context.Background())
 			if err == nil {
 				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", tt.name)
@@ -465,7 +471,9 @@ func TestValidatePipelineTasks_Success(t *testing.T) {
 		}},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
 			if err != nil {
 				t.Errorf("Pipeline.validatePipelineTasks() returned error for valid pipeline tasks: %s: %v", tt.name, err)
@@ -555,7 +563,9 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
 			if err == nil {
 				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks:", tt.name)
@@ -589,12 +599,10 @@ func TestValidateFrom_Success(t *testing.T) {
 			}},
 		},
 	}}
-	t.Run(desc, func(t *testing.T) {
-		err := validateFrom(tasks)
-		if err != nil {
-			t.Errorf("Pipeline.validateFrom() returned error for: %s: %v", desc, err)
-		}
-	})
+	err := validateFrom(tasks)
+	if err != nil {
+		t.Errorf("Pipeline.validateFrom() returned error for: %s: %v", desc, err)
+	}
 }
 
 func TestValidateFrom_Failure(t *testing.T) {
@@ -703,7 +711,9 @@ func TestValidateFrom_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateFrom(tt.tasks)
 			if err == nil {
 				t.Error("Pipeline.validateFrom() did not return error for invalid pipeline task resources: ", tt.name)
@@ -799,7 +809,9 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 		}},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateDeclaredResources(tt.resources, tt.tasks, []PipelineTask{})
 			if err != nil {
 				t.Errorf("Pipeline.validateDeclaredResources() returned error for valid resource declarations: %s: %v", tt.name, err)
@@ -895,7 +907,9 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateDeclaredResources(tt.resources, tt.tasks, []PipelineTask{})
 			if err == nil {
 				t.Errorf("Pipeline.validateDeclaredResources() did not return error for invalid resource declarations: %s", tt.name)
@@ -1097,7 +1111,9 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 		}},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineParameterVariables(tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %s: %v", tt.name, err)
@@ -1375,7 +1391,9 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineParameterVariables(tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters: %s", tt.name)
@@ -1397,12 +1415,10 @@ func TestValidatePipelineWorkspaces_Success(t *testing.T) {
 	tasks := []PipelineTask{{
 		Name: "foo", TaskRef: &TaskRef{Name: "foo"},
 	}}
-	t.Run(desc, func(t *testing.T) {
-		err := validatePipelineWorkspaces(workspaces, tasks, []PipelineTask{})
-		if err != nil {
-			t.Errorf("Pipeline.validatePipelineWorkspaces() returned error for valid pipeline workspaces: %s: %v", desc, err)
-		}
-	})
+	err := validatePipelineWorkspaces(workspaces, tasks, []PipelineTask{})
+	if err != nil {
+		t.Errorf("Pipeline.validatePipelineWorkspaces() returned error for valid pipeline workspaces: %s: %v", desc, err)
+	}
 }
 
 func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
@@ -1455,7 +1471,9 @@ func TestValidatePipelineWorkspaces_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineWorkspaces(tt.workspaces, tt.tasks, []PipelineTask{})
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineWorkspaces() did not return error for invalid pipeline workspaces: %s", tt.name)
@@ -1533,7 +1551,9 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.p.Validate(context.Background())
 			if err != nil {
 				t.Errorf("Pipeline.Validate() returned error for valid pipeline with finally: %s: %v", tt.name, err)
@@ -1766,7 +1786,9 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 		expectedError: *apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"),
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.p.Validate(context.Background())
 			if err == nil {
 				t.Errorf("Pipeline.Validate() did not return error for invalid pipeline with finally: %s", tt.name)
@@ -1802,7 +1824,9 @@ func TestValidateTasksAndFinallySection_Success(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateTasksAndFinallySection(tt.ps)
 			if err != nil {
 				t.Errorf("Pipeline.ValidateTasksAndFinallySection() returned error for valid pipeline with finally: %s: %v", tt.name, err)
@@ -1906,7 +1930,9 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 		},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validateFinalTasks(tt.finalTasks)
 			if err == nil {
 				t.Errorf("Pipeline.ValidateFinalTasks() did not return error for invalid pipeline: %s", tt.name)
@@ -1969,7 +1995,9 @@ func TestContextValid(t *testing.T) {
 		}},
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if err := validatePipelineContextVariables(tt.tasks); err != nil {
 				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %s: %v", tt.name, err)
 			}
@@ -2021,7 +2049,9 @@ func TestContextInvalid(t *testing.T) {
 			apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")),
 	}}
 	for _, tt := range tests {
+		tt := tt // capture range variable to make sure all tests are executed
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := validatePipelineContextVariables(tt.tasks)
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s, %s", tt.name, tt.tasks[0].Params)
