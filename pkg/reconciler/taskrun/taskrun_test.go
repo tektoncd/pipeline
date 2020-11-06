@@ -40,7 +40,6 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/system"
-	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
@@ -59,6 +58,7 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -1748,8 +1748,8 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 			// Check actions and events
 			actions := clients.Kube.Actions()
-			if len(actions) != 3 || actions[0].Matches("namespaces", "list") {
-				t.Errorf("expected 3 actions (first: list namespaces) created by the reconciler, got %d. Actions: %#v", len(actions), actions)
+			if len(actions) != 2 {
+				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
 			err := checkEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
@@ -1805,8 +1805,8 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 
 	// Check actions
 	actions := clients.Kube.Actions()
-	if len(actions) != 3 || actions[0].Matches("namespaces", "list") {
-		t.Errorf("expected 3 actions (list namespaces, list configmaps, and watch configmaps) created by the reconciler,"+
+	if len(actions) != 2 || !actions[0].Matches("list", "configmaps") || !actions[1].Matches("watch", "configmaps") {
+		t.Errorf("expected 2 actions (list configmaps, and watch configmaps) created by the reconciler,"+
 			" got %d. Actions: %#v", len(actions), actions)
 	}
 
@@ -2183,15 +2183,14 @@ func TestHandlePodCreationError(t *testing.T) {
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-		timeoutHandler:    timeout.NewHandler(ctx.Done(), testAssets.Logger),
-		cloudEventClient:  testAssets.Clients.CloudEvents,
-		metrics:           nil, // Not used
-		entrypointCache:   nil, // Not used
-		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		snooze: func(acc kmeta.Accessor, amnt time.Duration) {
+			t.Error("Unexpected call to snooze.")
+		},
+		cloudEventClient: testAssets.Clients.CloudEvents,
+		metrics:          nil, // Not used
+		entrypointCache:  nil, // Not used
+		pvcHandler:       volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 	}
-
-	// Prevent backoff timer from starting
-	c.timeoutHandler.SetCallbackFunc(nil)
 
 	testcases := []struct {
 		description    string
@@ -3234,11 +3233,13 @@ func TestFailTaskRun(t *testing.T) {
 				taskLister:        testAssets.Informers.Task.Lister(),
 				clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-				timeoutHandler:    nil, // Not used
-				cloudEventClient:  testAssets.Clients.CloudEvents,
-				metrics:           nil, // Not used
-				entrypointCache:   nil, // Not used
-				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				snooze: func(acc kmeta.Accessor, amnt time.Duration) {
+					t.Error("Unexpected call to snooze.")
+				},
+				cloudEventClient: testAssets.Clients.CloudEvents,
+				metrics:          nil, // Not used
+				entrypointCache:  nil, // Not used
+				pvcHandler:       volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 			}
 
 			err := c.failTaskRun(context.Background(), tc.taskRun, tc.reason, tc.message)

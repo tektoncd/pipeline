@@ -44,7 +44,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,6 +51,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -71,9 +71,10 @@ type Reconciler struct {
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache
-	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+
+	snooze func(kmeta.Accessor, time.Duration)
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -124,7 +125,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			// send cloud events. So we stop here an return errors encountered this far.
 			return cloudEventErr
 		}
-		c.timeoutHandler.Release(tr.GetNamespacedName())
 
 		pod, err := c.stopSidecars(ctx, tr)
 		if err != nil {
@@ -159,11 +159,20 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if tr.HasTimedOut() {
-		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout())
+	if tr.HasTimedOut(ctx) {
+		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
+	defer func() {
+		if tr.Status.StartTime == nil {
+			return
+		}
+		// Compute the time since the task started.
+		elapsed := time.Since(tr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		c.snooze(tr, tr.GetTimeout(ctx)-elapsed)
+	}()
 
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API convertions. Errors that come out of prepare are
@@ -414,7 +423,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
-		go c.timeoutHandler.Wait(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
 	}
 
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
@@ -497,16 +505,13 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
 	switch {
 	case isExceededResourceQuotaError(err):
-		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr.GetNamespacedName(), *tr.Status.StartTime, *tr.Spec.Timeout)
-		if !currentlyBackingOff {
-			go c.timeoutHandler.SetTimer(tr.GetNamespacedName(), time.Until(backoff.NextAttempt))
-		}
-		msg := fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
+		// If we are struggling to create the pod, then it hasn't started.
+		tr.Status.StartTime = nil
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  podconvert.ReasonExceededResourceQuota,
-			Message: fmt.Sprintf("%s: %v", msg, err),
+			Message: fmt.Sprint("TaskRun Pod exceeded available resources: ", err),
 		})
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)

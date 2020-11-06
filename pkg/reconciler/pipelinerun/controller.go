@@ -33,11 +33,12 @@ import (
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 )
@@ -55,7 +56,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		pipelineInformer := pipelineinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
-		timeoutHandler := timeout.NewHandler(ctx.Done(), logger)
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create pipelinerun metrics recorder %v", err)
@@ -72,7 +72,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			taskRunLister:     taskRunInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
-			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
@@ -86,8 +85,12 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			}
 		})
 
-		timeoutHandler.SetCallbackFunc(impl.EnqueueKey)
-		go timeoutHandler.CheckTimeouts(ctx, namespace, kubeclientset, pipelineclientset)
+		c.snooze = func(acc kmeta.Accessor, amnt time.Duration) {
+			impl.EnqueueKeyAfter(types.NamespacedName{
+				Namespace: acc.GetNamespace(),
+				Name:      acc.GetName(),
+			}, amnt)
+		}
 
 		logger.Info("Setting up event handlers")
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
