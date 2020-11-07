@@ -225,7 +225,7 @@ func TestStepTimeout(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting Taskrun: %v", err)
 	}
-	if tr.Status.Steps[0].Terminated == nil {
+	if tr.Status.Steps[0].Terminated != nil {
 		if tr.Status.Steps[0].Terminated.Reason != "Completed" {
 			t.Errorf("step-no-timeout should not have been terminated")
 		}
