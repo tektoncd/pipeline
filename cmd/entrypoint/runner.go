@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -45,23 +46,30 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	var stdoutFile *os.File
 	if rr.stdoutPath != "" {
 		var err error
+		var doneCh <-chan error
 		if stdoutFile, err = os.Create(rr.stdoutPath); err != nil {
 			return err
 		}
-		defer stdoutFile.Close()
 		// We use os.Pipe in asyncWriter to copy stdout instead of cmd.StdoutPipe or providing an
 		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
 		// child process before returning from cmd.Wait even if the process is no longer running. This
 		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		if cmd.Stdout, err = asyncWriter("stdout", io.MultiWriter(os.Stdout, stdoutFile), stopCh); err != nil {
+		if cmd.Stdout, doneCh, err = asyncWriter(io.MultiWriter(os.Stdout, stdoutFile), stopCh); err != nil {
 			return err
 		}
+		go func() {
+			if err := <-doneCh; err != nil {
+				log.Fatalf("Copying stdout: %v", err)
+			}
+			stdoutFile.Close()
+		}()
 	}
 
 	cmd.Stderr = os.Stderr
 	var stderrFile *os.File
 	if rr.stderrPath != "" {
 		var err error
+		var doneCh <-chan error
 		if rr.stderrPath == rr.stdoutPath {
 			fd, err := syscall.Dup(int(stdoutFile.Fd()))
 			if err != nil {
@@ -71,14 +79,19 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 		} else if stderrFile, err = os.Create(rr.stderrPath); err != nil {
 			return err
 		}
-		defer stderrFile.Close()
 		// We use os.Pipe in asyncWriter to copy stderr instead of cmd.StderrPipe or providing an
 		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
 		// child process before returning from cmd.Wait even if the process is no longer running. This
 		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		if cmd.Stderr, err = asyncWriter("stderr", io.MultiWriter(os.Stderr, stderrFile), stopCh); err != nil {
+		if cmd.Stderr, doneCh, err = asyncWriter(io.MultiWriter(os.Stderr, stderrFile), stopCh); err != nil {
 			return err
 		}
+		go func() {
+			if err := <-doneCh; err != nil {
+				log.Fatalf("Copying stderr: %v", err)
+			}
+			stderrFile.Close()
+		}()
 	}
 
 	// dedicated PID group used to forward signals to
