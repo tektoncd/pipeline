@@ -95,9 +95,9 @@ spec:
           - /kaniko/executor
         args:
           - --destination=gcr.io/my-project/gohelloworld
-``**
+```
 
-#### Tekton Bundles
+### Tekton Bundles
 
 **Note: This is only allowed if `enable-tekton-oci-bundles` is set to
 `"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
