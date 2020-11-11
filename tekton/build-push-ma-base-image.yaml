@@ -16,7 +16,7 @@ spec:
     - name: builtBaseImage
       type: image
   steps:
-  - image: gcr.io/google.com/cloudsdktool/cloud-sdk
+  - image: gcr.io/tekton-releases/dogfooding/buildx-gcloud:latest
     name: build-image
     env:
     # Connect to the sidecar over TCP, with TLS.
@@ -39,13 +39,10 @@ spec:
         # Setup docker-auth
         gcloud auth configure-docker
 
+        ln -s /root/.docker/cli-plugins ~/.docker/cli-plugins
+
         # add qemu bins
         docker run --rm --privileged tonistiigi/binfmt:latest --install all
-
-        #install buildx
-        mkdir -p ~/.docker/cli-plugins
-        curl -fsSL https://github.com/docker/buildx/releases/download/v0.4.2/buildx-v0.4.2.linux-amd64 > ~/.docker/cli-plugins/docker-buildx
-        chmod u+x ~/.docker/cli-plugins/docker-buildx
 
         #create docker context
         docker context create context1
