@@ -108,8 +108,6 @@ func initExcludedTests() sets.String {
 			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
 			"TestExamples/v1beta1/taskruns/build-gcs-targz",
 			"TestExamples/v1alpha1/taskruns/build-push-kaniko",
-			"TestExamples/v1alpha1/taskruns/pull-private-image",
-			"TestExamples/v1beta1/taskruns/pull-private-image",
 			"TestExamples/v1alpha1/pipelineruns/pipelinerun",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",
 			"TestExamples/v1beta1/taskruns/build-gcs-zip",
@@ -123,8 +121,6 @@ func initExcludedTests() sets.String {
 			//e2e
 			"TestHelmDeployPipelineRun",
 			"TestKanikoTaskRun",
-			"TestPipelineRun/service_account_propagation_and_pipeline_param",
-			"TestPipelineRun/pipelinerun_succeeds_with_LimitRange_minimum_in_namespace",
 		)
 	}
 	return sets.NewString()

@@ -99,7 +99,7 @@ func TestPipelineRun(t *testing.T) {
 				tb.TaskInputs(tb.InputsParamSpec("path", v1alpha1.ParamTypeString),
 					tb.InputsParamSpec("dest", v1alpha1.ParamTypeString)),
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
-				tb.Step("quay.io/rhpipeline/skopeo:alpine", tb.StepName("config-docker"),
+				tb.Step("gcr.io/tekton-releases/dogfooding/skopeo:latest", tb.StepName("config-docker"),
 					tb.StepCommand("skopeo"),
 					tb.StepArgs("copy", "$(inputs.params.path)", "$(inputs.params.dest)"),
 				),

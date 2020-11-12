@@ -110,7 +110,7 @@ func TestPipelineRun(t *testing.T) {
 					Steps: []v1beta1.Step{{
 						Container: corev1.Container{
 							Name:    "config-docker",
-							Image:   "quay.io/rhpipeline/skopeo:alpine",
+							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
 							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
 						}},
@@ -186,7 +186,7 @@ func TestPipelineRun(t *testing.T) {
 					Steps: []v1beta1.Step{{
 						Container: corev1.Container{
 							Name:    "config-docker",
-							Image:   "quay.io/rhpipeline/skopeo:alpine",
+							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
 							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
 						}},
