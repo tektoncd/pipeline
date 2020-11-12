@@ -5,7 +5,7 @@ weight: 2
 ---
 -->
 
-# `Run`s
+# Runs
 
 - [Overview](#overview)
 - [Configuring a `Run`](#configuring-a-run)
