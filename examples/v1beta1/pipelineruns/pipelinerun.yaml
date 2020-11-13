@@ -140,7 +140,7 @@ spec:
     default: ""
   - name: BUILDER_IMAGE
     description: The image on which builds will run
-    default: gcr.io/kaniko-project/executor:latest
+    default: gcr.io/kaniko-project/executor:v1.3.0
   results:
   - name: IMAGE_DIGEST
     description: Digest of the image just built.

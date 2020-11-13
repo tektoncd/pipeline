@@ -163,7 +163,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: "gcr.io/kaniko-project/executor:v0.17.1",
+				Image: getTestImage(kanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 					fmt.Sprintf("--destination=%s", repo),

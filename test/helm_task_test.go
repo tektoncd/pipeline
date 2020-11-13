@@ -138,7 +138,7 @@ func getCreateImageTask(namespace, createImageTaskName string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: "gcr.io/kaniko-project/executor:v0.17.1",
+				Image: getTestImage(kanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 					"--context=/workspace/gitsource/",
@@ -167,7 +167,7 @@ func getHelmDeployTask(namespace, helmDeployTaskName string) *v1beta1.Task {
 				Name: "chartname", Type: v1beta1.ParamTypeString, Default: &empty,
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "alpine/helm:3.1.2",
+				Image: getTestImage(helmImage),
 				Args: []string{
 					"upgrade",
 					"--wait",
@@ -328,7 +328,7 @@ func removeAllHelmReleases(ctx context.Context, c *clients, t *testing.T, namesp
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "helm-remove-all",
-				Image:   "alpine/helm:3.1.2",
+				Image:   getTestImage(helmImage),
 				Command: []string{"/bin/sh"},
 				Args:    []string{"-c", fmt.Sprintf("helm ls --short --all --namespace %s | xargs -n1 helm delete --namespace %s", namespace, namespace)},
 			}}},
