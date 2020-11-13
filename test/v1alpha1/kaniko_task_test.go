@@ -161,7 +161,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 		),
 		tb.StepSecurityContext(&corev1.SecurityContext{RunAsUser: &root}),
 	}
-	step := tb.Step("gcr.io/kaniko-project/executor:v0.17.1", stepOps...)
+	step := tb.Step("gcr.io/kaniko-project/executor:v1.3.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
 	sidecar := tb.Sidecar("registry", "registry")
 	taskSpecOps = append(taskSpecOps, sidecar)
