@@ -76,7 +76,7 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	if err := ensureHomeEnv(logger); err != nil {
 		return err
 	}
-	validateGitAuth(logger, spec.URL)
+	validateGitAuth(logger, pipeline.CredsDir, spec.URL)
 
 	if spec.Path != "" {
 		if _, err := run(logger, "", "init", spec.Path); err != nil {
@@ -261,9 +261,9 @@ func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
 	return true, nil
 }
 
-func validateGitAuth(logger *zap.SugaredLogger, url string) {
+func validateGitAuth(logger *zap.SugaredLogger, credsDir, url string) {
 	sshCred := true
-	if _, err := os.Stat(pipeline.CredsDir + "/.ssh"); os.IsNotExist(err) {
+	if _, err := os.Stat(credsDir + "/.ssh"); os.IsNotExist(err) {
 		sshCred = false
 	}
 	urlSSHFormat := ValidateGitSSHURLFormat(url)
