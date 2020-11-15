@@ -72,8 +72,9 @@ spec:
           # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
           "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of October 16, 2020
-          "-shell-image", "gcr.io/distroless/base:debug@sha256:72a0093a0214e414527a97d359313992534f94a689449615875d922097f0ba62"
+          # gcr.io/distroless/base:debug as of November 15, 2020
+          # image shall not contains tag, so it will be supported on a runtime like cri-o
+          "-shell-image", "gcr.io/distroless/base@sha256:92720b2305d7315b5426aec19f8651e9e04222991f877cae71f40b3141d2f07e"
         ]
         volumeMounts:
         - name: config-logging
