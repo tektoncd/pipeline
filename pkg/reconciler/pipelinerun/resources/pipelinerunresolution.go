@@ -133,13 +133,7 @@ func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool
 	return true
 }
 
-// Skip returns true if a PipelineTask will not be run because
-// (1) its When Expressions evaluated to false
-// (2) its Condition Checks failed
-// (3) its parent task was skipped
-// (4) Pipeline is in stopping state (one of the PipelineTasks failed)
-// Note that this means Skip returns false if a conditionCheck is in progress
-func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) bool {
+func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) bool {
 	if facts.isFinalTask(t.PipelineTask.Name) || t.IsStarted() {
 		return false
 	}
@@ -149,6 +143,22 @@ func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) bool {
 	}
 
 	return false
+}
+
+// Skip returns true if a PipelineTask will not be run because
+// (1) its When Expressions evaluated to false
+// (2) its Condition Checks failed
+// (3) its parent task was skipped
+// (4) Pipeline is in stopping state (one of the PipelineTasks failed)
+// Note that this means Skip returns false if a conditionCheck is in progress
+func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) bool {
+	if facts.SkipCache == nil {
+		facts.SkipCache = make(map[string]bool)
+	}
+	if _, cached := facts.SkipCache[t.PipelineTask.Name]; !cached {
+		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts) // t.skip() is same as our existing t.Skip()
+	}
+	return facts.SkipCache[t.PipelineTask.Name]
 }
 
 func (t *ResolvedPipelineRunTask) conditionsSkip() bool {
