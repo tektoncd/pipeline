@@ -429,7 +429,7 @@ There are a lot of scenarios where `WhenExpressions` can be really useful. Some 
 
 ### Guard `Task` execution using `Conditions`
 
-**Note:** `Conditions` are deprecated, use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
+**Note:** `Conditions` are [deprecated](./deprecations.md), use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
 
 To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
 the `conditions` field. The `conditions` field allows you to list a series of references to
