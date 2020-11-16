@@ -29,15 +29,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestDuplicatePodTaskRun creates 10 builds and checks that each of them has only one build pod.
 func TestDuplicatePodTaskRun(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -45,7 +46,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 25; i++ {
 		wg.Add(1)
-		taskrunName := fmt.Sprintf("duplicate-pod-taskrun-%d", i)
+		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
 		taskrun := &v1beta1.TaskRun{
