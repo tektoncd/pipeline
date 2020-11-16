@@ -238,6 +238,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
+			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
 		}}},
 		wantVolumes: []corev1.Volume{
 			{
@@ -311,6 +312,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
+			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
 		}}},
 		wantVolumes: []corev1.Volume{
 			{
@@ -483,6 +485,7 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
@@ -573,6 +576,7 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
@@ -1471,7 +1475,6 @@ func TestInputOutputBucketResources(t *testing.T) {
 				VolumeMounts: nil,
 				Command:      []string{"gsutil"},
 				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-				Env:          nil,
 			}},
 		},
 		wantVolumes: []corev1.Volume{{

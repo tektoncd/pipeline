@@ -40,6 +40,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 		Image: "busybox",
 
 		Command: []string{"cp", "-r", "src-path/.", "/workspace/destination"},
+		Env:     []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
 	}}}
 
 	got := pvc.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
@@ -65,6 +66,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		Image:        "busybox",
 		Command:      []string{"cp", "-r", "src-path/.", "/workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+		Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
 	}}}
 
 	got := pvc.GetCopyToStorageFromSteps("workspace", "src-path", "/workspace/destination")
