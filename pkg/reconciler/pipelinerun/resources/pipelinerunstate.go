@@ -37,6 +37,16 @@ type PipelineRunFacts struct {
 	State           PipelineRunState
 	TasksGraph      *dag.Graph
 	FinalTasksGraph *dag.Graph
+
+	// SkipCache is a hash of PipelineTask names that stores whether a task will be
+	// executed or not, because it's either not reachable via the DAG due to the pipeline
+	// state, or because it has failed conditions.
+	// We cache this data along the state, because it's expensive to compute, it requires
+	// traversing potentially the whole graph; this way it can built incrementally, when
+	// needed, via the `Skip` method in pipelinerunresolution.go
+	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
+	// can be used to clean the cache and force re-computation when needed.
+	SkipCache map[string]bool
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks
@@ -51,6 +61,11 @@ type pipelineRunStatusCount struct {
 	Cancelled int
 	// number of tasks which are still pending, have not executed
 	Incomplete int
+}
+
+// ResetSkippedCache resets the skipped cache in the facts map
+func (facts *PipelineRunFacts) ResetSkippedCache() {
+	facts.SkipCache = make(map[string]bool)
 }
 
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
