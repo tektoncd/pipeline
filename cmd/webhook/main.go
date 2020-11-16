@@ -232,7 +232,10 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux))
 	}()
 
-	sharedmain.WebhookMainWithConfig(ctx, "webhook",
+	// NOTE(afrittoli) - we should have the name "webhook-pipeline"
+	// configurable. Once the change is done on knative/pkg side
+	// knative/eventing#4530 we can inherit it from it
+	sharedmain.WebhookMainWithConfig(ctx, "webhook-pipeline",
 		sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		newDefaultingAdmissionController,
