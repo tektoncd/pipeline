@@ -594,6 +594,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gitspace"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "gitspace"}},
 			}}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
@@ -727,6 +728,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gcs-dir"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
 			}}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
