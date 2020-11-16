@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -408,6 +409,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 }
 
 func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
+	largePipelineState := buildPipelineStateWithLargeDepencyGraph(t)
 	tcs := []struct {
 		name          string
 		state         PipelineRunState
@@ -454,6 +456,10 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 			"not skipped since it failed",
 		state:         conditionCheckFailedWithOthersFailedState,
 		expectedNames: []string{pts[5].Name},
+	}, {
+		name:          "large deps, not started",
+		state:         largePipelineState,
+		expectedNames: []string{},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -472,6 +478,65 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
+	t.Helper()
+	var task = &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "task",
+		},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name: "step1",
+			}}},
+		},
+	}
+	var pipelineRunState PipelineRunState
+	pipelineRunState = []*ResolvedPipelineRunTask{{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "t1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		TaskRun: nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+	for i := 2; i < 60; i++ {
+		dependFrom := 1
+		if i > 10 {
+			if i%10 == 0 {
+				dependFrom = i - 10
+			} else {
+				dependFrom = i - (i % 10)
+			}
+		}
+		params := []v1beta1.Param{}
+		var alpha byte
+		for alpha = 'a'; alpha <= 'j'; alpha++ {
+			params = append(params, v1beta1.Param{
+				Name: fmt.Sprintf("%c", alpha),
+				Value: v1beta1.ArrayOrString{
+					Type:      v1beta1.ParamTypeString,
+					StringVal: fmt.Sprintf("$(tasks.t%d.results.%c)", dependFrom, alpha),
+				},
+			})
+		}
+		pipelineRunState = append(pipelineRunState, &ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    fmt.Sprintf("t%d", i),
+				Params:  params,
+				TaskRef: &v1beta1.TaskRef{Name: "task"},
+			},
+			TaskRun: nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		},
+		)
+	}
+	return pipelineRunState
 }
 
 func TestPipelineRunState_GetFinalTasks(t *testing.T) {

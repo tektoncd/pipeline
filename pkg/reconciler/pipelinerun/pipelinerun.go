@@ -524,6 +524,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return err
 	}
 
+	// Reset the skipped status to trigger recalculation
+	pipelineRunFacts.ResetSkippedCache()
+
 	after := pipelineRunFacts.GetPipelineConditionStatus(pr, logger)
 	switch after.Status {
 	case corev1.ConditionTrue:
@@ -565,6 +568,9 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	}
 
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
+	// After we apply Task Results, we may be able to evaluate more
+	// when expressions, so reset the skipped cache
+	pipelineRunFacts.ResetSkippedCache()
 
 	// GetFinalTasks only returns tasks when a DAG is complete
 	nextRprts = append(nextRprts, pipelineRunFacts.GetFinalTasks()...)
