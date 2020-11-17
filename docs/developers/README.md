@@ -33,10 +33,41 @@ the persistent volume can fail.
 ## How are inputs handled
 
 Input resources, like source code (git) or artifacts, are dumped at path
-`/workspace/task_resource_name`. Resource definition in task can have custom
-target directory. If `targetPath` is mentioned in task input then the
-controllers are responsible for adding container definitions to create
-directories and also to fetch the versioned artifacts into that directory.
+`/workspace/task_resource_name`. 
+
+- If input resource is declared as below, then resource will be copied to
+ `/workspace/task_resource_name` directory `from` depended task PVC directory
+ `/pvc/previous_task/resource_name`.
+ 
+  ```yaml
+  kind: Task
+  metadata:
+    name: get-gcs-task
+    namespace: default
+  spec:
+    resources:
+      inputs:
+        - name: gcs-workspace
+          type: storage
+  ```
+
+- Resource definition in task can have custom target directory. 
+If `targetPath` is mentioned in task input resource as below then resource will be 
+copied to `/workspace/outputstuff` directory `from` depended task PVC directory
+ `/pvc/previous_task/resource_name`.
+
+  ```yaml
+  kind: Task
+  metadata:
+    name: get-gcs-task
+    namespace: default
+  spec:
+    resources:
+      inputs:
+        - name: gcs-workspace
+          type: storage
+          targetPath: /workspace/outputstuff
+  ```
 
 ## How are outputs handled
 
@@ -48,7 +79,7 @@ expected in directory path `/workspace/output/resource_name`.
 - If there is PVC volume present (TaskRun holds owner reference to PipelineRun)
   then copy step is added as well.
 
-- If the resource is declared only in output but not in input for task then the
+- If the output resource is declared then the
   copy step includes resource being copied to PVC to path
   `/pvc/task_name/resource_name` from `/workspace/output/resource_name` like the
   following example.
@@ -65,10 +96,9 @@ expected in directory path `/workspace/output/resource_name`.
           type: storage
   ```
 
-- If the resource is declared only in output but not in input for task and the
-  resource defined with `TargetPath` then the copy step includes resource being
-  copied to PVC to path `/pvc/task_name/resource_name` from
-  `/workspace/outputstuff` like the following example.
+- Same as input, if the output resource is declared with `TargetPath` then the copy step 
+includes resource being copied to PVC to path `/pvc/task_name/resource_name` 
+from `/workspace/outputstuff` like the following example.
 
   ```yaml
   kind: Task
@@ -81,48 +111,6 @@ expected in directory path `/workspace/output/resource_name`.
         - name: gcs-workspace
           type: storage
           targetPath: /workspace/outputstuff
-  ```
-
-- If the resource is declared both in input and output for task the then copy
-  step includes resource being copied to PVC to path
-  `/pvc/task_name/resource_name` from `/workspace/random-space/` if input
-  resource has custom target directory (`random-space`) declared like the
-  following example.
-
-  ```yaml
-  kind: Task
-  metadata:
-    name: get-gcs-task
-    namespace: default
-  spec:
-    resources:
-      inputs:
-        - name: gcs-workspace
-          type: storage
-          targetPath: random-space
-      outputs:
-        - name: gcs-workspace
-          type: storage
-  ```
-
-- If resource is declared both in input and output for task without custom
-  target directory then copy step includes resource being copied to PVC to
-  path `/pvc/task_name/resource_name` from `/workspace/resource_name/` like
-  the following example.
-
-  ```yaml
-  kind: Task
-  metadata:
-    name: get-gcs-task
-    namespace: default
-  spec:
-    resources:
-      inputs:
-        - name: gcs-workspace
-          type: storage
-      outputs:
-        - name: gcs-workspace
-          type: storage
   ```
 
 ## Entrypoint rewriting and step ordering
