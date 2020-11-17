@@ -31,7 +31,7 @@ consumers of a project. In that case we'll make a patch release. To make one:
    [`needs-cherry-pick`](https://github.com/tektoncd/pipeline/pulls?q=label%3Aneeds-cherry-pick).
 1. Create a branch for the release named `release-<version number>x`, e.g. [`release-v0.13.0x`](https://github.com/tektoncd/pipeline/tree/release-v0.13.0x)
    and push it to the repo https://github.com/tektoncd/pipeline (you may need help from
-   [an OWNER](../OWNER) with permission to push).
+   [an OWNER](../OWNERS_ALIASES) with permission to push).
 1. Use [git cherry-pick](https://git-scm.com/docs/git-cherry-pick) to cherry pick the
    fixes from master into the release branch you have created (use `-x` to include
    the original commit information).
