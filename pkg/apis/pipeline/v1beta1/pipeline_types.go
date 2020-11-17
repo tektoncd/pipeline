@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // +genclient
@@ -174,7 +175,16 @@ func (pt PipelineTask) Deps() []string {
 	deps = append(deps, pt.resourceDeps()...)
 	deps = append(deps, pt.orderingDeps()...)
 
-	return deps
+	uniqueDeps := sets.NewString()
+	for _, w := range deps {
+		if uniqueDeps.Has(w) {
+			continue
+		}
+		uniqueDeps.Insert(w)
+
+	}
+
+	return uniqueDeps.List()
 }
 
 func (pt PipelineTask) resourceDeps() []string {

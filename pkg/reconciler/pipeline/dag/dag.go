@@ -137,12 +137,16 @@ func linkPipelineTasks(prev *Node, next *Node) error {
 }
 
 func visit(currentName string, nodes []*Node, path []string, visited map[string]bool) error {
+	var sb strings.Builder
 	for _, n := range nodes {
 		path = append(path, n.Task.HashKey())
 		if _, ok := visited[n.Task.HashKey()]; ok {
 			return errors.New(getVisitedPath(path))
 		}
-		visited[currentName+"."+n.Task.HashKey()] = true
+		sb.WriteString(currentName)
+		sb.WriteByte('.')
+		sb.WriteString(n.Task.HashKey())
+		visited[sb.String()] = true
 		if err := visit(n.Task.HashKey(), n.Prev, path, visited); err != nil {
 			return err
 		}
