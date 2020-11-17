@@ -503,7 +503,7 @@ func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
 			TaskSpec: &task.Spec,
 		},
 	}}
-	for i := 2; i < 60; i++ {
+	for i := 2; i < 400; i++ {
 		dependFrom := 1
 		if i > 10 {
 			if i%10 == 0 {
