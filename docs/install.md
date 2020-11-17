@@ -7,6 +7,8 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 * [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
 * [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters)
+* [Configuring High Availability](#configuring-high-availability)
+* [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
 * [Next steps](#next-steps)
 
@@ -359,9 +361,18 @@ data:
   disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
 ```
 
-### Customizing High Availability for the Pipelines Controller
+## Configuring High Availability
 
-To customize the behavior of HA for the Tekton Pipelines controller, please refer to the related [documentation](developers/enabling-ha.md).
+If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support
+high concurrency scenarios, you need to run a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) in
+your Kubernetes cluster. This is required by the [Horizontal Pod Autoscalers](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+to compute replica count. 
+
+See [HA Support for Tekton Pipeline Controllers](./enabling-ha.md) for instructions on configuring
+High Availability in the Tekton Pipelines Controller.
+
+The default configuration is defined in [webhook-hpa.yaml](./../config/webhook-hpa.yaml) which can be customized
+to better fit specific usecases.
 
 ## Configuring tekton pipeline controller performance
 
@@ -370,12 +381,6 @@ Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-s
 ## Creating a custom release of Tekton Pipelines
 
 You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
-
-## Configuring High Availability
-
-If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support high concurrency scenarios, you need to run a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) in your Kubernetes cluster. This is required by the [Horizontal Pod Autoscalers](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) to compute the replica count. 
-
-**Note:** The default configuration is defined in [webhook-hpa.yaml](./../config/webhook-hpa.yaml) which could be customized to better fit a  specific usecase.
 
 ## Next steps
 

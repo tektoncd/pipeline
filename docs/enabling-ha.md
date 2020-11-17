@@ -1,4 +1,4 @@
-# HA support for Tekton Pipeline controllers
+# HA Support for Tekton Pipeline Controllers
 
 - [Overview](#overview)
 - [Configuring HA](#configuring-ha)
@@ -11,7 +11,7 @@
 ## Overview
 
 ---
-This document is aimed at helping maintainers/developers when configuring High Availability(HA) support for the Tekton Pipeline [controller deployment](../../config/controller.yaml).
+This document is aimed at helping Cluster Admins when configuring High Availability(HA) support for the Tekton Pipeline [controller deployment](../../config/controller.yaml).
 
 HA support allows components to remain operational when a disruption occurs. This is achieved by following an active/active model, where all replicas of the Tekton controller can receive workload. In this HA approach the reconcile space is distributed across buckets, where each replica owns a subset of those buckets and can process the load if the given replica is the leader of that bucket.
 
