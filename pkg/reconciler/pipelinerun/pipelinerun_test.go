@@ -1426,6 +1426,43 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	}
 }
 
+func TestReconcileOnPendingPipelineRun(t *testing.T) {
+	// TestReconcileOnPendingPipelineRun runs "Reconcile" on a PipelineRun that is pending.
+	// It verifies that reconcile is successful, the pipeline status updated and events generated.
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-pending",
+		tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineRunPending,
+		),
+	)}
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world", "hello-world"),
+	))}
+	ts := []*v1beta1.Task{}
+	trs := []*v1beta1.TaskRun{}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-pending", wantEvents, false)
+
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() || condition.Reason != ReasonPending {
+		t.Errorf("Expected PipelineRun condition to indicate the pending failed but reason was %s", condition.Reason)
+	}
+
+	if reconciledRun.Status.StartTime != nil {
+		t.Errorf("Start time should be nil, not: %s", reconciledRun.Status.StartTime)
+	}
+}
+
 func TestReconcileWithTimeout(t *testing.T) {
 	// TestReconcileWithTimeout runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.

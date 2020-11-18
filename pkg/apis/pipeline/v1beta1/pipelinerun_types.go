@@ -97,6 +97,11 @@ func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
 	return pr.Spec.Timeout.Duration
 }
 
+// IsPending returns true if the PipelineRun's spec status is set to Pending state
+func (pr *PipelineRun) IsPending() bool {
+	return pr.Spec.Status == PipelineRunSpecStatusPending
+}
+
 // GetNamespacedName returns a k8s namespaced name that identifies this PipelineRun
 func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}
@@ -191,6 +196,8 @@ const (
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
+
+	PipelineRunSpecStatusPending = "PipelineRunPending"
 )
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.
@@ -232,6 +239,8 @@ const (
 	// This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
 	// This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed
 	PipelineRunReasonCancelled PipelineRunReason = "Cancelled"
+	// PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state
+	PipelineRunReasonPending PipelineRunReason = "PipelineRunPending"
 	// PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out
 	PipelineRunReasonTimedOut PipelineRunReason = "PipelineRunTimeout"
 	// PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the

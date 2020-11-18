@@ -115,9 +115,14 @@ func PipelineDescription(desc string) PipelineSpecOp {
 	}
 }
 
-// PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
+// PipelineRunCancelled sets the status to cancel the PipelineRunSpec.
 func PipelineRunCancelled(spec *v1beta1.PipelineRunSpec) {
 	spec.Status = v1beta1.PipelineRunSpecStatusCancelled
+}
+
+// PipelineRunPending sets the status to pending to the PipelineRunSpec.
+func PipelineRunPending(spec *v1beta1.PipelineRunSpec) {
+	spec.Status = v1beta1.PipelineRunSpecStatusPending
 }
 
 // PipelineDeclaredResource adds a resource declaration to the Pipeline Spec,

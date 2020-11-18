@@ -21,6 +21,7 @@ weight: 4
   - [Configuring a failure timeout](#configuring-a-failure-timeout)
 - [Monitoring execution status](#monitoring-execution-status)
 - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+- [Pending `PipelineRuns`](#pending-pipelineruns)
 - [Events](events.md#pipelineruns)
 
 
@@ -536,6 +537,26 @@ spec:
   # […]
   status: "PipelineRunCancelled"
 ```
+
+## Pending `PipelineRuns`
+
+A `PipelineRun` can be created as a "pending" `PipelineRun` meaning that it will not actually be started until the pending status is cleared.
+
+Note that a `PipelineRun` can only be marked "pending" before it has started, this setting is invalid after the `PipelineRun` has been started.
+
+To mark a `PipelineRun` as pending, set `.spec.status` to `PipelineRunPending` when creating it:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "PipelineRunPending"
+```
+
+To start the PipelineRun, clear the `.spec.status` field. Alternatively, update the value to `PipelineRunCancelled` to cancel it.
 
 ---
 

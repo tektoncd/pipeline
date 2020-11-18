@@ -92,7 +92,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					Status: "PipelineRunCancell",
 				},
 			},
-			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled", "spec.status"),
+			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled or PipelineRunPending", "spec.status"),
 		}, {
 			name: "use of bundle without the feature flag set",
 			pr: v1beta1.PipelineRun{
@@ -137,6 +137,29 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			},
 			want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
 			wc:   enableTektonOCIBundles(t),
+		},
+		{
+			name: "pipelinerun pending while running",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerunname",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					Status: v1beta1.PipelineRunSpecStatusPending,
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{time.Now()},
+					},
+				},
+			},
+			want: &apis.FieldError{
+				Message: "invalid value: PipelineRun cannot be Pending after it is started",
+				Paths:   []string{"spec.status"},
+			},
 		},
 	}
 
@@ -218,6 +241,19 @@ func TestPipelineRun_Validate(t *testing.T) {
 							}},
 						}},
 					}},
+				},
+			},
+		},
+	}, {
+		name: "pipelinerun pending",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusPending,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
 				},
 			},
 		},
