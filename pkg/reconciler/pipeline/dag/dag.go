@@ -126,9 +126,8 @@ func linkPipelineTasks(prev *Node, next *Node) error {
 		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.HashKey())
 	}
 	// Check if we are adding cycles.
-	visited := map[string]bool{prev.Task.HashKey(): true, next.Task.HashKey(): true}
 	path := []string{next.Task.HashKey(), prev.Task.HashKey()}
-	if err := visit(next.Task.HashKey(), prev.Prev, path, visited); err != nil {
+	if err := lookForNode(prev.Prev, path, next.Task.HashKey()); err != nil {
 		return fmt.Errorf("cycle detected: %w", err)
 	}
 	next.Prev = append(next.Prev, prev)
@@ -136,18 +135,13 @@ func linkPipelineTasks(prev *Node, next *Node) error {
 	return nil
 }
 
-func visit(currentName string, nodes []*Node, path []string, visited map[string]bool) error {
-	var sb strings.Builder
+func lookForNode(nodes []*Node, path []string, next string) error {
 	for _, n := range nodes {
 		path = append(path, n.Task.HashKey())
-		if _, ok := visited[n.Task.HashKey()]; ok {
+		if n.Task.HashKey() == next {
 			return errors.New(getVisitedPath(path))
 		}
-		sb.WriteString(currentName)
-		sb.WriteByte('.')
-		sb.WriteString(n.Task.HashKey())
-		visited[sb.String()] = true
-		if err := visit(n.Task.HashKey(), n.Prev, path, visited); err != nil {
+		if err := lookForNode(n.Prev, path, next); err != nil {
 			return err
 		}
 	}
