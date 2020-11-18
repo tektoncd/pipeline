@@ -49,6 +49,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.opencensus.io/trace"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -276,6 +277,31 @@ func PipelineRunSucceed(name string) ConditionAccessorFn {
 // has failed.
 func PipelineRunFailed(name string) ConditionAccessorFn {
 	return Failed(name)
+}
+
+// PipelineRunPending provides a poll condition function that checks if the PipelineRun
+// has been marked pending by the Tekton controller.
+func PipelineRunPending(name string) ConditionAccessorFn {
+	running := Running(name)
+
+	return func(ca apis.ConditionAccessor) (bool, error) {
+		c := ca.GetCondition(apis.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionUnknown && c.Reason == string(v1beta1.PipelineRunReasonPending) {
+				return true, nil
+			}
+		}
+		status, err := running(ca)
+		if status {
+			reason := ""
+			// c _should_ never be nil if we get here, but we have this check just in case.
+			if c != nil {
+				reason = c.Reason
+			}
+			return false, fmt.Errorf("status should be %s, but it is %s", v1beta1.PipelineRunReasonPending, reason)
+		}
+		return status, err
+	}
 }
 
 // Chain allows multiple ConditionAccessorFns to be chained together, checking the condition of each in order.

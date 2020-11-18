@@ -97,6 +97,8 @@ const (
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = "PipelineRunCancelled"
+	// ReasonPending indicates that a PipelineRun is pending.
+	ReasonPending = "PipelineRunPending"
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
 	ReasonCouldntCancel = "PipelineRunCouldntCancel"
@@ -142,7 +144,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
-	if !pr.HasStarted() {
+	if !pr.HasStarted() && !pr.IsPending() {
 		pr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
@@ -324,6 +326,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+
+	// When pipeline run is pending, return to avoid creating the task
+	if pr.IsPending() {
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonPending,
+			Message: fmt.Sprintf("PipelineRun %q is pending", pr.Name),
+		})
+		return nil
+	}
 
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {

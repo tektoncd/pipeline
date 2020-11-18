@@ -324,6 +324,87 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1beta
 	}
 }
 
+// TestPipelineRunPending tests that a Pending PipelineRun is not run until the pending
+// status is cleared. This is separate from the TestPipelineRun suite because it has to
+// transition PipelineRun states during the test, which the TestPipelineRun suite does not
+// support.
+func TestPipelineRunPending(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := "pending-pipelinerun-test"
+
+	t.Logf("Creating Task, Pipeline, and Pending PipelineRun %s in namespace %s", prName, namespace)
+
+	if _, err := c.TaskClient.Create(ctx, &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: prName, Namespace: namespace},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Image:   "ubuntu",
+				Command: []string{"/bin/bash"},
+				Args:    []string{"-c", "echo hello, world"},
+			}}},
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", prName, err)
+	}
+
+	if _, err := c.PipelineClient.Create(ctx, &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: prName, Namespace: namespace},
+		Spec: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Name:    "task",
+				TaskRef: &v1beta1.TaskRef{Name: prName},
+			}},
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", prName, err)
+	}
+
+	pipelineRun, err := c.PipelineRunClient.Create(ctx, &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: prName, Namespace: namespace},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: prName},
+			Status:      v1beta1.PipelineRunSpecStatusPending,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to be marked pending", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunPending(prName), "PipelineRunPending"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to be marked pending: %s", prName, err)
+	}
+
+	t.Logf("Clearing pending status on PipelineRun %s", prName)
+
+	pipelineRun, err = c.PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting PipelineRun %s: %s", prName, err)
+	}
+
+	if pipelineRun.Status.StartTime != nil {
+		t.Fatalf("Error start time must be nil, not: %s", pipelineRun.Status.StartTime)
+	}
+
+	pipelineRun.Spec.Status = ""
+
+	if _, err := c.PipelineRunClient.Update(ctx, pipelineRun, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Error clearing pending status on PipelineRun %s: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+}
+
 func getFanInFanOutTasks(namespace string) []*v1beta1.Task {
 	workspaceResource := v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
 		Name: "workspace",

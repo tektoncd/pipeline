@@ -31,6 +31,11 @@ var _ apis.Validatable = (*PipelineRun)(nil)
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
+
+	if pr.IsPending() && pr.HasStarted() {
+		errs = errs.Also(apis.ErrInvalidValue("PipelineRun cannot be Pending after it is started", "spec.status"))
+	}
+
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
@@ -78,8 +83,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 
 	if ps.Status != "" {
-		if ps.Status != PipelineRunSpecStatusCancelled {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ps.Status, PipelineRunSpecStatusCancelled), "status"))
+		if ps.Status != PipelineRunSpecStatusCancelled && ps.Status != PipelineRunSpecStatusPending {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", ps.Status, PipelineRunSpecStatusCancelled, PipelineRunSpecStatusPending), "status"))
 		}
 	}
 
