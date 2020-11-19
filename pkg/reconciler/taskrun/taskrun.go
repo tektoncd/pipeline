@@ -213,8 +213,9 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	}
 
 	if k8serrors.IsNotFound(err) {
-		// failed to get the pod, return error without any sidecars
-		return nil, err
+		// At this stage the TaskRun has been completed if the pod is not found, it won't come back,
+		// it has probably evicted. We can return the error, but we consider it a permanent one.
+		return nil, controller.NewPermanentError(err)
 	} else if err != nil {
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
