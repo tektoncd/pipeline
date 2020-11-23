@@ -696,7 +696,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 	}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
-	logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
+	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", rprt.TaskRunName, rprt.PipelineTask.Name)
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }
 
@@ -753,11 +753,13 @@ func getTaskrunAnnotations(pr *v1beta1.PipelineRun) map[string]string {
 	return annotations
 }
 
-func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[string]string {
+func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includePipelineLabels bool) map[string]string {
 	// Propagate labels from PipelineRun to TaskRun.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
-	for key, val := range pr.ObjectMeta.Labels {
-		labels[key] = val
+	if includePipelineLabels {
+		for key, val := range pr.ObjectMeta.Labels {
+			labels[key] = val
+		}
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 	if pipelineTaskName != "" {
@@ -768,7 +770,7 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[stri
 
 func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
 	var tsLabels map[string]string
-	trLabels := getTaskrunLabels(pr, pipelineTask.Name)
+	trLabels := getTaskrunLabels(pr, pipelineTask.Name, true)
 
 	if pipelineTask.TaskSpec != nil {
 		tsLabels = pipelineTask.TaskSpecMetadata().Labels
@@ -868,7 +870,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1
 }
 
 func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
-	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
+	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name, true)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
 	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
 
@@ -923,17 +925,20 @@ func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1
 func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	logger := logging.FromContext(ctx)
 
-	pipelineRunLabels := getTaskrunLabels(pr, "")
+	// Get the pipelineRun label that is set on each TaskRun.  Do not include the propagated labels from the
+	// Pipeline and PipelineRun.  The user could change them during the lifetime of the PipelineRun so the
+	// current labels may not be set on the previously created TaskRuns.
+	pipelineRunLabels := getTaskrunLabels(pr, "", false)
 	taskRuns, err := c.taskRunLister.TaskRuns(pr.Namespace).List(labels.SelectorFromSet(pipelineRunLabels))
 	if err != nil {
 		logger.Errorf("could not list TaskRuns %#v", err)
 		return err
 	}
-	pr.Status = updatePipelineRunStatusFromTaskRuns(logger, pr.Name, pr.Status, taskRuns)
+	pr.Status = updatePipelineRunStatusFromTaskRuns(logger, pr, pr.Status, taskRuns)
 	return nil
 }
 
-func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName string, prStatus v1beta1.PipelineRunStatus, trs []*v1beta1.TaskRun) v1beta1.PipelineRunStatus {
+func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, prStatus v1beta1.PipelineRunStatus, trs []*v1beta1.TaskRun) v1beta1.PipelineRunStatus {
 	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
 	if trs == nil || len(trs) == 0 {
 		return prStatus
@@ -951,6 +956,11 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 	}
 	// Loop over all the TaskRuns associated to Tasks
 	for _, taskrun := range trs {
+		// Only process TaskRuns that are owned by this PipelineRun.
+		if len(taskrun.OwnerReferences) < 1 || taskrun.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Infof("Found a TaskRun %s that is not owned by this PipelineRun", taskrun.Name)
+			continue
+		}
 		lbls := taskrun.GetLabels()
 		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
 		if _, ok := lbls[pipeline.GroupName+pipeline.ConditionCheckKey]; ok {
@@ -965,6 +975,7 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 		if _, ok := prStatus.TaskRuns[taskrun.Name]; !ok {
 			// This taskrun was missing from the status.
 			// Add it without conditions, which are handled in the next loop
+			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", taskrun.Name)
 			prStatus.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           &taskrun.Status,
@@ -982,7 +993,7 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 			// status. This means that the conditions were orphaned, and never added to the
 			// status. In this case we need to generate a new TaskRun name, that will be used
 			// to run the TaskRun if the conditions are passed.
-			taskRunName = resources.GetTaskRunName(prStatus.TaskRuns, pipelineTaskName, prName)
+			taskRunName = resources.GetTaskRunName(prStatus.TaskRuns, pipelineTaskName, pr.Name)
 			prStatus.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           nil,
