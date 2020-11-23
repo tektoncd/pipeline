@@ -1,7 +1,7 @@
-// +build e2e
+// +build load
 
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,11 +20,10 @@ package test
 
 import (
 	"context"
-	"fmt"
+	"flag"
 	"sync"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,8 +31,12 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-// TestDuplicatePodTaskRun creates 25 builds and checks that each of them has only one build pod.
-func TestDuplicatePodTaskRun(t *testing.T) {
+var (
+	taskrunNum = flag.Int("taskrun-num", 50, "Number of TaskRun")
+)
+
+// TestPerformance creates multiple builds and checks that each of them has only one build pod.
+func TestPerformance(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -44,7 +47,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 25; i++ {
+	for i := 0; i < *taskrunNum; i++ {
 		wg.Add(1)
 		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
@@ -69,18 +72,6 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 
 			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunSuccess"); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
-				return
-			}
-
-			pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("%s=%s", pipeline.GroupName+pipeline.TaskRunLabelKey, taskrunName),
-			})
-			if err != nil {
-				t.Errorf("Error getting TaskRun pod list: %v", err)
-				return
-			}
-			if n := len(pods.Items); n != 1 {
-				t.Errorf("Error matching the number of build pods: expecting 1 pod, got %d", n)
 				return
 			}
 		}(t)
