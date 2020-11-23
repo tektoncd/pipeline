@@ -848,6 +848,9 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 						Args: []string{
 							"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
 						},
+						Env: []corev1.EnvVar{
+							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster3"},
+						},
 					},
 				},
 			},
@@ -900,17 +903,19 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 						Args: []string{
 							"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 						},
-						Env: []corev1.EnvVar{{
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "secret1",
+						Env: []corev1.EnvVar{
+							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster2"},
+							{
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "secret1",
+										},
+										Key: "cadatakey",
 									},
-									Key: "cadatakey",
 								},
-							},
-							Name: "CADATA",
-						}},
+								Name: "CADATA",
+							}},
 					},
 				},
 			},
