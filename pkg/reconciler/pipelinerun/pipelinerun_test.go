@@ -3105,7 +3105,78 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	}
 }
 
+func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
+	names.TestingSeed()
+
+	pr := tb.PipelineRun("test-pipeline-run",
+		tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunLabel("mylabel", "myvalue"),
+		tb.PipelineRunSpec("", tb.PipelineRunPipelineSpec(
+			tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:  "mystep",
+					Image: "myimage"}}},
+			})),
+		)),
+	)
+
+	d := test.Data{
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+
+	// Reconcile the PipelineRun.  This creates a Taskrun.
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", wantEvents, false)
+
+	// Save the name of the TaskRun that was created.
+	taskRunName := ""
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
+	}
+	for k := range reconciledRun.Status.TaskRuns {
+		taskRunName = k
+		break
+	}
+
+	// Add a label to the PipelineRun.  This tests a scenario in issue 3126 which could prevent the reconciler
+	// from finding TaskRuns that are missing from the status.
+	reconciledRun.ObjectMeta.Labels["bah"] = "humbug"
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Update(prt.TestAssets.Ctx, reconciledRun, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when updating status: %v", err)
+	}
+
+	// The label update triggers another reconcile.  Depending on timing, the PipelineRun passed to the reconcile may or may not
+	// have the updated status with the name of the created TaskRun.  Clear the status because we want to test the case where the
+	// status does not have the TaskRun.
+	reconciledRun.Status = v1beta1.PipelineRunStatus{}
+	if _, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").UpdateStatus(prt.TestAssets.Ctx, reconciledRun, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("unexpected error when updating status: %v", err)
+	}
+
+	reconciledRun, _ = prt.reconcileRun("foo", "test-pipeline-run", wantEvents, false)
+
+	// Verify that the reconciler found the existing TaskRun instead of creating a new one.
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Fatalf("Expected 1 TaskRun after label change but got %d", len(reconciledRun.Status.TaskRuns))
+	}
+	for k := range reconciledRun.Status.TaskRuns {
+		if k != taskRunName {
+			t.Fatalf("Status has unexpected taskrun %s", k)
+		}
+	}
+}
+
 func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
+
+	prUID := types.UID("11111111-1111-1111-1111-111111111111")
+	otherPrUID := types.UID("22222222-2222-2222-2222-222222222222")
 
 	// PipelineRunConditionCheckStatus recovered by updatePipelineRunStatusFromTaskRuns
 	// It does not include the status, which is then retrieved via the regular reconcile
@@ -3214,7 +3285,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 	prStatusWithEmptyTaskRuns := v1beta1.PipelineRunStatus{
 		Status: prRunningStatus,
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: nil,
+			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{},
 		},
 	}
 
@@ -3280,6 +3351,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				Labels: map[string]string{
 					pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-1",
 				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 			},
 		},
 		{
@@ -3290,6 +3362,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 					pipeline.GroupName + pipeline.ConditionCheckKey:    "pr-task-2-running-condition-check-xxyyy",
 					pipeline.GroupName + pipeline.ConditionNameKey:     "running-condition",
 				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 			},
 		},
 		{
@@ -3298,6 +3371,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				Labels: map[string]string{
 					pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-3",
 				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 			},
 		},
 		{
@@ -3308,6 +3382,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 					pipeline.GroupName + pipeline.ConditionCheckKey:    "pr-task-3-successful-condition-check-xxyyy",
 					pipeline.GroupName + pipeline.ConditionNameKey:     "successful-condition",
 				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 			},
 		},
 		{
@@ -3318,6 +3393,19 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 					pipeline.GroupName + pipeline.ConditionCheckKey:    "pr-task-4-failed-condition-check-xxyyy",
 					pipeline.GroupName + pipeline.ConditionNameKey:     "failed-condition",
 				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+			},
+		},
+	}
+
+	taskRunsFromAnotherPR := []*v1beta1.TaskRun{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-task-1-xxyyy",
+				Labels: map[string]string{
+					pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-1",
+				},
+				OwnerReferences: []metav1.OwnerReference{{UID: otherPrUID}},
 			},
 		},
 	}
@@ -3348,6 +3436,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 						Labels: map[string]string{
 							pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-1",
 						},
+						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 					},
 				},
 			},
@@ -3362,6 +3451,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 						Labels: map[string]string{
 							pipeline.GroupName + pipeline.PipelineTaskLabelKey: "task-3",
 						},
+						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 					},
 				},
 				{
@@ -3372,6 +3462,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 							pipeline.GroupName + pipeline.ConditionCheckKey:    "pr-task-3-successful-condition-check-xxyyy",
 							pipeline.GroupName + pipeline.ConditionNameKey:     "successful-condition",
 						},
+						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
 					},
 				},
 			},
@@ -3386,6 +3477,11 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			prStatus:         prStatusWithOrphans,
 			trs:              allTaskRuns,
 			expectedPrStatus: prStatusRecovered,
+		}, {
+			prName:           "tr-from-another-pr",
+			prStatus:         prStatusWithEmptyTaskRuns,
+			trs:              taskRunsFromAnotherPR,
+			expectedPrStatus: prStatusWithEmptyTaskRuns,
 		},
 	}
 
@@ -3394,7 +3490,11 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			observer, _ := observer.New(zap.InfoLevel)
 			logger := zap.New(observer).Sugar()
 
-			actualPrStatus := updatePipelineRunStatusFromTaskRuns(logger, tc.prName, tc.prStatus, tc.trs)
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
+				Status:     tc.prStatus,
+			}
+			actualPrStatus := updatePipelineRunStatusFromTaskRuns(logger, pr, tc.prStatus, tc.trs)
 
 			// The TaskRun keys for recovered taskruns will contain a new random key, appended to the
 			// base name that we expect. Replace the random part so we can diff the whole structure
