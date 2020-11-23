@@ -28,9 +28,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/test/internal/clients"
+	"github.com/tektoncd/pipeline/test/internal/environment"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -42,13 +45,17 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	if testEnv.Platform == "linux/s390x" {
+		t.Skipf("skip for s390x architecture")
+	}
 	repo := ensureDockerRepo(t)
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	// FIXME(vdemeester) Skip if non authorized or use an internal registry
+	// Something like setupXX(…, withRegistry)
+	ctx, namespace, cancel := setupWithCleanup(t, withRegistry)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-	setupClusterBindingForHelm(ctx, c, t, namespace)
 
+	setupClusterBindingForHelm(ctx, c.KubeClient.Kube, t, namespace)
 	var (
 		sourceResourceName        = helpers.ObjectNameForTest(t)
 		sourceImageName           = helpers.ObjectNameForTest(t)
@@ -59,46 +66,43 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		helmDeployPipelineRunName = helpers.ObjectNameForTest(t)
 	)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
 	t.Logf("Creating Git PipelineResource %s", sourceResourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getGoHelloworldGitResource(sourceResourceName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, getGoHelloworldGitResource(sourceResourceName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", sourceImageName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getHelmImageResource(repo, sourceImageName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, getHelmImageResource(repo, sourceImageName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
 	t.Logf("Creating Task %s", createImageTaskName)
-	if _, err := c.TaskClient.Create(ctx, getCreateImageTask(namespace, createImageTaskName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, getCreateImageTask(namespace, createImageTaskName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", createImageTaskName, err)
 	}
 
 	t.Logf("Creating Task %s", helmDeployTaskName)
-	if _, err := c.TaskClient.Create(ctx, getHelmDeployTask(namespace, helmDeployTaskName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, getHelmDeployTask(namespace, helmDeployTaskName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", helmDeployTaskName, err)
 	}
 
 	t.Logf("Creating Task %s", checkServiceTaskName)
-	if _, err := c.TaskClient.Create(ctx, getCheckServiceTask(namespace, checkServiceTaskName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, getCheckServiceTask(namespace, checkServiceTaskName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", checkServiceTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", helmDeployPipelineName)
-	if _, err := c.PipelineClient.Create(ctx, getHelmDeployPipeline(namespace, createImageTaskName, helmDeployTaskName, checkServiceTaskName, helmDeployPipelineName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Pipelines.Create(ctx, getHelmDeployPipeline(namespace, createImageTaskName, helmDeployTaskName, checkServiceTaskName, helmDeployPipelineName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", helmDeployPipelineRunName)
-	if _, err := c.PipelineRunClient.Create(ctx, getHelmDeployPipelineRun(namespace, sourceResourceName, sourceImageName, helmDeployPipelineRunName, helmDeployPipelineName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, getHelmDeployPipelineRun(namespace, sourceResourceName, sourceImageName, helmDeployPipelineRunName, helmDeployPipelineName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineRunName, err)
 	}
 
 	// Verify status of PipelineRun (wait for it)
-	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
 	}
@@ -138,7 +142,7 @@ func getCreateImageTask(namespace, createImageTaskName string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: getTestImage(kanikoImage),
+				Image: testEnv.GetImage(environment.KanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 					"--context=/workspace/gitsource/",
@@ -167,7 +171,7 @@ func getHelmDeployTask(namespace, helmDeployTaskName string) *v1beta1.Task {
 				Name: "chartname", Type: v1beta1.ParamTypeString, Default: &empty,
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: getTestImage(helmImage),
+				Image: testEnv.GetImage(environment.HelmImage),
 				Args: []string{
 					"upgrade",
 					"--wait",
@@ -183,7 +187,7 @@ func getHelmDeployTask(namespace, helmDeployTaskName string) *v1beta1.Task {
 					"service.type=ClusterIP",
 				},
 			}}, {Container: corev1.Container{
-				Image:   getTestImage(kubectlImage),
+				Image:   testEnv.GetImage(environment.KubectlImage),
 				Command: []string{"kubectl"},
 				Args: []string{
 					"get",
@@ -283,7 +287,7 @@ func getHelmDeployPipelineRun(namespace, sourceResourceName, sourceImageName, he
 	}
 }
 
-func setupClusterBindingForHelm(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func setupClusterBindingForHelm(ctx context.Context, c kubernetes.Interface, t *testing.T, namespace string) {
 	clusterRoleBindings[0] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("default-tiller"),
@@ -302,16 +306,16 @@ func setupClusterBindingForHelm(ctx context.Context, c *clients, t *testing.T, n
 
 	for _, crb := range clusterRoleBindings {
 		t.Logf("Creating Cluster Role binding %s for helm", crb.Name)
-		if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
+		if _, err := c.RbacV1beta1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Failed to create cluster role binding for Helm %s", err)
 		}
 	}
 }
 
-func helmCleanup(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func helmCleanup(ctx context.Context, c *clients.Clients, t *testing.T, namespace string) {
 	t.Logf("Cleaning up helm from cluster...")
 
-	removeAllHelmReleases(ctx, c, t, namespace)
+	removeAllHelmReleases(ctx, c.PipelineBetaClient, t, namespace)
 
 	for _, crb := range clusterRoleBindings {
 		t.Logf("Deleting Cluster Role binding %s for helm", crb.Name)
@@ -321,14 +325,14 @@ func helmCleanup(ctx context.Context, c *clients, t *testing.T, namespace string
 	}
 }
 
-func removeAllHelmReleases(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func removeAllHelmReleases(ctx context.Context, c *clients.PipelineBetaClients, t *testing.T, namespace string) {
 	helmRemoveAllTaskName := "helm-remove-all-task"
 	helmRemoveAllTask := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: helmRemoveAllTaskName, Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "helm-remove-all",
-				Image:   getTestImage(helmImage),
+				Image:   testEnv.GetImage(environment.HelmImage),
 				Command: []string{"/bin/sh"},
 				Args:    []string{"-c", fmt.Sprintf("helm ls --short --all --namespace %s | xargs -n1 helm delete --namespace %s", namespace, namespace)},
 			}}},
@@ -344,17 +348,17 @@ func removeAllHelmReleases(ctx context.Context, c *clients, t *testing.T, namesp
 	}
 
 	t.Logf("Creating Task %s", helmRemoveAllTaskName)
-	if _, err := c.TaskClient.Create(ctx, helmRemoveAllTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.Tasks.Create(ctx, helmRemoveAllTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", helmRemoveAllTaskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", helmRemoveAllTaskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, helmRemoveAllTaskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskRuns.Create(ctx, helmRemoveAllTaskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", helmRemoveAllTaskRunName, err)
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", helmRemoveAllTaskRunName, namespace)
-	if err := WaitForTaskRunState(ctx, c, helmRemoveAllTaskRunName, TaskRunSucceed(helmRemoveAllTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.TaskRuns, helmRemoveAllTaskRunName, TaskRunSucceed(helmRemoveAllTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Logf("TaskRun %s failed to finish: %s", helmRemoveAllTaskRunName, err)
 	}
 }

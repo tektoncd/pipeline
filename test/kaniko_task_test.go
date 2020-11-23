@@ -30,9 +30,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
+	"github.com/tektoncd/pipeline/test/internal/environment"
+	"github.com/tektoncd/pipeline/test/internal/logs"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -46,49 +49,44 @@ const (
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if skipRootUserTests {
+	if testEnv.SkipRootUserTests() {
 		t.Skip("Skip test as skipRootUserTests set to true")
 	}
+	ctx, namespace, cancel := setupWithCleanup(t, withRegistry)
+	c := clients.Get(ctx)
+	defer cancel()
 
-	c, namespace := setup(ctx, t, withRegistry)
 	t.Parallel()
 
 	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
 	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getGitResource(), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, getGitResource(), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", repo)
-	if _, err := c.PipelineResourceClient.Create(ctx, getImageResource(repo), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, getImageResource(repo), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(ctx, getTask(repo, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, getTask(repo, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", kanikoTaskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, getTaskRun(namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, getTaskRun(namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
 	}
 
 	// Verify status of TaskRun (wait for it)
 
-	if err := WaitForTaskRunState(ctx, c, kanikoTaskRunName, Succeed(kanikoTaskRunName), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, kanikoTaskRunName, Succeed(kanikoTaskRunName), "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", kanikoTaskRunName, err)
 	}
 
-	tr, err := c.TaskRunClient.Get(ctx, kanikoTaskRunName, metav1.GetOptions{})
+	tr, err := c.PipelineBetaClient.TaskRuns.Get(ctx, kanikoTaskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -124,7 +122,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 
 	// match the local digest, which is first capture group against the remote image
-	remoteDigest, err := getRemoteDigest(t, c, namespace, repo)
+	remoteDigest, err := getRemoteDigest(t, c.KubeClient.Kube, namespace, repo)
 	if err != nil {
 		t.Fatalf("Expected to get digest for remote image %s: %v", repo, err)
 	}
@@ -163,7 +161,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: getTestImage(kanikoImage),
+				Image: testEnv.GetImage(environment.KanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 					fmt.Sprintf("--destination=%s", repo),
@@ -179,7 +177,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			}}},
 			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
 				Name:  "registry",
-				Image: getTestImage(registryImage),
+				Image: testEnv.GetImage(environment.RegistryImage),
 			}}},
 		},
 	}
@@ -208,13 +206,13 @@ func getTaskRun(namespace string) *v1beta1.TaskRun {
 // to the "outside" of the test, this means it can be query by the test itself. It can only be query from
 // a pod in the namespace. skopeo is able to do that query and we use jq to extract the digest from its
 // output. The image used for this pod is build in the tektoncd/plumbing repository.
-func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string, error) {
+func getRemoteDigest(t *testing.T, c kubernetes.Interface, namespace, image string) (string, error) {
 	t.Helper()
 	podName := "skopeo-jq"
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	if _, err := c.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      podName,
@@ -236,7 +234,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 	}, "PodContainersTerminated"); err != nil {
 		t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
 	}
-	logs, err := getContainerLogsFromPod(ctx, c.KubeClient.Kube, podName, "skopeo", namespace)
+	logs, err := logs.GetContainerLogsFromPod(ctx, c, podName, "skopeo", namespace)
 	if err != nil {
 		t.Fatalf("Could not get logs for pod %s: %s", podName, err)
 	}

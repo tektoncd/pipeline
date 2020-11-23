@@ -19,29 +19,23 @@ limitations under the License.
 package test
 
 import (
-	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	knativetest "knative.dev/pkg/test"
 )
 
 type conditionFn func(name string) ConditionAccessorFn
 
 func TestTaskRun(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	fqImageName := getTestImage(busyboxImage)
 
@@ -126,15 +120,15 @@ func TestTaskRun(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Creating TaskRun %s", tc.trName)
-			if _, err := c.TaskRunClient.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", tc.trName, err)
 			}
 
-			if err := WaitForTaskRunState(ctx, c, tc.trName, tc.fn(tc.trName), "WaitTaskRunDone"); err != nil {
+			if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, tc.trName, tc.fn(tc.trName), "WaitTaskRunDone"); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}
-			tr, err := c.TaskRunClient.Get(ctx, tc.trName, metav1.GetOptions{})
+			tr, err := c.PipelineBetaClient.TaskRuns.Get(ctx, tc.trName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get TaskRun `%s`: %s", tc.trName, err)
 			}

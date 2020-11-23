@@ -19,29 +19,24 @@ limitations under the License.
 package test
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 // TestDuplicatePodTaskRun creates 10 builds and checks that each of them has only one build pod.
 func TestDuplicatePodTaskRun(t *testing.T) {
 	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 25; i++ {
@@ -61,13 +56,13 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 				},
 			},
 		}
-		if _, err := c.TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
+		if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}
 		go func(t *testing.T) {
 			defer wg.Done()
 
-			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
+			if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}

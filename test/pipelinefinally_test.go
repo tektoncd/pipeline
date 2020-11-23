@@ -16,47 +16,41 @@ limitations under the License.
 package test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	cond := getCondition(t, namespace)
-	if _, err := c.ConditionClient.Create(ctx, cond, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.Conditions.Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 	}
 
 	task := getFailTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	delayedTask := getDelaySuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, delayedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, delayedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	finalTask := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
@@ -74,20 +68,20 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 			"finaltask1": finalTask.Name,
 		},
 	)
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Pipelines.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Waiting for PipelineRun %s to fail: %v", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.PipelineBetaClient.TaskRuns.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -102,7 +96,7 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 			}
 			dagTask1EndTime = taskrunItem.Status.CompletionTime
 		case n == "dagtask2":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			dagTask2EndTime = taskrunItem.Status.CompletionTime
@@ -111,7 +105,7 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 				t.Fatalf("dag task %s should have skipped due to condition failure", n)
 			}
 		case n == "finaltask1":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			finalTaskStartTime = taskrunItem.Status.StartTime
@@ -126,20 +120,17 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_Failure(t *testing.T) {
 }
 
 func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	task := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	finalTask := getFailTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
@@ -153,21 +144,21 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 			"finaltask1": finalTask.Name,
 		},
 	)
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Pipelines.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.PipelineBetaClient.TaskRuns.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}

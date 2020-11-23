@@ -31,6 +31,8 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/test/internal/clients"
+	"github.com/tektoncd/pipeline/test/internal/logs"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,16 +45,25 @@ import (
 )
 
 var initMetrics sync.Once
-var skipRootUserTests = false
 
-func init() {
-	flag.BoolVar(&skipRootUserTests, "skipRootUserTests", false, "Skip tests that require root user")
+func setupWithCleanup(t *testing.T, fn ...func(context.Context, *testing.T, *clients.Clients, string)) (context.Context, string, func()) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ctx, namespace := setup(ctx, t, fn...)
+
+	c := clients.Get(ctx)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+
+	return ctx, namespace, func() {
+		tearDown(ctx, t, c, namespace)
+		cancel()
+	}
 }
 
-func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
-	skipIfExcluded(t)
-
+func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients.Clients, string)) (context.Context, string) {
 	t.Helper()
+
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
 	initializeLogsAndMetrics(t)
@@ -61,7 +72,11 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 	cancel := logstream.Start(t)
 	t.Cleanup(cancel)
 
-	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
+	c, err := clients.NewClients(testEnv.ConfigPath, testEnv.ClusterName, namespace)
+	if err != nil {
+		t.Fatalf("Could not create client for namespace %s: %v", namespace, err)
+	}
+	ctx = clients.WithClients(ctx, c)
 	createNamespace(ctx, t, namespace, c.KubeClient)
 	verifyServiceAccountExistence(ctx, t, namespace, c.KubeClient)
 
@@ -69,7 +84,7 @@ func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testi
 		f(ctx, t, c, namespace)
 	}
 
-	return c, namespace
+	return ctx, namespace
 }
 
 func header(t *testing.T, text string) {
@@ -83,7 +98,7 @@ func header(t *testing.T, text string) {
 	t.Logf(bar)
 }
 
-func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) {
+func tearDown(ctx context.Context, t *testing.T, cs *clients.Clients, namespace string) {
 	t.Helper()
 	if cs.KubeClient == nil {
 		return
@@ -97,13 +112,13 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 			t.Log(string(bs))
 		}
 		header(t, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
-		taskruns, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
+		taskruns, err := cs.PipelineBetaClient.TaskRuns.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("Error getting TaskRun list %s", err)
 		}
 		for _, tr := range taskruns.Items {
 			if tr.Status.PodName != "" {
-				CollectPodLogs(ctx, cs, tr.Status.PodName, namespace, t.Logf)
+				logs.CollectFromPod(ctx, cs.KubeClient.Kube, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
 	}
@@ -158,16 +173,7 @@ func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace 
 	}
 }
 
-// TestMain initializes anything global needed by the tests. Right now this is just log and metric
-// setup since the log and metric libs we're using use global state :(
-func TestMain(m *testing.M) {
-	flag.Parse()
-	c := m.Run()
-	fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`\n", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
-	os.Exit(c)
-}
-
-func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
+func getCRDYaml(ctx context.Context, cs *clients.Clients, ns string) ([]byte, error) {
 	var output []byte
 	printOrAdd := func(i interface{}) {
 		bs, err := yaml.Marshal(i)
@@ -178,7 +184,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	ps, err := cs.PipelineClient.List(ctx, metav1.ListOptions{})
+	ps, err := cs.PipelineBetaClient.Pipelines.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipeline: %w", err)
 	}
@@ -186,15 +192,15 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	prs, err := cs.PipelineResourceClient.List(ctx, metav1.ListOptions{})
+	prs, err := cs.PipelineAlphaClient.PipelineResources.List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("could not get pipelinerun resource: %w", err)
+		return nil, fmt.Errorf("could not get pipelineresource resource: %w", err)
 	}
 	for _, i := range prs.Items {
 		printOrAdd(i)
 	}
 
-	prrs, err := cs.PipelineRunClient.List(ctx, metav1.ListOptions{})
+	prrs, err := cs.PipelineBetaClient.PipelineRuns.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipelinerun: %w", err)
 	}
@@ -202,14 +208,14 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	ts, err := cs.TaskClient.List(ctx, metav1.ListOptions{})
+	ts, err := cs.PipelineBetaClient.Tasks.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get tasks: %w", err)
 	}
 	for _, i := range ts.Items {
 		printOrAdd(i)
 	}
-	trs, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := cs.PipelineBetaClient.TaskRuns.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get taskrun: %w", err)
 	}

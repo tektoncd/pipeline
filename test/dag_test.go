@@ -29,9 +29,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
 )
 
 // TestDAGPipelineRun creates a graph of arbitrary Tasks, then looks at the corresponding
@@ -45,14 +45,9 @@ import (
 //                               |
 //                        pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	// Create the Task that echoes text
 	repoTaskResource := v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -78,7 +73,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
@@ -93,7 +88,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineResourceClient.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
@@ -182,7 +177,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Pipelines.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
 	pipelineRun := &v1beta1.PipelineRun{
@@ -195,15 +190,15 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 		},
 	}
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(ctx, c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	verifyExpectedOrder(ctx, t, c.TaskRunClient)
+	verifyExpectedOrder(ctx, t, c.PipelineBetaClient.TaskRuns)
 }
 
 func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface) {

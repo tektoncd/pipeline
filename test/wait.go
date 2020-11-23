@@ -49,11 +49,13 @@ import (
 	"strings"
 	"time"
 
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	"go.opencensus.io/trace"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 )
 
@@ -80,13 +82,33 @@ func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) erro
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState ConditionAccessorFn, desc string) error {
+func WaitForTaskRunState(ctx context.Context, taskruns pipelinev1beta1.TaskRunInterface, name string, inState ConditionAccessorFn, desc string) error {
 	metricName := fmt.Sprintf("WaitForTaskRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.TaskRunClient.Get(ctx, name, metav1.GetOptions{})
+		r, err := taskruns.Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return inState(&r.Status)
+	})
+}
+
+// WaitForPipelineRunState polls the status of the PipelineRun called name from client every
+// interval until inState returns `true` indicating it is done, returns an
+// error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took for name to get into the state checked by inState.
+func WaitForPipelineRunState(ctx context.Context, pipelineruns pipelinev1beta1.PipelineRunInterface, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
+	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, polltimeout)
+	defer cancel()
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := pipelineruns.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -98,13 +120,13 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 // from client every interval until inState returns `true` indicating it is done,
 // returns an  error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForDeploymentState(ctx context.Context, c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
+func WaitForDeploymentState(ctx context.Context, c kubernetes.Interface, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+		d, err := c.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -116,51 +138,13 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForPodState(ctx context.Context, c *clients, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
+func WaitForPodState(ctx context.Context, c kubernetes.Interface, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForPodState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return true, err
-		}
-		return inState(r)
-	})
-}
-
-// WaitForPipelineRunState polls the status of the PipelineRun called name from client every
-// interval until inState returns `true` indicating it is done, returns an
-// error or timeout. desc will be used to name the metric that is emitted to
-// track how long it took for name to get into the state checked by inState.
-func WaitForPipelineRunState(ctx context.Context, c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
-	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
-	defer span.End()
-
-	ctx, cancel := context.WithTimeout(ctx, polltimeout)
-	defer cancel()
-	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return true, err
-		}
-		return inState(&r.Status)
-	})
-}
-
-// WaitForServiceExternalIPState polls the status of the a k8s Service called name from client every
-// interval until an external ip is assigned indicating it is done, returns an
-// error or timeout. desc will be used to name the metric that is emitted to
-// track how long it took for name to get into the state checked by inState.
-func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, name string, inState func(s *corev1.Service) (bool, error), desc string) error {
-	metricName := fmt.Sprintf("WaitForServiceExternalIPState/%s/%s", name, desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
-	defer span.End()
-
-	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+		r, err := c.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}

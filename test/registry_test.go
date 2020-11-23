@@ -1,7 +1,7 @@
-// +build e2e
+// +build conformance e2e examples
 
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,17 +21,20 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/internal/clients"
+	"github.com/tektoncd/pipeline/test/internal/environment"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
-func withRegistry(ctx context.Context, t *testing.T, c *clients, namespace string) {
+func withRegistry(ctx context.Context, t *testing.T, c *clients.Clients, namespace string) {
 	deployment := getRegistryDeployment(namespace)
 	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create the local registry deployment: %v", err)
 	}
-	if err := WaitForDeploymentState(ctx, c, deployment.Name, namespace, func(d *appsv1.Deployment) (bool, error) {
+	if err := WaitForDeploymentState(ctx, c.KubeClient.Kube, deployment.Name, namespace, func(d *appsv1.Deployment) (bool, error) {
 		var replicas int32 = 1
 		if d.Spec.Replicas != nil {
 			replicas = *d.Spec.Replicas
@@ -68,7 +71,7 @@ func getRegistryDeployment(namespace string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:  "registry",
-						Image: getTestImage(registryImage),
+						Image: testEnv.GetImage(environment.RegistryImage),
 					}},
 				},
 			},
@@ -94,9 +97,9 @@ func getRegistryService(namespace string) *corev1.Service {
 }
 
 // getRegistryServiceIP fetches the registry service's current IP.
-func getRegistryServiceIP(ctx context.Context, t *testing.T, c *clients, namespace string) string {
+func getRegistryServiceIP(ctx context.Context, t *testing.T, c kubernetes.Interface, namespace string) string {
 	t.Helper()
-	svc, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, "registry", metav1.GetOptions{})
+	svc, err := c.CoreV1().Services(namespace).Get(ctx, "registry", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("failed to lookup registry service: %q", err)
 	}

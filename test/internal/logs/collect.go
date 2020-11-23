@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2019-2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
+package logs
 
 import (
 	"context"
@@ -28,16 +28,16 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-// CollectPodLogs will get the logs for all containers in a Pod
-func CollectPodLogs(ctx context.Context, c *clients, podName, namespace string, logf logging.FormatLogger) {
-	logs, err := getContainersLogsFromPod(ctx, c.KubeClient.Kube, podName, namespace)
+// CollectFromPod will get the logs for all containers in a Pod
+func CollectFromPod(ctx context.Context, c kubernetes.Interface, podName, namespace string, logf logging.FormatLogger) {
+	logs, err := GetContainersLogsFromPod(ctx, c, podName, namespace)
 	if err != nil {
 		logf("Could not get logs for pod %s: %s", podName, err)
 	}
 	logf("build logs %s", logs)
 }
 
-func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, namespace string) (string, error) {
+func GetContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, namespace string) (string, error) {
 	p, err := c.CoreV1().Pods(namespace).Get(ctx, pod, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -46,7 +46,7 @@ func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, 
 	sb := strings.Builder{}
 	for _, container := range p.Spec.Containers {
 		sb.WriteString(fmt.Sprintf("\n>>> Container %s:\n", container.Name))
-		logs, err := getContainerLogsFromPod(ctx, c, pod, container.Name, namespace)
+		logs, err := GetContainerLogsFromPod(ctx, c, pod, container.Name, namespace)
 		if err != nil {
 			return "", err
 		}
@@ -55,7 +55,7 @@ func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, 
 	return sb.String(), nil
 }
 
-func getContainerLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, container, namespace string) (string, error) {
+func GetContainerLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, container, namespace string) (string, error) {
 	sb := strings.Builder{}
 	// Do not follow, which will block until the Pod terminates, and potentially deadlock the test.
 	// If done in the wrong order, this could actually block things and prevent the Pod from being

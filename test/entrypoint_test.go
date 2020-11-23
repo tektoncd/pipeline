@@ -19,13 +19,12 @@ limitations under the License.
 package test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
 )
 
 const epTaskRunName = "ep-task-run"
@@ -35,17 +34,13 @@ const epTaskRunName = "ep-task-run"
 // that doesn't have a cmd defined. In addition to making sure the steps
 // are executed in the order specified
 func TestEntrypointRunningStepsInOrder(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	c, namespace := setup(ctx, t)
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	t.Logf("Creating TaskRun in namespace %s", namespace)
-	if _, err := c.TaskRunClient.Create(ctx, &v1beta1.TaskRun{
+	if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: epTaskRunName, Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
@@ -63,7 +58,7 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(ctx, c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 

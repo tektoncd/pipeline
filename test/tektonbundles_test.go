@@ -41,27 +41,25 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
-	knativetest "knative.dev/pkg/test"
 )
 
 // TestTektonBundlesSimpleWorkingExample is an integration test which tests a simple, working Tekton bundle using OCI
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
-	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
-
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	taskName := "hello-world"
 	pipelineName := "hello-world-pipeline"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c.KubeClient.Kube, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {
@@ -133,7 +131,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	}
 
 	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	publishImg(ctx, t, c.KubeClient.Kube, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := &v1beta1.PipelineRun{
@@ -144,16 +142,16 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 				Bundle: repo,
 			},
 		}}
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
-	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := c.PipelineBetaClient.TaskRuns.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -190,18 +188,15 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 
 // TestTektonBundlesUsingRegularImage is an integration test which passes a non-Tekton bundle as a task reference.
 func TestTektonBundlesUsingRegularImage(t *testing.T) {
-	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
-
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	taskName := "hello-world-dne"
 	pipelineName := "hello-world-pipeline-dne"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c.KubeClient.Kube, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {
@@ -247,7 +242,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	}
 
 	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	publishImg(ctx, t, c.KubeClient.Kube, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := &v1beta1.PipelineRun{
@@ -258,12 +253,12 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 				Bundle: repo,
 			},
 		}}
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRunName, timeout,
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
 			FailedWithMessage("could not find object in image with kind: task and name: hello-world-dne", pipelineRunName),
@@ -275,18 +270,15 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 // TestTektonBundlesUsingImproperFormat is an integration test which passes an improperly formatted Tekton bundle as a
 // task reference.
 func TestTektonBundlesUsingImproperFormat(t *testing.T) {
-	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
-
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	taskName := "hello-world"
 	pipelineName := "hello-world-pipeline"
 	pipelineRunName := "hello-world-piplinerun"
-	repo := fmt.Sprintf("%s:5000/tektonbundlesimproperformat", getRegistryServiceIP(ctx, t, c, namespace))
+	repo := fmt.Sprintf("%s:5000/tektonbundlesimproperformat", getRegistryServiceIP(ctx, t, c.KubeClient.Kube, namespace))
 
 	ref, err := name.ParseReference(repo)
 	if err != nil {
@@ -359,7 +351,7 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	}
 
 	// Publish this image to the in-cluster registry.
-	publishImg(ctx, t, c, namespace, img, ref)
+	publishImg(ctx, t, c.KubeClient.Kube, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
 	pr := &v1beta1.PipelineRun{
@@ -370,12 +362,12 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 				Bundle: repo,
 			},
 		}}
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.PipelineRuns.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRunName, timeout,
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
 			FailedWithMessage("could not find object in image with kind: task and name: hello-world", pipelineRunName),
@@ -440,7 +432,7 @@ func tarImageInOCIFormat(namespace string, img v1.Image) ([]byte, error) {
 // publishImg will generate a Pod that runs in the namespace to publish an OCI compliant image into the local registry
 // that runs in the cluster. We can't speak to the in-cluster registry from the test so we need to run a Pod to do it
 // for us.
-func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string, img v1.Image, ref name.Reference) {
+func publishImg(ctx context.Context, t *testing.T, c kubernetes.Interface, namespace string, img v1.Image, ref name.Reference) {
 	t.Helper()
 	podName := "publish-tekton-bundle"
 
@@ -451,7 +443,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 
 	// Create a configmap to contain the tarball which we will mount in the pod.
 	cmName := namespace + "uploadimage-cm"
-	if _, err = c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
+	if _, err = c.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: cmName},
 		BinaryData: map[string][]byte{
 			"image.tar": tb,
@@ -460,7 +452,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 		t.Fatalf("Failed to create configmap to upload image: %s", err)
 	}
 
-	po, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	po, err := c.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    namespace,
 			GenerateName: podName,
@@ -508,7 +500,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
 		return pod.Status.Phase == "Succeeded", nil
 	}, "PodContainersTerminated"); err != nil {
-		req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
+		req := c.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
 		logs, err := req.DoRaw(ctx)
 		if err != nil {
 			t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
@@ -518,7 +510,8 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 	}
 }
 
-func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
+// FIXME(vdemeester) port this to testEnv
+func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients.Clients, namespace string) {
 	featureFlagsCM, err := c.KubeClient.Kube.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)

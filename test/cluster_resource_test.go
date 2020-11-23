@@ -19,21 +19,21 @@ limitations under the License.
 package test
 
 import (
-	"context"
 	"testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
 )
 
 func TestClusterResource(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
 	defer cancel()
 
 	secretName := "hw-secret"
@@ -41,12 +41,6 @@ func TestClusterResource(t *testing.T) {
 	resourceName := "helloworld-cluster"
 	taskName := "helloworld-cluster-task"
 	taskRunName := "helloworld-cluster-taskrun"
-
-	c, namespace := setup(ctx, t)
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating secret %s", secretName)
 	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, getClusterResourceTaskSecret(namespace, secretName), metav1.CreateOptions{}); err != nil {
@@ -59,22 +53,22 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	t.Logf("Creating cluster PipelineResource %s", resourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getClusterResource(resourceName, secretName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineAlphaClient.PipelineResources.Create(ctx, getClusterResource(resourceName, secretName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create cluster Pipeline Resource `%s`: %s", resourceName, err)
 	}
 
 	t.Logf("Creating Task %s", taskName)
-	if _, err := c.TaskClient.Create(ctx, getClusterResourceTask(namespace, taskName, configName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, getClusterResourceTask(namespace, taskName, configName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", taskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, getClusterResourceTaskRun(namespace, taskRunName, taskName, resourceName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, getClusterResourceTaskRun(namespace, taskRunName, taskName, resourceName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Taskrun `%s`: %s", taskRunName, err)
 	}
 
 	// Verify status of TaskRun (wait for it)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
 )
@@ -32,7 +33,7 @@ var (
 	// it so that examples still compiles (`go test` tries to compile those) and look
 	// nice in the go documentation.
 	t testingT
-	c *clients
+	c *clients.Clients
 )
 
 type testingT interface {
@@ -45,7 +46,7 @@ func ExampleWaitForTaskRunState() {
 	defer cancel()
 
 	// […] setup the test, get clients
-	if err := WaitForTaskRunState(ctx, c, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, "taskRunName", func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
@@ -64,7 +65,7 @@ func ExampleWaitForPipelineRunState() {
 	defer cancel()
 
 	// […] setup the test, get clients
-	if err := WaitForPipelineRunState(ctx, c, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, "pipelineRunName", 1*time.Minute, func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {

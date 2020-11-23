@@ -21,7 +21,6 @@ package test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -31,16 +30,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/test/internal/clients"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	knativetest "knative.dev/pkg/test"
 )
 
 const pipelineRunTimeout = 10 * time.Minute
-
-var (
-	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
-	defaultNamespaceRE    = regexp.MustCompile("namespace: default")
-)
 
 // getCreatedTektonCRD parses output of an external ko invocation provided as
 // input, as is the kind of Tekton CRD to search for (ie. taskrun)
@@ -53,47 +49,23 @@ func getCreatedTektonCRD(input []byte, kind string) (string, error) {
 	return string(submatch[1]), nil
 }
 
-func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients, pipelineRunName string) {
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
+func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients.Clients, pipelineRunName string) {
+	if err := WaitForPipelineRunState(ctx, c.PipelineBetaClient.PipelineRuns, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
 		t.Fatalf("Failed waiting for pipeline run done: %v", err)
 	}
 }
 
-func waitValidateTaskRunDone(ctx context.Context, t *testing.T, c *clients, taskRunName string) {
+func waitValidateTaskRunDone(ctx context.Context, t *testing.T, c *clients.Clients, taskRunName string) {
 	// Per test basis
-	if err := WaitForTaskRunState(ctx, c, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
 		t.Fatalf("Failed waiting for task run done: %v", err)
 	}
-}
-
-// substituteEnv substitutes docker repos and bucket paths from the system
-// environment for input to allow tests on local clusters. It unsets the
-// namespace for ServiceAccounts so that they work under test. It also
-// replaces image names to arch specific ones, based on provided mapping.
-func substituteEnv(input []byte, namespace string) ([]byte, error) {
-	// Replace the placeholder image repo with the value of the
-	// KO_DOCKER_REPO env var.
-	val, ok := os.LookupEnv("KO_DOCKER_REPO")
-	if !ok {
-		return nil, errors.New("KO_DOCKER_REPO is not set")
-	}
-	output := defaultKoDockerRepoRE.ReplaceAll(input, []byte(val))
-
-	// Strip any "namespace: default"s, all resources will be created in
-	// the test namespace using `ko create -n`
-	output = defaultNamespaceRE.ReplaceAll(output, []byte("namespace: "+namespace))
-
-	// Replace image names to arch specific ones, where it's necessary
-	for existingImage, archSpecificImage := range imagesMappingRE {
-		output = existingImage.ReplaceAll(output, archSpecificImage)
-	}
-	return output, nil
 }
 
 // koCreate wraps the ko binary and invokes `ko create` for input within
 // namespace
 func koCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-n", namespace, "-f", "-")
+	cmd := exec.Command("ko", "create", "--platform", testEnv.Platform, "-n", namespace, "-f", "-")
 	cmd.Stdin = bytes.NewReader(input)
 	return cmd.CombinedOutput()
 }
@@ -102,35 +74,29 @@ func koCreate(input []byte, namespace string) ([]byte, error) {
 // clientset. Test state is used for logging. deleteClusterTask does not wait
 // for the clustertask to be deleted, so it is still possible to have name
 // conflicts during test
-func deleteClusterTask(ctx context.Context, t *testing.T, c *clients, name string) {
+func deleteClusterTask(ctx context.Context, t *testing.T, c *clients.Clients, name string) {
 	t.Logf("Deleting clustertask %s", name)
-	if err := c.ClusterTaskClient.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+	if err := c.PipelineBetaClient.ClusterTasks.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete clustertask: %v", err)
 	}
 }
 
-type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
+type waitFunc func(ctx context.Context, t *testing.T, c *clients.Clients, name string)
 
 func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
+		skipIfExcluded(t)
+		ctx, namespace, cancel := setupWithCleanup(t, withRegistry)
+		c := clients.Get(ctx)
 		defer cancel()
-
-		// Setup unique namespaces for each test so they can run in complete
-		// isolation
-		c, namespace := setup(ctx, t)
-
-		knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-		defer tearDown(ctx, t, c, namespace)
 
 		inputExample, err := ioutil.ReadFile(path)
 		if err != nil {
 			t.Fatalf("Error reading file: %v", err)
 		}
 
-		subbedInput, err := substituteEnv(inputExample, namespace)
+		subbedInput, err := testEnv.SubstituteEnv(inputExample, namespace)
 		if err != nil {
 			t.Skipf("Couldn't substitute environment: %v", err)
 		}
@@ -229,5 +195,26 @@ func TestExamples(t *testing.T) {
 		}
 
 		t.Run(testName, exampleTest(path, waitValidateFunc, kind))
+	}
+}
+
+// skipIfExcluded checks if test name is in the excluded list and skip it
+func skipIfExcluded(t *testing.T) {
+	var excludedTests sets.String
+	switch testEnv.Platform {
+	case "linux/s390x":
+		excludedTests = sets.NewString(
+			//examples
+			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
+			"TestExamples/v1beta1/taskruns/build-gcs-targz",
+			"TestExamples/v1beta1/taskruns/build-gcs-zip",
+			"TestExamples/v1alpha1/taskruns/build-gcs-zip",
+			"TestExamples/v1alpha1/taskruns/gcs-resource",
+			"TestExamples/v1beta1/taskruns/gcs-resource",
+			"TestExamples/v1beta1/pipelineruns/pipelinerun",
+		)
+	}
+	if excludedTests.Has(t.Name()) {
+		t.Skipf("skip for %s architecture", testEnv.Platform)
 	}
 }

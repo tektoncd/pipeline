@@ -19,7 +19,6 @@ limitations under the License.
 package test
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -27,21 +26,17 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/test/internal/clients"
+	"github.com/tektoncd/pipeline/test/internal/environment"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
 )
 
 func TestTaskRunFailure(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	c, namespace := setup(ctx, t)
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	taskRunName := "failing-taskrun"
 
@@ -64,7 +59,7 @@ func TestTaskRunFailure(t *testing.T) {
 			}}},
 		},
 	}
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := &v1beta1.TaskRun{
@@ -73,16 +68,16 @@ func TestTaskRunFailure(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "failing-task"},
 		},
 	}
-	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.PipelineBetaClient.TaskRuns.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
@@ -128,18 +123,14 @@ func TestTaskRunFailure(t *testing.T) {
 }
 
 func TestTaskRunStatus(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	c, namespace := setup(ctx, t)
 	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	ctx, namespace, cancel := setupWithCleanup(t)
+	c := clients.Get(ctx)
+	defer cancel()
 
 	taskRunName := "status-taskrun"
 
-	fqImageName := getTestImage(busyboxImage)
+	fqImageName := testEnv.GetImage(environment.BusyboxImage)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := &v1beta1.Task{
@@ -153,7 +144,7 @@ func TestTaskRunStatus(t *testing.T) {
 			}}},
 		},
 	}
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.Tasks.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := &v1beta1.TaskRun{
@@ -162,16 +153,16 @@ func TestTaskRunStatus(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "status-task"},
 		},
 	}
-	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineBetaClient.TaskRuns.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c.PipelineBetaClient.TaskRuns, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSucceed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.PipelineBetaClient.TaskRuns.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
