@@ -31,7 +31,7 @@ failed=0
 
 # Run the integration tests
 header "Running Go e2e tests"
-go_test_e2e -timeout=40m ./test/... -run="TestTaskRunPipelineRunCancel|TestDAGPipelineRun" || failed=1
+go_test_e2e -timeout=40m ./test/... || failed=1
 (( failed )) && fail_test
 
 # Run these _after_ the integration tests b/c they don't quite work all the way
