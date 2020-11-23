@@ -384,15 +384,15 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	patcher := r.Client.TektonV1beta1().PipelineRuns(resource.Namespace)
 
 	resourceName := resource.Name
-	resource, err = patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
+	updated, err := patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
-		r.Recorder.Eventf(resource, v1.EventTypeWarning, "FinalizerUpdateFailed",
+		r.Recorder.Eventf(existing, v1.EventTypeWarning, "FinalizerUpdateFailed",
 			"Failed to update finalizers for %q: %v", resourceName, err)
 	} else {
-		r.Recorder.Eventf(resource, v1.EventTypeNormal, "FinalizerUpdate",
+		r.Recorder.Eventf(updated, v1.EventTypeNormal, "FinalizerUpdate",
 			"Updated %q finalizers", resource.GetName())
 	}
-	return resource, err
+	return updated, err
 }
 
 func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
