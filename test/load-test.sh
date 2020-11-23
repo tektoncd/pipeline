@@ -45,7 +45,7 @@ function success() {
   exit 0
 }
 
-TIMEOUT="5m"
+TIMEOUT="10m"
 TASKRUN_NUM=50
 
 while [[ $# -ne 0 ]]; do
