@@ -282,6 +282,10 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 		pipelineTasks[task.Name] = task.Name
 	}
 
+	for _, task := range p.Finally {
+		pipelineTasks[task.Name] = task.Name
+	}
+
 	for _, name := range pr.Spec.ServiceAccountNames {
 		if _, ok := pipelineTasks[name.TaskName]; !ok {
 			return fmt.Errorf("PipelineRun's ServiceAccountNames defined wrong taskName: %q, does not exist in Pipeline", name.TaskName)
