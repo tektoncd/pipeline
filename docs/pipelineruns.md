@@ -57,13 +57,13 @@ A `PipelineRun` definition supports the following fields:
   - [`resources`](#specifying-resources) - Specifies the [`PipelineResources`](resources.md) to provision
     for executing the target `Pipeline`.
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Pipeline`.
-  - [`serviceAccountName`](#specifying-serviceaccount-credentials) - Specifies a `ServiceAccount`
+  - [`serviceAccountName`](#specifying-custom-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that supplies specific execution credentials for the `Pipeline`.
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
-  - [`taskRunSpec`](#specifying-task-run-specs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
+  - [`taskRunSpec`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails.
-  - [`podTemplate`](#pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
+  - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
     for the configuration of the `Pod` that executes each `Task`.
 
 [kubernetes-overview]:
