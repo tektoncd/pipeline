@@ -1796,6 +1796,76 @@ func TestValidateWorkspaceBindingsWithInvalidWorkspaces(t *testing.T) {
 	}
 }
 
+func TestValidateTaskRunSpecs(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		p       *v1beta1.Pipeline
+		run     *v1beta1.PipelineRun
+		wantErr bool
+	}{{
+		name: "valid task mapping",
+		p: tb.Pipeline("pipelines", tb.PipelineSpec(
+			tb.PipelineTask("mytask1", "task",
+				tb.PipelineTaskInputResource("input1", "git-resource")),
+		)),
+		run: tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
+			tb.PipelineTaskRunSpecs(
+				[]v1beta1.PipelineTaskRunSpec{{
+					PipelineTaskName:       "mytask1",
+					TaskServiceAccountName: "default",
+				}},
+			),
+		)),
+		wantErr: false,
+	}, {
+		name: "valid finally task mapping",
+		p: tb.Pipeline("pipelines", tb.PipelineSpec(
+			tb.PipelineTask("mytask1", "task",
+				tb.PipelineTaskInputResource("input1", "git-resource")),
+			tb.FinalPipelineTask("myfinaltask1", "finaltask"),
+		)),
+		run: tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
+			tb.PipelineTaskRunSpecs(
+				[]v1beta1.PipelineTaskRunSpec{{
+					PipelineTaskName:       "myfinaltask1",
+					TaskServiceAccountName: "default",
+				}},
+			),
+		)),
+		wantErr: false,
+	}, {
+		name: "invalid task mapping",
+		p: tb.Pipeline("pipelines", tb.PipelineSpec(
+			tb.PipelineTask("mytask1", "task",
+				tb.PipelineTaskInputResource("input1", "git-resource")),
+			tb.FinalPipelineTask("myfinaltask1", "finaltask"),
+		)),
+		run: tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
+			tb.PipelineTaskRunSpecs(
+				[]v1beta1.PipelineTaskRunSpec{{
+					PipelineTaskName:       "wrongtask",
+					TaskServiceAccountName: "default",
+				}},
+			),
+		)),
+		wantErr: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := tc.p.Spec
+			err := ValidateTaskRunSpecs(&spec, tc.run)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Did not get error when it was expected for test: %s", tc.name)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected error when no error expected: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestValidateServiceaccountMapping(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
