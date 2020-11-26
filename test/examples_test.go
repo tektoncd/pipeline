@@ -98,6 +98,12 @@ func koCreate(input []byte, namespace string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+func kubectlCreate(input []byte, namespace string) ([]byte, error) {
+	cmd := exec.Command("kubectl", "create", "-n", namespace, "-f", "-")
+	cmd.Stdin = bytes.NewReader(input)
+	return cmd.CombinedOutput()
+}
+
 // deleteClusterTask removes a single clustertask by name using provided
 // clientset. Test state is used for logging. deleteClusterTask does not wait
 // for the clustertask to be deleted, so it is still possible to have name
@@ -109,9 +115,10 @@ func deleteClusterTask(ctx context.Context, t *testing.T, c *clients, name strin
 	}
 }
 
+type createFunc func(input []byte, namespace string) ([]byte, error)
 type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
 
-func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *testing.T) {
+func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
@@ -135,7 +142,7 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 			t.Skipf("Couldn't substitute environment: %v", err)
 		}
 
-		out, err := koCreate(subbedInput, namespace)
+		out, err := createFunc(subbedInput, namespace)
 		if err != nil {
 			t.Fatalf("%s Output: %s", err, out)
 		}
@@ -214,7 +221,14 @@ func extractTestName(baseDir string, path string) string {
 }
 
 func TestExamples(t *testing.T) {
-	baseDir := "../examples"
+	testYamls(t, "../examples", kubectlCreate)
+}
+
+func TestYamls(t *testing.T) {
+	testYamls(t, "./yamls", koCreate)
+}
+
+func testYamls(t *testing.T, baseDir string, createFunc createFunc) {
 
 	t.Parallel()
 	for _, path := range getExamplePaths(t, baseDir) {
@@ -228,6 +242,6 @@ func TestExamples(t *testing.T) {
 			kind = "taskrun"
 		}
 
-		t.Run(testName, exampleTest(path, waitValidateFunc, kind))
+		t.Run(testName, exampleTest(path, waitValidateFunc, createFunc, kind))
 	}
 }
