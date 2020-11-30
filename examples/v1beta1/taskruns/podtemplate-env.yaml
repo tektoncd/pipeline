@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: podtemplate-env-
+spec:
+  podTemplate:
+    env:
+      - name: MY_VAR1
+        value: foo
+  taskSpec:
+    steps:
+      - image: ubuntu
+        script: |
+          #!/usr/bin/env bash
+          [[ $MY_VAR1 == foo ]]

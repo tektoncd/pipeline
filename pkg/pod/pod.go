@@ -217,6 +217,30 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		podTemplate = *taskRun.Spec.PodTemplate
 	}
 
+	// Add envs specified in podtemplate to all step containers
+	// Envs specified in podtemplate should take precedence over
+	// the one specified in step and step template
+	for i := range stepContainers {
+		envs := updateAndMergeEnv(stepContainers[i].Env, podTemplate.Env)
+		stepContainers[i].Env = envs
+	}
+
+	// Add envs specified in podtemplate to all sidecar containers
+	// Envs specified in podtemplate should take precedence over
+	// the one specified in sidecar and step template
+	for i := range sidecarContainers {
+		envs := updateAndMergeEnv(sidecarContainers[i].Env, podTemplate.Env)
+		sidecarContainers[i].Env = envs
+	}
+
+	// Add envs specified in podtemplate to all initContainers
+	// Envs specified in podtemplate should take precedence over
+	// the one specified in init and step template
+	for i := range initContainers {
+		envs := updateAndMergeEnv(initContainers[i].Env, podTemplate.Env)
+		initContainers[i].Env = envs
+	}
+
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes = append(volumes, taskSpec.Volumes...)
 	volumes = append(volumes, podTemplate.Volumes...)
@@ -402,4 +426,23 @@ func shouldAddReadyAnnotationOnPodCreate(ctx context.Context, sidecars []v1beta1
 	// controllers.
 	cfg := config.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.RunningInEnvWithInjectedSidecars
+}
+
+// updateAndMergeEnv will merge two slices of env
+// precedence will be given to second input if exist with same name key
+func updateAndMergeEnv(containerenvs []corev1.EnvVar, podtemplateEnvs []corev1.EnvVar) []corev1.EnvVar {
+	for _, env := range podtemplateEnvs {
+		var updated bool
+		for i := range containerenvs {
+			if env.Name == containerenvs[i].Name {
+				containerenvs[i].Value = env.Value
+				containerenvs[i].ValueFrom = env.ValueFrom
+				updated = true
+			}
+		}
+		if !updated {
+			containerenvs = append(containerenvs, env)
+		}
+	}
+	return containerenvs
 }

@@ -62,6 +62,16 @@ func TestPodBuild(t *testing.T) {
 		Name:  "HOME",
 		Value: homeDir,
 	}}
+	implicitEnvVarsWithOtherEnv := []corev1.EnvVar{
+		{
+			Name:  "HOME",
+			Value: homeDir,
+		},
+		{
+			Name:  "FOO",
+			Value: "bar",
+		},
+	}
 	secretsVolume := corev1.Volume{
 		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
@@ -71,6 +81,20 @@ func TestPodBuild(t *testing.T) {
 		Image:        images.EntrypointImage,
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
+	}
+	placeToolsInitWithEnv := corev1.Container{
+		Name:         "place-tools",
+		Image:        images.EntrypointImage,
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
+		Env:          []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
+	}
+	placeToolsInitWithHomeEnv := corev1.Container{
+		Name:         "place-tools",
+		Image:        images.EntrypointImage,
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
+		Env:          []corev1.EnvVar{{Name: "HOME", Value: "/tekton/home/new"}, {Name: "FOO", Value: "bar"}},
 	}
 	runtimeClassName := "gvisor"
 	automountServiceAccountToken := false
@@ -245,6 +269,12 @@ func TestPodBuild(t *testing.T) {
 						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
 					},
 				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "FOO",
+						Value: "bar",
+					},
+				},
 				RuntimeClassName:             &runtimeClassName,
 				AutomountServiceAccountToken: &automountServiceAccountToken,
 				DNSPolicy:                    &dnsPolicy,
@@ -258,7 +288,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInitWithEnv},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -275,7 +305,101 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
+				Env: implicitEnvVarsWithOtherEnv,
+				VolumeMounts: append([]corev1.VolumeMount{
+					toolsMount,
+					downwardMount,
+					{Name: "tekton-creds-init-home-9l9zj", MountPath: "/tekton/creds"},
+				}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-9l9zj",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+			SecurityContext: &corev1.PodSecurityContext{
+				Sysctls: []corev1.Sysctl{
+					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+				},
+			},
+			RuntimeClassName:             &runtimeClassName,
+			AutomountServiceAccountToken: &automountServiceAccountToken,
+			DNSPolicy:                    dnsPolicy,
+			DNSConfig: &corev1.PodDNSConfig{
+				Nameservers: []string{"8.8.8.8"},
+				Searches:    []string{"tekton.local"},
+			},
+			EnableServiceLinks: &enableServiceLinks,
+			PriorityClassName:  priorityClassName,
+		},
+	}, {
+		desc: "with-pod-template-overide",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			PodTemplate: &pod.Template{
+				SecurityContext: &corev1.PodSecurityContext{
+					Sysctls: []corev1.Sysctl{
+						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+					},
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "HOME",
+						Value: "/tekton/home/new",
+					},
+					{
+						Name:  "FOO",
+						Value: "bar",
+					},
+				},
+				RuntimeClassName:             &runtimeClassName,
+				AutomountServiceAccountToken: &automountServiceAccountToken,
+				DNSPolicy:                    &dnsPolicy,
+				DNSConfig: &corev1.PodDNSConfig{
+					Nameservers: []string{"8.8.8.8"},
+					Searches:    []string{"tekton.local"},
+				},
+				EnableServiceLinks: &enableServiceLinks,
+				PriorityClassName:  &priorityClassName,
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInitWithHomeEnv},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "HOME",
+						Value: "/tekton/home/new",
+					},
+					{
+						Name:  "FOO",
+						Value: "bar",
+					},
+				},
 				VolumeMounts: append([]corev1.VolumeMount{
 					toolsMount,
 					downwardMount,
@@ -1435,6 +1559,136 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 			store.OnConfigChanged(tc.configMap)
 			if result := shouldAddReadyAnnotationOnPodCreate(store.ToContext(context.Background()), tc.sidecars); result != tc.expected {
 				t.Errorf("expected: %t Received: %t", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestUpdateAndMergeEnv(t *testing.T) {
+	tcs := []struct {
+		name           string
+		containerEnv   []corev1.EnvVar
+		podtemplateEnv []corev1.EnvVar
+		env            []corev1.EnvVar
+	}{
+		{
+			name: "different env",
+			containerEnv: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+			},
+			podtemplateEnv: []corev1.EnvVar{
+				{
+					Name:  "key",
+					Value: "value",
+				},
+			},
+			env: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+				{
+					Name:  "key",
+					Value: "value",
+				},
+			},
+		},
+		{
+			name: "podtemplate env empty",
+			containerEnv: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+			},
+			podtemplateEnv: []corev1.EnvVar{},
+			env: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+			},
+		},
+		{
+			name:         "containerTemplate env empty",
+			containerEnv: []corev1.EnvVar{},
+			podtemplateEnv: []corev1.EnvVar{
+				{
+					Name:  "key",
+					Value: "value",
+				},
+			},
+			env: []corev1.EnvVar{
+				{
+					Name:  "key",
+					Value: "value",
+				},
+			},
+		},
+		{
+			name:           "both env empty",
+			containerEnv:   []corev1.EnvVar{},
+			podtemplateEnv: []corev1.EnvVar{},
+			env:            []corev1.EnvVar{},
+		},
+		{
+			name: "merge and update",
+			containerEnv: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+				{
+					Name:  "key2",
+					Value: "value2",
+				},
+				{
+					Name:  "key3",
+					Value: "value3",
+				},
+			},
+			podtemplateEnv: []corev1.EnvVar{
+				{
+					Name:  "key",
+					Value: "value",
+				},
+				{
+					Name:  "key2",
+					Value: "value4",
+				},
+				{
+					Name:  "key3",
+					Value: "value6",
+				},
+			},
+			env: []corev1.EnvVar{
+				{
+					Name:  "key1",
+					Value: "value1",
+				},
+				{
+					Name:  "key2",
+					Value: "value4",
+				},
+				{
+					Name:  "key3",
+					Value: "value6",
+				},
+				{
+					Name:  "key",
+					Value: "value",
+				},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			result := updateAndMergeEnv(tc.containerEnv, tc.podtemplateEnv)
+			if d := cmp.Diff(result, tc.env); d != "" {
+				t.Errorf("expected: %v Received: %v", tc.env, result)
 			}
 		})
 	}

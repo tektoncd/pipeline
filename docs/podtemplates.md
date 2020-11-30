@@ -49,6 +49,10 @@ Pod templates support fields listed in the table below.
 			<td><code>volumes</code></td>
 			<td>Specifies a list of volumes that containers within the Pod can mount. This allows you to specify a volume type for each <code>volumeMount</code> in a <code>Task</code>.</td>
 		</tr>
+        <tr>
+			<td><code>env</code></td>
+			<td>Specifies a list of environments that all containers within the Pod will be populated</td>
+		</tr>
 		<tr>
 			<td><code>runtimeClassName</code></td>
 			<td>Specifies the <a href=https://kubernetes.io/docs/concepts/containers/runtime-class/>runtime class</a> for the Pod.</td>

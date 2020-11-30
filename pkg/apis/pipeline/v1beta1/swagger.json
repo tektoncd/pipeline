@@ -31,6 +31,15 @@
           "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
           "type": "boolean"
         },
+        "env": {
+          "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge,retainKeys"
+        },
         "hostNetwork": {
           "description": "HostNetwork specifies whether the pod may use the node network namespace",
           "type": "boolean"
