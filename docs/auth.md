@@ -33,10 +33,10 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
       - [A Workspace or Volume is also Mounted for the same credentials](#a-workspace-or-volume-is-also-mounted-for-the-same-credentials)
       - [A Task employes a read-only-Workspace or Volume for `$HOME`](#a-task-employs-a-read-only-workspace-or-volume-for-home)
       - [The Step is named `image-digest-exporter`](#the-step-is-named-image-digest-exporter)
-- [Disabling Tekton's Built-In Auth](#disabling-tektons-build-in-auth)
+- [Disabling Tekton's Built-In Auth](#disabling-tektons-built-in-auth)
   - [Why would an organization want to do this?](#why-would-an-organization-want-to-do-this)
   - [What are the effects of making this change?](#what-are-the-effects-of-making-this-change)
-  - [How to disable the built-in auth](#how-to-disable-the-build-in-auth)
+  - [How to disable the built-in auth](#how-to-disable-the-built-in-auth)
 
 ## Overview
 
@@ -599,7 +599,7 @@ TaskRun's `Pod template` field](./taskruns.md#specifying-a-pod-template).
 If you require Steps to run with different UIDs then you should disable
 Tekton's built-in credential initialization and use Workspaces to mount
 credentials from Secrets instead. See [the section on disabling Tekton's
-credential initialization](#disabling-tektons-build-in-auth).
+credential initialization](#disabling-tektons-built-in-auth).
 
 #### A Workspace or Volume is also Mounted for the same credentials
 
@@ -609,7 +609,7 @@ try to initialize.
 
 The simplest solution to this problem is to not mix credentials mounted via
 Workspace with those initialized using the process described in this document.
-See [the section on disabling Tekton's credential initialization](#disabling-tektons-build-in-auth).
+See [the section on disabling Tekton's credential initialization](#disabling-tektons-built-in-auth).
 
 #### A Task employs a read-only Workspace or Volume for `$HOME`
 
@@ -619,7 +619,7 @@ credentials that Tekton will try to initialize.
 
 The simplest solution to this problem is to not mix credentials mounted via
 Workspace with those initialized using the process described in this document.
-See [the section on disabling Tekton's credential initialization](#disabling-tektons-build-in-auth).
+See [the section on disabling Tekton's credential initialization](#disabling-tektons-built-in-auth).
 
 #### The contents of `$HOME` are `chown`ed to a different user
 
