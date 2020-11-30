@@ -190,7 +190,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1beta1.TaskRunStatus{
-			Status: statusFailure("\"step-failure\" exited with code 123 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-failure\n"),
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "\"step-failure\" exited with code 123 (image: \"image-id\"); for logs run: kubectl -n foo logs pod -c step-failure\n"),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -214,7 +214,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			Message: "boom",
 		},
 		want: v1beta1.TaskRunStatus{
-			Status: statusFailure("boom"),
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "boom"),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps:    []v1beta1.StepState{},
 				Sidecars: []v1beta1.SidecarState{},
@@ -238,7 +238,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1beta1.TaskRunStatus{
-			Status: statusFailure("OOMKilled"),
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "OOMKilled"),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -259,7 +259,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 		desc:      "failure-unspecified",
 		podStatus: corev1.PodStatus{Phase: corev1.PodFailed},
 		want: v1beta1.TaskRunStatus{
-			Status: statusFailure("build failed for unspecified reasons."),
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "build failed for unspecified reasons."),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps:    []v1beta1.StepState{},
 				Sidecars: []v1beta1.SidecarState{},
@@ -367,7 +367,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1beta1.TaskRunStatus{
-			Status: statusPending(ReasonCreateContainerConfigError, "Pending"),
+			Status: statusFailure(ReasonCreateContainerConfigError, "Failed to create pod due to config error"),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps:    []v1beta1.StepState{},
 				Sidecars: []v1beta1.SidecarState{},
@@ -679,7 +679,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}},
 		},
 		want: v1beta1.TaskRunStatus{
-			Status: statusFailure("build failed for unspecified reasons."),
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "build failed for unspecified reasons."),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
@@ -945,7 +945,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 		},
 	}
 	wantTr := v1beta1.TaskRunStatus{
-		Status: statusFailure("\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n"),
+		Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "\"step-non-json\" exited with code 1 (image: \"image\"); for logs run: kubectl -n foo logs pod -c step-non-json\n"),
 		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			PodName: "pod",
 			Steps: []v1beta1.StepState{{
@@ -1114,7 +1114,7 @@ func TestMarkStatusRunning(t *testing.T) {
 
 func TestMarkStatusFailure(t *testing.T) {
 	trs := v1beta1.TaskRunStatus{}
-	MarkStatusFailure(&trs, "failure message")
+	MarkStatusFailure(&trs, v1beta1.TaskRunReasonFailed.String(), "failure message")
 
 	expected := &apis.Condition{
 		Type:    apis.ConditionSucceeded,
@@ -1150,9 +1150,9 @@ func statusRunning() duckv1beta1.Status {
 	return trs.Status
 }
 
-func statusFailure(message string) duckv1beta1.Status {
+func statusFailure(reason, message string) duckv1beta1.Status {
 	var trs v1beta1.TaskRunStatus
-	MarkStatusFailure(&trs, message)
+	MarkStatusFailure(&trs, reason, message)
 	return trs.Status
 }
 

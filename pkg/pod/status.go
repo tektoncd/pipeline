@@ -271,7 +271,7 @@ func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (
 func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
-		MarkStatusFailure(trs, msg)
+		MarkStatusFailure(trs, v1beta1.TaskRunReasonFailed.String(), msg)
 	} else {
 		MarkStatusSuccess(trs)
 	}
@@ -285,19 +285,14 @@ func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) 
 	case corev1.PodRunning:
 		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	case corev1.PodPending:
-		var reason, msg string
 		switch {
 		case IsPodExceedingNodeResources(pod):
-			reason = ReasonExceededNodeResources
-			msg = "TaskRun Pod exceeded available resources"
+			MarkStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
 		case IsPodHitConfigError(pod):
-			reason = ReasonCreateContainerConfigError
-			msg = getWaitingMessage(pod)
+			MarkStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
 		default:
-			reason = ReasonPending
-			msg = getWaitingMessage(pod)
+			MarkStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
 		}
-		MarkStatusRunning(trs, reason, msg)
 	}
 }
 
@@ -382,7 +377,7 @@ func IsPodExceedingNodeResources(pod *corev1.Pod) bool {
 // IsPodHitConfigError returns true if the Pod's status undicates there are config error raised
 func IsPodHitConfigError(pod *corev1.Pod) bool {
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == "CreateContainerConfigError" {
+		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == ReasonCreateContainerConfigError {
 			return true
 		}
 	}
@@ -426,12 +421,12 @@ func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 	})
 }
 
-// MarkStatusFailure sets taskrun status to failure
-func MarkStatusFailure(trs *v1beta1.TaskRunStatus, message string) {
+// MarkStatusFailure sets taskrun status to failure with specified reason
+func MarkStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
-		Reason:  v1beta1.TaskRunReasonFailed.String(),
+		Reason:  reason,
 		Message: message,
 	})
 }
