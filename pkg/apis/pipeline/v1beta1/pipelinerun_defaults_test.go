@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -66,7 +67,7 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 		{
 			desc: "pod template is not nil",
 			prs: &v1beta1.PipelineRunSpec{
-				PodTemplate: &v1beta1.PodTemplate{
+				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
@@ -75,7 +76,7 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			want: &v1beta1.PipelineRunSpec{
 				ServiceAccountName: config.DefaultServiceAccountValue,
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-				PodTemplate: &v1beta1.PodTemplate{
+				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
@@ -215,7 +216,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
-				PodTemplate: &v1beta1.PodTemplate{
+				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
@@ -241,7 +242,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		in: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
-				PodTemplate: &v1beta1.PodTemplate{
+				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label2": "value2",
 					},
@@ -253,7 +254,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
-				PodTemplate: &v1beta1.PodTemplate{
+				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label2": "value2",
 					},

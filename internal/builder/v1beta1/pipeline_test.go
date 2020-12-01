@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -282,7 +283,7 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 					Name: "my-special-resource",
 				},
 			}},
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				NodeSelector: map[string]string{
 					"label": "value",
 				},

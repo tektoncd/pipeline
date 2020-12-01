@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -210,7 +211,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
-	podTemplate := v1beta1.PodTemplate{}
+	podTemplate := pod.Template{}
 
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
