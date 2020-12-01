@@ -98,13 +98,13 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		return fmt.Errorf("error checking for known_hosts file: %w", err)
 	}
 	if !hasKnownHosts {
-		if _, err := run(logger, "", "config", "--global", "core.sshCommand", sshMissingKnownHostsSSHCommand); err != nil {
+		if _, err := run(logger, "", "config", "core.sshCommand", sshMissingKnownHostsSSHCommand); err != nil {
 			err = fmt.Errorf("error disabling strict host key checking: %w", err)
 			logger.Warnf(err.Error())
 			return err
 		}
 	}
-	if _, err := run(logger, "", "config", "--global", "http.sslVerify", strconv.FormatBool(spec.SSLVerify)); err != nil {
+	if _, err := run(logger, "", "config", "http.sslVerify", strconv.FormatBool(spec.SSLVerify)); err != nil {
 		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
 		return err
 	}
