@@ -385,9 +385,9 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 	} {
 		for taskName, expected := range tt.expectedSAs {
 			t.Run(tt.name, func(t *testing.T) {
-				sa, _ := tt.pr.GetTaskRunSpecs(taskName)
-				if expected != sa {
-					t.Errorf("wrong service account: got: %v, want: %v", sa, expected)
+				s := tt.pr.GetTaskRunSpec(taskName)
+				if expected != s.TaskServiceAccountName {
+					t.Errorf("wrong service account: got: %v, want: %v", s.TaskServiceAccountName, expected)
 				}
 			})
 		}
@@ -428,12 +428,12 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 	} {
 		for taskName, values := range tt.expectedPodTemplates {
 			t.Run(tt.name, func(t *testing.T) {
-				sa, taskPodTemplate := tt.pr.GetTaskRunSpecs(taskName)
-				if values[0] != taskPodTemplate.SchedulerName {
-					t.Errorf("wrong task podtemplate scheduler name: got: %v, want: %v", taskPodTemplate.SchedulerName, values[0])
+				s := tt.pr.GetTaskRunSpec(taskName)
+				if values[0] != s.TaskPodTemplate.SchedulerName {
+					t.Errorf("wrong task podtemplate scheduler name: got: %v, want: %v", s.TaskPodTemplate.SchedulerName, values[0])
 				}
-				if values[1] != sa {
-					t.Errorf("wrong service account: got: %v, want: %v", sa, values[1])
+				if values[1] != s.TaskServiceAccountName {
+					t.Errorf("wrong service account: got: %v, want: %v", s.TaskServiceAccountName, values[1])
 				}
 			})
 		}

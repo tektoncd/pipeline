@@ -425,20 +425,23 @@ type PipelineTaskRunSpec struct {
 	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
 }
 
-// GetTaskRunSpecs returns the task specific spec for a given
+// GetTaskRunSpec returns the task specific spec for a given
 // PipelineTask if configured, otherwise it returns the PipelineRun's default.
-func (pr *PipelineRun) GetTaskRunSpecs(pipelineTaskName string) (string, *PodTemplate) {
-	serviceAccountName := pr.GetServiceAccountName(pipelineTaskName)
-	taskPodTemplate := pr.Spec.PodTemplate
+func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSpec {
+	s := PipelineTaskRunSpec{
+		PipelineTaskName:       pipelineTaskName,
+		TaskServiceAccountName: pr.GetServiceAccountName(pipelineTaskName),
+		TaskPodTemplate:        pr.Spec.PodTemplate,
+	}
 	for _, task := range pr.Spec.TaskRunSpecs {
 		if task.PipelineTaskName == pipelineTaskName {
 			if task.TaskPodTemplate != nil {
-				taskPodTemplate = task.TaskPodTemplate
+				s.TaskPodTemplate = task.TaskPodTemplate
 			}
 			if task.TaskServiceAccountName != "" {
-				serviceAccountName = task.TaskServiceAccountName
+				s.TaskServiceAccountName = task.TaskServiceAccountName
 			}
 		}
 	}
-	return serviceAccountName, taskPodTemplate
+	return s
 }
