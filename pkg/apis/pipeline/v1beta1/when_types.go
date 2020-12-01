@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
@@ -102,11 +103,11 @@ func (we *WhenExpression) hasVariable() bool {
 }
 
 func (we *WhenExpression) applyReplacements(replacements map[string]string) WhenExpression {
-	replacedInput := ApplyReplacements(we.GetInput(), replacements)
+	replacedInput := substitution.ApplyReplacements(we.GetInput(), replacements)
 
 	var replacedValues []string
 	for _, val := range we.GetValues() {
-		replacedValues = append(replacedValues, ApplyReplacements(val, replacements))
+		replacedValues = append(replacedValues, substitution.ApplyReplacements(val, replacements))
 	}
 
 	return WhenExpression{Input: replacedInput, Operator: we.GetOperator(), Values: replacedValues}
