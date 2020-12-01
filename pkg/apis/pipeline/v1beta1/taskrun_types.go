@@ -351,16 +351,6 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetBuildPodRef for task
-func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
-	return corev1.ObjectReference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}
-}
-
 // GetPipelineRunPVCName for taskrun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
 	if tr == nil {

@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -143,16 +142,6 @@ type PipelineRunList struct {
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.
 type PipelineTaskRun = v1beta1.PipelineTaskRun
-
-// GetTaskRunRef for pipelinerun
-func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
-	return corev1.ObjectReference{
-		APIVersion: SchemeGroupVersion.String(),
-		Kind:       "TaskRun",
-		Namespace:  pr.Namespace,
-		Name:       pr.Name,
-	}
-}
 
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() metav1.OwnerReference {
