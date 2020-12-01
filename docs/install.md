@@ -8,7 +8,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 * [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters)
 * [Configuring High Availability](#configuring-high-availability)
-* [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
+* [Configuring Tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
 * [Next steps](#next-steps)
 
@@ -348,6 +348,10 @@ not running.
   `Pipeline`, `PipelineRun` and `TaskRun`. By default, this option is
   disabled (`"false"`), which means it is disallowed to use the
   `bundle` field.
+
+- `disable-creds-init` - set this flag to `"true"` to [disable Tekton's built-in credential initialization](auth.md#disabling-tektons-built-in-auth) 
+and use Workspaces to mount credentials from Secrets instead.
+The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/3399).
 
 For example:
 
