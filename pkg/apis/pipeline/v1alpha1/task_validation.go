@@ -51,7 +51,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
-	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
+	mergedSteps, err := v1beta1.MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("error merging step template and steps: %s", err),
