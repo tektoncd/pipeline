@@ -63,7 +63,7 @@ done
 # Script entry point.
 header "Running load tests"
 
-report_go_test -tags load -timeout ${TIMEOUT} -taskrun-num ${TASKRUN_NUM} ./test/... || failed=1
+report_go_test -tags load -timeout ${TIMEOUT} ./test/ -taskrun-num ${TASKRUN_NUM}  || failed=1
 
 (( failed )) && fail_test
 success
