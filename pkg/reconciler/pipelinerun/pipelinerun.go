@@ -651,7 +651,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
 
-	serviceAccountName, podTemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
+	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -662,9 +662,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		},
 		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
-			ServiceAccountName: serviceAccountName,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTaskRunTimeout(ctx, pr, rprt),
-			PodTemplate:        podTemplate,
+			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
@@ -889,7 +889,8 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
 	}
-	serviceAccountName, podTemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
+
+	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
@@ -900,13 +901,13 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec:           taskSpec,
-			ServiceAccountName: serviceAccountName,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Params:             rcc.PipelineTaskCondition.Params,
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: rcc.ToTaskResourceBindings(),
 			},
 			Timeout:     getTaskRunTimeout(ctx, pr, rprt),
-			PodTemplate: podTemplate,
+			PodTemplate: taskRunSpec.TaskPodTemplate,
 		}}
 
 	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
