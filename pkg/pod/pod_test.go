@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -238,7 +239,7 @@ func TestPodBuild(t *testing.T) {
 			}}},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				SecurityContext: &corev1.PodSecurityContext{
 					Sysctls: []corev1.Sysctl{
 						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
@@ -880,7 +881,7 @@ script-heredoc-randomly-generated-78c5n
 			},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				SchedulerName: "there-scheduler",
 			},
 		},
@@ -932,7 +933,7 @@ script-heredoc-randomly-generated-78c5n
 			},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
 			},
 		},
@@ -983,7 +984,7 @@ script-heredoc-randomly-generated-78c5n
 			},
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				HostNetwork: true,
 			},
 		},
@@ -1038,7 +1039,7 @@ script-heredoc-randomly-generated-78c5n
 			"pipeline.tekton.dev/affinity-assistant": "random-name-123",
 		},
 		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{},
+			PodTemplate: &pod.Template{},
 		},
 		want: &corev1.PodSpec{
 			Affinity: &corev1.Affinity{

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -451,7 +452,7 @@ func TaskRunNilTimeout(spec *v1beta1.TaskRunSpec) {
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1beta1.TaskRunSpec) {
 		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1beta1.PodTemplate{}
+			spec.PodTemplate = &pod.Template{}
 		}
 		spec.PodTemplate.NodeSelector = values
 	}
@@ -720,7 +721,7 @@ func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
 }
 
 // TaskRunPodTemplate add a custom PodTemplate to the TaskRun
-func TaskRunPodTemplate(podTemplate *v1beta1.PodTemplate) TaskRunSpecOp {
+func TaskRunPodTemplate(podTemplate *pod.Template) TaskRunSpecOp {
 	return func(spec *v1beta1.TaskRunSpec) {
 		spec.PodTemplate = podTemplate
 	}

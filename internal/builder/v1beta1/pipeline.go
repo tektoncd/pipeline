@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -527,7 +528,7 @@ func PipelineRunNilTimeout(prs *v1beta1.PipelineRunSpec) {
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {
 		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
+			prs.PodTemplate = &pod.Template{}
 		}
 		prs.PodTemplate.NodeSelector = values
 	}

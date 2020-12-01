@@ -33,6 +33,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -3334,7 +3335,7 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tr := &v1beta1.TaskRun{
 				Spec: v1beta1.TaskRunSpec{
-					PodTemplate: &v1beta1.PodTemplate{},
+					PodTemplate: &pod.Template{},
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: tc.annotations,

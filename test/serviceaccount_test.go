@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -271,7 +272,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 			ServiceAccountName: "sa1",
 			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
 				PipelineTaskName: "task1",
-				TaskPodTemplate: &v1beta1.PodTemplate{
+				TaskPodTemplate: &pod.Template{
 					DNSPolicy: &dnsPolicy,
 				},
 			}},

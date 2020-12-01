@@ -33,6 +33,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -1744,7 +1745,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 			tb.PipelineTaskRunSpecs([]v1beta1.PipelineTaskRunSpec{{
 				PipelineTaskName:       "hello-world-1",
 				TaskServiceAccountName: "custom-sa",
-				TaskPodTemplate: &v1beta1.PodTemplate{
+				TaskPodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"workloadtype": "tekton",
 					},
@@ -1784,7 +1785,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
 			tb.TaskRunServiceAccountName("custom-sa"),
-			tb.TaskRunPodTemplate(&v1beta1.PodTemplate{
+			tb.TaskRunPodTemplate(&pod.Template{
 				NodeSelector: map[string]string{
 					"workloadtype": "tekton",
 				},

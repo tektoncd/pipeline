@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -405,17 +406,17 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 			pr: &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1beta1.PipelineRunSpec{
-					PodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTest"},
+					PodTemplate:        &pod.Template{SchedulerName: "scheduleTest"},
 					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
 					ServiceAccountName: "defaultSA",
 					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
 						PipelineTaskName:       "taskNameOne",
 						TaskServiceAccountName: "TaskSAOne",
-						TaskPodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTestOne"},
+						TaskPodTemplate:        &pod.Template{SchedulerName: "scheduleTestOne"},
 					}, {
 						PipelineTaskName:       "taskNameTwo",
 						TaskServiceAccountName: "newTaskTwo",
-						TaskPodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTestTwo"},
+						TaskPodTemplate:        &pod.Template{SchedulerName: "scheduleTestTwo"},
 					}},
 				},
 			},

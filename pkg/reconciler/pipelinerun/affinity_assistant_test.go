@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
@@ -89,7 +90,7 @@ func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t 
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
 		Spec: v1beta1.PipelineRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				Tolerations: []corev1.Toleration{{
 					Key:      "key",
 					Operator: "Equal",
