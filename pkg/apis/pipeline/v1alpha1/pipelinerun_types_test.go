@@ -63,26 +63,6 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 	}
 }
 
-func TestPipelineRun_TaskRunref(t *testing.T) {
-	p := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-name",
-			Namespace: "test-ns",
-		},
-	}
-
-	expectTaskRunRef := corev1.ObjectReference{
-		APIVersion: "tekton.dev/v1alpha1",
-		Kind:       "TaskRun",
-		Namespace:  p.Namespace,
-		Name:       p.Name,
-	}
-
-	if d := cmp.Diff(p.GetTaskRunRef(), expectTaskRunRef); d != "" {
-		t.Fatalf("Taskrun reference mismatch; diff %s", diff.PrintWantGot(d))
-	}
-}
-
 func TestInitializeConditions(t *testing.T) {
 	p := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{

@@ -427,7 +427,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 
-	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
+	if err := c.tracker.TrackReference(tracker.Reference{
+		APIVersion: "v1",
+		Kind:       "Pod",
+		Namespace:  tr.Namespace,
+		Name:       tr.Name,
+	}, tr); err != nil {
 		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}

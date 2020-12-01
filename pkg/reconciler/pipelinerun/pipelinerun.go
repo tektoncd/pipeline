@@ -203,7 +203,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
-	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
+	if err := c.tracker.TrackReference(tracker.Reference{
+		APIVersion: v1beta1.SchemeGroupVersion.String(),
+		Kind:       "TaskRun",
+		Namespace:  pr.GetNamespace(),
+		Name:       pr.GetName(),
+	}, pr); err != nil {
 		logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}

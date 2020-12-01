@@ -64,16 +64,6 @@ func (pr *PipelineRun) GetName() string {
 	return pr.ObjectMeta.GetName()
 }
 
-// GetTaskRunRef for pipelinerun
-func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
-	return corev1.ObjectReference{
-		APIVersion: SchemeGroupVersion.String(),
-		Kind:       "TaskRun",
-		Namespace:  pr.Namespace,
-		Name:       pr.Name,
-	}
-}
-
 // GetStatusCondition returns the task run status as a ConditionAccessor
 func (pr *PipelineRun) GetStatusCondition() apis.ConditionAccessor {
 	return &pr.Status
