@@ -687,11 +687,11 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		expectedFinalTasks: PipelineRunState{},
 	}}
 	for _, tc := range tcs {
-		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks))
+		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())
 		if err != nil {
 			t.Fatalf("Unexpected error while buildig DAG for pipelineTasks %v: %v", tc.DAGTasks, err)
 		}
-		finalGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks))
+		finalGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks), map[string][]string{})
 		if err != nil {
 			t.Fatalf("Unexpected error while buildig DAG for final pipelineTasks %v: %v", tc.finalTasks, err)
 		}
@@ -1059,11 +1059,11 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := tb.PipelineRun("pipelinerun-final-tasks")
-			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks))
+			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks), v1beta1.PipelineTaskList(tc.dagTasks).Deps())
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig graph for DAG tasks %v: %v", tc.dagTasks, err)
 			}
-			df, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks))
+			df, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks), map[string][]string{})
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig graph for final tasks %v: %v", tc.finalTasks, err)
 			}

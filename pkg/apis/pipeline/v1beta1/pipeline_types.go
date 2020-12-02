@@ -194,6 +194,7 @@ func (pt PipelineTask) resourceDeps() []string {
 			resourceDeps = append(resourceDeps, rd.From...)
 		}
 	}
+
 	// Add any dependents from conditional resources.
 	for _, cond := range pt.Conditions {
 		for _, rd := range cond.Resources {
@@ -209,6 +210,7 @@ func (pt PipelineTask) resourceDeps() []string {
 			}
 		}
 	}
+
 	// Add any dependents from task results
 	for _, param := range pt.Params {
 		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
@@ -253,6 +255,14 @@ func contains(s string, arr []string) bool {
 }
 
 type PipelineTaskList []PipelineTask
+
+func (l PipelineTaskList) Deps() map[string][]string {
+	deps := map[string][]string{}
+	for _, pt := range l {
+		deps[pt.HashKey()] = pt.Deps()
+	}
+	return deps
+}
 
 func (l PipelineTaskList) Items() []dag.Task {
 	tasks := []dag.Task{}

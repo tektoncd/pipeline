@@ -201,6 +201,14 @@ func (l PipelineTaskList) Items() []dag.Task {
 	return tasks
 }
 
+func (l PipelineTaskList) Deps() map[string][]string {
+	deps := map[string][]string{}
+	for _, pt := range l {
+		deps[pt.HashKey()] = pt.Deps()
+	}
+	return deps
+}
+
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
 type PipelineTaskParam = v1beta1.PipelineTaskParam
 

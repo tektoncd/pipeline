@@ -67,17 +67,16 @@ func (g *Graph) addPipelineTask(t Task) (*Node, error) {
 }
 
 // Build returns a valid pipeline Graph. Returns error if the pipeline is invalid
-func Build(tasks Tasks) (*Graph, error) {
+func Build(tasks Tasks, deps map[string][]string) (*Graph, error) {
 	d := newGraph()
 
-	deps := map[string][]string{}
 	// Add all Tasks mentioned in the `PipelineSpec`
 	for _, pt := range tasks.Items() {
 		if _, err := d.addPipelineTask(pt); err != nil {
 			return nil, fmt.Errorf("task %s is already present in Graph, can't add it again: %w", pt.HashKey(), err)
 		}
-		deps[pt.HashKey()] = pt.Deps()
 	}
+
 	// Process all from and runAfter constraints to add task dependency
 	for pt, taskDeps := range deps {
 		for _, previousTask := range taskDeps {
