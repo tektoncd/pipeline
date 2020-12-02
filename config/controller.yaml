@@ -111,8 +111,6 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
-          # User 65532 is the distroless nonroot user ID
-          runAsUser: 65532
         ports:
         - name: probes
           containerPort: 8080
