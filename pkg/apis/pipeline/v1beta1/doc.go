@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1beta1 contains API Schema definitions for the pipeline v1beta1 API group
+// Package v1beta1 contains the v1beta1 versions of the pipeline apis.
+//
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=github.com/tektoncd/pipeline/pkg/apis/pipeline

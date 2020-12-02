@@ -37,6 +37,7 @@ var _ apis.Validatable = (*Pipeline)(nil)
 
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
+// Implements apis.Validatable.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
@@ -44,6 +45,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
 // of Tasks expressed in the Pipeline makes sense.
+// Implements apis.Validatable.
 func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
 		errs = errs.Also(apis.ErrGeneric("expected at least one, got none", "description", "params", "resources", "tasks", "workspaces"))

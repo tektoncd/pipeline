@@ -48,7 +48,7 @@ type ParamSpec struct {
 	Default *ArrayOrString `json:"default,omitempty"`
 }
 
-// SetDefaults set the default type
+// SetDefaults set the default type, it implements apis.Defaultable interface.
 func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 	if pp != nil && pp.Type == "" {
 		if pp.Default != nil {
@@ -84,11 +84,10 @@ const (
 // AllParamTypes can be used for ParamType validation.
 var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray}
 
-// ArrayOrString is modeled after IntOrString in kubernetes/apimachinery:
-
 // ArrayOrString is a type that can hold a single string or string array.
 // Used in JSON unmarshalling so that a single JSON field can accept
 // either an individual string or an array of strings.
+// ArrayOrString is modeled after IntOrString in kubernetes/apimachinery.
 type ArrayOrString struct {
 	Type      ParamType `json:"type"` // Represents the stored type of ArrayOrString.
 	StringVal string    `json:"stringVal"`

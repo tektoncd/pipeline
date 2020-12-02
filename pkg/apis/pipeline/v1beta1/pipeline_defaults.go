@@ -24,10 +24,12 @@ import (
 
 var _ apis.Defaultable = (*Pipeline)(nil)
 
+// SetDefaults implements apis.Defaultable.
 func (p *Pipeline) SetDefaults(ctx context.Context) {
 	p.Spec.SetDefaults(ctx)
 }
 
+// SetDefaults implements apis.Defaultable.
 func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	for _, pt := range ps.Tasks {
 		if pt.TaskRef != nil {

@@ -39,14 +39,20 @@ type Pipeline struct {
 	Spec PipelineSpec `json:"spec"`
 }
 
+// PipelineMetadata returns the Pipeline metadata.
+// Implements PipelineInterface.
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
 	return p.ObjectMeta
 }
 
+// PipelineSpec returns the Pipeline spec.
+// Implements PipelineInterface.
 func (p *Pipeline) PipelineSpec() PipelineSpec {
 	return p.Spec
 }
 
+// Copy deep copies the Pipeline.
+// Implements PipelineInterface.
 func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
 }
@@ -145,6 +151,7 @@ type PipelineTask struct {
 	// outputs.
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
+
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
@@ -161,14 +168,17 @@ type PipelineTask struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
+// TaskSpecMetadata returns the PipelineTask metadata
 func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 	return pt.TaskSpec.Metadata
 }
 
+// HashKey implements dag.Task.
 func (pt PipelineTask) HashKey() string {
 	return pt.Name
 }
 
+// Deps implements dag.Task.
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
 
@@ -254,6 +264,7 @@ func contains(s string, arr []string) bool {
 	return false
 }
 
+// PipelineTaskList is a list of PipelineTask.
 type PipelineTaskList []PipelineTask
 
 func (l PipelineTaskList) Deps() map[string][]string {
@@ -301,8 +312,10 @@ type PipelineDeclaredResource struct {
 	// inputs or outputs, and it does not correspond to the actual names of the
 	// PipelineResources that will be bound in the PipelineRun.
 	Name string `json:"name"`
+
 	// Type is the type of the PipelineResource.
 	Type PipelineResourceType `json:"type"`
+
 	// Optional declares the resource as optional.
 	// optional: true - the resource is considered optional
 	// optional: false - the resource is considered required (default/equivalent of not specifying it)
@@ -315,6 +328,7 @@ type PipelineTaskResources struct {
 	// Inputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
 	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
+
 	// Outputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
 	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
@@ -326,8 +340,10 @@ type PipelineTaskResources struct {
 type PipelineTaskInputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
+
 	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
+
 	// From is the list of PipelineTask names that the resource has to come from.
 	// (Implies an ordering in the execution graph.)
 	// +optional
@@ -340,6 +356,7 @@ type PipelineTaskInputResource struct {
 type PipelineTaskOutputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
+
 	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
 }

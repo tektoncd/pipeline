@@ -30,13 +30,13 @@ import (
 
 var _ apis.Validatable = (*TaskRun)(nil)
 
-// Validate taskrun
+// Validate implements apis.Validatable.
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
-// Validate taskrun spec
+// Validate implements apis.Validatable.
 func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	cfg := config.FromContextOrDefaults(ctx)
 	// can't have both taskRef and taskSpec at the same time

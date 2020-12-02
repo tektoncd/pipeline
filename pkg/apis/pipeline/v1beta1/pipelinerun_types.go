@@ -59,6 +59,8 @@ type PipelineRun struct {
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
+// GetName returns the name of the PipelineRun.
+// It implements kmeta.Accessor.
 func (pr *PipelineRun) GetName() string {
 	return pr.ObjectMeta.GetName()
 }
@@ -88,6 +90,7 @@ func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
 }
 
+// GetTimeout returns the set timeout for the PipelineRun or a default provided by the context.
 func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if pr.Spec.Timeout == nil {

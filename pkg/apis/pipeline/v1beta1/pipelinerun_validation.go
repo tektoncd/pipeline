@@ -28,13 +28,13 @@ import (
 
 var _ apis.Validatable = (*PipelineRun)(nil)
 
-// Validate pipelinerun
+// Validate implements apis.Validatable.
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
-// Validate pipelinerun spec
+// Validate implements apis.Validatable.
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	cfg := config.FromContextOrDefaults(ctx)
 	// can't have both pipelineRef and pipelineSpec at the same time

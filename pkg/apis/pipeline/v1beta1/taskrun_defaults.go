@@ -29,6 +29,7 @@ var _ apis.Defaultable = (*TaskRun)(nil)
 
 const managedByLabelKey = "app.kubernetes.io/managed-by"
 
+// SetDefaults implements apis.Defaultable.
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	ctx = apis.WithinParent(ctx, tr.ObjectMeta)
 	tr.Spec.SetDefaults(ctx)
@@ -44,6 +45,7 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	}
 }
 
+// SetDefaults implements apis.Defaultable.
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {

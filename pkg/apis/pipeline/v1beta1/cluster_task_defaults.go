@@ -24,6 +24,7 @@ import (
 
 var _ apis.Defaultable = (*ClusterTask)(nil)
 
+// SetDefaults implements apis.Defaultable.
 func (t *ClusterTask) SetDefaults(ctx context.Context) {
 	t.Spec.SetDefaults(ctx)
 }

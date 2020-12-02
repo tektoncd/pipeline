@@ -25,6 +25,7 @@ import (
 
 var _ apis.Validatable = (*ClusterTask)(nil)
 
+// Validate implements apis.Validatable
 func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))

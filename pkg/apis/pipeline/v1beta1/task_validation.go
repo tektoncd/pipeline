@@ -33,6 +33,7 @@ import (
 
 var _ apis.Validatable = (*Task)(nil)
 
+// Validate implements apis.Validatable.
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
@@ -70,6 +71,7 @@ func validateResults(ctx context.Context, results []TaskResult) (errs *apis.Fiel
 	return errs
 }
 
+// Validate implements apis.Validatable.
 func (tr TaskResult) Validate(_ context.Context) *apis.FieldError {
 	if !resultNameFormatRegex.MatchString(tr.Name) {
 		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))

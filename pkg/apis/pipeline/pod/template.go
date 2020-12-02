@@ -22,7 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// PodTemplate holds pod specific configuration
+// Template holds pod specific configuration
 // +k8s:deepcopy-gen=true
 // +k8s:openapi-gen=true
 type Template struct {
@@ -93,6 +93,7 @@ type Template struct {
 	// default.
 	// +optional
 	PriorityClassName *string `json:"priorityClassName,omitempty" protobuf:"bytes,7,opt,name=priorityClassName"`
+
 	// SchedulerName specifies the scheduler to be used to dispatch the Pod
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -106,6 +107,7 @@ type Template struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 }
 
+// Equals returns true if two Template are identical
 func (tpl *Template) Equals(other *Template) bool {
 	if tpl == nil && other == nil {
 		return true

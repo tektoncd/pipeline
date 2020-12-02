@@ -52,14 +52,20 @@ type Task struct {
 	Spec TaskSpec `json:"spec"`
 }
 
+// TaskSpec returns the Task spec.
+// Implements TaskInterface.
 func (t *Task) TaskSpec() TaskSpec {
 	return t.Spec
 }
 
+// TaskMetadata returns the Task metadata.
+// Implements TaskInterface.
 func (t *Task) TaskMetadata() metav1.ObjectMeta {
 	return t.ObjectMeta
 }
 
+// Copy deep copies the ClusterTask.
+// Implements TaskInterface.
 func (t *Task) Copy() TaskObject {
 	return t.DeepCopy()
 }
@@ -140,8 +146,8 @@ type Sidecar struct {
 	Script string `json:"script,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // TaskList contains a list of Task
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TaskList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -164,7 +170,6 @@ type TaskRef struct {
 	Bundle string `json:"bundle,omitempty"`
 }
 
-// Check that Pipeline may be validated and defaulted.
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
 

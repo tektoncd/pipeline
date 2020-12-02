@@ -25,9 +25,9 @@ import (
 
 func TestTypes(t *testing.T) {
 	// Assert that types satisfy webhook interface.
-	// var _ resourcesemantics.GenericCRD = (*v1beta1.ClusterTask)(nil)
+	var _ resourcesemantics.GenericCRD = (*v1beta1.ClusterTask)(nil)
 	var _ resourcesemantics.GenericCRD = (*v1beta1.TaskRun)(nil)
 	var _ resourcesemantics.GenericCRD = (*v1beta1.Task)(nil)
 	var _ resourcesemantics.GenericCRD = (*v1beta1.Pipeline)(nil)
-	// var _ resourcesemantics.GenericCRD = (*v1beta1.Condition)(nil)
+	var _ resourcesemantics.GenericCRD = (*v1beta1.PipelineRun)(nil)
 }
