@@ -144,7 +144,7 @@ func TestBuild_Parallel(t *testing.T) {
 			"c": {Task: c},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -210,7 +210,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zDependsOnX, b, c},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -279,7 +279,7 @@ func TestBuild_FanInFanOut(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{a, dDependsOnA, eRunsAfterA, fDependsOnDAndE, gRunsAfterF},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -358,7 +358,7 @@ func TestBuild_ConditionResources(t *testing.T) {
 		},
 	}
 
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Errorf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -433,7 +433,8 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{a, b, c, d, e, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	tasks := v1beta1.PipelineTaskList(p.Spec.Tasks)
+	g, err := dag.Build(tasks, tasks.Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -473,7 +474,7 @@ func TestBuild_ConditionsParamsFromTaskResults(t *testing.T) {
 			Tasks: []v1beta1.PipelineTask{a, xDependsOnA},
 		},
 	}
-	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -656,7 +657,7 @@ func TestBuild_InvalidDAG(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: tc.name},
 				Spec:       tc.spec,
 			}
-			_, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks))
+			_, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
 			if err == nil || !strings.Contains(err.Error(), tc.err) {
 				t.Errorf("expected to see an error for invalid DAG in pipeline %v but had none", tc.spec)
 			}
@@ -694,7 +695,7 @@ func testGraph(t *testing.T) *dag.Graph {
 		Name:     "z",
 		RunAfter: []string{"x"},
 	}}
-	g, err := dag.Build(v1beta1.PipelineTaskList(tasks))
+	g, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -487,7 +487,7 @@ func validateFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 // cycle or that they rely on values from Tasks that ran previously, and that the PipelineResource
 // is actually an output of the Task it should come from.
 func validateGraph(tasks []PipelineTask) *apis.FieldError {
-	if _, err := dag.Build(PipelineTaskList(tasks)); err != nil {
+	if _, err := dag.Build(PipelineTaskList(tasks), PipelineTaskList(tasks).Deps()); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "tasks")
 	}
 	return nil

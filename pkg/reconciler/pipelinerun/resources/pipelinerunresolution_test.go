@@ -532,7 +532,7 @@ func DagFromState(state PipelineRunState) (*dag.Graph, error) {
 	for _, rprt := range state {
 		pts = append(pts, *rprt.PipelineTask)
 	}
-	return dag.Build(v1beta1.PipelineTaskList(pts))
+	return dag.Build(v1beta1.PipelineTaskList(pts), v1beta1.PipelineTaskList(pts).Deps())
 }
 
 func TestIsSkipped(t *testing.T) {
