@@ -47,7 +47,7 @@ func (p *Pipeline) PipelineSpec() PipelineSpec {
 	return p.Spec
 }
 
-func (p *Pipeline) Copy() PipelineInterface {
+func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
 }
 

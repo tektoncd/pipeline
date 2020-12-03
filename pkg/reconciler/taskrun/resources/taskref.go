@@ -45,8 +45,8 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 	switch {
 	case cfg.FeatureFlags.EnableTektonOCIBundles && tr != nil && tr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
-		// casting it to a TaskInterface.
-		return func(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
+		// casting it to a TaskObject.
+		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
 			// If there is a bundle url at all, construct an OCI resolver to fetch the task.
 			kc, err := k8schain.New(ctx, k8s, k8schain.Options{
 				Namespace:          namespace,
@@ -65,8 +65,8 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			}
 
 			// If the resolved object is already a v1beta1.{Cluster}Task, it should be returnable as a
-			// v1beta1.TaskInterface.
-			if ti, ok := obj.(v1beta1.TaskInterface); ok {
+			// v1beta1.TaskObject.
+			if ti, ok := obj.(v1beta1.TaskObject); ok {
 				return ti, nil
 			}
 
@@ -105,7 +105,7 @@ type LocalTaskRefResolver struct {
 
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Task for any reason.
-func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (v1beta1.TaskInterface, error) {
+func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (v1beta1.TaskObject, error) {
 	if l.Kind == v1beta1.ClusterTaskKind {
 		task, err := l.Tektonclient.TektonV1beta1().ClusterTasks().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
