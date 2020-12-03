@@ -40,8 +40,8 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	switch {
 	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
-		// casting it to a PipelineInterface.
-		return func(ctx context.Context, name string) (v1beta1.PipelineInterface, error) {
+		// casting it to a PipelineObject.
+		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
 			// If there is a bundle url at all, construct an OCI resolver to fetch the pipeline.
 			kc, err := k8schain.New(ctx, k8s, k8schain.Options{
 				Namespace:          namespace,
@@ -56,7 +56,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			if err != nil {
 				return nil, err
 			}
-			if pipeline, ok := obj.(v1beta1.PipelineInterface); ok {
+			if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
 				return pipeline, nil
 			}
 
@@ -86,7 +86,7 @@ type LocalPipelineRefResolver struct {
 
 // GetPipeline will resolve a Pipeline from the local cluster using a versioned Tekton client. It will
 // return an error if it can't find an appropriate Pipeline for any reason.
-func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string) (v1beta1.PipelineInterface, error) {
+func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
 		return nil, fmt.Errorf("Must specify namespace to resolve reference to pipeline %s", name)

@@ -60,7 +60,7 @@ func (t *Task) TaskMetadata() metav1.ObjectMeta {
 	return t.ObjectMeta
 }
 
-func (t *Task) Copy() TaskInterface {
+func (t *Task) Copy() TaskObject {
 	return t.DeepCopy()
 }
 

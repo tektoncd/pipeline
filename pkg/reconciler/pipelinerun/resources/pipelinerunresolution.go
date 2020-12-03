@@ -319,7 +319,7 @@ func ResolvePipelineRunTask(
 
 	// Find the Task that this PipelineTask is using
 	var (
-		t        v1beta1.TaskInterface
+		t        v1beta1.TaskObject
 		err      error
 		spec     v1beta1.TaskSpec
 		taskName string
