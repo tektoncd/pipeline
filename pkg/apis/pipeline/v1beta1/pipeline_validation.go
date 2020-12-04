@@ -144,6 +144,11 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 		if t.TaskRef.Kind == "" {
 			errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify kind", "taskRef.kind"))
 		}
+		// Conditions are deprecated so the effort to support them with custom tasks is not justified.
+		// When expressions should be used instead.
+		if len(t.Conditions) > 0 {
+			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support conditions - use when expressions instead", "conditions"))
+		}
 		// TODO(#3133): Support these features if possible.
 		if t.Retries > 0 {
 			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support retries", "retries"))
