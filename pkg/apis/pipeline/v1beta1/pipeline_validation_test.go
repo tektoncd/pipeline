@@ -583,6 +583,20 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		},
 		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
+		name: "pipelinetask custom task doesn't support conditions",
+		tasks: []PipelineTask{{
+			Name: "foo",
+			Conditions: []PipelineTaskCondition{{
+				ConditionRef: "some-condition",
+			}},
+			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: custom tasks do not support conditions - use when expressions instead`,
+			Paths:   []string{"tasks[0].conditions"},
+		},
+		wc: enableFeature(t, "enable-custom-tasks"),
+	}, {
 		name: "pipelinetask custom task doesn't support retries",
 		tasks: []PipelineTask{{
 			Name:    "foo",

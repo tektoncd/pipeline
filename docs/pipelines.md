@@ -972,6 +972,8 @@ Pipelines do not directly support passing the following items to custom tasks:
 * Service account name
 * Pod templates
 
+A pipeline task that references a custom task cannot reference `Conditions`.
+`Conditions` are deprecated.  Use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
 
 ## Code examples
 
