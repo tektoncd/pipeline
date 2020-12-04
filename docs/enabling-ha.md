@@ -36,10 +36,12 @@ The leader election can be configured via the [config-leader-election.yaml](../.
 
 | Parameter            | Default  |
 | -------------------- | -------- |
-| `data.resourceLock`  | "leases" |
+| `data.buckets`       | 1        |
 | `data.leaseDuration` | 15s      |
 | `data.renewDeadline` | 10s      |
 | `data.retryPeriod`   | 2s       |
+
+_Note_: When setting `data.buckets`, the underlying Knative library only allows a value between 1 and 10, making 10 the maximum number of allowed buckets.
 
 ## Disabling leader election
 
