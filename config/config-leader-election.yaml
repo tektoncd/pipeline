@@ -22,7 +22,6 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
 data:
   # An inactive but valid configuration follows; see example.
-  resourceLock: "leases"
   leaseDuration: "15s"
   renewDeadline: "10s"
   retryPeriod: "2s"
