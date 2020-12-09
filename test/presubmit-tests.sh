@@ -57,9 +57,15 @@ function check_yaml_lint() {
     results_banner "YAML Lint" 0
 }
 
+function ko_resolve() {
+  header "Running `ko resolve`"
+  KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config 1>/dev/null
+}
+
 function post_build_tests() {
   check_go_lint
   check_yaml_lint
+  ko_resolve
 }
 
 # We use the default build, unit and integration test runners.
