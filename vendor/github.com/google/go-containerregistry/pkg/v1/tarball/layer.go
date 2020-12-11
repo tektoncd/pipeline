@@ -163,6 +163,7 @@ func computeDiffID(opener Opener, compressed bool) (v1.Hash, error) {
 	if err != nil {
 		return v1.Hash{}, err
 	}
+	defer reader.Close()
 
 	diffID, _, err := v1.SHA256(reader)
 	return diffID, err

@@ -175,6 +175,7 @@ func extract(img v1.Image, w io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("reading layer contents: %v", err)
 		}
+		defer layerReader.Close()
 		tarReader := tar.NewReader(layerReader)
 		for {
 			header, err := tarReader.Next()
@@ -300,6 +301,7 @@ func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting layer: %v", err)
 	}
+	defer layerReader.Close()
 	w := new(bytes.Buffer)
 	tarWriter := tar.NewWriter(w)
 	defer tarWriter.Close()

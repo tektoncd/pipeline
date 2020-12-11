@@ -199,6 +199,13 @@ func extractFileFromTar(opener Opener, filePath string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	close := true
+	defer func() {
+		if close {
+			f.Close()
+		}
+	}()
+
 	tf := tar.NewReader(f)
 	for {
 		hdr, err := tf.Next()
@@ -209,6 +216,7 @@ func extractFileFromTar(opener Opener, filePath string) (io.ReadCloser, error) {
 			return nil, err
 		}
 		if hdr.Name == filePath {
+			close = false
 			return tarFile{
 				Reader: tf,
 				Closer: f,

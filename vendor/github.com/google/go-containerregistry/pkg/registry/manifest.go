@@ -23,6 +23,9 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type manifest struct {
@@ -123,6 +126,33 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 			blob:        b.Bytes(),
 			contentType: req.Header.Get("Content-Type"),
 		}
+
+		// If the manifest is a manifest list, check that the manifest
+		// list's constituent manifests are already uploaded.
+		// This isn't strictly required by the registry API, but some
+		// registries require this.
+		if mf.contentType == string(types.OCIImageIndex) ||
+			mf.contentType == string(types.DockerManifestList) {
+
+			im, err := v1.ParseIndexManifest(b)
+			if err != nil {
+				return &regError{
+					Status:  http.StatusNotFound,
+					Code:    "MANIFEST_UNKNOWN",
+					Message: err.Error(),
+				}
+			}
+			for _, desc := range im.Manifests {
+				if _, found := m.manifests[repo][desc.Digest.String()]; !found {
+					return &regError{
+						Status:  http.StatusNotFound,
+						Code:    "MANIFEST_UNKNOWN",
+						Message: fmt.Sprintf("Sub-manifest %q not found", desc.Digest),
+					}
+				}
+			}
+		}
+
 		// Allow future references by target (tag) and immutable digest.
 		// See https://docs.docker.com/engine/reference/commandline/pull/#pull-an-image-by-digest-immutable-identifier.
 		m.manifests[repo][target] = mf
