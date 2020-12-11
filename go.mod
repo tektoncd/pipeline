@@ -9,7 +9,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.6
 	github.com/google/go-cmp v0.5.2
-	github.com/google/go-containerregistry v0.1.3
+	github.com/google/go-containerregistry v0.2.1
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
@@ -19,7 +19,6 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5
 	go.opencensus.io v0.22.4
 	go.uber.org/zap v1.15.0
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	k8s.io/api v0.18.8
@@ -35,7 +34,6 @@ require (
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.12.9-0.20191108183826-59d068f8d8ff
 	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.4.0+incompatible
 )
 
 // Pin k8s deps to v0.18.8

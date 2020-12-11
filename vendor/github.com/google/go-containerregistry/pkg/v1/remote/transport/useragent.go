@@ -14,19 +14,70 @@
 
 package transport
 
-import "net/http"
-
-const (
-	transportName = "go-containerregistry"
+import (
+	"fmt"
+	"net/http"
+	"runtime/debug"
 )
 
-type useragentTransport struct {
-	// Wrapped by useragentTransport.
+const (
+	defaultUserAgent = "go-containerregistry"
+	moduleName       = "github.com/google/go-containerregistry"
+)
+
+var ggcrVersion = defaultUserAgent
+
+type userAgentTransport struct {
 	inner http.RoundTripper
+	ua    string
+}
+
+func init() {
+	if v := version(); v != "" {
+		ggcrVersion = fmt.Sprintf("%s/%s", defaultUserAgent, v)
+	}
+}
+
+func version() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+
+	// Happens for crane and gcrane.
+	if info.Main.Path == moduleName {
+		return info.Main.Version
+	}
+
+	// Anything else.
+	for _, dep := range info.Deps {
+		if dep.Path == moduleName {
+			return dep.Version
+		}
+	}
+
+	return ""
+}
+
+// NewUserAgent returns an http.Roundtripper that sets the user agent to
+// The provided string plus additional go-containerregistry information,
+// e.g. if provided "crane/v0.1.4" and this modules was built at v0.1.4:
+//
+// User-Agent: crane/v0.1.4 go-containerregistry/v0.1.4
+func NewUserAgent(inner http.RoundTripper, ua string) http.RoundTripper {
+	if ua == "" {
+		ua = ggcrVersion
+	} else {
+		ua = fmt.Sprintf("%s %s", ua, ggcrVersion)
+	}
+	return &userAgentTransport{
+		inner: inner,
+		ua:    ua,
+	}
 }
 
 // RoundTrip implements http.RoundTripper
-func (ut *useragentTransport) RoundTrip(in *http.Request) (*http.Response, error) {
-	in.Header.Set("User-Agent", transportName)
+func (ut *userAgentTransport) RoundTrip(in *http.Request) (*http.Response, error) {
+	in.Header.Set("User-Agent", ut.ua)
 	return ut.inner.RoundTrip(in)
 }

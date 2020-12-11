@@ -34,11 +34,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/v1util"
 )
 
-var defaultPlatform = v1.Platform{
-	Architecture: "amd64",
-	OS:           "linux",
-}
-
 // ErrSchema1 indicates that we received a schema1 manifest from the registry.
 // This library doesn't have plans to support this legacy image format:
 // https://github.com/google/go-containerregistry/issues/377
@@ -92,6 +87,9 @@ func Get(ref name.Reference, options ...Option) (*Descriptor, error) {
 
 // Head returns a v1.Descriptor for the given reference by issuing a HEAD
 // request.
+//
+// Note that the server response will not have a body, so any errors encountered
+// should be retried with Get to get more details.
 func Head(ref name.Reference, options ...Option) (*v1.Descriptor, error) {
 	acceptable := []types.MediaType{
 		// Just to look at them.
@@ -220,7 +218,7 @@ type fetcher struct {
 }
 
 func makeFetcher(ref name.Reference, o *options) (*fetcher, error) {
-	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, []string{ref.Scope(transport.PullScope)})
+	tr, err := transport.NewWithContext(o.context, ref.Context().Registry, o.auth, o.transport, []string{ref.Scope(transport.PullScope)})
 	if err != nil {
 		return nil, err
 	}
@@ -353,14 +351,14 @@ func (f *fetcher) headManifest(ref name.Reference, acceptable []types.MediaType)
 	}, nil
 }
 
-func (f *fetcher) fetchBlob(h v1.Hash) (io.ReadCloser, error) {
+func (f *fetcher) fetchBlob(ctx context.Context, h v1.Hash) (io.ReadCloser, error) {
 	u := f.url("blobs", h.String())
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := f.Client.Do(req.WithContext(f.context))
+	resp, err := f.Client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
