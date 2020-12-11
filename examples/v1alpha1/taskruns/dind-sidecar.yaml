@@ -44,6 +44,9 @@ spec:
         - --storage-driver=vfs
         - --userland-proxy=false
         - --debug
+      resources:
+        requests:
+          memory: "512Mi"
       securityContext:
         privileged: true
       env:
