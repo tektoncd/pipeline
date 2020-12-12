@@ -115,6 +115,8 @@ Environment variables used by end to end tests:
 - `KO_DOCKER_REPO` - Set this to an image registry your tests can push images to
 - `GCP_SERVICE_ACCOUNT_KEY_PATH` - Tests that need to interact with GCS buckets
   will use the json credentials at this path to authenticate with GCS.
+- `SYSTEM_NAMESPACE` - Set this to your Tekton deployment namespace like `tekton-pipelines`.
+  Without this setting, the E2E test will use `knative-testing` as default namespace.
 
 - In Kaniko e2e test, setting `GCP_SERVICE_ACCOUNT_KEY_PATH` as the path of the
   GCP service account JSON key which has permissions to push to the registry
@@ -146,6 +148,8 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$EMAI
 gcloud iam service-accounts keys create config.json --iam-account $EMAIL
 
 export GCP_SERVICE_ACCOUNT_KEY_PATH="$PWD/config.json"
+
+export SYSTEM_NAMESPACE=tekton-pipelines
 ```
 
 ### Running
