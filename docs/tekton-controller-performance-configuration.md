@@ -8,7 +8,7 @@ Configure ThreadsPerController, QPS and Burst
 ## Overview
 
 ---
-This document will show us how to configure [tekton-pipeline-controller](../../config/controller.yaml)'s performance. In general, there are mainly have three parameters will impact the performance of tekton controller, they are `ThreadsPerController`, `QPS` and `Burst`.
+This document will show us how to configure [tekton-pipeline-controller](./../config/controller.yaml)'s performance. In general, there are mainly have three parameters will impact the performance of tekton controller, they are `ThreadsPerController`, `QPS` and `Burst`.
 
 - `ThreadsPerController`: Threads (goroutines) to create per controller. It's the number of threads to use when processing the controller's work queue.
 
@@ -24,7 +24,7 @@ This document will show us how to configure [tekton-pipeline-controller](../../c
 ---
 Default, the value of ThreadsPerController, QPS and Burst is [2](https://github.com/knative/pkg/blob/master/controller/controller.go#L58), [5.0](https://github.com/tektoncd/pipeline/blob/master/vendor/k8s.io/client-go/rest/config.go#L44) and [10](https://github.com/tektoncd/pipeline/blob/master/vendor/k8s.io/client-go/rest/config.go#L45) accordingly.
 
-Sometimes, above default values can't meet performance requirements, then you need to overwrite these values. You can modify them in the [tekton controller deployment](../../config/controller.yaml). You can specify these customized values in the `tekton-pipelines-controller` container via `threads-per-controller`, `kube-api-qps` and `kube-api-burst` flags accordingly. For example:
+Sometimes, above default values can't meet performance requirements, then you need to overwrite these values. You can modify them in the [tekton controller deployment](./../config/controller.yaml). You can specify these customized values in the `tekton-pipelines-controller` container via `threads-per-controller`, `kube-api-qps` and `kube-api-burst` flags accordingly. For example:
 
 ```yaml
 spec:
