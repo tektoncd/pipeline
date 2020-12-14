@@ -19,6 +19,7 @@ weight: 3
     - [Guard `Task` execution using `When Expressions`](#guard-task-execution-using-whenexpressions)
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
+  - [Using variable substitution](#using-variable-substitution)
   - [Using `Results`](#using-results)
     - [Passing one Task's `Results` into the `Parameters` of another](#passing-one-tasks-results-into-the-parameters-of-another)
     - [Emitting `Results` from a `Pipeline`](#emitting-results-from-a-pipeline)
@@ -513,6 +514,19 @@ spec:
         name: build-push
       timeout: "0h1m30s"
 ```
+
+## Using variable substitution
+
+Tekton provides variables to inject values into the contents of certain fields.
+The values you can inject come from a range of sources including other fields
+in the Pipeline, context-sensitive information that Tekton provides, and runtime
+information received from a PipelineRun.
+
+The mechanism of variable substitution is quite simple - string replacement is
+performed by the Tekton Controller when a PipelineRun is executed.
+
+See the [complete list of variable substitutions for Pipelines](./variables.md#variables-available-in-a-pipeline)
+and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
 
 ## Using `Results`
 
