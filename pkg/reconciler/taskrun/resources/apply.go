@@ -37,60 +37,84 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 
+	patterns := []string{
+		"params.%s",
+		// FIXME(vdemeester) Remove that with deprecating v1beta1
+		"inputs.params.%s",
+	}
+
 	// Set all the default stringReplacements
 	for _, p := range defaults {
 		if p.Default != nil {
 			if p.Default.Type == v1beta1.ParamTypeString {
-				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
-				// FIXME(vdemeester) Remove that with deprecating v1beta1
-				stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.StringVal
+				for _, pattern := range patterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
+				}
 			} else {
-				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
-				// FIXME(vdemeester) Remove that with deprecating v1beta1
-				arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.ArrayVal
+				for _, pattern := range patterns {
+					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
 			}
 		}
 	}
+
 	// Set and overwrite params with the ones from the TaskRun
 	for _, p := range tr.Spec.Params {
 		if p.Value.Type == v1beta1.ParamTypeString {
-			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.StringVal
+			for _, pattern := range patterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
+			}
 		} else {
-			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.ArrayVal
+			for _, pattern := range patterns {
+				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
 		}
 	}
+
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
 }
 
 // ApplyResources applies the substitution from values in resources which are referenced in spec as subitems
 // of the replacementStr.
 func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1.PipelineResourceInterface, replacementStr string) *v1beta1.TaskSpec {
+	replacementPatterns := []string{
+		"resources.%s.%s.%s",
+		// FIXME(vdemeester) Remove that with deprecating v1beta1
+		"%s.resources.%s.%s",
+	}
 	replacements := map[string]string{}
 	for name, r := range resolvedResources {
 		for k, v := range r.Replacements() {
-			replacements[fmt.Sprintf("resources.%s.%s.%s", replacementStr, name, k)] = v
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, name, k)] = v
+			for _, pattern := range replacementPatterns {
+				replacements[fmt.Sprintf(pattern, replacementStr, name, k)] = v
+			}
 		}
 	}
 
 	// We always add replacements for 'path'
 	if spec.Resources != nil && spec.Resources.Inputs != nil {
-		for _, r := range spec.Resources.Inputs {
-			replacements[fmt.Sprintf("resources.inputs.%s.path", r.Name)] = v1beta1.InputResourcePath(r.ResourceDeclaration)
+		patterns := []string{
+			"resources.inputs.%s.path",
 			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("inputs.resources.%s.path", r.Name)] = v1beta1.InputResourcePath(r.ResourceDeclaration)
+			"inputs.resources.%s.path",
+		}
+		for _, r := range spec.Resources.Inputs {
+			for _, pattern := range patterns {
+				replacements[fmt.Sprintf(pattern, r.Name)] = v1beta1.InputResourcePath(r.ResourceDeclaration)
+			}
 		}
 	}
+
 	if spec.Resources != nil && spec.Resources.Outputs != nil {
-		for _, r := range spec.Resources.Outputs {
-			replacements[fmt.Sprintf("resources.outputs.%s.path", r.Name)] = v1beta1.OutputResourcePath(r.ResourceDeclaration)
+		patterns := []string{
+			"resources.outputs.%s.path",
 			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("outputs.resources.%s.path", r.Name)] = v1beta1.OutputResourcePath(r.ResourceDeclaration)
+			"outputs.resources.%s.path",
+		}
+		for _, r := range spec.Resources.Outputs {
+			for _, pattern := range patterns {
+				replacements[fmt.Sprintf(pattern, r.Name)] = v1beta1.OutputResourcePath(r.ResourceDeclaration)
+			}
 		}
 	}
 
@@ -120,25 +144,34 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 		bindNames.Insert(binding.Name)
 	}
 
+	patterns := []string{
+		"workspaces.%s.%s",
+	}
+
 	for _, declaration := range declarations {
-		prefix := fmt.Sprintf("workspaces.%s.", declaration.Name)
-		if declaration.Optional && !bindNames.Has(declaration.Name) {
-			stringReplacements[prefix+"bound"] = "false"
-			stringReplacements[prefix+"path"] = ""
-		} else {
-			stringReplacements[prefix+"bound"] = "true"
-			stringReplacements[prefix+"path"] = declaration.GetMountPath()
+		for _, pattern := range patterns {
+			if declaration.Optional && !bindNames.Has(declaration.Name) {
+				stringReplacements[fmt.Sprintf(pattern, declaration.Name, "bound")] = "false"
+				stringReplacements[fmt.Sprintf(pattern, declaration.Name, "path")] = ""
+			} else {
+				stringReplacements[fmt.Sprintf(pattern, declaration.Name, "bound")] = "true"
+				stringReplacements[fmt.Sprintf(pattern, declaration.Name, "path")] = declaration.GetMountPath()
+			}
 		}
 	}
 
 	for name, vol := range vols {
-		stringReplacements[fmt.Sprintf("workspaces.%s.volume", name)] = vol.Name
+		for _, pattern := range patterns {
+			stringReplacements[fmt.Sprintf(pattern, name, "volume")] = vol.Name
+		}
 	}
 	for _, binding := range bindings {
-		if binding.PersistentVolumeClaim != nil {
-			stringReplacements[fmt.Sprintf("workspaces.%s.claim", binding.Name)] = binding.PersistentVolumeClaim.ClaimName
-		} else {
-			stringReplacements[fmt.Sprintf("workspaces.%s.claim", binding.Name)] = ""
+		for _, pattern := range patterns {
+			if binding.PersistentVolumeClaim != nil {
+				stringReplacements[fmt.Sprintf(pattern, binding.Name, "claim")] = binding.PersistentVolumeClaim.ClaimName
+			} else {
+				stringReplacements[fmt.Sprintf(pattern, binding.Name, "claim")] = ""
+			}
 		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
@@ -149,8 +182,14 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 func ApplyTaskResults(spec *v1beta1.TaskSpec) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{}
 
+	patterns := []string{
+		"results.%s.path",
+	}
+
 	for _, result := range spec.Results {
-		stringReplacements[fmt.Sprintf("results.%s.path", result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
+		for _, pattern := range patterns {
+			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
+		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }
