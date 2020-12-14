@@ -26,6 +26,7 @@ weight: 1
     - [Substituting `Array` parameters](#substituting-array-parameters)
     - [Substituting `Workspace` paths](#substituting-workspace-paths)
     - [Substituting `Volume` names and types](#substituting-volume-names-and-types)
+    - [Substituting in `Script` blocks](#substituting-in-script-blocks)
 - [Code examples](#code-examples)
   - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
   - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
@@ -581,6 +582,14 @@ The `description` field is an optional field that allows you to add an informati
 
 ### Using variable substitution
 
+Tekton provides variables to inject values into the contents of certain fields.
+The values you can inject come from a range of sources including other fields
+in the Task, context-sensitive information that Tekton provides, and runtime
+information received from a TaskRun.
+
+The mechanism of variable substitution is quite simple - string replacement is
+performed by the Tekton Controller when a TaskRun is executed.
+
 `Tasks` allow you to substitute variable names for the following entities:
 
 - [Parameters and resources](#substituting-parameters-and-resources)
@@ -588,7 +597,8 @@ The `description` field is an optional field that allows you to add an informati
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
 
-Also see the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task).
+See the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task)
+and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
 
 #### Substituting parameters and resources
 
@@ -665,6 +675,34 @@ You can substitute `Volume` names and [types](https://kubernetes.io/docs/concept
 by parameterizing them. Tekton supports popular `Volume` types such as `ConfigMap`, `Secret`, and `PersistentVolumeClaim`.
 See this [example](#mounting-a-configmap-as-a-volume-source) to find out how to perform this type of substitution
 in your `Task.`
+
+#### Substituting in `Script` blocks
+
+Variables can contain any string, including snippets of script that can
+be injected into a Task's `Script` field. If you are using Tekton's variables
+in your Task's `Script` field be aware that the strings you're interpolating
+could include executable instructions.
+
+Preventing a substituted variable from executing as code depends on the container
+image, language or shell that your Task uses. Here's an example of interpolating
+a Tekton variable into a `bash` `Script` block that prevents the variable's string
+contents from being executed:
+
+```yaml
+# Task.yaml
+spec:
+  steps:
+  - image: an-image-that-runs-bash
+    env:
+    - name: SCRIPT_CONTENTS
+      value: $(params.script)
+    script: |
+      printf '%s' "${SCRIPT_CONTENTS}" > input-script
+```
+
+This works by injecting Tekton's variable as an environment variable into the Step's
+container. The `printf` program is then used to write the environment variable's
+content to a file.
 
 ## Code examples
 
