@@ -7,7 +7,11 @@ weight: 15
 # Variable Substitutions Supported by `Tasks` and `Pipelines`
 
 This page documents the variable substitutions supported by `Tasks` and `Pipelines`.
+
 **Note:** Tekton does not escape the contents of variables. Task authors are responsible for properly escaping a variable's value according to the shell, image or scripting language that the variable will be used in.
+
+**Note:** Variables of the form `<foo>` may be quoted to eliminate ambiguity when the name contains `.` characters, e.g. `$(params."dev.tekton.foo")`.
+
 
 ## Variables available in a `Pipeline`
 
