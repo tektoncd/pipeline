@@ -447,6 +447,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 
+	runningTime := metav1.Time{Time: time.Now()}
+	go func(metrics *Recorder) {
+		if pod.Status.Phase == corev1.PodRunning {
+			err := metrics.MarkRunningTime(pod, runningTime)
+			if err != nil {
+				logger.Warnf("Failed to mark pod running time : %v", err)
+			}
+		}
+	}(c.metrics)
 	// Convert the Pod's status to the equivalent TaskRun Status.
 	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod)
 	if err != nil {

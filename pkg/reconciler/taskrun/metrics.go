@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 )
@@ -57,7 +58,7 @@ var (
 
 	podLatency = stats.Float64("taskruns_pod_latency",
 		"scheduling latency for the taskruns pods",
-		stats.UnitMilliseconds)
+		stats.UnitSeconds)
 
 	cloudEvents = stats.Int64("cloudevent_count",
 		"number of cloud events sent including retries",
@@ -76,6 +77,7 @@ type Recorder struct {
 	pod         tag.Key
 
 	ReportingPeriod time.Duration
+	podRunningTime  map[types.UID]metav1.Time
 }
 
 // NewRecorder creates a new metrics recorder instance
@@ -86,6 +88,7 @@ func NewRecorder() (*Recorder, error) {
 
 		// Default to reporting metrics every 30s.
 		ReportingPeriod: 30 * time.Second,
+		podRunningTime:  make(map[types.UID]metav1.Time),
 	}
 
 	task, err := tag.NewKey("task")
@@ -292,12 +295,13 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 		return errors.New("ignoring the metrics recording for pod , failed to initialize the metrics recorder")
 	}
 
-	scheduledTime := getScheduledTime(pod)
-	if scheduledTime.IsZero() {
-		return errors.New("pod has never got scheduled")
+	startRunningTime, ok := r.podRunningTime[pod.UID]
+	if !ok {
+		return errors.New("recorder doesn't know the pod running time or pod_latency is already recorded")
 	}
+	delete(r.podRunningTime, pod.UID)
 
-	latency := scheduledTime.Sub(pod.CreationTimestamp.Time)
+	latency := startRunningTime.Sub(pod.CreationTimestamp.Time)
 	taskName := "anonymous"
 	if tr.Spec.TaskRef != nil {
 		taskName = tr.Spec.TaskRef.Name
@@ -314,8 +318,18 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 		return err
 	}
 
-	metrics.Record(ctx, podLatency.M(float64(latency)))
+	metrics.Record(ctx, podLatency.M(float64(latency/time.Second)))
 
+	return nil
+}
+
+func (r *Recorder) MarkRunningTime(pod *corev1.Pod, runningTime metav1.Time) error {
+	if !r.initialized {
+		return errors.New("ignoring the metrics recording for pod , failed to initialize the metrics recorder")
+	}
+	if _, ok := r.podRunningTime[pod.UID]; !ok {
+		r.podRunningTime[pod.UID] = runningTime
+	}
 	return nil
 }
 

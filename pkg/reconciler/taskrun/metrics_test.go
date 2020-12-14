@@ -17,6 +17,7 @@ limitations under the License.
 package taskrun
 
 import (
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 	"time"
 
@@ -276,6 +277,8 @@ func TestRecordPodLatency(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 		},
 	}
+	podRunningTime := make(map[types.UID]metav1.Time)
+	podRunningTime[types.UID("pod1")] = metav1.Time{Time: creationTime.Add(4 * time.Second)}
 	for _, td := range []struct {
 		name           string
 		pod            *corev1.Pod
@@ -286,15 +289,10 @@ func TestRecordPodLatency(t *testing.T) {
 		name: "for scheduled pod",
 		pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
+				UID:               types.UID("pod1"),
 				Name:              "test-taskrun-pod-123456",
 				Namespace:         "foo",
 				CreationTimestamp: creationTime,
-			},
-			Status: corev1.PodStatus{
-				Conditions: []corev1.PodCondition{{
-					Type:               corev1.PodScheduled,
-					LastTransitionTime: metav1.Time{Time: creationTime.Add(4 * time.Second)},
-				}},
 			},
 		},
 		expectedTags: map[string]string{
@@ -303,16 +301,16 @@ func TestRecordPodLatency(t *testing.T) {
 			"taskrun":   "test-taskrun",
 			"namespace": "foo",
 		},
-		expectedValue: 4e+09,
+		expectedValue: 4,
 	}, {
 		name: "for non scheduled pod",
 		pod: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
+				UID:               types.UID("pod2"),
 				Name:              "test-taskrun-pod-123456",
 				Namespace:         "foo",
 				CreationTimestamp: creationTime,
 			},
-			Status: corev1.PodStatus{},
 		},
 		expectingError: true,
 	}} {
@@ -323,7 +321,7 @@ func TestRecordPodLatency(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
 			}
-
+			metrics.podRunningTime = podRunningTime
 			if err := metrics.RecordPodLatency(td.pod, taskRun); td.expectingError && err == nil {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
