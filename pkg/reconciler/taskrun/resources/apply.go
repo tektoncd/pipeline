@@ -39,6 +39,7 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 
 	patterns := []string{
 		"params.%s",
+		"params.%q",
 		// FIXME(vdemeester) Remove that with deprecating v1beta1
 		"inputs.params.%s",
 	}
@@ -79,6 +80,7 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1.PipelineResourceInterface, replacementStr string) *v1beta1.TaskSpec {
 	replacementPatterns := []string{
 		"resources.%s.%s.%s",
+		"resources.%s.%q.%s",
 		// FIXME(vdemeester) Remove that with deprecating v1beta1
 		"%s.resources.%s.%s",
 	}
@@ -95,6 +97,7 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 	if spec.Resources != nil && spec.Resources.Inputs != nil {
 		patterns := []string{
 			"resources.inputs.%s.path",
+			"resources.inputs.%q.path",
 			// FIXME(vdemeester) Remove that with deprecating v1beta1
 			"inputs.resources.%s.path",
 		}
@@ -108,6 +111,7 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 	if spec.Resources != nil && spec.Resources.Outputs != nil {
 		patterns := []string{
 			"resources.outputs.%s.path",
+			"resources.outputs.%q.path",
 			// FIXME(vdemeester) Remove that with deprecating v1beta1
 			"outputs.resources.%s.path",
 		}
@@ -146,6 +150,7 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 
 	patterns := []string{
 		"workspaces.%s.%s",
+		"workspaces.%q.%s",
 	}
 
 	for _, declaration := range declarations {
@@ -184,6 +189,7 @@ func ApplyTaskResults(spec *v1beta1.TaskSpec) *v1beta1.TaskSpec {
 
 	patterns := []string{
 		"results.%s.path",
+		"results.%q.path",
 	}
 
 	for _, result := range spec.Results {

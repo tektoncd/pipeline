@@ -33,6 +33,7 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 
 	patterns := []string{
 		"params.%s",
+		"params.%q",
 	}
 
 	// Set all the default stringReplacements
@@ -102,6 +103,7 @@ func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 
 	patterns := []string{
 		"workspaces.%s.bound",
+		"workspaces.%q.bound",
 	}
 
 	for _, declaredWorkspace := range p.Workspaces {

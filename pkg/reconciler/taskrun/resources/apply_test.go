@@ -50,102 +50,102 @@ var (
 		Sidecars: []v1beta1.Sidecar{{
 			Container: corev1.Container{
 				Name:  "foo",
-				Image: "$(inputs.params.myimage)",
+				Image: `$(params."my.image")`,
 				Env: []corev1.EnvVar{{
 					Name:  "foo",
-					Value: "$(inputs.params.FOO)",
+					Value: "$(params.FOO)",
 				}},
 			},
 		}},
 		StepTemplate: &corev1.Container{
 			Env: []corev1.EnvVar{{
 				Name:  "template-var",
-				Value: "$(inputs.params.FOO)",
+				Value: "$(params.FOO)",
 			}},
 		},
 		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "foo",
-			Image: "$(inputs.params.myimage)",
+			Image: `$(params."my.image")`,
 		}}, {Container: corev1.Container{
 			Name:       "baz",
 			Image:      "bat",
-			WorkingDir: "$(inputs.resources.workspace.path)",
-			Args:       []string{"$(inputs.resources.workspace.url)"},
+			WorkingDir: "$(resources.inputs.workspace.path)",
+			Args:       []string{"$(resources.inputs.workspace.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "qux",
-			Image: "$(inputs.params.something)",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+			Image: "$(params.something)",
+			Args:  []string{"$(resources.outputs.imageToUse.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "foo",
-			Image: "$(inputs.params.myimage)",
+			Image: `$(params."my.image")`,
 		}}, {Container: corev1.Container{
 			Name:       "baz",
-			Image:      "$(inputs.params.somethingelse)",
-			WorkingDir: "$(inputs.resources.workspace.path)",
-			Args:       []string{"$(inputs.resources.workspace.url)"},
+			Image:      "$(params.somethingelse)",
+			WorkingDir: "$(resources.inputs.workspace.path)",
+			Args:       []string{"$(resources.inputs.workspace.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "qux",
 			Image: "quux",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+			Args:  []string{"$(resources.outputs.imageToUse.url)"},
 		}}, {Container: corev1.Container{
 			Name:  "foo",
-			Image: "busybox:$(inputs.params.FOO)",
+			Image: "busybox:$(params.FOO)",
 			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "$(inputs.params.FOO)",
-				MountPath: "path/to/$(inputs.params.FOO)",
-				SubPath:   "sub/$(inputs.params.FOO)/path",
+				Name:      "$(params.FOO)",
+				MountPath: "path/to/$(params.FOO)",
+				SubPath:   "sub/$(params.FOO)/path",
 			}},
 		}}, {Container: corev1.Container{
 			Name:  "foo",
-			Image: "busybox:$(inputs.params.FOO)",
+			Image: "busybox:$(params.FOO)",
 			Env: []corev1.EnvVar{{
 				Name:  "foo",
-				Value: "value-$(inputs.params.FOO)",
+				Value: "value-$(params.FOO)",
 			}, {
 				Name: "bar",
 				ValueFrom: &corev1.EnvVarSource{
 					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
-						Key:                  "config-key-$(inputs.params.FOO)",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.FOO)"},
+						Key:                  "config-key-$(params.FOO)",
 					},
 				},
 			}, {
 				Name: "baz",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
-						Key:                  "secret-key-$(inputs.params.FOO)",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO)"},
+						Key:                  "secret-key-$(params.FOO)",
 					},
 				},
 			}},
 			EnvFrom: []corev1.EnvFromSource{{
-				Prefix: "prefix-0-$(inputs.params.FOO)",
+				Prefix: "prefix-0-$(params.FOO)",
 				ConfigMapRef: &corev1.ConfigMapEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.FOO)"},
 				},
 			}, {
-				Prefix: "prefix-1-$(inputs.params.FOO)",
+				Prefix: "prefix-1-$(params.FOO)",
 				SecretRef: &corev1.SecretEnvSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO)"},
 				},
 			}},
 		}}, {Container: corev1.Container{
 			Name:  "outputs-resources-path-ab",
-			Image: "$(outputs.resources.imageToUse-ab.path)",
+			Image: "$(resources.outputs.imageToUse-ab.path)",
 		}}, {Container: corev1.Container{
 			Name:  "outputs-resources-path-re",
-			Image: "$(outputs.resources.imageToUse-re.path)",
+			Image: "$(resources.outputs.imageToUse-re.path)",
 		}}},
 		Volumes: []corev1.Volume{{
-			Name: "$(inputs.params.FOO)",
+			Name: "$(params.FOO)",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "$(inputs.params.FOO)",
+						Name: "$(params.FOO)",
 					},
 					Items: []corev1.KeyToPath{{
-						Key:  "$(inputs.params.FOO)",
-						Path: "$(inputs.params.FOO)",
+						Key:  "$(params.FOO)",
+						Path: "$(params.FOO)",
 					}},
 				},
 			},
@@ -153,10 +153,10 @@ var (
 			Name: "some-secret",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "$(inputs.params.FOO)",
+					SecretName: "$(params.FOO)",
 					Items: []corev1.KeyToPath{{
-						Key:  "$(inputs.params.FOO)",
-						Path: "$(inputs.params.FOO)",
+						Key:  "$(params.FOO)",
+						Path: "$(params.FOO)",
 					}},
 				},
 			},
@@ -164,7 +164,7 @@ var (
 			Name: "some-pvc",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "$(inputs.params.FOO)",
+					ClaimName: "$(params.FOO)",
 				},
 			},
 		}, {
@@ -174,16 +174,16 @@ var (
 					Sources: []corev1.VolumeProjection{{
 						ConfigMap: &corev1.ConfigMapProjection{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "$(inputs.params.FOO)",
+								Name: "$(params.FOO)",
 							},
 						},
 						Secret: &corev1.SecretProjection{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "$(inputs.params.FOO)",
+								Name: "$(params.FOO)",
 							},
 						},
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
-							Audience: "$(inputs.params.FOO)",
+							Audience: "$(params.FOO)",
 						},
 					}},
 				},
@@ -193,10 +193,10 @@ var (
 			VolumeSource: corev1.VolumeSource{
 				CSI: &corev1.CSIVolumeSource{
 					VolumeAttributes: map[string]string{
-						"secretProviderClass": "$(inputs.params.FOO)",
+						"secretProviderClass": "$(params.FOO)",
 					},
 					NodePublishSecretRef: &corev1.LocalObjectReference{
-						Name: "$(inputs.params.FOO)",
+						Name: "$(params.FOO)",
 					},
 				},
 			},
@@ -225,7 +225,7 @@ var (
 		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "foobar",
 			Image: "someImage",
-			Args:  []string{"$(outputs.resources.bucket.path)"},
+			Args:  []string{"$(resources.outputs.bucket.path)"},
 		}}},
 		Resources: &v1beta1.TaskResources{
 			Outputs: []v1beta1.TaskResource{{
@@ -244,7 +244,7 @@ var (
 			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"echo"},
-			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
+			Args:    []string{"first", "second", "$(params.array-param)", "last"},
 		}}},
 	}
 
@@ -256,7 +256,7 @@ var (
 			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"echo"},
-			Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
+			Args:    []string{"$(params.normal-param)", "second", "$(params.array-param)", "last"},
 		}}},
 	}
 
@@ -267,20 +267,20 @@ var (
 		}}, {Container: corev1.Container{
 			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
-			Command: []string{"cmd", "$(inputs.params.another-array-param)"},
-			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
+			Command: []string{"cmd", "$(params.another-array-param)"},
+			Args:    []string{"first", "second", "$(params.array-param)", "last"},
 		}}},
 	}
 
 	multipleArrayAndStringsParamsTaskSpec = &v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{Container: corev1.Container{
 			Name:  "simple-image",
-			Image: "image-$(inputs.params.string-param2)",
+			Image: "image-$(params.string-param2)",
 		}}, {Container: corev1.Container{
 			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
-			Command: []string{"cmd", "$(inputs.params.array-param1)"},
-			Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
+			Command: []string{"cmd", "$(params.array-param1)"},
+			Args:    []string{"$(params.array-param2)", "second", "$(params.array-param1)", "$(params.string-param1)", "last"},
 		}}},
 	}
 
@@ -509,7 +509,7 @@ func TestApplyParameters(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
-				Name:  "myimage",
+				Name:  "my.image",
 				Value: *v1beta1.NewArrayOrString("bar"),
 			}, {
 				Name:  "FOO",
@@ -547,8 +547,8 @@ func TestApplyParameters(t *testing.T) {
 		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
 		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
 		spec.Steps[7].Image = "busybox:world"
-		spec.Steps[8].Image = "$(outputs.resources.imageToUse-ab.path)"
-		spec.Steps[9].Image = "$(outputs.resources.imageToUse-re.path)"
+		spec.Steps[8].Image = "$(resources.outputs.imageToUse-ab.path)"
+		spec.Steps[9].Image = "$(resources.outputs.imageToUse-re.path)"
 
 		spec.Volumes[0].Name = "world"
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
@@ -1013,7 +1013,7 @@ func TestTaskResults(t *testing.T) {
 			Name:        "current-date-unix-timestamp",
 			Description: "The current date in unix timestamp format",
 		}, {
-			Name:        "current-date-human-readable",
+			Name:        "current.date.human.readable",
 			Description: "The current date in humand readable format"},
 		},
 		Steps: []v1beta1.Step{{
@@ -1028,13 +1028,13 @@ func TestTaskResults(t *testing.T) {
 				Name:  "print-date-human-readable",
 				Image: "bash:latest",
 			},
-			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",
+			Script: "#!/usr/bin/env bash\ndate | tee $(results.\"current.date.human.readable\".path)",
 		}},
 	}
 	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
 		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current-date-unix-timestamp"
 		spec.Steps[0].Args[0] = "/tekton/results/current-date-unix-timestamp"
-		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
+		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current.date.human.readable"
 	})
 	got := resources.ApplyTaskResults(ts)
 	if d := cmp.Diff(want, got); d != "" {

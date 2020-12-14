@@ -246,6 +246,35 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		name: "quoted DNS parameters",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "dev.tekton.first", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "dev.tekton.second", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString(`$(params."dev.tekton.first")`)},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString(`$(params."dev.tekton.second")`)},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "dev.tekton.second", Value: *v1beta1.NewArrayOrString("second-value")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "dev.tekton.first", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "dev.tekton.second", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
 	}} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
@@ -578,6 +607,16 @@ func TestApplyWorkspaces(t *testing.T) {
 		variableUsage:       "$(workspaces.foo.bound)",
 		expectedReplacement: "true",
 	}, {
+		description: "quoted workspace declared and bound",
+		declarations: []v1beta1.PipelineWorkspaceDeclaration{{
+			Name: "foo",
+		}},
+		bindings: []v1beta1.WorkspaceBinding{{
+			Name: "foo",
+		}},
+		variableUsage:       `$(workspaces."foo".bound)`,
+		expectedReplacement: "true",
+	}, {
 		description: "workspace declared not bound",
 		declarations: []v1beta1.PipelineWorkspaceDeclaration{{
 			Name:     "foo",
@@ -585,6 +624,15 @@ func TestApplyWorkspaces(t *testing.T) {
 		}},
 		bindings:            []v1beta1.WorkspaceBinding{},
 		variableUsage:       "$(workspaces.foo.bound)",
+		expectedReplacement: "false",
+	}, {
+		description: "quoted workspace declared not bound",
+		declarations: []v1beta1.PipelineWorkspaceDeclaration{{
+			Name:     "foo",
+			Optional: true,
+		}},
+		bindings:            []v1beta1.WorkspaceBinding{},
+		variableUsage:       `$(workspaces."foo".bound)`,
 		expectedReplacement: "false",
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
