@@ -393,13 +393,3 @@ func sentCloudEvents(tr *v1beta1.TaskRun) int64 {
 	}
 	return sent
 }
-
-func getScheduledTime(pod *corev1.Pod) metav1.Time {
-	for _, c := range pod.Status.Conditions {
-		if c.Type == corev1.PodScheduled {
-			return c.LastTransitionTime
-		}
-	}
-
-	return metav1.Time{}
-}

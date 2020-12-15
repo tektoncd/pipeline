@@ -17,7 +17,6 @@ limitations under the License.
 package taskrun
 
 import (
-	"k8s.io/apimachinery/pkg/types"
 	"testing"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/metrics/metricstest"
