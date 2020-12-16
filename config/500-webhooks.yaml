@@ -35,7 +35,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions: ["v1beta1", "v1"]
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook
@@ -55,7 +55,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions: ["v1beta1", "v1"]
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook
@@ -75,7 +75,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions: ["v1beta1", "v1"]
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook
