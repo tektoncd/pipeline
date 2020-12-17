@@ -161,7 +161,7 @@ spec:
     - name: CONTEXT
       value: $(params.path-to-image-context)
     - name: DOCKERFILE
-      value: $(params.path-to-docker-file)
+      value: $(params.path-to-dockerfile)
     workspaces:
     - name: source
       workspace: git-source
