@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -42,19 +43,23 @@ type EntrypointCache interface {
 //
 // Images that are not specified by digest will be specified by digest after
 // lookup in the resulting list of containers.
-func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
+func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, containers []corev1.Container, steps []v1beta1.Step) ([]corev1.Container, error) {
 	// Keep a local cache of name->image lookups, just for the scope of
 	// resolving this set of steps. If the image is pushed to before the
 	// next run, we need to resolve its digest and entrypoint again, but we
 	// can skip lookups while resolving the same TaskRun.
 	localCache := map[name.Reference]v1.Image{}
-	for i, s := range steps {
+	for i, s := range containers {
 		if len(s.Command) != 0 {
 			// Nothing to resolve.
 			continue
 		}
 
-		origRef, err := name.ParseReference(s.Image, name.WeakValidation)
+		options := []name.Option{name.WeakValidation}
+		if steps[i].Insecure {
+			options = append(options, name.Insecure)
+		}
+		origRef, err := name.ParseReference(s.Image, options...)
 		if err != nil {
 			return nil, err
 		}
@@ -79,10 +84,10 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 
 		cache.Set(digest, img) // Cache the lookup for next time this image is looked up by digest.
 
-		steps[i].Image = digest.String() // Specify image by digest, since we know it now.
-		steps[i].Command = ep            // Specify the command explicitly.
+		containers[i].Image = digest.String() // Specify image by digest, since we know it now.
+		containers[i].Command = ep            // Specify the command explicitly.
 	}
-	return steps, nil
+	return containers, nil
 }
 
 // imageData pulls the entrypoint from the image, and returns the given

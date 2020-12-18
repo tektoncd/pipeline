@@ -128,6 +128,8 @@ type Step struct {
 	// Timeout is the time after which the step times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// Insecure declares the image is in insecure registry
+	Insecure bool `json:"insecure,omitempty"`
 }
 
 // Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.

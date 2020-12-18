@@ -13,6 +13,7 @@ weight: 1
     - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
     - [Specifying a timeout](#specifying-a-timeout)
+    - [Insecure images](#insecure-images)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
@@ -264,6 +265,14 @@ steps:
       sleep 60
     timeout: 5s
 ``` 
+#### Insecure images
+If the specified `image` is in an insecure registry, you can specify it with `insecure` field, like in the example below.
+```yaml
+steps:
+  - name: insecure-step
+    image: insecure.registry/my-image
+    insecure: true
+```
 ### Specifying `Parameters`
 
 You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.

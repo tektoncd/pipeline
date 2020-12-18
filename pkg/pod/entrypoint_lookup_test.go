@@ -26,6 +26,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -77,7 +78,7 @@ func TestResolveEntrypoints(t *testing.T) {
 		// it up, so it's already in the local cache -- we don't need
 		// to look it up in the remote registry again.
 		Image: "gcr.io/my/image",
-	}})
+	}}, []v1beta1.Step{{}, {}, {},{}, {}})
 	if err != nil {
 		t.Fatalf("resolveEntrypoints: %v", err)
 	}

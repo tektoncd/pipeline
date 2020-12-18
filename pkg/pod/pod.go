@@ -134,7 +134,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
-	stepContainers, err = resolveEntrypoints(ctx, b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
+	stepContainers, err = resolveEntrypoints(ctx, b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers, steps)
 	if err != nil {
 		return nil, err
 	}
