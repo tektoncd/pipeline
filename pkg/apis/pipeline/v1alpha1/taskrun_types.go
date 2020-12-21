@@ -23,7 +23,6 @@ import (
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -168,16 +167,6 @@ type TaskRunList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TaskRun `json:"items"`
-}
-
-// GetBuildPodRef for task
-func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
-	return corev1.ObjectReference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}
 }
 
 // GetOwnerReference gets the task run as owner reference for any related objects

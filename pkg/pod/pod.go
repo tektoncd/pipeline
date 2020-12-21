@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -44,8 +45,7 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation      = "pipeline.tekton.dev/release"
-	ReleaseAnnotationValue = version.PipelineVersion
+	ReleaseAnnotation = "pipeline.tekton.dev/release"
 
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1beta1.SchemeGroupVersion.Group,
@@ -106,7 +106,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Create Volumes and VolumeMounts for any credentials found in annotated
 	// Secrets, along with any arguments needed by Step entrypoints to process
 	// those secrets.
-	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
+	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -134,21 +134,22 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
-	stepContainers, err = resolveEntrypoints(b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
+	stepContainers, err = resolveEntrypoints(ctx, b.EntrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
 	if err != nil {
 		return nil, err
 	}
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
-	// container to place the entrypoint binary.
-	entrypointInit, stepContainers, err := orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, taskSpec.Results)
+	// container to place the entrypoint binary. Also add timeout flags
+	// to entrypoint binary.
+	entrypointInit, stepContainers, err := orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec)
 	if err != nil {
 		return nil, err
 	}
 	initContainers = append(initContainers, entrypointInit)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
-	limitRangeMin, err := getLimitRangeMinimum(taskRun.Namespace, b.KubeClient)
+	limitRangeMin, err := getLimitRangeMinimum(ctx, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -169,10 +170,14 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	for i, s := range stepContainers {
 		// Mount /tekton/creds with a fresh volume for each Step. It needs to
 		// be world-writeable and empty so creds can be initialized in there. Cant
-		// guarantee what UID container runs with.
-		v, vm := getCredsInitVolume()
-		volumes = append(volumes, v)
-		s.VolumeMounts = append(s.VolumeMounts, vm)
+		// guarantee what UID container runs with. If creds-init is disabled via
+		// feature flag then these can be nil since we don't want to mount the
+		// automatic credential volume.
+		v, vm := getCredsInitVolume(ctx)
+		if v != nil && vm != nil {
+			volumes = append(volumes, *v)
+			s.VolumeMounts = append(s.VolumeMounts, *vm)
+		}
 
 		requestedVolumeMounts := map[string]bool{}
 		for _, vm := range s.VolumeMounts {
@@ -206,7 +211,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
-	podTemplate := v1beta1.PodTemplate{}
+	podTemplate := pod.Template{}
 
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
@@ -250,7 +255,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	podAnnotations := taskRun.Annotations
-	podAnnotations[ReleaseAnnotation] = ReleaseAnnotationValue
+	podAnnotations[ReleaseAnnotation] = version.PipelineVersion
 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue
@@ -337,8 +342,8 @@ func nodeAffinityUsingAffinityAssistant(affinityAssistantName string) *corev1.Af
 // https://github.com/kubernetes/kubernetes/issues/79496, the
 // max LimitRange minimum must be found in the event of conflicting
 // container minimums specified.
-func getLimitRangeMinimum(namespace string, kubeclient kubernetes.Interface) (corev1.ResourceList, error) {
-	limitRanges, err := kubeclient.CoreV1().LimitRanges(namespace).List(metav1.ListOptions{})
+func getLimitRangeMinimum(ctx context.Context, namespace string, kubeclient kubernetes.Interface) (corev1.ResourceList, error) {
+	limitRanges, err := kubeclient.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

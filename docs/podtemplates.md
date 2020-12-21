@@ -81,7 +81,7 @@ Pod templates support fields listed in the table below.
                 workloads, such as <code>volcano.sh</code> for machine learning workloads.</td>
 		</tr>
 		<tr>
-			<td><code>imagePullSecret</code></td>
+			<td><code>imagePullSecrets</code></td>
 			<td>Specifies the <a href=https://kubernetes.io/docs/concepts/configuration/secret/>secret</a> to use when <a href=https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/>
                 pulling a container image</a>.</td>
 		</tr>

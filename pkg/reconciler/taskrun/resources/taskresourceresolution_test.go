@@ -17,13 +17,13 @@ limitations under the License.
 package resources
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -174,10 +174,14 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 			},
 		}}}
 
-	gr := func(n string) (*resourcev1alpha1.PipelineResource, error) { return nil, errors.New("nope") }
+	gr := func(n string) (*resourcev1alpha1.PipelineResource, error) {
+		return nil, kerrors.NewNotFound(resourcev1alpha1.Resource("pipelineresources"), n)
+	}
 	_, err := ResolveTaskResources(&v1beta1.TaskSpec{}, "orchestrate", v1beta1.NamespacedTaskKind, []v1beta1.TaskResourceBinding{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
+	} else if !kerrors.IsNotFound(err) {
+		t.Fatalf("ResolveTaskResources() = %v, wanted not found", err)
 	}
 }
 
@@ -189,11 +193,15 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 				Name: "git-repo",
 			},
 		}}}
-	gr := func(n string) (*resourcev1alpha1.PipelineResource, error) { return nil, errors.New("nope") }
+	gr := func(n string) (*resourcev1alpha1.PipelineResource, error) {
+		return nil, kerrors.NewNotFound(resourcev1alpha1.Resource("pipelineresources"), n)
+	}
 
 	_, err := ResolveTaskResources(&v1beta1.TaskSpec{}, "orchestrate", v1beta1.NamespacedTaskKind, inputs, []v1beta1.TaskResourceBinding{}, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
+	} else if !kerrors.IsNotFound(err) {
+		t.Fatalf("ResolveTaskResources() = %v, wanted not found", err)
 	}
 }
 

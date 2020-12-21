@@ -1,5 +1,5 @@
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release
@@ -80,11 +80,27 @@ spec:
         - name: package
           value: $(params.package)
         - name: flags
-          value: -mod=vendor -ldflags "-X github.com/tektoncd/pipeline/pkg/version.PipelineVersion=$(params.versionTag)"
+          value: -mod=vendor
       resources:
         inputs:
           - name: source
             resource: source-repo
+    - name: build-base-image
+      runAfter: [build, unit-tests]
+      taskRef:
+        name: build-multiarch-base-image
+      params:
+        - name: pathToProject
+          value: $(params.package)
+        - name: imageRegistry
+          value: $(params.imageRegistry)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+        outputs:
+          - name: builtBaseImage
+            resource: builtBaseImage
     - name: publish-images
       runAfter: [build, unit-tests]
       taskRef:
@@ -107,8 +123,6 @@ spec:
         outputs:
           - name: bucket
             resource: bucket
-          - name: builtBaseImage
-            resource: builtBaseImage
           - name: builtEntrypointImage
             resource: builtEntrypointImage
           - name: builtNopImage

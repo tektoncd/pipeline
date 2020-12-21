@@ -61,8 +61,8 @@ func (source *PipelineTask) ConvertTo(ctx context.Context, sink *v1beta1.Pipelin
 	sink.Name = source.Name
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
-		sink.TaskSpec = &v1beta1.EmbeddedTask{TaskSpec: &v1beta1.TaskSpec{}}
-		if err := source.TaskSpec.ConvertTo(ctx, sink.TaskSpec.TaskSpec); err != nil {
+		sink.TaskSpec = &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{}}
+		if err := source.TaskSpec.ConvertTo(ctx, &sink.TaskSpec.TaskSpec); err != nil {
 			return err
 		}
 	}
@@ -112,7 +112,7 @@ func (sink *PipelineTask) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 	sink.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
 		sink.TaskSpec = &TaskSpec{}
-		if err := sink.TaskSpec.ConvertFrom(ctx, source.TaskSpec.TaskSpec); err != nil {
+		if err := sink.TaskSpec.ConvertFrom(ctx, &source.TaskSpec.TaskSpec); err != nil {
 			return err
 		}
 	}

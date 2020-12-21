@@ -25,7 +25,7 @@ metadata:
 # The data is populated at install time.
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: validation.webhook.pipeline.tekton.dev
@@ -35,8 +35,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions:
-  - v1beta1
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook
@@ -46,7 +45,7 @@ webhooks:
   name: validation.webhook.pipeline.tekton.dev
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: webhook.pipeline.tekton.dev
@@ -56,8 +55,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions:
-  - v1beta1
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook
@@ -67,7 +65,7 @@ webhooks:
   name: webhook.pipeline.tekton.dev
 
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
+apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: config.webhook.pipeline.tekton.dev
@@ -77,8 +75,7 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
     pipeline.tekton.dev/release: "devel"
 webhooks:
-- admissionReviewVersions:
-  - v1beta1
+- admissionReviewVersions: ["v1"]
   clientConfig:
     service:
       name: tekton-pipelines-webhook

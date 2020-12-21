@@ -12,18 +12,21 @@ weight: 3
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
+    - [Using Tekton Bundles](#tekton-bundles)
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
     - [Guard `Task` execution using `When Expressions`](#guard-task-execution-using-whenexpressions)
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
+  - [Using variable substitution](#using-variable-substitution)
   - [Using `Results`](#using-results)
     - [Passing one Task's `Results` into the `Parameters` of another](#passing-one-tasks-results-into-the-parameters-of-another)
     - [Emitting `Results` from a `Pipeline`](#emitting-results-from-a-pipeline)
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
   - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
+  - [Using Custom Tasks](#using-custom-tasks)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -44,7 +47,7 @@ A `Pipeline` definition supports the following fields:
   - [`metadata`][kubernetes-overview] - Specifies metadata that uniquely identifies the
     `Pipeline` object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    this `Pipeline` object. This must include: 
+    this `Pipeline` object. This must include:
     - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
       and the details of their execution.
 - Optional:
@@ -60,7 +63,7 @@ A `Pipeline` definition supports the following fields:
         execution of a `Task` after a failure. Does not apply to execution cancellations.
       - [`conditions`](#guard-task-execution-using-conditions) - Specifies `Conditions` that only allow a `Task`
         to execute if they successfully evaluate.
-      - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails. 
+      - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails.
   - [`results`](#configuring-execution-results-at-the-pipeline-level) - Specifies the location to which
     the `Pipeline` emits its execution results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
@@ -115,6 +118,7 @@ spec:
 For more information, see:
 - [Using `Workspaces` in `Pipelines`](workspaces.md#using-workspaces-in-pipelines)
 - The [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) code example
+- The [variables available in a `PipelineRun`](variables.md#variables-available-in-a-pipeline), including `workspaces.<name>.bound`.
 
 ## Specifying `Parameters`
 
@@ -134,7 +138,7 @@ varies throughout its execution. If no value is specified, the `type` field defa
 When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 The `description` and `default` fields for a `Parameter` are optional.
 
-The following example illustrates the use of `Parameters` in a `Pipeline`. 
+The following example illustrates the use of `Parameters` in a `Pipeline`.
 
 The following `Pipeline` declares an input parameter called `context` and passes its
 value to the `Task` to set the value of the `pathToContext` parameter within the `Task`.
@@ -227,18 +231,70 @@ spec:
           value: /workspace/examples/microservices/leeroy-web
 ```
 
+### Tekton Bundles
+
+**Note: This is only allowed if `enable-tekton-oci-bundles` is set to
+`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+
+You may also specify your `Task` reference using a `Tekton Bundle`. A `Tekton Bundle` is an OCI artifact that
+contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
+
+ ```yaml
+ spec:
+   tasks:
+     - name: hello-world
+       taskRef:
+         name: echo-task
+         bundle: docker.com/myrepo/mycatalog
+ ```
+
+Here, the `bundle` field is the full reference url to the artifact. The name is the
+`metadata.name` field of the `Task`.
+
+You may also specify a `tag` as you would with a Docker image which will give you a fixed,
+repeatable reference to a `Task`.
+
+ ```yaml
+ spec:
+   tasks:
+   - name: hello-world
+     taskRef:
+       name: echo-task
+       bundle: docker.com/myrepo/mycatalog:v1.0.1
+ ```
+
+You may also specify a fixed digest instead of a tag.
+
+ ```yaml
+ spec:
+   tasks:
+   - name: hello-world
+     taskRef:
+       name: echo-task
+       bundle: docker.io/myrepo/mycatalog@sha256:abc123
+ ```
+
+Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
+`ServiceAccount` specified in the `PipelineRun`. See the [Service Account](
+pipelineruns.md#service-accounts) section for details on how to configure a `ServiceAccount`
+on a `PipelineRun`. The `PipelineRun` will then run that `Task` without registering it in
+the cluster allowing multiple versions of the same named `Task` to be run at once.
+
+`Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
+so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
+
 ### Using the `from` parameter
 
 If a `Task` in your `Pipeline` needs to use the output of a previous `Task`
 as its input, use the optional `from` parameter to specify a list of `Tasks`
-that must execute **before** the `Task` that requires their outputs as its 
-input. When your target `Task` executes, only the version of the desired 
+that must execute **before** the `Task` that requires their outputs as its
+input. When your target `Task` executes, only the version of the desired
 `PipelineResource` produced by the last `Task` in this list is used. The
 `name` of this output `PipelineResource` output must match the `name` of the
-input `PipelineResource` specified in the `Task` that ingests it. 
+input `PipelineResource` specified in the `Task` that ingests it.
 
 In the example below, the `deploy-app` `Task` ingests the output of the `build-app`
-`Task` named `my-image` as its input.  Therefore, the `build-app` `Task` will 
+`Task` named `my-image` as its input.  Therefore, the `build-app` `Task` will
 execute before the `deploy-app` `Task` regardless of the order in which those
 `Tasks` are declared in the `Pipeline`.
 
@@ -324,13 +380,13 @@ To run a `Task` only when certain conditions are met, it is possible to _guard_ 
 The components of `WhenExpressions` are `Input`, `Operator` and `Values`:
 - `Input` is the input for the `WhenExpression` which can be static inputs or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)). If the `Input` is not provided, it defaults to an empty string.
 - `Operator` represents an `Input`'s relationship to a set of `Values`. A valid `Operator` must be provided, which can be either `in` or `notin`.
-- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters) or [`Results`](#using-results)).
+- `Values` is an array of string values. The `Values` array must be provided and be non-empty. It can contain static values or variables ([`Parameters`](#specifying-parameters), [`Results`](#using-results) or [a Workspaces's `bound` state](#specifying-workspaces)).
 
-The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Results`](#using-results) are read directly from previous [`Tasks`](#adding-tasks-to-the-pipeline). Using [`Results`](#using-results) in a `WhenExpression` in a guarded `Task` introduces a resource dependency on the previous `Task` that produced the `Result`. 
+The [`Parameters`](#specifying-parameters) are read from the `Pipeline` and [`Results`](#using-results) are read directly from previous [`Tasks`](#adding-tasks-to-the-pipeline). Using [`Results`](#using-results) in a `WhenExpression` in a guarded `Task` introduces a resource dependency on the previous `Task` that produced the `Result`.
 
-The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status). 
+The declared `WhenExpressions` are evaluated before the `Task` is run. If all the `WhenExpressions` evaluate to `True`, the `Task` is run. If any of the `WhenExpressions` evaluate to `False`, the `Task` is not run and the `Task` is listed in the [`Skipped Tasks` section of the `PipelineRunStatus`](pipelineruns.md#monitoring-execution-status).
 
-In these examples, `create-readme-file` task will only be executed if the `path` parameter is `README.md` and `echo-file-exists` task will only be executed if the `status` result from `check-file` task is `exists`. 
+In these examples, `first-create-file` task will only be executed if the `path` parameter is `README.md`, `echo-file-exists` task will only be executed if the `exists` result from `check-file` task is `yes` and `run-lint` task will only be executed if the `lint-config` optional workspace has been provided by a PipelineRun.
 
 ```yaml
 tasks:
@@ -340,16 +396,25 @@ tasks:
         operator: in
         values: ["README.md"]
     taskRef:
-      name: create-readme-file
+      name: first-create-file
 ---
 tasks:
   - name: echo-file-exists
     when:
-      - input: "$(tasks.check-file.results.status)"
+      - input: "$(tasks.check-file.results.exists)"
         operator: in
-        values: ["exists"]
+        values: ["yes"]
     taskRef:
         name: echo-file-exists
+---
+tasks:
+  - name: run-lint
+    when:
+      - input: "$(workspaces.lint-config.bound)"
+        operator: in
+        values: ["true"]
+    taskRef:
+      name: lint-source
 ```
 
 For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
@@ -362,10 +427,11 @@ There are a lot of scenarios where `WhenExpressions` can be really useful. Some 
 - Checking if a git file has changed in the previous commits
 - Checking if an image exists in the registry
 - Checking if the name of a CI job matches
+- Checking if an optional Workspace has been provided
 
 ### Guard `Task` execution using `Conditions`
 
-**Note:** `Conditions` are deprecated, use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead. 
+**Note:** `Conditions` are [deprecated](./deprecations.md), use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
 
 To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
 the `conditions` field. The `conditions` field allows you to list a series of references to
@@ -389,17 +455,17 @@ tasks:
       name: deploy
 ```
 
-Unlike regular task failures, condition failures do not automatically fail the entire `PipelineRun` -- 
+Unlike regular task failures, condition failures do not automatically fail the entire `PipelineRun` --
 other tasks that are **not dependent** on the `Task` (via `from` or `runAfter`) are still run.
 
 In this example, `(task C)` has a `condition` set to _guard_ its execution. If the condition
 is **not** successfully evaluated, task `(task D)` will not be run, but all other tasks in the pipeline
 that not depend on `(task C)` will be executed and the `PipelineRun` will successfully complete.
- 
+
   ```
          (task B) — (task E)
-       / 
-   (task A) 
+       /
+   (task A)
        \
          (guarded task C) — (task D)
   ```
@@ -434,7 +500,7 @@ tasks:
 You can use the `Timeout` field in the `Task` spec within the `Pipeline` to set the timeout
 of the `TaskRun` that executes that `Task` within the `PipelineRun` that executes your `Pipeline.`
 The `Timeout` value is a `duration` conforming to Go's [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration)
-format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`. 
+format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`.
 
 **Note:** If you do not specify a `Timeout` value, Tekton instead honors the timeout for the [`PipelineRun`](pipelineruns.md#configuring-a-pipelinerun).
 
@@ -446,18 +512,31 @@ spec:
     - name: build-the-image
       taskRef:
         name: build-push
-      Timeout: "0h1m30s"
+      timeout: "0h1m30s"
 ```
+
+## Using variable substitution
+
+Tekton provides variables to inject values into the contents of certain fields.
+The values you can inject come from a range of sources including other fields
+in the Pipeline, context-sensitive information that Tekton provides, and runtime
+information received from a PipelineRun.
+
+The mechanism of variable substitution is quite simple - string replacement is
+performed by the Tekton Controller when a PipelineRun is executed.
+
+See the [complete list of variable substitutions for Pipelines](./variables.md#variables-available-in-a-pipeline)
+and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
 
 ## Using `Results`
 
 Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipeline can use these
 `Results` for two different purposes:
 
-1. A Pipeline can pass the `Result` of a `Task` in to the `Parameters` of another.
+1. A Pipeline can pass the `Result` of a `Task` into the `Parameters` or `WhenExpressions` of another.
 2. A Pipeline can itself emit `Results` and include data from the `Results` of its Tasks.
 
-### Passing one Task's `Results` into the `Parameters` of another
+### Passing one Task's `Results` into the `Parameters` or `WhenExpressions` of another
 
 Sharing `Results` between `Tasks` in a `Pipeline` happens via
 [variable substitution](variables.md#variables-available-in-a-pipeline) - one `Task` emits
@@ -467,7 +546,7 @@ a `Result` and another receives it as a `Parameter` with a variable such as
 When one `Task` receives the `Results` of another, there is a dependency created between those
 two `Tasks`. In order for the receiving `Task` to get data from another `Task's` `Result`,
 the `Task` producing the `Result` must run first. Tekton enforces this `Task` ordering
-by ensuring that the `Task` emitting the `Result` executes before any `Task` that uses it. 
+by ensuring that the `Task` emitting the `Result` executes before any `Task` that uses it.
 
 In the snippet below, a param is provided its value from the `commit` `Result` emitted by the
 `checkout-source` `Task`. Tekton will make sure that the `checkout-source` `Task` runs
@@ -477,6 +556,23 @@ before this one.
 params:
   - name: foo
     value: "$(tasks.checkout-source.results.commit)"
+```
+
+**Note:** If `checkout-source` exits successfully without initializing `commit` `Result`,
+the receiving `Task` fails and causes the `Pipeline` to fail with `InvalidTaskResultReference`:
+
+```
+unable to find result referenced by param 'foo' in 'task';: Could not find result with name 'commit' for task run 'checkout-source'
+```
+
+In the snippet below, a `WhenExpression` is provided its value from the `exists` `Result` emitted by the
+`check-file` `Task`. Tekton will make sure that the `check-file` `Task` runs before this one.
+
+```yaml
+when:
+- input: "$(tasks.check-file.results.exists)"
+  operator: in
+  values: ["yes"]
 ```
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
@@ -806,6 +902,92 @@ In this example, `PipelineResults` is set to:
   }
 ],
 ```
+
+## Using Custom Tasks
+
+**Note: This is only allowed if `enable-custom-tasks` is set to
+`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+
+[Custom Tasks](https://github.com/tektoncd/community/blob/master/teps/0002-custom-tasks.md)
+can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
+For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.
+
+A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/master/docs/runs.md) instead of a `TaskRun`.
+In order for a custom task to execute, there must be a custom task controller running on the cluster
+that is responsible for watching and updating `Run`s which reference their type. 
+If no such controller is running, those `Run`s will never complete and Pipelines using them will time out.
+
+Custom tasks are an **_experimental alpha feature_** and should be expected to change
+in breaking ways or even be removed.
+
+### Specifying the target Custom Task
+
+To specify the custom task type you want to execute, the `taskRef` field
+must include the custom task's `apiVersion` and `kind` as shown below:
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+```
+
+This creates a `Run` of a custom task of type `Example` in the `example.dev` API group with the version `v1alpha1`.
+
+You can also specify the `name` of a custom task resource object previously defined in the cluster.
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+```
+
+If the `taskRef` specifies a name, the custom task controller should look up the
+`Example` resource with that name and use that object to configure the execution.
+
+If the `taskRef` does not specify a name, the custom task controller might support
+some default behavior for executing unnamed tasks.
+
+### Specifying `Parameters`
+
+If a custom task supports [`parameters`](tasks.md#parameters), you can use the
+`params` field to specify their values:
+
+```yaml
+spec:
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+      params:
+      - name: foo
+        value: bah
+```
+
+### Using `Results`
+
+If the custom task produces results, you can reference them in a Pipeline using the normal syntax,
+`$(tasks.<task-name>.results.<result-name>)`.
+
+### Limitations
+
+Pipelines do not directly support passing the following items to custom tasks:
+* Pipeline Resources
+* Workspaces
+* Service account name
+* Pod templates
+
+A pipeline task that references a custom task cannot reference `Conditions`.
+`Conditions` are deprecated.  Use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
 
 ## Code examples
 

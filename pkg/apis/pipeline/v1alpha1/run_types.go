@@ -18,12 +18,11 @@ package v1alpha1
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -45,12 +44,24 @@ type RunSpec struct {
 	// +optional
 	Params []v1beta1.Param `json:"params,omitempty"`
 
+	// Used for cancelling a run (and maybe more later on)
+	// +optional
+	Status RunSpecStatus `json:"status,omitempty"`
+
 	// TODO(https://github.com/tektoncd/community/pull/128)
-	// - cancellation
 	// - timeout
 	// - inline task spec
 	// - workspaces ?
 }
+
+// RunSpecStatus defines the taskrun spec status the user can provide
+type RunSpecStatus string
+
+const (
+	// RunSpecStatusCancelled indicates that the user wants to cancel the run,
+	// if not already cancelled or terminated
+	RunSpecStatusCancelled RunSpecStatus = "RunCancelled"
+)
 
 // TODO(jasonhall): Move this to a Params type so other code can use it?
 func (rs RunSpec) GetParam(name string) *v1beta1.Param {
@@ -62,45 +73,15 @@ func (rs RunSpec) GetParam(name string) *v1beta1.Param {
 	return nil
 }
 
-type RunStatus struct {
-	duckv1.Status `json:",inline"`
+const (
+	// RunReasonCancelled must be used in the Condition Reason to indicate that a Run was cancelled.
+	RunReasonCancelled = "RunCancelled"
+)
 
-	// RunStatusFields inlines the status fields.
-	RunStatusFields `json:",inline"`
-}
+// RunStatus defines the observed state of Run.
+type RunStatus = runv1alpha1.RunStatus
 
 var runCondSet = apis.NewBatchConditionSet()
-
-// GetCondition returns the Condition matching the given type.
-func (r *RunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return runCondSet.Manage(r).GetCondition(t)
-}
-
-// InitializeConditions will set all conditions in runCondSet to unknown for the PipelineRun
-// and set the started time to the current time
-func (r *RunStatus) InitializeConditions() {
-	started := false
-	if r.StartTime.IsZero() {
-		r.StartTime = &metav1.Time{Time: time.Now()}
-		started = true
-	}
-	conditionManager := runCondSet.Manage(r)
-	conditionManager.InitializeConditions()
-	// Ensure the started reason is set for the "Succeeded" condition
-	if started {
-		initialCondition := conditionManager.GetCondition(apis.ConditionSucceeded)
-		initialCondition.Reason = "Started"
-		conditionManager.SetCondition(*initialCondition)
-	}
-}
-
-// SetCondition sets the condition, unsetting previous conditions with the same
-// type as necessary.
-func (r *RunStatus) SetCondition(newCond *apis.Condition) {
-	if newCond != nil {
-		runCondSet.Manage(r).SetCondition(*newCond)
-	}
-}
 
 // GetConditionSet retrieves the condition set for this resource. Implements
 // the KRShaped interface.
@@ -113,24 +94,10 @@ func (r *Run) GetStatus() *duckv1.Status { return &r.Status.Status }
 // RunStatusFields holds the fields of Run's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
-type RunStatusFields struct {
-	// StartTime is the time the build is actually started.
-	// +optional
-	StartTime *metav1.Time `json:"startTime,omitempty"`
+type RunStatusFields = runv1alpha1.RunStatusFields
 
-	// CompletionTime is the time the build completed.
-	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// Results reports any output result values to be consumed by later
-	// tasks in a pipeline.
-	// +optional
-	Results []v1beta1.TaskRunResult `json:"results,omitempty"`
-
-	// ExtraFields holds arbitrary fields provided by the custom task
-	// controller.
-	ExtraFields runtime.RawExtension `json:"extraFields,omitempty"`
-}
+// RunResult used to describe the results of a task
+type RunResult = runv1alpha1.RunResult
 
 // +genclient
 // +genreconciler
@@ -174,6 +141,11 @@ func (r *Run) HasPipelineRunOwnerReference() bool {
 		}
 	}
 	return false
+}
+
+// IsCancelled returns true if the Run's spec status is set to Cancelled state
+func (r *Run) IsCancelled() bool {
+	return r.Spec.Status == RunSpecStatusCancelled
 }
 
 // IsDone returns true if the Run's status indicates that it is done.

@@ -54,6 +54,10 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image:   p.ShellImage,
 		Command: []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_RESOURCE_NAME",
+			Value: name,
+		}},
 	}}}
 }
 
@@ -69,6 +73,10 @@ func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPat
 		Image:        p.ShellImage,
 		Command:      []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
 		VolumeMounts: []corev1.VolumeMount{GetPvcMount(p.Name)},
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_RESOURCE_NAME",
+			Value: name,
+		}},
 	}}}
 }
 

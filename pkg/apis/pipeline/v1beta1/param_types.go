@@ -120,11 +120,11 @@ func (arrayOrString ArrayOrString) MarshalJSON() ([]byte, error) {
 // ApplyReplacements applyes replacements for ArrayOrString type
 func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	if arrayOrString.Type == ParamTypeString {
-		arrayOrString.StringVal = ApplyReplacements(arrayOrString.StringVal, stringReplacements)
+		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
 	} else {
 		var newArrayVal []string
 		for _, v := range arrayOrString.ArrayVal {
-			newArrayVal = append(newArrayVal, ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
+			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
 		arrayOrString.ArrayVal = newArrayVal
 	}
@@ -132,53 +132,38 @@ func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[str
 
 // NewArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on
 // how many inputs are given (>1 input will create an array, not string).
-func NewArrayOrString(value string, values ...string) ArrayOrString {
+func NewArrayOrString(value string, values ...string) *ArrayOrString {
 	if len(values) > 0 {
-		values = append([]string{value}, values...)
-		return ArrayOrString{
+		return &ArrayOrString{
 			Type:     ParamTypeArray,
-			ArrayVal: values,
+			ArrayVal: append([]string{value}, values...),
 		}
 	}
-	return ArrayOrString{
+	return &ArrayOrString{
 		Type:      ParamTypeString,
 		StringVal: value,
 	}
 }
 
-func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix string, paramNames sets.String, arrayParamNames sets.String) *apis.FieldError {
+func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix string, paramNames sets.String, arrayParamNames sets.String) (errs *apis.FieldError) {
 	for _, param := range params {
 		if param.Value.Type == ParamTypeString {
-			if err := validateStringVariableInTaskParameters(fmt.Sprintf("[%s]", param.Name), param.Value.StringVal, prefix, paramNames, arrayParamNames); err != nil {
-				return err
-			}
+			errs = errs.Also(validateStringVariableInTaskParameters(param.Value.StringVal, prefix, paramNames, arrayParamNames).ViaFieldKey("params", param.Name))
 		} else {
-			for _, arrayElement := range param.Value.ArrayVal {
-				if err := validateArrayVariableInTaskParameters(fmt.Sprintf("[%s]", param.Name), arrayElement, prefix, paramNames, arrayParamNames); err != nil {
-					return err
-				}
+			for idx, arrayElement := range param.Value.ArrayVal {
+				errs = errs.Also(validateArrayVariableInTaskParameters(arrayElement, prefix, paramNames, arrayParamNames).ViaFieldIndex("value", idx).ViaFieldKey("params", param.Name))
 			}
 		}
 	}
-	return nil
+	return errs
 }
 
-func validateStringVariableInTaskParameters(name, value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
-	if err := substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", stringVars); err != nil {
-		return err
-	}
-	if err := substitution.ValidateVariableProhibited(name, value, prefix, "task parameter", "pipelinespec.params", arrayVars); err != nil {
-		return err
-	}
-	return nil
+func validateStringVariableInTaskParameters(value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
+	errs := substitution.ValidateVariableP(value, prefix, stringVars)
+	return errs.Also(substitution.ValidateVariableProhibitedP(value, prefix, arrayVars))
 }
 
-func validateArrayVariableInTaskParameters(name, value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
-	if err := substitution.ValidateVariable(name, value, prefix, "task parameter", "pipelinespec.params", stringVars); err != nil {
-		return err
-	}
-	if err := substitution.ValidateVariableIsolated(name, value, prefix, "task parameter", "pipelinespec.params", arrayVars); err != nil {
-		return err
-	}
-	return nil
+func validateArrayVariableInTaskParameters(value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
+	errs := substitution.ValidateVariableP(value, prefix, stringVars)
+	return errs.Also(substitution.ValidateVariableIsolatedP(value, prefix, arrayVars))
 }

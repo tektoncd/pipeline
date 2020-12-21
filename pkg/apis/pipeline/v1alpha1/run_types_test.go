@@ -18,6 +18,7 @@ package v1alpha1_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -46,26 +47,26 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewArrayOrString("bar"),
 		},
 	}, {
 		desc: "not found",
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		name: "bar",
@@ -78,19 +79,19 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewArrayOrString("blah"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}, {
 				Name:  "foo",
-				Value: v1beta1.NewArrayOrString("second bar"),
+				Value: *v1beta1.NewArrayOrString("second bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewArrayOrString("bar"),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -99,6 +100,71 @@ func TestGetParams(t *testing.T) {
 				t.Fatalf("Diff(-want,+got): %v", d)
 			}
 		})
+	}
+}
+
+func TestRunHasStarted(t *testing.T) {
+	params := []struct {
+		name          string
+		runStatus     v1alpha1.RunStatus
+		expectedValue bool
+	}{{
+		name:          "runWithNoStartTime",
+		runStatus:     v1alpha1.RunStatus{},
+		expectedValue: false,
+	}, {
+		name: "runWithStartTime",
+		runStatus: v1alpha1.RunStatus{
+			RunStatusFields: v1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+		expectedValue: true,
+	}, {
+		name: "runWithZeroStartTime",
+		runStatus: v1alpha1.RunStatus{
+			RunStatusFields: v1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{},
+			},
+		},
+		expectedValue: false,
+	}}
+	for _, tc := range params {
+		t.Run(tc.name, func(t *testing.T) {
+			run := v1alpha1.Run{}
+			run.Status = tc.runStatus
+			if run.HasStarted() != tc.expectedValue {
+				t.Fatalf("Expected run HasStarted() to return %t but got %t", tc.expectedValue, run.HasStarted())
+			}
+		})
+	}
+}
+
+func TestRunIsDone(t *testing.T) {
+	run := v1alpha1.Run{
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+	}
+
+	if !run.IsDone() {
+		t.Fatal("Expected run status to be done")
+	}
+}
+
+func TestRunIsCancelled(t *testing.T) {
+	run := v1alpha1.Run{
+		Spec: v1alpha1.RunSpec{
+			Status: v1alpha1.RunSpecStatusCancelled,
+		},
+	}
+	if !run.IsCancelled() {
+		t.Fatal("Expected run status to be cancelled")
 	}
 }
 
@@ -153,7 +219,7 @@ status:
 			},
 			RunStatusFields: v1alpha1.RunStatusFields{
 				// Results are parsed correctly.
-				Results: []v1beta1.TaskRunResult{{
+				Results: []v1alpha1.RunResult{{
 					Name:  "foo",
 					Value: "bar",
 				}},
@@ -165,6 +231,25 @@ status:
 		},
 	}
 	if d := cmp.Diff(want, &r); d != "" {
+		t.Fatalf("Diff(-want,+got): %s", d)
+	}
+}
+
+func TestEncodeDecodeExtraFields(t *testing.T) {
+	type Mystatus struct {
+		S string
+		I int
+	}
+	status := Mystatus{S: "one", I: 1}
+	r := &v1alpha1.RunStatus{}
+	if err := r.EncodeExtraFields(&status); err != nil {
+		t.Fatalf("EncodeExtraFields failed: %s", err)
+	}
+	newStatus := Mystatus{}
+	if err := r.DecodeExtraFields(&newStatus); err != nil {
+		t.Fatalf("DecodeExtraFields failed: %s", err)
+	}
+	if d := cmp.Diff(status, newStatus); d != "" {
 		t.Fatalf("Diff(-want,+got): %s", d)
 	}
 }

@@ -38,7 +38,7 @@ func MaybeInsertIntTag(key tag.Key, value int, cond bool) tag.Mutator {
 }
 
 // MaybeInsertBoolTag conditionally insert the tag when cond is true.
-func MaybeInsertBoolTag(key tag.Key, value bool, cond bool) tag.Mutator {
+func MaybeInsertBoolTag(key tag.Key, value, cond bool) tag.Mutator {
 	if cond {
 		return tag.Insert(key, strconv.FormatBool(value))
 	}

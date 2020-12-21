@@ -36,7 +36,7 @@ type Images struct {
 	KubeconfigWriterImage string
 	// ShellImage is the container image containing bash shell.
 	ShellImage string
-	// GsutilImage is the container miage containing gsutil.
+	// GsutilImage is the container image containing gsutil.
 	GsutilImage string
 	// BuildGCSFetcherImage is the container image containing our GCS fetcher binary.
 	BuildGCSFetcherImage string

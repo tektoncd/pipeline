@@ -44,7 +44,7 @@ func ListWithContext(ctx context.Context, repo name.Repository, options ...Optio
 		return nil, err
 	}
 	scopes := []string{repo.Scope(transport.PullScope)}
-	tr, err := transport.New(repo.Registry, o.auth, o.transport, scopes)
+	tr, err := transport.NewWithContext(o.context, repo.Registry, o.auth, o.transport, scopes)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +56,13 @@ func ListWithContext(ctx context.Context, repo name.Repository, options ...Optio
 		// ECR returns an error if n > 1000:
 		// https://github.com/google/go-containerregistry/issues/681
 		RawQuery: "n=1000",
+	}
+
+	// This is lazy, but I want to make sure List(..., WithContext(ctx)) works
+	// without calling makeOptions() twice (which can have side effects).
+	// This means ListWithContext(ctx, ..., WithContext(ctx2)) prefers ctx2.
+	if o.context != context.Background() {
+		ctx = o.context
 	}
 
 	client := http.Client{Transport: tr}

@@ -35,10 +35,6 @@ func TestLogger(t zaptest.TestingT) *zap.SugaredLogger {
 	return zaptest.NewLogger(t, opts).Sugar()
 }
 
-// ClearAll removes all the testing loggers.
-// TODO(taragu) remove this after removing all ClearAll() calls from serving and eventing
-func ClearAll() {}
-
 // TestContextWithLogger returns a context with a logger to be used in tests
 func TestContextWithLogger(t zaptest.TestingT) context.Context {
 	return logging.WithLogger(context.Background(), TestLogger(t))

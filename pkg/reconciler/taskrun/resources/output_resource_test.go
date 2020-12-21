@@ -238,6 +238,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
+			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
 		}}},
 		wantVolumes: []corev1.Volume{
 			{
@@ -311,6 +312,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
+			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
 		}}},
 		wantVolumes: []corev1.Volume{
 			{
@@ -483,10 +485,11 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "volume-source-gcs-sname",
 					MountPath: "/var/secret/sname",
@@ -573,10 +576,11 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
@@ -647,7 +651,7 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
@@ -708,7 +712,7 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
-				Image: "google/cloud-sdk",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
@@ -1000,7 +1004,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
-			Image:   "google/cloud-sdk",
+			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "-P", "-r", "/workspace/output/source-workspace", "gs://fake-bucket/pipeline-task-name"},
 		}}},
@@ -1051,7 +1055,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
-			Image:   "google/cloud-sdk",
+			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "-P", "-r", "/workspace/output/source-workspace", "gs://fake-bucket/pipeline-task-name"},
 		}}},
@@ -1448,7 +1452,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:    "artifact-copy-from-source-workspace-mz4c7",
-				Image:   "google/cloud-sdk",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args: []string{
 					"cp",
@@ -1467,11 +1471,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:         "upload-source-gcs-bucket-78c5n",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: nil,
 				Command:      []string{"gsutil"},
 				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-				Env:          nil,
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -1562,7 +1565,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:    "artifact-copy-from-source-workspace-78c5n",
-				Image:   "google/cloud-sdk",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args: []string{
 					"cp",
@@ -1588,7 +1591,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:    "artifact-copy-from-source-workspace-2-mz4c7",
-				Image:   "google/cloud-sdk",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args:    []string{"cp", "-P", "-r", "gs://fake-bucket/pipeline-task-path-2/*", "/workspace/faraway-disk-2"},
 				Env: []corev1.EnvVar{
@@ -1600,7 +1603,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-sname", MountPath: "/var/bucketsecret/sname"}},
 			}}, {Container: corev1.Container{
 				Name:    "upload-source-gcs-bucket-3-j2tds",
-				Image:   "google/cloud-sdk",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-3", "gs://some-bucket-3"},
 			}},
@@ -1677,7 +1680,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:    "upload-source-gcs-bucket-mz4c7",
-				Image:   "google/cloud-sdk",
+				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args: []string{
 					"rsync",
@@ -1689,7 +1692,7 @@ func TestInputOutputBucketResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:         "upload-source-gcs-bucket-2-78c5n",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				VolumeMounts: nil,
 				Command:      []string{"gsutil"},
 				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-2", "gs://some-bucket-2"},

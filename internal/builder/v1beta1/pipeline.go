@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,6 +70,14 @@ func Pipeline(name string, ops ...PipelineOp) *v1beta1.Pipeline {
 	}
 
 	return p
+}
+
+// PipelineType will add a TypeMeta to the pipeline's definition.
+func PipelineType(t *v1beta1.Pipeline) {
+	t.TypeMeta = metav1.TypeMeta{
+		Kind:       "Pipeline",
+		APIVersion: "tekton.dev/v1beta1",
+	}
 }
 
 // PipelineNamespace sets the namespace on the Pipeline
@@ -196,8 +205,15 @@ func PipelineRunResult(name, value string) PipelineRunStatusOp {
 	}
 }
 
+// PipelineTaskRefBundle will add the specified URL as a bundle url on the task ref.
+func PipelineTaskRefBundle(url string) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.TaskRef.Bundle = url
+	}
+}
+
 // PipelineTaskSpec sets the TaskSpec on a PipelineTask.
-func PipelineTaskSpec(spec *v1beta1.TaskSpec) PipelineTaskOp {
+func PipelineTaskSpec(spec v1beta1.TaskSpec) PipelineTaskOp {
 	return func(pt *v1beta1.PipelineTask) {
 		if pt.TaskSpec == nil {
 			pt.TaskSpec = &v1beta1.EmbeddedTask{}
@@ -250,11 +266,10 @@ func PipelineTaskRefKind(kind v1beta1.TaskKind) PipelineTaskOp {
 
 // PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
 func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(pt *v1beta1.PipelineTask) {
 		pt.Params = append(pt.Params, v1beta1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -324,7 +339,7 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 		}
 		condition.Params = append(condition.Params, v1beta1.Param{
 			Name:  name,
-			Value: *ArrayOrString(val),
+			Value: *v1beta1.NewArrayOrString(val),
 		})
 	}
 }
@@ -499,11 +514,10 @@ func PipelineTaskRunSpecs(taskRunSpecs []v1beta1.PipelineTaskRunSpec) PipelineRu
 
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(prs *v1beta1.PipelineRunSpec) {
 		prs.Params = append(prs.Params, v1beta1.Param{
 			Name:  name,
-			Value: *arrayOrString,
+			Value: *v1beta1.NewArrayOrString(value, additionalValues...),
 		})
 	}
 }
@@ -524,29 +538,9 @@ func PipelineRunNilTimeout(prs *v1beta1.PipelineRunSpec) {
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {
 		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
+			prs.PodTemplate = &pod.Template{}
 		}
 		prs.PodTemplate.NodeSelector = values
-	}
-}
-
-// PipelineRunTolerations sets the Node selector to the PipelineRunSpec.
-func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Tolerations = values
-	}
-}
-
-// PipelineRunAffinity sets the affinity to the PipelineRunSpec.
-func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
-	return func(prs *v1beta1.PipelineRunSpec) {
-		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
-		}
-		prs.PodTemplate.Affinity = affinity
 	}
 }
 
@@ -560,6 +554,13 @@ func PipelineRunPipelineSpec(ops ...PipelineSpecOp) PipelineRunSpecOp {
 			op(ps)
 		}
 		prs.PipelineSpec = ps
+	}
+}
+
+// PipelineRunPipelineRefBundle will specify the given URL as the bundle url in the pipeline ref.
+func PipelineRunPipelineRefBundle(url string) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		prs.PipelineRef.Bundle = url
 	}
 }
 

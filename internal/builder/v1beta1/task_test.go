@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,7 +42,7 @@ var (
 )
 
 func TestTask(t *testing.T) {
-	task := tb.Task("test-task", tb.TaskType(), tb.TaskSpec(
+	task := tb.Task("test-task", tb.TaskType, tb.TaskSpec(
 		tb.TaskParam("param", v1beta1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
 		tb.TaskParam("array-param", v1beta1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		tb.TaskResources(
@@ -101,12 +102,12 @@ func TestTask(t *testing.T) {
 				Name:        "param",
 				Type:        v1beta1.ParamTypeString,
 				Description: "mydesc",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}, {
 				Name:        "array-param",
 				Type:        v1beta1.ParamTypeString,
 				Description: "desc",
-				Default:     tb.ArrayOrString("array", "values"),
+				Default:     v1beta1.NewArrayOrString("array", "values"),
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: []v1beta1.TaskResource{{
@@ -143,7 +144,7 @@ func TestTask(t *testing.T) {
 }
 
 func TestClusterTask(t *testing.T) {
-	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType(), tb.ClusterTaskSpec(
+	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskType, tb.ClusterTaskSpec(
 		tb.Step("myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
@@ -184,6 +185,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			tb.TaskRunTaskRef("task-output",
 				tb.TaskRefKind(v1beta1.ClusterTaskKind),
 				tb.TaskRefAPIVersion("a1"),
+				tb.TaskRefBundle("some/bundle/url"),
 			),
 			tb.TaskRunParam("iparam", "ivalue"),
 			tb.TaskRunParam("arrayparam", "array", "values"),
@@ -240,10 +242,10 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "iparam",
-				Value: *tb.ArrayOrString("ivalue"),
+				Value: *v1beta1.NewArrayOrString("ivalue"),
 			}, {
 				Name:  "arrayparam",
-				Value: *tb.ArrayOrString("array", "values"),
+				Value: *v1beta1.NewArrayOrString("array", "values"),
 			}},
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: []v1beta1.TaskResourceBinding{{
@@ -277,6 +279,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Name:       "task-output",
 				Kind:       v1beta1.ClusterTaskKind,
 				APIVersion: "a1",
+				Bundle:     "some/bundle/url",
 			},
 			Workspaces: []v1beta1.WorkspaceBinding{{
 				Name:     "bread",
@@ -399,7 +402,7 @@ func TestTaskRunWithPodTemplate(t *testing.T) {
 						}}},
 				},
 			},
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				NodeSelector: map[string]string{
 					"label": "value",
 				},

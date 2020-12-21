@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestGetVolumes(t *testing.T) {
+func TestCreateVolumes(t *testing.T) {
 	names.TestingSeed()
 	for _, tc := range []struct {
 		name            string
@@ -185,7 +185,7 @@ func TestGetVolumes(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			v := workspace.GetVolumes(tc.workspaces)
+			v := workspace.CreateVolumes(tc.workspaces)
 			if d := cmp.Diff(tc.expectedVolumes, v); d != "" {
 				t.Errorf("Didn't get expected volumes from bindings %s", diff.PrintWantGot(d))
 			}
@@ -511,7 +511,8 @@ func TestApply(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ts, err := workspace.Apply(tc.ts, tc.workspaces)
+			vols := workspace.CreateVolumes(tc.workspaces)
+			ts, err := workspace.Apply(tc.ts, tc.workspaces, vols)
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}

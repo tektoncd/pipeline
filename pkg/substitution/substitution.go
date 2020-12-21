@@ -44,6 +44,22 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 	return nil
 }
 
+func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
+		for _, v := range vs {
+			v = strings.TrimSuffix(v, "[*]")
+			if !vars.Has(v) {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("non-existent variable in %q", value),
+					// Empty path is required to make the `ViaField`, … work
+					Paths: []string{""},
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // Verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
@@ -53,6 +69,22 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 				return &apis.FieldError{
 					Message: fmt.Sprintf("variable type invalid in %q for %s %s", value, locationName, name),
 					Paths:   []string{path + "." + name},
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
+		for _, v := range vs {
+			v = strings.TrimSuffix(v, "[*]")
+			if vars.Has(v) {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("variable type invalid in %q", value),
+					// Empty path is required to make the `ViaField`, … work
+					Paths: []string{""},
 				}
 			}
 		}
@@ -71,6 +103,25 @@ func ValidateVariableIsolated(name, value, prefix, locationName, path string, va
 					return &apis.FieldError{
 						Message: fmt.Sprintf("variable is not properly isolated in %q for %s %s", value, locationName, name),
 						Paths:   []string{path + "." + name},
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
+	if vs, present := extractVariablesFromString(value, prefix); present {
+		firstMatch, _ := extractExpressionFromString(value, prefix)
+		for _, v := range vs {
+			v = strings.TrimSuffix(v, "[*]")
+			if vars.Has(v) {
+				if len(value) != len(firstMatch) {
+					return &apis.FieldError{
+						Message: fmt.Sprintf("variable is not properly isolated in %q", value),
+						// Empty path is required to make the `ViaField`, … work
+						Paths: []string{""},
 					}
 				}
 			}

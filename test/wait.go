@@ -65,17 +65,28 @@ const (
 // ConditionAccessorFn is a condition function used polling functions
 type ConditionAccessorFn func(ca apis.ConditionAccessor) (bool, error)
 
+func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
+		return fn()
+	})
+}
+
 // WaitForTaskRunState polls the status of the TaskRun called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForTaskRunState(c *clients, name string, inState ConditionAccessorFn, desc string) error {
+func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState ConditionAccessorFn, desc string) error {
 	metricName := fmt.Sprintf("WaitForTaskRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		r, err := c.TaskRunClient.Get(name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.TaskRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -87,13 +98,13 @@ func WaitForTaskRunState(c *clients, name string, inState ConditionAccessorFn, d
 // from client every interval until inState returns `true` indicating it is done,
 // returns an  error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForDeploymentState(c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
+func WaitForDeploymentState(ctx context.Context, c *clients, name string, namespace string, inState func(d *appsv1.Deployment) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -105,13 +116,13 @@ func WaitForDeploymentState(c *clients, name string, namespace string, inState f
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForPodState(c *clients, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
+func WaitForPodState(ctx context.Context, c *clients, name string, namespace string, inState func(r *corev1.Pod) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForPodState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -123,13 +134,15 @@ func WaitForPodState(c *clients, name string, namespace string, inState func(r *
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
+func WaitForPipelineRunState(ctx context.Context, c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
 	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, polltimeout, func() (bool, error) {
-		r, err := c.PipelineRunClient.Get(name, metav1.GetOptions{})
+	ctx, cancel := context.WithTimeout(ctx, polltimeout)
+	defer cancel()
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -141,13 +154,13 @@ func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration,
 // interval until an external ip is assigned indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForServiceExternalIPState(c *clients, namespace, name string, inState func(s *corev1.Service) (bool, error), desc string) error {
+func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, name string, inState func(s *corev1.Service) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForServiceExternalIPState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -197,7 +210,7 @@ func FailedWithReason(reason, name string) ConditionAccessorFn {
 				if c.Reason == reason {
 					return true, nil
 				}
-				return true, fmt.Errorf("%q completed with the wrong reason: %s", name, c.Reason)
+				return true, fmt.Errorf("%q completed with the wrong reason: %s (message: %s)", name, c.Reason, c.Message)
 			} else if c.Status == corev1.ConditionTrue {
 				return true, fmt.Errorf("%q completed successfully, should have been failed with reason %q", name, reason)
 			}
@@ -263,4 +276,17 @@ func PipelineRunSucceed(name string) ConditionAccessorFn {
 // has failed.
 func PipelineRunFailed(name string) ConditionAccessorFn {
 	return Failed(name)
+}
+
+// Chain allows multiple ConditionAccessorFns to be chained together, checking the condition of each in order.
+func Chain(fns ...ConditionAccessorFn) ConditionAccessorFn {
+	return func(ca apis.ConditionAccessor) (bool, error) {
+		for _, fn := range fns {
+			status, err := fn(ca)
+			if err != nil || !status {
+				return status, err
+			}
+		}
+		return true, nil
+	}
 }

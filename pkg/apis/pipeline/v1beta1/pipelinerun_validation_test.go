@@ -22,33 +22,32 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestPipelineRun_Invalidate(t *testing.T) {
+func TestPipelineRun_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun
 		want *apis.FieldError
+		wc   func(context.Context) context.Context
 	}{
-		{
-			name: "invalid pipelinerun",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "prmetaname",
-				},
-			},
-			want: apis.ErrMissingField("spec"),
-		},
 		{
 			name: "invalid pipelinerun metadata",
 			pr: v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinerun.name",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
 				},
 			},
 			want: &apis.FieldError{
@@ -94,14 +93,62 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled", "spec.status"),
+		}, {
+			name: "use of bundle without the feature flag set",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name:   "my-pipeline",
+						Bundle: "docker.io/foo",
+					},
+				},
+			},
+			want: apis.ErrDisallowedFields("spec.pipelineref.bundle"),
+		}, {
+			name: "bundle missing name",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Bundle: "docker.io/foo",
+					},
+					PipelineSpec: &v1beta1.PipelineSpec{Description: "foo"},
+				},
+			},
+			want: apis.ErrMissingField("spec.pipelineref.name"),
+			wc:   enableTektonOCIBundles(t),
+		}, {
+			name: "invalid bundle reference",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name:   "my-pipeline",
+						Bundle: "not a valid reference",
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
+			wc:   enableTektonOCIBundles(t),
 		},
 	}
 
-	for _, ps := range tests {
-		t.Run(ps.name, func(t *testing.T) {
-			err := ps.pr.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s %s", ps.name, diff.PrintWantGot(d))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.wc != nil {
+				ctx = tc.wc(ctx)
+			}
+			err := tc.pr.Validate(ctx)
+			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -111,39 +158,75 @@ func TestPipelineRun_Validate(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun
-	}{
-		{
-			name: "normal case",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-				},
+	}{{
+		name: "normal case",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelineName",
 			},
-		}, {
-			name: "no timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeout: &metav1.Duration{Duration: 0},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
 				},
 			},
 		},
-	}
+	}, {
+		name: "no timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelineName",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeout: &metav1.Duration{Duration: 0},
+			},
+		},
+	}, {
+		name: "array param with pipelinespec and taskspec",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelineName",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "pipeline-words",
+						Type: v1beta1.ParamTypeArray,
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						Params: []v1beta1.Param{{
+							Name: "task-words",
+							Value: v1beta1.ArrayOrString{
+								ArrayVal: []string{"$(params.pipeline-words)"},
+							},
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "task-words",
+								Type: v1beta1.ParamTypeArray,
+							}},
+							Steps: []v1beta1.Step{{
+								Container: corev1.Container{
+									Name:    "echo",
+									Image:   "ubuntu",
+									Command: []string{"echo"},
+									Args:    []string{"$(params.task-words[*])"},
+								},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+	}}
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.pr.Validate(context.Background()); err != nil {
-				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+				t.Error(err)
 			}
 		})
 	}
@@ -155,15 +238,11 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		spec    v1beta1.PipelineRunSpec
 		wantErr *apis.FieldError
 	}{{
-		name:    "Empty pipelineSpec",
-		spec:    v1beta1.PipelineRunSpec{},
-		wantErr: apis.ErrMissingField("spec"),
-	}, {
 		name: "pipelineRef without Pipeline Name",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{},
 		},
-		wantErr: apis.ErrMissingField("spec.pipelineref.name", "spec.pipelinespec"),
+		wantErr: apis.ErrMissingField("pipelineref.name", "pipelinespec"),
 	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1beta1.PipelineRunSpec{
@@ -178,7 +257,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 					},
 				}}},
 		},
-		wantErr: apis.ErrDisallowedFields("spec.pipelinespec", "spec.pipelineref"),
+		wantErr: apis.ErrDisallowedFields("pipelinespec", "pipelineref"),
 	}, {
 		name: "workspaces may only appear once",
 		spec: v1beta1.PipelineRunSpec{
@@ -195,7 +274,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: &apis.FieldError{
 			Message: `workspace "ws" provided by pipelinerun more than once, at index 0 and 1`,
-			Paths:   []string{"spec.workspaces"},
+			Paths:   []string{"workspaces[1].name"},
 		},
 	}, {
 		name: "workspaces must contain a valid volume config",
@@ -210,11 +289,11 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr: &apis.FieldError{
 			Message: "expected exactly one, got neither",
 			Paths: []string{
-				"spec.workspaces[0].configmap",
-				"spec.workspaces[0].emptydir",
-				"spec.workspaces[0].persistentvolumeclaim",
-				"spec.workspaces[0].secret",
-				"spec.workspaces[0].volumeclaimtemplate",
+				"workspaces[0].configmap",
+				"workspaces[0].emptydir",
+				"workspaces[0].persistentvolumeclaim",
+				"workspaces[0].secret",
+				"workspaces[0].volumeclaimtemplate",
 			},
 		},
 	}}
@@ -222,7 +301,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.spec.Validate(context.Background())
 			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -248,8 +327,21 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			if err := ps.spec.Validate(context.Background()); err != nil {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, err)
+				t.Error(err)
 			}
 		})
+	}
+}
+
+func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := config.NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		})
+		return s.ToContext(ctx)
 	}
 }

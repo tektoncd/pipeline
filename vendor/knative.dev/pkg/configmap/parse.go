@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -43,7 +45,9 @@ func AsString(key string, target *string) ParseFunc {
 func AsBool(key string, target *bool) ParseFunc {
 	return func(data map[string]string) error {
 		if raw, ok := data[key]; ok {
-			*target = strings.EqualFold(raw, "true")
+			val, err := strconv.ParseBool(raw)
+			*target = val // If err != nil — this is always false.
+			return err
 		}
 		return nil
 	}
@@ -140,6 +144,47 @@ func AsQuantity(key string, target **resource.Quantity) ParseFunc {
 
 			*target = &val
 		}
+		return nil
+	}
+}
+
+// AsOptionalNamespacedName parses the value at key as a types.NamespacedName into the target, if it exists
+// The namespace and name are both required and expected to be valid DNS labels
+func AsOptionalNamespacedName(key string, target **types.NamespacedName) ParseFunc {
+	return func(data map[string]string) error {
+		if _, ok := data[key]; !ok {
+			return nil
+		}
+
+		*target = &types.NamespacedName{}
+		return AsNamespacedName(key, *target)(data)
+	}
+}
+
+// AsNamespacedName parses the value at key as a types.NamespacedName into the target, if it exists
+// The namespace and name are both required and expected to be valid DNS labels
+func AsNamespacedName(key string, target *types.NamespacedName) ParseFunc {
+	return func(data map[string]string) error {
+		raw, ok := data[key]
+		if !ok {
+			return nil
+		}
+
+		v := strings.SplitN(raw, string(types.Separator), 3)
+
+		if len(v) != 2 {
+			return fmt.Errorf("failed to parse %q: expected 'namespace/name' format", key)
+		}
+
+		for _, val := range v {
+			if errs := validation.ValidateNamespaceName(val, false); len(errs) > 0 {
+				return fmt.Errorf("failed to parse %q: %s", key, strings.Join(errs, ", "))
+			}
+		}
+
+		target.Namespace = v[0]
+		target.Name = v[1]
+
 		return nil
 	}
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package oci
+package oci_test
 
 import (
 	"fmt"
@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,31 +48,50 @@ func TestOCIResolver(t *testing.T) {
 		name         string
 		objs         []runtime.Object
 		listExpected []remote.ResolvedObject
+		wantErr      string
 	}{
 		{
 			name: "single-task",
 			objs: []runtime.Object{
-				tb.Task("simple-task", tb.TaskType()),
+				tb.Task("simple-task", tb.TaskType),
 			},
 			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1beta1", Name: "simple-task"}},
 		},
 		{
 			name: "cluster-task",
 			objs: []runtime.Object{
-				tb.ClusterTask("simple-task", tb.ClusterTaskType()),
+				tb.ClusterTask("simple-task", tb.ClusterTaskType),
 			},
 			listExpected: []remote.ResolvedObject{{Kind: "clustertask", APIVersion: "v1beta1", Name: "simple-task"}},
 		},
 		{
 			name: "multiple-tasks",
 			objs: []runtime.Object{
-				tb.Task("first-task", tb.TaskType()),
-				tb.Task("second-task", tb.TaskType()),
+				tb.Task("first-task", tb.TaskType),
+				tb.Task("second-task", tb.TaskType),
 			},
 			listExpected: []remote.ResolvedObject{
 				{Kind: "task", APIVersion: "v1beta1", Name: "first-task"},
 				{Kind: "task", APIVersion: "v1beta1", Name: "second-task"},
 			},
+		},
+		{
+			name: "too-many-objects",
+			objs: []runtime.Object{
+				tb.Task("first-task", tb.TaskType),
+				tb.Task("second-task", tb.TaskType),
+				tb.Task("third-task", tb.TaskType),
+				tb.Task("fourth-task", tb.TaskType),
+				tb.Task("fifth-task", tb.TaskType),
+				tb.Task("sixth-task", tb.TaskType),
+				tb.Task("seventh-task", tb.TaskType),
+				tb.Task("eighth-task", tb.TaskType),
+				tb.Task("ninth-task", tb.TaskType),
+				tb.Task("tenth-task", tb.TaskType),
+				tb.Task("eleventh-task", tb.TaskType),
+			},
+			listExpected: []remote.ResolvedObject{},
+			wantErr:      "contained more than the maximum 10 allow objects",
 		},
 	}
 
@@ -83,14 +103,16 @@ func TestOCIResolver(t *testing.T) {
 				t.Fatalf("could not push image: %#v", err)
 			}
 
-			resolver := Resolver{
-				imageReference: ref,
-				keychain:       authn.DefaultKeychain,
-			}
-
+			resolver := oci.NewResolver(ref, authn.DefaultKeychain)
 			listActual, err := resolver.List()
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("expected error containing %q but got: %v", tc.wantErr, err)
+				}
+				return
+			}
 			if err != nil {
-				t.Errorf("unexpected error listing contents of image: %#v", err)
+				t.Fatalf("unexpected error listing contents of image: %v", err)
 			}
 
 			// The contents of the image are in a specific order so we can expect this iteration to be consistent.

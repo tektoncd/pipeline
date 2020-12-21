@@ -166,7 +166,12 @@ func (s *Resource) GetOutputTaskModifier(_ *v1beta1.TaskSpec, _ string) (v1beta1
 
 // GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1beta1.TaskModifier, error) {
-	var envVars []corev1.EnvVar
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "TEKTON_RESOURCE_NAME",
+			Value: s.Name,
+		},
+	}
 	for _, sec := range s.Secrets {
 		ev := corev1.EnvVar{
 			Name: strings.ToUpper(sec.FieldName),

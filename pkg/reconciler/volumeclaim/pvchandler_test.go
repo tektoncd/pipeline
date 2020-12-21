@@ -17,10 +17,11 @@ limitations under the License.
 package volumeclaim
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +43,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 	claimName1 := "pvc1"
 	ws1 := "myws1"
 	ownerName := "taskrun1"
-	workspaces := []v1alpha1.WorkspaceBinding{{
+	workspaces := []v1beta1.WorkspaceBinding{{
 		Name: ws1,
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
@@ -64,6 +65,9 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 			Spec: corev1.PersistentVolumeClaimSpec{},
 		},
 	}}
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	ownerRef := metav1.OwnerReference{Name: ownerName}
 	namespace := "ns"
@@ -72,13 +76,13 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
 	expectedPVCName := claimName1 + "-ad02547921"
-	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
+	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -120,12 +124,15 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 	// workspace with volumeClaimTemplate without metadata
 	workspaceName := "ws-with-volume-claim-template-without-metadata"
 	ownerName := "taskrun1"
-	workspaces := []v1alpha1.WorkspaceBinding{{
+	workspaces := []v1beta1.WorkspaceBinding{{
 		Name: workspaceName,
 		VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
 			Spec: corev1.PersistentVolumeClaimSpec{},
 		},
 	}}
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	ownerRef := metav1.OwnerReference{Name: ownerName}
 	namespace := "ns"
@@ -134,13 +141,13 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 
 	// when
 
-	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(workspaces, ownerRef, namespace)
+	err := pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, workspaces, ownerRef, namespace)
 	if err != nil {
 		t.Fatalf("unexpexted error: %v", err)
 	}
 
 	expectedPVCName := fmt.Sprintf("%s-%s", "pvc", "3fc56c2bb2")
-	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(expectedPVCName, metav1.GetOptions{})
+	pvc, err := fakekubeclient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, expectedPVCName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

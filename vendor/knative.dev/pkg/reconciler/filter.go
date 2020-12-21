@@ -19,7 +19,7 @@ package reconciler
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 // AnnotationFilterFunc creates a FilterFunc only accepting objects with given annotation key and value
-func AnnotationFilterFunc(key string, value string, allowUnset bool) func(interface{}) bool {
+func AnnotationFilterFunc(key, value string, allowUnset bool) func(interface{}) bool {
 	return func(obj interface{}) bool {
 		if mo, ok := obj.(metav1.Object); ok {
 			return mapHasOrDefault(mo.GetAnnotations(), key, value, allowUnset)
@@ -41,7 +41,7 @@ func LabelExistsFilterFunc(label string) func(obj interface{}) bool {
 }
 
 // LabelFilterFunc creates a FilterFunc only accepting objects where a label is set to a specific value.
-func LabelFilterFunc(label string, value string, allowUnset bool) func(interface{}) bool {
+func LabelFilterFunc(label, value string, allowUnset bool) func(interface{}) bool {
 	return func(obj interface{}) bool {
 		if mo, ok := obj.(metav1.Object); ok {
 			return mapHasOrDefault(mo.GetLabels(), label, value, allowUnset)

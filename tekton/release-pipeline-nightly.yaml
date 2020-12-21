@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release-nightly
@@ -61,8 +61,24 @@ spec:
         inputs:
           - name: source
             resource: source-repo
-    - name: publish-images
+    - name: build-base-image
       runAfter: [build, unit-tests]
+      taskRef:
+        name: build-multiarch-base-image
+      params:
+        - name: pathToProject
+          value: $(params.package)
+        - name: imageRegistry
+          value: $(params.imageRegistry)
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+        outputs:
+          - name: builtBaseImage
+            resource: builtBaseImage
+    - name: publish-images
+      runAfter: [build-base-image, build, unit-tests]
       taskRef:
         name: publish-tekton-pipelines
       params:
@@ -81,8 +97,6 @@ spec:
         outputs:
           - name: bucket
             resource: bucket
-          - name: builtBaseImage
-            resource: builtBaseImage
           - name: builtEntrypointImage
             resource: builtEntrypointImage
           - name: builtNopImage

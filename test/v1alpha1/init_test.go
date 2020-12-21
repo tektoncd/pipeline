@@ -21,6 +21,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging"
+	"knative.dev/pkg/test/logstream"
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -50,18 +52,22 @@ func init() {
 	flag.BoolVar(&skipRootUserTests, "skipRootUserTests", false, "Skip tests that require root user")
 }
 
-func setup(t *testing.T, fn ...func(*testing.T, *clients, string)) (*clients, string) {
+func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
 	initializeLogsAndMetrics(t)
 
+	// Inline controller logs from SYSTEM_NAMESPACE into the t.Log output.
+	cancel := logstream.Start(t)
+	t.Cleanup(cancel)
+
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
-	createNamespace(t, namespace, c.KubeClient)
-	verifyServiceAccountExistence(t, namespace, c.KubeClient)
+	createNamespace(ctx, t, namespace, c.KubeClient)
+	verifyServiceAccountExistence(ctx, t, namespace, c.KubeClient)
 
 	for _, f := range fn {
-		f(t, c, namespace)
+		f(ctx, t, c, namespace)
 	}
 
 	return c, namespace
@@ -77,34 +83,34 @@ func header(logf logging.FormatLogger, text string) {
 	logf(bar)
 }
 
-func tearDown(t *testing.T, cs *clients, namespace string) {
+func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) {
 	t.Helper()
 	if cs.KubeClient == nil {
 		return
 	}
 	if t.Failed() {
 		header(t.Logf, fmt.Sprintf("Dumping objects from %s", namespace))
-		bs, err := getCRDYaml(cs, namespace)
+		bs, err := getCRDYaml(ctx, cs, namespace)
 		if err != nil {
 			t.Error(err)
 		} else {
 			t.Log(string(bs))
 		}
 		header(t.Logf, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
-		taskruns, err := cs.TaskRunClient.List(metav1.ListOptions{})
+		taskruns, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("Error getting TaskRun list %s", err)
 		}
 		for _, tr := range taskruns.Items {
 			if tr.Status.PodName != "" {
-				CollectPodLogs(cs, tr.Status.PodName, namespace, t.Logf)
+				CollectPodLogs(ctx, cs, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
 	}
 
 	if os.Getenv("TEST_KEEP_NAMESPACES") == "" {
 		t.Logf("Deleting namespace %s", namespace)
-		if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+		if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
 	}
@@ -122,27 +128,27 @@ func initializeLogsAndMetrics(t *testing.T) {
 	})
 }
 
-func createNamespace(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
 	t.Logf("Create namespace %s to deploy to", namespace)
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
 	}
-	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
+	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,
 			Labels: labels,
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
 	}
 }
 
-func verifyServiceAccountExistence(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
 	defaultSA := "default"
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := kubeClient.Kube.CoreV1().ServiceAccounts(namespace).Get(defaultSA, metav1.GetOptions{})
+		_, err := kubeClient.Kube.CoreV1().ServiceAccounts(namespace).Get(ctx, defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -161,7 +167,7 @@ func TestMain(m *testing.M) {
 	os.Exit(c)
 }
 
-func getCRDYaml(cs *clients, ns string) ([]byte, error) {
+func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 	var output []byte
 	printOrAdd := func(i interface{}) {
 		bs, err := yaml.Marshal(i)
@@ -172,7 +178,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	ps, err := cs.PipelineClient.List(metav1.ListOptions{})
+	ps, err := cs.PipelineClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipeline: %w", err)
 	}
@@ -180,7 +186,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	prs, err := cs.PipelineResourceClient.List(metav1.ListOptions{})
+	prs, err := cs.PipelineResourceClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipelinerun resource: %w", err)
 	}
@@ -188,7 +194,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	prrs, err := cs.PipelineRunClient.List(metav1.ListOptions{})
+	prrs, err := cs.PipelineRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipelinerun: %w", err)
 	}
@@ -196,14 +202,14 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	ts, err := cs.TaskClient.List(metav1.ListOptions{})
+	ts, err := cs.TaskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get tasks: %w", err)
 	}
 	for _, i := range ts.Items {
 		printOrAdd(i)
 	}
-	trs, err := cs.TaskRunClient.List(metav1.ListOptions{})
+	trs, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get taskrun: %w", err)
 	}
@@ -211,7 +217,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	pods, err := cs.KubeClient.Kube.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := cs.KubeClient.Kube.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pods: %w", err)
 	}

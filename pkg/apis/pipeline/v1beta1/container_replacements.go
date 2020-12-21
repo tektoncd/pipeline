@@ -21,9 +21,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func ApplyContainerReplacements(step *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+// applyContainerReplacements applies variable interpolation on a Container (subset of a Step).
+func applyContainerReplacements(step *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Name = substitution.ApplyReplacements(step.Name, stringReplacements)
 	step.Image = substitution.ApplyReplacements(step.Image, stringReplacements)
+	step.ImagePullPolicy = corev1.PullPolicy(substitution.ApplyReplacements(string(step.ImagePullPolicy), stringReplacements))
 
 	// Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
 	var newArgs []string

@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
+	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask"
 	pipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
@@ -33,11 +34,12 @@ import (
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 )
@@ -49,13 +51,13 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
+		runInformer := runinformer.Get(ctx)
 		taskInformer := taskinformer.Get(ctx)
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
 		pipelineInformer := pipelineinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
-		timeoutHandler := timeout.NewHandler(ctx.Done(), logger)
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create pipelinerun metrics recorder %v", err)
@@ -70,9 +72,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),
 			taskRunLister:     taskRunInformer.Lister(),
+			runLister:         runInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
-			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
@@ -86,8 +88,12 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			}
 		})
 
-		timeoutHandler.SetPipelineRunCallbackFunc(impl.Enqueue)
-		timeoutHandler.CheckTimeouts(namespace, kubeclientset, pipelineclientset)
+		c.snooze = func(acc kmeta.Accessor, amnt time.Duration) {
+			impl.EnqueueKeyAfter(types.NamespacedName{
+				Namespace: acc.GetNamespace(),
+				Name:      acc.GetName(),
+			}, amnt)
+		}
 
 		logger.Info("Setting up event handlers")
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -98,6 +104,9 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 
 		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		})
+		runInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 		})
 

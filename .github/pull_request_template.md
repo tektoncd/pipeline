@@ -2,8 +2,16 @@
 
 # Changes
 
-<!-- Describe your changes here- ideally you can get that description straight from
-your descriptive commit message(s)! -->
+<!-- 
+Describe your changes here- ideally you can get that description straight from
+your descriptive commit message(s)! 
+
+In addition, categorize the changes you're making using the "/kind" Prow command, example:
+
+/kind <kind>
+
+Supported kinds are: bug, cleanup, design, documentation, failing-test, feature, flake, misc, question, tep
+-->
 
 # Submitter Checklist
 
@@ -39,19 +47,19 @@ Examples of user facing changes:
 
 For pull requests with a release note:
 
-    ```release-note
-    Your release note here
-    ```
+```release-note
+Your release note here
+```
 
 For pull requests that require additional action from users switching to the new release, include the string "action required" (case insensitive) in the release note:
 
-    ```release-note
-    action required: your release note here
-    ```
+```release-note
+action required: your release note here
+```
 
 For pull requests that don't need to be mentioned at release time, use the `/release-note-none` Prow command to add the `release-note-none` label to the PR. You can also write the string "NONE" as a release note in your PR description:
 
-    ```release-note
-    NONE
-    ```
+```release-note
+NONE
+```
 -->

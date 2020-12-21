@@ -4,11 +4,9 @@ baseImageOverrides:
   # They are produced from ./images/Dockerfile
   github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
+
   # GCS fetcher needs root due to workspace permissions
   github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher: gcr.io/distroless/static:latest
   # PullRequest resource needs root because in output mode it needs to access pr.json
   # which might have been copied or written with any level of permissions.
   github.com/tektoncd/pipeline/cmd/pullrequest-init: gcr.io/distroless/static:latest
-
-  # Our entrypoint image does not need root, it simply needs to be able to 'cp' the binary into a shared location.
-  github.com/tektoncd/pipeline/cmd/entrypoint: gcr.io/distroless/base:debug-nonroot

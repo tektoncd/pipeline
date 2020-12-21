@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	prom "contrib.go.opencensus.io/exporter/prometheus"
+	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 )
@@ -31,11 +32,20 @@ var (
 	curPromSrvMux sync.Mutex
 )
 
-func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
+type emptyPromExporter struct{}
+
+var _ view.Exporter = (*emptyPromExporter)(nil)
+
+func (emptyPromExporter) ExportView(viewData *view.Data) {
+	// Prometheus runs a loop to read stats via ReadAndExport, so this is just
+	// a signal to enrich the internal Meters with Resource information.
+}
+
+func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
 	e, err := prom.NewExporter(prom.Options{Namespace: config.component})
 	if err != nil {
 		logger.Errorw("Failed to create the Prometheus exporter.", zap.Error(err))
-		return nil, err
+		return nil, nil, err
 	}
 	logger.Infof("Created Opencensus Prometheus exporter with config: %v. Start the server for Prometheus exporter.", config)
 	// Start the server for Prometheus scraping
@@ -43,7 +53,9 @@ func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (vi
 		srv := startNewPromSrv(e, config.prometheusPort)
 		srv.ListenAndServe()
 	}()
-	return e, nil
+	return e,
+		func(r *resource.Resource) (view.Exporter, error) { return &emptyPromExporter{}, nil },
+		nil
 }
 
 func getCurPromSrv() *http.Server {

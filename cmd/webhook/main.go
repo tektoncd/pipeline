@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
 	"os"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
@@ -213,7 +215,27 @@ func main() {
 		SecretName:  secretName,
 	})
 
-	sharedmain.WebhookMainWithConfig(ctx, "webhook",
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", handler)
+	mux.HandleFunc("/health", handler)
+	mux.HandleFunc("/readiness", handler)
+
+	port := os.Getenv("PROBES_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	go func() {
+		// start the web server on port and accept requests
+		log.Printf("Readiness and health check server listening on port %s", port)
+		log.Fatal(http.ListenAndServe(":"+port, mux))
+	}()
+
+	// NOTE(afrittoli) - we should have the name "webhook-pipeline"
+	// configurable. Once the change is done on knative/pkg side
+	// knative/eventing#4530 we can inherit it from it
+	sharedmain.WebhookMainWithConfig(ctx, "webhook-pipeline",
 		sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		newDefaultingAdmissionController,
@@ -221,4 +243,8 @@ func main() {
 		newConfigValidationController,
 		newConversionController,
 	)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

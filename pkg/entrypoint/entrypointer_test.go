@@ -17,12 +17,14 @@ limitations under the License.
 package entrypoint
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -36,26 +38,41 @@ func TestEntrypointerFailures(t *testing.T) {
 		waiter         Waiter
 		runner         Runner
 		expectedError  string
+		timeout        time.Duration
 	}{{
-		desc:          "failing runner with no postFile",
-		runner:        &fakeErrorRunner{},
-		expectedError: "runner failed",
-	}, {
 		desc:          "failing runner with postFile",
 		runner:        &fakeErrorRunner{},
 		expectedError: "runner failed",
 		postFile:      "foo",
+		timeout:       time.Duration(0),
 	}, {
 		desc:          "failing waiter with no postFile",
 		waitFiles:     []string{"foo"},
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
+		timeout:       time.Duration(0),
 	}, {
 		desc:          "failing waiter with postFile",
 		waitFiles:     []string{"foo"},
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
 		postFile:      "bar",
+		timeout:       time.Duration(0),
+	}, {
+		desc:          "negative timeout",
+		runner:        &fakeErrorRunner{},
+		timeout:       -10 * time.Second,
+		expectedError: `negative timeout specified`,
+	}, {
+		desc:          "zero timeout string does not time out",
+		runner:        &fakeZeroTimeoutRunner{},
+		timeout:       time.Duration(0),
+		expectedError: `runner failed`,
+	}, {
+		desc:          "timeout leads to runner",
+		runner:        &fakeTimeoutRunner{},
+		timeout:       1 * time.Millisecond,
+		expectedError: `runner failed`,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw := c.waiter
@@ -76,6 +93,7 @@ func TestEntrypointerFailures(t *testing.T) {
 				Runner:          fr,
 				PostWriter:      fpw,
 				TerminationPath: "termination",
+				Timeout:         &c.timeout,
 			}.Go()
 			if err == nil {
 				t.Fatalf("Entrypointer didn't fail")
@@ -130,6 +148,7 @@ func TestEntrypointer(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
+			timeout := time.Duration(0)
 			err := Entrypointer{
 				Entrypoint:      c.entrypoint,
 				WaitFiles:       c.waitFiles,
@@ -139,6 +158,7 @@ func TestEntrypointer(t *testing.T) {
 				Runner:          fr,
 				PostWriter:      fpw,
 				TerminationPath: "termination",
+				Timeout:         &timeout,
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
@@ -214,7 +234,7 @@ func (f *fakeWaiter) Wait(file string, _ bool) error {
 
 type fakeRunner struct{ args *[]string }
 
-func (f *fakeRunner) Run(args ...string) error {
+func (f *fakeRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	return nil
 }
@@ -232,7 +252,27 @@ func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 
 type fakeErrorRunner struct{ args *[]string }
 
-func (f *fakeErrorRunner) Run(args ...string) error {
+func (f *fakeErrorRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
+	return errors.New("runner failed")
+}
+
+type fakeZeroTimeoutRunner struct{ args *[]string }
+
+func (f *fakeZeroTimeoutRunner) Run(ctx context.Context, args ...string) error {
+	f.args = &args
+	if _, ok := ctx.Deadline(); ok == true {
+		return errors.New("context deadline should not be set with a zero timeout duration")
+	}
+	return errors.New("runner failed")
+}
+
+type fakeTimeoutRunner struct{ args *[]string }
+
+func (f *fakeTimeoutRunner) Run(ctx context.Context, args ...string) error {
+	f.args = &args
+	if _, ok := ctx.Deadline(); ok == false {
+		return errors.New("context deadline should have been set because of a timeout")
+	}
 	return errors.New("runner failed")
 }

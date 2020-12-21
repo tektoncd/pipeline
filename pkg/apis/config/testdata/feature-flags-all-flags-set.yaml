@@ -22,3 +22,6 @@ data:
   disable-working-directory-overwrite: "true"
   disable-affinity-assistant: "true"
   running-in-environment-with-injected-sidecars: "false"
+  require-git-ssh-secret-known-hosts: "true"
+  enable-tekton-oci-bundles: "true"
+  enable-custom-tasks: "true"

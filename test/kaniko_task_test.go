@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -39,51 +40,55 @@ const (
 	kanikoTaskRunName       = "kanikotask-run"
 	kanikoGitResourceName   = "go-example-git"
 	kanikoImageResourceName = "go-example-image"
-	// This is a random revision chosen on 10/11/2019
-	revision = "1c9d566ecd13535f93789595740f20932f655905"
+	// This is a random revision chosen on 2020/10/09
+	revision = "a310cc6d1cd449f95cedd23393de766fdc649651"
 )
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	if skipRootUserTests {
 		t.Skip("Skip test as skipRootUserTests set to true")
 	}
 
-	c, namespace := setup(t, withRegistry)
+	c, namespace := setup(ctx, t, withRegistry)
 	t.Parallel()
 
 	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
-	if _, err := c.PipelineResourceClient.Create(getGitResource()); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, getGitResource(), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", repo)
-	if _, err := c.PipelineResourceClient.Create(getImageResource(repo)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, getImageResource(repo), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(getTask(repo, namespace)); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getTask(repo, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", kanikoTaskRunName)
-	if _, err := c.TaskRunClient.Create(getTaskRun(namespace)); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, getTaskRun(namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
 	}
 
 	// Verify status of TaskRun (wait for it)
 
-	if err := WaitForTaskRunState(c, kanikoTaskRunName, Succeed(kanikoTaskRunName), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, kanikoTaskRunName, Succeed(kanikoTaskRunName), "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", kanikoTaskRunName, err)
 	}
 
-	tr, err := c.TaskRunClient.Get(kanikoTaskRunName, metav1.GetOptions{})
+	tr, err := c.TaskRunClient.Get(ctx, kanikoTaskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -158,7 +163,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: "gcr.io/kaniko-project/executor:v0.17.1",
+				Image: getTestImage(kanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 					fmt.Sprintf("--destination=%s", repo),
@@ -174,7 +179,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			}}},
 			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
 				Name:  "registry",
-				Image: GetTestImage(Registry),
+				Image: getTestImage(registryImage),
 			}}},
 		},
 	}
@@ -206,7 +211,10 @@ func getTaskRun(namespace string) *v1beta1.TaskRun {
 func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string, error) {
 	t.Helper()
 	podName := "skopeo-jq"
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(&corev1.Pod{
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      podName,
@@ -220,15 +228,15 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 			}},
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
-	}); err != nil {
+	}, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create the skopeo-jq pod: %v", err)
 	}
-	if err := WaitForPodState(c, podName, namespace, func(pod *corev1.Pod) (bool, error) {
+	if err := WaitForPodState(ctx, c, podName, namespace, func(pod *corev1.Pod) (bool, error) {
 		return pod.Status.Phase == "Succeeded" || pod.Status.Phase == "Failed", nil
 	}, "PodContainersTerminated"); err != nil {
 		t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
 	}
-	logs, err := getContainerLogsFromPod(c.KubeClient.Kube, podName, "skopeo", namespace)
+	logs, err := getContainerLogsFromPod(ctx, c.KubeClient.Kube, podName, "skopeo", namespace)
 	if err != nil {
 		t.Fatalf("Could not get logs for pod %s: %s", podName, err)
 	}

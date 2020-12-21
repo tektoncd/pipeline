@@ -80,7 +80,7 @@ spec:
     description: The precise commit SHA that was fetched by this Task
   steps:
   - name: clone
-    image: ko://github.com/tektoncd/pipeline/cmd/git-init
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
     script: |
       CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
       cleandir() {
@@ -140,7 +140,7 @@ spec:
     default: ""
   - name: BUILDER_IMAGE
     description: The image on which builds will run
-    default: gcr.io/kaniko-project/executor:latest
+    default: gcr.io/kaniko-project/executor:v1.3.0
   results:
   - name: IMAGE_DIGEST
     description: Digest of the image just built.
@@ -167,7 +167,7 @@ spec:
       runAsUser: 0
   - name: write-digest
     workingDir: $(workspaces.source.path)
-    image: ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter:latest
     # output of imagedigestexport [{"name":"image","digest":"sha256:eed29..660"}]
     command: ["/ko-app/imagedigestexporter"]
     securityContext:

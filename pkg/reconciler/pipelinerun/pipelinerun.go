@@ -38,13 +38,14 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -54,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/tracker"
@@ -98,6 +100,9 @@ const (
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
 	// all of the running TaskRuns as cancelled failed.
 	ReasonCouldntCancel = "PipelineRunCouldntCancel"
+	// ReasonInvalidTaskResultReference indicates a task result was declared
+	// but was not initialized by that task
+	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -110,15 +115,17 @@ type Reconciler struct {
 	pipelineRunLister listers.PipelineRunLister
 	pipelineLister    listers.PipelineLister
 	taskRunLister     listers.TaskRunLister
+	runLister         listersv1alpha1.RunLister
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
-	timeoutHandler    *timeout.Handler
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+
+	snooze func(kmeta.Accessor, time.Duration)
 }
 
 var (
@@ -140,11 +147,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		pr.Status.InitializeConditions()
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
-			logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetRunKey(), pr.CreationTimestamp, pr.Status.StartTime)
+			logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetNamespacedName().String(), pr.CreationTimestamp, pr.Status.StartTime)
 			pr.Status.StartTime = &pr.CreationTimestamp
 		}
-		// start goroutine to track pipelinerun timeout only startTime is not set
-		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
+
 		// Emit events. During the first reconcile the status of the PipelineRun may change twice
 		// from not Started to Started and then to Running, so we need to sent the event here
 		// and at the end of 'Reconcile' again.
@@ -157,23 +163,34 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
+	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, pr)
+	if err != nil {
+		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
+		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
+			pr.Namespace, pr.Name, err)
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
+	}
+
 	if pr.IsDone() {
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-		c.updatePipelineResults(ctx, pr)
+		c.updatePipelineResults(ctx, pr, getPipelineFunc)
 		if err := artifacts.CleanupArtifactStorage(ctx, pr, c.KubeClientSet); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		if err := c.cleanupAffinityAssistants(pr); err != nil {
+		if err := c.cleanupAffinityAssistants(ctx, pr); err != nil {
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		c.timeoutHandler.Release(pr)
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
+			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+		}
+		if err := c.updateRunsStatusDirectly(pr); err != nil {
+			logger.Errorf("Failed to update Run status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
 		go func(metrics *Recorder) {
@@ -187,26 +204,40 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	if pr.IsCancelled() {
 		// If the pipelinerun is cancelled, cancel tasks and update status
-		err := cancelPipelineRun(logger, pr, c.PipelineClientSet)
+		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
-	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
+	if err := c.tracker.TrackReference(tracker.Reference{
+		APIVersion: v1beta1.SchemeGroupVersion.String(),
+		Kind:       "TaskRun",
+		Namespace:  pr.GetNamespace(),
+		Name:       pr.GetName(),
+	}, pr); err != nil {
 		logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
 	// Make sure that the PipelineRun status is in sync with the actual TaskRuns
-	err := c.updatePipelineRunStatusFromInformer(ctx, pr)
+	err = c.updatePipelineRunStatusFromInformer(ctx, pr)
 	if err != nil {
 		// This should not fail. Return the error so we can re-try later.
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
+	defer func() {
+		if pr.Status.StartTime == nil {
+			return
+		}
+		// Compute the time since the task started.
+		elapsed := time.Since(pr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		c.snooze(pr, pr.GetTimeout(ctx)-elapsed)
+	}()
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, pr); err != nil {
+	if err = c.reconcile(ctx, pr, getPipelineFunc); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
@@ -218,7 +249,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 
 	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, pr)
-	_, err := c.updateLabelsAndAnnotations(pr)
+	_, err := c.updateLabelsAndAnnotations(ctx, pr)
 	if err != nil {
 		logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
 		events.EmitError(controller.GetEventRecorder(ctx), err, pr)
@@ -231,15 +262,65 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1
 	return merr
 }
 
-func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun) {
+// resolvePipelineState will attempt to resolve each referenced task in the pipeline's spec and all of the resources
+// specified by those tasks.
+func (c *Reconciler) resolvePipelineState(
+	ctx context.Context,
+	tasks []v1beta1.PipelineTask,
+	pipelineMeta *metav1.ObjectMeta,
+	pr *v1beta1.PipelineRun,
+	providedResources map[string]*v1alpha1.PipelineResource) (resources.PipelineRunState, error) {
+	pst := resources.PipelineRunState{}
+	// Resolve each task individually because they each could have a different reference context (remote or local).
+	for _, task := range tasks {
+		fn, _, err := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, task.TaskRef, pr.Namespace, pr.Spec.ServiceAccountName)
+		if err != nil {
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			pr.Status.MarkFailed(ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
+				pipelineMeta.Namespace, pipelineMeta.Name, task.Name, err)
+			return nil, controller.NewPermanentError(err)
+		}
+
+		resolvedTask, err := resources.ResolvePipelineRunTask(ctx,
+			*pr,
+			fn,
+			func(name string) (*v1beta1.TaskRun, error) {
+				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+			},
+			func(name string) (*v1alpha1.Run, error) {
+				return c.runLister.Runs(pr.Namespace).Get(name)
+			},
+			func(name string) (*v1alpha1.Condition, error) {
+				return c.conditionLister.Conditions(pr.Namespace).Get(name)
+			},
+			task, providedResources,
+		)
+		if err != nil {
+			switch err := err.(type) {
+			case *resources.TaskNotFoundError:
+				pr.Status.MarkFailed(ReasonCouldntGetTask,
+					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
+					pipelineMeta.Namespace, pipelineMeta.Name, err)
+			case *resources.ConditionNotFoundError:
+				pr.Status.MarkFailed(ReasonCouldntGetCondition,
+					"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
+					pipelineMeta.Namespace, pr.Name, err)
+			default:
+				pr.Status.MarkFailed(ReasonFailedValidation,
+					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
+					pipelineMeta.Namespace, pr.Name, err)
+			}
+			return nil, controller.NewPermanentError(err)
+		}
+		pst = append(pst, resolvedTask)
+	}
+	return pst, nil
+}
+
+func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) {
 	logger := logging.FromContext(ctx)
 
-	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
-	resolver := &resources.LocalPipelineRefResolver{
-		Namespace:    pr.Namespace,
-		Tektonclient: c.PipelineClientSet,
-	}
-	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
+	_, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
@@ -251,18 +332,13 @@ func (c *Reconciler) updatePipelineResults(ctx context.Context, pr *v1beta1.Pipe
 	pr.Status.PipelineResults = getPipelineRunResults(pipelineSpec, resolvedResultRefs)
 }
 
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) error {
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) error {
 	logger := logging.FromContext(ctx)
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	// TODO: Use factory func instead of hard-coding this once OCI images are supported.
-	resolver := &resources.LocalPipelineRefResolver{
-		Namespace:    pr.Namespace,
-		Tektonclient: c.PipelineClientSet,
-	}
-	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, resolver.GetPipeline)
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
@@ -293,7 +369,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		pr.ObjectMeta.Annotations[key] = value
 	}
 
-	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks))
+	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonInvalidGraph,
@@ -306,7 +382,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// if a task in PipelineRunState is final task or not
 	// the finally section is optional and might not exist
 	// dfinally holds an empty Graph in the absence of finally clause
-	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Finally))
+	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Finally), map[string][]string{})
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonInvalidGraph,
@@ -332,6 +408,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	}
 	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
+		if errors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
+			// For newly created resources, don't fail immediately.
+			// Instead return an (non-permanent) error, which will prompt the
+			// controller to requeue the key with backoff.
+			logger.Warnf("References for pipelinerun %s not found: %v", pr.Name, err)
+			pr.Status.MarkRunning(ReasonCouldntGetResource,
+				"Unable to resolve dependencies for %q: %v", pr.Name, err)
+			return err
+		}
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonCouldntGetResource,
 			"PipelineRun %s/%s can't be Run; it tries to bind Resources that don't exist: %s",
@@ -386,59 +471,44 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
 	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
+	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 
 	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
-	pipelineState, err := resources.ResolvePipelineRun(ctx,
-		*pr,
-		func(name string) (v1beta1.TaskInterface, error) {
-			return c.taskLister.Tasks(pr.Namespace).Get(name)
-		},
-		func(name string) (*v1beta1.TaskRun, error) {
-			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
-		},
-		func(name string) (v1beta1.TaskInterface, error) {
-			return c.clusterTaskLister.Get(name)
-		},
-		func(name string) (*v1alpha1.Condition, error) {
-			return c.conditionLister.Conditions(pr.Namespace).Get(name)
-		},
-		append(pipelineSpec.Tasks, pipelineSpec.Finally...), providedResources,
-	)
-
+	// Resolve the set of tasks (and possibly task runs).
+	tasks := pipelineSpec.Tasks
+	if len(pipelineSpec.Finally) > 0 {
+		tasks = append(tasks, pipelineSpec.Finally...)
+	}
+	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta, pr, providedResources)
 	if err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		switch err := err.(type) {
-		case *resources.TaskNotFoundError:
-			pr.Status.MarkFailed(ReasonCouldntGetTask,
-				"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
-				pipelineMeta.Namespace, pipelineMeta.Name, err)
-		case *resources.ConditionNotFoundError:
-			pr.Status.MarkFailed(ReasonCouldntGetCondition,
-				"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
-				pipelineMeta.Namespace, pr.Name, err)
-		default:
-			pr.Status.MarkFailed(ReasonFailedValidation,
-				"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
-				pipelineMeta.Namespace, pr.Name, err)
-		}
-		return controller.NewPermanentError(err)
+		return err
 	}
 
-	for _, rprt := range pipelineState {
-		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
-		if err != nil {
-			logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
-			pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
-			return controller.NewPermanentError(err)
+	// Build PipelineRunFacts with a list of resolved pipeline tasks,
+	// dag tasks graph and final tasks graph
+	pipelineRunFacts := &resources.PipelineRunFacts{
+		State:           pipelineRunState,
+		TasksGraph:      d,
+		FinalTasksGraph: dfinally,
+	}
+
+	for _, rprt := range pipelineRunFacts.State {
+		if !rprt.IsCustomTask() {
+			err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
+			if err != nil {
+				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
+				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+				return controller.NewPermanentError(err)
+			}
 		}
 	}
 
-	if pipelineState.IsBeforeFirstTaskRun() {
+	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
 		if pr.HasVolumeClaimTemplate() {
 			// create workspace PVC from template
-			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
+			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
 				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
@@ -465,11 +535,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 		return controller.NewPermanentError(err)
 	}
 
-	if err := c.runNextSchedulableTask(ctx, pr, d, dfinally, pipelineState, as); err != nil {
+	if err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts, as); err != nil {
 		return err
 	}
 
-	after := resources.GetPipelineConditionStatus(pr, pipelineState, logger, d, dfinally)
+	// Reset the skipped status to trigger recalculation
+	pipelineRunFacts.ResetSkippedCache()
+
+	after := pipelineRunFacts.GetPipelineConditionStatus(pr, logger)
 	switch after.Status {
 	case corev1.ConditionTrue:
 		pr.Status.MarkSucceeded(after.Reason, after.Message)
@@ -480,8 +553,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 	}
 	// Read the condition the way it was set by the Mark* helpers
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
-	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
-	pr.Status.SkippedTasks = getSkippedTasks(pr, pipelineState, d)
+	pr.Status.StartTime = pipelineRunFacts.State.AdjustStartTime(pr.Status.StartTime)
+	pr.Status.TaskRuns = pipelineRunFacts.State.GetTaskRunsStatus(pr)
+	pr.Status.Runs = pipelineRunFacts.State.GetRunsStatus(pr)
+	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
 	return nil
 }
@@ -489,51 +564,54 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun) err
 // runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
 // pipeline run state, and starts them
 // after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
-func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, d *dag.Graph, dfinally *dag.Graph, pipelineState resources.PipelineRunState, as artifacts.ArtifactStorageInterface) error {
+func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, as artifacts.ArtifactStorageInterface) error {
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 
-	var nextRprts []*resources.ResolvedPipelineRunTask
-
-	// when pipeline run is stopping, do not schedule any new task and only
-	// wait for all running tasks to complete and report their status
-	if !pipelineState.IsStopping(d) {
-		// candidateTasks is initialized to DAG root nodes to start pipeline execution
-		// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
-		candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulOrSkippedDAGTasks(d)...)
-		if err != nil {
-			logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
-			return controller.NewPermanentError(err)
-		}
-		// nextRprts holds a list of pipeline tasks which should be executed next
-		nextRprts = pipelineState.GetNextTasks(candidateTasks)
-	}
-
-	// GetFinalTasks only returns tasks when a DAG is complete
-	nextRprts = append(nextRprts, pipelineState.GetFinalTasks(d, dfinally)...)
-
-	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineState, nextRprts)
+	// nextRprts holds a list of pipeline tasks which should be executed next
+	nextRprts, err := pipelineRunFacts.DAGExecutionQueue()
 	if err != nil {
-		logger.Infof("Failed to resolve all task params for %q with error %v", pr.Name, err)
-		pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
+		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
+
+	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRprts)
+	if err != nil {
+		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+		return controller.NewPermanentError(err)
+	}
+
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
+	// After we apply Task Results, we may be able to evaluate more
+	// when expressions, so reset the skipped cache
+	pipelineRunFacts.ResetSkippedCache()
+
+	// GetFinalTasks only returns tasks when a DAG is complete
+	nextRprts = append(nextRprts, pipelineRunFacts.GetFinalTasks()...)
 
 	for _, rprt := range nextRprts {
-		if rprt == nil {
+		if rprt == nil || rprt.Skip(pipelineRunFacts) {
 			continue
 		}
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
-			rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
-			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+			if rprt.IsCustomTask() {
+				rprt.Run, err = c.createRun(ctx, rprt, pr)
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rprt.RunName, err)
+					return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
+				}
+			} else {
+				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+					return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+				}
 			}
 		} else if !rprt.ResolvedConditionChecks.HasStarted() {
 			for _, rcc := range rprt.ResolvedConditionChecks {
-				rcc.ConditionCheck, err = c.makeConditionCheckContainer(rprt, rcc, pr)
+				rcc.ConditionCheck, err = c.makeConditionCheckContainer(ctx, rprt, rcc, pr)
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
 					return fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
@@ -565,65 +643,6 @@ func getPipelineRunResults(pipelineSpec *v1beta1.PipelineSpec, resolvedResultRef
 	return results
 }
 
-func getTaskRunsStatus(pr *v1beta1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1beta1.PipelineRunTaskRunStatus {
-	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	for _, rprt := range state {
-		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
-			continue
-		}
-
-		var prtrs *v1beta1.PipelineRunTaskRunStatus
-		if rprt.TaskRun != nil {
-			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
-		}
-		if prtrs == nil {
-			prtrs = &v1beta1.PipelineRunTaskRunStatus{
-				PipelineTaskName: rprt.PipelineTask.Name,
-			}
-		}
-
-		if rprt.TaskRun != nil {
-			prtrs.Status = &rprt.TaskRun.Status
-		}
-
-		if len(rprt.ResolvedConditionChecks) > 0 {
-			cStatus := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-			for _, c := range rprt.ResolvedConditionChecks {
-				cStatus[c.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
-					ConditionName: c.ConditionRegisterName,
-				}
-				if c.ConditionCheck != nil {
-					cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
-				}
-			}
-			prtrs.ConditionChecks = cStatus
-			if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
-				if prtrs.Status == nil {
-					prtrs.Status = &v1beta1.TaskRunStatus{}
-				}
-				prtrs.Status.SetCondition(&apis.Condition{
-					Type:    apis.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  resources.ReasonConditionCheckFailed,
-					Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", rprt.TaskRunName, pr.Name),
-				})
-			}
-		}
-		status[rprt.TaskRunName] = prtrs
-	}
-	return status
-}
-
-func getSkippedTasks(pr *v1beta1.PipelineRun, state []*resources.ResolvedPipelineRunTask, d *dag.Graph) []v1beta1.SkippedTask {
-	skipped := []v1beta1.SkippedTask{}
-	for _, rprt := range state {
-		if rprt.Skip(state, d) {
-			skipped = append(skipped, v1beta1.SkippedTask{Name: rprt.PipelineTask.Name})
-		}
-	}
-	return skipped
-}
-
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	for taskRunName := range pr.Status.TaskRuns {
 		// TODO(dibyom): Add conditionCheck statuses here
@@ -641,6 +660,21 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error
 	return nil
 }
 
+func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
+	for runName := range pr.Status.Runs {
+		prRunStatus := pr.Status.Runs[runName]
+		run, err := c.runLister.Runs(pr.Namespace).Get(runName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("error retrieving Run %s: %w", runName, err)
+			}
+		} else {
+			prRunStatus.Status = &run.Status
+		}
+	}
+	return nil
+}
+
 func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
 
@@ -653,10 +687,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		})
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(tr)
+		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
 
-	serviceAccountName, podTemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
+	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -667,17 +701,14 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		},
 		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
-			ServiceAccountName: serviceAccountName,
-			Timeout:            getTaskRunTimeout(pr, rprt),
-			PodTemplate:        podTemplate,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
+			Timeout:            getTaskRunTimeout(ctx, pr, rprt),
+			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {
-		tr.Spec.TaskRef = &v1beta1.TaskRef{
-			Name: rprt.ResolvedTaskResources.TaskName,
-			Kind: rprt.ResolvedTaskResources.Kind,
-			//TODO: Add TaskRef metadata?
-		}
+		// We pass the entire, original task ref because it may contain additional references like a Bundle url.
+		tr.Spec.TaskRef = rprt.PipelineTask.TaskRef
 	} else if rprt.ResolvedTaskResources.TaskSpec != nil {
 		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
 	}
@@ -704,8 +735,27 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 	}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
-	logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
+	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", rprt.TaskRunName, rprt.PipelineTask.Name)
+	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+}
+
+func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun) (*v1alpha1.Run, error) {
+	logger := logging.FromContext(ctx)
+	r := &v1alpha1.Run{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            rprt.RunName,
+			Namespace:       pr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
+			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name, true),
+			Annotations:     getTaskrunAnnotations(pr),
+		},
+		Spec: v1alpha1.RunSpec{
+			Ref:    rprt.PipelineTask.TaskRef,
+			Params: rprt.PipelineTask.Params,
+		},
+	}
+	logger.Infof("Creating a new Run object %s", rprt.RunName)
+	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
@@ -761,11 +811,13 @@ func getTaskrunAnnotations(pr *v1beta1.PipelineRun) map[string]string {
 	return annotations
 }
 
-func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[string]string {
+func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includePipelineLabels bool) map[string]string {
 	// Propagate labels from PipelineRun to TaskRun.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
-	for key, val := range pr.ObjectMeta.Labels {
-		labels[key] = val
+	if includePipelineLabels {
+		for key, val := range pr.ObjectMeta.Labels {
+			labels[key] = val
+		}
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 	if pipelineTaskName != "" {
@@ -776,7 +828,7 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string) map[stri
 
 func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
 	var tsLabels map[string]string
-	trLabels := getTaskrunLabels(pr, pipelineTask.Name)
+	trLabels := getTaskrunLabels(pr, pipelineTask.Name, true)
 
 	if pipelineTask.TaskSpec != nil {
 		tsLabels = pipelineTask.TaskSpecMetadata().Labels
@@ -822,12 +874,13 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 	return annotations
 }
 
-func getTaskRunTimeout(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
 	var timeout time.Duration
 	if pr.Spec.Timeout == nil {
-		timeout = config.DefaultTimeoutMinutes * time.Minute
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		timeout = defaultTimeout * time.Minute
 	} else {
 		timeout = pr.Spec.Timeout.Duration
 	}
@@ -861,7 +914,7 @@ func getTaskRunTimeout(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipeline
 	return taskRunTimeout
 }
 
-func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PipelineRun %s when updating labels/annotations: %w", pr.Name, err)
@@ -873,13 +926,13 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1beta1.PipelineRun) (*v1bet
 		newPr = newPr.DeepCopy()
 		newPr.Labels = pr.Labels
 		newPr.Annotations = pr.Annotations
-		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(newPr)
+		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
 	}
 	return newPr, nil
 }
 
-func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
-	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
+func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
+	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name, true)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
 	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
 
@@ -898,7 +951,8 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
 	}
-	serviceAccountName, podTemplate := pr.GetTaskRunSpecs(rprt.PipelineTask.Name)
+
+	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
@@ -909,16 +963,16 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec:           taskSpec,
-			ServiceAccountName: serviceAccountName,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Params:             rcc.PipelineTaskCondition.Params,
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: rcc.ToTaskResourceBindings(),
 			},
-			Timeout:     getTaskRunTimeout(pr, rprt),
-			PodTemplate: podTemplate,
+			Timeout:     getTaskRunTimeout(ctx, pr, rprt),
+			PodTemplate: taskRunSpec.TaskPodTemplate,
 		}}
 
-	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(tr)
+	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
 }
@@ -934,34 +988,51 @@ func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1
 func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr *v1beta1.PipelineRun) error {
 	logger := logging.FromContext(ctx)
 
-	pipelineRunLabels := getTaskrunLabels(pr, "")
+	// Get the pipelineRun label that is set on each TaskRun.  Do not include the propagated labels from the
+	// Pipeline and PipelineRun.  The user could change them during the lifetime of the PipelineRun so the
+	// current labels may not be set on the previously created TaskRuns.
+	pipelineRunLabels := getTaskrunLabels(pr, "", false)
 	taskRuns, err := c.taskRunLister.TaskRuns(pr.Namespace).List(labels.SelectorFromSet(pipelineRunLabels))
 	if err != nil {
 		logger.Errorf("could not list TaskRuns %#v", err)
 		return err
 	}
-	pr.Status = updatePipelineRunStatusFromTaskRuns(logger, pr.Name, pr.Status, taskRuns)
+	updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns)
+
+	runs, err := c.runLister.Runs(pr.Namespace).List(labels.SelectorFromSet(pipelineRunLabels))
+	if err != nil {
+		logger.Errorf("could not list Runs %#v", err)
+		return err
+	}
+	updatePipelineRunStatusFromRuns(logger, pr, runs)
+
 	return nil
 }
 
-func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName string, prStatus v1beta1.PipelineRunStatus, trs []*v1beta1.TaskRun) v1beta1.PipelineRunStatus {
+func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) {
 	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
 	if trs == nil || len(trs) == 0 {
-		return prStatus
+		return
 	}
 	// Store a list of Condition TaskRuns for each PipelineTask (by name)
 	conditionTaskRuns := make(map[string][]*v1beta1.TaskRun)
 	// Map PipelineTask names to TaskRun names that were already in the status
 	taskRunByPipelineTask := make(map[string]string)
-	if prStatus.TaskRuns != nil {
-		for taskRunName, pipelineRunTaskRunStatus := range prStatus.TaskRuns {
+	if pr.Status.TaskRuns != nil {
+		for taskRunName, pipelineRunTaskRunStatus := range pr.Status.TaskRuns {
 			taskRunByPipelineTask[pipelineRunTaskRunStatus.PipelineTaskName] = taskRunName
 		}
 	} else {
-		prStatus.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+		pr.Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	}
 	// Loop over all the TaskRuns associated to Tasks
 	for _, taskrun := range trs {
+		// Only process TaskRuns that are owned by this PipelineRun.
+		// This skips TaskRuns that are indirectly created by the PipelineRun (e.g. by custom tasks).
+		if len(taskrun.OwnerReferences) < 1 || taskrun.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Debugf("Found a TaskRun %s that is not owned by this PipelineRun", taskrun.Name)
+			continue
+		}
 		lbls := taskrun.GetLabels()
 		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
 		if _, ok := lbls[pipeline.GroupName+pipeline.ConditionCheckKey]; ok {
@@ -973,10 +1044,11 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], taskrun)
 			continue
 		}
-		if _, ok := prStatus.TaskRuns[taskrun.Name]; !ok {
+		if _, ok := pr.Status.TaskRuns[taskrun.Name]; !ok {
 			// This taskrun was missing from the status.
 			// Add it without conditions, which are handled in the next loop
-			prStatus.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
+			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", taskrun.Name)
+			pr.Status.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           &taskrun.Status,
 				ConditionChecks:  nil,
@@ -993,8 +1065,8 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 			// status. This means that the conditions were orphaned, and never added to the
 			// status. In this case we need to generate a new TaskRun name, that will be used
 			// to run the TaskRun if the conditions are passed.
-			taskRunName = resources.GetTaskRunName(prStatus.TaskRuns, pipelineTaskName, prName)
-			prStatus.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
+			taskRunName = resources.GetTaskRunName(pr.Status.TaskRuns, pipelineTaskName, pr.Name)
+			pr.Status.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           nil,
 				ConditionChecks:  nil,
@@ -1002,7 +1074,7 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 		}
 		// Build the map of condition checks for the taskrun
 		// If there were no other condition, initialise the map
-		conditionChecks := prStatus.TaskRuns[taskRunName].ConditionChecks
+		conditionChecks := pr.Status.TaskRuns[taskRunName].ConditionChecks
 		if conditionChecks == nil {
 			conditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
 		}
@@ -1023,7 +1095,34 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, prName strin
 				}
 			}
 		}
-		prStatus.TaskRuns[taskRunName].ConditionChecks = conditionChecks
+		pr.Status.TaskRuns[taskRunName].ConditionChecks = conditionChecks
 	}
-	return prStatus
+}
+
+func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, runs []*v1alpha1.Run) {
+	// If no Run was found, nothing to be done. We never remove runs from the status
+	if runs == nil || len(runs) == 0 {
+		return
+	}
+	if pr.Status.Runs == nil {
+		pr.Status.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
+	}
+	// Loop over all the Runs associated to Tasks
+	for _, run := range runs {
+		// Only process Runs that are owned by this PipelineRun.
+		// This skips Runs that are indirectly created by the PipelineRun (e.g. by custom tasks).
+		if len(run.OwnerReferences) < 1 && run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Debugf("Found a Run %s that is not owned by this PipelineRun", run.Name)
+			continue
+		}
+		lbls := run.GetLabels()
+		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
+		if _, ok := pr.Status.Runs[run.Name]; !ok {
+			// This run was missing from the status.
+			pr.Status.Runs[run.Name] = &v1beta1.PipelineRunRunStatus{
+				PipelineTaskName: pipelineTaskName,
+				Status:           &run.Status,
+			}
+		}
+	}
 }

@@ -17,16 +17,20 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"sync"
+	"time"
 
 	sd "contrib.go.opencensus.io/exporter/stackdriver"
-	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
-	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/resource"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 	"google.golang.org/api/option"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/metrics/metricskey"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +50,8 @@ const (
 	StackdriverSecretNameDefault = "stackdriver-service-account-key"
 	// secretDataFieldKey is the name of the k8s Secret field that contains the Secret's key.
 	secretDataFieldKey = "key.json"
+	// stackdriverApiTimeout is the timeout value of Stackdriver API service side.
+	stackdriverApiTimeout = 12 * time.Second
 )
 
 var (
@@ -78,7 +84,20 @@ var (
 	// useStackdriverSecretEnabled specifies whether or not the exporter can be configured with a Secret.
 	// Consuming packages must do explicitly enable this by calling SetStackdriverSecretLocation.
 	useStackdriverSecretEnabled = false
+
+	// metricToResourceLabels provides a quick lookup from a custom metric name to the set of tags
+	// which should be promoted to Stackdriver Resource labels via opencensus resources.
+	metricToResourceLabels = map[string]*resourceTemplate{}
+
+	// A variable for testing to reduce the size (number of metrics) buffered before
+	// Stackdriver will send a bundled metric report. Only applies if non-zero.
+	TestOverrideBundleCount = 0
 )
+
+type resourceTemplate struct {
+	Type      string
+	LabelKeys sets.String
+}
 
 // SetStackdriverSecretLocation sets the name and namespace of the Secret that can be used to authenticate with Stackdriver.
 // The Secret is only used if both:
@@ -98,6 +117,50 @@ func init() {
 	newStackdriverExporterFunc = newOpencensusSDExporter
 
 	kubeclientInitErr = nil
+
+	metricsToTemplates := []struct {
+		metrics  sets.String
+		template resourceTemplate
+	}{
+		{metricskey.KnativeRevisionMetrics, resourceTemplate{metricskey.ResourceTypeKnativeRevision, metricskey.KnativeRevisionLabels}},
+		{metricskey.KnativeTriggerMetrics, resourceTemplate{metricskey.ResourceTypeKnativeTrigger, metricskey.KnativeTriggerLabels}},
+		{metricskey.KnativeBrokerMetrics, resourceTemplate{metricskey.ResourceTypeKnativeBroker, metricskey.KnativeBrokerLabels}},
+		{metricskey.KnativeSourceMetrics, resourceTemplate{metricskey.ResourceTypeKnativeSource, metricskey.KnativeSourceLabels}},
+	}
+
+	for _, item := range metricsToTemplates {
+		t := item.template
+		for k := range item.metrics {
+			metricToResourceLabels[k] = &t
+		}
+	}
+}
+
+type pollOnlySDExporter struct {
+	internalExporter view.Exporter
+}
+
+var _ (view.Exporter) = (*pollOnlySDExporter)(nil)
+var _ (flushable) = (*pollOnlySDExporter)(nil)
+
+func (e *pollOnlySDExporter) ExportView(viewData *view.Data) {
+	// Stackdriver will run an internal loop to bundle stats, so ignore this.
+}
+
+func (e *pollOnlySDExporter) Flush() {
+	if e.internalExporter != nil {
+		if f, ok := e.internalExporter.(flushable); ok {
+			f.Flush()
+		}
+	}
+}
+
+func (e *pollOnlySDExporter) StopMetricsExporter() {
+	if e.internalExporter != nil {
+		if f, ok := e.internalExporter.(stoppable); ok {
+			f.StopMetricsExporter()
+		}
+	}
 }
 
 func newOpencensusSDExporter(o sd.Options) (view.Exporter, error) {
@@ -113,15 +176,14 @@ func newOpencensusSDExporter(o sd.Options) (view.Exporter, error) {
 	return e, nil
 }
 
-// TODO should be properly refactored to be able to inject the getResourceByDescriptorFunc function.
-// 	See https://github.com/knative/pkg/issues/608
-func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
+func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
 	gm := getMergedGCPMetadata(config)
 	mpf := getMetricPrefixFunc(config.stackdriverMetricTypePrefix, config.stackdriverCustomMetricTypePrefix)
 	co, err := getStackdriverExporterClientOptions(config)
 	if err != nil {
 		logger.Warnw("Issue configuring Stackdriver exporter client options, no additional client options will be used: ", zap.Error(err))
 	}
+
 	// Automatically fall back on Google application default credentials
 	e, err := newStackdriverExporterFunc(sd.Options{
 		ProjectID:               gm.project,
@@ -129,16 +191,96 @@ func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (v
 		MonitoringClientOptions: co,
 		TraceClientOptions:      co,
 		GetMetricPrefix:         mpf,
-		ResourceByDescriptor:    getResourceByDescriptorFunc(config.stackdriverMetricTypePrefix, gm),
 		ReportingInterval:       config.reportingPeriod,
 		DefaultMonitoringLabels: &sd.Labels{},
+		Timeout:                 stackdriverApiTimeout,
+		BundleCountThreshold:    TestOverrideBundleCount,
 	})
 	if err != nil {
 		logger.Errorw("Failed to create the Stackdriver exporter: ", zap.Error(err))
-		return nil, err
+		return nil, nil, err
 	}
 	logger.Infof("Created Opencensus Stackdriver exporter with config %v", config)
-	return e, nil
+	// We have to return a ResourceExporterFactory here to enable tracking resources, even though we always poll for them.
+	return &pollOnlySDExporter{e},
+		func(r *resource.Resource) (view.Exporter, error) { return &pollOnlySDExporter{}, nil },
+		nil
+}
+
+func sdCustomMetricsRecorder(mc metricsConfig, allowCustomMetrics bool) func(context.Context, []stats.Measurement, ...stats.Options) error {
+	gm := getMergedGCPMetadata(&mc)
+	metadataMap := map[string]string{
+		metricskey.LabelProject:     gm.project,
+		metricskey.LabelLocation:    gm.location,
+		metricskey.LabelClusterName: gm.cluster,
+	}
+	return func(ctx context.Context, mss []stats.Measurement, ros ...stats.Options) error {
+		// Some metrics may be promoted to known Stackdriver schemas, so we may
+		// end up multiple Resources recorded for a single `RecordBatch` call.
+		metricsByResource := map[*resourceTemplate][]stats.Measurement{}
+
+		for _, m := range mss {
+			metricType := path.Join(mc.stackdriverMetricTypePrefix, m.Measure().Name())
+			t, ok := metricToResourceLabels[metricType]
+			if ok || allowCustomMetrics {
+				if metricsByResource[t] == nil {
+					metricsByResource[t] = make([]stats.Measurement, 0, len(mss))
+				}
+				metricsByResource[t] = append(metricsByResource[t], m)
+			}
+		}
+
+		baseLabels := map[string]string{}
+		baseResource := metricskey.GetResource(ctx)
+		if baseResource != nil {
+			baseLabels = baseResource.Labels
+		}
+		tagMap := tag.FromContext(ctx)
+		for templ, ms := range metricsByResource {
+			sdResource := baseResource
+			sdCtx := ctx
+			if templ != nil {
+				sdResource = &resource.Resource{
+					Type:   templ.Type,
+					Labels: map[string]string{},
+				}
+				tagMutations := make([]tag.Mutator, 0, len(templ.LabelKeys))
+				for k := range templ.LabelKeys {
+					if v, ok := baseLabels[k]; ok {
+						sdResource.Labels[k] = v
+						continue
+					}
+					tagKey := tag.MustNewKey(k)
+					if v, ok := tagMap.Value(tagKey); ok {
+						sdResource.Labels[k] = v
+						tagMutations = append(tagMutations, tag.Delete(tagKey))
+						continue
+					}
+					if v, ok := metadataMap[k]; ok {
+						sdResource.Labels[k] = v
+						continue
+					}
+					sdResource.Labels[k] = metricskey.ValueUnknown
+				}
+				var err error
+				sdCtx, err = tag.New(metricskey.WithResource(ctx, *sdResource), tagMutations...)
+				if err != nil {
+					return err
+				}
+			}
+			if sdResource != nil {
+				opt, err := optionForResource(sdResource)
+				if err != nil {
+					return err
+				}
+				ros = append(ros, opt)
+			}
+			if err := stats.RecordWithOptions(sdCtx, append(ros, stats.WithMeasurements(ms...))...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 // getStackdriverExporterClientOptions creates client options for the opencensus Stackdriver exporter from the given stackdriverClientConfig.
@@ -181,27 +323,6 @@ func getMergedGCPMetadata(config *metricsConfig) *gcpMetadata {
 	return gm
 }
 
-func getResourceByDescriptorFunc(metricTypePrefix string, gm *gcpMetadata) func(*metricdata.Descriptor, map[string]string) (map[string]string, monitoredresource.Interface) {
-	return func(des *metricdata.Descriptor, tags map[string]string) (map[string]string, monitoredresource.Interface) {
-		metricType := path.Join(metricTypePrefix, des.Name)
-		if metricskey.KnativeRevisionMetrics.Has(metricType) {
-			return GetKnativeRevisionMonitoredResource(des, tags, gm)
-		} else if metricskey.KnativeBrokerMetrics.Has(metricType) {
-			return GetKnativeBrokerMonitoredResource(des, tags, gm)
-		} else if metricskey.KnativeTriggerMetrics.Has(metricType) {
-			return GetKnativeTriggerMonitoredResource(des, tags, gm)
-		} else if metricskey.KnativeSourceMetrics.Has(metricType) {
-			return GetKnativeSourceMonitoredResource(des, tags, gm)
-		}
-		// Unsupported metric by knative_revision, knative_broker, knative_trigger, and knative_source, use "global" resource type.
-		return getGlobalMonitoredResource(des, tags)
-	}
-}
-
-func getGlobalMonitoredResource(des *metricdata.Descriptor, tags map[string]string) (map[string]string, monitoredresource.Interface) {
-	return tags, &Global{}
-}
-
 func getMetricPrefixFunc(metricTypePrefix, customMetricTypePrefix string) func(name string) string {
 	return func(name string) string {
 		metricType := path.Join(metricTypePrefix, name)
@@ -220,7 +341,7 @@ func getMetricPrefixFunc(metricTypePrefix, customMetricTypePrefix string) func(n
 // getStackdriverSecret returns the Kubernetes Secret specified in the given config.
 // SetStackdriverSecretLocation must have been called by calling package for this to work.
 // TODO(anniefu): Update exporter if Secret changes (https://github.com/knative/pkg/issues/842)
-func getStackdriverSecret(secretFetcher SecretFetcher) (*corev1.Secret, error) {
+func getStackdriverSecret(ctx context.Context, secretFetcher SecretFetcher) (*corev1.Secret, error) {
 	stackdriverMtx.RLock()
 	defer stackdriverMtx.RUnlock()
 
@@ -238,7 +359,7 @@ func getStackdriverSecret(secretFetcher SecretFetcher) (*corev1.Secret, error) {
 			return nil, err
 		}
 
-		sec, secErr = kubeclient.CoreV1().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
+		sec, secErr = kubeclient.CoreV1().Secrets(secretNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	}
 
 	if secErr != nil {

@@ -16,21 +16,23 @@ limitations under the License.
 package termination
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"knative.dev/pkg/logging"
 )
 
 func TestParseMessage(t *testing.T) {
 	for _, c := range []struct {
 		desc, msg string
-		want      []v1alpha1.PipelineResourceResult
+		want      []v1beta1.PipelineResourceResult
 	}{{
 		desc: "valid message",
 		msg:  `[{"key": "digest","value":"hereisthedigest"},{"key":"foo","value":"bar"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "digest",
 			Value: "hereisthedigest",
 		}, {
@@ -47,7 +49,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"foo","value":"first"},
 		{"key":"foo","value":"middle"},
 		{"key":"foo","value":"last"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "foo",
 			Value: "last",
 		}},
@@ -57,7 +59,7 @@ func TestParseMessage(t *testing.T) {
 		{"key":"zzz","value":"last"},
 		{"key":"ddd","value":"middle"},
 		{"key":"aaa","value":"first"}]`,
-		want: []v1alpha1.PipelineResourceResult{{
+		want: []v1beta1.PipelineResourceResult{{
 			Key:   "aaa",
 			Value: "first",
 		}, {
@@ -69,7 +71,8 @@ func TestParseMessage(t *testing.T) {
 		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got, err := ParseMessage(c.msg)
+			logger, _ := logging.NewLogger("", "status")
+			got, err := ParseMessage(logger, c.msg)
 			if err != nil {
 				t.Fatalf("ParseMessage: %v", err)
 			}
@@ -80,8 +83,23 @@ func TestParseMessage(t *testing.T) {
 	}
 }
 
-func TestParseMessage_Invalid(t *testing.T) {
-	if _, err := ParseMessage("INVALID NOT JSON"); err == nil {
-		t.Error("Expected error parsing invalid JSON, got nil")
+func TestParseMessageInvalidMessage(t *testing.T) {
+	for _, c := range []struct {
+		desc, msg, wantError string
+	}{{
+		desc:      "invalid JSON",
+		msg:       "invalid JSON",
+		wantError: "parsing message json",
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			logger, _ := logging.NewLogger("", "status")
+			_, err := ParseMessage(logger, c.msg)
+			if err == nil {
+				t.Errorf("Expected error parsing incorrect termination message, got nil")
+			}
+			if !strings.HasPrefix(err.Error(), c.wantError) {
+				t.Errorf("Expected different error: %s", c.wantError)
+			}
+		})
 	}
 }

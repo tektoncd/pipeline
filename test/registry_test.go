@@ -18,6 +18,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,12 +26,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func withRegistry(t *testing.T, c *clients, namespace string) {
+func withRegistry(ctx context.Context, t *testing.T, c *clients, namespace string) {
 	deployment := getRegistryDeployment(namespace)
-	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(deployment); err != nil {
+	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create the local registry deployment: %v", err)
 	}
-	if err := WaitForDeploymentState(c, deployment.Name, namespace, func(d *appsv1.Deployment) (bool, error) {
+	if err := WaitForDeploymentState(ctx, c, deployment.Name, namespace, func(d *appsv1.Deployment) (bool, error) {
 		var replicas int32 = 1
 		if d.Spec.Replicas != nil {
 			replicas = *d.Spec.Replicas
@@ -41,7 +42,7 @@ func withRegistry(t *testing.T, c *clients, namespace string) {
 	}
 
 	service := getRegistryService(namespace)
-	if _, err := c.KubeClient.Kube.CoreV1().Services(namespace).Create(service); err != nil {
+	if _, err := c.KubeClient.Kube.CoreV1().Services(namespace).Create(ctx, service, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create the local registry service: %v", err)
 	}
 }
@@ -67,7 +68,7 @@ func getRegistryDeployment(namespace string) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
 						Name:  "registry",
-						Image: GetTestImage(Registry),
+						Image: getTestImage(registryImage),
 					}},
 				},
 			},
@@ -90,4 +91,14 @@ func getRegistryService(namespace string) *corev1.Service {
 			},
 		},
 	}
+}
+
+// getRegistryServiceIP fetches the registry service's current IP.
+func getRegistryServiceIP(ctx context.Context, t *testing.T, c *clients, namespace string) string {
+	t.Helper()
+	svc, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, "registry", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to lookup registry service: %q", err)
+	}
+	return svc.Spec.ClusterIP
 }

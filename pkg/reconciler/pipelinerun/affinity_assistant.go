@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -47,19 +46,19 @@ const (
 // createAffinityAssistants creates an Affinity Assistant StatefulSet for every workspace in the PipelineRun that
 // use a PersistentVolumeClaim volume. This is done to achieve Node Affinity for all TaskRuns that
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
-func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1alpha1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
+func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
 
 	var errs []error
 	for _, w := range wb {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantName := getAffinityAssistantName(w.Name, pr.Name)
-			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(affinityAssistantName, metav1.GetOptions{})
+			_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Get(ctx, affinityAssistantName, metav1.GetOptions{})
 			claimName := getClaimName(w, pr.GetOwnerReference())
 			switch {
 			case apierrors.IsNotFound(err):
 				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage)
-				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(affinityAssistantStatefulSet)
+				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
 				}
@@ -84,12 +83,18 @@ func getClaimName(w v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReferen
 	return ""
 }
 
-func (c *Reconciler) cleanupAffinityAssistants(pr *v1beta1.PipelineRun) error {
+func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.PipelineRun) error {
+
+	// omit cleanup if the feature is disabled
+	if c.isAffinityAssistantDisabled(ctx) {
+		return nil
+	}
+
 	var errs []error
 	for _, w := range pr.Spec.Workspaces {
 		if w.PersistentVolumeClaim != nil || w.VolumeClaimTemplate != nil {
 			affinityAssistantStsName := getAffinityAssistantName(w.Name, pr.Name)
-			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(affinityAssistantStsName, &metav1.DeleteOptions{}); err != nil {
+			if err := c.KubeClientSet.AppsV1().StatefulSets(pr.Namespace).Delete(ctx, affinityAssistantStsName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
 				errs = append(errs, fmt.Errorf("failed to delete StatefulSet %s: %s", affinityAssistantStsName, err))
 			}
 		}

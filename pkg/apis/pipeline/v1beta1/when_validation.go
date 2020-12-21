@@ -33,40 +33,46 @@ var validWhenOperators = []string{
 }
 
 func (wes WhenExpressions) validate() *apis.FieldError {
-	if err := wes.validateWhenExpressionsFields(); err != nil {
-		return err
-	}
-	if err := wes.validateTaskResultsVariables(); err != nil {
-		return err
-	}
-	return nil
+	errs := wes.validateWhenExpressionsFields().ViaField("when")
+	return errs.Also(wes.validateTaskResultsVariables().ViaField("when"))
 }
 
-func (wes WhenExpressions) validateWhenExpressionsFields() *apis.FieldError {
-	for _, we := range wes {
-		if err := we.validateWhenExpressionFields(); err != nil {
-			return err
-		}
+func (wes WhenExpressions) validateWhenExpressionsFields() (errs *apis.FieldError) {
+	for idx, we := range wes {
+		errs = errs.Also(we.validateWhenExpressionFields().ViaIndex(idx))
 	}
-	return nil
+	return errs
 }
 
 func (we *WhenExpression) validateWhenExpressionFields() *apis.FieldError {
 	if equality.Semantic.DeepEqual(we, &WhenExpression{}) || we == nil {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
-	if !sets.NewString(validWhenOperators...).Has(string(we.Operator)) {
-		message := fmt.Sprintf("operator %q is not recognized. valid operators: %s", we.Operator, strings.Join(validWhenOperators, ","))
-		return apis.ErrInvalidValue(message, "spec.task.when")
+	if !sets.NewString(validWhenOperators...).Has(string(we.GetOperator())) {
+		message := fmt.Sprintf("operator %q is not recognized. valid operators: %s", we.GetOperator(), strings.Join(validWhenOperators, ","))
+		return apis.ErrInvalidValue(message, apis.CurrentField)
 	}
-	if len(we.Values) == 0 {
-		return apis.ErrInvalidValue("expecting non-empty values field", "spec.task.when")
+	if len(we.GetValues()) == 0 {
+		return apis.ErrInvalidValue("expecting non-empty values field", apis.CurrentField)
+	}
+	return we.validateWhenExpressionsDuplicateFields()
+}
+
+func (we *WhenExpression) validateWhenExpressionsDuplicateFields() *apis.FieldError {
+	if we.Input != "" && we.DeprecatedInput != "" {
+		return apis.ErrMultipleOneOf("input", "Input")
+	}
+	if we.Operator != "" && we.DeprecatedOperator != "" {
+		return apis.ErrMultipleOneOf("operator", "Operator")
+	}
+	if we.Values != nil && we.DeprecatedValues != nil {
+		return apis.ErrMultipleOneOf("values", "Values")
 	}
 	return nil
 }
 
 func (wes WhenExpressions) validateTaskResultsVariables() *apis.FieldError {
-	for _, we := range wes {
+	for idx, we := range wes {
 		expressions, ok := we.GetVarSubstitutionExpressions()
 		if ok {
 			if LooksLikeContainsResultRefs(expressions) {
@@ -74,7 +80,7 @@ func (wes WhenExpressions) validateTaskResultsVariables() *apis.FieldError {
 				resultRefs := NewResultRefs(expressions)
 				if len(expressions) != len(resultRefs) {
 					message := fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs)
-					return apis.ErrInvalidValue(message, "spec.tasks.when")
+					return apis.ErrInvalidValue(message, apis.CurrentField).ViaIndex(idx)
 				}
 			}
 		}
@@ -82,25 +88,16 @@ func (wes WhenExpressions) validateTaskResultsVariables() *apis.FieldError {
 	return nil
 }
 
-func (wes WhenExpressions) validatePipelineParametersVariables(prefix string, paramNames sets.String, arrayParamNames sets.String) *apis.FieldError {
-	for _, we := range wes {
-		if err := validateStringVariable(fmt.Sprintf("input[%s]", we.Input), we.Input, prefix, paramNames, arrayParamNames); err != nil {
-			return err
-		}
-		for _, val := range we.Values {
-			if err := validateStringVariable(fmt.Sprintf("values[%s]", val), val, prefix, paramNames, arrayParamNames); err != nil {
-				return err
-			}
+func (wes WhenExpressions) validatePipelineParametersVariables(prefix string, paramNames sets.String, arrayParamNames sets.String) (errs *apis.FieldError) {
+	for idx, we := range wes {
+		errs = errs.Also(validateStringVariable(we.GetInput(), prefix, paramNames, arrayParamNames).ViaField("input").ViaFieldIndex("when", idx))
+		for _, val := range we.GetValues() {
+			errs = errs.Also(validateStringVariable(val, prefix, paramNames, arrayParamNames).ViaField("values").ViaFieldIndex("when", idx))
 		}
 	}
-	return nil
+	return errs
 }
-func validateStringVariable(name, value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
-	if err := substitution.ValidateVariable(name, value, prefix, "task when expression", "pipelinespec.when", stringVars); err != nil {
-		return err
-	}
-	if err := substitution.ValidateVariableProhibited(name, value, prefix, "task when expression", "pipelinespec.when", arrayVars); err != nil {
-		return err
-	}
-	return nil
+func validateStringVariable(value, prefix string, stringVars sets.String, arrayVars sets.String) *apis.FieldError {
+	errs := substitution.ValidateVariableP(value, prefix, stringVars)
+	return errs.Also(substitution.ValidateVariableProhibitedP(value, prefix, arrayVars))
 }

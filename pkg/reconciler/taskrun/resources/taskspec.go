@@ -26,11 +26,11 @@ import (
 )
 
 // GetTask is a function used to retrieve Tasks.
-type GetTask func(string) (v1beta1.TaskInterface, error)
+type GetTask func(context.Context, string) (v1beta1.TaskObject, error)
 type GetTaskRun func(string) (*v1beta1.TaskRun, error)
 
 // GetClusterTask is a function that will retrieve the Task from name and namespace.
-type GetClusterTask func(name string) (v1beta1.TaskInterface, error)
+type GetClusterTask func(name string) (v1beta1.TaskObject, error)
 
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
@@ -41,7 +41,7 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 	switch {
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
-		t, err := getTask(taskRun.Spec.TaskRef.Name)
+		t, err := getTask(ctx, taskRun.Spec.TaskRef.Name)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
 		}

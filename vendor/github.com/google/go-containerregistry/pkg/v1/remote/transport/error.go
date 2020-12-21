@@ -28,16 +28,16 @@ import (
 // from a redirect. These redirects often included tokens or signed URLs.
 var paramWhitelist = map[string]struct{}{
 	// Token exchange
-	"scope":   struct{}{},
-	"service": struct{}{},
+	"scope":   {},
+	"service": {},
 	// Cross-repo mounting
-	"mount": struct{}{},
-	"from":  struct{}{},
+	"mount": {},
+	"from":  {},
 	// Layer PUT
-	"digest": struct{}{},
+	"digest": {},
 	// Listing tags and catalog
-	"n":    struct{}{},
-	"last": struct{}{},
+	"n":    {},
+	"last": {},
 }
 
 // Error implements error to support the following error specification:
@@ -59,7 +59,7 @@ var _ error = (*Error)(nil)
 func (e *Error) Error() string {
 	prefix := ""
 	if e.request != nil {
-		prefix = fmt.Sprintf("%s %s: ", e.request.Method, redact(e.request.URL))
+		prefix = fmt.Sprintf("%s %s: ", e.request.Method, redactURL(e.request.URL))
 	}
 	return prefix + e.responseErr()
 }
@@ -68,9 +68,12 @@ func (e *Error) responseErr() string {
 	switch len(e.Errors) {
 	case 0:
 		if len(e.rawBody) == 0 {
-			return fmt.Sprintf("unsupported status code %d", e.StatusCode)
+			if e.request != nil && e.request.Method == http.MethodHead {
+				return fmt.Sprintf("unexpected status code %d %s (HEAD responses have no body, use GET for details)", e.StatusCode, http.StatusText(e.StatusCode))
+			}
+			return fmt.Sprintf("unexpected status code %d %s", e.StatusCode, http.StatusText(e.StatusCode))
 		}
-		return fmt.Sprintf("unsupported status code %d; body: %s", e.StatusCode, e.rawBody)
+		return fmt.Sprintf("unexpected status code %d %s: %s", e.StatusCode, http.StatusText(e.StatusCode), e.rawBody)
 	case 1:
 		return e.Errors[0].String()
 	default:
@@ -89,15 +92,15 @@ func (e *Error) Temporary() bool {
 		return false
 	}
 	for _, d := range e.Errors {
-		// TODO: Include other error types.
-		if d.Code != BlobUploadInvalidErrorCode {
+		if _, ok := temporaryErrorCodes[d.Code]; !ok {
 			return false
 		}
 	}
 	return true
 }
 
-func redact(original *url.URL) *url.URL {
+// TODO(jonjohnsonjr): Consider moving to pkg/internal/redact.
+func redactURL(original *url.URL) *url.URL {
 	qs := original.Query()
 	for k, v := range qs {
 		for i := range v {
@@ -149,7 +152,14 @@ const (
 	UnauthorizedErrorCode        ErrorCode = "UNAUTHORIZED"
 	DeniedErrorCode              ErrorCode = "DENIED"
 	UnsupportedErrorCode         ErrorCode = "UNSUPPORTED"
+	TooManyRequestsErrorCode     ErrorCode = "TOOMANYREQUESTS"
 )
+
+// TODO: Include other error types.
+var temporaryErrorCodes = map[ErrorCode]struct{}{
+	BlobUploadInvalidErrorCode: {},
+	TooManyRequestsErrorCode:   {},
+}
 
 // CheckError returns a structured error if the response status is not in codes.
 func CheckError(resp *http.Response, codes ...int) error {
@@ -166,10 +176,14 @@ func CheckError(resp *http.Response, codes ...int) error {
 
 	// https://github.com/docker/distribution/blob/master/docs/spec/api.md#errors
 	structuredError := &Error{}
-	if err := json.Unmarshal(b, structuredError); err != nil {
-		structuredError.rawBody = string(b)
-	}
+
+	// This can fail if e.g. the response body is not valid JSON. That's fine,
+	// we'll construct an appropriate error string from the body and status code.
+	_ = json.Unmarshal(b, structuredError)
+
+	structuredError.rawBody = string(b)
 	structuredError.StatusCode = resp.StatusCode
 	structuredError.request = resp.Request
+
 	return structuredError
 }

@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/google/go-containerregistry/pkg/internal/redact"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
@@ -99,7 +100,7 @@ func (r *remoteImage) RawConfigFile() ([]byte, error) {
 		return nil, err
 	}
 
-	body, err := r.fetchBlob(m.Config.Digest)
+	body, err := r.fetchBlob(r.context, m.Config.Digest)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +143,9 @@ func (rl *remoteImageLayer) Compressed() (io.ReadCloser, error) {
 		return nil, err
 	}
 
+	// We don't want to log binary layers -- this can break terminals.
+	ctx := redact.NewContext(rl.ri.context, "omitting binary blobs from logs")
+
 	for _, s := range d.URLs {
 		u, err := url.Parse(s)
 		if err != nil {
@@ -156,7 +160,12 @@ func (rl *remoteImageLayer) Compressed() (io.ReadCloser, error) {
 	// TODO: Maybe we don't want to try pulling from the registry first?
 	var lastErr error
 	for _, u := range urls {
-		resp, err := rl.ri.Client.Get(u.String())
+		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := rl.ri.Client.Do(req.WithContext(ctx))
 		if err != nil {
 			lastErr = err
 			continue

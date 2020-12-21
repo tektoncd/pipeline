@@ -19,26 +19,27 @@ package v1beta1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
 var validResource = v1beta1.TaskResource{
 	ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "source",
+		Name: "validsource",
 		Type: "git",
 	},
 }
 
 var invalidResource = v1beta1.TaskResource{
 	ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "source",
+		Name: "invalidsource",
 		Type: "what",
 	},
 }
@@ -96,7 +97,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			Params: []v1beta1.ParamSpec{{
 				Name:        "task",
 				Description: "param",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 			Steps: validSteps,
 		},
@@ -107,7 +108,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeString,
 				Description: "param",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 			Steps: validSteps,
 		},
@@ -364,7 +365,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 		},
 		expectedError: apis.FieldError{
@@ -381,7 +382,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.inputs.source.type"},
+			Paths:   []string{"resources.inputs[0].invalidsource.type"},
 		},
 	}, {
 		name: "one invalid input resource",
@@ -393,7 +394,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.inputs.source.type"},
+			Paths:   []string{"resources.inputs[1].invalidsource.type"},
 		},
 	}, {
 		name: "duplicated inputs resources",
@@ -406,7 +407,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
-			Paths:   []string{"taskspec.resources.inputs.name"},
+			Paths:   []string{"resources.inputs.name"},
 		},
 	}, {
 		name: "invalid output resource",
@@ -418,7 +419,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.outputs.source.type"},
+			Paths:   []string{"resources.outputs[0].invalidsource.type"},
 		},
 	}, {
 		name: "one invalid output resource",
@@ -430,7 +431,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.resources.outputs.source.type"},
+			Paths:   []string{"resources.outputs[1].invalidsource.type"},
 		},
 	}, {
 		name: "duplicated outputs resources",
@@ -443,7 +444,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
-			Paths:   []string{"taskspec.resources.outputs.name"},
+			Paths:   []string{"resources.outputs.name"},
 		},
 	}, {
 		name: "invalid param type",
@@ -452,18 +453,18 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}, {
 				Name:        "param-with-invalid-type",
 				Type:        "invalidtype",
 				Description: "invalidtypedesc",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 			Steps: validSteps,
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: invalidtype`,
-			Paths:   []string{"taskspec.params.param-with-invalid-type.type"},
+			Paths:   []string{"params.param-with-invalid-type.type"},
 		},
 	}, {
 		name: "param mismatching default/type 1",
@@ -472,13 +473,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeArray,
 				Description: "param",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 			Steps: validSteps,
 		},
 		expectedError: apis.FieldError{
 			Message: `"array" type does not match default value's type: "string"`,
-			Paths:   []string{"taskspec.params.task.type", "taskspec.params.task.default.type"},
+			Paths:   []string{"params.task.type", "params.task.default.type"},
 		},
 	}, {
 		name: "param mismatching default/type 2",
@@ -487,13 +488,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeString,
 				Description: "param",
-				Default:     tb.ArrayOrString("default", "array"),
+				Default:     v1beta1.NewArrayOrString("default", "array"),
 			}},
 			Steps: validSteps,
 		},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"taskspec.params.task.type", "taskspec.params.task.default.type"},
+			Paths:   []string{"params.task.type", "params.task.default.type"},
 		},
 	}, {
 		name: "invalid step",
@@ -502,7 +503,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     tb.ArrayOrString("default"),
+				Default:     v1beta1.NewArrayOrString("default"),
 			}},
 			Steps: []v1beta1.Step{},
 		},
@@ -517,7 +518,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value "replaceImage"`,
-			Paths:   []string{"taskspec.steps.name"},
+			Paths:   []string{"steps[0].name"},
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
@@ -530,8 +531,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "--flag=$(params.inexistent)" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `non-existent variable in "--flag=$(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "array used in unaccepted field",
@@ -552,8 +553,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.baz)" for step image`,
-			Paths:   []string{"taskspec.steps.image"},
+			Message: `variable type invalid in "$(params.baz)"`,
+			Paths:   []string{"steps[0].image"},
 		},
 	}, {
 		name: "array star used in unaccepted field",
@@ -574,8 +575,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.baz[*])" for step image`,
-			Paths:   []string{"taskspec.steps.image"},
+			Message: `variable type invalid in "$(params.baz[*])"`,
+			Paths:   []string{"steps[0].image"},
 		},
 	}, {
 		name: "array star used illegaly in script field",
@@ -598,8 +599,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 				}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable type invalid in "$(params.baz[*])" for step script`,
-			Paths:   []string{"taskspec.steps.script"},
+			Message: `variable type invalid in "$(params.baz[*])"`,
+			Paths:   []string{"steps[0].script"},
 		},
 	}, {
 		name: "array not properly isolated",
@@ -620,8 +621,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(params.baz)" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "array star not properly isolated",
@@ -642,24 +643,18 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "inferred array not properly isolated",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
-				Name: "baz",
-				Default: &v1beta1.ArrayOrString{
-					Type:     v1beta1.ParamTypeArray,
-					ArrayVal: []string{"implied", "array", "type"},
-				},
+				Name:    "baz",
+				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
 			}, {
-				Name: "foo-is-baz",
-				Default: &v1beta1.ArrayOrString{
-					Type:     v1beta1.ParamTypeArray,
-					ArrayVal: []string{"implied", "array", "type"},
-				},
+				Name:    "foo-is-baz",
+				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:       "mystep",
@@ -670,24 +665,18 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(params.baz)" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "inferred array star not properly isolated",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
-				Name: "baz",
-				Default: &v1beta1.ArrayOrString{
-					Type:     v1beta1.ParamTypeArray,
-					ArrayVal: []string{"implied", "array", "type"},
-				},
+				Name:    "baz",
+				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
 			}, {
-				Name: "foo-is-baz",
-				Default: &v1beta1.ArrayOrString{
-					Type:     v1beta1.ParamTypeArray,
-					ArrayVal: []string{"implied", "array", "type"},
-				},
+				Name:    "foo-is-baz",
+				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:       "mystep",
@@ -698,19 +687,39 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
-		name: "Inexistent param variable with existing",
+		name: "Inexistent param variable in volumeMount with existing",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{
 				{
 					Name:        "foo",
 					Description: "param",
-					Default:     tb.ArrayOrString("default"),
+					Default:     v1beta1.NewArrayOrString("default"),
 				},
 			},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:  "mystep",
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "$(params.inexistent)-foo",
+				}},
+			}}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.inexistent)-foo"`,
+			Paths:   []string{"steps[0].volumeMount[0].name"},
+		},
+	}, {
+		name: "Inexistent param variable with existing",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "foo",
+				Description: "param",
+				Default:     v1beta1.NewArrayOrString("default"),
+			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "mystep",
 				Image: "myimage",
@@ -718,8 +727,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)" for step arg[0]`,
-			Paths:   []string{"taskspec.steps.arg[0]"},
+			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
 		name: "Multiple volumes with same name",
@@ -733,7 +742,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `multiple volumes with same name "workspace"`,
-			Paths:   []string{"volumes.name"},
+			Paths:   []string{"volumes[1].name"},
 		},
 	}, {
 		name: "step with script and command",
@@ -747,8 +756,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: "step 0 script cannot be used with command",
-			Paths:   []string{"steps.script"},
+			Message: "script cannot be used with command",
+			Paths:   []string{"steps[0].script"},
 		},
 	}, {
 		name: "step volume mounts under /tekton/",
@@ -762,8 +771,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `step 0 volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
-			Paths:   []string{"steps.volumeMounts.mountPath"},
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
 		},
 	}, {
 		name: "step volume mount name starts with tekton-internal-",
@@ -777,22 +786,24 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}}},
 		},
 		expectedError: apis.FieldError{
-			Message: `step 0 volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
-			Paths:   []string{"steps.volumeMounts.name"},
+			Message: `volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
+			Paths:   []string{"steps[0].volumeMounts[0].name"},
 		},
 	}, {
 		name: "declared workspaces names are not unique",
 		fields: fields{
 			Steps: validSteps,
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
-				Name: "same-workspace",
+				Name:      "same-workspace",
+				MountPath: "/foo",
 			}, {
-				Name: "same-workspace",
+				Name:      "same-workspace",
+				MountPath: "/bar",
 			}},
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace name \"same-workspace\" must be unique",
-			Paths:   []string{"workspaces.name"},
+			Paths:   []string{"workspaces[1].name"},
 		},
 	}, {
 		name: "declared workspaces clash with each other",
@@ -808,7 +819,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/foo\" must be unique",
-			Paths:   []string{"workspaces.mountpath"},
+			Paths:   []string{"workspaces[1].mountpath"},
 		},
 	}, {
 		name: "workspace mount path already in volumeMounts",
@@ -830,7 +841,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/foo\" must be unique",
-			Paths:   []string{"workspaces.mountpath"},
+			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
 		name: "workspace default mount path already in volumeMounts",
@@ -851,7 +862,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
-			Paths:   []string{"workspaces.mountpath"},
+			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
 		name: "workspace mount path already in stepTemplate",
@@ -870,7 +881,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/foo\" must be unique",
-			Paths:   []string{"workspaces.mountpath"},
+			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
 		name: "workspace default mount path already in stepTemplate",
@@ -888,7 +899,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
-			Paths:   []string{"workspaces.mountpath"},
+			Paths:   []string{"workspaces[0].mountpath"},
 		},
 	}, {
 		name: "result name not validate",
@@ -905,7 +916,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
 		},
 	}, {
-		name: "context  not validate",
+		name: "context not validate",
 		fields: fields{
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
@@ -918,8 +929,19 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\"" for step script`,
-			Paths:   []string{"taskspec.steps.script"},
+			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "negative timeout string",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Timeout: &metav1.Duration{Duration: -10 * time.Second},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "invalid value: -10s",
+			Paths:   []string{"steps[0].negative timeout"},
 		},
 	}}
 	for _, tt := range tests {
@@ -939,7 +961,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
-			if d := cmp.Diff(tt.expectedError, *err, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})

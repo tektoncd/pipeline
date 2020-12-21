@@ -14,7 +14,8 @@
 
 package version
 
-// NOTE: use go build -ldflags "-X github.com/tektoncd/pipeline/pkg/cmd/version.PipelineVersion=$(git describe)"
-const devVersion = "devel"
+var PipelineVersion = ""
 
-var PipelineVersion = devVersion
+func SetVersion(version string) {
+	PipelineVersion = version
+}

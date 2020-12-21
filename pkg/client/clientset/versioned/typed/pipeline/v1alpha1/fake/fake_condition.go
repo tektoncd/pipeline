@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var conditionsResource = schema.GroupVersionResource{Group: "tekton.dev", Versio
 var conditionsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "Condition"}
 
 // Get takes name of the condition, and returns the corresponding condition object, and an error if there is any.
-func (c *FakeConditions) Get(name string, options v1.GetOptions) (result *v1alpha1.Condition, err error) {
+func (c *FakeConditions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Condition, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(conditionsResource, c.ns, name), &v1alpha1.Condition{})
 
@@ -50,7 +52,7 @@ func (c *FakeConditions) Get(name string, options v1.GetOptions) (result *v1alph
 }
 
 // List takes label and field selectors, and returns the list of Conditions that match those selectors.
-func (c *FakeConditions) List(opts v1.ListOptions) (result *v1alpha1.ConditionList, err error) {
+func (c *FakeConditions) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ConditionList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(conditionsResource, conditionsKind, c.ns, opts), &v1alpha1.ConditionList{})
 
@@ -72,14 +74,14 @@ func (c *FakeConditions) List(opts v1.ListOptions) (result *v1alpha1.ConditionLi
 }
 
 // Watch returns a watch.Interface that watches the requested conditions.
-func (c *FakeConditions) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeConditions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(conditionsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a condition and creates it.  Returns the server's representation of the condition, and an error, if there is any.
-func (c *FakeConditions) Create(condition *v1alpha1.Condition) (result *v1alpha1.Condition, err error) {
+func (c *FakeConditions) Create(ctx context.Context, condition *v1alpha1.Condition, opts v1.CreateOptions) (result *v1alpha1.Condition, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(conditionsResource, c.ns, condition), &v1alpha1.Condition{})
 
@@ -90,7 +92,7 @@ func (c *FakeConditions) Create(condition *v1alpha1.Condition) (result *v1alpha1
 }
 
 // Update takes the representation of a condition and updates it. Returns the server's representation of the condition, and an error, if there is any.
-func (c *FakeConditions) Update(condition *v1alpha1.Condition) (result *v1alpha1.Condition, err error) {
+func (c *FakeConditions) Update(ctx context.Context, condition *v1alpha1.Condition, opts v1.UpdateOptions) (result *v1alpha1.Condition, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(conditionsResource, c.ns, condition), &v1alpha1.Condition{})
 
@@ -101,7 +103,7 @@ func (c *FakeConditions) Update(condition *v1alpha1.Condition) (result *v1alpha1
 }
 
 // Delete takes name of the condition and deletes it. Returns an error if one occurs.
-func (c *FakeConditions) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeConditions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(conditionsResource, c.ns, name), &v1alpha1.Condition{})
 
@@ -109,15 +111,15 @@ func (c *FakeConditions) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeConditions) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(conditionsResource, c.ns, listOptions)
+func (c *FakeConditions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(conditionsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.ConditionList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched condition.
-func (c *FakeConditions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Condition, err error) {
+func (c *FakeConditions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Condition, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(conditionsResource, c.ns, name, pt, data, subresources...), &v1alpha1.Condition{})
 

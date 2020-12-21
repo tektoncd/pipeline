@@ -20,12 +20,11 @@ M = $(shell printf "\033[34;1m🐱\033[0m")
 
 export GO111MODULE=on
 
+COMMANDS=$(patsubst cmd/%,%,$(wildcard cmd/*))
+BINARIES=$(addprefix bin/,$(COMMANDS))
+
 .PHONY: all
-all: fmt lint | $(BIN) ; $(info $(M) building executable…) @ ## Build program binary
-	$Q $(GO) build \
-		-tags release \
-		-ldflags '-X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.BuildDate=$(DATE)' \
-		-o $(BIN)/$(basename $(MODULE)) main.go
+all: fmt $(BINARIES) | $(BIN) ; $(info $(M) building executable…) @ ## Build program binary
 
 $(BIN):
 	@mkdir -p $@
@@ -38,7 +37,7 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 FORCE:
 
 bin/%: cmd/% FORCE
-	$(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
+	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
 .PHONY: cross
 cross: amd64 arm arm64 s390x ppc64le ## build cross platform binaries

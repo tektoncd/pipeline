@@ -35,7 +35,7 @@ completes.
 `Workspaces` are similar to `Volumes` except that they allow a `Task` author 
 to defer to users and their `TaskRuns` when deciding which class of storage to use.
 
-Workspaces can serve the following purposes:
+`Workspaces` can serve the following purposes:
 
 - Storage of inputs and/or outputs
 - Sharing data among `Tasks`
@@ -44,7 +44,7 @@ Workspaces can serve the following purposes:
 - A mount point for common tools shared by an organization
 - A cache of build artifacts that speed up jobs
 
-### Workspaces in `Tasks` and `TaskRuns`
+### `Workspaces` in `Tasks` and `TaskRuns`
 
 `Tasks` specify where a `Workspace` resides on disk for its `Steps`. At
 runtime, a `TaskRun` provides the specific details of the `Volume` that is
@@ -57,6 +57,10 @@ might use a `PersistentVolumeClaim` which is pre-populated with
 data for the `Task` to process. In both scenarios the `Task's`
 `Workspace` declaration remains the same and only the runtime
 information in the `TaskRun` changes.
+
+`Tasks` can also share `Workspaces` with their `Sidecars`, though there's a little more
+configuration involved to add the required `volumeMount`. This allows for a
+long-running process in a `Sidecar` to share data with the executing `Steps` of a `Task`.
 
 ### `Workspaces` in `Pipelines` and `PipelineRuns`
 
@@ -72,6 +76,18 @@ specific `Volume` information to use for the `Workspaces` used by each `Pipeline
 `PipelineRuns` have the added responsibility of ensuring that whatever `Volume` type they
 provide can be safely and correctly shared across multiple `Tasks`.
 
+### Optional `Workspaces`
+
+Both `Tasks` and `Pipelines` can declare a `Workspace` "optional". When an optional `Workspace`
+is declared the `TaskRun` or `PipelineRun` may omit a `Workspace` Binding for that `Workspace`.
+The `Task` or `Pipeline` behaviour may change when the Binding is omitted. This feature has
+many uses:
+
+- A `Task` may optionally accept credentials to run authenticated commands.
+- A `Pipeline` may accept optional configuration that changes the linting or compilation
+parameters used.
+- An optional build cache may be provided to speed up compile times.
+
 ## Configuring `Workspaces`
 
 This section describes how to configure one or more `Workspaces` in a `TaskRun`.
@@ -82,14 +98,15 @@ To configure one or more `Workspaces` in a `Task`, add a `workspaces` list with 
 
 - `name` -  (**required**) A **unique** string identifier that can be used to refer to the workspace
 - `description` - An informative string describing the purpose of the `Workspace`
-- `readOnly` - A boolean declaring whether the `Task` will write to the `Workspace`.
+- `readOnly` - A boolean declaring whether the `Task` will write to the `Workspace`. Defaults to `false`.
+- `optional` - A boolean indicating whether a TaskRun can omit the `Workspace`. Defaults to `false`.
 - `mountPath` - A path to a location on disk where the workspace will be available to `Steps`. Relative
   paths will be prepended with `/workspace`. If a `mountPath` is not provided the workspace
   will be placed by default at `/workspace/<name>` where `<name>` is the workspace's
   unique name.
-  
+
 Note the following:
-  
+
 - A `Task` definition can include as many `Workspaces` as it needs. It is recommended that `Tasks` use
   **at most** one _writeable_ `Workspace`.
 - A `readOnly` `Workspace` will have its volume mounted as read-only. Attempting to write
@@ -98,9 +115,7 @@ Note the following:
   start with the name of a directory. For example, a `mountPath` of `"/foobar"` is  absolute and exposes
   the `Workspace` at `/foobar` inside the `Task's` `Steps`, but a `mountPath` of `"foobar"` is relative and
   exposes the `Workspace` at `/workspace/foobar`.
-- A default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun 
-  does not explicitly provide. It can be set in the `config-defaults` ConfigMap in `default-task-run-workspace-binding`.
-    
+
 Below is an example `Task` definition that includes a `Workspace` called `messages` to which the `Task` writes a message:
 
 ```yaml
@@ -111,19 +126,77 @@ spec:
     script: |
       #!/usr/bin/env bash
       set -xe
-      echo hello! > $(workspaces.messages.path)/message
+      if [ "$(workspaces.messages.bound)" == "true" ] ; then
+        echo hello! > $(workspaces.messages.path)/message
+      fi
   workspaces:
   - name: messages
-    description: The folder where we write the message to
+    description: |
+      The folder where we write the message to. If no workspace
+      is provided then the message will not be written.
+    optional: true
     mountPath: /custom/path/relative/to/root
 ```
+
+#### Sharing `Workspaces` with `Sidecars`
+
+A `Task's` `Sidecars` are also able to access the `Workspaces` the `Task` defines but must have their
+`volumeMount` configuration set explicitly. Below is an example `Task` that shares a `Workspace` between
+its `Steps` and its `Sidecar`. In the example a `Sidecar` sleeps for a short amount of time and then writes
+a `ready` file which the `Step` is waiting for:
+
+```yaml
+spec:
+  workspaces:
+  - name: signals
+  steps:
+  - image: alpine
+    script: |
+      while [ ! -f "$(workspaces.signals.path)/ready" ]; do
+        echo "Waiting for ready file..."
+        sleep 1
+      done
+      echo "Saw ready file!"
+  sidecars:
+  - image: alpine
+    # Note: must explicitly include volumeMount for the workspace to be accessible in the Sidecar
+    volumeMounts:
+    - name: $(workspaces.signals.volume)
+      mountPath: $(workspaces.signals.path)
+    script: |
+      sleep 3
+      touch "$(workspaces.signals.path)/ready"
+```
+
+**Note:** `Sidecars` _must_ explicitly opt-in to receiving the `Workspace` volume. Injected `Sidecars` from
+non-Tekton sources will not receive access to `Workspaces`.
+
+#### Setting a default `TaskRun` `Workspace Binding`
+
+An organization may want to specify default `Workspace` configuration for `TaskRuns`. This allows users to
+use `Tasks` without having to know the specifics of `Workspaces` - they can simply rely on the platform
+to use the default configuration when a `Workspace` is missing. To support this Tekton allows a default
+`Workspace Binding` to be specified for `TaskRuns`. When the `TaskRun` executes, any `Workspaces` that 
+a `Task` requires but which are not provided by the `TaskRun` will be bound with the default configuration.
+
+The configuration for the default `Workspace Binding` is added to the `config-defaults` `ConfigMap`, under
+the `default-task-run-workspace-binding` key. For an example, see the [Customizing basic execution
+parameters](./install.md#customizing-basic-execution-parameters) section of the install doc.
+
+**Note:** the default configuration is used for any _required_ `Workspace` declared by a `Task`. Optional
+`Workspaces` are not populated with the default binding. This is because a `Task's` behaviour will typically
+differ slightly when an optional `Workspace` is bound.
 
 #### Using `Workspace` variables in `Tasks`
 
 The following variables make information about `Workspaces` available to `Tasks`:
 
 - `$(workspaces.<name>.path)` - specifies the path to a `Workspace`
-   where `<name>` is the name of the `Workspace`.
+   where `<name>` is the name of the `Workspace`. This will be an
+   empty string when a Workspace is declared optional and not provided
+   by a TaskRun.
+- `$(workspaces.<name>.bound)` - either `true` or `false`, specifies
+   whether a workspace was bound. Always `true` if the workspace is required.
 - `$(workspaces.<name>.claim)` - specifies the name of the `PersistentVolumeClaim` used as a volume source for the `Workspace` 
    where `<name>` is the name of the `Workspace`. If a volume source other than `PersistentVolumeClaim` is used, an empty string is returned.
 - `$(workspaces.<name>.volume)`- specifies the name of the `Volume`
@@ -139,7 +212,7 @@ its own `workspaces` list. Each entry in the list contains the following fields:
 - `subPath` - An optional subdirectory on the `Volume` to store data for that `Workspace`
 
 The entry must also include one `VolumeSource`. See [Specifying `VolumeSources` in `Workspaces`](#specifying-volumesources-in-workspaces) for more information.
-               
+
 **Caution:**
 - The `Workspaces` declared in a `Task` must be available when executing the associated `TaskRun`.
   Otherwise, the `TaskRun` will fail.
@@ -177,7 +250,7 @@ you must add the following information to your `Pipeline` definition:
   list must have a unique name.
 - A mapping of `Workspace` names between the `Pipeline` and the `Task` definitions.
 
-The example below defines a `Pipeline` with a single `Workspace` named `pipeline-ws1`. This
+The example below defines a `Pipeline` with a `Workspace` named `pipeline-ws1`. This
 `Workspace` is bound in two `Tasks` - first as the `output` workspace declared by the `gen-code`
 `Task`, then as the `src` workspace declared by the `commit` `Task`. If the `Workspace`
 provided by the `PipelineRun` is a `PersistentVolumeClaim` then these two `Tasks` can share
@@ -187,6 +260,8 @@ data within that `Workspace`.
 spec:
   workspaces:
     - name: pipeline-ws1 # Name of the workspace in the Pipeline
+    - name: pipeline-ws2
+      optional: true
   tasks:
     - name: use-ws-from-pipeline
       taskRef:
@@ -204,9 +279,9 @@ spec:
         - use-ws-from-pipeline # important: use-ws-from-pipeline writes to the workspace first
 ```
 
-Include a `subPath` in the workspace binding to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1beta1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
+Include a `subPath` in the `Workspace Binding` to mount different parts of the same volume for different Tasks. See [a full example of this kind of Pipeline](../examples/v1beta1/pipelineruns/pipelinerun-using-different-subpaths-of-workspace.yaml) which writes data to two adjacent directories on the same Volume.
 
-The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a Workspace with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
+The `subPath` specified in a `Pipeline` will be appended to any `subPath` specified as part of the `PipelineRun` workspace declaration. So a `PipelineRun` declaring a `Workspace` with `subPath` of `/foo` for a `Pipeline` who binds it to a `Task` with `subPath` of `/bar` will end up mounting the `Volume`'s `/foo/bar` directory.
 
 #### Specifying `Workspace` order in a `Pipeline` and Affinity Assistants
 
@@ -386,7 +461,7 @@ substantially higher latency.
 When using a workspace backed by a `PersistentVolumeClaim` (typically only available within a Data Center) and the `TaskRun`
 pods can be scheduled to any Availability Zone in a regional cluster, some techniques must be used to avoid deadlock in the `Pipeline`.
 
-Tekton provides an Affinity Assistant that schedules all TaskRun Pods sharing a `PersistentVolumeClaim` to the same
+Tekton provides an Affinity Assistant that schedules all `TaskRun` Pods sharing a `PersistentVolumeClaim` to the same
 Node. This avoids deadlocks that can happen when two Pods requiring the same Volume are scheduled to different Availability Zones.
 A volume typically only lives within a single Availability Zone.
 

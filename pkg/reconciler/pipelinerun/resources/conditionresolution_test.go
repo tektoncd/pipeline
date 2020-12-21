@@ -216,6 +216,18 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			}}},
 		},
 	}, {
+		name: "default-container-name",
+		cond: tbv1alpha1.Condition("very-very-very-very-very-very-very-very-very-very-very-long-name", tbv1alpha1.ConditionSpec(
+			tbv1alpha1.ConditionSpecCheck("", "ubuntu"),
+		)),
+		want: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				// Shortened via: names.SimpleNameGenerator.RestrictLength
+				Name:  "condition-check-very-very-very-very-very-very-very-very-very-ve",
+				Image: "ubuntu",
+			}}},
+		},
+	}, {
 		name: "with-input-params",
 		cond: tbv1alpha1.Condition("bar", tbv1alpha1.ConditionSpec(
 			tbv1alpha1.ConditionSpecCheck("$(params.name)", "$(params.img)",

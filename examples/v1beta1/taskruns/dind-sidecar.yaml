@@ -19,6 +19,7 @@ spec:
         value: /certs/client
       script: |
           #!/usr/bin/env sh
+          set -e
           # Run a Docker container.
           docker run busybox echo hello
 
@@ -28,7 +29,7 @@ spec:
           RUN apt-get update
           ENTRYPOINT ["echo", "hello"]
           EOF
-          docker build -t hello . && docker run hello
+          docker build -t hello .
           docker images
 
           # ...then run it!
@@ -44,6 +45,9 @@ spec:
         - --storage-driver=vfs
         - --userland-proxy=false
         - --debug
+      resources:
+        requests:
+          memory: "512Mi"
       securityContext:
         privileged: true
       env:

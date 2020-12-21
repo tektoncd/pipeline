@@ -9,6 +9,7 @@ weight: 4
 - [Overview](#overview)
 - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
   - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
+  - [Tekton Bundles](#tekton-bundles)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
@@ -56,13 +57,13 @@ A `PipelineRun` definition supports the following fields:
   - [`resources`](#specifying-resources) - Specifies the [`PipelineResources`](resources.md) to provision
     for executing the target `Pipeline`.
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Pipeline`.
-  - [`serviceAccountName`](#specifying-serviceaccount-credentials) - Specifies a `ServiceAccount`
+  - [`serviceAccountName`](#specifying-custom-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that supplies specific execution credentials for the `Pipeline`.
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
-  - [`taskRunSpec`](#specifying-task-run-specs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`. 
+  - [`taskRunSpec`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails.
-  - [`podTemplate`](#pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
+  - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
     for the configuration of the `Pod` that executes each `Task`.
 
 [kubernetes-overview]:
@@ -70,7 +71,7 @@ A `PipelineRun` definition supports the following fields:
 
 ### Specifying the target `Pipeline`
 
-You must specify the target `Pipeline` that you want the `PipelineRun` to execute, either by referencing 
+You must specify the target `Pipeline` that you want the `PipelineRun` to execute, either by referencing
 an existing `Pipeline` definition, or embedding a `Pipeline` definition directly in the `PipelineRun`.
 
 To specify the target `Pipeline` by reference, use the `pipelineRef` field:
@@ -81,7 +82,6 @@ spec:
     name: mypipeline
 
 ```
-
 To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` field:
 
 ```yaml
@@ -128,18 +128,39 @@ spec:
   pipelineSpec:
     tasks:
     - name: task1
-      metadata:
-        labels:
-          pipeline-sdk-type: kfp
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: kfp
        ...
     - name: task2
-      metadata:
-        labels:
-          pipeline-sdk-type: tfx
       taskSpec:
+        metadata:
+          labels:
+            pipeline-sdk-type: tfx
        ...
 ```
+
+#### Tekton Bundles
+
+**Note: This is only allowed if `enable-tekton-oci-bundles` is set to
+`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+
+You may also use a `Tekton Bundle` to reference a pipeline defined remotely.
+
+ ```yaml
+ spec:
+   pipelineRef:
+     name: mypipeline
+     bundle: docker.io/myrepo/mycatalog:v1.0
+ ```
+
+The syntax and caveats are similar to using `Tekton Bundles` for  `Task` references
+in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bundles).
+
+`Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
+so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
+
 
 ## Specifying `Resources`
 
@@ -208,7 +229,7 @@ to all `persistentVolumeClaims` generated internally.
 You can specify `Parameters` that you want to pass to the `Pipeline` during execution,
 including different values of the same parameter for different `Tasks` in the `Pipeline`.
 
-**Note:** You must specify all the `Parameters` that the `Pipeline` expects. Parameters 
+**Note:** You must specify all the `Parameters` that the `Pipeline` expects. Parameters
 that have default values specified in Pipeline are not required to be provided by PipelineRun.
 
 For example:
@@ -221,14 +242,14 @@ spec:
   - name: pl-param-y
     value: "500"
 ```
-You can pass in extra `Parameters` if needed depending on your use cases. An example use 
-case is when your CI system autogenerates `PipelineRuns` and it has `Parameters` it wants to 
-provide to all `PipelineRuns`. Because you can pass in extra `Parameters`, you don't have to 
+You can pass in extra `Parameters` if needed depending on your use cases. An example use
+case is when your CI system autogenerates `PipelineRuns` and it has `Parameters` it wants to
+provide to all `PipelineRuns`. Because you can pass in extra `Parameters`, you don't have to
 go through the complexity of checking each `Pipeline` and providing only the required params.
 
 ### Specifying custom `ServiceAccount` credentials
 
-You can execute the `Pipeline` in your `PipelineRun` with a specific set of credentials by 
+You can execute the `Pipeline` in your `PipelineRun` with a specific set of credentials by
 specifying a `ServiceAccount` object name in the `serviceAccountName` field in your `PipelineRun`
 definition. If you do not explicitly specify this, the `TaskRuns` created by your `PipelineRun`
 will execute with the credentials specified in the `configmap-defaults` `ConfigMap`. If this
@@ -241,7 +262,7 @@ For more information, see [`ServiceAccount`](auth.md).
 
 If you require more granularity in specifying execution credentials, use the `serviceAccountNames` field to
 map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`. This overrides the global
-`serviceAccountName` you may have set for the `Pipeline` as described in the previous section. 
+`serviceAccountName` you may have set for the `Pipeline` as described in the previous section.
 
 For example, if you specify these mappings:
 
@@ -343,7 +364,7 @@ spec:
           disktype: ssd
 ```
 
-If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`). 
+If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
 
 ### Specifying `Workspaces`
 
@@ -440,7 +461,8 @@ taskRuns:
           startedAt: "2020-05-04T02:06:24Z"
   ```
 
-The following tables shows how to read the overall status of a `PipelineRun`:
+The following tables shows how to read the overall status of a `PipelineRun`.
+Completion time is set once a `PipelineRun` reaches status `True` or `False`:
 
 `status`|`reason`|`completionTime` is set|Description
 :-------|:-------|:---------------------:|--------------:
@@ -450,7 +472,6 @@ Unknown|PipelineRunCancelled|No|The user requested the PipelineRun to be cancell
 True|Succeeded|Yes|The `PipelineRun` completed successfully.
 True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
 False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
-False|\[Error message\]|No|The `PipelineRun` encountered an non-permanent error, but it's still running and it may ultimately succeed.
 False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
 False|PipelineRunCancelled|Yes|The `PipelineRun` was cancelled successfully.
 False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
@@ -458,8 +479,8 @@ False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 
 When a `PipelineRun` has `Tasks` with [WhenExpressions](pipelines.md#guard-task-execution-using-whenexpressions):
-- If the `WhenExpressions` evaluate to `true`, the `Task` is executed and the `TaskRun` will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
-- If the `WhenExpressions` evaluate to `false`, the `Task` is skipped and it is listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`. 
+- If the `WhenExpressions` evaluate to `true`, the `Task` is executed then the `TaskRun` and its resolved `WhenExpressions` will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
+- If the `WhenExpressions` evaluate to `false`, the `Task` is skipped then its name and its resolved `WhenExpressions` will be listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`.
 
 ```yaml
 Conditions:
@@ -470,11 +491,25 @@ Conditions:
   Type:                  Succeeded
 Skipped Tasks:
   Name:       skip-this-task
+  When Expressions:
+    Input:     foo
+    Operator:  in
+    Values:
+      bar
+    Input:     foo
+    Operator:  notin
+    Values:
+      foo
 Task Runs:
   pipelinerun-to-skip-task-run-this-task-r2djj:
     Pipeline Task Name:  run-this-task
     Status:
       ...
+    When Expressions:
+      Input:     foo
+      Operator:  in
+      Values:
+        foo
 ```
 
 ## Cancelling a `PipelineRun`

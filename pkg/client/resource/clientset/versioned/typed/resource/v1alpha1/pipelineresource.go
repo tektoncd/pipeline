@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -37,14 +38,14 @@ type PipelineResourcesGetter interface {
 
 // PipelineResourceInterface has methods to work with PipelineResource resources.
 type PipelineResourceInterface interface {
-	Create(*v1alpha1.PipelineResource) (*v1alpha1.PipelineResource, error)
-	Update(*v1alpha1.PipelineResource) (*v1alpha1.PipelineResource, error)
-	Delete(name string, options *v1.DeleteOptions) error
-	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
-	Get(name string, options v1.GetOptions) (*v1alpha1.PipelineResource, error)
-	List(opts v1.ListOptions) (*v1alpha1.PipelineResourceList, error)
-	Watch(opts v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PipelineResource, err error)
+	Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (*v1alpha1.PipelineResource, error)
+	Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (*v1alpha1.PipelineResource, error)
+	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.PipelineResource, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.PipelineResourceList, error)
+	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error)
 	PipelineResourceExpansion
 }
 
@@ -63,20 +64,20 @@ func newPipelineResources(c *TektonV1alpha1Client, namespace string) *pipelineRe
 }
 
 // Get takes name of the pipelineResource, and returns the corresponding pipelineResource object, and an error if there is any.
-func (c *pipelineResources) Get(name string, options v1.GetOptions) (result *v1alpha1.PipelineResource, err error) {
+func (c *pipelineResources) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.PipelineResource, err error) {
 	result = &v1alpha1.PipelineResource{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("pipelineresources").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of PipelineResources that match those selectors.
-func (c *pipelineResources) List(opts v1.ListOptions) (result *v1alpha1.PipelineResourceList, err error) {
+func (c *pipelineResources) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.PipelineResourceList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -87,13 +88,13 @@ func (c *pipelineResources) List(opts v1.ListOptions) (result *v1alpha1.Pipeline
 		Resource("pipelineresources").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested pipelineResources.
-func (c *pipelineResources) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *pipelineResources) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -104,71 +105,74 @@ func (c *pipelineResources) Watch(opts v1.ListOptions) (watch.Interface, error) 
 		Resource("pipelineresources").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a pipelineResource and creates it.  Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *pipelineResources) Create(pipelineResource *v1alpha1.PipelineResource) (result *v1alpha1.PipelineResource, err error) {
+func (c *pipelineResources) Create(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.CreateOptions) (result *v1alpha1.PipelineResource, err error) {
 	result = &v1alpha1.PipelineResource{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("pipelineresources").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(pipelineResource).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a pipelineResource and updates it. Returns the server's representation of the pipelineResource, and an error, if there is any.
-func (c *pipelineResources) Update(pipelineResource *v1alpha1.PipelineResource) (result *v1alpha1.PipelineResource, err error) {
+func (c *pipelineResources) Update(ctx context.Context, pipelineResource *v1alpha1.PipelineResource, opts v1.UpdateOptions) (result *v1alpha1.PipelineResource, err error) {
 	result = &v1alpha1.PipelineResource{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("pipelineresources").
 		Name(pipelineResource.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(pipelineResource).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the pipelineResource and deletes it. Returns an error if one occurs.
-func (c *pipelineResources) Delete(name string, options *v1.DeleteOptions) error {
+func (c *pipelineResources) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("pipelineresources").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *pipelineResources) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+func (c *pipelineResources) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("pipelineresources").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched pipelineResource.
-func (c *pipelineResources) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
+func (c *pipelineResources) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.PipelineResource, err error) {
 	result = &v1alpha1.PipelineResource{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("pipelineresources").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

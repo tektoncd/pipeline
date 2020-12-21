@@ -17,14 +17,20 @@ limitations under the License.
 package pod
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -84,13 +90,14 @@ var (
 // Containers must have Command specified; if the user didn't specify a
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
-//
-// TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps []corev1.Container, results []v1beta1.TaskResult) (corev1.Container, []corev1.Container, error) {
+// Additionally, Step timeouts are added as entrypoint flag.
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
-		Name:         "place-tools",
-		Image:        entrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
+		Name:  "place-tools",
+		Image: entrypointImage,
+		// Invoke the entrypoint binary in "cp mode" to copy itself
+		// into the correct location for later steps.
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
@@ -118,8 +125,13 @@ func orderContainers(entrypointImage string, extraEntrypointArgs []string, steps
 				"-termination_path", terminationPath,
 			}
 		}
-		argsForEntrypoint = append(argsForEntrypoint, extraEntrypointArgs...)
-		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)
+		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
+		if taskSpec != nil {
+			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 && taskSpec.Steps[i].Timeout != nil {
+				argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
+			}
+			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+		}
 
 		cmd, args := s.Command, s.Args
 		if len(cmd) == 0 {
@@ -158,34 +170,40 @@ func collectResultsName(results []v1beta1.TaskResult) string {
 	return strings.Join(resultNames, ",")
 }
 
+var replaceReadyPatchBytes []byte
+
+func init() {
+	// https://stackoverflow.com/questions/55573724/create-a-patch-to-add-a-kubernetes-annotation
+	readyAnnotationPath := "/metadata/annotations/" + strings.Replace(readyAnnotation, "/", "~1", 1)
+	var err error
+	replaceReadyPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "replace",
+		Path:      readyAnnotationPath,
+		Value:     readyAnnotationValue,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal replace ready patch bytes: %v", err)
+	}
+}
+
 // UpdateReady updates the Pod's annotations to signal the first step to start
 // by projecting the ready annotation via the Downward API.
-func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("error getting Pod %q when updating ready annotation: %w", pod.Name, err)
-	}
-
-	// Update the Pod's "READY" annotation to signal the first step to
-	// start.
-	if newPod.ObjectMeta.Annotations == nil {
-		newPod.ObjectMeta.Annotations = map[string]string{}
-	}
-	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
-		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
-		}
-	}
-	return nil
+func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	// PATCH the Pod's annotations to replace the ready annotation with the
+	// "READY" value, to signal the first step to start.
+	_, err := kubeclient.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.JSONPatchType, replaceReadyPatchBytes, metav1.PatchOptions{})
+	return err
 }
 
 // StopSidecars updates sidecar containers in the Pod to a nop image, which
 // exits successfully immediately.
-func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.Pod) error {
-	newPod, err := kubeclient.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("error getting Pod %q when stopping sidecars: %w", pod.Name, err)
+func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, namespace, name string) (*corev1.Pod, error) {
+	newPod, err := kubeclient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if k8serrors.IsNotFound(err) {
+		// return NotFound as-is, since the K8s error checks don't handle wrapping.
+		return nil, err
+	} else if err != nil {
+		return nil, fmt.Errorf("error getting Pod %q when stopping sidecars: %w", name, err)
 	}
 
 	updated := false
@@ -206,11 +224,11 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 		}
 	}
 	if updated {
-		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
-			return fmt.Errorf("error adding ready annotation to Pod %q: %w", pod.Name, err)
+		if newPod, err = kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
+			return nil, fmt.Errorf("error stopping sidecars of Pod %q: %w", name, err)
 		}
 	}
-	return nil
+	return newPod, nil
 }
 
 // IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
@@ -236,6 +254,6 @@ func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidec
 // trimStepPrefix returns the container name, stripped of its step prefix.
 func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// trimSidecarPrefix returns the container name, stripped of its sidecar
+// TrimSidecarPrefix returns the container name, stripped of its sidecar
 // prefix.
 func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

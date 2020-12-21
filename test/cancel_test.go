@@ -19,116 +19,81 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
-	jsonpatch "gomodules.xyz/jsonpatch/v2"
-
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
-// TestTaskRunPipelineRunCancel is an integration test that will
-// verify that pipelinerun cancel lead to the the correct TaskRun statuses
-// and pod deletions.
+// TestTaskRunPipelineRunCancel cancels a PipelineRun and verifies TaskRun statuses and Pod deletions.
 func TestTaskRunPipelineRunCancel(t *testing.T) {
-	type tests struct {
-		name    string
-		retries bool
-	}
-
-	tds := []tests{
-		{
-			name:    "With retries",
-			retries: true,
-		}, {
-			name:    "No retries",
-			retries: false,
-		},
-	}
-
-	t.Parallel()
-
-	for _, tdd := range tds {
-		t.Run(tdd.name, func(t *testing.T) {
-			tdd := tdd
-			pipelineTask := v1beta1.PipelineTask{
-				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
-			}
-			if tdd.retries {
-				pipelineTask.Retries = 1
-			}
-
-			c, namespace := setup(t)
+	// We run the test twice, once with a PipelineTask configured to retry
+	// on failure, to ensure that cancelling the PipelineRun doesn't cause
+	// the retrying TaskRun to retry.
+	for _, numRetries := range []int{0, 1} {
+		numRetries := numRetries // capture range variable
+		t.Run(fmt.Sprintf("retries=%d", numRetries), func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			c, namespace := setup(ctx, t)
 			t.Parallel()
 
-			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-			defer tearDown(t, c, namespace)
-
-			t.Logf("Creating Task in namespace %s", namespace)
-			task := &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: "banana", Namespace: namespace},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   "ubuntu",
-						Command: []string{"/bin/bash"},
-						Args:    []string{"-c", "sleep 5000"},
-					}}},
-				},
-			}
-			if _, err := c.TaskClient.Create(task); err != nil {
-				t.Fatalf("Failed to create Task `banana`: %s", err)
-			}
-
-			t.Logf("Creating Pipeline in namespace %s", namespace)
-			pipeline := &v1beta1.Pipeline{
-				ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: namespace},
-				Spec: v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{pipelineTask},
-				},
-			}
-			if _, err := c.PipelineClient.Create(pipeline); err != nil {
-				t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
-			}
+			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+			defer tearDown(ctx, t, c, namespace)
 
 			pipelineRun := &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: namespace},
+				ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
+					PipelineSpec: &v1beta1.PipelineSpec{
+						Tasks: []v1beta1.PipelineTask{{
+							Name:    "task",
+							Retries: numRetries,
+							TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+								Steps: []v1beta1.Step{{
+									Container: corev1.Container{
+										Image: "busybox",
+									},
+									Script: "sleep 5000",
+								}},
+							}},
+						}},
+					},
 				},
 			}
 
 			t.Logf("Creating PipelineRun in namespace %s", namespace)
-			if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
-				t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
+			if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+				t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
 
-			t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", "pear", namespace)
-			if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, Running("pear"), "PipelineRunRunning"); err != nil {
-				t.Fatalf("Error waiting for PipelineRun %s to be running: %s", "pear", err)
+			t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+				t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 			}
 
-			taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pear"})
+			taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 			if err != nil {
-				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pear", err)
+				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 			}
 
 			var wg sync.WaitGroup
-			var trName []string
-			t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
+			t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRun.Name, namespace)
 			for _, taskrunItem := range taskrunList.Items {
-				trName = append(trName, taskrunItem.Name)
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(c, name, Running(name), "TaskRunRunning")
+					err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning")
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be running: %v", name, err)
 					}
@@ -136,9 +101,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 			wg.Wait()
 
-			pr, err := c.PipelineRunClient.Get("pear", metav1.GetOptions{})
+			pr, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 			if err != nil {
-				t.Fatalf("Failed to get PipelineRun `%s`: %s", "pear", err)
+				t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
 
 			patches := []jsonpatch.JsonPatchOperation{{
@@ -150,53 +115,66 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to marshal patch bytes in order to cancel")
 			}
-			if _, err := c.PipelineRunClient.Patch(pr.Name, types.JSONPatchType, patchBytes, ""); err != nil {
-				t.Fatalf("Failed to patch PipelineRun `%s` with cancellation: %s", "pear", err)
+			if _, err := c.PipelineRunClient.Patch(ctx, pr.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+				t.Fatalf("Failed to patch PipelineRun `%s` with cancellation: %s", pipelineRun.Name, err)
 			}
 
-			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
-			if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, FailedWithReason("PipelineRunCancelled", "pear"), "PipelineRunCancelled"); err != nil {
-				t.Errorf("Error waiting for PipelineRun `pear` to finished: %s", err)
+			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, FailedWithReason("PipelineRunCancelled", pipelineRun.Name), "PipelineRunCancelled"); err != nil {
+				t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRun.Name, err)
 			}
 
-			t.Logf("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
+			t.Logf("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
 			for _, taskrunItem := range taskrunList.Items {
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(c, name, FailedWithReason(v1beta1.TaskRunReasonCancelled.String(), name), v1beta1.TaskRunReasonCancelled.String())
+					err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled")
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be finished: %v", name, err)
-					}
-					for _, step := range taskrunItem.Status.Steps {
-						if step.Terminated == nil {
-							t.Errorf("TaskRun %s step %s does not have a terminated state but should", name, step.Name)
-						}
-						if d := cmp.Diff(step.Terminated.Reason, string(v1beta1.TaskRunReasonCancelled)); d != "" {
-							t.Fatalf("-got, +want: %v", d)
-						}
 					}
 				}(taskrunItem.Name)
 			}
 			wg.Wait()
 
-			matchKinds := map[string][]string{"PipelineRun": {"pear"}, "TaskRun": trName}
-			// Expected failure events: 1 for the pipelinerun cancel, 1 for each TaskRun
-			expectedNumberOfEvents := 1 + len(trName)
+			var trName []string
+			taskrunList, err = c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+			if err != nil {
+				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+			}
+			for _, taskrunItem := range taskrunList.Items {
+				trName = append(trName, taskrunItem.Name)
+			}
+
+			matchKinds := map[string][]string{"PipelineRun": {pipelineRun.Name}}
+			// Expected failure events: 1 for the pipelinerun cancel
+			expectedNumberOfEvents := 1
 			t.Logf("Making sure %d events were created from pipelinerun with kinds %v", expectedNumberOfEvents, matchKinds)
-			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Failed")
+			events, err := collectMatchingEvents(ctx, c.KubeClient, namespace, matchKinds, "Failed")
 			if err != nil {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
-			if len(events) != expectedNumberOfEvents {
-				collectedEvents := ""
-				for i, event := range events {
-					collectedEvents += fmt.Sprintf("%#v", event)
-					if i < (len(events) - 1) {
-						collectedEvents += ", "
-					}
+			if len(events) < expectedNumberOfEvents {
+				collectedEvents := make([]string, 0, len(events))
+				for _, event := range events {
+					collectedEvents = append(collectedEvents, fmt.Sprintf("%#v", event))
 				}
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of received events : %#v", expectedNumberOfEvents, len(events), collectedEvents)
+				t.Fatalf("Expected %d number of failed events from pipelinerun but got %d; list of received events : %s", expectedNumberOfEvents, len(events), strings.Join(collectedEvents, ", "))
+			}
+			matchKinds = map[string][]string{"TaskRun": trName}
+			// Expected failure events: 1 for each TaskRun
+			expectedNumberOfEvents = len(trName)
+			t.Logf("Making sure %d events were created from taskruns with kinds %v", expectedNumberOfEvents, matchKinds)
+			events, err = collectMatchingEvents(ctx, c.KubeClient, namespace, matchKinds, "Failed")
+			if err != nil {
+				t.Fatalf("Failed to collect matching events: %q", err)
+			}
+			if len(events) < expectedNumberOfEvents {
+				collectedEvents := make([]string, 0, len(events))
+				for _, event := range events {
+					collectedEvents = append(collectedEvents, fmt.Sprintf("%#v", event))
+				}
+				t.Fatalf("Expected %d number of failed events from taskrun but got %d; list of received events : %s", expectedNumberOfEvents, len(events), strings.Join(collectedEvents, ", "))
 			}
 		})
 	}

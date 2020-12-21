@@ -1,0 +1,44 @@
+# This example TaskRun demonstrates how to share a Workspace between Steps
+# and a Sidecar. The Sidecar must be explicitly configured to mount the
+# volume backing a Workspace so that it has access to it.
+#
+# The Step writes a file to the Workspace and then waits for the Sidecar
+# to respond. The Sidecar sees the Step's file and writes its response.
+# The Step sees the response and exits.
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  generateName: workspace-in-sidecar-
+spec:
+  timeout: 60s
+  workspaces:
+  - name: signals
+    emptyDir: {}
+  taskSpec:
+    workspaces:
+    - name: signals
+    steps:
+    - image: alpine:3.12.0
+      script: |
+        #!/usr/bin/env ash
+        echo "foo" > "$(workspaces.signals.path)"/bar
+        echo "Wrote bar file"
+        while [ ! -f "$(workspaces.signals.path)"/ready ] ; do
+          echo "Waiting for $(workspaces.signals.path)/ready"
+          sleep 1
+        done
+        echo "Saw ready file"
+    sidecars:
+    - image: alpine:3.12.0
+      # Note: must explicitly add volumeMount to gain access to Workspace in sidecar
+      volumeMounts:
+      - name: $(workspaces.signals.volume)
+        mountPath: $(workspaces.signals.path)
+      script: |
+        #!/usr/bin/env ash
+        while [ ! -f "$(workspaces.signals.path)"/bar ] ; do
+          echo "Waiting for $(workspaces.signals.path)/bar"
+          sleep 1
+        done
+        touch "$(workspaces.signals.path)"/ready
+        echo "Wrote ready file"

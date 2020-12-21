@@ -67,7 +67,7 @@ func main() {
 			Key:          "digest",
 			Value:        digest.String(),
 			ResourceName: imageResource.Name,
-			ResourceRef: v1beta1.PipelineResourceRef{
+			ResourceRef: &v1beta1.PipelineResourceRef{
 				Name: imageResource.Name,
 			},
 		})
@@ -75,7 +75,7 @@ func main() {
 			Key:          "url",
 			Value:        imageResource.URL,
 			ResourceName: imageResource.Name,
-			ResourceRef: v1beta1.PipelineResourceRef{
+			ResourceRef: &v1beta1.PipelineResourceRef{
 				Name: imageResource.Name,
 			},
 		})

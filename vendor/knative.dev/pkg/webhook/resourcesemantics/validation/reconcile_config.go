@@ -149,6 +149,11 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 			MatchExpressions: []metav1.LabelSelectorRequirement{{
 				Key:      "webhooks.knative.dev/exclude",
 				Operator: metav1.LabelSelectorOpDoesNotExist,
+			}, {
+				// "control-plane" is added to support Azure's AKS, otherwise the controllers fight.
+				// See knative/pkg#1590 for details.
+				Key:      "control-plane",
+				Operator: metav1.LabelSelectorOpDoesNotExist,
 			}},
 		}
 		webhook.Webhooks[i].ClientConfig.CABundle = caCert
@@ -163,7 +168,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 	} else if !ok {
 		logger.Info("Updating webhook")
 		vwhclient := ac.client.AdmissionregistrationV1().ValidatingWebhookConfigurations()
-		if _, err := vwhclient.Update(webhook); err != nil {
+		if _, err := vwhclient.Update(ctx, webhook, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}
 	} else {

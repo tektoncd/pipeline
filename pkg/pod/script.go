@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -61,13 +62,13 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, "script")
-	// convertListOfSteps operates on overlapping fields across Step and Sidecar, hence a conversion
-	// from Sidecar into Step
+
 	sideCarSteps := []v1beta1.Step{}
 	for _, step := range sidecars {
 		sidecarStep := v1beta1.Step{
-			step.Container,
-			step.Script,
+			Container: step.Container,
+			Script:    step.Script,
+			Timeout:   &metav1.Duration{},
 		}
 		sideCarSteps = append(sideCarSteps, sidecarStep)
 	}

@@ -58,6 +58,10 @@ var (
 	podLatency = stats.Float64("taskruns_pod_latency",
 		"scheduling latency for the taskruns pods",
 		stats.UnitMilliseconds)
+
+	cloudEvents = stats.Int64("cloudevent_count",
+		"number of cloud events sent including retries",
+		stats.UnitDimensionless)
 )
 
 type Recorder struct {
@@ -155,6 +159,12 @@ func NewRecorder() (*Recorder, error) {
 			Measure:     podLatency,
 			Aggregation: view.LastValue(),
 			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
+		},
+		&view.View{
+			Description: cloudEvents.Description(),
+			Measure:     cloudEvents,
+			Aggregation: view.Sum(),
+			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
 		},
 	)
 
@@ -307,6 +317,67 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 	metrics.Record(ctx, podLatency.M(float64(latency)))
 
 	return nil
+}
+
+// CloudEvents logs the number of cloud events sent for TaskRun
+// returns an error if it fails to log the metrics
+func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
+	if !r.initialized {
+		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
+	}
+
+	taskName := "anonymous"
+	if tr.Spec.TaskRef != nil {
+		taskName = tr.Spec.TaskRef.Name
+	}
+
+	status := "success"
+	if tr.Status.Conditions[0].Status == corev1.ConditionFalse {
+		status = "failed"
+	}
+
+	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
+		ctx, err := tag.New(
+			context.Background(),
+			tag.Insert(r.task, taskName),
+			tag.Insert(r.taskRun, tr.Name),
+			tag.Insert(r.namespace, tr.Namespace),
+			tag.Insert(r.status, status),
+			tag.Insert(r.pipeline, pipeline),
+			tag.Insert(r.pipelineRun, pipelinerun),
+		)
+
+		if err != nil {
+			return err
+		}
+		metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
+		return nil
+	}
+
+	ctx, err := tag.New(
+		context.Background(),
+		tag.Insert(r.task, taskName),
+		tag.Insert(r.taskRun, tr.Name),
+		tag.Insert(r.namespace, tr.Namespace),
+		tag.Insert(r.status, status),
+	)
+	if err != nil {
+		return err
+	}
+
+	metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
+
+	return nil
+}
+
+func sentCloudEvents(tr *v1beta1.TaskRun) int64 {
+	var sent int64
+	for _, event := range tr.Status.CloudEvents {
+		if event.Status.Condition != v1beta1.CloudEventConditionUnknown {
+			sent += 1 + int64(event.Status.RetryCount)
+		}
+	}
+	return sent
 }
 
 func getScheduledTime(pod *corev1.Pod) metav1.Time {

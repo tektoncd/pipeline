@@ -476,8 +476,20 @@ reconciler.PostProcessReconcile(ctx, resource, oldResource)
 
 #### Stubs
 
-To get started, or to use as reference. It is intended to be copied out of the
-`client` dir.
+To enable stubs generation, add the stubs flag:
+
+```go
+// +genreconciler:stubs
+```
+
+Or with the class annotation:
+
+```go
+// +genreconciler:class=example.com/filter.class,stubs
+```
+
+The stubs are intended to be used to get started, or to use as reference. It is
+intended to be copied out of the `client` dir.
 
 `knative.dev/<repo>/pkg/client/injection/reconciler/<clientgroup>/<version>/<kind>/stubs/controller.go`
 

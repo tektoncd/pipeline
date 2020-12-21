@@ -17,11 +17,12 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,7 +99,7 @@ func TestOrderContainers(t *testing.T) {
 	wantInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
@@ -107,13 +108,15 @@ func TestOrderContainers(t *testing.T) {
 }
 
 func TestEntryPointResults(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}, {
-		Name:        "sub",
-		Description: "This is the sub result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}, {
+			Name:        "sub",
+			Description: "This is the sub result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -171,7 +174,7 @@ func TestEntryPointResults(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -181,13 +184,15 @@ func TestEntryPointResults(t *testing.T) {
 }
 
 func TestEntryPointResultsSingleStep(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}, {
-		Name:        "sub",
-		Description: "This is the sub result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}, {
+			Name:        "sub",
+			Description: "This is the sub result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -209,7 +214,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -218,10 +223,12 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 	}
 }
 func TestEntryPointSingleResultsSingleStep(t *testing.T) {
-	results := []v1alpha1.TaskResult{{
-		Name:        "sum",
-		Description: "This is the sum result of the task",
-	}}
+	taskSpec := v1beta1.TaskSpec{
+		Results: []v1beta1.TaskResult{{
+			Name:        "sum",
+			Description: "This is the sum result of the task",
+		}},
+	}
 
 	steps := []corev1.Container{{
 		Image:   "step-1",
@@ -243,7 +250,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{toolsMount, downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, results)
+	_, got, err := orderContainers(images.EntrypointImage, []string{}, steps, &taskSpec)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -256,19 +263,18 @@ func TestUpdateReady(t *testing.T) {
 		desc            string
 		pod             corev1.Pod
 		wantAnnotations map[string]string
+		wantErr         bool
 	}{{
-		desc: "Pod without any annotations has it added",
+		desc: "Pod without any annotations fails",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "pod",
 				Annotations: nil,
 			},
 		},
-		wantAnnotations: map[string]string{
-			readyAnnotation: readyAnnotationValue,
-		},
+		wantErr: true, // Nothing to replace.
 	}, {
-		desc: "Pod with existing annotations has it appended",
+		desc: "Pod without ready annotation adds it",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod",
@@ -279,29 +285,49 @@ func TestUpdateReady(t *testing.T) {
 		},
 		wantAnnotations: map[string]string{
 			"something":     "else",
-			readyAnnotation: readyAnnotationValue,
+			readyAnnotation: "READY",
 		},
 	}, {
-		desc: "Pod with other annotation value has it updated",
+		desc: "Pod with empty annotation value has it replaced",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod",
 				Annotations: map[string]string{
+					"something":     "else",
+					readyAnnotation: "",
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":     "else",
+			readyAnnotation: readyAnnotationValue,
+		},
+	}, {
+		desc: "Pod with other annotation value has it replaced",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something":     "else",
 					readyAnnotation: "something else",
 				},
 			},
 		},
 		wantAnnotations: map[string]string{
+			"something":     "else",
 			readyAnnotation: readyAnnotationValue,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := UpdateReady(kubeclient, c.pod); err != nil {
-				t.Errorf("UpdateReady: %v", err)
+			if err := UpdateReady(ctx, kubeclient, c.pod); (err != nil) != c.wantErr {
+				t.Errorf("UpdateReady (wantErr=%t): %v", c.wantErr, err)
 			}
 
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
+			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantAnnotations, got.Annotations); d != "" {
@@ -411,14 +437,12 @@ func TestStopSidecars(t *testing.T) {
 		wantContainers: []corev1.Container{stepContainer, sidecarContainer, injectedSidecar},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := StopSidecars(nopImage, kubeclient, c.pod); err != nil {
+			if got, err := StopSidecars(ctx, nopImage, kubeclient, c.pod.Namespace, c.pod.Name); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
-			}
-
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(c.pod.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 			}

@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -28,20 +29,24 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestDuplicatePodTaskRun creates 10 builds and checks that each of them has only one build pod.
 func TestDuplicatePodTaskRun(t *testing.T) {
-	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 25; i++ {
 		wg.Add(1)
-		taskrunName := fmt.Sprintf("duplicate-pod-taskrun-%d", i)
+		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
 		taskrun := &v1beta1.TaskRun{
@@ -56,18 +61,18 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 				},
 			},
 		}
-		if _, err := c.TaskRunClient.Create(taskrun); err != nil {
+		if _, err := c.TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}
 		go func(t *testing.T) {
 			defer wg.Done()
 
-			if err := WaitForTaskRunState(c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}
 
-			pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
+			pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s", pipeline.GroupName+pipeline.TaskRunLabelKey, taskrunName),
 			})
 			if err != nil {

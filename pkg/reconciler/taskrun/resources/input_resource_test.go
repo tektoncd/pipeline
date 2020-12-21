@@ -41,7 +41,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "google/cloud-sdk",
+		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -594,6 +594,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gitspace"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "gitspace"}},
 			}}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
@@ -683,7 +684,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 `,
 				Container: corev1.Container{
 					Name:  "fetch-storage1-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -727,6 +728,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gcs-dir"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
 			}}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
@@ -846,6 +848,9 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 						Args: []string{
 							"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
 						},
+						Env: []corev1.EnvVar{
+							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster3"},
+						},
 					},
 				},
 			},
@@ -898,17 +903,19 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 						Args: []string{
 							"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 						},
-						Env: []corev1.EnvVar{{
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "secret1",
+						Env: []corev1.EnvVar{
+							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster2"},
+							{
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "secret1",
+										},
+										Key: "cadatakey",
 									},
-									Key: "cadatakey",
 								},
-							},
-							Name: "CADATA",
-						}},
+								Name: "CADATA",
+							}},
 					},
 				},
 			},
@@ -1075,7 +1082,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
 				Container: corev1.Container{
 					Name:  "fetch-gcs-input-resource-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -1145,7 +1152,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
 				Container: corev1.Container{
 					Name:  "fetch-storage-gcs-keys-mz4c7",
-					Image: "google/cloud-sdk",
+					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 					},
@@ -1300,7 +1307,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-gitspace-mz4c7",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gitspace"},
 				Env:          gcsEnv,
@@ -1344,7 +1351,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace-78c5n",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
@@ -1396,7 +1403,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace-l22wn",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
@@ -1407,7 +1414,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
 				Name:         "artifact-copy-from-workspace2-j2tds",
-				Image:        "google/cloud-sdk",
+				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path2/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,

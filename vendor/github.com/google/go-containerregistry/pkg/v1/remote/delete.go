@@ -30,7 +30,7 @@ func Delete(ref name.Reference, options ...Option) error {
 		return err
 	}
 	scopes := []string{ref.Scope(transport.DeleteScope)}
-	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
+	tr, err := transport.NewWithContext(o.context, ref.Context().Registry, o.auth, o.transport, scopes)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func Delete(ref name.Reference, options ...Option) error {
 		return err
 	}
 
-	resp, err := c.Do(req)
+	resp, err := c.Do(req.WithContext(o.context))
 	if err != nil {
 		return err
 	}

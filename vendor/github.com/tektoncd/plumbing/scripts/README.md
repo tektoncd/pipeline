@@ -214,58 +214,30 @@ kubectl get pods || fail_test
 success
 ```
 
-## Using the `release.sh` helper script
+## Using the `deploy-release.sh` helper script
 
-This is a helper script for Knative release scripts. To use it:
+This is a helper script to deploy a Tekton release to the dogfooding cluster.
 
-1. Source the script.
+Prerequisites:
 
-1. [optional] By default, the release script will run `./test/presubmit-tests.sh`
-   as the release validation tests. If you need to run something else, set the
-   environment variable `VALIDATION_TESTS` to the executable to run.
+1. kubectl installed
 
-1. Write logic for building the release in a function named `build_release()`.
-   Set the environment variable `YAMLS_TO_PUBLISH` to the list of yaml files created,
-   space separated. Use the following boolean (0 is false, 1 is true) and string
-   environment variables for the logic:
+1. cluster gke_tekton-nightly_europe-north1-a_robocat defined in the local kubeconfig
 
-   - `RELEASE_VERSION`: contains the release version if `--version` was passed. This
-     also overrides the value of the `TAG` variable as `v<version>`.
-   - `RELEASE_BRANCH`: contains the release branch if `--branch` was passed. Otherwise
-     it's empty and `master` HEAD will be considered the release branch.
-   - `RELEASE_NOTES`: contains the filename with the release notes if `--release-notes`
-     was passed. The release notes is a simple markdown file.
-   - `RELEASE_GCS_BUCKET`: contains the GCS bucket name to store the manifests if
-     `--release-gcs` was passed, otherwise the default value `knative-nightly/<repo>`
-     will be used. It is empty if `--publish` was not passed.
-   - `KO_DOCKER_REPO`: contains the GCR to store the images if `--release-gcr` was
-     passed, otherwise the default value `gcr.io/knative-nightly` will be used. It
-     is set to `ko.local` if `--publish` was not passed.
-   - `SKIP_TESTS`: true if `--skip-tests` was passed. This is handled automatically.
-   - `TAG_RELEASE`: true if `--tag-release` was passed. In this case, the environment
-     variable `TAG` will contain the release tag in the form `vYYYYMMDD-<commit_short_hash>`.
-   - `PUBLISH_RELEASE`: true if `--publish` was passed. In this case, the environment
-     variable `KO_FLAGS` will be updated with the `-L` option.
-   - `PUBLISH_TO_GITHUB`: true if `--version`, `--branch` and `--publish-release`
-     were passed.
+Usage:
 
-   All boolean environment variables default to false for safety.
+`deploy-release.sh -p project -v version [-b bucket] [-e extra-path] [-f file]`
 
-   All environment variables above, except `KO_FLAGS`, are marked read-only once
-   `main()` is called (see below).
+Where:
 
-1. Call the `main()` function passing `$@` (without quotes).
+- `project` is `pipeline`, `triggers` or `dashboard`
 
-### Sample release script
+- `version` is the release number i.e. `v0.13.2`
 
-```bash
-source vendor/github.com/knative/test-infra/scripts/release.sh
+- `bucket` is the URL of the bucket where the release fiel is stored, `gs://tekton-releases` by default
 
-function build_release() {
-  # config/ contains the manifests
-  ko resolve ${KO_FLAGS} -f config/ > release.yaml
-  YAMLS_TO_PUBLISH="release.yaml"
-}
+- `extra-path` is the root path within the bucket where release are stored, empty by default
 
-main $@
-```
+- `file` is the name of the release file, `release.yaml` by default
+
+To summarize, the deployment job will look for the release file into `<bucket>/<extra-path>/<project>/previous/<version>/<file>`
