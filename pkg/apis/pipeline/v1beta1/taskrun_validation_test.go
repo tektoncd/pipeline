@@ -239,6 +239,29 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "taskref.bundle"),
 		wc:      enableTektonOCIBundles(t),
+	}, {
+		name: "using debug when apifields stable",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoint: []string{"bReaKdAnCe"},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("debug"),
+	}, {
+		name: "invalid breakpoint",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoint: []string{"breakito"},
+			},
+		},
+		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
+		wc:      enableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

@@ -48,6 +48,8 @@ const (
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
+
+	BreakpointOnFailure = "onFailure"
 )
 
 var (
@@ -91,7 +93,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
@@ -145,6 +147,17 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 			args = append(cmd[1:], args...)
 			cmd = []string{cmd[0]}
 		}
+
+		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
+			breakpoints := breakpointConfig.Breakpoint
+			for _, b := range breakpoints {
+				// TODO(TEP #0042): Add other breakpoints
+				if b == BreakpointOnFailure {
+					argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
+				}
+			}
+		}
+
 		argsForEntrypoint = append(argsForEntrypoint, "-entrypoint", cmd[0], "--")
 		argsForEntrypoint = append(argsForEntrypoint, args...)
 
