@@ -43,6 +43,8 @@ var (
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	// +optional
+	Debug *TaskRunDebug `json:"debug,omitempty"`
+	// +optional
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	Resources *TaskRunResources `json:"resources,omitempty"`
@@ -76,6 +78,12 @@ const (
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
 )
+
+// TaskRunDebug defines the breakpoint config for a particular TaskRun
+type TaskRunDebug struct {
+	// +optional
+	Breakpoint []string `json:"breakpoint,omitempty"`
+}
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {

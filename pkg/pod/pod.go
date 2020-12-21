@@ -94,10 +94,15 @@ type Builder struct {
 // and TaskSpec provided in its arguments. An error is returned if there are
 // any problems during the conversion.
 func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec v1beta1.TaskSpec) (*corev1.Pod, error) {
-	var initContainers []corev1.Container
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
+	var (
+		scriptsInit                                       *corev1.Container
+		entrypointInit                                    corev1.Container
+		initContainers, stepContainers, sidecarContainers []corev1.Container
+		volumes                                           []corev1.Volume
+		volumeMounts                                      []corev1.VolumeMount
+	)
 	implicitEnvVars := []corev1.EnvVar{}
+	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
@@ -129,10 +134,18 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
-	scriptsInit, stepContainers, sidecarContainers := convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars)
+	if alphaAPIEnabled {
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
+	} else {
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, nil)
+	}
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
+	}
+
+	if alphaAPIEnabled && taskRun.Spec.Debug != nil {
+		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
 	}
 
 	// Initialize any workingDirs under /workspace.
@@ -149,7 +162,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
-	entrypointInit, stepContainers, err := orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec)
+	if alphaAPIEnabled {
+		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
+	} else {
+		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +194,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// Add env var if hermetic execution was requested & if the alpha API is enabled
-	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {
 			// Add it at the end so it overrides

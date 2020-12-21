@@ -23,6 +23,7 @@ weight: 300
   - [Monitoring `Steps`](#monitoring-steps)
   - [Monitoring `Results`](#monitoring-results)
 - [Cancelling a `TaskRun`](#cancelling-a-taskrun)
+- [Debugging a `TaskRun`](#debugging-a-taskrun)
 - [Events](events.md#taskruns)
 - [Running a TaskRun Hermetically](hermetic.md)
 - [Code examples](#code-examples)
@@ -30,6 +31,7 @@ weight: 300
   - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
   - [Reusing a `Task`](#reusing-a-task)
   - [Using custom `ServiceAccount` credentials](#using-custom-serviceaccount-credentials)
+  - [Running step containers as a non-root user](#running-step-containers-as-a-non-root-user)
 
 # Overview
 
@@ -446,6 +448,43 @@ spec:
   # […]
   status: "TaskRunCancelled"
 ```
+
+
+### Debugging a `TaskRun`
+
+#### Breakpoint on Failure
+
+TaskRuns can be halted on failure for troubleshooting by providing the following spec patch as seen below.
+
+```yaml
+spec:
+  debug:
+    breakpoint: ["onFailure"]
+```
+
+Upon failure of a step, the TaskRun Pod execution is halted. If ths TaskRun Pod continues to run without any lifecycle
+change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to 
+[TaskRunTimeout](#configuring-the-failure-timeout). 
+During this time, the user/client can get remote shell access to the step container with a command such as the following.
+
+```bash
+kubectl exec -it print-date-d7tj5-pod-w5qrn -c step-print-date-human-readable 
+```
+
+#### Debug Environment
+
+After the user/client has access to the container environment, they can scour for any missing parts because of which 
+their step might have failed. 
+
+To control the lifecycle of the step to mark it as a success or a failure or close the breakpoint, there are scripts
+provided in the `/tekton/debug/scripts` directory in the container. The following are the scripts and the tasks they
+perform :-
+
+`debug-continue`: Mark the step as a success and exit the breakpoint.
+
+`debug-fail-continue`: Mark the step as a failure and exit the breakpoint.
+
+*More information on the inner workings of debug can be found in the [Debug documentation](debug.md)*
 
 ## Code examples
 

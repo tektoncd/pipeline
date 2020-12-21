@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -120,6 +121,7 @@ func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
 		desc, entrypoint, postFile string
 		waitFiles, args            []string
+		breakpointOnFailure        bool
 	}{{
 		desc: "do nothing",
 	}, {
@@ -145,20 +147,24 @@ func TestEntrypointer(t *testing.T) {
 	}, {
 		desc:      "multiple wait files",
 		waitFiles: []string{"waitforme", "metoo", "methree"},
+	}, {
+		desc:                "breakpointOnFailure to wait or not to wait ",
+		breakpointOnFailure: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
 			timeout := time.Duration(0)
 			err := Entrypointer{
-				Entrypoint:      c.entrypoint,
-				WaitFiles:       c.waitFiles,
-				PostFile:        c.postFile,
-				Args:            c.args,
-				Waiter:          fw,
-				Runner:          fr,
-				PostWriter:      fpw,
-				TerminationPath: "termination",
-				Timeout:         &timeout,
+				Entrypoint:          c.entrypoint,
+				WaitFiles:           c.waitFiles,
+				PostFile:            c.postFile,
+				Args:                c.args,
+				Waiter:              fw,
+				Runner:              fr,
+				PostWriter:          fpw,
+				TerminationPath:     "termination",
+				Timeout:             &timeout,
+				BreakpointOnFailure: c.breakpointOnFailure,
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
@@ -225,9 +231,28 @@ func TestEntrypointer(t *testing.T) {
 	}
 }
 
+func TestEntrypointer_ReadBreakpointExitCodeFromDisk(t *testing.T) {
+	expectedExitCode := 1
+	// setup test
+	tmp, err := ioutil.TempFile("", "1*.err")
+	if err != nil {
+		t.Errorf("error while creating temp file for testing exit code written by breakpoint")
+	}
+	// write exit code to file
+	if err = ioutil.WriteFile(tmp.Name(), []byte(fmt.Sprintf("%d", expectedExitCode)), 0700); err != nil {
+		t.Errorf("error while writing to temp file create temp file for testing exit code written by breakpoint")
+	}
+	e := Entrypointer{}
+	// test reading the exit code from error waitfile
+	actualExitCode, err := e.BreakpointExitCode(tmp.Name())
+	if actualExitCode != expectedExitCode {
+		t.Errorf("error while parsing exit code. want %d , got %d", expectedExitCode, actualExitCode)
+	}
+}
+
 type fakeWaiter struct{ waited []string }
 
-func (f *fakeWaiter) Wait(file string, _ bool) error {
+func (f *fakeWaiter) Wait(file string, _ bool, _ bool) error {
 	f.waited = append(f.waited, file)
 	return nil
 }
@@ -245,7 +270,7 @@ func (f *fakePostWriter) Write(file string) { f.wrote = &file }
 
 type fakeErrorWaiter struct{ waited *string }
 
-func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
+func (f *fakeErrorWaiter) Wait(file string, expectContent bool, breakpointOnFailure bool) error {
 	f.waited = &file
 	return errors.New("waiter failed")
 }

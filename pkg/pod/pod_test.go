@@ -127,6 +127,51 @@ func TestPodBuild(t *testing.T) {
 			}),
 		},
 	}, {
+		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
+		trs: v1beta1.TaskRunSpec{
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoint: []string{BreakpointOnFailure},
+			},
+		},
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}, {
 		desc: "simple with running-in-environment-with-injected-sidecar set to false",
 		ts: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
@@ -1451,6 +1496,168 @@ _EOF_
 				OverrideHomeEnv: overrideHomeEnv,
 			}
 			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			if err != nil {
+				t.Fatalf("builder.Build: %v", err)
+			}
+
+			if !strings.HasPrefix(got.Name, "taskrun-name-pod-") {
+				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
+			}
+
+			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+
+			if c.wantAnnotations != nil {
+				if d := cmp.Diff(c.wantAnnotations, got.ObjectMeta.Annotations, cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)); d != "" {
+					t.Errorf("Annotation Diff(-want, +got):\n%s", d)
+				}
+			}
+		})
+	}
+}
+
+func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
+	placeToolsInit := corev1.Container{
+		Name:         "place-tools",
+		Image:        images.EntrypointImage,
+		WorkingDir:   "/",
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
+	}
+
+	for _, c := range []struct {
+		desc            string
+		trs             v1beta1.TaskRunSpec
+		trAnnotation    map[string]string
+		ts              v1beta1.TaskSpec
+		featureFlags    map[string]string
+		overrideHomeEnv *bool
+		want            *corev1.PodSpec
+		wantAnnotations map[string]string
+	}{{
+		desc: "simple with debug breakpoint onFailure",
+		trs: v1beta1.TaskRunSpec{
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoint: []string{BreakpointOnFailure},
+			},
+		},
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-breakpoint_on_failure",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       c.featureFlags,
+				},
+			)
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account", Namespace: "default"},
+					Secrets: []corev1.ObjectReference{{
+						Name: "multi-creds",
+					}},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multi-creds",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"tekton.dev/docker-0": "https://us.gcr.io",
+							"tekton.dev/docker-1": "https://docker.io",
+							"tekton.dev/git-0":    "github.com",
+							"tekton.dev/git-1":    "gitlab.com",
+						}},
+					Type: "kubernetes.io/basic-auth",
+					Data: map[string][]byte{
+						"username": []byte("foo"),
+						"password": []byte("BestEver"),
+					},
+				},
+			)
+			var trAnnotations map[string]string
+			if c.trAnnotation == nil {
+				trAnnotations = map[string]string{
+					ReleaseAnnotation: version.PipelineVersion,
+				}
+			} else {
+				trAnnotations = c.trAnnotation
+				trAnnotations[ReleaseAnnotation] = version.PipelineVersion
+			}
+			tr := &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "taskrun-name",
+					Namespace:   "default",
+					Annotations: trAnnotations,
+				},
+				Spec: c.trs,
+			}
+
+			// No entrypoints should be looked up.
+			entrypointCache := fakeCache{}
+
+			overrideHomeEnv := false
+			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
+				var err error = nil
+				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
+					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
+				}
+			}
+			builder := Builder{
+				Images:          images,
+				KubeClient:      kubeclient,
+				EntrypointCache: entrypointCache,
+				OverrideHomeEnv: overrideHomeEnv,
+			}
+
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+			})
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			got, err := builder.Build(ctx, tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}

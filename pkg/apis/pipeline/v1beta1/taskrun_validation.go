@@ -78,6 +78,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateParameters(ts.Params).ViaField("params"))
 	errs = errs.Also(validateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
+	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		if ts.Debug != nil {
+			errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
+		}
+	} else if ts.Debug != nil {
+		errs = errs.Also(apis.ErrDisallowedFields("debug"))
+	}
 
 	if ts.Status != "" {
 		if ts.Status != TaskRunSpecStatusCancelled {
@@ -91,6 +98,20 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	return errs
+}
+
+// validateDebug
+func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
+	breakpointOnFailure := "onFailure"
+	validBreakpoints := sets.NewString()
+	validBreakpoints.Insert(breakpointOnFailure)
+
+	for _, b := range db.Breakpoint {
+		if !validBreakpoints.Has(b) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid breakpoint. Available valid breakpoints include %s", b, validBreakpoints.List()), "breakpoint"))
+		}
+	}
 	return errs
 }
 

@@ -2086,6 +2086,19 @@
         }
       }
     },
+    "v1beta1.TaskRunDebug": {
+      "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
+      "type": "object",
+      "properties": {
+        "breakpoint": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      }
+    },
     "v1beta1.TaskRunInputs": {
       "description": "TaskRunInputs holds the input values that this task was invoked with.",
       "type": "object",
@@ -2193,6 +2206,9 @@
       "description": "TaskRunSpec defines the desired state of TaskRun",
       "type": "object",
       "properties": {
+        "debug": {
+          "$ref": "#/definitions/v1beta1.TaskRunDebug"
+        },
         "params": {
           "type": "array",
           "items": {

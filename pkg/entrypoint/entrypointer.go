@@ -20,8 +20,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -66,12 +69,14 @@ type Entrypointer struct {
 	Results []string
 	// Timeout is an optional user-specified duration within which the Step must complete
 	Timeout *time.Duration
+	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
+	BreakpointOnFailure bool
 }
 
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
 	// Wait blocks until the specified file exists.
-	Wait(file string, expectContent bool) error
+	Wait(file string, expectContent bool, breakpointOnFailure bool) error
 }
 
 // Runner encapsulates running commands.
@@ -100,10 +105,13 @@ func (e Entrypointer) Go() error {
 	}()
 
 	for _, f := range e.WaitFiles {
-		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
+		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
-			e.WritePostFile(e.PostFile, err)
+			// In case of breakpoint on failure do not write post file.
+			if !e.BreakpointOnFailure {
+				e.WritePostFile(e.PostFile, err)
+			}
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "StartedAt",
 				Value:      time.Now().Format(timeFormat),
@@ -145,8 +153,11 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
-	// Write the post file *no matter what*
-	e.WritePostFile(e.PostFile, err)
+	if err != nil && e.BreakpointOnFailure {
+		logger.Info("Skipping writing to PostFile")
+	} else {
+		e.WritePostFile(e.PostFile, err)
+	}
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
@@ -185,6 +196,17 @@ func (e Entrypointer) readResultsFromDisk() error {
 		}
 	}
 	return nil
+}
+
+func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, error) {
+	exitCode, err := ioutil.ReadFile(breakpointExitPostFile)
+	if os.IsNotExist(err) {
+		return 0, fmt.Errorf("breakpoint postfile %s not found", breakpointExitPostFile)
+	}
+	strExitCode := strings.TrimSuffix(string(exitCode), "\n")
+	log.Println("Breakpoint exiting with exit code " + strExitCode)
+
+	return strconv.Atoi(strExitCode)
 }
 
 // WritePostFile write the postfile
