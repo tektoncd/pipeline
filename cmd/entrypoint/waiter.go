@@ -42,6 +42,10 @@ func (rw *realWaiter) Wait(file string, expectContent bool) error {
 		} else if !os.IsNotExist(err) {
 			return fmt.Errorf("waiting for %q: %w", file, err)
 		}
+		// Don't skip step if breakpointOnFailure enabled (to halt execution of the TaskRun)
+		//if _, err := os.Stat(file + ".err"); err == nil && !breakpointOnFailure{
+		//	return skipError("error file present, bail and skip the step")
+		//}
 		if _, err := os.Stat(file + ".err"); err == nil {
 			return skipError("error file present, bail and skip the step")
 		}

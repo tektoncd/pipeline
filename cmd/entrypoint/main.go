@@ -34,13 +34,14 @@ import (
 )
 
 var (
-	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
-	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
-	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
-	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
-	results         = flag.String("results", "", "If specified, list of file names that might contain task results")
-	timeout         = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	ep                  = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	waitFiles           = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
+	waitFileContent     = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
+	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
+	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
+	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
+	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 )
 
 const defaultWaitPollingInterval = time.Second
@@ -62,6 +63,15 @@ func cp(src, dst string) error {
 
 	_, err = io.Copy(d, s)
 	return err
+}
+
+func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
+	if e.BreakpointOnFailure {
+		if waitErr := e.Waiter.Wait(breakpointExitPostFile, false); waitErr != nil {
+			log.Println("error occurred while waiting for " + breakpointExitPostFile)
+		}
+		os.Exit(0)
+	}
 }
 
 func main() {
@@ -97,17 +107,18 @@ func main() {
 	}
 
 	e := entrypoint.Entrypointer{
-		Entrypoint:      *ep,
-		WaitFiles:       strings.Split(*waitFiles, ","),
-		WaitFileContent: *waitFileContent,
-		PostFile:        *postFile,
-		TerminationPath: *terminationPath,
-		Args:            flag.Args(),
-		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval},
-		Runner:          &realRunner{},
-		PostWriter:      &realPostWriter{},
-		Results:         strings.Split(*results, ","),
-		Timeout:         timeout,
+		Entrypoint:          *ep,
+		WaitFiles:           strings.Split(*waitFiles, ","),
+		WaitFileContent:     *waitFileContent,
+		PostFile:            *postFile,
+		TerminationPath:     *terminationPath,
+		Args:                flag.Args(),
+		Waiter:              &realWaiter{waitPollingInterval: defaultWaitPollingInterval},
+		Runner:              &realRunner{},
+		PostWriter:          &realPostWriter{},
+		Results:             strings.Split(*results, ","),
+		Timeout:             timeout,
+		BreakpointOnFailure: *breakpointOnFailure,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
@@ -117,6 +128,7 @@ func main() {
 	}
 
 	if err := e.Go(); err != nil {
+		breakpointExitPostFile := e.PostFile + ".breakpointexit"
 		switch t := err.(type) {
 		case skipError:
 			log.Print("Skipping step because a previous step failed")
@@ -132,11 +144,14 @@ func main() {
 			// in both cases has an ExitStatus() method with the
 			// same signature.
 			if status, ok := t.Sys().(syscall.WaitStatus); ok {
+				checkForBreakpointOnFailure(e, breakpointExitPostFile)
 				os.Exit(status.ExitStatus())
 			}
 			log.Fatalf("Error executing command (ExitError): %v", err)
 		default:
+			checkForBreakpointOnFailure(e, breakpointExitPostFile)
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}
 }
+

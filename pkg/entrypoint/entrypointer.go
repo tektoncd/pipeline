@@ -66,6 +66,8 @@ type Entrypointer struct {
 	Results []string
 	// Timeout is an optional user-specified duration within which the Step must complete
 	Timeout *time.Duration
+	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
+	BreakpointOnFailure bool
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -103,7 +105,10 @@ func (e Entrypointer) Go() error {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
-			e.WritePostFile(e.PostFile, err)
+			// In case of breakpoint on failure do not write post file.
+			if !e.BreakpointOnFailure {
+				e.WritePostFile(e.PostFile, err)
+			}
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "StartedAt",
 				Value:      time.Now().Format(timeFormat),
@@ -146,7 +151,12 @@ func (e Entrypointer) Go() error {
 	}
 
 	// Write the post file *no matter what*
-	e.WritePostFile(e.PostFile, err)
+	if err != nil && e.BreakpointOnFailure {
+		logger.Info("Skipping writing to PostFile")
+	} else {
+		e.WritePostFile(e.PostFile, err)
+	}
+
 
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.

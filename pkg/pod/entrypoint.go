@@ -39,12 +39,12 @@ const (
 	mountPoint       = "/tekton/tools"
 	entrypointBinary = mountPoint + "/entrypoint"
 
-	downwardVolumeName     = "tekton-internal-downward"
-	downwardMountPoint     = "/tekton/downward"
-	terminationPath        = "/tekton/termination"
-	downwardMountReadyFile = "ready"
-	readyAnnotation        = "tekton.dev/ready"
-	readyAnnotationValue   = "READY"
+	downwardVolumeName   = "tekton-internal-downward"
+	downwardMountPoint   = "/tekton/downward"
+	terminationPath      = "/tekton/termination"
+	readyFile            = "ready"
+	readyAnnotation      = "tekton.dev/ready"
+	readyAnnotationValue = "READY"
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
@@ -68,7 +68,7 @@ var (
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{{
-					Path: downwardMountReadyFile,
+					Path: readyFile,
 					FieldRef: &corev1.ObjectFieldSelector{
 						FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
 					},
@@ -91,7 +91,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunBreakpoint) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
@@ -111,7 +111,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 		case 0:
 			argsForEntrypoint = []string{
 				// First step waits for the Downward volume file.
-				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
+				"-wait_file", filepath.Join(downwardMountPoint, readyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
 				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
@@ -141,6 +141,13 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 			args = append(cmd[1:], args...)
 			cmd = []string{cmd[0]}
 		}
+
+		if breakpointConfig != nil {
+			if breakpointConfig.OnFailure {
+				argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
+			}
+		}
+
 		argsForEntrypoint = append(argsForEntrypoint, "-entrypoint", cmd[0], "--")
 		argsForEntrypoint = append(argsForEntrypoint, args...)
 
