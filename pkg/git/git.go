@@ -59,16 +59,17 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 
 // FetchSpec describes how to initialize and fetch from a Git repository.
 type FetchSpec struct {
-	URL        string
-	Revision   string
-	Refspec    string
-	Path       string
-	Depth      uint
-	Submodules bool
-	SSLVerify  bool
-	HTTPProxy  string
-	HTTPSProxy string
-	NOProxy    string
+	URL                       string
+	Revision                  string
+	Refspec                   string
+	Path                      string
+	Depth                     uint
+	Submodules                bool
+	SSLVerify                 bool
+	HTTPProxy                 string
+	HTTPSProxy                string
+	NOProxy                   string
+	SparseCheckoutDirectories string
 }
 
 // Fetch fetches the specified git repository at the revision into path, using the refspec to fetch if provided.
@@ -86,6 +87,9 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
 		}
 	} else if _, err := run(logger, "", "init"); err != nil {
+		return err
+	}
+	if err := configSparseCheckout(logger, spec); err != nil {
 		return err
 	}
 	trimmedURL := strings.TrimSpace(spec.URL)
@@ -280,4 +284,37 @@ func ValidateGitSSHURLFormat(url string) bool {
 		return true
 	}
 	return false
+}
+
+func configSparseCheckout(logger *zap.SugaredLogger, spec FetchSpec) error {
+	if spec.SparseCheckoutDirectories != "" {
+		if _, err := run(logger, "", "config", "core.sparsecheckout", "true"); err != nil {
+			return err
+		}
+
+		dirPatterns := strings.Split(spec.SparseCheckoutDirectories, ",")
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			logger.Errorf("failed to get current directory: %v", err)
+			return err
+		}
+		file, err := os.OpenFile(filepath.Join(cwd, ".git/info/sparse-checkout"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			logger.Errorf("failed to open sparse-checkout file: %v", err)
+			return err
+		}
+		for _, pattern := range dirPatterns {
+			if _, err := file.WriteString(pattern + "\n"); err != nil {
+				file.Close()
+				logger.Errorf("failed to write to sparse-checkout file: %v", err)
+				return err
+			}
+		}
+		if err := file.Close(); err != nil {
+			logger.Errorf("failed to close sparse-checkout file: %v", err)
+			return err
+		}
+	}
+	return nil
 }

@@ -16,11 +16,13 @@ limitations under the License.
 package git
 
 import (
+	"bufio"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
@@ -175,16 +177,34 @@ func TestFetch(t *testing.T) {
 			logMessage: "Successfully cloned",
 			wantErr:    false,
 			spec: FetchSpec{
-				URL:        "",
-				Revision:   "",
-				Refspec:    "",
-				Path:       "",
-				Depth:      0,
-				Submodules: false,
-				SSLVerify:  false,
-				HTTPProxy:  "",
-				HTTPSProxy: "",
-				NOProxy:    "",
+				URL:                       "",
+				Revision:                  "",
+				Refspec:                   "",
+				Path:                      "",
+				Depth:                     0,
+				Submodules:                false,
+				SSLVerify:                 false,
+				HTTPProxy:                 "",
+				HTTPSProxy:                "",
+				NOProxy:                   "",
+				SparseCheckoutDirectories: "",
+			},
+		}, {
+			name:       "test-clone-with-sparse-checkout",
+			logMessage: "Successfully cloned",
+			wantErr:    false,
+			spec: FetchSpec{
+				URL:                       "",
+				Revision:                  "",
+				Refspec:                   "",
+				Path:                      "",
+				Depth:                     0,
+				Submodules:                false,
+				SSLVerify:                 false,
+				HTTPProxy:                 "",
+				HTTPSProxy:                "",
+				NOProxy:                   "",
+				SparseCheckoutDirectories: "a,b/c",
 			},
 		},
 	}
@@ -204,6 +224,27 @@ func TestFetch(t *testing.T) {
 
 			if err := Fetch(logger, tt.spec); (err != nil) != tt.wantErr {
 				t.Errorf("Fetch() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.spec.SparseCheckoutDirectories != "" {
+				dirPatterns := strings.Split(tt.spec.SparseCheckoutDirectories, ",")
+
+				sparseFile, err := os.Open(".git/info/sparse-checkout")
+				if err != nil {
+					t.Fatal("Unable to read sparse-checkout file")
+				}
+				defer sparseFile.Close()
+
+				var sparsePatterns []string
+
+				scanner := bufio.NewScanner(sparseFile)
+				for scanner.Scan() {
+					sparsePatterns = append(sparsePatterns, scanner.Text())
+				}
+
+				if cmp.Diff(dirPatterns, sparsePatterns) != "" {
+					t.Errorf("directory patterns and sparse-checkout patterns do not match")
+				}
 			}
 
 			if tt.logMessage != "" {
