@@ -39,6 +39,7 @@ func init() {
 	flag.BoolVar(&fetchSpec.Submodules, "submodules", true, "Initialize and fetch Git submodules")
 	flag.UintVar(&fetchSpec.Depth, "depth", 1, "Perform a shallow clone to this depth")
 	flag.StringVar(&terminationMessagePath, "terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
+	flag.StringVar(&fetchSpec.SparseCheckoutDirectories, "sparseCheckoutDirectories", "", "String of directory patterns separated by a comma")
 }
 
 func main() {
