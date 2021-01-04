@@ -9,9 +9,17 @@ import (
 )
 
 // realWaiter actually waits for files, by polling.
-type realWaiter struct{}
+type realWaiter struct {
+	waitPollingInterval time.Duration
+}
 
 var _ entrypoint.Waiter = (*realWaiter)(nil)
+
+// setWaitPollingInterval sets the pollingInterval that will be used by the wait function
+func (rw *realWaiter) setWaitPollingInterval(pollingInterval time.Duration) *realWaiter {
+	rw.waitPollingInterval = pollingInterval
+	return rw
+}
 
 // Wait watches a file and returns when either a) the file exists and, if
 // the expectContent argument is true, the file has non-zero size or b) there
@@ -22,11 +30,11 @@ var _ entrypoint.Waiter = (*realWaiter)(nil)
 //
 // If a file of the same name with a ".err" extension exists then this Wait
 // will end with a skipError.
-func (*realWaiter) Wait(file string, expectContent bool) error {
+func (rw *realWaiter) Wait(file string, expectContent bool) error {
 	if file == "" {
 		return nil
 	}
-	for ; ; time.Sleep(waitPollingInterval) {
+	for ; ; time.Sleep(rw.waitPollingInterval) {
 		if info, err := os.Stat(file); err == nil {
 			if !expectContent || info.Size() > 0 {
 				return nil

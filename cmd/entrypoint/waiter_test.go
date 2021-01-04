@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+const testWaitPollingInterval = 10 * time.Millisecond
+
 func TestRealWaiterWaitMissingFile(t *testing.T) {
 	// Create a temp file and then immediately delete it to get
 	// a legitimate tmp path and ensure the file doesnt exist
@@ -35,7 +37,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.Wait(tmp.Name(), false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -44,7 +46,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	select {
 	case <-doneCh:
 		t.Errorf("did not expect Wait() to have detected a file at path %q", tmp.Name())
-	case <-time.After(2 * waitPollingInterval):
+	case <-time.After(2 * testWaitPollingInterval):
 		// Success
 	}
 }
@@ -58,7 +60,7 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.Wait(tmp.Name(), false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -67,7 +69,7 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * waitPollingInterval):
+	case <-time.After(2 * testWaitPollingInterval):
 		t.Errorf("expected Wait() to have detected the file's existence by now")
 	}
 }
@@ -81,7 +83,7 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.Wait(tmp.Name(), true)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), true)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -90,7 +92,7 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 	select {
 	case <-doneCh:
 		t.Errorf("no data was written to tmp file, did not expect Wait() to have detected a non-zero file size and returned")
-	case <-time.After(2 * waitPollingInterval):
+	case <-time.After(2 * testWaitPollingInterval):
 		// Success
 	}
 }
@@ -104,7 +106,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
-		err := rw.Wait(tmp.Name(), true)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), true)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -116,7 +118,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * waitPollingInterval):
+	case <-time.After(2 * testWaitPollingInterval):
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
 	}
 }
