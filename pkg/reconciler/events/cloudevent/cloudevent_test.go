@@ -84,7 +84,7 @@ func getPipelineRunByCondition(status corev1.ConditionStatus, reason string) *v1
 }
 
 func TestEventForTaskRun(t *testing.T) {
-	for _, c := range []struct {
+	taskRunTests := []struct {
 		desc          string
 		taskRun       *v1beta1.TaskRun
 		wantEventType TektonEventType
@@ -108,7 +108,9 @@ func TestEventForTaskRun(t *testing.T) {
 		desc:          "send a cloud event with successful status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionTrue, "yay"),
 		wantEventType: TaskRunSuccessfulEventV1,
-	}} {
+	}}
+
+	for _, c := range taskRunTests {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 
@@ -141,7 +143,7 @@ func TestEventForTaskRun(t *testing.T) {
 }
 
 func TestEventForPipelineRun(t *testing.T) {
-	for _, c := range []struct {
+	pipelineRunTests := []struct {
 		desc          string
 		pipelineRun   *v1beta1.PipelineRun
 		wantEventType TektonEventType
@@ -165,7 +167,9 @@ func TestEventForPipelineRun(t *testing.T) {
 		desc:          "send a cloud event with unknown status pipelinerun",
 		pipelineRun:   getPipelineRunByCondition(corev1.ConditionFalse, "meh"),
 		wantEventType: PipelineRunFailedEventV1,
-	}} {
+	}}
+
+	for _, c := range pipelineRunTests {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 

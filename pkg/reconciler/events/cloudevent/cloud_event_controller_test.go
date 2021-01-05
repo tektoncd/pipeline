@@ -427,7 +427,7 @@ func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bo
 }
 
 func eventFromChannel(c chan string, testName string, wantEvent string) error {
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(10 * time.Millisecond)
 	select {
 	case event := <-c:
 		if wantEvent == "" {
