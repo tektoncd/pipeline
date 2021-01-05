@@ -71,13 +71,13 @@ func (t TektonEventType) String() string {
 type CEClient cloudevents.Client
 
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
-// a Tekton cloud event. It can include a PipelineRun or a PipelineRun
+// a Tekton cloud event. It can include a TaskRun or a PipelineRun
 type TektonCloudEventData struct {
 	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
 	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
 }
 
-// NewTektonCloudEventData returns a new instance of NewTektonCloudEventData
+// NewTektonCloudEventData returns a new instance of TektonCloudEventData
 func NewTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData {
 	tektonCloudEventData := TektonCloudEventData{}
 	switch v := runObject.(type) {
@@ -121,7 +121,7 @@ func EventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
 	return EventForObjectWithCondition(taskRun)
 }
 
-// EventForPipelineRun will create a new event based on a TaskRun,
+// EventForPipelineRun will create a new event based on a PipelineRun,
 // or return an error if not possible.
 func EventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, error) {
 	// Check if the TaskRun is defined
