@@ -4,16 +4,9 @@ These steps provide a no-frills guide to performing an official release
 of Tekton Pipelines. To follow these steps you'll need a checkout of
 the pipelines repo, a terminal window and a text editor.
 
+1. [Setup a context to connect to the dogfooding cluster](#setup-dogfooding-context) if you haven't already.
+
 1. `cd` to root of Pipelines git checkout.
-
-1. Configure `kubectl` to use the  dogfooding cluster
-   [as the default context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-   (**in the final step we will configure the default context to point to something else; until then be aware
-    that any kubctl commands you run will act on the dogfooding cluster**)
-
-    ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
-    ```
 
 1. Select the commit you would like to build the release from, most likely the
    most recent commit at https://github.com/tektoncd/pipeline/commits/master
@@ -35,7 +28,7 @@ the pipelines repo, a terminal window and a text editor.
         value: # The commmit you selected in the last step, e.g. 33e0847e67fc9804689e50371746c3cdad4b0a9d
     ```
 
-1. Apply file you just made to the dogfooding cluster: `kubectl apply -f your-pipeline-resource-file.yaml`
+1. Apply file you just made to the dogfooding cluster: `kubectl --context dogfooding apply -f your-pipeline-resource-file.yaml`
 
 1. Create environment variables for bash scripts in later steps.
 
@@ -48,7 +41,7 @@ the pipelines repo, a terminal window and a text editor.
 1. Confirm commit SHA matches what you want to release.
 
     ```bash
-    kubectl get pipelineresource "$TEKTON_RELEASE_GIT_RESOURCE" -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
+    kubectl --context dogfooding get pipelineresource "$TEKTON_RELEASE_GIT_RESOURCE" -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
     ```
 
 1. Execute the release pipeline.
@@ -56,7 +49,7 @@ the pipelines repo, a terminal window and a text editor.
     **If you are backporting include this flag: `--param=releaseAsLatest="false"`**
 
     ```bash
-    tkn pipeline start \
+    tkn --context dogfooding pipeline start \
       --param=versionTag="${TEKTON_VERSION}" \
       --param=imageRegistry="${TEKTON_IMAGE_REGISTRY}" \
       --serviceaccount=release-right-meow \
@@ -95,7 +88,7 @@ the pipelines repo, a terminal window and a text editor.
     1. Execute the Draft Release task.
 
     ```bash
-    tkn task start \
+    tkn --context dogfooding task start \
       -i source="${TEKTON_RELEASE_GIT_RESOURCE}" \
       -i release-bucket=pipeline-tekton-bucket \
       -p package="${TEKTON_PACKAGE}" \
@@ -107,8 +100,7 @@ the pipelines repo, a terminal window and a text editor.
 
     1. Watch logs of create-draft-release
 
-    1. On successful completion, a URL will be logged. Visit that URL and sort the
-    release notes.
+    1. On successful completion, a URL will be logged. Visit that URL and look through the release notes.
       1. Manually add upgrade and deprecation notices based on the generated release notes
       1. Double-check that the list of commits here matches your expectations
          for the release. You might need to remove incorrect commits or copy/paste commits
@@ -122,22 +114,16 @@ the pipelines repo, a terminal window and a text editor.
 
 1. Push & make PR for updated `README.md`
 
-1. **Important: Stop pointing `kubectl` at dogfooding cluster.**
-
-    ```bash
-    kubectl config use-context my-dev-cluster
-    ```
-
-1. Test release that you just made.
+1. Test release that you just made against your own cluster (note `--context my-dev-cluster`):
 
     ```bash
     # Test latest
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
     ```
 
     ```bash
     # Test backport
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
     ```
 
 1. Announce the release in Slack channels #general and #pipelines.
@@ -146,3 +132,25 @@ the pipelines repo, a terminal window and a text editor.
 to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/master/test/e2e-tests.sh).
 
 Congratulations, you're done!
+
+## Setup dogfooding context
+
+1. Configure `kubectl` to connect to
+   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/master/docs/dogfooding.md):
+
+    ```bash
+    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    ```
+
+1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+   a short memorable name such as `dogfooding`:
+
+   ```bash
+   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfoodin
+   ```
+
+1. **Important: Switch `kubectl` back to your own cluster by default.**
+
+    ```bash
+    kubectl config use-context my-dev-cluster
+    ```
