@@ -125,7 +125,7 @@ spec:
       description: The path to the image to replace in the yaml manifest (arg to yq)
   steps:
   - name: replace-image
-    image: mikefarah/yq
+    image: mikefarah/yq:3
     command: ['yq']
     args:
     - "w"
