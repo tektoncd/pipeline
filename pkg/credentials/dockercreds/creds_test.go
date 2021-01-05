@@ -244,6 +244,14 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("ioutil.WriteFile(username) = %v", err)
 	}
 
+	blubbDir := credentials.VolumeName("blubb")
+	if err := os.MkdirAll(blubbDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", blubbDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(blubbDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"us.icr.io":{"auth":"fooisblubb"}}}`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+
 	bazDir := credentials.VolumeName("baz")
 	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
@@ -252,12 +260,22 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("ioutil.WriteFile(username) = %v", err)
 	}
 
+	blaDir := credentials.VolumeName("bla")
+	if err := os.MkdirAll(blaDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", blaDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(blaDir, corev1.DockerConfigKey), []byte(`{"de.icr.io":{"auth":"fooisbla"}}`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	AddFlags(fs)
 	err := fs.Parse([]string{
 		"-basic-docker=foo=https://us.gcr.io",
 		"-docker-config=bar",
+		"-docker-config=blubb",
 		"-docker-cfg=baz",
+		"-docker-cfg=bla",
 	})
 	if err != nil {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
@@ -274,7 +292,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	}
 
 	// Note: "auth" is base64(username + ":" + password)
-	expected := `{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"},"https://my.registry/v1":{"auth":"fooisbaz"},"https://us.gcr.io":{"username":"bar","password":"baz","auth":"YmFyOmJheg==","email":"not@val.id"}}}`
+	expected := `{"auths":{"de.icr.io":{"auth":"fooisbla"},"https://index.docker.io/v1":{"auth":"fooisbar"},"https://my.registry/v1":{"auth":"fooisbaz"},"https://us.gcr.io":{"username":"bar","password":"baz","auth":"YmFyOmJheg==","email":"not@val.id"},"us.icr.io":{"auth":"fooisblubb"}}}`
 	if string(b) != expected {
 		t.Errorf("got: %v, wanted: %v", string(b), expected)
 	}
