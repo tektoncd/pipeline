@@ -34,8 +34,8 @@ import (
 const annotationPrefix = "tekton.dev/docker-"
 
 var config basicDocker
-var dockerConfig string
-var dockerCfg string
+var dockerConfig arrayArg
+var dockerCfg arrayArg
 
 // AddFlags adds CLI flags that dockercreds supports to a given flag.FlagSet.
 func AddFlags(flagSet *flag.FlagSet) {
@@ -44,9 +44,11 @@ func AddFlags(flagSet *flag.FlagSet) {
 
 func flags(fs *flag.FlagSet) {
 	config = basicDocker{make(map[string]entry)}
+	dockerConfig = arrayArg{[]string{}}
+	dockerCfg = arrayArg{[]string{}}
 	fs.Var(&config, "basic-docker", "List of secret=url pairs.")
-	fs.StringVar(&dockerConfig, "docker-config", "", "Docker config.json secret file.")
-	fs.StringVar(&dockerCfg, "docker-cfg", "", "Docker .dockercfg secret file.")
+	fs.Var(&dockerConfig, "docker-config", "Docker config.json secret file.")
+	fs.Var(&dockerCfg, "docker-cfg", "Docker .dockercfg secret file.")
 }
 
 // As the flag is read, this status is populated.
@@ -85,6 +87,19 @@ func (dc *basicDocker) Set(value string) error {
 	}
 	dc.Entries[url] = *e
 	return nil
+}
+
+type arrayArg struct {
+	Values []string
+}
+
+func (aa *arrayArg) Set(value string) error {
+	aa.Values = append(aa.Values, value)
+	return nil
+}
+
+func (aa *arrayArg) String() string {
+	return strings.Join(aa.Values, ",")
 }
 
 type configFile struct {
@@ -158,8 +173,9 @@ func (*basicDockerBuilder) Write(directory string) error {
 	basicDocker := filepath.Join(dockerDir, "config.json")
 	cf := configFile{Auth: config.Entries}
 	auth := map[string]entry{}
-	if dockerCfg != "" {
-		dockerConfigAuthMap, err := authsFromDockerCfg(dockerCfg)
+
+	for _, secretName := range dockerCfg.Values {
+		dockerConfigAuthMap, err := authsFromDockerCfg(secretName)
 		if err != nil {
 			return err
 		}
@@ -167,8 +183,9 @@ func (*basicDockerBuilder) Write(directory string) error {
 			auth[k] = v
 		}
 	}
-	if dockerConfig != "" {
-		dockerConfigAuthMap, err := authsFromDockerConfig(dockerConfig)
+
+	for _, secretName := range dockerConfig.Values {
+		dockerConfigAuthMap, err := authsFromDockerConfig(secretName)
 		if err != nil {
 			return err
 		}
