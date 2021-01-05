@@ -621,18 +621,6 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		},
 		wc: enableFeature(t, "enable-custom-tasks"),
 	}, {
-		name: "pipelinetask custom task doesn't support workspaces",
-		tasks: []PipelineTask{{
-			Name:       "foo",
-			Workspaces: []WorkspacePipelineTaskBinding{{}},
-			TaskRef:    &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support Workspaces`,
-			Paths:   []string{"tasks[0].workspaces"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
-	}, {
 		name: "pipelinetask custom task doesn't support timeout",
 		tasks: []PipelineTask{{
 			Name:    "foo",

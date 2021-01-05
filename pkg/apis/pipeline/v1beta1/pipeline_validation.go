@@ -156,9 +156,6 @@ func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.St
 		if t.Resources != nil {
 			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support PipelineResources", "resources"))
 		}
-		if len(t.Workspaces) > 0 {
-			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support Workspaces", "workspaces"))
-		}
 		if t.Timeout != nil {
 			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support timeout", "timeout"))
 		}

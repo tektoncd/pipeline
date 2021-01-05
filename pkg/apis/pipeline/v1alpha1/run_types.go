@@ -48,10 +48,20 @@ type RunSpec struct {
 	// +optional
 	Status RunSpecStatus `json:"status,omitempty"`
 
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName"`
+
+	// PodTemplate holds pod specific configuration
+	// +optional
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	// +optional
+	Workspaces []v1beta1.WorkspaceBinding `json:"workspaces,omitempty"`
+
 	// TODO(https://github.com/tektoncd/community/pull/128)
 	// - timeout
 	// - inline task spec
-	// - workspaces ?
 }
 
 // RunSpecStatus defines the taskrun spec status the user can provide
@@ -76,6 +86,12 @@ func (rs RunSpec) GetParam(name string) *v1beta1.Param {
 const (
 	// RunReasonCancelled must be used in the Condition Reason to indicate that a Run was cancelled.
 	RunReasonCancelled = "RunCancelled"
+	// RunReasonWorkspaceNotSupported can be used in the Condition Reason to indicate that the
+	// Run contains a workspace which is not supported by this custom task.
+	RunReasonWorkspaceNotSupported = "RunWorkspaceNotSupported"
+	// RunReasonPodTemplateNotSupported can be used in the Condition Reason to indicate that the
+	// Run contains a pod template which is not supported by this custom task.
+	RunReasonPodTemplateNotSupported = "RunPodTemplateNotSupported"
 )
 
 // RunStatus defines the observed state of Run.

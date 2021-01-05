@@ -714,20 +714,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 	}
 
 	var pipelinePVCWorkspaceName string
-	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
-	for _, binding := range pr.Spec.Workspaces {
-		pipelineRunWorkspaces[binding.Name] = binding
-	}
-	for _, ws := range rprt.PipelineTask.Workspaces {
-		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
-		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
-			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
-				pipelinePVCWorkspaceName = pipelineWorkspaceName
-			}
-			tr.Spec.Workspaces = append(tr.Spec.Workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
-		} else {
-			return nil, fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
-		}
+	var err error
+	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rprt)
+	if err != nil {
+		return nil, err
 	}
 
 	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
@@ -741,6 +731,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun) (*v1alpha1.Run, error) {
 	logger := logging.FromContext(ctx)
+	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	r := &v1alpha1.Run{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.RunName,
@@ -750,12 +741,49 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 			Annotations:     getTaskrunAnnotations(pr),
 		},
 		Spec: v1alpha1.RunSpec{
-			Ref:    rprt.PipelineTask.TaskRef,
-			Params: rprt.PipelineTask.Params,
+			Ref:                rprt.PipelineTask.TaskRef,
+			Params:             rprt.PipelineTask.Params,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
+			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		},
 	}
+
+	var pipelinePVCWorkspaceName string
+	var err error
+	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rprt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
+	// that can take advantage of it.
+	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
+		r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+	}
+
 	logger.Infof("Creating a new Run object %s", rprt.RunName)
 	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
+}
+
+func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) ([]v1beta1.WorkspaceBinding, string, error) {
+	var workspaces []v1beta1.WorkspaceBinding
+	var pipelinePVCWorkspaceName string
+	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
+	for _, binding := range pr.Spec.Workspaces {
+		pipelineRunWorkspaces[binding.Name] = binding
+	}
+	for _, ws := range rprt.PipelineTask.Workspaces {
+		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
+		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
+			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
+				pipelinePVCWorkspaceName = pipelineWorkspaceName
+			}
+			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
+		} else {
+			return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
+		}
+	}
+	return workspaces, pipelinePVCWorkspaceName, nil
 }
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.
