@@ -54,5 +54,9 @@ func (rs *RunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
+	if err := validateWorkspaceBindings(ctx, rs.Workspaces); err != nil {
+		return err
+	}
+
 	return nil
 }

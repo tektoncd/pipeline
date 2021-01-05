@@ -686,6 +686,18 @@ func (in *RunSpec) DeepCopyInto(out *RunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.PodTemplate != nil {
+		in, out := &in.PodTemplate, &out.PodTemplate
+		*out = new(pod.Template)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Workspaces != nil {
+		in, out := &in.Workspaces, &out.Workspaces
+		*out = make([]v1beta1.WorkspaceBinding, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

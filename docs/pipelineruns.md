@@ -258,6 +258,9 @@ set for the target [`namespace`](https://kubernetes.io/docs/concepts/overview/wo
 
 For more information, see [`ServiceAccount`](auth.md).
 
+[`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a service account name.
+Consult the documentation of the custom task that you are using to determine whether it supports a service account name.
+
 ### Mapping `ServiceAccount` credentials to `Tasks`
 
 If you require more granularity in specifying execution credentials, use the `serviceAccountNames` field to
@@ -341,6 +344,9 @@ spec:
         claimName: my-volume-claim
 ```
 
+[`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a pod template.
+Consult the documentation of the custom task that you are using to determine whether it supports a pod template.
+
 ### Specifying taskRunSpecs
 
 Specifies a list of `PipelineTaskRunSpec` which contains `TaskServiceAccountName`, `TaskPodTemplate`
@@ -384,6 +390,9 @@ For more information, see the following topics:
 - For information on mapping `Workspaces` to `Volumes`, see [Specifying `Workspaces` in `PipelineRuns`](workspaces.md#specifying-workspaces-in-pipelineruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
 - For an end-to-end example, see [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml).
+
+[`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use workspaces.
+Consult the documentation of the custom task that you are using to determine whether it supports workspaces.
 
 ### Specifying `LimitRange` values
 

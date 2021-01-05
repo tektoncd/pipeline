@@ -954,13 +954,12 @@ If the `taskRef` specifies a name, the custom task controller should look up the
 If the `taskRef` does not specify a name, the custom task controller might support
 some default behavior for executing unnamed tasks.
 
-### Specifying `Parameters`
+### Specifying parameters
 
 If a custom task supports [`parameters`](tasks.md#parameters), you can use the
 `params` field to specify their values:
 
 ```yaml
-spec:
 spec:
   tasks:
     - name: run-custom-task
@@ -973,6 +972,24 @@ spec:
         value: bah
 ```
 
+### Specifying workspaces
+
+If the custom task supports it, you can provide [`Workspaces`](workspaces.md#using-workspaces-in-tasks) to share data with the custom task.
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+      workspaces:
+      - name: my-workspace
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports workspaces and how to name them.
+
 ### Using `Results`
 
 If the custom task produces results, you can reference them in a Pipeline using the normal syntax,
@@ -980,14 +997,11 @@ If the custom task produces results, you can reference them in a Pipeline using 
 
 ### Limitations
 
-Pipelines do not directly support passing the following items to custom tasks:
+Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
-* Workspaces
-* Service account name
-* Pod templates
-
-A pipeline task that references a custom task cannot reference `Conditions`.
-`Conditions` are deprecated.  Use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.
+* [`retries`](#using-the-retries-parameter)
+* [`timeout`](#configuring-the-failure-timeout)
+* Conditions (`Conditions` are deprecated.  Use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.)
 
 ## Code examples
 

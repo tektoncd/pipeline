@@ -463,10 +463,16 @@ func TestReconcile(t *testing.T) {
 // created, it checks the resulting API actions, status and events.
 func TestReconcile_CustomTask(t *testing.T) {
 	names.TestingSeed()
-	const pipelineRunName = "test-pipelinerun-custom-task"
+	const pipelineRunName = "test-pipelinerun"
+	const pipelineTaskName = "custom-task"
 	const namespace = "namespace"
-	prt := NewPipelineRunTest(test.Data{
-		PipelineRuns: []*v1beta1.PipelineRun{{
+	tcs := []struct {
+		name    string
+		pr      *v1beta1.PipelineRun
+		wantRun *v1alpha1.Run
+	}{{
+		name: "simple custom task",
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      pipelineRunName,
 				Namespace: namespace,
@@ -474,7 +480,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
-						Name: "custom-task",
+						Name: pipelineTaskName,
 						Params: []v1beta1.Param{{
 							Name:  "param1",
 							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
@@ -486,79 +492,160 @@ func TestReconcile_CustomTask(t *testing.T) {
 					}},
 				},
 			},
-		}},
-		ConfigMaps: []*corev1.ConfigMap{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
-				Data: map[string]string{
-					"enable-custom-tasks": "true",
+		},
+		wantRun: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-pipelinerun-custom-task-9l9zj",
+				Namespace: namespace,
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1beta1",
+					Kind:               "PipelineRun",
+					Name:               pipelineRunName,
+					Controller:         &trueb,
+					BlockOwnerDeletion: &trueb,
+				}},
+				Labels: map[string]string{
+					"tekton.dev/pipeline":     pipelineRunName,
+					"tekton.dev/pipelineRun":  pipelineRunName,
+					"tekton.dev/pipelineTask": pipelineTaskName,
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: v1alpha1.RunSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param1",
+					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
+				}},
+				Ref: &v1beta1.TaskRef{
+					APIVersion: "example.dev/v0",
+					Kind:       "Example",
+				},
+				ServiceAccountName: "default",
+			},
+		},
+	}, {
+		name: "custom task with workspace",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pipelineRunName,
+				Namespace: namespace,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{Name: "pipelinews"}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: pipelineTaskName,
+						TaskRef: &v1beta1.TaskRef{
+							APIVersion: "example.dev/v0",
+							Kind:       "Example",
+						},
+						Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+							Name:      "taskws",
+							Workspace: "pipelinews",
+							SubPath:   "bar",
+						}},
+					}},
+				},
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:    "pipelinews",
+					SubPath: "foo",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "myclaim",
+						ReadOnly:  false,
+					}},
 				},
 			},
 		},
-	}, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Normal Started",
-		"Normal Running Tasks Completed: 0",
-	}
-	reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
-
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
-	// Check that the expected Run was created.
-	trueB := true
-	actual := actions[0].(ktesting.CreateAction).GetObject()
-	wantRun := &v1alpha1.Run{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipelinerun-custom-task-custom-task-9l9zj",
-			Namespace: namespace,
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1beta1",
-				Kind:               "PipelineRun",
-				Name:               "test-pipelinerun-custom-task",
-				Controller:         &trueB,
-				BlockOwnerDeletion: &trueB,
-			}},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":     "test-pipelinerun-custom-task",
-				"tekton.dev/pipelineRun":  "test-pipelinerun-custom-task",
-				"tekton.dev/pipelineTask": "custom-task",
+		wantRun: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-pipelinerun-custom-task-mz4c7",
+				Namespace: namespace,
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1beta1",
+					Kind:               "PipelineRun",
+					Name:               pipelineRunName,
+					Controller:         &trueb,
+					BlockOwnerDeletion: &trueb,
+				}},
+				Labels: map[string]string{
+					"tekton.dev/pipeline":     pipelineRunName,
+					"tekton.dev/pipelineRun":  pipelineRunName,
+					"tekton.dev/pipelineTask": pipelineTaskName,
+				},
+				Annotations: map[string]string{
+					"pipeline.tekton.dev/affinity-assistant": getAffinityAssistantName("pipelinews", pipelineRunName),
+				},
 			},
-			Annotations: map[string]string{},
-		},
-		Spec: v1alpha1.RunSpec{
-			Params: []v1beta1.Param{{
-				Name:  "param1",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
-			}},
-			Ref: &v1beta1.TaskRef{
-				APIVersion: "example.dev/v0",
-				Kind:       "Example",
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1beta1.TaskRef{
+					APIVersion: "example.dev/v0",
+					Kind:       "Example",
+				},
+				ServiceAccountName: "default",
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:    "taskws",
+					SubPath: "foo/bar",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "myclaim",
+						ReadOnly:  false,
+					}},
+				},
 			},
 		},
-	}
-	if d := cmp.Diff(wantRun, actual); d != "" {
-		t.Errorf("expected to see Run created: %s", diff.PrintWantGot(d))
+	}}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				"enable-custom-tasks": "true",
+			},
+		},
 	}
 
-	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
 
-	if len(reconciledRun.Status.Runs) != 1 {
-		t.Errorf("Expected PipelineRun status to include one Run status, got %d", len(reconciledRun.Status.Runs))
-	}
-	if _, exists := reconciledRun.Status.Runs["test-pipelinerun-custom-task-custom-task-9l9zj"]; !exists {
-		t.Errorf("Expected PipelineRun status to include Run status but was %v", reconciledRun.Status.Runs)
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
+				ConfigMaps:   cms,
+			}
+			prt := NewPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			wantEvents := []string{
+				"Normal Started",
+				"Normal Running Tasks Completed: 0",
+			}
+			reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
+
+			actions := clients.Pipeline.Actions()
+			if len(actions) < 2 {
+				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+			}
+
+			// Check that the expected Run was created.
+			actual := actions[0].(ktesting.CreateAction).GetObject()
+			if d := cmp.Diff(tc.wantRun, actual); d != "" {
+				t.Errorf("expected to see Run created: %s", diff.PrintWantGot(d))
+			}
+
+			// This PipelineRun is in progress now and the status should reflect that
+			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
+			}
+			if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
+			}
+
+			if len(reconciledRun.Status.Runs) != 1 {
+				t.Errorf("Expected PipelineRun status to include one Run status, got %d", len(reconciledRun.Status.Runs))
+			}
+			if _, exists := reconciledRun.Status.Runs[tc.wantRun.Name]; !exists {
+				t.Errorf("Expected PipelineRun status to include Run status but was %v", reconciledRun.Status.Runs)
+			}
+		})
 	}
 }
 
@@ -1674,6 +1761,58 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	}
 }
 
+func TestReconcileCustomTasksWithDifferentServiceAccounts(t *testing.T) {
+	names.TestingSeed()
+
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-0", ""),
+		tb.PipelineTask("hello-world-1", ""),
+	))}
+	// Update the pipeline tasks to be custom tasks (builder does not support this case).
+	ps[0].Spec.Tasks[0].TaskRef = &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}
+	ps[0].Spec.Tasks[1].TaskRef = &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}
+
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+			tb.PipelineRunServiceAccountNameTask("hello-world-1", "test-sa-1"),
+		),
+	)}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				"enable-custom-tasks": "true",
+			},
+		},
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		ConfigMaps:   cms,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
+
+	runNames := []string{"test-pipeline-run-different-service-accs-hello-world-0-9l9zj", "test-pipeline-run-different-service-accs-hello-world-1-mz4c7"}
+	expectedSANames := []string{"test-sa-0", "test-sa-1"}
+
+	for i := range ps[0].Spec.Tasks {
+		actual, err := clients.Pipeline.TektonV1alpha1().Runs("foo").Get(prt.TestAssets.Ctx, runNames[i], metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Expected a Run %s to be created but it wasn't: %s", runNames[i], err)
+			continue
+		}
+		if actual.Spec.ServiceAccountName != expectedSANames[i] {
+			t.Errorf("Expected Run %s to have service account %s but it was %s", runNames[i], expectedSANames[i], actual.Spec.ServiceAccountName)
+		}
+	}
+}
+
 // TestReconcileWithTimeoutAndRetry runs "Reconcile" against pipelines with
 // retries and timeout settings, and status that represents different number of
 // retries already performed.  It verifies the reconciled status and events
@@ -1974,6 +2113,66 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
+}
+
+func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", ""),
+	))}
+	// Update the pipeline tasks to be custom tasks (builder does not support this case).
+	ps[0].Spec.Tasks[0].TaskRef = &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}
+
+	serviceAccount := "custom-sa"
+	podTemplate := &pod.Template{
+		NodeSelector: map[string]string{
+			"workloadtype": "tekton",
+		},
+	}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun(prName, tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineTaskRunSpecs([]v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName:       "hello-world-1",
+				TaskServiceAccountName: serviceAccount,
+				TaskPodTemplate:        podTemplate,
+			}}),
+		),
+	)}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			Data: map[string]string{
+				"enable-custom-tasks": "true",
+			},
+		},
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		ConfigMaps:   cms,
+	}
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	runName := "test-pipeline-run-hello-world-1-9l9zj"
+
+	actual, err := clients.Pipeline.TektonV1alpha1().Runs("foo").Get(prt.TestAssets.Ctx, runName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected a Run %s to be created but it wasn't: %s", runName, err)
+	}
+	if actual.Spec.ServiceAccountName != serviceAccount {
+		t.Errorf("Expected Run %s to have service account %s but it was %s", runName, serviceAccount, actual.Spec.ServiceAccountName)
+	}
+	if d := cmp.Diff(actual.Spec.PodTemplate, podTemplate); d != "" {
+		t.Errorf("Incorrect pod template in Run %s. Diff %s", runName, diff.PrintWantGot(d))
+	}
+
 }
 
 func TestReconcileWithConditionChecks(t *testing.T) {
