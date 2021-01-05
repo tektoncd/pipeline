@@ -15,6 +15,18 @@ import (
 // sandboxed environment, the test could pass even if the dropNetworking
 // function did nothing.
 func TestDropNetworking(t *testing.T) {
+	// First make sure we can run the dropNetworking command.
+	// Some older kernels require special configurations to run this.
+	// I haven't been able to come up with an exhaustive list of what is needed,
+	// but it includes things like CAP_SYS_ADMIN, kernel.unprivileged_userns_clone=1
+	// and maybe others.
+	// For the sake of this test just check it first.
+	testCmd := exec.Command("true")
+	dropNetworking(testCmd)
+	if _, err := testCmd.CombinedOutput(); err != nil {
+		t.Skipf("skipping test as required namespace features are not available: %v", err)
+	}
+
 	cmd := exec.Command("curl", "google.com")
 	dropNetworking(cmd)
 	b, err := cmd.CombinedOutput()
