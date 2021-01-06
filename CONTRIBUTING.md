@@ -31,6 +31,8 @@ Additionally, please read the following resources specific to Tekton Pipelines:
 - [Tekton Pipelines roadmap](roadmap.md)
 - [Tekton Pipelines API compatibility policy](api_compatibility_policy.md)
 
+For support in contributing to specific areas, contact the relevant [Tekton Pipelines Topical Owner(s)](topical-ownership.md). 
+
 ## Contributing to Tekton documentation
 
 If you want to contribute to Tekton documentation, see the
