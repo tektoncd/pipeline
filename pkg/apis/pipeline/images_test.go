@@ -11,7 +11,6 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:          "set",
 		NopImage:                 "set",
 		GitImage:                 "set",
-		CredsImage:               "set",
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "set",
 		GsutilImage:              "set",
@@ -27,7 +26,6 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:          "set",
 		NopImage:                 "set",
 		GitImage:                 "", // unset!
-		CredsImage:               "set",
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "", // unset!
 		GsutilImage:              "set",

@@ -661,7 +661,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Check if the HOME env var of every Step should be set to /tekton/home.
 	shouldOverrideHomeEnv := podconvert.ShouldOverrideHomeEnv(ctx)
 
-	// Apply creds-init path substitutions.
+	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
 	ts = resources.ApplyCredentialsPath(ts, pipeline.CredsDir)
 
 	podbuilder := podconvert.Builder{

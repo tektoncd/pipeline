@@ -19,6 +19,6 @@ set -o nounset
 set -o pipefail
 
 export KO_DOCKER_REPO="gcr.io/tekton-nightly"
-  # Build the base image for creds-init and git images.
+# Build the base image for git images.
 docker build -t "${KO_DOCKER_REPO}/github.com/tektoncd/pipeline/base" -f images/Dockerfile images/
 docker push "${KO_DOCKER_REPO}/github.com/tektoncd/pipeline/base"

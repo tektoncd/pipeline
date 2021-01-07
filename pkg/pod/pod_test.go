@@ -44,7 +44,6 @@ import (
 var (
 	images = pipeline.Images{
 		EntrypointImage: "entrypoint-image",
-		CredsImage:      "override-with-creds:latest",
 		ShellImage:      "busybox",
 	}
 

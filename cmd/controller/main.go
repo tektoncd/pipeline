@@ -43,7 +43,6 @@ var (
 	entrypointImage          = flag.String("entrypoint-image", "", "The container image containing our entrypoint binary.")
 	nopImage                 = flag.String("nop-image", "", "The container image used to stop sidecars")
 	gitImage                 = flag.String("git-image", "", "The container image containing our Git binary.")
-	credsImage               = flag.String("creds-image", "", "The container image for preparing our Build's credentials.")
 	kubeconfigWriterImage    = flag.String("kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
 	shellImage               = flag.String("shell-image", "", "The container image containing a shell")
 	gsutilImage              = flag.String("gsutil-image", "", "The container image containing gsutil")
@@ -67,7 +66,6 @@ func main() {
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
 		GitImage:                 *gitImage,
-		CredsImage:               *credsImage,
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
 		ShellImage:               *shellImage,
 		GsutilImage:              *gsutilImage,

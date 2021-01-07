@@ -59,7 +59,6 @@ the pipelines repo, a terminal window and a text editor.
       --resource=builtEntrypointImage=entrypoint-image \
       --resource=builtNopImage=nop-image \
       --resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
-      --resource=builtCredsInitImage=creds-init-image \
       --resource=builtGitInitImage=git-init-image \
       --resource=builtControllerImage=controller-image \
       --resource=builtWebhookImage=webhook-image \

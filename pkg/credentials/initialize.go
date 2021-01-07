@@ -40,7 +40,8 @@ const (
 	credsFilePermissions = 0600
 )
 
-// CredsInitCredentials is the complete list of credentials that creds-init can write to /tekton/creds.
+// CredsInitCredentials is the complete list of credentials that the legacy credentials
+// helper (aka "creds-init") can write to /tekton/creds.
 var CredsInitCredentials = []string{".docker", ".gitconfig", ".git-credentials", ".ssh"}
 
 // VolumePath is the path where build secrets are written.

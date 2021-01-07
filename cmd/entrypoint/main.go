@@ -64,7 +64,8 @@ func cp(src, dst string) error {
 }
 
 func main() {
-	// Add credential flags originally used in creds-init.
+	// Add credential flags originally introduced with our legacy credentials helper
+	// image (creds-init).
 	gitcreds.AddFlags(flag.CommandLine)
 	dockercreds.AddFlags(flag.CommandLine)
 
@@ -83,9 +84,10 @@ func main() {
 		return
 	}
 
-	// Copy creds-init credentials from secret volume mounts to /tekton/creds
-	// This is done to support the expansion of a variable, $(credentials.path), that
-	// resolves to a single place with all the stored credentials.
+	// Copy credentials we're expecting from the legacy credentials helper (creds-init)
+	// from secret volume mounts to /tekton/creds. This is done to support the expansion
+	// of a variable, $(credentials.path), that resolves to a single place with all the
+	// stored credentials.
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
 		if err := c.Write("/tekton/creds"); err != nil {
