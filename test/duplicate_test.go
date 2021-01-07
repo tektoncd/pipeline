@@ -72,7 +72,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 				return
 			}
 
-			pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s", pipeline.GroupName+pipeline.TaskRunLabelKey, taskrunName),
 			})
 			if err != nil {

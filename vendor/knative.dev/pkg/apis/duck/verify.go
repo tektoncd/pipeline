@@ -79,17 +79,17 @@ func roundTrip(instance interface{}, input, output Populatable) error {
 	// Serialize the input to JSON and deserialize that into the provided instance
 	// of the type that we are checking.
 	if before, err := json.Marshal(input); err != nil {
-		return fmt.Errorf("error serializing duck type %T error: %s", input, err)
+		return fmt.Errorf("error serializing duck type %T error: %w", input, err)
 	} else if err := json.Unmarshal(before, instance); err != nil {
-		return fmt.Errorf("error deserializing duck type %T into %T error: %s", input, instance, err)
+		return fmt.Errorf("error deserializing duck type %T into %T error: %w", input, instance, err)
 	}
 
 	// Serialize the instance we are checking to JSON and deserialize that into the
 	// output resource.
 	if after, err := json.Marshal(instance); err != nil {
-		return fmt.Errorf("error serializing %T error: %s", instance, err)
+		return fmt.Errorf("error serializing %T error: %w", instance, err)
 	} else if err := json.Unmarshal(after, output); err != nil {
-		return fmt.Errorf("error deserializing %T into duck type %T error: %s", instance, output, err)
+		return fmt.Errorf("error deserializing %T into duck type %T error: %w", instance, output, err)
 	}
 
 	return nil

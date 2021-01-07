@@ -23,7 +23,7 @@ import (
 // Run can run functions that needs dryrun support.
 func Run(message string, call func() error, dryrun bool) error {
 	if dryrun {
-		log.Printf("[dry run] %s", message)
+		log.Print("[dry run] ", message)
 		return nil
 	}
 	log.Print(message)

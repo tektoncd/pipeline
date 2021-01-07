@@ -43,7 +43,7 @@ func conversionHandler(rootLogger *zap.SugaredLogger, _ StatsReporter, c Convers
 
 		var review apixv1.ConversionReview
 		if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-			http.Error(w, fmt.Sprintf("could not decode body: %v", err), http.StatusBadRequest)
+			http.Error(w, fmt.Sprint("could not decode body:", err), http.StatusBadRequest)
 			return
 		}
 
@@ -62,7 +62,7 @@ func conversionHandler(rootLogger *zap.SugaredLogger, _ StatsReporter, c Convers
 		}
 
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprint("could not encode response:", err), http.StatusInternalServerError)
 			return
 		}
 

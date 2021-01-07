@@ -11,7 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+const _ = grpc.SupportPackageIsVersion7
 
 // LoadBalancerClient is the client API for LoadBalancer service.
 //
@@ -72,11 +72,18 @@ type LoadBalancerServer interface {
 type UnimplementedLoadBalancerServer struct {
 }
 
-func (*UnimplementedLoadBalancerServer) BalanceLoad(LoadBalancer_BalanceLoadServer) error {
+func (UnimplementedLoadBalancerServer) BalanceLoad(LoadBalancer_BalanceLoadServer) error {
 	return status.Errorf(codes.Unimplemented, "method BalanceLoad not implemented")
 }
 
-func RegisterLoadBalancerServer(s *grpc.Server, srv LoadBalancerServer) {
+// UnsafeLoadBalancerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to LoadBalancerServer will
+// result in compilation errors.
+type UnsafeLoadBalancerServer interface {
+	mustEmbedUnimplementedLoadBalancerServer()
+}
+
+func RegisterLoadBalancerServer(s grpc.ServiceRegistrar, srv LoadBalancerServer) {
 	s.RegisterService(&_LoadBalancer_serviceDesc, srv)
 }
 

@@ -56,7 +56,7 @@ func (r *reconciler) Convert(
 	for _, obj := range req.Objects {
 		converted, err := r.convert(ctx, obj, req.DesiredAPIVersion)
 		if err != nil {
-			logging.FromContext(ctx).Errorf("Conversion failed: %v", err)
+			logging.FromContext(ctx).Errorw("Conversion failed", zap.Error(err))
 			res.Result.Status = metav1.StatusFailure
 			res.Result.Message = err.Error()
 			break

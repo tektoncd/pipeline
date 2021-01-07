@@ -18,7 +18,6 @@ package signals
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/signal"
 	"time"
@@ -65,12 +64,14 @@ func (scc *signalContext) Done() <-chan struct{} {
 	return scc.stopCh
 }
 
-// Err implements context.Context
+// Err implements context.Context. If the underlying stop channel is closed, Err
+// always returns context.Canceled, and nil otherwise.
 func (scc *signalContext) Err() error {
 	select {
 	case _, ok := <-scc.Done():
 		if !ok {
-			return errors.New("received a termination signal")
+			// TODO: revisit this behavior when Deadline() implementation is changed
+			return context.Canceled
 		}
 	default:
 	}

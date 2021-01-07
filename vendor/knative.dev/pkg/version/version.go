@@ -21,7 +21,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 	"k8s.io/client-go/discovery"
 )
 
@@ -30,7 +30,10 @@ const (
 	// the Kubernetes minimum version required by Knative.
 	KubernetesMinVersionKey = "KUBERNETES_MIN_VERSION"
 
-	defaultMinimumVersion = "v1.16.0"
+	// NOTE: If you are changing this line, please also update the minimum kubernetes
+	// version listed here:
+	// https://github.com/knative/docs/blob/master/docs/install/any-kubernetes-cluster.md#before-you-begin
+	defaultMinimumVersion = "v1.17.0"
 )
 
 func getMinimumVersion() string {
@@ -61,9 +64,19 @@ func CheckMinimumVersion(versioner discovery.ServerVersionInterface) error {
 		return err
 	}
 
+	// If no specific pre-release requirement is set, we default to "-0" to always allow
+	// pre-release versions of the same Major.Minor.Patch version.
+	if len(minimumVersion.Pre) == 0 {
+		minimumVersion.Pre = []semver.PRVersion{{VersionNum: 0}}
+	}
+
 	// Compare returns 1 if the first version is greater than the
 	// second version.
 	if currentVersion.LT(minimumVersion) {
+		if len(currentVersion.Pre) > 0 {
+			return fmt.Errorf("pre-release kubernetes version %q is not compatible, need at least %q (this can be overridden with the env var %q); note pre-release version is smaller than the corresponding release version (e.g. 1.x.y-z < 1.x.y), using 1.x.y-0 as the minimum version is likely to help in this case",
+				currentVersion, minimumVersion, KubernetesMinVersionKey)
+		}
 		return fmt.Errorf("kubernetes version %q is not compatible, need at least %q (this can be overridden with the env var %q)",
 			currentVersion, minimumVersion, KubernetesMinVersionKey)
 	}

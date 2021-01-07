@@ -61,7 +61,7 @@ func CreateGCPServiceAccountSecret(t *testing.T, c *knativetest.KubeClient, name
 	sec.Data = map[string][]byte{
 		"config.json": bs,
 	}
-	_, err = c.Kube.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
+	_, err = c.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
 
 	t.Log("Creating service account secret")
 	return true, err

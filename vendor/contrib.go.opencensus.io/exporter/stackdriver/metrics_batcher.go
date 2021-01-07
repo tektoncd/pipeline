@@ -17,6 +17,8 @@ package stackdriver
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -131,16 +133,45 @@ func (mb *metricsBatcher) sendReqToChan() {
 	mb.reqsChan <- req
 }
 
+// regex to extract min-max ranges from error response strings in the format "timeSeries[(min-max,...)] ..." (max is optional)
+var timeSeriesErrRegex = regexp.MustCompile(`: timeSeries\[([0-9]+(?:-[0-9]+)?(?:,[0-9]+(?:-[0-9]+)?)*)\]`)
+
 // sendReq sends create time series requests to Stackdriver,
 // and returns the count of dropped time series and error.
 func sendReq(ctx context.Context, c *monitoring.MetricClient, req *monitoringpb.CreateTimeSeriesRequest) (int, error) {
-	if c != nil { // c==nil only happens in unit tests where we don't make real calls to Stackdriver server
-		err := createTimeSeries(ctx, c, req)
-		if err != nil {
-			return len(req.TimeSeries), err
+	// c == nil only happens in unit tests where we don't make real calls to Stackdriver server
+	if c == nil {
+		return 0, nil
+	}
+
+	err := createTimeSeries(ctx, c, req)
+	if err == nil {
+		return 0, nil
+	}
+
+	droppedTimeSeriesRangeMatches := timeSeriesErrRegex.FindAllStringSubmatch(err.Error(), -1)
+	if !strings.HasPrefix(err.Error(), "One or more TimeSeries could not be written:") || len(droppedTimeSeriesRangeMatches) == 0 {
+		return len(req.TimeSeries), err
+	}
+
+	dropped := 0
+	for _, submatches := range droppedTimeSeriesRangeMatches {
+		for i := 1; i < len(submatches); i++ {
+			for _, rng := range strings.Split(submatches[i], ",") {
+				rngSlice := strings.Split(rng, "-")
+
+				// strconv errors not possible due to regex above
+				min, _ := strconv.Atoi(rngSlice[0])
+				max := min
+				if len(rngSlice) > 1 {
+					max, _ = strconv.Atoi(rngSlice[1])
+				}
+
+				dropped += max - min + 1
+			}
 		}
 	}
-	return 0, nil
+	return dropped, err
 }
 
 type worker struct {

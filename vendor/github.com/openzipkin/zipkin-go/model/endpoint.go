@@ -14,14 +14,33 @@
 
 package model
 
-import "net"
+import (
+	"encoding/json"
+	"net"
+	"strings"
+)
 
 // Endpoint holds the network context of a node in the service graph.
 type Endpoint struct {
-	ServiceName string `json:"serviceName,omitempty"`
-	IPv4        net.IP `json:"ipv4,omitempty"`
-	IPv6        net.IP `json:"ipv6,omitempty"`
-	Port        uint16 `json:"port,omitempty"`
+	ServiceName string
+	IPv4        net.IP
+	IPv6        net.IP
+	Port        uint16
+}
+
+// MarshalJSON exports our Endpoint into the correct format for the Zipkin V2 API.
+func (e Endpoint) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ServiceName string `json:"serviceName,omitempty"`
+		IPv4        net.IP `json:"ipv4,omitempty"`
+		IPv6        net.IP `json:"ipv6,omitempty"`
+		Port        uint16 `json:"port,omitempty"`
+	}{
+		strings.ToLower(e.ServiceName),
+		e.IPv4,
+		e.IPv6,
+		e.Port,
+	})
 }
 
 // Empty returns if all Endpoint properties are empty / unspecified.

@@ -76,7 +76,7 @@ func (g *injectionGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"group":                     namer.IC(g.groupGoName),

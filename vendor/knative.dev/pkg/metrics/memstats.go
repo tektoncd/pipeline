@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"log"
 	"runtime"
 	"time"
 
@@ -164,6 +165,17 @@ func NewMemStatsAll() *MemStatsProvider {
 			"The fraction of this program's available CPU time used by the GC since the program started.",
 			stats.UnitNone,
 		),
+	}
+}
+
+// MemStatsOrDie sets up reporting on Go memory usage every 30 seconds or dies
+// by calling log.Fatalf.
+func MemStatsOrDie(ctx context.Context) {
+	msp := NewMemStatsAll()
+	msp.Start(ctx, 30*time.Second)
+
+	if err := view.Register(msp.DefaultViews()...); err != nil {
+		log.Fatal("Error exporting go memstats view: ", err)
 	}
 }
 

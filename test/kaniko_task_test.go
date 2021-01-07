@@ -214,7 +214,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	if _, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      podName,
@@ -236,7 +236,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 	}, "PodContainersTerminated"); err != nil {
 		t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
 	}
-	logs, err := getContainerLogsFromPod(ctx, c.KubeClient.Kube, podName, "skopeo", namespace)
+	logs, err := getContainerLogsFromPod(ctx, c.KubeClient, podName, "skopeo", namespace)
 	if err != nil {
 		t.Fatalf("Could not get logs for pod %s: %s", podName, err)
 	}

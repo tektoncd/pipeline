@@ -76,7 +76,7 @@ func (g *fakeDuckGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *fakeDuckGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"withDuck": c.Universe.Type(types.Name{Package: g.duckInjectionPkg, Name: "WithDuck"}),

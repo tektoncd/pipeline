@@ -63,7 +63,7 @@ func (g *reconcilerControllerGenerator) Imports(c *generator.Context) (imports [
 func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"type":     t,
@@ -196,7 +196,7 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 
 	// Check the options function input. It should be 0 or 1.
 	if len(optionsFns) > 1 {
-		logger.Fatalf("up to one options function is supported, found %d", len(optionsFns))
+		logger.Fatal("Up to one options function is supported, found: ", len(optionsFns))
 	}
 
 	{{.type|lowercaseSingular}}Informer := {{.informerGet|raw}}(ctx)

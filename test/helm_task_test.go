@@ -302,7 +302,7 @@ func setupClusterBindingForHelm(ctx context.Context, c *clients, t *testing.T, n
 
 	for _, crb := range clusterRoleBindings {
 		t.Logf("Creating Cluster Role binding %s for helm", crb.Name)
-		if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
+		if _, err := c.KubeClient.RbacV1beta1().ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Failed to create cluster role binding for Helm %s", err)
 		}
 	}
@@ -315,7 +315,7 @@ func helmCleanup(ctx context.Context, c *clients, t *testing.T, namespace string
 
 	for _, crb := range clusterRoleBindings {
 		t.Logf("Deleting Cluster Role binding %s for helm", crb.Name)
-		if err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Delete(ctx, crb.Name, metav1.DeleteOptions{}); err != nil {
+		if err := c.KubeClient.RbacV1beta1().ClusterRoleBindings().Delete(ctx, crb.Name, metav1.DeleteOptions{}); err != nil {
 			t.Fatalf("Failed to delete cluster role binding for Helm %s", err)
 		}
 	}

@@ -21,7 +21,7 @@ limitations under the License.
 //   target.
 // - BucketSet is a bucketer library which uses ChooseSubset under the
 //   the hood in order to implement consistent mapping between keys and
-//   set of buckets, indentified by unique names. Compared to basic bucket
-//   implementtion which just does hash%num_buckets, when the number of
+//   set of buckets, identified by unique names. Compared to basic bucket
+//   implementation which just does hash%num_buckets, when the number of
 //   buckets change only a small subset of keys are supposed to migrate.
 package hash

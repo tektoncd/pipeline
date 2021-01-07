@@ -104,7 +104,7 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+		d, err := c.KubeClient.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -122,7 +122,7 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		r, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -160,7 +160,7 @@ func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, n
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+		r, err := c.KubeClient.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}

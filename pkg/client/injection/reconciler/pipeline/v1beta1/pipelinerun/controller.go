@@ -54,7 +54,7 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 
 	// Check the options function input. It should be 0 or 1.
 	if len(optionsFns) > 1 {
-		logger.Fatalf("up to one options function is supported, found %d", len(optionsFns))
+		logger.Fatal("Up to one options function is supported, found: ", len(optionsFns))
 	}
 
 	pipelinerunInformer := pipelinerun.Get(ctx)

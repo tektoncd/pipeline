@@ -6,7 +6,7 @@ three duck types that are used throughout Knative: `Addressable`, `Binding`, and
 `Source`.
 
 For APIs leveraging `ObjectReference`, the context of the resource in question
-identifies the duck-type. To enable the case where no `ObjectRefrence` is used,
+identifies the duck-type. To enable the case where no `ObjectReference` is used,
 we have labeled the Custom Resource Definition with the duck-type. Those labels
 are as follows:
 

@@ -25,10 +25,12 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubemetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/workqueue"
 	"knative.dev/pkg/metrics"
+	"knative.dev/pkg/metrics/metricskey"
 )
 
 var (
@@ -47,6 +49,7 @@ var (
 	// - characters are printable US-ASCII
 	reconcilerTagKey = tag.MustNewKey("reconciler")
 	successTagKey    = tag.MustNewKey("success")
+	NamespaceTagKey  = tag.MustNewKey(metricskey.LabelNamespaceName)
 )
 
 func init() {
@@ -170,12 +173,12 @@ func init() {
 		Description: "Number of reconcile operations",
 		Measure:     reconcileCountStat,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey},
+		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey, NamespaceTagKey},
 	}, {
 		Description: "Latency of reconcile operations",
 		Measure:     reconcileLatencyStat,
 		Aggregation: reconcileDistribution,
-		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey},
+		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey, NamespaceTagKey},
 	}}
 	views = append(views, wp.DefaultViews()...)
 	views = append(views, rp.DefaultViews()...)
@@ -195,7 +198,7 @@ type StatsReporter interface {
 	ReportQueueDepth(v int64) error
 
 	// ReportReconcile reports the count and latency metrics for a reconcile operation
-	ReportReconcile(duration time.Duration, success string) error
+	ReportReconcile(duration time.Duration, success string, key types.NamespacedName) error
 }
 
 // Reporter holds cached metric objects to report metrics
@@ -237,11 +240,14 @@ func (r *reporter) ReportQueueDepth(v int64) error {
 }
 
 // ReportReconcile reports the count and latency metrics for a reconcile operation
-func (r *reporter) ReportReconcile(duration time.Duration, success string) error {
+func (r *reporter) ReportReconcile(duration time.Duration, success string, key types.NamespacedName) error {
 	ctx, err := tag.New(
 		context.Background(),
 		tag.Insert(reconcilerTagKey, r.reconciler),
-		tag.Insert(successTagKey, success))
+		tag.Insert(successTagKey, success),
+		tag.Insert(NamespaceTagKey, key.Namespace),
+	)
+
 	if err != nil {
 		return err
 	}

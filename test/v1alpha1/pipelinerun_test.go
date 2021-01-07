@@ -87,11 +87,11 @@ func TestPipelineRun(t *testing.T) {
 		name: "service account propagation and pipeline param",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
-			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, getPipelineRunSecret(index), metav1.CreateOptions{}); err != nil {
+			if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getPipelineRunSecret(index), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
 			}
 
-			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(ctx, getPipelineRunServiceAccount(index), metav1.CreateOptions{}); err != nil {
+			if _, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(ctx, getPipelineRunServiceAccount(index), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
 			}
 
@@ -223,7 +223,7 @@ func TestPipelineRun(t *testing.T) {
 			// the PersistentVolumeClaims has the DeletionTimestamp
 			if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
-				pvc, errWait := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
+				pvc, errWait := c.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
 				if errWait != nil && !errors.IsNotFound(errWait) {
 					return true, fmt.Errorf("error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
 				}
@@ -399,7 +399,7 @@ func getName(namespace string, suffix int) string {
 func collectMatchingEvents(ctx context.Context, kubeClient *knativetest.KubeClient, namespace string, kinds map[string][]string, reason string) ([]*corev1.Event, error) {
 	var events []*corev1.Event
 
-	watchEvents, err := kubeClient.Kube.CoreV1().Events(namespace).Watch(ctx, metav1.ListOptions{})
+	watchEvents, err := kubeClient.CoreV1().Events(namespace).Watch(ctx, metav1.ListOptions{})
 	// close watchEvents channel
 	defer watchEvents.Stop()
 	if err != nil {
@@ -520,7 +520,7 @@ func checkAnnotationPropagation(ctx context.Context, t *testing.T, c *clients, n
 
 func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
-	pods, err := kubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+	pods, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: pipeline.GroupName + pipeline.TaskRunLabelKey + " = " + tr.Name,
 	})
 	if err != nil {

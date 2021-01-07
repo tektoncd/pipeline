@@ -127,7 +127,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 				t.Errorf("Error waiting for Pod %q to terminate both the primary and sidecar containers: %v", podName, err)
 			}
 
-			pod, err := clients.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+			pod, err := clients.KubeClient.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Error getting TaskRun pod: %v", err)
 			}

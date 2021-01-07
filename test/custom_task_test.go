@@ -206,7 +206,7 @@ func TestCustomTask(t *testing.T) {
 }
 
 func skipIfCustomTasksDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
-	featureFlagsCM, err := c.KubeClient.Kube.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
 	}

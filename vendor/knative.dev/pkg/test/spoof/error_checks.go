@@ -19,13 +19,20 @@ limitations under the License.
 package spoof
 
 import (
+	"errors"
 	"net"
 	"strings"
 )
 
-func isTCPTimeout(e error) bool {
-	err, ok := e.(net.Error)
-	return err != nil && ok && err.Timeout()
+func isTCPTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errNet net.Error
+	if !errors.As(err, &errNet) {
+		return false
+	}
+	return errNet.Timeout()
 }
 
 func isDNSError(err error) bool {

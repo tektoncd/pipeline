@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"go.uber.org/zap"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,7 +78,7 @@ func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 
 	secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.secretName)
 	if err != nil {
-		logger.Errorf("Error fetching secret: %v", err)
+		logger.Errorw("Error fetching secret ", zap.Error(err))
 		return err
 	}
 
@@ -100,7 +101,7 @@ func (ac *reconciler) Admit(ctx context.Context, request *admissionv1.AdmissionR
 	switch request.Operation {
 	case admissionv1.Create, admissionv1.Update:
 	default:
-		logger.Infof("Unhandled webhook operation, letting it through %v", request.Operation)
+		logger.Info("Unhandled webhook operation, letting it through ", request.Operation)
 		return &admissionv1.AdmissionResponse{Allowed: true}
 	}
 
@@ -182,7 +183,7 @@ func (ac *reconciler) validate(ctx context.Context, req *admissionv1.AdmissionRe
 
 	resourceGVK := corev1.SchemeGroupVersion.WithKind("ConfigMap")
 	if gvk != resourceGVK {
-		logger.Errorf("Unhandled kind: %v", gvk)
+		logger.Error("Unhandled kind: ", gvk)
 		return fmt.Errorf("unhandled kind: %v", gvk)
 	}
 

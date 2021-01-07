@@ -41,7 +41,7 @@ func WithDynamicLeaderElectorBuilder(ctx context.Context, kc kubernetes.Interfac
 	b, _, err := NewStatefulSetBucketAndSet(int(cc.Buckets))
 	if err == nil {
 		logger.Info("Running with StatefulSet leader election")
-		return withStatefulSetElectorBuilder(ctx, cc, b)
+		return WithStatefulSetElectorBuilder(ctx, cc, b)
 	}
 	logger.Info("Running with Standard leader election")
 	return WithStandardLeaderElectorBuilder(ctx, kc, cc)
@@ -57,10 +57,10 @@ func WithStandardLeaderElectorBuilder(ctx context.Context, kc kubernetes.Interfa
 	})
 }
 
-// withStatefulSetElectorBuilder infuses a context with the ability to build
+// WithStatefulSetElectorBuilder infuses a context with the ability to build
 // Electors which are assigned leadership based on the StatefulSet ordinal from
 // the provided component configuration.
-func withStatefulSetElectorBuilder(ctx context.Context, cc ComponentConfig, bkt reconciler.Bucket) context.Context {
+func WithStatefulSetElectorBuilder(ctx context.Context, cc ComponentConfig, bkt reconciler.Bucket) context.Context {
 	return context.WithValue(ctx, builderKey{}, &statefulSetBuilder{
 		lec: cc,
 		bkt: bkt,
@@ -124,7 +124,7 @@ func (b *standardBuilder) buildElector(ctx context.Context, la reconciler.Leader
 		// Use a local var which won't change across the for loop since it is
 		// used in a callback asynchronously.
 		bkt := bkt
-		rl, err := resourcelock.New(KnativeResourceLock,
+		rl, err := resourcelock.New(knativeResourceLock,
 			system.Namespace(), // use namespace we are running in
 			bkt.Name(),
 			b.kc.CoreV1(),
@@ -198,7 +198,7 @@ type statefulSetBuilder struct {
 
 func (b *statefulSetBuilder) buildElector(ctx context.Context, la reconciler.LeaderAware, enq func(reconciler.Bucket, types.NamespacedName)) (Elector, error) {
 	logger := logging.FromContext(ctx)
-	logger.Infof("%s will run in StatefulSet ordinal assignement mode with bucket name %s",
+	logger.Infof("%s will run in StatefulSet ordinal assignment mode with bucket name %s",
 		b.lec.Component, b.bkt.Name())
 
 	return &unopposedElector{

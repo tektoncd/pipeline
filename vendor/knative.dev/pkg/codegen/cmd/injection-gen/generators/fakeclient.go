@@ -62,7 +62,7 @@ func (g *fakeClientGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *fakeClientGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"clientKey":  c.Universe.Type(types.Name{Package: g.clientInjectionPkg, Name: "Key"}),
