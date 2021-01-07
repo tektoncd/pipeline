@@ -13,14 +13,12 @@ PATH_TO_WRONG_FILE = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), "koparse.py")
 BUILT_IMAGES = [
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter:v20201022-ceeec6463e.1_1A@sha256:68453f5bb4b76c0eab98964754114d4f79d3a50413872520d8919a6786ea2b35",
-    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init@sha256:67448da79e4731ab534b91df08da547bc434ab08e41d905858f2244e70290f48",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init@sha256:7d5520efa2d55e1346c424797988c541327ee52ef810a840b5c6f278a9de934a",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller@sha256:bdc6f22a44944c829983c30213091b60f490b41f89577e8492f6a2936be0df41",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook@sha256:cca7069a11aaf0d9d214306d456bc40b2e33e5839429bf07c123ad964d495d8a",
 ]
 EXPECTED_IMAGES = [
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter:v20201022-ceeec6463e.1_1A",
-    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller",
     "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook",

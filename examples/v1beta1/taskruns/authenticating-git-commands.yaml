@@ -9,7 +9,8 @@
 # - Starts sshd and tails its log, waiting for the git commands to come in over SSH
 #
 # Two separate Steps then perform authenticated git actions against the sidecar
-# git server using the credentials mounted by creds-init:
+# git server using the credentials mounted by Tekton's credential helper
+# (aka "creds-init"):
 
 # The first step makes a git clone of the bare repository and populates it
 # with a file.

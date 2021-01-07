@@ -2,7 +2,6 @@ defaultBaseImage: gcr.io/distroless/static:nonroot
 baseImageOverrides:
   # These base images run as root, which is needed for how they handle SSH credentials.
   # They are produced from ./images/Dockerfile
-  github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
 
   # GCS fetcher needs root due to workspace permissions

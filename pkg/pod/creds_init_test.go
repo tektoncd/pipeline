@@ -159,7 +159,7 @@ func TestCredsInit(t *testing.T) {
 		}},
 		ctx: context.Background(),
 	}, {
-		desc: "disabling creds-init via feature-flag results in no args or volumes",
+		desc: "disabling legacy credential helper (creds-init) via feature-flag results in no args or volumes",
 		objs: []runtime.Object{
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
