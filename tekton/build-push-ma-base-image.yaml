@@ -48,14 +48,14 @@ spec:
         docker context create context1
 
         #create builder
-        docker buildx create context1 --name builder-buildx1 --driver docker-container --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64 --use
+        docker buildx create context1 --name builder-buildx1 --driver docker-container --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64,linux/arm --use
 
         #check the state
         docker buildx inspect --bootstrap --builder builder-buildx1
 
         #build multi-arch image
         docker buildx build \
-        --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64 \
+        --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64,linux/arm \
         --tag $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtBaseImage.url) \
         --push \
         /workspace/go/src/github.com/tektoncd/pipeline/images
