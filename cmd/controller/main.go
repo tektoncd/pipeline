@@ -52,8 +52,6 @@ var (
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
 	namespace                = flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
 	versionGiven             = flag.String("version", "devel", "Version of Tekton running")
-	qps                      = flag.Int("kube-api-qps", int(rest.DefaultQPS), "Maximum QPS to the master from this client")
-	burst                    = flag.Int("kube-api-burst", rest.DefaultBurst, "Maximum burst for throttle")
 	threadsPerController     = flag.Int("threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
 	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
@@ -61,7 +59,8 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	cfg := sharedmain.ParseAndGetConfigOrDie()
+	controller.DefaultThreadsPerController = *threadsPerController
 	version.SetVersion(*versionGiven)
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
@@ -78,13 +77,16 @@ func main() {
 	if err := images.Validate(); err != nil {
 		log.Fatal(err)
 	}
-
-	controller.DefaultThreadsPerController = *threadsPerController
-
-	cfg := sharedmain.ParseAndGetConfigOrDie()
+	if cfg.QPS == 0 {
+		cfg.QPS = 2 * rest.DefaultQPS
+	}
+	if cfg.Burst == 0 {
+		cfg.Burst = rest.DefaultBurst
+	}
+	// FIXME(vdemeester): this is here to not break current behavior
 	// multiply by 2, no of controllers being created
-	cfg.QPS = 2 * float32(*qps)
-	cfg.Burst = 2 * *burst
+	cfg.QPS = 2 * cfg.QPS
+	cfg.Burst = 2 * cfg.Burst
 
 	ctx := injection.WithNamespaceScope(signals.NewContext(), *namespace)
 	if *disableHighAvailability {
