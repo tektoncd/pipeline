@@ -61,7 +61,7 @@ func (g *factoryGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"cachingClientGet": c.Universe.Type(types.Name{Package: g.cachingClientSetPackage, Name: "Get"}),

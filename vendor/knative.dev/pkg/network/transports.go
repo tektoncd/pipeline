@@ -18,6 +18,7 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -76,7 +77,8 @@ func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Bac
 	for {
 		c, err := dialer.DialContext(ctx, network, address)
 		if err != nil {
-			if err, ok := err.(net.Error); ok && err.Timeout() {
+			var errNet net.Error
+			if errors.As(err, &errNet) && errNet.Timeout() {
 				if bo.Steps < 1 {
 					break
 				}

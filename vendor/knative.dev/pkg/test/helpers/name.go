@@ -23,13 +23,13 @@ import (
 	"unicode"
 
 	"knative.dev/pkg/kmeta"
-	"knative.dev/pkg/test"
 )
 
 const (
 	letterBytes    = "abcdefghijklmnopqrstuvwxyz"
 	randSuffixLen  = 8
 	sep            = '-'
+	sepS           = "-"
 	testNamePrefix = "Test"
 )
 
@@ -41,13 +41,17 @@ func init() {
 	rand.Seed(seed)
 }
 
+type named interface {
+	Name() string
+}
+
 // ObjectPrefixForTest returns the name prefix for this test's random names.
-func ObjectPrefixForTest(t test.T) string {
+func ObjectPrefixForTest(t named) string {
 	return MakeK8sNamePrefix(strings.TrimPrefix(t.Name(), testNamePrefix))
 }
 
 // ObjectNameForTest generates a random object name based on the test name.
-func ObjectNameForTest(t test.T) string {
+func ObjectNameForTest(t named) string {
 	return kmeta.ChildName(ObjectPrefixForTest(t), string(sep)+RandomString())
 }
 
@@ -57,30 +61,53 @@ func ObjectNameForTest(t test.T) string {
 // This method will use "-" as the separator between the prefix and
 // the random suffix.
 func AppendRandomString(prefix string) string {
-	return strings.Join([]string{prefix, RandomString()}, string(sep))
+	return prefix + sepS + RandomString()
 }
 
 // RandomString will generate a random string.
 func RandomString() string {
 	suffix := make([]byte, randSuffixLen)
-
 	for i := range suffix {
 		suffix[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(suffix)
 }
 
+// For the same prefix more specific should come first.
+// Note: we expect GRPC vs gRPC.
+var knownNames = []string{"GRPC", "H2C", "HTTPS", "HTTP2", "HTTP", "REST", "TLS", "WS"}
+
 // MakeK8sNamePrefix converts each chunk of non-alphanumeric character into a single dash
 // and also convert camelcase tokens into dash-delimited lowercase tokens.
+// The function will try to catch some well known abbreviations, so that we don't separate them.
 func MakeK8sNamePrefix(s string) string {
 	var sb strings.Builder
+	sb.Grow(len(s)) // At least as many chars will be in the output.
 	newToken := false
-	for _, c := range s {
+outer:
+	for i := 0; i < len(s); i++ {
+		c := rune(s[i])
 		if !(unicode.IsLetter(c) || unicode.IsNumber(c)) {
 			newToken = true
 			continue
 		}
-		if sb.Len() > 0 && (newToken || unicode.IsUpper(c)) {
+		isUpper := unicode.IsUpper(c)
+		// We could've done it only for uppercase letters,
+		if isUpper {
+			for _, n := range knownNames {
+				if strings.HasPrefix(s[i:], n) {
+					sub := s[i : i+len(n)]
+					if sb.Len() > 0 {
+						sb.WriteRune(sep)
+					}
+					sb.WriteString(strings.ToLower(sub))
+					i += len(n) - 1
+					continue outer
+				}
+			}
+		}
+		// Just a random uppercase word.
+		if sb.Len() > 0 && (newToken || isUpper) {
 			sb.WriteRune(sep)
 		}
 		sb.WriteRune(unicode.ToLower(c))

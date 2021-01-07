@@ -71,14 +71,14 @@ func TestWorkingDirCreated(t *testing.T) {
 	if tr.Status.PodName == "" {
 		t.Fatal("Error getting a PodName (empty)")
 	}
-	p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}
 	for _, stat := range p.Status.ContainerStatuses {
 		if strings.HasPrefix(stat.Name, "working-dir-initializer") {
 			if stat.State.Terminated != nil {
-				req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
+				req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
 				logContent, err := req.Do(ctx).Raw()
 				if err != nil {
 					t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
@@ -126,7 +126,7 @@ func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
 
-	p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}

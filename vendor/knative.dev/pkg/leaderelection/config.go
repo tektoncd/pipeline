@@ -34,8 +34,8 @@ import (
 
 const (
 	configMapNameEnv = "CONFIG_LEADERELECTION_NAME"
-	// KnativeResourceLock is the only supported lock mechanism for Knative.
-	KnativeResourceLock = resourcelock.LeasesResourceLock
+	// knativeResourceLock is the only supported lock mechanism for Knative.
+	knativeResourceLock = resourcelock.LeasesResourceLock
 )
 
 // MaxBuckets is the maximum number of buckets to allow users to define.

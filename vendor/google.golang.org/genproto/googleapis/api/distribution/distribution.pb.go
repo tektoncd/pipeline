@@ -73,7 +73,7 @@ type Distribution struct {
 	//
 	//     Sum[i=1..n]((x_i - mean)^2)
 	//
-	// Knuth, "The Art of Computer Programming", Vol. 2, page 323, 3rd edition
+	// Knuth, "The Art of Computer Programming", Vol. 2, page 232, 3rd edition
 	// describes Welford's method for accumulating this sum in one pass.
 	//
 	// If `count` is zero then this field must be zero.

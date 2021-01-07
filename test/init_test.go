@@ -110,7 +110,7 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 
 	if os.Getenv("TEST_KEEP_NAMESPACES") == "" && !t.Failed() {
 		t.Logf("Deleting namespace %s", namespace)
-		if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
+		if err := cs.KubeClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
 	}
@@ -133,7 +133,7 @@ func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeCl
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
 	}
-	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+	if _, err := kubeClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,
 			Labels: labels,
@@ -148,7 +148,7 @@ func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace 
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-		_, err := kubeClient.Kube.CoreV1().ServiceAccounts(namespace).Get(ctx, defaultSA, metav1.GetOptions{})
+		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(ctx, defaultSA, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -234,7 +234,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	pods, err := cs.KubeClient.Kube.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	pods, err := cs.KubeClient.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pods: %w", err)
 	}

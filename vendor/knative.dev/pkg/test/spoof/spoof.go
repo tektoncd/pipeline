@@ -26,6 +26,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -56,7 +57,7 @@ func (r *Response) String() string {
 // https://medium.com/stupid-gopher-tricks/ensuring-go-interface-satisfaction-at-compile-time-1ed158e8fa17
 var dialContext = (&net.Dialer{}).DialContext
 
-// ResponseChecker is used to determine when SpoofinClient.Poll is done polling.
+// ResponseChecker is used to determine when SpoofingClient.Poll is done polling.
 // This allows you to predicate wait.PollImmediate on the request's http.Response.
 //
 // See the apimachinery wait package:
@@ -86,7 +87,7 @@ type TransportOption func(transport *http.Transport) *http.Transport
 // If that's a problem, see test/request.go#WaitForEndpointState for oneshot spoofing.
 func New(
 	ctx context.Context,
-	kubeClientset *kubernetes.Clientset,
+	kubeClientset kubernetes.Interface,
 	logf logging.FormatLogger,
 	domain string,
 	resolvable bool,
@@ -95,7 +96,7 @@ func New(
 	opts ...TransportOption) (*SpoofingClient, error) {
 	endpoint, mapper, err := ResolveEndpoint(ctx, kubeClientset, domain, resolvable, endpointOverride)
 	if err != nil {
-		return nil, fmt.Errorf("failed get the cluster endpoint: %w", err)
+		return nil, fmt.Errorf("failed to get the cluster endpoint: %w", err)
 	}
 
 	// Spoof the hostname at the resolver level
@@ -133,7 +134,7 @@ func New(
 
 // ResolveEndpoint resolves the endpoint address considering whether the domain is resolvable and taking into
 // account whether the user overrode the endpoint address externally
-func ResolveEndpoint(ctx context.Context, kubeClientset *kubernetes.Clientset, domain string, resolvable bool, endpointOverride string) (string, func(string) string, error) {
+func ResolveEndpoint(ctx context.Context, kubeClientset kubernetes.Interface, domain string, resolvable bool, endpointOverride string) (string, func(string) string, error) {
 	id := func(in string) string { return in }
 	// If the domain is resolvable, it can be used directly
 	if resolvable {
@@ -237,10 +238,36 @@ func (sc *SpoofingClient) logZipkinTrace(spoofResp *Response) {
 
 	json, err := zipkin.JSONTrace(traceID /* We don't know the expected number of spans */, -1, 5*time.Second)
 	if err != nil {
-		if _, ok := err.(*zipkin.TimeoutError); !ok {
+		var errTimeout *zipkin.TimeoutError
+		if !errors.As(err, &errTimeout) {
 			sc.Logf("Error getting zipkin trace: %v", err)
 		}
 	}
 
 	sc.Logf("%s", json)
+}
+
+func (sc *SpoofingClient) WaitForEndpointState(
+	ctx context.Context,
+	url *url.URL,
+	inState ResponseChecker,
+	desc string,
+	opts ...RequestOption) (*Response, error) {
+
+	defer logging.GetEmitableSpan(ctx, "WaitForEndpointState/"+desc).End()
+
+	if url.Scheme == "" || url.Host == "" {
+		return nil, fmt.Errorf("invalid URL: %q", url.String())
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, opt := range opts {
+		opt(req)
+	}
+
+	return sc.Poll(req, inState)
 }

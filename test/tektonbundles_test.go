@@ -169,14 +169,14 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	if tr.Status.PodName == "" {
 		t.Fatal("Error getting a PodName (empty)")
 	}
-	p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}
 	for _, stat := range p.Status.ContainerStatuses {
 		if strings.Contains(stat.Name, "step-hello") {
-			req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
+			req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
 			logContent, err := req.Do(ctx).Raw()
 			if err != nil {
 				t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
@@ -451,7 +451,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 
 	// Create a configmap to contain the tarball which we will mount in the pod.
 	cmName := namespace + "uploadimage-cm"
-	if _, err = c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
+	if _, err = c.KubeClient.CoreV1().ConfigMaps(namespace).Create(ctx, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: cmName},
 		BinaryData: map[string][]byte{
 			"image.tar": tb,
@@ -460,7 +460,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 		t.Fatalf("Failed to create configmap to upload image: %s", err)
 	}
 
-	po, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	po, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    namespace,
 			GenerateName: podName,
@@ -508,7 +508,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 	if err := WaitForPodState(ctx, c, po.Name, namespace, func(pod *corev1.Pod) (bool, error) {
 		return pod.Status.Phase == "Succeeded", nil
 	}, "PodContainersTerminated"); err != nil {
-		req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
+		req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(po.GetName(), &corev1.PodLogOptions{Container: "skopeo"})
 		logs, err := req.DoRaw(ctx)
 		if err != nil {
 			t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
@@ -519,7 +519,7 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 }
 
 func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
-	featureFlagsCM, err := c.KubeClient.Kube.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.GetNamespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
 	}

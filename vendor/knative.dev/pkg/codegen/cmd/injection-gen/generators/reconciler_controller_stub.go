@@ -60,7 +60,7 @@ func (g *reconcilerControllerStubGenerator) Imports(c *generator.Context) (impor
 func (g *reconcilerControllerStubGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"type":     t,

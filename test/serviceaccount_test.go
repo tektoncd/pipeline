@@ -102,12 +102,12 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 		}},
 	}}
 	for _, secret := range secrets {
-		if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{}); err != nil {
+		if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, &secret, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Failed to create secret `%s`: %s", secret.Name, err)
 		}
 	}
 	for _, serviceAccount := range serviceAccounts {
-		if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(ctx, &serviceAccount, metav1.CreateOptions{}); err != nil {
+		if _, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(ctx, &serviceAccount, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Failed to create SA `%s`: %s", serviceAccount.Name, err)
 		}
 	}
@@ -190,7 +190,7 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 		if sa != expectedSA {
 			t.Fatalf("TaskRun %s expected SA %s, got %s", taskRun.Name, expectedSA, sa)
 		}
-		pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/taskRun=%s", taskRun.Name)})
+		pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/taskRun=%s", taskRun.Name)})
 		if err != nil {
 			t.Fatalf("Error listing Pods for TaskRun %s: %s", taskRun.Name, err)
 		}
@@ -235,10 +235,10 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 			Name: "secret1",
 		}},
 	}
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+	if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create secret `%s`: %s", secret.Name, err)
 	}
-	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(ctx, serviceAccount, metav1.CreateOptions{}); err != nil {
+	if _, err := c.KubeClient.CoreV1().ServiceAccounts(namespace).Create(ctx, serviceAccount, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create SA `%s`: %s", serviceAccount.Name, err)
 	}
 
@@ -299,7 +299,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 		if sa != expectedSA {
 			t.Fatalf("TaskRun %s expected SA %s, got %s", taskRun.Name, expectedSA, sa)
 		}
-		pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/taskRun=%s", taskRun.Name)})
+		pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/taskRun=%s", taskRun.Name)})
 		if err != nil {
 			t.Fatalf("Error listing Pods for TaskRun %s: %s", taskRun.Name, err)
 		}

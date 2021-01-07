@@ -16,10 +16,11 @@ limitations under the License.
 
 // Defines an interface of commonality between testing.T and logging.TLogger
 // Allows most library functions to be shared
-// Simplifies coexistance with TLogger
+// Simplifies coexistence with TLogger
 
 package test
 
+// Deprecated: Do not use this. Define your own interface.
 type T interface {
 	Name() string
 	Helper()
@@ -29,6 +30,7 @@ type T interface {
 	Error(args ...interface{})
 }
 
+// Deprecated: Do not use this. Define your own interface.
 type TLegacy interface {
 	T
 	Logf(fmt string, args ...interface{}) // It gets passed to things in logstream

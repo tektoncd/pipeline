@@ -81,20 +81,13 @@ func (b *Bucket) Has(nn types.NamespacedName) bool {
 // ordered by bucket name.
 func (bs *BucketSet) Buckets() []reconciler.Bucket {
 	bkts := make([]reconciler.Bucket, len(bs.buckets))
-	for i, n := range bs.sortedBucketNames() {
+	for i, n := range bs.BucketList() {
 		bkts[i] = &Bucket{
 			name:    n,
 			buckets: bs,
 		}
 	}
 	return bkts
-}
-
-func (bs *BucketSet) sortedBucketNames() []string {
-	bs.mu.RLock()
-	defer bs.mu.RUnlock()
-
-	return bs.buckets.List()
 }
 
 // Owner returns the owner of the key.
@@ -116,12 +109,12 @@ func (bs *BucketSet) HasBucket(bkt string) bool {
 	return bs.buckets.Has(bkt)
 }
 
-// BucketList returns the bucket names of this BucketSet in random order.
+// BucketList returns the bucket names of this BucketSet in sorted order.
 func (bs *BucketSet) BucketList() []string {
 	bs.mu.RLock()
 	defer bs.mu.RUnlock()
 
-	return bs.buckets.UnsortedList()
+	return bs.buckets.List()
 }
 
 // Update updates the universe of buckets.

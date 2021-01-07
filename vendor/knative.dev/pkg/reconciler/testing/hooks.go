@@ -20,9 +20,9 @@ package testing
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"go.uber.org/atomic"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubetesting "k8s.io/client-go/testing"
 )
@@ -80,7 +80,7 @@ that all hooks complete in a timely manner.
 */
 type Hooks struct {
 	completionCh    chan int32
-	completionIndex int32
+	completionIndex *atomic.Int32
 
 	// Denotes whether or not the registered hooks should no longer be called
 	// because they have already been waited upon.
@@ -96,14 +96,14 @@ type Hooks struct {
 func NewHooks() *Hooks {
 	return &Hooks{
 		completionCh:    make(chan int32, 100),
-		completionIndex: -1,
+		completionIndex: atomic.NewInt32(-1),
 	}
 }
 
 // OnCreate attaches a create hook to the given Fake. The hook function is
 // executed every time a resource of the given type is created.
 func (h *Hooks) OnCreate(fake *kubetesting.Fake, resource string, rf CreateHookFunc) {
-	index := atomic.AddInt32(&h.completionIndex, 1)
+	index := h.completionIndex.Inc()
 	fake.PrependReactor("create", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		obj := a.(kubetesting.CreateActionImpl).Object
 
@@ -119,7 +119,7 @@ func (h *Hooks) OnCreate(fake *kubetesting.Fake, resource string, rf CreateHookF
 // OnUpdate attaches an update hook to the given Fake. The hook function is
 // executed every time a resource of the given type is updated.
 func (h *Hooks) OnUpdate(fake *kubetesting.Fake, resource string, rf UpdateHookFunc) {
-	index := atomic.AddInt32(&h.completionIndex, 1)
+	index := h.completionIndex.Inc()
 	fake.PrependReactor("update", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		obj := a.(kubetesting.UpdateActionImpl).Object
 
@@ -135,7 +135,7 @@ func (h *Hooks) OnUpdate(fake *kubetesting.Fake, resource string, rf UpdateHookF
 // OnDelete attaches a delete hook to the given Fake. The hook function is
 // executed every time a resource of the given type is deleted.
 func (h *Hooks) OnDelete(fake *kubetesting.Fake, resource string, rf DeleteHookFunc) {
-	index := atomic.AddInt32(&h.completionIndex, 1)
+	index := h.completionIndex.Inc()
 	fake.PrependReactor("delete", resource, func(a kubetesting.Action) (bool, runtime.Object, error) {
 		name := a.(kubetesting.DeleteActionImpl).Name
 
@@ -159,7 +159,7 @@ func (h *Hooks) WaitForHooks(timeout time.Duration) error {
 		h.closed = true
 	}()
 
-	ci := int(atomic.LoadInt32(&h.completionIndex))
+	ci := int(h.completionIndex.Load())
 	if ci == -1 {
 		return nil
 	}
@@ -173,7 +173,7 @@ func (h *Hooks) WaitForHooks(timeout time.Duration) error {
 		case i := <-h.completionCh:
 			hookCompletions[i] = HookComplete
 			if len(hookCompletions) == ci {
-				atomic.StoreInt32(&h.completionIndex, -1)
+				h.completionIndex.Dec()
 				return nil
 			}
 		case <-timer:

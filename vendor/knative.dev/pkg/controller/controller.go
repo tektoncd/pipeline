@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -207,7 +208,7 @@ type Impl struct {
 
 // ControllerOptions encapsulates options for creating a new controller,
 // including throttling and stats behavior.
-type ControllerOptions struct {
+type ControllerOptions struct { //nolint // for backcompat.
 	WorkQueueName string
 	Logger        *zap.SugaredLogger
 	Reporter      StatsReporter
@@ -265,12 +266,15 @@ func (c *Impl) EnqueueAfter(obj interface{}, after time.Duration) {
 // and enqueues that key in the slow lane.
 func (c *Impl) EnqueueSlowKey(key types.NamespacedName) {
 	c.workQueue.SlowLane().Add(key)
-	c.logger.With(zap.String(logkey.Key, key.String())).
-		Debugf("Adding to the slow queue %s (depth(total/slow): %d/%d)",
-			safeKey(key), c.workQueue.Len(), c.workQueue.SlowLane().Len())
+
+	if logger := c.logger.Desugar(); logger.Core().Enabled(zapcore.DebugLevel) {
+		logger.Debug(fmt.Sprintf("Adding to the slow queue %s (depth(total/slow): %d/%d)",
+			safeKey(key), c.workQueue.Len(), c.workQueue.SlowLane().Len()),
+			zap.String(logkey.Key, key.String()))
+	}
 }
 
-// EnqueueSlow extracts namesspeced name from the object and enqueues it on the slow
+// EnqueueSlow extracts namespaced name from the object and enqueues it on the slow
 // work queue.
 func (c *Impl) EnqueueSlow(obj interface{}) {
 	object, err := kmeta.DeletionHandlingAccessor(obj)
@@ -393,8 +397,11 @@ func (c *Impl) EnqueueNamespaceOf(obj interface{}) {
 // EnqueueKey takes a namespace/name string and puts it onto the work queue.
 func (c *Impl) EnqueueKey(key types.NamespacedName) {
 	c.workQueue.Add(key)
-	c.logger.With(zap.String(logkey.Key, key.String())).
-		Debugf("Adding to queue %s (depth: %d)", safeKey(key), c.workQueue.Len())
+
+	if logger := c.logger.Desugar(); logger.Core().Enabled(zapcore.DebugLevel) {
+		logger.Debug(fmt.Sprintf("Adding to queue %s (depth: %d)", safeKey(key), c.workQueue.Len()),
+			zap.String(logkey.Key, key.String()))
+	}
 }
 
 // MaybeEnqueueBucketKey takes a Bucket and namespace/name string and puts it onto
@@ -409,8 +416,11 @@ func (c *Impl) MaybeEnqueueBucketKey(bkt reconciler.Bucket, key types.Namespaced
 // the work queue after given delay.
 func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
 	c.workQueue.AddAfter(key, delay)
-	c.logger.With(zap.String(logkey.Key, key.String())).
-		Debugf("Adding to queue %s (delay: %v, depth: %d)", safeKey(key), delay, c.workQueue.Len())
+
+	if logger := c.logger.Desugar(); logger.Core().Enabled(zapcore.DebugLevel) {
+		logger.Debug(fmt.Sprintf("Adding to queue %s (delay: %v, depth: %d)", safeKey(key), delay, c.workQueue.Len()),
+			zap.String(logkey.Key, key.String()))
+	}
 }
 
 // RunContext starts the controller's worker threads, the number of which is threadiness.
@@ -493,7 +503,7 @@ func (c *Impl) processNextWorkItem() bool {
 		if err != nil {
 			status = falseString
 		}
-		c.statsReporter.ReportReconcile(time.Since(startTime), status)
+		c.statsReporter.ReportReconcile(time.Since(startTime), status, key)
 
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if
@@ -505,7 +515,7 @@ func (c *Impl) processNextWorkItem() bool {
 
 	// Embed the key into the logger and attach that to the context we pass
 	// to the Reconciler.
-	logger := c.logger.With(zap.String(logkey.TraceId, uuid.New().String()), zap.String(logkey.Key, keyStr))
+	logger := c.logger.With(zap.String(logkey.TraceID, uuid.New().String()), zap.String(logkey.Key, keyStr))
 	ctx := logging.WithLogger(context.Background(), logger)
 
 	// Run Reconcile, passing it the namespace/name string of the
@@ -582,6 +592,7 @@ func IsPermanentError(err error) bool {
 // Is implements the Is() interface of error. It returns whether the target
 // error can be treated as equivalent to a permanentError.
 func (permanentError) Is(target error) bool {
+	//nolint: errorlint // This check is actually fine.
 	_, ok := target.(permanentError)
 	return ok
 }

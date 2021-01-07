@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"os"
 	"strconv"
 
 	"go.uber.org/atomic"
@@ -28,7 +29,11 @@ import (
 )
 
 const (
-	// ProfilingPort specifies the port where profiling data is available when profiling is enabled
+	// ProfilingPortKey specified the name of an environment variable that
+	// may be used to override the default profiling port.
+	ProfilingPortKey = "PROFILING_PORT"
+
+	// ProfilingPort specifies the default port where profiling data is available when profiling is enabled
 	ProfilingPort = 8008
 
 	// profilingKey is the name of the key in config-observability config map
@@ -56,7 +61,7 @@ func NewHandler(logger *zap.SugaredLogger, enableProfiling bool) *Handler {
 	mux.HandleFunc(pprofPrefix+"symbol", pprof.Symbol)
 	mux.HandleFunc(pprofPrefix+"trace", pprof.Trace)
 
-	logger.Infof("Profiling enabled: %t", enableProfiling)
+	logger.Info("Profiling enabled: ", enableProfiling)
 	return &Handler{
 		enabled: atomic.NewBool(enableProfiling),
 		handler: mux,
@@ -94,14 +99,19 @@ func (h *Handler) UpdateFromConfigMap(configMap *corev1.ConfigMap) {
 	}
 
 	if h.enabled.Swap(enabled) != enabled {
-		h.log.Infof("Profiling enabled: %t", enabled)
+		h.log.Info("Profiling enabled: ", enabled)
 	}
 }
 
 // NewServer creates a new http server that exposes profiling data on the default profiling port
 func NewServer(handler http.Handler) *http.Server {
+	port := os.Getenv(ProfilingPortKey)
+	if port == "" {
+		port = strconv.Itoa(ProfilingPort)
+	}
+
 	return &http.Server{
-		Addr:    ":" + strconv.Itoa(ProfilingPort),
+		Addr:    ":" + port,
 		Handler: handler,
 	}
 }

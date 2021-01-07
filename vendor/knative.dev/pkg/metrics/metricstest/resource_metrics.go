@@ -42,8 +42,8 @@ type Value struct {
 	Float64      *float64
 	Distribution *metricdata.Distribution
 	// VerifyDistributionCountOnly makes Equal compare the Distribution with the
-	// field Count only, and ingore all other fields of Distribution.
-	// This is ingored when the value is not a Distribution.
+	// field Count only, and ignore all other fields of Distribution.
+	// This is ignored when the value is not a Distribution.
 	VerifyDistributionCountOnly bool
 }
 
@@ -161,7 +161,7 @@ func FloatMetric(name string, value float64, tags map[string]string) Metric {
 	}
 }
 
-// DistributionCountOnlyMetric creates a distrubtion metric for test, and verifying only the count.
+// DistributionCountOnlyMetric creates a distribution metric for test, and verifying only the count.
 func DistributionCountOnlyMetric(name string, count int64, tags map[string]string) Metric {
 	return Metric{
 		Name: name,
@@ -187,7 +187,7 @@ func AssertMetric(t *testing.T, values ...Metric) {
 	EnsureRecorded()
 	for _, v := range values {
 		if diff := cmp.Diff(v, GetOneMetric(v.Name)); diff != "" {
-			t.Errorf("Wrong metric (-want +got): %s", diff)
+			t.Error("Wrong metric (-want +got):", diff)
 		}
 	}
 }

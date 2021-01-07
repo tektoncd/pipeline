@@ -49,12 +49,12 @@ func TestClusterResource(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating secret %s", secretName)
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, getClusterResourceTaskSecret(namespace, secretName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getClusterResourceTaskSecret(namespace, secretName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Secret `%s`: %s", secretName, err)
 	}
 
 	t.Logf("Creating configMap %s", configName)
-	if _, err := c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(ctx, getClusterConfigMap(namespace, configName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.KubeClient.CoreV1().ConfigMaps(namespace).Create(ctx, getClusterConfigMap(namespace, configName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create configMap `%s`: %s", configName, err)
 	}
 

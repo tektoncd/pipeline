@@ -61,7 +61,7 @@ const (
 	// for widespread use. By Alpha, all significant design issues are resolved
 	// and we are in the process of verifying functionality. Alpha customers
 	// need to apply for access, agree to applicable terms, and have their
-	// projects whitelisted. Alpha releases don’t have to be feature complete,
+	// projects allowlisted. Alpha releases don’t have to be feature complete,
 	// no SLAs are provided, and there are no technical support obligations, but
 	// they will be far enough along that customers can actually use them in
 	// test environments or for limited-use tests -- just like they would in

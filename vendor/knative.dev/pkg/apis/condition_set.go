@@ -234,7 +234,7 @@ func (r conditionsImpl) ClearCondition(t ConditionType) error {
 	}
 	// Terminal conditions are not handled as they can't be nil
 	if r.isTerminal(t) {
-		return fmt.Errorf("Clearing terminal conditions not implemented")
+		return fmt.Errorf("clearing terminal conditions not implemented")
 	}
 	cond := r.GetCondition(t)
 	if cond == nil {

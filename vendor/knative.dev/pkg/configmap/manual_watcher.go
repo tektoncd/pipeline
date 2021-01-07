@@ -27,7 +27,7 @@ type ManualWatcher struct {
 	Namespace string
 
 	// Guards observers
-	m         sync.RWMutex
+	sync.RWMutex
 	observers map[string][]Observer
 }
 
@@ -35,13 +35,23 @@ var _ Watcher = (*ManualWatcher)(nil)
 
 // Watch implements Watcher
 func (w *ManualWatcher) Watch(name string, o ...Observer) {
-	w.m.Lock()
-	defer w.m.Unlock()
+	w.Lock()
+	defer w.Unlock()
 
 	if w.observers == nil {
 		w.observers = make(map[string][]Observer, 1)
 	}
 	w.observers[name] = append(w.observers[name], o...)
+}
+
+// Watch implements Watcher
+func (w *ManualWatcher) ForEach(f func(string, []Observer) error) error {
+	for k, v := range w.observers {
+		if err := f(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Start implements Watcher
@@ -55,8 +65,8 @@ func (w *ManualWatcher) OnChange(configMap *corev1.ConfigMap) {
 		return
 	}
 	// Within our namespace, take the lock and see if there are any registered observers.
-	w.m.RLock()
-	defer w.m.RUnlock()
+	w.RLock()
+	defer w.RUnlock()
 	// Iterate over the observers and invoke their callbacks.
 	for _, o := range w.observers[configMap.Name] {
 		o(configMap)

@@ -12,10 +12,16 @@ This is a guide to start using `logstream` in your e2e testing.
    and linking it like
    [this](https://github.com/knative/serving/blob/e797247322b5aa35001152d2a2715dbc20a86cc4/test/conformance.go#L20-L23)
 
-2) Test resources must be named with
+2. Test resources must be named with
    [`test.ObjectNameForTest(t)`](https://github.com/knative/networking/blob/40ef99aa5db0d38730a89a1de7e5b28b8ef6eed5/vendor/knative.dev/pkg/test/helpers/name.go#L50)
 
 3. At the start of your test add: `t.Cleanup(logstream.Start(t))`
+
+4. To enable logcapture from containers across multiple namespaces configure
+   SYSTEM_NAMESPACE to contains a csv list of namespaces
+   (`knative-serving,knative-test ??????{}`). Specific, well known containers
+   that do not produce key decorated logs (see detailed description below) need
+   to be enumerated in WellKnownContainers in stream.go.
 
 With that, you will start getting logs from the processes in the system
 namespace interleaved into your test output via `t.Log`.

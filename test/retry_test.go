@@ -109,7 +109,7 @@ func TestTaskRunRetry(t *testing.T) {
 	}
 
 	// There should be N Pods created, all failed, all owned by the TaskRun.
-	pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	// We expect N+1 Pods total, one for each failed and retried attempt, and one for the final attempt.
 	wantPods := numRetries + 1
 

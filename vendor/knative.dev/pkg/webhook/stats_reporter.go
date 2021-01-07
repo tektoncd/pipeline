@@ -69,7 +69,7 @@ type reporter struct {
 	ctx context.Context
 }
 
-// NewStatsReporter creaters a reporter for webhook metrics
+// NewStatsReporter creates a reporter for webhook metrics
 func NewStatsReporter() (StatsReporter, error) {
 	ctx, err := tag.New(
 		context.Background(),
