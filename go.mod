@@ -24,7 +24,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
-	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
+	k8s.io/client-go v0.18.12
 	k8s.io/code-generator v0.18.12
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
@@ -35,15 +35,4 @@ require (
 replace (
 	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.13.4
 	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
-)
-
-// Pin k8s deps to v0.18.8
-replace (
-	k8s.io/api => k8s.io/api v0.18.12
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.12
-	k8s.io/apimachinery => k8s.io/apimachinery v0.18.12
-	k8s.io/apiserver => k8s.io/apiserver v0.18.12
-	k8s.io/client-go => k8s.io/client-go v0.18.12
-	k8s.io/code-generator => k8s.io/code-generator v0.18.12
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
 )
