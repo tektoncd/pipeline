@@ -535,14 +535,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
-	if err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts, as); err != nil {
+	schedulStatus, err := c.runNextSchedulableTask(ctx, pr, pipelineRunFacts, as)
+	if schedulStatus == nil && err != nil {
 		return err
 	}
 
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 
-	after := pipelineRunFacts.GetPipelineConditionStatus(pr, logger)
+	after := schedulStatus
+	if after == nil {
+		after = pipelineRunFacts.GetPipelineConditionStatus(pr, logger)
+	}
+
 	switch after.Status {
 	case corev1.ConditionTrue:
 		pr.Status.MarkSucceeded(after.Reason, after.Message)
@@ -564,7 +569,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 // runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
 // pipeline run state, and starts them
 // after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
-func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, as artifacts.ArtifactStorageInterface) error {
+func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, as artifacts.ArtifactStorageInterface) (*apis.Condition, error) {
 
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
@@ -573,14 +578,14 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	nextRprts, err := pipelineRunFacts.DAGExecutionQueue()
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
-		return controller.NewPermanentError(err)
+		return nil, controller.NewPermanentError(err)
 	}
 
 	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRprts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
-		return controller.NewPermanentError(err)
+		return nil, controller.NewPermanentError(err)
 	}
 
 	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
@@ -600,13 +605,23 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				rprt.Run, err = c.createRun(ctx, rprt, pr)
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rprt.RunName, err)
-					return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
+					return &apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionFalse,
+						Reason:  "RunCreationFailed",
+						Message: fmt.Sprintf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err),
+					}, fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			} else {
 				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-					return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+					return &apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionFalse,
+						Reason:  "TaskRunCreationFailed",
+						Message: fmt.Sprintf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err),
+					}, fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			}
 		} else if !rprt.ResolvedConditionChecks.HasStarted() {
@@ -614,12 +629,17 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				rcc.ConditionCheck, err = c.makeConditionCheckContainer(ctx, rprt, rcc, pr)
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
-					return fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
+					return &apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionFalse,
+						Reason:  "ConditionCheckCreationFailed",
+						Message: fmt.Sprintf("Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err),
+					}, fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func getPipelineRunResults(pipelineSpec *v1beta1.PipelineSpec, resolvedResultRefs resources.ResolvedResultRefs) []v1beta1.PipelineRunResult {
