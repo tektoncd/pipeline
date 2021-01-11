@@ -29,8 +29,6 @@ spec:
       type: image
     - name: builtKubeconfigWriterImage
       type: image
-    - name: builtCredsInitImage
-      type: image
     - name: builtGitInitImage
       type: image
     - name: builtControllerImage
@@ -167,7 +165,6 @@ spec:
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtEntrypointImage.url):$(params.versionTag)
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtNopImage.url):$(params.versionTag)
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtKubeconfigWriterImage.url):$(params.versionTag)
-        $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtCredsInitImage.url):$(params.versionTag)
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtGitInitImage.url):$(params.versionTag)
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtControllerImage.url):$(params.versionTag)
         $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtWebhookImage.url):$(params.versionTag)
