@@ -1172,3 +1172,84 @@ func statusPending(reason, message string) duckv1beta1.Status {
 		}},
 	}
 }
+
+// TestSortPodContainerStatuses checks that a complex list of container statuses is
+// sorted in the way that we expect them to be according to their step order. This
+// exercises a specific failure mode we observed where the image-digest-exporter
+// status was inserted before user step statuses, which is not a valid ordering.
+// See github issue https://github.com/tektoncd/pipeline/issues/3677 for the full
+// details of the bug.
+func TestSortPodContainerStatuses(t *testing.T) {
+	containerNames := []string{
+		"step-create-dir-notification-g2fjb",
+		"step-create-dir-builtgcsfetcherimage-68lnn",
+		"step-create-dir-builtpullrequestinitimage-nr6gc",
+		"step-create-dir-builtdigestexporterimage-mlj2j",
+		"step-create-dir-builtwebhookimage-zldcx",
+		"step-create-dir-builtcontrollerimage-4nncs",
+		"step-create-dir-builtgitinitimage-jbdwk",
+		"step-create-dir-builtcredsinitimage-mtrcp",
+		"step-create-dir-builtkubeconfigwriterimage-nnfrl",
+		"step-create-dir-builtnopimage-c9k2k",
+		"step-create-dir-builtentrypointimage-dd7vw",
+		"step-create-dir-bucket-jr2lk",
+		"step-git-source-source-fkrcz",
+		"step-create-dir-bucket-gtw4k",
+		"step-fetch-bucket-llqdh",
+		"step-create-ko-yaml",
+		"step-link-input-bucket-to-output",
+		"step-ensure-release-dir-exists",
+		"step-run-ko",
+		"step-copy-to-latest-bucket",
+		"step-tag-images",
+		"step-image-digest-exporter-vcqhc",
+		"step-source-mkdir-bucket-ljkcz",
+		"step-source-copy-bucket-5mwpq",
+		"step-upload-bucket-kt9b4",
+	}
+	containerStatusNames := []string{
+		"step-copy-to-latest-bucket",
+		"step-create-dir-bucket-gtw4k",
+		"step-create-dir-bucket-jr2lk",
+		"step-create-dir-builtcontrollerimage-4nncs",
+		"step-create-dir-builtcredsinitimage-mtrcp",
+		"step-create-dir-builtdigestexporterimage-mlj2j",
+		"step-create-dir-builtentrypointimage-dd7vw",
+		"step-create-dir-builtgcsfetcherimage-68lnn",
+		"step-create-dir-builtgitinitimage-jbdwk",
+		"step-create-dir-builtkubeconfigwriterimage-nnfrl",
+		"step-create-dir-builtnopimage-c9k2k",
+		"step-create-dir-builtpullrequestinitimage-nr6gc",
+		"step-create-dir-builtwebhookimage-zldcx",
+		"step-create-dir-notification-g2fjb",
+		"step-create-ko-yaml",
+		"step-ensure-release-dir-exists",
+		"step-fetch-bucket-llqdh",
+		"step-git-source-source-fkrcz",
+		"step-image-digest-exporter-vcqhc",
+		"step-link-input-bucket-to-output",
+		"step-run-ko",
+		"step-source-copy-bucket-5mwpq",
+		"step-source-mkdir-bucket-ljkcz",
+		"step-tag-images",
+		"step-upload-bucket-kt9b4",
+	}
+	containers := []corev1.Container{}
+	statuses := []corev1.ContainerStatus{}
+	for _, s := range containerNames {
+		containers = append(containers, corev1.Container{
+			Name: s,
+		})
+	}
+	for _, s := range containerStatusNames {
+		statuses = append(statuses, corev1.ContainerStatus{
+			Name: s,
+		})
+	}
+	sortPodContainerStatuses(statuses, containers)
+	for i := range statuses {
+		if statuses[i].Name != containers[i].Name {
+			t.Errorf("container status out of order: want %q got %q", containers[i].Name, statuses[i].Name)
+		}
+	}
+}

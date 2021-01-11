@@ -19,7 +19,6 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -447,62 +446,19 @@ func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	})
 }
 
-// sortPodContainerStatuses sorts the pod container statuses in the same order as the original
-// TaskSpec steps.
-func sortPodContainerStatuses(podContainerStatuses []corev1.ContainerStatus, podSpecContainers []corev1.Container) []corev1.ContainerStatus {
-	trt := &podContainerStatusSorter{
-		podContainerStatuses: podContainerStatuses,
+// sortPodContainerStatuses reorders a pod's container statuses so that
+// they're in the same order as the step containers from the TaskSpec.
+func sortPodContainerStatuses(podContainerStatuses []corev1.ContainerStatus, podSpecContainers []corev1.Container) {
+	statuses := map[string]corev1.ContainerStatus{}
+	for _, status := range podContainerStatuses {
+		statuses[status.Name] = status
 	}
-	trt.mapForSort = trt.constructPodContainerStatusesSorter(podSpecContainers)
-	sort.Sort(trt)
-	return trt.podContainerStatuses
-}
-
-// podContainerStatusSorter implements a sorting mechanism to align the order of the pod container statuses in the pod
-// with the spec steps in Task.
-type podContainerStatusSorter struct {
-	podContainerStatuses []corev1.ContainerStatus
-	mapForSort           map[string]int
-}
-
-// constructPodContainerStatusesSorter constructs a map matching the names of
-// the containers to their step indices for a task.
-func (trt *podContainerStatusSorter) constructPodContainerStatusesSorter(podSpecContainers []corev1.Container) map[string]int {
-	sorter := make(map[string]int)
-	for index, container := range podSpecContainers {
-		sorter[container.Name] = index
+	for i, c := range podSpecContainers {
+		// prevent out-of-bounds panic on incorrectly formed lists
+		if i < len(podContainerStatuses) {
+			podContainerStatuses[i] = statuses[c.Name]
+		}
 	}
-	return sorter
-}
-
-// changeIndex sorts the containers of a pod, based on the
-// order of the steps in the task. Instead of changing the element with the one next to it,
-// we directly swap it with the desired index.
-func (trt *podContainerStatusSorter) changeIndex(index int) {
-	// Check if the current index is equal to the desired index. If they are equal, do not swap; if they
-	// are not equal, swap index j with the desired index.
-	desiredIndex, exist := trt.mapForSort[trt.podContainerStatuses[index].Name]
-	if exist && index != desiredIndex {
-		trt.podContainerStatuses[desiredIndex], trt.podContainerStatuses[index] = trt.podContainerStatuses[index], trt.podContainerStatuses[desiredIndex]
-	}
-}
-
-func (trt *podContainerStatusSorter) Len() int { return len(trt.podContainerStatuses) }
-
-func (trt *podContainerStatusSorter) Swap(i, j int) {
-	trt.changeIndex(j)
-	// The index j is unable to reach the last index.
-	// When i reaches the end of the array, we need to check whether the last one needs a swap.
-	if i == trt.Len()-1 {
-		trt.changeIndex(i)
-	}
-}
-
-func (trt *podContainerStatusSorter) Less(i, j int) bool {
-	// Since the logic is complicated, we move it into the Swap function to decide whether
-	// and how to change the index. We set it to true here in order to iterate all the
-	// elements of the array in the Swap function.
-	return true
 }
 
 func isOOMKilled(s corev1.ContainerStatus) bool {
