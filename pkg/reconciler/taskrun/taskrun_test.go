@@ -331,7 +331,7 @@ func eventFromChannel(c chan string, testName string, wantEvents []string) error
 	// We only hit the timeout in case of failure of the test, so the actual value
 	// of the timeout is not so relevant, it's only used when tests are going to fail.
 	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(10 * time.Millisecond)
 	foundEvents := []string{}
 	for ii := 0; ii < len(wantEvents)+1; ii++ {
 		// We loop over all the events that we expect. Once they are all received
@@ -365,7 +365,7 @@ func eventFromChannel(c chan string, testName string, wantEvents []string) error
 // expects to receive. The events can be received in any order. Any extra or too few
 // events are both considered errors.
 func eventFromChannelUnordered(c chan string, wantEvents []string) error {
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(10 * time.Millisecond)
 	expected := append([]string{}, wantEvents...)
 	// loop len(expected) + 1 times to catch extra erroneous events received that the test is not expecting
 	maxEvents := len(expected) + 1
@@ -3245,7 +3245,7 @@ func TestFailTaskRun(t *testing.T) {
 				pvcHandler:       volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 			}
 
-			err := c.failTaskRun(context.Background(), tc.taskRun, tc.reason, tc.message)
+			err := c.failTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -3265,7 +3265,7 @@ func TestFailTaskRun(t *testing.T) {
 
 func Test_storeTaskSpec(t *testing.T) {
 
-	ctx := context.Background()
+	ctx, _ := ttesting.SetupFakeContext(t)
 	tr := tb.TaskRun("foo", tb.TaskRunSpec(tb.TaskRunTaskRef("foo-task")))
 
 	ts := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec

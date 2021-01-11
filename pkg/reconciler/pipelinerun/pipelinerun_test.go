@@ -44,8 +44,6 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -186,7 +184,7 @@ func eventFromChannel(c chan string, testName string, wantEvents []string) error
 	// We only hit the timeout in case of failure of the test, so the actual value
 	// of the timeout is not so relevant, it's only used when tests are going to fail.
 	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(10 * time.Millisecond)
 	foundEvents := []string{}
 	for ii := 0; ii < len(wantEvents)+1; ii++ {
 		// We loop over all the events that we expect. Once they are all received
@@ -3936,8 +3934,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.prName, func(t *testing.T) {
-			observer, _ := observer.New(zap.InfoLevel)
-			logger := zap.New(observer).Sugar()
+			logger := logtesting.TestLogger(t)
 
 			pr := &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
