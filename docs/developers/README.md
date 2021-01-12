@@ -277,7 +277,12 @@ Instead of hardcoding the path to the result file, the user can also use a varia
 ### Known issues
 
 - Task Results are returned to the TaskRun controller via the container's
-termination log. At time of writing this has a capped maximum size of ["2048 bytes or 80 lines, whichever is smaller"](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
+termination message. At time of writing this has a capped maximum size of ["4096 bytes or 80 lines, whichever is smaller"](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#customizing-the-termination-message).
+This maximum size should not be considered the limit of a result's size. Tekton uses
+the termination message to return other data to the controller as well. The general
+advice should be that results are for very small pieces of data. The exact size
+is going to be a product of the platform's settings and the amount of other
+data Tekton needs to return for TaskRun book-keeping.
 
 ## How task results can be used in pipeline's tasks
 
