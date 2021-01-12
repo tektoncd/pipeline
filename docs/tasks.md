@@ -470,8 +470,13 @@ small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, 
 
 If your `Task` writes a large number of small results, you can work around this limitation
 by writing each result from a separate `Step` so that each `Step` has its own termination message.
-About size limitation, there is validation for it, will raise exception: `Termination message is above max allowed size 4096, caused by large task result`. Since Tekton also uses the termination message for some internal information, so the real available size will less than 4096 bytes. For results larger than a kilobyte, use a [`Workspace`](#specifying-workspaces) to
-shuttle data between `Tasks` within a `Pipeline`.
+If a termination message is detected as being too large the TaskRun will be placed into a failed state
+with the following message: `Termination message is above max allowed size 4096, caused by large task
+result`. Since Tekton also uses the termination message for some internal information, so the real
+available size will less than 4096 bytes.
+
+As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you should likely use a
+[`Workspace`](#specifying-workspaces) to store and pass it between `Tasks` within a `Pipeline`.
 
 ### Specifying `Volumes`
 
