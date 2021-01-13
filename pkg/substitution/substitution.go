@@ -60,22 +60,6 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 	return nil
 }
 
-func ValidateVariablePS(value, prefix string, suffix string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, suffix)
-			if !vars.Has(v) {
-				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q", value),
-					// Empty path is required to make the `ViaField`, … work
-					Paths: []string{""},
-				}
-			}
-		}
-	}
-	return nil
-}
-
 // Verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
