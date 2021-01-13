@@ -55,7 +55,6 @@ spec:
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        $(params.pathToProject)/$(resources.outputs.builtCredsInitImage.url): $(params.imageRegistry)/$(params.pathToProject)/build-base:latest
         $(params.pathToProject)/$(resources.outputs.builtGitInitImage.url): $(params.imageRegistry)/$(params.pathToProject)/build-base:latest
 
         # These match values configured in .ko.yaml
