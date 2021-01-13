@@ -263,7 +263,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 
 	getTaskfunc, kind, err := resources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, tr.Spec.TaskRef, tr.Namespace, tr.Spec.ServiceAccountName)
 	if err != nil {
-		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name)
+		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
