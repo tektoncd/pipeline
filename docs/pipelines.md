@@ -854,9 +854,6 @@ This kind of variable can have any one of the values from the following table:
 
 For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-task-execution-status.yaml).
 
-**Note:** `$(tasks.<pipelineTask>.status)` is instantiated and available at runtime and must be used as a param value
-as is without concatenating it with any other param or string, for example, this kind of usage is not validated/supported
-`task status is $(tasks.<pipelineTask>.status)`.
 
 ### Known Limitations
 

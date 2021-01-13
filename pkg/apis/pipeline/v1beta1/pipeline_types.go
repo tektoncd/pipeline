@@ -272,6 +272,15 @@ func (l PipelineTaskList) Items() []dag.Task {
 	return tasks
 }
 
+// Names returns a set of pipeline task names from the given list of pipeline tasks
+func (l PipelineTaskList) Names() sets.String {
+	names := sets.String{}
+	for _, pt := range l {
+		names.Insert(pt.Name)
+	}
+	return names
+}
+
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
