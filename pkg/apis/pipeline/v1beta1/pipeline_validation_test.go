@@ -2135,12 +2135,58 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			}},
 		}},
 	}, {
+		name: "valid task result reference with status as a variable must not cause validation failure",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.results.status)"},
+			}},
+		}},
+	}, {
+		name: "valid variable concatenated with extra string in finally accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name: "foo",
+		}},
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of foo is $(tasks.foo.status)."},
+			}},
+		}},
+	}, {
+		name: "valid variable concatenated with other param in finally accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name: "foo",
+		}},
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.foo.status)."},
+			}},
+		}},
+	}, {
 		name: "invalid string variable in dag task accessing pipelineTask status",
 		tasks: []PipelineTask{{
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
 				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.bar.status)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task`,
+			Paths:   []string{"tasks[0].params[bar-status].value"},
+		},
+	}, {
+		name: "invalid variable concatenated with extra string in dag task accessing pipelineTask status",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Params: []Param{{
+				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of bar is $(tasks.bar.status)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2169,7 +2215,36 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
 			}},
 		}},
-		expectedError: *apis.ErrGeneric(`non-existent variable in "$(tasks.notask.status)"`, "value"),
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
+			Paths:   []string{"finally[0].params[notask-status].value"},
+		},
+	}, {
+		name: "invalid variable concatenated with extra string in finally accessing missing pipelineTask status",
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of notask is $(tasks.notask.status)."},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
+			Paths:   []string{"finally[0].params[notask-status].value"},
+		},
+	}, {
+		name: "invalid variable concatenated with other params in finally accessing missing pipelineTask status",
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.notask.status)."},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
+			Paths:   []string{"finally[0].params[notask-status].value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
