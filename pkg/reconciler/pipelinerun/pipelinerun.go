@@ -175,15 +175,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		// and may not have had all of the assumed default specified.
 		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-		if _, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc); err != nil {
-			msg := fmt.Sprintf("Failed to get Pipeline Spec to process Pipeline Results for PipelineRun %s/%s: %v", pr.Namespace, pr.Name, err)
-			logger.Error(msg)
-			logger.Warnf("An error processing Pipeline Results overwrites existing Succeeded Condition for PipelineRun %s/%s: %v", pr.Namespace, pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
-			pr.Status.MarkFailed(ReasonCouldntGetPipeline, msg)
-		} else {
-			pr.Status.PipelineResults = resources.ApplyTaskResultsToPipelineResults(pipelineSpec.Results, pr.Status.TaskRuns)
-		}
-
 		if err := artifacts.CleanupArtifactStorage(ctx, pr, c.KubeClientSet); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
@@ -549,6 +540,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	pr.Status.TaskRuns = pipelineRunFacts.State.GetTaskRunsStatus(pr)
 	pr.Status.Runs = pipelineRunFacts.State.GetRunsStatus(pr)
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
+
+	if after.Status == corev1.ConditionTrue {
+		pr.Status.PipelineResults = resources.ApplyTaskResultsToPipelineResults(pipelineSpec.Results, pr.Status.TaskRuns)
+	}
+
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
 	return nil
 }
