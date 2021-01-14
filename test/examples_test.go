@@ -172,7 +172,7 @@ func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, 
 	}
 }
 
-func getExamplePaths(t *testing.T, dir string) []string {
+func getExamplePaths(t *testing.T, dir string, filter pathFilter) []string {
 	var examplePaths []string
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -185,6 +185,9 @@ func getExamplePaths(t *testing.T, dir string) []string {
 		}
 		if info.Name() == "no-ci" && info.IsDir() {
 			return filepath.SkipDir
+		}
+		if !filter(path) {
+			return nil
 		}
 		if info.IsDir() == false && filepath.Ext(info.Name()) == ".yaml" {
 			// Ignore test matching the regexp in the TEST_EXAMPLES_IGNORES
@@ -221,17 +224,26 @@ func extractTestName(baseDir string, path string) string {
 }
 
 func TestExamples(t *testing.T) {
-	testYamls(t, "../examples", kubectlCreate)
+	pf, err := getPathFilter(t)
+	if err != nil {
+		t.Fatal(err.Error())
+		return
+	}
+	testYamls(t, "../examples", kubectlCreate, pf)
 }
 
 func TestYamls(t *testing.T) {
-	testYamls(t, "./yamls", koCreate)
+	pf, err := getPathFilter(t)
+	if err != nil {
+		t.Fatal(err.Error())
+		return
+	}
+	testYamls(t, "./yamls", koCreate, pf)
 }
 
-func testYamls(t *testing.T, baseDir string, createFunc createFunc) {
-
+func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
 	t.Parallel()
-	for _, path := range getExamplePaths(t, baseDir) {
+	for _, path := range getExamplePaths(t, baseDir, filter) {
 		path := path // capture range variable
 		testName := extractTestName(baseDir, path)
 		waitValidateFunc := waitValidatePipelineRunDone

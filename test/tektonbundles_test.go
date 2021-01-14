@@ -37,13 +37,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -51,7 +49,7 @@ import (
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
 
 	t.Parallel()
 
@@ -191,7 +189,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 // TestTektonBundlesUsingRegularImage is an integration test which passes a non-Tekton bundle as a task reference.
 func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
 
 	t.Parallel()
 
@@ -276,7 +274,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 // task reference.
 func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, skipIfTektonOCIBundleDisabled)
+	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
 
 	t.Parallel()
 
@@ -515,16 +513,5 @@ func publishImg(ctx context.Context, t *testing.T, c *clients, namespace string,
 		} else {
 			t.Fatalf("Failed to create image. Pod logs are: \n%s", string(logs))
 		}
-	}
-}
-
-func skipIfTektonOCIBundleDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
-	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
-	}
-	enableTetkonOCIBundle, ok := featureFlagsCM.Data["enable-tekton-oci-bundles"]
-	if !ok || enableTetkonOCIBundle != "true" {
-		t.Skip("Skip because enable-tekton-oci-bundles != true")
 	}
 }
