@@ -17,9 +17,11 @@ limitations under the License.
 package resources_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
@@ -788,7 +790,80 @@ func TestApplyWorkspaces(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.binds)
-			got := resources.ApplyWorkspaces(tc.spec, tc.decls, tc.binds, vols)
+			got := resources.ApplyWorkspaces(context.Background(), tc.spec, tc.decls, tc.binds, vols)
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		spec  *v1beta1.TaskSpec
+		decls []v1beta1.WorkspaceDeclaration
+		binds []v1beta1.WorkspaceBinding
+		want  *v1beta1.TaskSpec
+	}{{
+		name: "step-workspace-with-custom-mountpath",
+		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `echo "$(workspaces.ws.path)"`,
+			Workspaces: []v1beta1.WorkspaceUsage{{
+				Name:      "ws",
+				MountPath: "/foo",
+			}},
+		}, {
+			Script: `echo "$(workspaces.ws.path)"`,
+		}}, Sidecars: []v1beta1.Sidecar{{
+			Script: `echo "$(workspaces.ws.path)"`,
+		}}},
+		decls: []v1beta1.WorkspaceDeclaration{{
+			Name: "ws",
+		}},
+		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `echo "/foo"`,
+			Workspaces: []v1beta1.WorkspaceUsage{{
+				Name:      "ws",
+				MountPath: "/foo",
+			}},
+		}, {
+			Script: `echo "/workspace/ws"`,
+		}}, Sidecars: []v1beta1.Sidecar{{
+			Script: `echo "/workspace/ws"`,
+		}}},
+	}, {
+		name: "sidecar-workspace-with-custom-mountpath",
+		spec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `echo "$(workspaces.ws.path)"`,
+		}}, Sidecars: []v1beta1.Sidecar{{
+			Script: `echo "$(workspaces.ws.path)"`,
+			Workspaces: []v1beta1.WorkspaceUsage{{
+				Name:      "ws",
+				MountPath: "/bar",
+			}},
+		}}},
+		decls: []v1beta1.WorkspaceDeclaration{{
+			Name: "ws",
+		}},
+		want: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Script: `echo "/workspace/ws"`,
+		}}, Sidecars: []v1beta1.Sidecar{{
+			Script: `echo "/bar"`,
+			Workspaces: []v1beta1.WorkspaceUsage{{
+				Name:      "ws",
+				MountPath: "/bar",
+			}},
+		}}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableAPIFields: "alpha",
+				},
+			})
+			vols := workspace.CreateVolumes(tc.binds)
+			got := resources.ApplyWorkspaces(ctx, tc.spec, tc.decls, tc.binds, vols)
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("TestApplyWorkspaces() got diff %s", diff.PrintWantGot(d))
 			}

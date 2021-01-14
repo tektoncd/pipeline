@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
@@ -44,6 +45,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
 	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
+	errs = errs.Also(validateWorkspaceUsages(ctx, ts))
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		errs = errs.Also(&apis.FieldError{
@@ -107,6 +109,46 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 		}
 		mountPaths[mountPath] = struct{}{}
 	}
+	return errs
+}
+
+// validateWorkspaceUsages checks that all WorkspaceUsage objects in Steps
+// refer to workspaces that are defined in the Task.
+//
+// This is an alpha feature and will fail validation if it's used by a step
+// or sidecar when the enable-api-fields feature gate is anything but "alpha".
+func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+	workspaces := ts.Workspaces
+	steps := ts.Steps
+	sidecars := ts.Sidecars
+
+	wsNames := sets.NewString()
+	for _, w := range workspaces {
+		wsNames.Insert(w.Name)
+	}
+
+	for stepIdx, step := range steps {
+		if len(step.Workspaces) != 0 {
+			errs = errs.Also(ValidateEnabledAPIFields(ctx, "step workspaces", config.AlphaAPIFields).ViaIndex(stepIdx).ViaField("steps"))
+		}
+		for workspaceIdx, w := range step.Workspaces {
+			if !wsNames.Has(w.Name) {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("undefined workspace %q", w.Name), "name").ViaIndex(workspaceIdx).ViaField("workspaces").ViaIndex(stepIdx).ViaField("steps"))
+			}
+		}
+	}
+
+	for sidecarIdx, sidecar := range sidecars {
+		if len(sidecar.Workspaces) != 0 {
+			errs = errs.Also(ValidateEnabledAPIFields(ctx, "sidecar workspaces", config.AlphaAPIFields).ViaIndex(sidecarIdx).ViaField("sidecars"))
+		}
+		for workspaceIdx, w := range sidecar.Workspaces {
+			if !wsNames.Has(w.Name) {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("undefined workspace %q", w.Name), "name").ViaIndex(workspaceIdx).ViaField("workspaces").ViaIndex(sidecarIdx).ViaField("sidecars"))
+			}
+		}
+	}
+
 	return errs
 }
 

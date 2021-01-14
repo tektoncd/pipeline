@@ -9,8 +9,12 @@ weight: 5
 - [Overview](#overview)
   - [`Workspaces` in `Tasks` and `TaskRuns`](#workspaces-in-tasks-and-taskruns)
   - [`Workspaces` in `Pipelines` and `PipelineRuns`](#workspaces-in-pipelines-and-pipelineruns)
+  - [Optional `Workspaces`](#optional-workspaces)
+  - [Isolated `Workspaces`](#isolated-workspaces)
 - [Configuring `Workspaces`](#configuring-workspaces)
   - [Using `Workspaces` in `Tasks`](#using-workspaces-in-tasks)
+    - [Isolating `Workspaces` to Specific `Steps` or `Sidecars`](#isolating-workspaces-to-specific-steps-or-sidecars)
+    - [Setting a default `TaskRun` `Workspace Binding`](#setting-a-default-taskrun-workspace-binding)
     - [Using `Workspace` variables in `Tasks`](#using-workspace-variables-in-tasks)
     - [Mapping `Workspaces` in `Tasks` to `TaskRuns`](#mapping-workspaces-in-tasks-to-taskruns)
     - [Examples of `TaskRun` definition using `Workspaces`](#examples-of-taskrun-definition-using-workspaces)
@@ -62,6 +66,9 @@ information in the `TaskRun` changes.
 configuration involved to add the required `volumeMount`. This allows for a
 long-running process in a `Sidecar` to share data with the executing `Steps` of a `Task`.
 
+**Note**: If the `enable-api-fields` feature-flag is set to `"alpha"` then workspaces
+will automatically be available to `Sidecars` too!
+
 ### `Workspaces` in `Pipelines` and `PipelineRuns`
 
 A `Pipeline` can use `Workspaces` to show how storage will be shared through
@@ -87,6 +94,22 @@ many uses:
 - A `Pipeline` may accept optional configuration that changes the linting or compilation
 parameters used.
 - An optional build cache may be provided to speed up compile times.
+
+See the section [Using `Workspaces` in `Tasks`](#using-workspaces-in-tasks) for more info on
+the `optional` field.
+
+### Isolated `Workspaces`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+for Isolated Workspaces to function.
+
+Certain kinds of data are more sensitive than others. To reduce exposure of sensitive data Task
+authors can isolate `Workspaces` to only those `Steps` and `Sidecars` that require access to
+them. The primary use-case for this is credentials but it can apply to any data that should have
+its access strictly limited to only specific container images.
+
+See the section [Isolating `Workspaces` to Specific `Steps` or `Sidecars`](#isolating-workspaces-to-specific-steps-or-sidecars)
+for more info on this feature.
 
 ## Configuring `Workspaces`
 
@@ -165,6 +188,57 @@ spec:
 
 **Note:** `Sidecars` _must_ explicitly opt-in to receiving the `Workspace` volume. Injected `Sidecars` from
 non-Tekton sources will not receive access to `Workspaces`.
+
+#### Isolating `Workspaces` to Specific `Steps` or `Sidecars`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+for Isolated Workspaces to function.
+
+To limit access to a `Workspace` from a subset of a `Task's` `Steps` or `Sidecars` requires
+adding a `workspaces` declaration to those sections. In the following example a `Task` has several
+`Steps` but only the one that performs a `git clone` will be able to access the SSH credentials
+passed into it:
+
+```yaml
+spec:
+  workspaces:
+  - name: ssh-credentials
+    description: An .ssh directory with keys, known_host and config files used to clone the repo.
+  steps:
+  - name: clone-repo
+    workspaces:
+    - name: ssh-credentials # This Step receives the sensitive workspace; the others do not.
+    image: git
+    script: # git clone ...
+  - name: build-source
+    image: third-party-source-builder:latest # This image doesn't get access to ssh-credentials.
+  - name: lint-source
+    image: third-party-source-linter:latest # This image doesn't get access to ssh-credentials.
+```
+
+It can potentially be useful to mount `Workspaces` to different locations on a per-`Step` or
+per-`Sidecar` basis and this is also supported:
+
+```yaml
+kind: Task
+spec:
+  workspaces:
+  - name: ws
+    mountPath: /workspaces/ws
+  steps:
+  - name: edit-files-1
+    workspaces:
+    - name: ws
+      mountPath: /foo # overrides mountPath
+  - name: edit-files-2
+    workspaces:
+    - name: ws # no mountPath specified so will use /workspaces/ws
+  sidecars:
+  - name: watch-files-on-workspace
+    workspaces:
+    - name: ws
+      mountPath: /files # overrides mountPath
+```
 
 #### Setting a default `TaskRun` `Workspace Binding`
 
