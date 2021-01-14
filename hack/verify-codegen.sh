@@ -52,6 +52,6 @@ if [[ $ret -eq 0 ]]
 then
   echo "${REPO_ROOT_DIR} up to date."
 else
-  echo "${REPO_ROOT_DIR} is out of date. Please run hack/update-codegen.sh"
+  echo "${REPO_ROOT_DIR} is out of date. Please run hack/update-codegen.sh and hack/update-openapigen.sh"
   exit 1
 fi
