@@ -7,6 +7,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 * [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
 * [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
 * [Customizing basic execution parameters](#customizing-basic-execution-parameters)
+  * [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
 * [Configuring High Availability](#configuring-high-availability)
 * [Configuring Tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
 * [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
@@ -356,6 +357,10 @@ The default is `false`. For more information, see the [associated issue](https:/
 - `enable-custom-tasks`: set this flag to `"true"` to enable the
 use of custom tasks in pipelines.
 
+- `enable-api-fields`: set this flag to "stable" to allow only the
+most stable features to be used. Set it to "alpha" to allow alpha
+features to be used.
+
 For example:
 
 ```yaml
@@ -366,6 +371,7 @@ metadata:
 data:
   disable-home-env-overwrite: "true" # Tekton will not override the $HOME variable for individual Steps.
   disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
+  enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
 ```
 
 ## Configuring High Availability

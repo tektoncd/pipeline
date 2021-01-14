@@ -87,3 +87,6 @@ data:
   # This is an experimental feature and thus should still be considered
   # an alpha feature.
   enable-custom-tasks: "false"
+  # Setting this flag will determine which gated features are enabled.
+  # Acceptable values are "stable" or "alpha".
+  enable-api-fields: "stable"

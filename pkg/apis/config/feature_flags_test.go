@@ -36,6 +36,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				EnableAPIFields:                  "stable",
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -48,6 +49,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    true,
 				EnableTektonOCIBundles:           true,
 				EnableCustomTasks:                true,
+				EnableAPIFields:                  "alpha",
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -62,6 +64,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
 		RunningInEnvWithInjectedSidecars: true,
+		EnableAPIFields:                  "stable",
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -97,10 +100,27 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 	}
 }
 
+func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
+	for _, tc := range []struct {
+		fileName string
+	}{{
+		fileName: "feature-flags-invalid-boolean",
+	}, {
+		fileName: "feature-flags-invalid-enable-api-fields",
+	}} {
+		t.Run(tc.fileName, func(t *testing.T) {
+			cm := test.ConfigMapFromTestFile(t, tc.fileName)
+			if _, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
+				t.Error("expected error but received nil")
+			}
+		})
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if flags, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(flags, expectedConfig); d != "" {
+		if d := cmp.Diff(expectedConfig, flags); d != "" {
 			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 		}
 	} else {

@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -32,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	"knative.dev/pkg/system"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -45,7 +43,7 @@ func TestCustomTask(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, skipIfCustomTasksDisabled)
+	c, namespace := setup(ctx, t, requireGate("enable-custom-tasks", "true"))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -197,16 +195,5 @@ func TestCustomTask(t *testing.T) {
 	}
 	if d := cmp.Diff(expectedPipelineResults, pr.Status.PipelineResults); d != "" {
 		t.Fatalf("Unexpected PipelineResults: %s", diff.PrintWantGot(d))
-	}
-}
-
-func skipIfCustomTasksDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
-	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
-	}
-	enableCustomTasks, ok := featureFlagsCM.Data["enable-custom-tasks"]
-	if !ok || enableCustomTasks != "true" {
-		t.Skip("Skip because enable-custom-tasks != true")
 	}
 }
