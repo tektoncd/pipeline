@@ -186,23 +186,18 @@ func TestCustomTask(t *testing.T) {
 	}
 
 	// Validate that the pipeline's result reference to the custom task's result was resolved.
-	// This validation has been commented out because of a race condition.
-	// The pipelinerun reconciler updates the pipelinerun results AFTER the pipelinerun is marked DONE.
-	// So when the test case sees the pipelinerun is done, the results may or may not have been
-	// updated yet.  The FUBAR logic in the pipelinerun reconciler needs to be fixed to not mark
-	// the PR done before all the status updates are made.
 
-	// expectedPipelineResults := []v1beta1.PipelineRunResult{{
-	//	Name:  "prResult",
-	//	Value: "aResultValue",
-	// }}
+	expectedPipelineResults := []v1beta1.PipelineRunResult{{
+		Name:  "prResult",
+		Value: "aResultValue",
+	}}
 
-	// if len(pr.Status.PipelineResults) == 0 {
-	//	t.Fatalf("Expected PipelineResults but there are none")
-	// }
-	// if d := cmp.Diff(expectedPipelineResults, pr.Status.PipelineResults); d != "" {
-	// 	t.Fatalf("Unexpected PipelineResults: %s", diff.PrintWantGot(d))
-	// }
+	if len(pr.Status.PipelineResults) == 0 {
+		t.Fatalf("Expected PipelineResults but there are none")
+	}
+	if d := cmp.Diff(expectedPipelineResults, pr.Status.PipelineResults); d != "" {
+		t.Fatalf("Unexpected PipelineResults: %s", diff.PrintWantGot(d))
+	}
 }
 
 func skipIfCustomTasksDisabled(ctx context.Context, t *testing.T, c *clients, namespace string) {
