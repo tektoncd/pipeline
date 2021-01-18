@@ -24,11 +24,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
@@ -619,6 +621,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description string
 		results     []v1beta1.PipelineResult
 		statuses    map[string]*v1beta1.PipelineRunTaskRunStatus
+		runStatuses map[string]*v1beta1.PipelineRunRunStatus
 		expected    []v1beta1.PipelineRunResult
 	}{{
 		description: "no-pipeline-results-no-returned-results",
@@ -874,9 +877,167 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: "do, rae, mi, rae, do",
 		}},
+	}, {
+		description: "no-run-results-no-returned-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: "$(tasks.customtask.results.foo)",
+		}},
+		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
+			"task1": {
+				PipelineTaskName: "customtask",
+				Status: &runv1alpha1.RunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					RunStatusFields: runv1alpha1.RunStatusFields{
+						Results: []runv1alpha1.RunResult{},
+					},
+				},
+			},
+		},
+		expected: nil,
+	}, {
+		description: "wrong-customtask-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: "$(tasks.customtask.results.foo)",
+		}},
+		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
+			"task1": {
+				PipelineTaskName: "differentcustomtask",
+				Status: &runv1alpha1.RunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					RunStatusFields: runv1alpha1.RunStatusFields{
+						Results: []runv1alpha1.RunResult{{
+							Name:  "foo",
+							Value: "bar",
+						}},
+					},
+				},
+			},
+		},
+		expected: nil,
+	}, {
+		description: "right-customtask-name-wrong-result-name-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: "$(tasks.customtask.results.foo)",
+		}},
+		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
+			"task1": {
+				PipelineTaskName: "customtask",
+				Status: &runv1alpha1.RunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					RunStatusFields: runv1alpha1.RunStatusFields{
+						Results: []runv1alpha1.RunResult{{
+							Name:  "notfoo",
+							Value: "bar",
+						}},
+					},
+				},
+			},
+		},
+		expected: nil,
+	}, {
+		description: "unsuccessful-run-no-returned-result",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: "$(tasks.customtask.results.foo)",
+		}},
+		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
+			"task1": {
+				PipelineTaskName: "customtask",
+				Status: &runv1alpha1.RunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}},
+					},
+					RunStatusFields: runv1alpha1.RunStatusFields{
+						Results: []runv1alpha1.RunResult{{
+							Name:  "foo",
+							Value: "bar",
+						}},
+					},
+				},
+			},
+		},
+		expected: nil,
+	}, {
+		description: "multiple-results-custom-and-normal-tasks",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: "$(tasks.customtask.results.foo)",
+		}, {
+			Name:  "pipeline-result-2",
+			Value: "$(tasks.customtask.results.foo), $(tasks.normaltask.results.baz), $(tasks.customtask.results.bar), $(tasks.normaltask.results.baz), $(tasks.customtask.results.foo)",
+		}},
+		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
+			"task1": {
+				PipelineTaskName: "customtask",
+				Status: &runv1alpha1.RunStatus{
+					Status: duckv1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					RunStatusFields: runv1alpha1.RunStatusFields{
+						Results: []runv1alpha1.RunResult{{
+							Name:  "foo",
+							Value: "do",
+						}, {
+							Name:  "bar",
+							Value: "mi",
+						}},
+					},
+				},
+			},
+		},
+		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"task2": {
+				PipelineTaskName: "normaltask",
+				Status: &v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						}},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "baz",
+							Value: "rae",
+						}},
+					},
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: "do",
+		}, {
+			Name:  "pipeline-result-2",
+			Value: "do, rae, mi, rae, do",
+		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received := ApplyTaskResultsToPipelineResults(tc.results, tc.statuses)
+			received := ApplyTaskResultsToPipelineResults(tc.results, tc.statuses, tc.runStatuses)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}

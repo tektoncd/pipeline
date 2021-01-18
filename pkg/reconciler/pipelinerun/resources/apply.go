@@ -141,15 +141,23 @@ func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]st
 	return params
 }
 
-// ApplyTaskResultsToPipelineResults applies the results of completed TasksRuns to a Pipeline's
+// ApplyTaskResultsToPipelineResults applies the results of completed TasksRuns and Runs to a Pipeline's
 // list of PipelineResults, returning the computed set of PipelineRunResults. References to
-// non-existent TaskResults or failed TaskRuns result in a PipelineResult being considered invalid
+// non-existent TaskResults or failed TaskRuns or Runs result in a PipelineResult being considered invalid
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
-func ApplyTaskResultsToPipelineResults(results []v1beta1.PipelineResult, taskRunStatuses map[string]*v1beta1.PipelineRunTaskRunStatus) []v1beta1.PipelineRunResult {
+func ApplyTaskResultsToPipelineResults(
+	results []v1beta1.PipelineResult,
+	taskRunStatuses map[string]*v1beta1.PipelineRunTaskRunStatus,
+	runStatuses map[string]*v1beta1.PipelineRunRunStatus) []v1beta1.PipelineRunResult {
+
 	taskStatuses := map[string]*v1beta1.PipelineRunTaskRunStatus{}
 	for _, trStatus := range taskRunStatuses {
 		taskStatuses[trStatus.PipelineTaskName] = trStatus
+	}
+	customTaskStatuses := map[string]*v1beta1.PipelineRunRunStatus{}
+	for _, runStatus := range runStatuses {
+		customTaskStatuses[runStatus.PipelineTaskName] = runStatus
 	}
 
 	var runResults []v1beta1.PipelineRunResult = nil
@@ -161,8 +169,16 @@ func ApplyTaskResultsToPipelineResults(results []v1beta1.PipelineResult, taskRun
 			if _, isMemoized := stringReplacements[variable]; isMemoized {
 				continue
 			}
-			if resultValue := taskResultValue(variable, taskStatuses); resultValue != nil {
-				stringReplacements[variable] = *resultValue
+			variableParts := strings.Split(variable, ".")
+			if len(variableParts) == 4 && variableParts[0] == "tasks" && variableParts[2] == "results" {
+				taskName, resultName := variableParts[1], variableParts[3]
+				if resultValue := taskResultValue(taskName, resultName, taskStatuses); resultValue != nil {
+					stringReplacements[variable] = *resultValue
+				} else if resultValue := runResultValue(taskName, resultName, customTaskStatuses); resultValue != nil {
+					stringReplacements[variable] = *resultValue
+				} else {
+					validPipelineResult = false
+				}
 			} else {
 				validPipelineResult = false
 			}
@@ -183,15 +199,9 @@ func ApplyTaskResultsToPipelineResults(results []v1beta1.PipelineResult, taskRun
 	return runResults
 }
 
-// taskResultValue returns a pointer to the result value for a given task result variable. A nil
-// pointer is returned if the variable is invalid for any reason.
-func taskResultValue(variable string, taskStatuses map[string]*v1beta1.PipelineRunTaskRunStatus) *string {
-	variableParts := strings.Split(variable, ".")
-	if len(variableParts) != 4 || variableParts[0] != "tasks" || variableParts[2] != "results" {
-		return nil
-	}
-
-	taskName, resultName := variableParts[1], variableParts[3]
+// taskResultValue checks if a TaskRun result exists for a given pipeline task and result name.
+// A nil pointer is returned if the variable is invalid for any reason.
+func taskResultValue(taskName string, resultName string, taskStatuses map[string]*v1beta1.PipelineRunTaskRunStatus) *string {
 
 	status, taskExists := taskStatuses[taskName]
 	if !taskExists || status.Status == nil {
@@ -206,6 +216,28 @@ func taskResultValue(variable string, taskStatuses map[string]*v1beta1.PipelineR
 	for _, trResult := range status.Status.TaskRunResults {
 		if trResult.Name == resultName {
 			return &trResult.Value
+		}
+	}
+	return nil
+}
+
+// runResultValue checks if a Run result exists for a given pipeline task and result name.
+// A nil pointer is returned if the variable is invalid for any reason.
+func runResultValue(taskName string, resultName string, runStatuses map[string]*v1beta1.PipelineRunRunStatus) *string {
+
+	status, runExists := runStatuses[taskName]
+	if !runExists || status.Status == nil {
+		return nil
+	}
+
+	cond := status.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil || cond.Status != corev1.ConditionTrue {
+		return nil
+	}
+
+	for _, runResult := range status.Status.Results {
+		if runResult.Name == resultName {
+			return &runResult.Value
 		}
 	}
 	return nil
