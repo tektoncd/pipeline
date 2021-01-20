@@ -4823,6 +4823,118 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 	}
 }
 
+// TestReconcile_OptionalWorkspacesOmitted checks that an optional workspace declared by
+// a Task and a Pipeline can be omitted by a PipelineRun and the run will still start
+// successfully without an error.
+func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
+	names.TestingSeed()
+
+	ctx := context.Background()
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	ctx = cfg.ToContext(ctx)
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-success", Namespace: "foo"},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+					Name:     "optional-workspace",
+					Optional: true,
+				}},
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "unit-test-1",
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Workspaces: []v1beta1.WorkspaceDeclaration{{
+							Name:     "ws",
+							Optional: true,
+						}},
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name:      "ws",
+						Workspace: "optional-workspace",
+					}},
+				}},
+			},
+		},
+	}}
+
+	// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
+	d := test.Data{
+		PipelineRuns: prs,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", nil, false)
+
+	// Check that the expected TaskRun was created
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions())[0]
+	expectedTaskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-pipeline-run-success-unit-test-1-9l9zj",
+			Namespace:   "foo",
+			Annotations: map[string]string{},
+			Labels: map[string]string{
+				"tekton.dev/pipeline":                              "test-pipeline-run-success",
+				"tekton.dev/pipelineRun":                           "test-pipeline-run-success",
+				pipeline.GroupName + pipeline.PipelineTaskLabelKey: "unit-test-1",
+			},
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "PipelineRun",
+				Name:       "test-pipeline-run-success", Controller: &trueb,
+				BlockOwnerDeletion: &trueb,
+			}},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			ServiceAccountName: "test-sa",
+			Resources:          &v1beta1.TaskRunResources{},
+			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			TaskSpec: &v1beta1.TaskSpec{
+				Workspaces: []v1beta1.WorkspaceDeclaration{{
+					Name:     "ws",
+					Optional: true,
+				}},
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image: "foo:latest",
+					},
+				}},
+			},
+		},
+	}
+
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+
+	// This PipelineRun is in progress now and the status should reflect that
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
+	}
+	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
+		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
+	}
+
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Errorf("Expected PipelineRun status to include the TaskRun status item that ran immediately: %v", reconciledRun.Status.TaskRuns)
+	}
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-9l9zj"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+}
+
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1beta1.TaskRun {
 	return tb.TaskRun(tr,
 		tb.TaskRunNamespace("foo"),
