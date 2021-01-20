@@ -763,7 +763,18 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 			}
 			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
 		} else {
-			return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
+			workspaceIsOptional := false
+			if rprt.ResolvedTaskResources != nil && rprt.ResolvedTaskResources.TaskSpec != nil {
+				for _, taskWorkspaceDeclaration := range rprt.ResolvedTaskResources.TaskSpec.Workspaces {
+					if taskWorkspaceDeclaration.Name == taskWorkspaceName && taskWorkspaceDeclaration.Optional {
+						workspaceIsOptional = true
+						break
+					}
+				}
+			}
+			if !workspaceIsOptional {
+				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
+			}
 		}
 	}
 	return workspaces, pipelinePVCWorkspaceName, nil
