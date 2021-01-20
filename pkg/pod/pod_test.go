@@ -1260,7 +1260,7 @@ script-heredoc-randomly-generated-78c5n
 func TestMakeLabels(t *testing.T) {
 	taskRunName := "task-run-name"
 	want := map[string]string{
-		taskRunLabelKey: taskRunName,
+		TaskRunLabelKey: taskRunName,
 		"foo":           "bar",
 		"hello":         "world",
 	}
