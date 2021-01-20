@@ -88,6 +88,47 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 gcloud auth configure-docker
 ```
 
+Besides, if your registry `KO_DOCKER_REPO` is private, then you also should create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets) 
+and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` serviceAccounts accordingly to pull images.
+
+- Create a secret
+```yaml
+kubectl create secret docker-registry ${SECRET_NAME} \
+  --docker-username=${USERNAME} \
+  --docker-password=${PASSWORD} \
+  --docker-email=me@here.com \
+  --namespace=tekton-pipelines
+```
+
+- Add it to serviceAccount
+
+Because you will install tekton-pipelines use `ko` later, before that, you need to change [the contents of serviceAccount](./config/200-serviceaccount.yaml) to below:
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+imagePullSecrets:
+  - name: ${SECRET_NAME}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+imagePullSecrets:
+  - name: ${SECRET_NAME}
+```
+
 After setting `GOPATH` and putting `$GOPATH/bin` on your `PATH`, you must then install these tools:
 
 3.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or
