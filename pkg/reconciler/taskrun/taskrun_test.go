@@ -3353,3 +3353,82 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 		})
 	}
 }
+
+func TestPodAdoption(t *testing.T) {
+
+	tr := tb.TaskRun("test-taskrun",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunLabel("mylabel", "myvalue"),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(
+			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
+		)),
+	)
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+	}
+
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reconcile the TaskRun.  This creates a Pod.
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
+		t.Errorf("Error reconciling TaskRun. Got error %v", err)
+	}
+
+	// Get the updated TaskRun.
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun: %v", err)
+	}
+
+	// Save the name of the Pod that was created.
+	podName := reconciledRun.Status.PodName
+	if podName == "" {
+		t.Fatal("Expected a pod to be created but the pod name is not set in the TaskRun")
+	}
+
+	// Add a label to the TaskRun.  This tests a scenario in issue 3656 which could prevent the reconciler
+	// from finding a Pod when the pod name is missing from the status.
+	reconciledRun.ObjectMeta.Labels["bah"] = "humbug"
+	reconciledRun, err = clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Update(testAssets.Ctx, reconciledRun, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error when updating status: %v", err)
+	}
+
+	// The label update triggers another reconcile.  Depending on timing, the TaskRun passed to the reconcile may or may not
+	// have the updated status with the name of the created pod.  Clear the status because we want to test the case where the
+	// status does not have the pod name.
+	reconciledRun.Status = v1beta1.TaskRunStatus{}
+	if _, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").UpdateStatus(testAssets.Ctx, reconciledRun, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Unexpected error when updating status: %v", err)
+	}
+
+	// Reconcile the TaskRun again.
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
+		t.Errorf("Error reconciling TaskRun again. Got error %v", err)
+	}
+
+	// Get the updated TaskRun.
+	reconciledRun, err = clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun after second reconcile: %v", err)
+	}
+
+	// Verify that the reconciler found the existing pod instead of creating a new one.
+	if reconciledRun.Status.PodName != podName {
+		t.Fatalf("First reconcile created pod %s but TaskRun now has another pod name %s", podName, reconciledRun.Status.PodName)
+	}
+
+}

@@ -389,8 +389,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			return err
 		}
 	} else {
+		// List pods that have a label with this TaskRun name.  Do not include other labels from the
+		// TaskRun in this selector.  The user could change them during the lifetime of the TaskRun so the
+		// current labels may not be set on a previously created Pod.
+		labelSelector := fmt.Sprintf("%s=%s", podconvert.TaskRunLabelKey, tr.Name)
 		pos, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: getLabelSelector(tr),
+			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			logger.Errorf("Error listing pods: %v", err)
@@ -705,16 +709,6 @@ func resourceImplBinding(resources map[string]*resourcev1alpha1.PipelineResource
 		p[rName] = i
 	}
 	return p, nil
-}
-
-// getLabelSelector get label of centain taskrun
-func getLabelSelector(tr *v1beta1.TaskRun) string {
-	labels := []string{}
-	labelsMap := podconvert.MakeLabels(tr)
-	for key, value := range labelsMap {
-		labels = append(labels, fmt.Sprintf("%s=%s", key, value))
-	}
-	return strings.Join(labels, ",")
 }
 
 // updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
