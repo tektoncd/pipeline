@@ -53,6 +53,8 @@ func NewSCMHandler(logger *zap.SugaredLogger, raw, provider, token string, skipT
 		handler, err = githubHandlerFromURL(u, token, skipTLSVerify, logger)
 	case "gitlab":
 		handler, err = gitlabHandlerFromURL(u, token, skipTLSVerify, logger)
+	case "gitea":
+		handler, err = gitlabHandlerFromURL(u, token, skipTLSVerify, logger)
 	default:
 		return nil, fmt.Errorf("unsupported pr url: %s", raw)
 	}
