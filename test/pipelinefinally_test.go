@@ -50,6 +50,9 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	}
 
 	task := getFailTask(t, namespace)
+	task.Spec.Results = append(task.Spec.Results, v1beta1.TaskResult{
+		Name: "result",
+	})
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
@@ -60,6 +63,9 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	}
 
 	successTask := getSuccessTask(t, namespace)
+	successTask.Spec.Results = append(successTask.Spec.Results, v1beta1.TaskResult{
+		Name: "result",
+	})
 	if _, err := c.TaskClient.Create(ctx, successTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
@@ -70,6 +76,9 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	}
 
 	taskProducingResult := getSuccessTaskProducingResults(t, namespace)
+	taskProducingResult.Spec.Results = append(taskProducingResult.Spec.Results, v1beta1.TaskResult{
+		Name: "result",
+	})
 	if _, err := c.TaskClient.Create(ctx, taskProducingResult, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task producing task results: %s", err)
 	}
