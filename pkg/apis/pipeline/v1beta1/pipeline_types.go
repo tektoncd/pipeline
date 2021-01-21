@@ -200,37 +200,13 @@ func (pt PipelineTask) resourceDeps() []string {
 		for _, rd := range cond.Resources {
 			resourceDeps = append(resourceDeps, rd.From...)
 		}
-		for _, param := range cond.Params {
-			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
-			if ok {
-				resultRefs := NewResultRefs(expressions)
-				for _, resultRef := range resultRefs {
-					resourceDeps = append(resourceDeps, resultRef.PipelineTask)
-				}
-			}
-		}
 	}
 
-	// Add any dependents from task results
-	for _, param := range pt.Params {
-		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
-		if ok {
-			resultRefs := NewResultRefs(expressions)
-			for _, resultRef := range resultRefs {
-				resourceDeps = append(resourceDeps, resultRef.PipelineTask)
-			}
-		}
+	// Add any dependents from result references.
+	for _, ref := range PipelineTaskResultRefs(&pt) {
+		resourceDeps = append(resourceDeps, ref.PipelineTask)
 	}
-	// Add any dependents from when expressions
-	for _, whenExpression := range pt.WhenExpressions {
-		expressions, ok := whenExpression.GetVarSubstitutionExpressions()
-		if ok {
-			resultRefs := NewResultRefs(expressions)
-			for _, resultRef := range resultRefs {
-				resourceDeps = append(resourceDeps, resultRef.PipelineTask)
-			}
-		}
-	}
+
 	return resourceDeps
 }
 

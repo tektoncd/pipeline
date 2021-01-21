@@ -113,65 +113,23 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 	return deduped
 }
 
-// convertToResultRefs replaces result references for all params and when expressions of the resolved pipeline run task
+// convertToResultRefs walks a PipelineTask looking for result references. If any are
+// found they are resolved to a value by searching pipelineRunState. The list of resolved
+// references are returned. If an error is encountered due to an invalid result reference
+// then a nil list and error is returned instead.
 func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineRunTask) (ResolvedResultRefs, error) {
 	var resolvedResultRefs ResolvedResultRefs
-	for _, condition := range target.PipelineTask.Conditions {
-		condRefs, err := convertParams(condition.Params, pipelineRunState, condition.ConditionRef)
+	for _, ref := range v1beta1.PipelineTaskResultRefs(target.PipelineTask) {
+		resolved, err := resolveResultRef(pipelineRunState, ref)
 		if err != nil {
 			return nil, err
 		}
-		resolvedResultRefs = append(resolvedResultRefs, condRefs...)
+		resolvedResultRefs = append(resolvedResultRefs, resolved)
 	}
-
-	taskParamsRefs, err := convertParams(target.PipelineTask.Params, pipelineRunState, target.PipelineTask.Name)
-	if err != nil {
-		return nil, err
-	}
-	resolvedResultRefs = append(resolvedResultRefs, taskParamsRefs...)
-
-	taskWhenExpressionsRefs, err := convertWhenExpressions(target.PipelineTask.WhenExpressions, pipelineRunState, target.PipelineTask.Name)
-	if err != nil {
-		return nil, err
-	}
-	resolvedResultRefs = append(resolvedResultRefs, taskWhenExpressionsRefs...)
-
 	return resolvedResultRefs, nil
 }
 
-func convertParams(params []v1beta1.Param, pipelineRunState PipelineRunState, name string) (ResolvedResultRefs, error) {
-	var resolvedParams ResolvedResultRefs
-	for _, param := range params {
-		resolvedResultRefs, err := extractResultRefsForParam(pipelineRunState, param)
-		if err != nil {
-			return nil, fmt.Errorf("unable to find result referenced by param %q in %q: %w", param.Name, name, err)
-		}
-		if resolvedResultRefs != nil {
-			resolvedParams = append(resolvedParams, resolvedResultRefs...)
-		}
-	}
-	return resolvedParams, nil
-}
-
-func convertWhenExpressions(whenExpressions []v1beta1.WhenExpression, pipelineRunState PipelineRunState, name string) (ResolvedResultRefs, error) {
-	var resolvedWhenExpressions ResolvedResultRefs
-	for _, whenExpression := range whenExpressions {
-		expressions, ok := whenExpression.GetVarSubstitutionExpressions()
-		if ok {
-			resolvedResultRefs, err := extractResultRefs(expressions, pipelineRunState)
-			if err != nil {
-				return nil, fmt.Errorf("unable to find result referenced by when expression with input %q in task %q: %w", whenExpression.GetInput(), name, err)
-			}
-			if resolvedResultRefs != nil {
-				resolvedWhenExpressions = append(resolvedWhenExpressions, resolvedResultRefs...)
-			}
-		}
-	}
-	return resolvedWhenExpressions, nil
-}
-
 func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, error) {
-
 	referencedPipelineTask := pipelineState.ToMap()[resultRef.PipelineTask]
 	if referencedPipelineTask == nil {
 		return nil, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)

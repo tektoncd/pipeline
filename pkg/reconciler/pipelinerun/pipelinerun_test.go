@@ -5153,6 +5153,153 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 	}
 }
 
+func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T) {
+	names.TestingSeed()
+
+	ctx := context.Background()
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	ctx = cfg.ToContext(ctx)
+
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun-param-invalid-result-variable",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt0",
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}, {
+					Name: "pt1",
+					Params: []v1beta1.Param{{
+						Name:  "p",
+						Value: *v1beta1.NewArrayOrString("$(tasks.pt0.results.r1)"),
+					}},
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "p",
+						}},
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun-pipeline-result-invalid-result-variable",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt0",
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}, {
+					Name: "pt1",
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}},
+				Results: []v1beta1.PipelineResult{{
+					Name:  "pr",
+					Value: "$(tasks.pt0.results.r)",
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun-with-optional-workspace-validation",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+					Name:     "optional-workspace",
+					Optional: true,
+				}},
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "unit-test-1",
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name:      "ws",
+						Workspace: "optional-workspace",
+					}},
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Workspaces: []v1beta1.WorkspaceDeclaration{{
+							Name:     "ws",
+							Optional: false,
+						}},
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}},
+			},
+		},
+	}}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := NewPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	run1, _ := prt.reconcileRun("foo", "pipelinerun-param-invalid-result-variable", nil, true)
+	run2, _ := prt.reconcileRun("foo", "pipelinerun-pipeline-result-invalid-result-variable", nil, true)
+	run3, _ := prt.reconcileRun("foo", "pipelinerun-with-optional-workspace-validation", nil, true)
+
+	cond1 := run1.Status.GetCondition(apis.ConditionSucceeded)
+	cond2 := run2.Status.GetCondition(apis.ConditionSucceeded)
+	cond3 := run3.Status.GetCondition(apis.ConditionSucceeded)
+
+	for _, c := range []*apis.Condition{cond1, cond2, cond3} {
+		if c.Status != corev1.ConditionFalse {
+			t.Errorf("expected Succeeded/False condition but saw: %v", c)
+		}
+	}
+
+	if cond1.Reason != ReasonInvalidTaskResultReference {
+		t.Errorf("expected invalid task reference condition but saw: %v", cond1)
+	}
+
+	if cond2.Reason != ReasonInvalidTaskResultReference {
+		t.Errorf("expected invalid task reference condition but saw: %v", cond2)
+	}
+
+	if cond3.Reason != ReasonRequiredWorkspaceMarkedOptional {
+		t.Errorf("expected optional workspace not supported condition but saw: %v", cond3)
+	}
+}
+
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1beta1.TaskRun {
 	return tb.TaskRun(tr,
 		tb.TaskRunNamespace("foo"),

@@ -104,6 +104,9 @@ const (
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	ReasonInvalidTaskResultReference = "InvalidTaskResultReference"
+	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
+	// has been passed to a Task that is expecting a non-optional workspace
+	ReasonRequiredWorkspaceMarkedOptional = "RequiredWorkspaceMarkedOptional"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -502,6 +505,24 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	if pipelineRunFacts.State.IsBeforeFirstTaskRun() {
+		if err := resources.ValidatePipelineTaskResults(pipelineRunFacts.State); err != nil {
+			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			return controller.NewPermanentError(err)
+		}
+
+		if err := resources.ValidatePipelineResults(pipelineSpec, pipelineRunFacts.State); err != nil {
+			logger.Errorf("Failed to resolve task result reference for %q with error %v", pr.Name, err)
+			pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
+			return controller.NewPermanentError(err)
+		}
+
+		if err := resources.ValidateOptionalWorkspaces(pipelineSpec.Workspaces, pipelineRunFacts.State); err != nil {
+			logger.Errorf("Optional workspace not supported by task: %v", err)
+			pr.Status.MarkFailed(ReasonRequiredWorkspaceMarkedOptional, err.Error())
+			return controller.NewPermanentError(err)
+		}
+
 		if pr.HasVolumeClaimTemplate() {
 			// create workspace PVC from template
 			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
