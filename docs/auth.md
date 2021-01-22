@@ -368,7 +368,7 @@ the credentials specified in the `Secret`. When the `Steps` execute, Tekton uses
      password: <cleartext password>
    ```
 
-   In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
+   In the above example, the value for `tekton.dev/docker-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
 1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
