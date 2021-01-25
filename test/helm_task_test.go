@@ -204,7 +204,7 @@ func getCheckServiceTask(namespace, checkServiceTaskName string) *v1beta1.Task {
 				Name: "serviceUrl", Type: v1beta1.ParamTypeString, Description: "Service url",
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: "jwilder/dockerize",
+				Image: getTestImage(dockerizeImage),
 				Args: []string{
 					"-wait",
 					"$(inputs.params.serviceUrl)",

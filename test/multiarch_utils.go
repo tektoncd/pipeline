@@ -42,6 +42,8 @@ const (
 	helmImage
 	//kaniko executor image
 	kanikoImage
+	// dockerize image
+	dockerizeImage
 )
 
 func init() {
@@ -62,19 +64,21 @@ func getTestArch() string {
 func initImageNames() map[int]string {
 	if getTestArch() == "s390x" {
 		return map[int]string{
-			busyboxImage:  "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
-			registryImage: "ibmcom/registry:2.6.2.5",
-			kubectlImage:  "ibmcom/kubectl:v1.13.9",
-			helmImage:     "ibmcom/alpine-helm-s390x:latest",
-			kanikoImage:   "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
+			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
+			registryImage:  "ibmcom/registry:2.6.2.5",
+			kubectlImage:   "ibmcom/kubectl:v1.13.9",
+			helmImage:      "ibmcom/alpine-helm-s390x:latest",
+			kanikoImage:    "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
+			dockerizeImage: "ibmcom/dockerize-s390x",
 		}
 	}
 	return map[int]string{
-		busyboxImage:  "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
-		registryImage: "registry",
-		kubectlImage:  "lachlanevenson/k8s-kubectl",
-		helmImage:     "alpine/helm:3.1.2",
-		kanikoImage:   "gcr.io/kaniko-project/executor:v1.3.0",
+		busyboxImage:   "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+		registryImage:  "registry",
+		kubectlImage:   "lachlanevenson/k8s-kubectl",
+		helmImage:      "alpine/helm:3.1.2",
+		kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
+		dockerizeImage: "jwilder/dockerize",
 	}
 }
 
@@ -102,7 +106,7 @@ func imageNamesMapping() map[string]string {
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
 			"docker:dind":                           "ibmcom/docker-s390x:dind",
 			"docker":                                "docker:18.06.3",
-			"mikefarah/yq":                          "danielxlee/yq:2.4.0",
+			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
 			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
 			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
@@ -123,8 +127,7 @@ func initExcludedTests() sets.String {
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",
-			//e2e
-			"TestHelmDeployPipelineRun",
+			"TestYamls/yamls/v1beta1/pipelineruns/pipelinerun.yaml",
 		)
 	}
 	return sets.NewString()
