@@ -7,6 +7,9 @@ spec:
   - name: imageRegistry
   - name: pathToProject
     description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+  - name: platforms
+    description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
+    default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
   resources:
     inputs:
     - name: source
@@ -48,14 +51,14 @@ spec:
         docker context create context1
 
         #create builder
-        docker buildx create context1 --name builder-buildx1 --driver docker-container --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64 --use
+        docker buildx create context1 --name builder-buildx1 --driver docker-container --platform $(params.platforms) --use
 
         #check the state
         docker buildx inspect --bootstrap --builder builder-buildx1
 
         #build multi-arch image
         docker buildx build \
-        --platform linux/amd64,linux/s390x,linux/ppc64le,linux/arm64 \
+        --platform $(params.platforms) \
         --tag $(params.imageRegistry)/$(params.pathToProject)/$(resources.outputs.builtBaseImage.url) \
         --push \
         /workspace/go/src/github.com/tektoncd/pipeline/images
