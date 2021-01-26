@@ -100,10 +100,9 @@ To configure one or more `Workspaces` in a `Task`, add a `workspaces` list with 
 - `description` - An informative string describing the purpose of the `Workspace`
 - `readOnly` - A boolean declaring whether the `Task` will write to the `Workspace`. Defaults to `false`.
 - `optional` - A boolean indicating whether a TaskRun can omit the `Workspace`. Defaults to `false`.
-- `mountPath` - A path to a location on disk where the workspace will be available to `Steps`. Relative
-  paths will be prepended with `/workspace`. If a `mountPath` is not provided the workspace
-  will be placed by default at `/workspace/<name>` where `<name>` is the workspace's
-  unique name.
+- `mountPath` - A path to a location on disk where the workspace will be available to `Steps`. If a
+  `mountPath` is not provided the workspace will be placed by default at `/workspace/<name>` where `<name>`
+  is the workspace's unique name.
 
 Note the following:
 
