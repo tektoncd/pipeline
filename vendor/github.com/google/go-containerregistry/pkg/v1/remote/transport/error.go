@@ -89,7 +89,8 @@ func (e *Error) responseErr() string {
 // Temporary returns whether the request that preceded the error is temporary.
 func (e *Error) Temporary() bool {
 	if len(e.Errors) == 0 {
-		return false
+		_, ok := temporaryStatusCodes[e.StatusCode]
+		return ok
 	}
 	for _, d := range e.Errors {
 		if _, ok := temporaryErrorCodes[d.Code]; !ok {
@@ -159,6 +160,12 @@ const (
 var temporaryErrorCodes = map[ErrorCode]struct{}{
 	BlobUploadInvalidErrorCode: {},
 	TooManyRequestsErrorCode:   {},
+}
+
+var temporaryStatusCodes = map[int]struct{}{
+	http.StatusInternalServerError: {},
+	http.StatusBadGateway:          {},
+	http.StatusServiceUnavailable:  {},
 }
 
 // CheckError returns a structured error if the response status is not in codes.

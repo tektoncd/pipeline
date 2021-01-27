@@ -26,8 +26,10 @@ import (
 )
 
 // TaskLister helps list Tasks.
+// All objects returned here must be treated as read-only.
 type TaskLister interface {
 	// List lists all Tasks in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Task, err error)
 	// Tasks returns an object that can list and get Tasks.
 	Tasks(namespace string) TaskNamespaceLister
@@ -58,10 +60,13 @@ func (s *taskLister) Tasks(namespace string) TaskNamespaceLister {
 }
 
 // TaskNamespaceLister helps list and get Tasks.
+// All objects returned here must be treated as read-only.
 type TaskNamespaceLister interface {
 	// List lists all Tasks in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Task, err error)
 	// Get retrieves the Task from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Task, error)
 	TaskNamespaceListerExpansion
 }

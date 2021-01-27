@@ -55,14 +55,15 @@ func NewLogger(configJSON string, levelOverride string, opts ...zap.Option) (*za
 		return enrichLoggerWithCommitID(logger), atomicLevel
 	}
 
-	loggingCfg := zapdriver.NewProductionConfig()
+	loggingCfg := stackdriverConfig()
+
 	if levelOverride != "" {
 		if level, err := levelFromString(levelOverride); err == nil {
 			loggingCfg.Level = zap.NewAtomicLevelAt(*level)
 		}
 	}
 
-	logger, err = loggingCfg.Build(append(opts, zapdriver.WrapCore())...)
+	logger, err = loggingCfg.Build(opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +108,7 @@ func newLoggerFromConfig(configJSON, levelOverride string, opts []zap.Option) (*
 		}
 	}
 
-	logger, err := loggingCfg.Build(append(opts, zapdriver.WrapCore())...)
+	logger, err := loggingCfg.Build(opts...)
 	if err != nil {
 		return nil, zap.AtomicLevel{}, err
 	}
@@ -118,7 +119,8 @@ func newLoggerFromConfig(configJSON, levelOverride string, opts []zap.Option) (*
 }
 
 func zapConfigFromJSON(configJSON string) (*zap.Config, error) {
-	loggingCfg := zapdriver.NewProductionConfig()
+	loggingCfg := stackdriverConfig()
+
 	if configJSON != "" {
 		if err := json.Unmarshal([]byte(configJSON), &loggingCfg); err != nil {
 			return nil, err
@@ -248,4 +250,10 @@ func ConfigToJSON(cfg *Config) (string, error) {
 		loggerConfigKey: cfg.LoggingConfig,
 	})
 	return string(jsonCfg), err
+}
+
+func stackdriverConfig() zap.Config {
+	cfg := zapdriver.NewProductionConfig()
+	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
+	return cfg
 }

@@ -26,8 +26,10 @@ import (
 )
 
 // TaskRunLister helps list TaskRuns.
+// All objects returned here must be treated as read-only.
 type TaskRunLister interface {
 	// List lists all TaskRuns in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TaskRun, err error)
 	// TaskRuns returns an object that can list and get TaskRuns.
 	TaskRuns(namespace string) TaskRunNamespaceLister
@@ -58,10 +60,13 @@ func (s *taskRunLister) TaskRuns(namespace string) TaskRunNamespaceLister {
 }
 
 // TaskRunNamespaceLister helps list and get TaskRuns.
+// All objects returned here must be treated as read-only.
 type TaskRunNamespaceLister interface {
 	// List lists all TaskRuns in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TaskRun, err error)
 	// Get retrieves the TaskRun from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TaskRun, error)
 	TaskRunNamespaceListerExpansion
 }

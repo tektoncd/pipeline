@@ -47,7 +47,7 @@ func (t *logTransport) RoundTrip(in *http.Request) (out *http.Response, err erro
 
 	// Save these headers so we can redact Authorization.
 	savedHeaders := in.Header.Clone()
-	if in.Header != nil {
+	if in.Header != nil && in.Header.Get("authorization") != "" {
 		in.Header.Set("authorization", "<redacted>")
 	}
 

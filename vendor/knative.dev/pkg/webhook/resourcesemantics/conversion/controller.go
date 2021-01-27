@@ -117,7 +117,9 @@ func NewConversionController(
 		crdLister:    crdInformer.Lister(),
 	}
 
-	c := controller.NewImpl(r, logging.FromContext(ctx), "ConversionWebhook")
+	const queueName = "ConversionWebhook"
+	logger := logging.FromContext(ctx)
+	c := controller.NewImpl(r, logger.Named(queueName), queueName)
 
 	// Reconciler when the named CRDs change.
 	for _, gkc := range kinds {

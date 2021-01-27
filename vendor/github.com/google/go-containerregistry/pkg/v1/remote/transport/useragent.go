@@ -20,12 +20,18 @@ import (
 	"runtime/debug"
 )
 
+var (
+	// Version can be set via:
+	// -ldflags="-X 'github.com/google/go-containerregistry/pkg/v1/remote/transport.Version=$TAG'"
+	Version string
+
+	ggcrVersion = defaultUserAgent
+)
+
 const (
 	defaultUserAgent = "go-containerregistry"
 	moduleName       = "github.com/google/go-containerregistry"
 )
-
-var ggcrVersion = defaultUserAgent
 
 type userAgentTransport struct {
 	inner http.RoundTripper
@@ -39,6 +45,11 @@ func init() {
 }
 
 func version() string {
+	if Version != "" {
+		// Version was set via ldflags, just return it.
+		return Version
+	}
+
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return ""

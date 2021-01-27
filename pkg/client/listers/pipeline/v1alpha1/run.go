@@ -26,8 +26,10 @@ import (
 )
 
 // RunLister helps list Runs.
+// All objects returned here must be treated as read-only.
 type RunLister interface {
 	// List lists all Runs in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Run, err error)
 	// Runs returns an object that can list and get Runs.
 	Runs(namespace string) RunNamespaceLister
@@ -58,10 +60,13 @@ func (s *runLister) Runs(namespace string) RunNamespaceLister {
 }
 
 // RunNamespaceLister helps list and get Runs.
+// All objects returned here must be treated as read-only.
 type RunNamespaceLister interface {
 	// List lists all Runs in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Run, err error)
 	// Get retrieves the Run from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Run, error)
 	RunNamespaceListerExpansion
 }

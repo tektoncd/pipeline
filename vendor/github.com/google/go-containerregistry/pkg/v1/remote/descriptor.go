@@ -28,10 +28,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/internal/verify"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/google/go-containerregistry/pkg/v1/v1util"
 )
 
 // ErrSchema1 indicates that we received a schema1 manifest from the registry.
@@ -368,7 +368,7 @@ func (f *fetcher) fetchBlob(ctx context.Context, h v1.Hash) (io.ReadCloser, erro
 		return nil, err
 	}
 
-	return v1util.VerifyReadCloser(resp.Body, h)
+	return verify.ReadCloser(resp.Body, h)
 }
 
 func (f *fetcher) headBlob(h v1.Hash) (*http.Response, error) {

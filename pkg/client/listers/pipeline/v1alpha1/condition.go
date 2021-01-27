@@ -26,8 +26,10 @@ import (
 )
 
 // ConditionLister helps list Conditions.
+// All objects returned here must be treated as read-only.
 type ConditionLister interface {
 	// List lists all Conditions in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Condition, err error)
 	// Conditions returns an object that can list and get Conditions.
 	Conditions(namespace string) ConditionNamespaceLister
@@ -58,10 +60,13 @@ func (s *conditionLister) Conditions(namespace string) ConditionNamespaceLister 
 }
 
 // ConditionNamespaceLister helps list and get Conditions.
+// All objects returned here must be treated as read-only.
 type ConditionNamespaceLister interface {
 	// List lists all Conditions in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Condition, err error)
 	// Get retrieves the Condition from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Condition, error)
 	ConditionNamespaceListerExpansion
 }

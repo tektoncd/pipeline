@@ -89,7 +89,8 @@ func NewAdmissionController(
 	}
 
 	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(wh, logger, "ValidationWebhook")
+	const queueName = "ValidationWebhook"
+	c := controller.NewImpl(wh, logger.Named(queueName), queueName)
 
 	// Reconcile when the named ValidatingWebhookConfiguration changes.
 	vwhInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

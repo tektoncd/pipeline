@@ -44,19 +44,24 @@ func Annotation(key, value string) Matcher {
 	}
 }
 
-// Platform returns a match.Matcher that matches on the provided platform.
+// Platforms returns a match.Matcher that matches on any one of the provided platforms.
 // Ignores any descriptors that do not have a platform.
-func Platform(platform v1.Platform) Matcher {
+func Platforms(platforms ...v1.Platform) Matcher {
 	return func(desc v1.Descriptor) bool {
 		if desc.Platform == nil {
 			return false
 		}
-		return desc.Platform.Equals(platform)
+		for _, platform := range platforms {
+			if desc.Platform.Equals(platform) {
+				return true
+			}
+		}
+		return false
 	}
 }
 
 // MediaTypes returns a match.Matcher that matches at least one of the provided media types.
-func MediaTypes(mediaTypes []string) Matcher {
+func MediaTypes(mediaTypes ...string) Matcher {
 	mts := map[string]bool{}
 	for _, media := range mediaTypes {
 		mts[media] = true
@@ -69,5 +74,17 @@ func MediaTypes(mediaTypes []string) Matcher {
 			return true
 		}
 		return false
+	}
+}
+
+// Digests returns a match.Matcher that matches at least one of the provided Digests
+func Digests(digests ...v1.Hash) Matcher {
+	digs := map[v1.Hash]bool{}
+	for _, digest := range digests {
+		digs[digest] = true
+	}
+	return func(desc v1.Descriptor) bool {
+		_, ok := digs[desc.Digest]
+		return ok
 	}
 }
