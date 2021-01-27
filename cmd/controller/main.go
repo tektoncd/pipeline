@@ -48,7 +48,6 @@ var (
 	kubeconfigWriterImage    = flag.String("kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
 	shellImage               = flag.String("shell-image", "", "The container image containing a shell")
 	gsutilImage              = flag.String("gsutil-image", "", "The container image containing gsutil")
-	buildGCSFetcherImage     = flag.String("build-gcs-fetcher-image", "", "The container image containing our GCS fetcher binary.")
 	prImage                  = flag.String("pr-image", "", "The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
 	namespace                = flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
@@ -70,7 +69,6 @@ func main() {
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
 		ShellImage:               *shellImage,
 		GsutilImage:              *gsutilImage,
-		BuildGCSFetcherImage:     *buildGCSFetcherImage,
 		PRImage:                  *prImage,
 		ImageDigestExporterImage: *imageDigestExporterImage,
 	}

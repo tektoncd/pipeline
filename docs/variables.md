@@ -93,17 +93,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `type` | Type value of `"gcs"`. |
 | `location` | The fully qualified address of the blob storage. |
 
-#### Variables for the  `BuildGCS` type
-
-**NB:** This Resource type is **Deprecated**. See [BuildGCS Storage
-Resource](./resources.md#buildgcs-storage-resource) for more information.
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"build-gcs"`. |
-| `location` | The fully qualified address of the blob storage. |
-
 #### Variables for the `Cluster` type
 
 | Variable | Description |

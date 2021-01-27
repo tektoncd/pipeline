@@ -10,7 +10,7 @@ import (
 
 // Transport that should be used when a custom CA bundle is specified with the
 // SDK.
-func getCustomTransport() *http.Transport {
+func getCABundleTransport() *http.Transport {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{

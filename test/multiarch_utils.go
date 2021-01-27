@@ -160,10 +160,6 @@ func initExcludedTests() sets.String {
 	case "ppc64le":
 		return sets.NewString(
 			//examples
-			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
-			"TestExamples/v1beta1/taskruns/build-gcs-targz",
-			"TestExamples/v1beta1/taskruns/build-gcs-zip",
-			"TestExamples/v1alpha1/taskruns/build-gcs-zip",
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",

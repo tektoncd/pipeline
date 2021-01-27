@@ -43,14 +43,10 @@ func NewResource(name string, images pipeline.Images, r *resource.PipelineResour
 
 	for _, param := range r.Spec.Params {
 		if strings.EqualFold(param.Name, "type") {
-			switch {
-			case strings.EqualFold(param.Value, resource.PipelineResourceTypeGCS):
+			if strings.EqualFold(param.Value, resource.PipelineResourceTypeGCS) {
 				return NewGCSResource(name, images, r)
-			case strings.EqualFold(param.Value, resource.PipelineResourceTypeBuildGCS):
-				return NewBuildGCSResource(name, images, r)
-			default:
-				return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
+			return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 		}
 	}
 	return nil, fmt.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)

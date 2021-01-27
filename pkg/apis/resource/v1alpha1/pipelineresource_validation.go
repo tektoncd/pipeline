@@ -128,13 +128,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 }
 
 func AllowedStorageType(gotType string) bool {
-	switch gotType {
-	case string(PipelineResourceTypeGCS):
-		return true
-	case string(PipelineResourceTypeBuildGCS):
-		return true
-	}
-	return false
+	return gotType == PipelineResourceTypeGCS
 }
 
 func validateURL(u, path string) *apis.FieldError {

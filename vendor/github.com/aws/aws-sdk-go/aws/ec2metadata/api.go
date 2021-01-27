@@ -20,7 +20,7 @@ func (c *EC2Metadata) getToken(ctx aws.Context, duration time.Duration) (tokenOu
 	op := &request.Operation{
 		Name:       "GetToken",
 		HTTPMethod: "PUT",
-		HTTPPath:   "/latest/api/token",
+		HTTPPath:   "/api/token",
 	}
 
 	var output tokenOutput
@@ -62,7 +62,7 @@ func (c *EC2Metadata) GetMetadataWithContext(ctx aws.Context, p string) (string,
 	op := &request.Operation{
 		Name:       "GetMetadata",
 		HTTPMethod: "GET",
-		HTTPPath:   sdkuri.PathJoin("/latest/meta-data", p),
+		HTTPPath:   sdkuri.PathJoin("/meta-data", p),
 	}
 	output := &metadataOutput{}
 
@@ -88,7 +88,7 @@ func (c *EC2Metadata) GetUserDataWithContext(ctx aws.Context) (string, error) {
 	op := &request.Operation{
 		Name:       "GetUserData",
 		HTTPMethod: "GET",
-		HTTPPath:   "/latest/user-data",
+		HTTPPath:   "/user-data",
 	}
 
 	output := &metadataOutput{}
@@ -113,7 +113,7 @@ func (c *EC2Metadata) GetDynamicDataWithContext(ctx aws.Context, p string) (stri
 	op := &request.Operation{
 		Name:       "GetDynamicData",
 		HTTPMethod: "GET",
-		HTTPPath:   sdkuri.PathJoin("/latest/dynamic", p),
+		HTTPPath:   sdkuri.PathJoin("/dynamic", p),
 	}
 
 	output := &metadataOutput{}

@@ -20,11 +20,5 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 )
 
-const (
-	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
-	PipelineResourceTypeGCS PipelineResourceType = resource.PipelineResourceTypeGCS
-
-	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
-	// with additional functionality that was added to be compatible with knative build.
-	PipelineResourceTypeBuildGCS PipelineResourceType = resource.PipelineResourceTypeBuildGCS
-)
+// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+const PipelineResourceTypeGCS PipelineResourceType = resource.PipelineResourceTypeGCS

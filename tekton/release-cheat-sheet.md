@@ -64,7 +64,6 @@ the pipelines repo, a terminal window and a text editor.
       --resource=builtWebhookImage=webhook-image \
       --resource=builtDigestExporterImage=digest-exporter-image \
       --resource=builtPullRequestInitImage=pull-request-init-image \
-      --resource=builtGcsFetcherImage=gcs-fetcher-image \
       --resource=notification=post-release-trigger \
     pipeline-release
     ```
