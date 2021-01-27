@@ -933,7 +933,11 @@ service account.
 
 --------------------------------------------------------------------------------
 
-#### BuildGCS Storage Resource
+#### `Deprecated: `BuildGCS Storage Resource
+
+**NB:** This Resource type is _deprecated_, and will be removed in a future
+release. To fetch objects from Google Cloud Storage, prefer the [GCS storage
+resource](#gcs-storage-resource) instead.
 
 The `build-gcs` storage resource points to a
 [Google Cloud Storage](https://cloud.google.com/storage/) blob like

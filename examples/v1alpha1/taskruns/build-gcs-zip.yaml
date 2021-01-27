@@ -21,5 +21,7 @@ spec:
             value: gs://build-crd-tests/archive.zip
           - name: artifactType
             value: ZipArchive
+          # NB: The build-gcs PipelineResource type is deprecated, and will be
+          # removed in a future release.
           - name: type
             value: build-gcs
