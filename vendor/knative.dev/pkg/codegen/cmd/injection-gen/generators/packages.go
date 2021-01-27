@@ -336,11 +336,61 @@ func versionFactoryPackages(basePackage string, boilerplate []byte, customArgs *
 				return tags.NeedsInformerInjection()
 			},
 		},
+
+		// FilterFactoryImpl
+		&generator.DefaultPackage{
+			PackageName: "filteredFactory",
+			PackagePath: filepath.Join(packagePath, "filtered"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &filteredFactoryGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "filtered_factory",
+					},
+					outputPackage:                filepath.Join(packagePath, "filtered"),
+					cachingClientSetPackage:      filepath.Join(basePackage, "client"),
+					sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
+					imports:                      generator.NewImportTracker(),
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
+		},
+		// FakeFilterFactory
+		&generator.DefaultPackage{
+			PackageName: "fakeFilteredFactory",
+			PackagePath: filepath.Join(packagePath, "filtered", "fake"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &fakeFilteredFactoryGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "fake_filtered_factory",
+					},
+					outputPackage:                filepath.Join(packagePath, "filtered", "fake"),
+					factoryInjectionPkg:          filepath.Join(packagePath, "filtered"),
+					fakeClientInjectionPkg:       filepath.Join(basePackage, "client", "fake"),
+					sharedInformerFactoryPackage: customArgs.ExternalVersionsInformersPackage,
+					imports:                      generator.NewImportTracker(),
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
+		},
 	}
 }
 
 func versionInformerPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
 	factoryPackagePath := filepath.Join(basePackage, "informers", "factory")
+	filteredFactoryPackagePath := filepath.Join(basePackage, "informers", "factory", "filtered")
+
 	packagePath := filepath.Join(basePackage, "informers", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
 	vers := make([]generator.Package, 0, 2*len(typesToGenerate))
@@ -404,6 +454,60 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 				return tags.NeedsInformerInjection()
 			},
 		})
+		// FilteredInformer
+		vers = append(vers, &generator.DefaultPackage{
+			PackageName: "filtered",
+			PackagePath: filepath.Join(packagePath, "filtered"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &filteredInjectionGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: strings.ToLower(t.Name.Name),
+					},
+					outputPackage:               filepath.Join(packagePath, "filtered"),
+					groupVersion:                gv,
+					groupGoName:                 groupGoName,
+					typeToGenerate:              t,
+					imports:                     generator.NewImportTracker(),
+					typedInformerPackage:        typedInformerPackage,
+					groupInformerFactoryPackage: filteredFactoryPackagePath,
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
+		})
+
+		// FakeFilteredInformer
+		vers = append(vers, &generator.DefaultPackage{
+			PackageName: "fake",
+			PackagePath: filepath.Join(packagePath, "filtered", "fake"),
+			HeaderText:  boilerplate,
+			GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
+				// Impl
+				generators = append(generators, &fakeFilteredInformerGenerator{
+					DefaultGen: generator.DefaultGen{
+						OptionalName: "fake",
+					},
+					outputPackage:           filepath.Join(packagePath, "filtered", "fake"),
+					imports:                 generator.NewImportTracker(),
+					typeToGenerate:          t,
+					groupVersion:            gv,
+					groupGoName:             groupGoName,
+					informerInjectionPkg:    filepath.Join(packagePath, "filtered"),
+					fakeFactoryInjectionPkg: filteredFactoryPackagePath,
+				})
+				return generators
+			},
+			FilterFunc: func(c *generator.Context, t *types.Type) bool {
+				tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
+				return tags.NeedsInformerInjection()
+			},
+		})
+
 	}
 	return vers
 }

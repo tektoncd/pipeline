@@ -65,8 +65,7 @@ func (r *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
 
 	if !r.IsLeaderFor(types.NamespacedName{Name: key}) {
-		logger.Debugf("Skipping key %q, not the leader.", key)
-		return nil
+		return controller.NewSkipKey(key)
 	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.

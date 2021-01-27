@@ -16,6 +16,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -78,7 +79,7 @@ func ping(ctx context.Context, reg name.Registry, t http.RoundTripper) (*pingRes
 		schemes = append(schemes, "http")
 	}
 
-	var connErr error
+	var errs []string
 	for _, scheme := range schemes {
 		url := fmt.Sprintf("%s://%s/v2/", scheme, reg.Name())
 		req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -87,7 +88,7 @@ func ping(ctx context.Context, reg name.Registry, t http.RoundTripper) (*pingRes
 		}
 		resp, err := client.Do(req.WithContext(ctx))
 		if err != nil {
-			connErr = err
+			errs = append(errs, err.Error())
 			// Potentially retry with http.
 			continue
 		}
@@ -124,5 +125,5 @@ func ping(ctx context.Context, reg name.Registry, t http.RoundTripper) (*pingRes
 			return nil, CheckError(resp, http.StatusOK, http.StatusUnauthorized)
 		}
 	}
-	return nil, connErr
+	return nil, errors.New(strings.Join(errs, "; "))
 }

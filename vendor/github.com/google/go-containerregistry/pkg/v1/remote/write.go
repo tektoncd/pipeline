@@ -448,13 +448,13 @@ type withMediaType interface {
 //
 // Use reflection to either pull the v1.Descriptor out of remote.Descriptor or
 // create a descriptor based on the RawManifest and (optionally) MediaType.
-func unpackTaggable(t Taggable) (*v1.Descriptor, error) {
+func unpackTaggable(t Taggable) ([]byte, *v1.Descriptor, error) {
 	if d, ok := t.(*Descriptor); ok {
-		return &d.Descriptor, nil
+		return d.Manifest, &d.Descriptor, nil
 	}
 	b, err := t.RawManifest()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// A reasonable default if Taggable doesn't implement MediaType.
@@ -463,17 +463,17 @@ func unpackTaggable(t Taggable) (*v1.Descriptor, error) {
 	if wmt, ok := t.(withMediaType); ok {
 		m, err := wmt.MediaType()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		mt = m
 	}
 
 	h, sz, err := v1.SHA256(bytes.NewReader(b))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &v1.Descriptor{
+	return b, &v1.Descriptor{
 		MediaType: mt,
 		Size:      sz,
 		Digest:    h,
@@ -482,11 +482,7 @@ func unpackTaggable(t Taggable) (*v1.Descriptor, error) {
 
 // commitManifest does a PUT of the image's manifest.
 func (w *writer) commitManifest(t Taggable, ref name.Reference) error {
-	raw, err := t.RawManifest()
-	if err != nil {
-		return err
-	}
-	desc, err := unpackTaggable(t)
+	raw, desc, err := unpackTaggable(t)
 	if err != nil {
 		return err
 	}
@@ -511,7 +507,7 @@ func (w *writer) commitManifest(t Taggable, ref name.Reference) error {
 	}
 
 	// The image was successfully pushed!
-	logs.Progress.Printf("%v: digest: %v size: %d", ref, desc.Digest, len(raw))
+	logs.Progress.Printf("%v: digest: %v size: %d", ref, desc.Digest, desc.Size)
 	return nil
 }
 
@@ -581,7 +577,17 @@ func WriteLayer(repo name.Repository, layer v1.Layer, options ...Option) error {
 	return w.uploadOne(layer)
 }
 
-// Tag adds a tag to the given Taggable.
+// Tag adds a tag to the given Taggable via PUT /v2/.../manifests/<tag>
+//
+// Notable implementations of Taggable are v1.Image, v1.ImageIndex, and
+// remote.Descriptor.
+//
+// If t implements MediaType, we will use that for the Content-Type, otherwise
+// we will default to types.DockerManifestSchema2.
+//
+// Tag does not attempt to write anything other than the manifest, so callers
+// should ensure that all blobs or manifests that are referenced by t exist
+// in the target registry.
 func Tag(tag name.Tag, t Taggable, options ...Option) error {
 	o, err := makeOptions(tag.Context(), options...)
 	if err != nil {

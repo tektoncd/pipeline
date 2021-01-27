@@ -138,6 +138,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		Client:        kubeclient.Get(ctx),
 		ServiceLister: svcInformer.Lister(),
 	}
+	logger = logger.Named("NameOfController")
 	impl := controller.NewImpl(c, logger, "NameOfController")
 
 	// Set up event handlers.

@@ -102,7 +102,13 @@ func (s *namespaceSource) watchPods() error {
 					if ev.Object == nil || reflect.ValueOf(ev.Object).IsNil() {
 						continue
 					}
-					p := ev.Object.(*corev1.Pod)
+					p, ok := ev.Object.(*corev1.Pod)
+					if !ok {
+						// The Watch interface can return errors via the channel as *metav1.Status.
+						// Log those to get notified that loglines might be missing but don't crash.
+						s.handleGenericLine([]byte(fmt.Sprintf("unexpected event: %v", p)), "no-pod", "no-container")
+						continue
+					}
 					switch ev.Type {
 					case watch.Deleted:
 						watchedPods.Delete(p.Name)

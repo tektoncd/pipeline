@@ -36,7 +36,7 @@ import (
 
 const (
 	// Time used for updating a certificate before it expires.
-	oneWeek = 7 * 24 * time.Hour
+	oneDay = 24 * time.Hour
 )
 
 type reconciler struct {
@@ -57,7 +57,7 @@ func (r *reconciler) Reconcile(ctx context.Context, key string) error {
 		// only reconciler the certificate when we are leader.
 		return r.reconcileCertificate(ctx)
 	}
-	return nil
+	return controller.NewSkipKey(key)
 }
 
 func (r *reconciler) reconcileCertificate(ctx context.Context) error {
@@ -89,7 +89,7 @@ func (r *reconciler) reconcileCertificate(ctx context.Context) error {
 			certData, err := x509.ParseCertificate(cert.Certificate[0])
 			if err != nil {
 				logger.Errorw("Error parsing certificate", zap.Error(err))
-			} else if time.Now().Add(oneWeek).Before(certData.NotAfter) {
+			} else if time.Now().Add(oneDay).Before(certData.NotAfter) {
 				return nil
 			}
 		}

@@ -28,11 +28,22 @@ import (
 // informer type to a context.
 type InformerInjector func(context.Context) (context.Context, controller.Informer)
 
+// FilteredInformersInjector holds the type of a callback that attaches a set of particular
+// filtered informers type to a context.
+type FilteredInformersInjector func(context.Context) (context.Context, []controller.Informer)
+
 func (i *impl) RegisterInformer(ii InformerInjector) {
 	i.m.Lock()
 	defer i.m.Unlock()
 
 	i.informers = append(i.informers, ii)
+}
+
+func (i *impl) RegisterFilteredInformers(fii FilteredInformersInjector) {
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	i.filteredInformers = append(i.filteredInformers, fii)
 }
 
 func (i *impl) GetInformers() []InformerInjector {
@@ -41,6 +52,14 @@ func (i *impl) GetInformers() []InformerInjector {
 
 	// Copy the slice before returning.
 	return append(i.informers[:0:0], i.informers...)
+}
+
+func (i *impl) GetFilteredInformers() []FilteredInformersInjector {
+	i.m.RLock()
+	defer i.m.RUnlock()
+
+	// Copy the slice before returning.
+	return append(i.filteredInformers[:0:0], i.filteredInformers...)
 }
 
 func (i *impl) SetupInformers(ctx context.Context, cfg *rest.Config) (context.Context, []controller.Informer) {
@@ -65,10 +84,16 @@ func (i *impl) SetupInformers(ctx context.Context, cfg *rest.Config) (context.Co
 	// Based on the reconcilers we have linked, build up a set of informers
 	// and inject them onto the context.
 	var inf controller.Informer
+	var filteredinfs []controller.Informer
 	informers := make([]controller.Informer, 0, len(i.GetInformers()))
 	for _, ii := range i.GetInformers() {
 		ctx, inf = ii(ctx)
 		informers = append(informers, inf)
+	}
+	for _, fii := range i.GetFilteredInformers() {
+		ctx, filteredinfs = fii(ctx)
+		informers = append(informers, filteredinfs...)
+
 	}
 	return ctx, informers
 }

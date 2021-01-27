@@ -26,9 +26,10 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/internal/gzip"
+	"github.com/google/go-containerregistry/pkg/v1/match"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/google/go-containerregistry/pkg/v1/v1util"
 )
 
 const whiteoutPrefix = ".wh."
@@ -89,6 +90,14 @@ func AppendManifests(base v1.ImageIndex, adds ...IndexAddendum) v1.ImageIndex {
 	return &index{
 		base: base,
 		adds: adds,
+	}
+}
+
+// RemoveManifests removes any descriptors that match the match.Matcher.
+func RemoveManifests(base v1.ImageIndex, matcher match.Matcher) v1.ImageIndex {
+	return &index{
+		base:   base,
+		remove: matcher,
 	}
 }
 
@@ -335,7 +344,7 @@ func layerTime(layer v1.Layer, t time.Time) (v1.Layer, error) {
 	b := w.Bytes()
 	// gzip the contents, then create the layer
 	opener := func() (io.ReadCloser, error) {
-		return v1util.GzipReadCloser(ioutil.NopCloser(bytes.NewReader(b))), nil
+		return gzip.ReadCloser(ioutil.NopCloser(bytes.NewReader(b))), nil
 	}
 	layer, err = tarball.LayerFromOpener(opener)
 	if err != nil {

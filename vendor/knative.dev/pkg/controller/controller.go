@@ -230,7 +230,6 @@ func NewImplWithStats(r Reconciler, logger *zap.SugaredLogger, workQueueName str
 
 // NewImplFull accepts the full set of options available to all controllers.
 func NewImplFull(r Reconciler, options ControllerOptions) *Impl {
-	logger := options.Logger.Named(options.WorkQueueName)
 	if options.RateLimiter == nil {
 		options.RateLimiter = workqueue.DefaultControllerRateLimiter()
 	}
@@ -241,7 +240,7 @@ func NewImplFull(r Reconciler, options ControllerOptions) *Impl {
 		Name:          options.WorkQueueName,
 		Reconciler:    r,
 		workQueue:     newTwoLaneWorkQueue(options.WorkQueueName, options.RateLimiter),
-		logger:        logger,
+		logger:        options.Logger,
 		statsReporter: options.Reporter,
 	}
 }
@@ -521,21 +520,24 @@ func (c *Impl) processNextWorkItem() bool {
 	// Run Reconcile, passing it the namespace/name string of the
 	// resource to be synced.
 	if err = c.Reconciler.Reconcile(ctx, keyStr); err != nil {
-		c.handleErr(err, key)
-		logger.Info("Reconcile failed. Time taken: ", time.Since(startTime))
+		c.handleErr(err, key, startTime)
 		return true
 	}
 
 	// Finally, if no error occurs we Forget this item so it does not
 	// have any delay when another change happens.
 	c.workQueue.Forget(key)
-	logger.Info("Reconcile succeeded. Time taken: ", time.Since(startTime))
+	logger.Infow("Reconcile succeeded", zap.Duration("duration", time.Since(startTime)))
 
 	return true
 }
 
-func (c *Impl) handleErr(err error, key types.NamespacedName) {
-	c.logger.Errorw("Reconcile error", zap.Error(err))
+func (c *Impl) handleErr(err error, key types.NamespacedName, startTime time.Time) {
+	if IsSkipKey(err) {
+		c.workQueue.Forget(key)
+		return
+	}
+	c.logger.Errorw("Reconcile error", zap.Duration("duration", time.Since(startTime)), zap.Error(err))
 
 	// Re-queue the key if it's a transient error.
 	// We want to check that the queue is shutting down here
@@ -568,6 +570,38 @@ func (c *Impl) FilteredGlobalResync(f func(interface{}) bool, si cache.SharedInf
 			c.EnqueueSlow(obj)
 		}
 	}
+}
+
+// NewSkipKey returns a new instance of skipKeyError.
+// Users can return this type of error to indicate that the key was skipped.
+func NewSkipKey(key string) error {
+	return skipKeyError{key: key}
+}
+
+// permanentError is an error that is considered not transient.
+// We should not re-queue keys when it returns with thus error in reconcile.
+type skipKeyError struct {
+	key string
+}
+
+var _ error = skipKeyError{}
+
+// Error implements the Error() interface of error.
+func (err skipKeyError) Error() string {
+	return fmt.Sprintf("skipped key: %q", err.key)
+}
+
+// IsSkipKey returns true if the given error is a skipKeyError.
+func IsSkipKey(err error) bool {
+	return errors.Is(err, skipKeyError{})
+}
+
+// Is implements the Is() interface of error. It returns whether the target
+// error can be treated as equivalent to a permanentError.
+func (skipKeyError) Is(target error) bool {
+	//nolint: errorlint // This check is actually fine.
+	_, ok := target.(skipKeyError)
+	return ok
 }
 
 // NewPermanentError returns a new instance of permanentError.

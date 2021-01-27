@@ -39,6 +39,7 @@
           "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.LocalObjectReference"
           }
         },
@@ -46,7 +47,8 @@
           "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "priorityClassName": {
@@ -69,6 +71,7 @@
           "description": "If specified, the pod's tolerations.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.Toleration"
           }
         },
@@ -76,6 +79,7 @@
           "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
           "x-kubernetes-patch-merge-key": "name",
@@ -96,10 +100,12 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
           "description": "Spec holds the desired state of the PipelineResource from the client",
+          "default": {},
           "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
         },
         "status": {
@@ -122,6 +128,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1alpha1.PipelineResource"
           }
         },
@@ -130,6 +137,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -149,6 +157,7 @@
         "params": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1alpha1.ResourceParam"
           }
         },
@@ -156,11 +165,13 @@
           "description": "Secrets to fetch to populate some of resource fields",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1alpha1.SecretParam"
           }
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -182,7 +193,8 @@
         },
         "name": {
           "description": "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "optional": {
           "description": "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
@@ -194,7 +206,8 @@
         },
         "type": {
           "description": "Type is the type of this resource;",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -207,10 +220,12 @@
       ],
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -224,13 +239,16 @@
       ],
       "properties": {
         "fieldName": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "secretKey": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "secretName": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -246,15 +264,18 @@
         "arrayVal": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "stringVal": {
           "description": "Represents the stored type of ArrayOrString.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -267,10 +288,12 @@
       ],
       "properties": {
         "Field": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "Message": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -279,6 +302,7 @@
       "type": "object",
       "properties": {
         "status": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.CloudEventDeliveryState"
         },
         "target": {
@@ -301,12 +325,14 @@
         },
         "message": {
           "description": "Error is the text of error (if any)",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "retryCount": {
           "description": "RetryCount is the number of attempts of sending the cloud event",
           "type": "integer",
-          "format": "int32"
+          "format": "int32",
+          "default": 0
         },
         "sentAt": {
           "description": "SentAt is the time at which the last attempt to send the event was made",
@@ -327,10 +353,12 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
           "description": "Spec holds the desired state of the Task from the client",
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -349,6 +377,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.ClusterTask"
           }
         },
@@ -357,6 +386,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -374,12 +404,15 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskRunSpec"
         },
         "status": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskRunStatus"
         }
       }
@@ -395,11 +428,13 @@
           "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "check": {
           "description": "Check describes the state of the check container.",
+          "default": {},
           "$ref": "#/definitions/v1.ContainerState"
         },
         "completionTime": {
@@ -410,6 +445,7 @@
           "description": "Conditions the latest available observations of a resource's current state.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/knative.Condition"
           },
           "x-kubernetes-patch-merge-key": "type",
@@ -422,7 +458,8 @@
         },
         "podName": {
           "description": "PodName is the name of the pod responsible for executing this condition check.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "startTime": {
           "description": "StartTime is the time the check is actually started.",
@@ -439,6 +476,7 @@
       "properties": {
         "check": {
           "description": "Check describes the state of the check container.",
+          "default": {},
           "$ref": "#/definitions/v1.ContainerState"
         },
         "completionTime": {
@@ -447,7 +485,8 @@
         },
         "podName": {
           "description": "PodName is the name of the pod responsible for executing this condition check.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "startTime": {
           "description": "StartTime is the time the check is actually started.",
@@ -463,12 +502,14 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
         },
         "params": {
           "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
           }
         },
@@ -480,6 +521,7 @@
           "description": "Results are values that this Task can output",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResult"
           }
         },
@@ -487,6 +529,7 @@
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Sidecar"
           }
         },
@@ -498,6 +541,7 @@
           "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Step"
           }
         },
@@ -505,6 +549,7 @@
           "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.Volume"
           }
         },
@@ -512,6 +557,7 @@
           "description": "Workspaces are the volumes that this Task requires.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
           }
         }
@@ -529,18 +575,21 @@
         "StepsToAppend": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Step"
           }
         },
         "StepsToPrepend": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Step"
           }
         },
         "Volumes": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.Volume"
           }
         }
@@ -555,9 +604,11 @@
       ],
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
@@ -579,7 +630,8 @@
         },
         "name": {
           "description": "Name declares the name by which a parameter is referenced.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "type": {
           "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\" and \"array\", and \"string\" is the default.",
@@ -600,10 +652,12 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
           "description": "Spec holds the desired state of the Pipeline from the client",
+          "default": {},
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         }
       }
@@ -618,7 +672,8 @@
       "properties": {
         "name": {
           "description": "Name is the name that will be used by the Pipeline to refer to this resource. It does not directly correspond to the name of any PipelineResources Task inputs or outputs, and it does not correspond to the actual names of the PipelineResources that will be bound in the PipelineRun.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "optional": {
           "description": "Optional declares the resource as optional. optional: true - the resource is considered optional optional: false - the resource is considered required (default/equivalent of not specifying it)",
@@ -626,7 +681,8 @@
         },
         "type": {
           "description": "Type is the type of the PipelineResource.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -644,6 +700,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Pipeline"
           }
         },
@@ -652,6 +709,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -715,7 +773,8 @@
       ],
       "properties": {
         "key": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "resourceName": {
           "type": "string"
@@ -728,7 +787,8 @@
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -742,15 +802,18 @@
       "properties": {
         "description": {
           "description": "Description is a human-readable description of the result",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "name": {
           "description": "Name the given name",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -767,12 +830,15 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.PipelineRunSpec"
         },
         "status": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.PipelineRunStatus"
         }
       }
@@ -802,6 +868,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRun"
           }
         },
@@ -810,6 +877,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -824,11 +892,13 @@
       "properties": {
         "name": {
           "description": "Name is the result's name as declared by the Pipeline",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -848,6 +918,7 @@
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
           }
         }
@@ -861,6 +932,7 @@
           "description": "Params is a list of parameter names and values.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
@@ -878,6 +950,7 @@
           "description": "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceBinding"
           }
         },
@@ -888,6 +961,7 @@
           "description": "Deprecated: use taskRunSpecs.ServiceAccountName instead",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunSpecServiceAccountName"
           }
         },
@@ -899,6 +973,7 @@
           "description": "TaskRunSpecs holds a set of runtime specs",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskRunSpec"
           }
         },
@@ -910,6 +985,7 @@
           "description": "Workspaces holds a set of workspace bindings that must match names with those declared in the pipeline.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
           }
         }
@@ -935,7 +1011,8 @@
           "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "completionTime": {
@@ -946,6 +1023,7 @@
           "description": "Conditions the latest available observations of a resource's current state.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/knative.Condition"
           },
           "x-kubernetes-patch-merge-key": "type",
@@ -960,6 +1038,7 @@
           "description": "PipelineResults are the list of results written out by the pipeline task's containers",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunResult"
           }
         },
@@ -978,6 +1057,7 @@
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.SkippedTask"
           }
         },
@@ -1006,6 +1086,7 @@
           "description": "PipelineResults are the list of results written out by the pipeline task's containers",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunResult"
           }
         },
@@ -1024,6 +1105,7 @@
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.SkippedTask"
           }
         },
@@ -1063,6 +1145,7 @@
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
           }
         }
@@ -1080,6 +1163,7 @@
           "description": "Finally declares the list of Tasks that execute just before leaving the Pipeline i.e. either after all Tasks are finished executing successfully or after a failure which would result in ending the Pipeline",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTask"
           }
         },
@@ -1087,6 +1171,7 @@
           "description": "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
           }
         },
@@ -1094,6 +1179,7 @@
           "description": "Resources declares the names and types of the resources given to the Pipeline's tasks as inputs and outputs.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineDeclaredResource"
           }
         },
@@ -1101,6 +1187,7 @@
           "description": "Results are values that this pipeline can output once run",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResult"
           }
         },
@@ -1108,6 +1195,7 @@
           "description": "Tasks declares the graph of Tasks that execute when this Pipeline is run.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTask"
           }
         },
@@ -1115,6 +1203,7 @@
           "description": "Workspaces declares a set of named workspaces that are expected to be provided by a PipelineRun.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineWorkspaceDeclaration"
           }
         }
@@ -1128,6 +1217,7 @@
           "description": "Conditions is a list of conditions that need to be true for the task to run Conditions are deprecated, use WhenExpressions instead",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskCondition"
           }
         },
@@ -1139,6 +1229,7 @@
           "description": "Parameters declares parameters passed to this task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
@@ -1155,7 +1246,8 @@
           "description": "RunAfter is the list of PipelineTask names that should be executed before this Task executes. (Used to force a specific ordering in graph execution.)",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "taskRef": {
@@ -1174,6 +1266,7 @@
           "description": "WhenExpressions is a list of when expressions that need to be true for the task to run",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
           }
         },
@@ -1181,6 +1274,7 @@
           "description": "Workspaces maps workspaces from the pipeline spec to the workspaces declared in the Task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspacePipelineTaskBinding"
           }
         }
@@ -1195,12 +1289,14 @@
       "properties": {
         "conditionRef": {
           "description": "ConditionRef is the name of the Condition to use for the conditionCheck",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "params": {
           "description": "Params declare parameters passed to this Condition",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
@@ -1208,6 +1304,7 @@
           "description": "Resources declare the resources provided to this Condition as input",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
           }
         }
@@ -1225,16 +1322,19 @@
           "description": "From is the list of PipelineTask names that the resource has to come from. (Implies an ordering in the execution graph.)",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "name": {
           "description": "Name is the name of the PipelineResource as declared by the Task.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "resource": {
           "description": "Resource is the name of the DeclaredPipelineResource to use.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1244,13 +1344,15 @@
         "annotations": {
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "labels": {
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         }
       }
@@ -1265,11 +1367,13 @@
       "properties": {
         "name": {
           "description": "Name is the name of the PipelineResource as declared by the Task.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "resource": {
           "description": "Resource is the name of the DeclaredPipelineResource to use.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1282,10 +1386,12 @@
       ],
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1297,6 +1403,7 @@
           "description": "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
           }
         },
@@ -1304,6 +1411,7 @@
           "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskOutputResource"
           }
         }
@@ -1346,7 +1454,8 @@
         },
         "name": {
           "description": "Name is the name of a workspace to be provided by a PipelineRun.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "optional": {
           "description": "Optional marks a Workspace as not being required in PipelineRuns. By default this field is false and so declared workspaces are required.",
@@ -1363,10 +1472,12 @@
       ],
       "properties": {
         "PipelineTask": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "Result": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1381,20 +1492,23 @@
           "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "command": {
           "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "env": {
           "description": "List of environment variables to set in the container. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.EnvVar"
           },
           "x-kubernetes-patch-merge-key": "name",
@@ -1404,6 +1518,7 @@
           "description": "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.EnvFromSource"
           }
         },
@@ -1425,12 +1540,14 @@
         },
         "name": {
           "description": "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "ports": {
           "description": "List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.ContainerPort"
           },
           "x-kubernetes-list-map-keys": [
@@ -1447,6 +1564,7 @@
         },
         "resources": {
           "description": "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+          "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
@@ -1485,6 +1603,7 @@
           "description": "volumeDevices is the list of block devices to be used by the container.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.VolumeDevice"
           },
           "x-kubernetes-patch-merge-key": "devicePath",
@@ -1494,6 +1613,7 @@
           "description": "Pod volumes to mount into the container's filesystem. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.VolumeMount"
           },
           "x-kubernetes-patch-merge-key": "mountPath",
@@ -1541,12 +1661,14 @@
       "properties": {
         "name": {
           "description": "Name is the Pipeline Task name",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
           }
         }
@@ -1563,20 +1685,23 @@
           "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "command": {
           "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. The $(VAR_NAME) syntax can be escaped with a double $$, ie: $$(VAR_NAME). Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "env": {
           "description": "List of environment variables to set in the container. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.EnvVar"
           },
           "x-kubernetes-patch-merge-key": "name",
@@ -1586,6 +1711,7 @@
           "description": "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.EnvFromSource"
           }
         },
@@ -1607,12 +1733,14 @@
         },
         "name": {
           "description": "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "ports": {
           "description": "List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.ContainerPort"
           },
           "x-kubernetes-list-map-keys": [
@@ -1629,6 +1757,7 @@
         },
         "resources": {
           "description": "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+          "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
@@ -1671,6 +1800,7 @@
           "description": "volumeDevices is the list of block devices to be used by the container.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.VolumeDevice"
           },
           "x-kubernetes-patch-merge-key": "devicePath",
@@ -1680,6 +1810,7 @@
           "description": "Pod volumes to mount into the container's filesystem. Cannot be updated.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.VolumeMount"
           },
           "x-kubernetes-patch-merge-key": "mountPath",
@@ -1731,10 +1862,12 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
           "description": "Spec holds the desired state of the Task from the client",
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -1753,6 +1886,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Task"
           }
         },
@@ -1761,6 +1895,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -1801,7 +1936,8 @@
         },
         "name": {
           "description": "Name declares the name by which a resource is referenced in the definition. Resources may be referenced by name in the definition of a Task's steps.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "optional": {
           "description": "Optional declares the resource as optional. By default optional is set to false which makes a resource required. optional: true - the resource is considered optional optional: false - the resource is considered required (equivalent of not specifying it)",
@@ -1813,7 +1949,8 @@
         },
         "type": {
           "description": "Type is the type of this resource;",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1829,7 +1966,8 @@
           "description": "Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead. The optional Path field corresponds to a path on disk at which the Resource can be found (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "resourceRef": {
@@ -1850,6 +1988,7 @@
           "description": "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResource"
           }
         },
@@ -1857,6 +1996,7 @@
           "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResource"
           }
         }
@@ -1871,11 +2011,13 @@
       "properties": {
         "description": {
           "description": "Description is a human-readable description of the result",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "name": {
           "description": "Name the given name",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -1892,12 +2034,15 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ObjectMeta"
         },
         "spec": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskRunSpec"
         },
         "status": {
+          "default": {},
           "$ref": "#/definitions/v1beta1.TaskRunStatus"
         }
       }
@@ -1909,12 +2054,14 @@
         "params": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
         "resources": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
           }
         }
@@ -1934,6 +2081,7 @@
         "items": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskRun"
           }
         },
@@ -1942,6 +2090,7 @@
           "type": "string"
         },
         "metadata": {
+          "default": {},
           "$ref": "#/definitions/v1.ListMeta"
         }
       }
@@ -1953,6 +2102,7 @@
         "resources": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
           }
         }
@@ -1966,6 +2116,7 @@
           "description": "Inputs holds the inputs resources this task was invoked with",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
           }
         },
@@ -1973,6 +2124,7 @@
           "description": "Outputs holds the inputs resources this task was invoked with",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
           }
         }
@@ -1988,11 +2140,13 @@
       "properties": {
         "name": {
           "description": "Name the given name",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "value": {
           "description": "Value the given value of the result",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -2003,6 +2157,7 @@
         "params": {
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           }
         },
@@ -2014,7 +2169,8 @@
           "$ref": "#/definitions/v1beta1.TaskRunResources"
         },
         "serviceAccountName": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "status": {
           "description": "Used for cancelling a taskrun (and maybe more later on)",
@@ -2035,6 +2191,7 @@
           "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
           }
         }
@@ -2051,13 +2208,15 @@
           "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
           "type": "object",
           "additionalProperties": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "cloudEvents": {
           "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.CloudEventDelivery"
           }
         },
@@ -2069,6 +2228,7 @@
           "description": "Conditions the latest available observations of a resource's current state.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/knative.Condition"
           },
           "x-kubernetes-patch-merge-key": "type",
@@ -2081,12 +2241,14 @@
         },
         "podName": {
           "description": "PodName is the name of the pod responsible for executing this task's steps.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "resourcesResult": {
           "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceResult"
           }
         },
@@ -2094,6 +2256,7 @@
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
           }
         },
@@ -2101,6 +2264,7 @@
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.SidecarState"
           }
         },
@@ -2112,6 +2276,7 @@
           "description": "Steps describes the state of each build step container.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.StepState"
           }
         },
@@ -2119,6 +2284,7 @@
           "description": "TaskRunResults are the list of results written out by the task's containers",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunResult"
           }
         },
@@ -2139,6 +2305,7 @@
           "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.CloudEventDelivery"
           }
         },
@@ -2148,12 +2315,14 @@
         },
         "podName": {
           "description": "PodName is the name of the pod responsible for executing this task's steps.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "resourcesResult": {
           "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceResult"
           }
         },
@@ -2161,6 +2330,7 @@
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
           }
         },
@@ -2168,6 +2338,7 @@
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.SidecarState"
           }
         },
@@ -2179,6 +2350,7 @@
           "description": "Steps describes the state of each build step container.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.StepState"
           }
         },
@@ -2186,6 +2358,7 @@
           "description": "TaskRunResults are the list of results written out by the task's containers",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunResult"
           }
         },
@@ -2207,6 +2380,7 @@
           "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
           }
         },
@@ -2218,6 +2392,7 @@
           "description": "Results are values that this Task can output",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.TaskResult"
           }
         },
@@ -2225,6 +2400,7 @@
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Sidecar"
           }
         },
@@ -2236,6 +2412,7 @@
           "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.Step"
           }
         },
@@ -2243,6 +2420,7 @@
           "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1.Volume"
           }
         },
@@ -2250,6 +2428,7 @@
           "description": "Workspaces are the volumes that this Task requires.",
           "type": "array",
           "items": {
+            "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
           }
         }
@@ -2276,22 +2455,26 @@
           "description": "DeprecatedValues for backwards compatibility with \u003cv0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         },
         "input": {
           "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "operator": {
           "description": "Operator that represents an Input's relationship to the values",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "values": {
           "description": "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "default": ""
           }
         }
       }
@@ -2313,7 +2496,8 @@
         },
         "name": {
           "description": "Name is the name of the workspace populated by the volume.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "persistentVolumeClaim": {
           "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
@@ -2350,7 +2534,8 @@
         },
         "name": {
           "description": "Name is the name by which you can bind the volume at runtime.",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "optional": {
           "description": "Optional marks a Workspace as not being required in TaskRuns. By default this field is false and so declared workspaces are required.",
@@ -2372,7 +2557,8 @@
       "properties": {
         "name": {
           "description": "Name is the name of the workspace as declared by the task",
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "subPath": {
           "description": "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
@@ -2380,7 +2566,8 @@
         },
         "workspace": {
           "description": "Workspace is the name of the workspace declared by the pipeline",
-          "type": "string"
+          "type": "string",
+          "default": ""
         }
       }
     }

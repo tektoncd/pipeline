@@ -72,8 +72,7 @@ func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
 
 	if !ac.IsLeaderFor(ac.key) {
-		logger.Debugf("Skipping key %q, not the leader.", ac.key)
-		return nil
+		return controller.NewSkipKey(key)
 	}
 
 	secret, err := ac.secretlister.Secrets(system.Namespace()).Get(ac.secretName)
