@@ -17,6 +17,7 @@ package test
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 
@@ -284,7 +285,11 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 		Name: "finaltaskconsumingdagtask4",
 	}}
 
-	if d := cmp.Diff(pr.Status.SkippedTasks, expectedSkippedTasks); d != "" {
+	actualSkippedTasks := pr.Status.SkippedTasks
+	// Sort tasks based on their names to get similar order as in expected list
+	sort.Slice(actualSkippedTasks, func(i int, j int) bool { return actualSkippedTasks[i].Name < actualSkippedTasks[j].Name })
+
+	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
 		t.Fatalf("Expected four skipped tasks, dag task with condition failure dagtask3, dag task with when expression,"+
 			"two final tasks with missing result reference finaltaskconsumingdagtask1 and finaltaskconsumingdagtask4 in SkippedTasks."+
 			" Diff: %s", diff.PrintWantGot(d))
