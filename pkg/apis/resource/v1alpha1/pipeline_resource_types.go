@@ -56,6 +56,7 @@ const (
 
 	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
 	// with additional functionality that was added to be compatible with knative build.
+	// Deprecated: This PipelineResource type is deprecated and support will be removed in a future release.
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 

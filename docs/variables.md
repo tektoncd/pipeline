@@ -95,6 +95,9 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 
 #### Variables for the  `BuildGCS` type
 
+**NB:** This Resource type is **Deprecated**. See [BuildGCS Storage
+Resource](./resources.md#buildgcs-storage-resource) for more information.
+
 | Variable | Description |
 | -------- | ----------- |
 | `name` | The name of the resource. |
