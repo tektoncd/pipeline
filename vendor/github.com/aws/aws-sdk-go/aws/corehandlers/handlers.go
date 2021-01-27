@@ -225,8 +225,6 @@ var ValidateEndpointHandler = request.NamedHandler{Name: "core.ValidateEndpointH
 	if r.ClientInfo.SigningRegion == "" && aws.StringValue(r.Config.Region) == "" {
 		r.Error = aws.ErrMissingRegion
 	} else if r.ClientInfo.Endpoint == "" {
-		// Was any endpoint provided by the user, or one was derived by the
-		// SDK's endpoint resolver?
 		r.Error = aws.ErrMissingEndpoint
 	}
 }}

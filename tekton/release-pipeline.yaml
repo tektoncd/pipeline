@@ -41,8 +41,6 @@ spec:
     type: image
   - name: builtPullRequestInitImage
     type: image
-  - name: builtGcsFetcherImage
-    type: image
   - name: notification
     type: cloudEvent
   tasks:
@@ -144,7 +142,5 @@ spec:
             resource: builtDigestExporterImage
           - name: builtPullRequestInitImage
             resource: builtPullRequestInitImage
-          - name: builtGcsFetcherImage
-            resource: builtGcsFetcherImage
           - name: notification
             resource: notification

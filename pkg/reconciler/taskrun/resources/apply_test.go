@@ -40,7 +40,6 @@ var (
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		BuildGCSFetcherImage:     "gcr.io/cloud-tbs/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}

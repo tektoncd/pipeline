@@ -21,13 +21,6 @@ const (
 	// the manifest or image tag after the last push.
 	ErrCodeImageAlreadyExistsException = "ImageAlreadyExistsException"
 
-	// ErrCodeImageDigestDoesNotMatchException for service response error code
-	// "ImageDigestDoesNotMatchException".
-	//
-	// The specified image digest does not match the digest that Amazon ECR calculated
-	// for the image.
-	ErrCodeImageDigestDoesNotMatchException = "ImageDigestDoesNotMatchException"
-
 	// ErrCodeImageNotFoundException for service response error code
 	// "ImageNotFoundException".
 	//
@@ -70,12 +63,6 @@ const (
 	// characters.
 	ErrCodeInvalidTagParameterException = "InvalidTagParameterException"
 
-	// ErrCodeKmsException for service response error code
-	// "KmsException".
-	//
-	// The operation failed due to a KMS exception.
-	ErrCodeKmsException = "KmsException"
-
 	// ErrCodeLayerAlreadyExistsException for service response error code
 	// "LayerAlreadyExistsException".
 	//
@@ -111,8 +98,8 @@ const (
 	// ErrCodeLifecyclePolicyPreviewInProgressException for service response error code
 	// "LifecyclePolicyPreviewInProgressException".
 	//
-	// The previous lifecycle policy preview request has not completed. Wait and
-	// try again.
+	// The previous lifecycle policy preview request has not completed. Please try
+	// again later.
 	ErrCodeLifecyclePolicyPreviewInProgressException = "LifecyclePolicyPreviewInProgressException"
 
 	// ErrCodeLifecyclePolicyPreviewNotFoundException for service response error code
@@ -134,12 +121,6 @@ const (
 	//
 	// The manifest list is referencing an image that does not exist.
 	ErrCodeReferencedImagesNotFoundException = "ReferencedImagesNotFoundException"
-
-	// ErrCodeRegistryPolicyNotFoundException for service response error code
-	// "RegistryPolicyNotFoundException".
-	//
-	// The registry doesn't have an associated registry policy.
-	ErrCodeRegistryPolicyNotFoundException = "RegistryPolicyNotFoundException"
 
 	// ErrCodeRepositoryAlreadyExistsException for service response error code
 	// "RepositoryAlreadyExistsException".
@@ -197,28 +178,20 @@ const (
 	// ErrCodeUploadNotFoundException for service response error code
 	// "UploadNotFoundException".
 	//
-	// The upload could not be found, or the specified upload ID is not valid for
+	// The upload could not be found, or the specified upload id is not valid for
 	// this repository.
 	ErrCodeUploadNotFoundException = "UploadNotFoundException"
-
-	// ErrCodeValidationException for service response error code
-	// "ValidationException".
-	//
-	// There was an exception validating this request.
-	ErrCodeValidationException = "ValidationException"
 )
 
 var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"EmptyUploadException":                      newErrorEmptyUploadException,
 	"ImageAlreadyExistsException":               newErrorImageAlreadyExistsException,
-	"ImageDigestDoesNotMatchException":          newErrorImageDigestDoesNotMatchException,
 	"ImageNotFoundException":                    newErrorImageNotFoundException,
 	"ImageTagAlreadyExistsException":            newErrorImageTagAlreadyExistsException,
 	"InvalidLayerException":                     newErrorInvalidLayerException,
 	"InvalidLayerPartException":                 newErrorInvalidLayerPartException,
 	"InvalidParameterException":                 newErrorInvalidParameterException,
 	"InvalidTagParameterException":              newErrorInvalidTagParameterException,
-	"KmsException":                              newErrorKmsException,
 	"LayerAlreadyExistsException":               newErrorLayerAlreadyExistsException,
 	"LayerInaccessibleException":                newErrorLayerInaccessibleException,
 	"LayerPartTooSmallException":                newErrorLayerPartTooSmallException,
@@ -228,7 +201,6 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"LifecyclePolicyPreviewNotFoundException":   newErrorLifecyclePolicyPreviewNotFoundException,
 	"LimitExceededException":                    newErrorLimitExceededException,
 	"ReferencedImagesNotFoundException":         newErrorReferencedImagesNotFoundException,
-	"RegistryPolicyNotFoundException":           newErrorRegistryPolicyNotFoundException,
 	"RepositoryAlreadyExistsException":          newErrorRepositoryAlreadyExistsException,
 	"RepositoryNotEmptyException":               newErrorRepositoryNotEmptyException,
 	"RepositoryNotFoundException":               newErrorRepositoryNotFoundException,
@@ -238,5 +210,4 @@ var exceptionFromCode = map[string]func(protocol.ResponseMetadata) error{
 	"TooManyTagsException":                      newErrorTooManyTagsException,
 	"UnsupportedImageTypeException":             newErrorUnsupportedImageTypeException,
 	"UploadNotFoundException":                   newErrorUploadNotFoundException,
-	"ValidationException":                       newErrorValidationException,
 }

@@ -48,7 +48,6 @@ For example:
     -   [Cluster Resource](#cluster-resource)
     -   [Storage Resource](#storage-resource)
         -   [GCS Storage Resource](#gcs-storage-resource)
-        -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
     -   [Cloud Event Resource](#cloud-event-resource)
 -   [Why Aren't PipelineResources in Beta?](#why-arent-pipelineresources-in-beta)
 
@@ -844,8 +843,7 @@ the blob.
 
 Only blob storage type
 [Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
-of now via [GCS storage resource](#gcs-storage-resource) and
-[BuildGCS storage resource](#buildgcs-storage-resource).
+of now via [GCS storage resource](#gcs-storage-resource).
 
 #### GCS Storage Resource
 
@@ -932,78 +930,6 @@ service account.
     ```
 
 --------------------------------------------------------------------------------
-
-#### `Deprecated: `BuildGCS Storage Resource
-
-**NB:** This Resource type is _deprecated_, and will be removed in a future
-release. To fetch objects from Google Cloud Storage, prefer the [GCS storage
-resource](#gcs-storage-resource) instead.
-
-The `build-gcs` storage resource points to a
-[Google Cloud Storage](https://cloud.google.com/storage/) blob like
-[GCS Storage Resource](#gcs-storage-resource), either in the form of a .zip
-archive, or based on the contents of a source manifest file.
-
-In addition to fetching an .zip archive, BuildGCS also unzips it.
-
-A
-[Source Manifest File](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests)
-is a JSON object, which is listing other objects in a Cloud Storage that should
-be fetched. The format of the manifest is a mapping of the destination file path
-to the location in a Cloud Storage, where the file's contents can be found. The
-`build-gcs` resource can also do incremental uploads of sources via the Source
-Manifest File.
-
-To create a `build-gcs` type of storage resource using the `PipelineResource`
-CRD:
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: build-gcs-storage
-  namespace: default
-spec:
-  type: storage
-  params:
-    - name: type
-      value: build-gcs
-    - name: location
-      value: gs://build-crd-tests/rules_docker-master.zip
-    - name: artifactType
-      value: Archive
-```
-
-Params that can be added are the following:
-
-1.  `location`: represents the location of the blob storage.
-1.  `type`: represents the type of blob storage. For BuildGCS, this value should
-    be set to `build-gcs`
-1.  `artifactType`: represent the type of `gcs` resource. Right now, we support
-    following types:
-
-*   `ZipArchive`:
-    *   ZipArchive indicates that the resource fetched is an archive file in the
-        zip format.
-    *   It unzips the archive and places all the files in the directory, which
-        is set at runtime.
-    *   `Archive` is also supported and is equivalent to `ZipArchive`, but is
-        deprecated.
-*   `TarGzArchive`:
-    *   TarGzArchive indicates that the resource fetched is a gzipped archive
-        file in the tar format.
-    *   It unzips the archive and places all the files in the directory, which
-        is set at runtime.
-*   [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
-    *   Manifest indicates that the resource should be fetched using a source
-        manifest file.
-
-Private buckets other than the ones accessible by a
-[TaskRun Service Account](./taskruns.md#service-account) can not be configured
-as `storage` resources for the `build-gcs` storage resource right now. This is
-because the container image
-[gcr.io/cloud-builders//gcs-fetcher](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher)
-does not support configuring secrets.
 
 ### Cloud Event Resource
 

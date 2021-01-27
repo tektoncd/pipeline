@@ -36,8 +36,6 @@ type Images struct {
 	ShellImage string
 	// GsutilImage is the container image containing gsutil.
 	GsutilImage string
-	// BuildGCSFetcherImage is the container image containing our GCS fetcher binary.
-	BuildGCSFetcherImage string
 	// PRImage is the container image that we use to implement the PR source step.
 	PRImage string
 	// ImageDigestExporterImage is the container image containing our image digest exporter binary.
@@ -58,7 +56,6 @@ func (i Images) Validate() error {
 		{i.KubeconfigWriterImage, "kubeconfig-writer"},
 		{i.ShellImage, "shell"},
 		{i.GsutilImage, "gsutil"},
-		{i.BuildGCSFetcherImage, "build-gcs-fetcher"},
 		{i.PRImage, "pr"},
 		{i.ImageDigestExporterImage, "imagedigest-exporter"},
 	} {

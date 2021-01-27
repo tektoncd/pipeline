@@ -137,13 +137,3 @@ spec:
   params:
   - name: url
     value: cmd/pullrequest-init  # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: gcs-fetcher-image
-spec:
-  type: image
-  params:
-  - name: url
-    value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher  # Registry is provided via parameter, this is a hack see #569

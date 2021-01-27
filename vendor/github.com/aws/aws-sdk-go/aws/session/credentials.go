@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/processcreds"
-	"github.com/aws/aws-sdk-go/aws/credentials/ssocreds"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -101,9 +100,6 @@ func resolveCredsFromProfile(cfg *aws.Config,
 			sharedCfg.Creds,
 		)
 
-	case sharedCfg.hasSSOConfiguration():
-		creds = resolveSSOCredentials(cfg, sharedCfg, handlers)
-
 	case len(sharedCfg.CredentialProcess) != 0:
 		// Get credentials from CredentialProcess
 		creds = processcreds.NewCredentials(sharedCfg.CredentialProcess)
@@ -153,21 +149,6 @@ func resolveCredsFromProfile(cfg *aws.Config,
 	}
 
 	return creds, nil
-}
-
-func resolveSSOCredentials(cfg *aws.Config, sharedCfg sharedConfig, handlers request.Handlers) *credentials.Credentials {
-	cfgCopy := cfg.Copy()
-	cfgCopy.Region = &sharedCfg.SSORegion
-
-	return ssocreds.NewCredentials(
-		&Session{
-			Config:   cfgCopy,
-			Handlers: handlers.Copy(),
-		},
-		sharedCfg.SSOAccountID,
-		sharedCfg.SSORoleName,
-		sharedCfg.SSOStartURL,
-	)
 }
 
 // valid credential source values
