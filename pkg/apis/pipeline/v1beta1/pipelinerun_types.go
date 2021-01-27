@@ -197,6 +197,8 @@ const (
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
 
+	// PipelineRunSpecStatusPending indicates that the user wants to postpone starting a PipelineRun
+	// until some condition is met
 	PipelineRunSpecStatusPending = "PipelineRunPending"
 )
 
