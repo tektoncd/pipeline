@@ -2246,6 +2246,11 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 		},
 	}}
 
+	expected := map[string]bool{
+		"final-task-1": false,
+		"final-task-2": true,
+	}
+
 	tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*state[0].PipelineTask})
 	d, err := dag.Build(tasks, tasks.Deps())
 	if err != nil {
@@ -2253,7 +2258,12 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 	}
 
 	// build graph with finally tasks
-	pts := []v1beta1.PipelineTask{*state[1].PipelineTask, *state[2].PipelineTask}
+	var pts []v1beta1.PipelineTask
+	for i := range state {
+		if i > 0 { // first one is a dag task that produces a result
+			pts = append(pts, *state[i].PipelineTask)
+		}
+	}
 	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pts), map[string][]string{})
 	if err != nil {
 		t.Fatalf("Could not get a dag from the finally tasks %#v: %v", pts, err)
@@ -2265,11 +2275,12 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 		FinalTasksGraph: dfinally,
 	}
 
-	if state[1].IsFinallySkipped(facts) {
-		t.Fatalf("Didn't expect the finally task with a valid result reference to be skipped but it was skipped.")
-	}
-
-	if !state[2].IsFinallySkipped(facts) {
-		t.Fatal("Expected the finally task with an invalid result reference to be skipped but it was not skipped.")
+	for i := range state {
+		if i > 0 { // first one is a dag task that produces a result
+			finallyTaskName := state[i].PipelineTask.Name
+			if d := cmp.Diff(expected[finallyTaskName], state[i].IsFinallySkipped(facts)); d != "" {
+				t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
+			}
+		}
 	}
 }
