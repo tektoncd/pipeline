@@ -31,6 +31,10 @@ weight: 3
     - [Consuming `Task` execution results in `finally`](#consuming-task-execution-results-in-finally)
     - [`PipelineRun` Status with `finally`](#pipelinerun-status-with-finally)
     - [Using Execution `Status` of `pipelineTask`](#using-execution-status-of-pipelinetask)
+    - [Guard `Finally Task` execution using `WhenExpressions`](#guard-finally-task-execution-using-whenexpressions)
+      - [`WhenExpressions` using `Parameters` in `Finally Tasks`](#whenexpressions-using-parameters-in-finally-tasks)
+      - [`WhenExpressions` using `Results` in `Finally Tasks`](#whenexpressions-using-results-in-finally-tasks)
+      - [`WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`](#whenexpressions-using-execution-status-of-pipelinetask-in-finally-tasks)  
     - [Known Limitations](#known-limitations)
       - [Specifying `Resources` in Final Tasks](#specifying-resources-in-final-tasks)
       - [Cannot configure the Final Task execution order](#cannot-configure-the-final-task-execution-order)
@@ -895,6 +899,118 @@ This kind of variable can have any one of the values from the following table:
 
 For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-task-execution-status.yaml).
 
+### Guard `Finally Task` execution using `WhenExpressions`
+
+Similar to `Tasks`, `Finally Tasks` can be guarded using [`WhenExpressions`](#guard-task-execution-using-whenexpressions)
+that operate on static inputs or variables. Like in `Tasks`, `WhenExpressions` in `Finally Tasks` can operate on
+`Parameters` and `Results`. Unlike in `Tasks`, `WhenExpressions` in `Finally Tasks` can also operate on the [`Execution
+Status`](#using-execution-status-of-pipelinetask) of `Tasks`.
+
+#### `WhenExpressions` using `Parameters` in `Finally Tasks`
+
+`WhenExpressions` in `Finally Tasks` can utilize `Parameters` as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/master/task/golang-build/0.1)
+and [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/master/task/send-to-channel-slack/0.1) Catalog
+`Tasks`:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-
+spec:
+  pipelineSpec:
+    params:
+    - name: enable-notifications
+      type: string
+      description: a boolean indicating whether the notifications should be sent
+    tasks:
+      - name: golang-build
+        taskRef:
+          name: golang-build
+      # […]
+    finally:
+      - name: notify-build-failure # executed only when build task fails and notifications are enabled
+        when:
+          - input: $(tasks.golang-build.status)
+            operator: in
+            values: ["Failed"]
+          - input: $(params.enable-notifications)
+            operator: in
+            values: ["true"]
+        taskRef:
+          name: send-to-slack-channel
+      # […]
+  params:
+    - name: enable-notifications
+      value: true
+```
+
+#### `WhenExpressions` using `Results` in `Finally Tasks`
+
+`WhenExpressions` in `Finally Tasks` can utilize `Results`, as demonstrated using [`git-clone`](https://github.com/tektoncd/catalog/tree/master/task/git-clone/0.2)
+and [`github-add-comment`](https://github.com/tektoncd/catalog/tree/master/task/github-add-comment/0.2) Catalog `Tasks`:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: git-clone
+        taskRef:
+          name: git-clone
+      - name: go-build
+      # […]
+    finally:
+      - name: notify-commit-sha # executed only when commit sha is not the expected sha
+        when:
+          - input: $(tasks.git-clone.results.commit)
+            operator: notin
+            values: [$(params.expected-sha)]
+        taskRef:
+          name: github-add-comment
+      # […]
+  params:
+    - name: expected-sha
+      value: 54dd3984affab47f3018852e61a1a6f9946ecfa
+```
+
+If the `WhenExpressions` in a `Finally Task` use `Results` from a skipped or failed non-finally `Tasks`, then the
+`Finally Task` would also be skipped and be included in the list of `Skipped Tasks` in the `Status`, [similarly to when using
+`Results` in other parts of the `Finally Task`](#consuming-task-execution-results-in-finally).
+
+#### `WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`
+
+`WhenExpressions` in `Finally Tasks` can utilize [`Execution Status` of `PipelineTasks`](#using-execution-status-of-pipelinetask), 
+as as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/master/task/golang-build/0.1) and
+[`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/master/task/send-to-channel-slack/0.1) Catalog `Tasks`:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: golang-build
+        taskRef:
+          name: golang-build
+      # […]
+    finally:
+      - name: notify-build-failure # executed only when build task fails
+        when:
+          - input: $(tasks.golang-build.status)
+            operator: in
+            values: ["Failed"]
+        taskRef:
+          name: send-to-slack-channel
+      # […]
+```
+
+For an end-to-end example, see [PipelineRun with WhenExpressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
 
 ### Known Limitations
 

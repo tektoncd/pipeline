@@ -100,7 +100,47 @@ spec:
               image: ubuntu
               script: exit 1
     finally:
-      - name: do-something-finally
+      - name: finally-task-should-be-skipped-1 # when expression using execution status, evaluates to false
+        when:
+          - input: "$(tasks.echo-file-exists.status)"
+            operator: in
+            values: ["Failure"]
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-2 # when expression using task result, evaluates to false
+        when:
+          - input: "$(tasks.check-file.results.exists)"
+            operator: in
+            values: ["missing"]
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-skipped-3 # when expression using parameter, evaluates to false
+        when:
+          - input: "$(params.path)"
+            operator: notin
+            values: ["README.md"]
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-executed # when expression using execution status, param and results
+        when:
+          - input: "$(tasks.echo-file-exists.status)"
+            operator: in
+            values: ["Succeeded"]
+          - input: "$(tasks.check-file.results.exists)"
+            operator: in
+            values: ["yes"]
+          - input: "$(params.path)"
+            operator: in
+            values: ["README.md"]
         taskSpec:
           steps:
             - name: echo

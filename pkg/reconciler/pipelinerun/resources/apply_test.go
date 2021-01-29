@@ -197,6 +197,11 @@ func TestApplyParameters(t *testing.T) {
 					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param)")},
 				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param)",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param)"},
+				}},
 			}},
 		},
 		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value")}},
@@ -210,6 +215,11 @@ func TestApplyParameters(t *testing.T) {
 					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
 				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value"},
+				}},
 			}},
 		},
 	}, {
@@ -230,6 +240,11 @@ func TestApplyParameters(t *testing.T) {
 					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param)")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param)")},
 				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param)",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param)"},
+				}},
 			}},
 		},
 		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value")}},
@@ -249,6 +264,11 @@ func TestApplyParameters(t *testing.T) {
 					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
 					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
 				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value"},
+				}},
 			}},
 		},
 	}} {
@@ -1062,6 +1082,11 @@ func TestApplyTaskRunContext(t *testing.T) {
 				Name:  "task3",
 				Value: *v1beta1.NewArrayOrString("$(tasks.task3.status)"),
 			}},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "$(tasks.task1.status)",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.task3.status)"},
+			}},
 		},
 	}}
 	expectedState := PipelineRunState{{
@@ -1074,6 +1099,11 @@ func TestApplyTaskRunContext(t *testing.T) {
 			}, {
 				Name:  "task3",
 				Value: *v1beta1.NewArrayOrString("none"),
+			}},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "succeeded",
+				Operator: selection.In,
+				Values:   []string{"none"},
 			}},
 		},
 	}}

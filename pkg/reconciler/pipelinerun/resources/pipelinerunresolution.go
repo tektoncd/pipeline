@@ -145,6 +145,9 @@ func (t ResolvedPipelineRunTask) IsConditionStatusFalse() bool {
 }
 
 func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool {
+	if facts.isFinalTask(t.PipelineTask.Name) {
+		return true
+	}
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
@@ -223,6 +226,9 @@ func (t *ResolvedPipelineRunTask) IsFinallySkipped(facts *PipelineRunFacts) bool
 	}
 	if facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name) {
 		if _, err := ResolveResultRef(facts.State, t); err != nil {
+			return true
+		}
+		if t.whenExpressionsSkip(facts) {
 			return true
 		}
 	}

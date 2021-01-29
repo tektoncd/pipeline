@@ -4714,6 +4714,71 @@ func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 						StringVal: "$(tasks.dag-task-2.results.aResult)",
 					}},
 				},
+			}, {
+				// final task skipped because when expressions evaluated to false
+				Name:    "final-task-3",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "param",
+					}},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(tasks.dag-task-1.results.aResult)",
+					Operator: selection.NotIn,
+					Values:   []string{"aResultValue"},
+				}},
+			}, {
+				// final task executed because when expressions evaluated to true
+				Name:    "final-task-4",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "param",
+					}},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(tasks.dag-task-1.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"aResultValue"},
+				}},
+			}, {
+				// final task skipped because of missing result reference in when expressions
+				Name:    "final-task-5",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "param",
+					}},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(tasks.dag-task-2.results.aResult)",
+					Operator: selection.NotIn,
+					Values:   []string{"aResultValue"},
+				}},
+			}, {
+				// final task skipped because of missing result reference in params
+				// even though its when expressions has a valid result that would have evaluated to true
+				Name:    "final-task-6",
+				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
+				Params: []v1beta1.Param{{
+					Name: "finalParam",
+					Value: v1beta1.ArrayOrString{
+						Type:      "string",
+						StringVal: "$(tasks.dag-task-2.results.aResult)",
+					}},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(tasks.dag-task-1.results.aResult)",
+					Operator: selection.In,
+					Values:   []string{"aResultValue"},
+				}},
 			}},
 		},
 	}}
@@ -4855,10 +4920,21 @@ func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 	}
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name: "final-task-2",
+	}, {
+		Name: "final-task-3",
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "aResultValue",
+			Operator: "notin",
+			Values:   []string{"aResultValue"},
+		}},
+	}, {
+		Name: "final-task-5",
+	}, {
+		Name: "final-task-6",
 	}}
 
 	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
-		t.Fatalf("Expected to see only one final task (final-task-2) in the list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
+		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
 	}
 }
 

@@ -2244,11 +2244,55 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.missingResult)"),
 			}},
 		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-3",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.NotIn,
+				Values:   []string{"bar"},
+			}},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-4",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"bar"},
+			}},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-5",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "$(tasks.dag-task.results.commit)",
+				Operator: selection.In,
+				Values:   []string{"SHA2"},
+			}},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "final-task-6",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			WhenExpressions: v1beta1.WhenExpressions{{
+				Input:    "$(tasks.dag-task.results.missing)",
+				Operator: selection.In,
+				Values:   []string{"none"},
+			}},
+		},
 	}}
 
 	expected := map[string]bool{
 		"final-task-1": false,
 		"final-task-2": true,
+		"final-task-3": false,
+		"final-task-4": true,
+		"final-task-5": false,
+		"final-task-6": true,
 	}
 
 	tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*state[0].PipelineTask})

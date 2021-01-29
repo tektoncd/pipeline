@@ -93,6 +93,7 @@ func ApplyPipelineTaskContext(state PipelineRunState, replacements map[string]st
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil)
+			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -129,6 +130,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 
 	for i := range p.Finally {
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements)
+		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements)
 	}
 
 	return p
