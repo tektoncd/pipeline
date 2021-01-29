@@ -1632,6 +1632,24 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid pipeline with final tasks referring to context variables",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &TaskRef{Name: "non-final-task"},
+				}},
+				Finally: []PipelineTask{{
+					Name:    "final-task-1",
+					TaskRef: &TaskRef{Name: "final-task"},
+					Params: []Param{{
+						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(context.pipelineRun.name)"},
+					}},
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1865,6 +1883,28 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 			},
 		},
 		expectedError: *apis.ErrGeneric("expected at least one, got none", "spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"),
+	}, {
+		name: "invalid pipeline with final tasks referring to invalid context variables",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{
+					Name:    "non-final-task",
+					TaskRef: &TaskRef{Name: "non-final-task"},
+				}},
+				Finally: []PipelineTask{{
+					Name:    "final-task-1",
+					TaskRef: &TaskRef{Name: "final-task"},
+					Params: []Param{{
+						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
+			Paths:   []string{"spec.finally.value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
