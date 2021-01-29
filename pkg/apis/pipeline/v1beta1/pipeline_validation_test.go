@@ -277,6 +277,55 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[0].when[0]"},
 		},
 	}, {
+		name: "invalid pipeline with final task having when expression with invalid operator (not In/NotIn)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.Exists,
+					Values:   []string{"foo"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: operator "exists" is not recognized. valid operators: in,notin`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having when expression with invalid operator (not In/NotIn)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.Exists,
+					Values:   []string{"foo"},
+				}},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "bar-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.Exists,
+					Values:   []string{"foo"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: operator "exists" is not recognized. valid operators: in,notin`,
+			Paths:   []string{"tasks[0].when[0]", "finally[0].when[0]"},
+		},
+	}, {
 		name: "invalid pipeline with one pipeline task having when expression with invalid values (empty)",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
@@ -293,6 +342,55 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `invalid value: expecting non-empty values field`,
 			Paths:   []string{"tasks[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with final task having when expression with invalid values (empty)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expecting non-empty values field`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having when expression with invalid values (empty)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{},
+				}},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expecting non-empty values field`,
+			Paths:   []string{"tasks[0].when[0]", "finally[0].when[0]"},
 		},
 	}, {
 		name: "invalid pipeline with one pipeline task having when expression with invalid operator (missing)",
@@ -312,6 +410,52 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[0].when[0]"},
 		},
 	}, {
+		name: "invalid pipeline with final task having when expression with invalid operator (missing)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:  "foo",
+					Values: []string{"foo"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: operator "" is not recognized. valid operators: in,notin`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having when expression with invalid operator (missing)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:  "foo",
+					Values: []string{"foo"},
+				}},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:  "foo",
+					Values: []string{"foo"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: operator "" is not recognized. valid operators: in,notin`,
+			Paths:   []string{"tasks[0].when[0]", "finally[0].when[0]"},
+		},
+	}, {
 		name: "invalid pipeline with one pipeline task having when expression with invalid values (missing)",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
@@ -327,6 +471,52 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `invalid value: expecting non-empty values field`,
 			Paths:   []string{"tasks[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with final task having when expression with invalid values (missing)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expecting non-empty values field`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having when expression with invalid values (missing)",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+				}},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expecting non-empty values field`,
+			Paths:   []string{"tasks[0].when[0]", "finally[0].when[0]"},
 		},
 	}, {
 		name: "invalid pipeline with one pipeline task having when expression with misconfigured result reference",
@@ -350,6 +540,61 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[1].when[0]"},
 		},
 	}, {
+		name: "invalid pipeline with final task having when expression with misconfigured result reference",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having when expression with misconfigured result reference",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-task-finally",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
+			Paths:   []string{"tasks[1].when[0]", "finally[0].when[0]"},
+		},
+	}, {
 		name: "invalid pipeline with one pipeline task having blank when expression",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
@@ -365,6 +610,49 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
 			Paths:   []string{"tasks[1].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with final task having blank when expression",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:            "invalid-pipeline-task-finally",
+				TaskRef:         &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid pipeline with dag task and final task having blank when expression",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:            "invalid-pipeline-task",
+				TaskRef:         &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{}},
+			}},
+			Finally: []PipelineTask{{
+				Name:            "invalid-pipeline-task-finally",
+				TaskRef:         &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"tasks[1].when[0]", "finally[0].when[0]"},
 		},
 	}, {
 		name: "invalid pipeline with pipeline task having reference to resources which does not exist",
@@ -2047,21 +2335,6 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 			Message: `invalid value: invalid task result reference, final task param param1 has task result reference from a task which is not defined in the pipeline`,
 			Paths:   []string{"finally[0].params"},
 		},
-	}, {
-		name: "invalid pipeline with final task specifying when expressions",
-		finalTasks: []PipelineTask{{
-			Name:    "final-task",
-			TaskRef: &TaskRef{Name: "final-task"},
-			WhenExpressions: []WhenExpression{{
-				Input:    "foo",
-				Operator: selection.In,
-				Values:   []string{"foo", "bar"},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: no when expressions allowed under spec.finally, final task final-task has when expressions specified`,
-			Paths:   []string{"finally[0]"},
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2293,6 +2566,42 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
 			Paths:   []string{"finally[0].params[notask-status].value"},
+		},
+	}, {
+		name: "invalid string variable in finally accessing missing pipelineTask status in when expression",
+		finalTasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.notask.status)",
+				Operator: selection.In,
+				Values:   []string{"Success"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
+			Paths:   []string{"finally[0].when[0]"},
+		},
+	}, {
+		name: "invalid string variable in finally accessing missing pipelineTask status in params and when expression",
+		finalTasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
+			}},
+		}, {
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.notask.status)",
+				Operator: selection.In,
+				Values:   []string{"Success"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task notask is not defined in the pipeline`,
+			Paths:   []string{"finally[0].params[notask-status].value", "finally[1].when[0]"},
 		},
 	}, {
 		name: "invalid variable concatenated with extra string in finally accessing missing pipelineTask status",

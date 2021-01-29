@@ -70,7 +70,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineResults(ps.Results))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
-	errs = errs.Also(validateWhenExpressions(ps.Tasks))
+	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
 	return errs
 }
 
@@ -329,22 +329,32 @@ func validateExecutionStatusVariablesInFinally(tasks []PipelineTask, finally []P
 	ptNames := PipelineTaskList(tasks).Names()
 	for idx, t := range finally {
 		for _, param := range t.Params {
-			// retrieve a list of substitution expression from a param
-			if ps, ok := GetVarSubstitutionExpressionsForParam(param); ok {
-				// validate tasks.pipelineTask.status if this expression is not a result reference
-				if !LooksLikeContainsResultRefs(ps) {
-					for _, p := range ps {
-						// check if it contains context variable accessing execution status - $(tasks.taskname.status)
-						if containsExecutionStatusRef(p) {
-							// strip tasks. and .status from tasks.taskname.status to further verify task name
-							pt := strings.TrimSuffix(strings.TrimPrefix(p, "tasks."), ".status")
-							// report an error if the task name does not exist in the list of dag tasks
-							if !ptNames.Has(pt) {
-								errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt),
-									"value").ViaFieldKey("params", param.Name).ViaFieldIndex("finally", idx))
-							}
-						}
-					}
+			if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
+				errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "value").ViaFieldKey(
+					"params", param.Name).ViaFieldIndex("finally", idx))
+			}
+		}
+		for i, we := range t.WhenExpressions {
+			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+				errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "").ViaFieldIndex(
+					"when", i).ViaFieldIndex("finally", idx))
+			}
+		}
+	}
+	return errs
+}
+
+func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.String, fieldPath string) (errs *apis.FieldError) {
+	// validate tasks.pipelineTask.status if this expression is not a result reference
+	if !LooksLikeContainsResultRefs(expressions) {
+		for _, expression := range expressions {
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			if containsExecutionStatusRef(expression) {
+				// strip tasks. and .status from tasks.taskname.status to further verify task name
+				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				// report an error if the task name does not exist in the list of dag tasks
+				if !ptNames.Has(pt) {
+					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
 				}
 			}
 		}
@@ -429,9 +439,6 @@ func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) *apis.F
 		if len(f.Conditions) != 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "").ViaFieldIndex("finally", idx)
 		}
-		if len(f.WhenExpressions) != 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("no when expressions allowed under spec.finally, final task %s has when expressions specified", f.Name), "").ViaFieldIndex("finally", idx)
-		}
 	}
 
 	ts := PipelineTaskList(tasks).Names()
@@ -487,10 +494,13 @@ func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateWhenExpressions(tasks []PipelineTask) (errs *apis.FieldError) {
+func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
 		errs = errs.Also(validateOneOfWhenExpressionsOrConditions(t).ViaFieldIndex("tasks", i))
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
+	}
+	for i, t := range finalTasks {
+		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
 	}
 	return errs
 }
