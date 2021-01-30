@@ -369,7 +369,7 @@ func (c *ECR) CompleteLayerUploadRequest(input *CompleteLayerUploadInput) (req *
 //   repository and ensure that you are performing operations on the correct registry.
 //
 //   * UploadNotFoundException
-//   The upload could not be found, or the specified upload id is not valid for
+//   The upload could not be found, or the specified upload ID is not valid for
 //   this repository.
 //
 //   * InvalidLayerException
@@ -384,6 +384,9 @@ func (c *ECR) CompleteLayerUploadRequest(input *CompleteLayerUploadInput) (req *
 //
 //   * EmptyUploadException
 //   The specified layer upload does not contain any layer parts.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/CompleteLayerUpload
 func (c *ECR) CompleteLayerUpload(input *CompleteLayerUploadInput) (*CompleteLayerUploadOutput, error) {
@@ -485,6 +488,9 @@ func (c *ECR) CreateRepositoryRequest(input *CreateRepositoryInput) (req *reques
 //   The operation did not succeed because it would have exceeded a service limit
 //   for your account. For more information, see Amazon ECR Service Quotas (https://docs.aws.amazon.com/AmazonECR/latest/userguide/service-quotas.html)
 //   in the Amazon Elastic Container Registry User Guide.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/CreateRepository
 func (c *ECR) CreateRepository(input *CreateRepositoryInput) (*CreateRepositoryOutput, error) {
@@ -598,6 +604,92 @@ func (c *ECR) DeleteLifecyclePolicyWithContext(ctx aws.Context, input *DeleteLif
 	return out, req.Send()
 }
 
+const opDeleteRegistryPolicy = "DeleteRegistryPolicy"
+
+// DeleteRegistryPolicyRequest generates a "aws/request.Request" representing the
+// client's request for the DeleteRegistryPolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DeleteRegistryPolicy for more information on using the DeleteRegistryPolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DeleteRegistryPolicyRequest method.
+//    req, resp := client.DeleteRegistryPolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/DeleteRegistryPolicy
+func (c *ECR) DeleteRegistryPolicyRequest(input *DeleteRegistryPolicyInput) (req *request.Request, output *DeleteRegistryPolicyOutput) {
+	op := &request.Operation{
+		Name:       opDeleteRegistryPolicy,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DeleteRegistryPolicyInput{}
+	}
+
+	output = &DeleteRegistryPolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DeleteRegistryPolicy API operation for Amazon EC2 Container Registry.
+//
+// Deletes the registry permissions policy.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon EC2 Container Registry's
+// API operation DeleteRegistryPolicy for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   These errors are usually caused by a server-side issue.
+//
+//   * InvalidParameterException
+//   The specified parameter is invalid. Review the available parameters for the
+//   API request.
+//
+//   * RegistryPolicyNotFoundException
+//   The registry doesn't have an associated registry policy.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/DeleteRegistryPolicy
+func (c *ECR) DeleteRegistryPolicy(input *DeleteRegistryPolicyInput) (*DeleteRegistryPolicyOutput, error) {
+	req, out := c.DeleteRegistryPolicyRequest(input)
+	return out, req.Send()
+}
+
+// DeleteRegistryPolicyWithContext is the same as DeleteRegistryPolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DeleteRegistryPolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ECR) DeleteRegistryPolicyWithContext(ctx aws.Context, input *DeleteRegistryPolicyInput, opts ...request.Option) (*DeleteRegistryPolicyOutput, error) {
+	req, out := c.DeleteRegistryPolicyRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opDeleteRepository = "DeleteRepository"
 
 // DeleteRepositoryRequest generates a "aws/request.Request" representing the
@@ -668,6 +760,9 @@ func (c *ECR) DeleteRepositoryRequest(input *DeleteRepositoryInput) (req *reques
 //   * RepositoryNotEmptyException
 //   The specified repository contains images. To delete a repository that contains
 //   images, you must force the deletion with the force parameter.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/DeleteRepository
 func (c *ECR) DeleteRepository(input *DeleteRepositoryInput) (*DeleteRepositoryOutput, error) {
@@ -1085,6 +1180,94 @@ func (c *ECR) DescribeImagesPagesWithContext(ctx aws.Context, input *DescribeIma
 	}
 
 	return p.Err()
+}
+
+const opDescribeRegistry = "DescribeRegistry"
+
+// DescribeRegistryRequest generates a "aws/request.Request" representing the
+// client's request for the DescribeRegistry operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See DescribeRegistry for more information on using the DescribeRegistry
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the DescribeRegistryRequest method.
+//    req, resp := client.DescribeRegistryRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/DescribeRegistry
+func (c *ECR) DescribeRegistryRequest(input *DescribeRegistryInput) (req *request.Request, output *DescribeRegistryOutput) {
+	op := &request.Operation{
+		Name:       opDescribeRegistry,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &DescribeRegistryInput{}
+	}
+
+	output = &DescribeRegistryOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// DescribeRegistry API operation for Amazon EC2 Container Registry.
+//
+// Describes the settings for a registry. The replication configuration for
+// a repository can be created or updated with the PutReplicationConfiguration
+// API action.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon EC2 Container Registry's
+// API operation DescribeRegistry for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   These errors are usually caused by a server-side issue.
+//
+//   * InvalidParameterException
+//   The specified parameter is invalid. Review the available parameters for the
+//   API request.
+//
+//   * ValidationException
+//   There was an exception validating this request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/DescribeRegistry
+func (c *ECR) DescribeRegistry(input *DescribeRegistryInput) (*DescribeRegistryOutput, error) {
+	req, out := c.DescribeRegistryRequest(input)
+	return out, req.Send()
+}
+
+// DescribeRegistryWithContext is the same as DescribeRegistry with the addition of
+// the ability to pass a context and additional request options.
+//
+// See DescribeRegistry for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ECR) DescribeRegistryWithContext(ctx aws.Context, input *DescribeRegistryInput, opts ...request.Option) (*DescribeRegistryOutput, error) {
+	req, out := c.DescribeRegistryRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
 }
 
 const opDescribeRepositories = "DescribeRepositories"
@@ -1666,6 +1849,92 @@ func (c *ECR) GetLifecyclePolicyPreviewPagesWithContext(ctx aws.Context, input *
 	return p.Err()
 }
 
+const opGetRegistryPolicy = "GetRegistryPolicy"
+
+// GetRegistryPolicyRequest generates a "aws/request.Request" representing the
+// client's request for the GetRegistryPolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See GetRegistryPolicy for more information on using the GetRegistryPolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the GetRegistryPolicyRequest method.
+//    req, resp := client.GetRegistryPolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/GetRegistryPolicy
+func (c *ECR) GetRegistryPolicyRequest(input *GetRegistryPolicyInput) (req *request.Request, output *GetRegistryPolicyOutput) {
+	op := &request.Operation{
+		Name:       opGetRegistryPolicy,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &GetRegistryPolicyInput{}
+	}
+
+	output = &GetRegistryPolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// GetRegistryPolicy API operation for Amazon EC2 Container Registry.
+//
+// Retrieves the permissions policy for a registry.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon EC2 Container Registry's
+// API operation GetRegistryPolicy for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   These errors are usually caused by a server-side issue.
+//
+//   * InvalidParameterException
+//   The specified parameter is invalid. Review the available parameters for the
+//   API request.
+//
+//   * RegistryPolicyNotFoundException
+//   The registry doesn't have an associated registry policy.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/GetRegistryPolicy
+func (c *ECR) GetRegistryPolicy(input *GetRegistryPolicyInput) (*GetRegistryPolicyOutput, error) {
+	req, out := c.GetRegistryPolicyRequest(input)
+	return out, req.Send()
+}
+
+// GetRegistryPolicyWithContext is the same as GetRegistryPolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See GetRegistryPolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ECR) GetRegistryPolicyWithContext(ctx aws.Context, input *GetRegistryPolicyInput, opts ...request.Option) (*GetRegistryPolicyOutput, error) {
+	req, out := c.GetRegistryPolicyRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opGetRepositoryPolicy = "GetRepositoryPolicy"
 
 // GetRepositoryPolicyRequest generates a "aws/request.Request" representing the
@@ -1829,6 +2098,9 @@ func (c *ECR) InitiateLayerUploadRequest(input *InitiateLayerUploadInput) (req *
 //   * RepositoryNotFoundException
 //   The specified repository could not be found. Check the spelling of the specified
 //   repository and ensure that you are performing operations on the correct registry.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/InitiateLayerUpload
 func (c *ECR) InitiateLayerUpload(input *InitiateLayerUploadInput) (*InitiateLayerUploadOutput, error) {
@@ -2184,6 +2456,13 @@ func (c *ECR) PutImageRequest(input *PutImageInput) (req *request.Request, outpu
 //   The specified image is tagged with a tag that already exists. The repository
 //   is configured for tag immutability.
 //
+//   * ImageDigestDoesNotMatchException
+//   The specified image digest does not match the digest that Amazon ECR calculated
+//   for the image.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/PutImage
 func (c *ECR) PutImage(input *PutImageInput) (*PutImageOutput, error) {
 	req, out := c.PutImageRequest(input)
@@ -2470,6 +2749,190 @@ func (c *ECR) PutLifecyclePolicyWithContext(ctx aws.Context, input *PutLifecycle
 	return out, req.Send()
 }
 
+const opPutRegistryPolicy = "PutRegistryPolicy"
+
+// PutRegistryPolicyRequest generates a "aws/request.Request" representing the
+// client's request for the PutRegistryPolicy operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutRegistryPolicy for more information on using the PutRegistryPolicy
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutRegistryPolicyRequest method.
+//    req, resp := client.PutRegistryPolicyRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/PutRegistryPolicy
+func (c *ECR) PutRegistryPolicyRequest(input *PutRegistryPolicyInput) (req *request.Request, output *PutRegistryPolicyOutput) {
+	op := &request.Operation{
+		Name:       opPutRegistryPolicy,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutRegistryPolicyInput{}
+	}
+
+	output = &PutRegistryPolicyOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// PutRegistryPolicy API operation for Amazon EC2 Container Registry.
+//
+// Creates or updates the permissions policy for your registry.
+//
+// A registry policy is used to specify permissions for another AWS account
+// and is used when configuring cross-account replication. For more information,
+// see Registry permissions (https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry-permissions.html)
+// in the Amazon Elastic Container Registry User Guide.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon EC2 Container Registry's
+// API operation PutRegistryPolicy for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   These errors are usually caused by a server-side issue.
+//
+//   * InvalidParameterException
+//   The specified parameter is invalid. Review the available parameters for the
+//   API request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/PutRegistryPolicy
+func (c *ECR) PutRegistryPolicy(input *PutRegistryPolicyInput) (*PutRegistryPolicyOutput, error) {
+	req, out := c.PutRegistryPolicyRequest(input)
+	return out, req.Send()
+}
+
+// PutRegistryPolicyWithContext is the same as PutRegistryPolicy with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutRegistryPolicy for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ECR) PutRegistryPolicyWithContext(ctx aws.Context, input *PutRegistryPolicyInput, opts ...request.Option) (*PutRegistryPolicyOutput, error) {
+	req, out := c.PutRegistryPolicyRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
+const opPutReplicationConfiguration = "PutReplicationConfiguration"
+
+// PutReplicationConfigurationRequest generates a "aws/request.Request" representing the
+// client's request for the PutReplicationConfiguration operation. The "output" return
+// value will be populated with the request's response once the request completes
+// successfully.
+//
+// Use "Send" method on the returned Request to send the API call to the service.
+// the "output" return value is not valid until after Send returns without error.
+//
+// See PutReplicationConfiguration for more information on using the PutReplicationConfiguration
+// API call, and error handling.
+//
+// This method is useful when you want to inject custom logic or configuration
+// into the SDK's request lifecycle. Such as custom headers, or retry logic.
+//
+//
+//    // Example sending a request using the PutReplicationConfigurationRequest method.
+//    req, resp := client.PutReplicationConfigurationRequest(params)
+//
+//    err := req.Send()
+//    if err == nil { // resp is now filled
+//        fmt.Println(resp)
+//    }
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/PutReplicationConfiguration
+func (c *ECR) PutReplicationConfigurationRequest(input *PutReplicationConfigurationInput) (req *request.Request, output *PutReplicationConfigurationOutput) {
+	op := &request.Operation{
+		Name:       opPutReplicationConfiguration,
+		HTTPMethod: "POST",
+		HTTPPath:   "/",
+	}
+
+	if input == nil {
+		input = &PutReplicationConfigurationInput{}
+	}
+
+	output = &PutReplicationConfigurationOutput{}
+	req = c.newRequest(op, input, output)
+	return
+}
+
+// PutReplicationConfiguration API operation for Amazon EC2 Container Registry.
+//
+// Creates or updates the replication configuration for a registry. The existing
+// replication configuration for a repository can be retrieved with the DescribeRegistry
+// API action. The first time the PutReplicationConfiguration API is called,
+// a service-linked IAM role is created in your account for the replication
+// process. For more information, see Using Service-Linked Roles for Amazon
+// ECR (https://docs.aws.amazon.com/AmazonECR/latest/userguide/using-service-linked-roles.html)
+// in the Amazon Elastic Container Registry User Guide.
+//
+// When configuring cross-account replication, the destination account must
+// grant the source account permission to replicate. This permission is controlled
+// using a registry permissions policy. For more information, see PutRegistryPolicy.
+//
+// Returns awserr.Error for service API and SDK errors. Use runtime type assertions
+// with awserr.Error's Code and Message methods to get detailed information about
+// the error.
+//
+// See the AWS API reference guide for Amazon EC2 Container Registry's
+// API operation PutReplicationConfiguration for usage and error information.
+//
+// Returned Error Types:
+//   * ServerException
+//   These errors are usually caused by a server-side issue.
+//
+//   * InvalidParameterException
+//   The specified parameter is invalid. Review the available parameters for the
+//   API request.
+//
+//   * ValidationException
+//   There was an exception validating this request.
+//
+// See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/PutReplicationConfiguration
+func (c *ECR) PutReplicationConfiguration(input *PutReplicationConfigurationInput) (*PutReplicationConfigurationOutput, error) {
+	req, out := c.PutReplicationConfigurationRequest(input)
+	return out, req.Send()
+}
+
+// PutReplicationConfigurationWithContext is the same as PutReplicationConfiguration with the addition of
+// the ability to pass a context and additional request options.
+//
+// See PutReplicationConfiguration for details on how to use this API operation.
+//
+// The context must be non-nil and will be used for request cancellation. If
+// the context is nil a panic will occur. In the future the SDK may create
+// sub-contexts for http.Requests. See https://golang.org/pkg/context/
+// for more information on using Contexts.
+func (c *ECR) PutReplicationConfigurationWithContext(ctx aws.Context, input *PutReplicationConfigurationInput, opts ...request.Option) (*PutReplicationConfigurationOutput, error) {
+	req, out := c.PutReplicationConfigurationRequest(input)
+	req.SetContext(ctx)
+	req.ApplyOptions(opts...)
+	return out, req.Send()
+}
+
 const opSetRepositoryPolicy = "SetRepositoryPolicy"
 
 // SetRepositoryPolicyRequest generates a "aws/request.Request" representing the
@@ -2731,8 +3194,8 @@ func (c *ECR) StartLifecyclePolicyPreviewRequest(input *StartLifecyclePolicyPrev
 //   The lifecycle policy could not be found, and no policy is set to the repository.
 //
 //   * LifecyclePolicyPreviewInProgressException
-//   The previous lifecycle policy preview request has not completed. Please try
-//   again later.
+//   The previous lifecycle policy preview request has not completed. Wait and
+//   try again.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/StartLifecyclePolicyPreview
 func (c *ECR) StartLifecyclePolicyPreview(input *StartLifecyclePolicyPreviewInput) (*StartLifecyclePolicyPreviewOutput, error) {
@@ -3029,13 +3492,16 @@ func (c *ECR) UploadLayerPartRequest(input *UploadLayerPartInput) (req *request.
 //   repository and ensure that you are performing operations on the correct registry.
 //
 //   * UploadNotFoundException
-//   The upload could not be found, or the specified upload id is not valid for
+//   The upload could not be found, or the specified upload ID is not valid for
 //   this repository.
 //
 //   * LimitExceededException
 //   The operation did not succeed because it would have exceeded a service limit
 //   for your account. For more information, see Amazon ECR Service Quotas (https://docs.aws.amazon.com/AmazonECR/latest/userguide/service-quotas.html)
 //   in the Amazon Elastic Container Registry User Guide.
+//
+//   * KmsException
+//   The operation failed due to a KMS exception.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/ecr-2015-09-21/UploadLayerPart
 func (c *ECR) UploadLayerPart(input *UploadLayerPartInput) (*UploadLayerPartOutput, error) {
@@ -3617,9 +4083,12 @@ func (s *CompleteLayerUploadOutput) SetUploadId(v string) *CompleteLayerUploadOu
 type CreateRepositoryInput struct {
 	_ struct{} `type:"structure"`
 
-	// The image scanning configuration for the repository. This setting determines
-	// whether images are scanned for known vulnerabilities after being pushed to
-	// the repository.
+	// The encryption configuration for the repository. This determines how the
+	// contents of your repository are encrypted at rest.
+	EncryptionConfiguration *EncryptionConfiguration `locationName:"encryptionConfiguration" type:"structure"`
+
+	// The image scanning configuration for the repository. This determines whether
+	// images are scanned for known vulnerabilities after being pushed to the repository.
 	ImageScanningConfiguration *ImageScanningConfiguration `locationName:"imageScanningConfiguration" type:"structure"`
 
 	// The tag mutability setting for the repository. If this parameter is omitted,
@@ -3661,11 +4130,22 @@ func (s *CreateRepositoryInput) Validate() error {
 	if s.RepositoryName != nil && len(*s.RepositoryName) < 2 {
 		invalidParams.Add(request.NewErrParamMinLen("RepositoryName", 2))
 	}
+	if s.EncryptionConfiguration != nil {
+		if err := s.EncryptionConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("EncryptionConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
 
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetEncryptionConfiguration sets the EncryptionConfiguration field's value.
+func (s *CreateRepositoryInput) SetEncryptionConfiguration(v *EncryptionConfiguration) *CreateRepositoryInput {
+	s.EncryptionConfiguration = v
+	return s
 }
 
 // SetImageScanningConfiguration sets the ImageScanningConfiguration field's value.
@@ -3813,6 +4293,52 @@ func (s *DeleteLifecyclePolicyOutput) SetRegistryId(v string) *DeleteLifecyclePo
 // SetRepositoryName sets the RepositoryName field's value.
 func (s *DeleteLifecyclePolicyOutput) SetRepositoryName(v string) *DeleteLifecyclePolicyOutput {
 	s.RepositoryName = &v
+	return s
+}
+
+type DeleteRegistryPolicyInput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DeleteRegistryPolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteRegistryPolicyInput) GoString() string {
+	return s.String()
+}
+
+type DeleteRegistryPolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The contents of the registry permissions policy that was deleted.
+	PolicyText *string `locationName:"policyText" type:"string"`
+
+	// The registry ID associated with the request.
+	RegistryId *string `locationName:"registryId" type:"string"`
+}
+
+// String returns the string representation
+func (s DeleteRegistryPolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DeleteRegistryPolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetPolicyText sets the PolicyText field's value.
+func (s *DeleteRegistryPolicyOutput) SetPolicyText(v string) *DeleteRegistryPolicyOutput {
+	s.PolicyText = &v
+	return s
+}
+
+// SetRegistryId sets the RegistryId field's value.
+func (s *DeleteRegistryPolicyOutput) SetRegistryId(v string) *DeleteRegistryPolicyOutput {
+	s.RegistryId = &v
 	return s
 }
 
@@ -4342,6 +4868,52 @@ func (s *DescribeImagesOutput) SetNextToken(v string) *DescribeImagesOutput {
 	return s
 }
 
+type DescribeRegistryInput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribeRegistryInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeRegistryInput) GoString() string {
+	return s.String()
+}
+
+type DescribeRegistryOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The ID of the registry.
+	RegistryId *string `locationName:"registryId" type:"string"`
+
+	// The replication configuration for the registry.
+	ReplicationConfiguration *ReplicationConfiguration `locationName:"replicationConfiguration" type:"structure"`
+}
+
+// String returns the string representation
+func (s DescribeRegistryOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s DescribeRegistryOutput) GoString() string {
+	return s.String()
+}
+
+// SetRegistryId sets the RegistryId field's value.
+func (s *DescribeRegistryOutput) SetRegistryId(v string) *DescribeRegistryOutput {
+	s.RegistryId = &v
+	return s
+}
+
+// SetReplicationConfiguration sets the ReplicationConfiguration field's value.
+func (s *DescribeRegistryOutput) SetReplicationConfiguration(v *ReplicationConfiguration) *DescribeRegistryOutput {
+	s.ReplicationConfiguration = v
+	return s
+}
+
 type DescribeRepositoriesInput struct {
 	_ struct{} `type:"structure"`
 
@@ -4518,13 +5090,96 @@ func (s *EmptyUploadException) RequestID() string {
 	return s.RespMetadata.RequestID
 }
 
+// The encryption configuration for the repository. This determines how the
+// contents of your repository are encrypted at rest.
+//
+// By default, when no encryption configuration is set or the AES256 encryption
+// type is used, Amazon ECR uses server-side encryption with Amazon S3-managed
+// encryption keys which encrypts your data at rest using an AES-256 encryption
+// algorithm. This does not require any action on your part.
+//
+// For more control over the encryption of the contents of your repository,
+// you can use server-side encryption with customer master keys (CMKs) stored
+// in AWS Key Management Service (AWS KMS) to encrypt your images. For more
+// information, see Amazon ECR encryption at rest (https://docs.aws.amazon.com/AmazonECR/latest/userguide/encryption-at-rest.html)
+// in the Amazon Elastic Container Registry User Guide.
+type EncryptionConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// The encryption type to use.
+	//
+	// If you use the KMS encryption type, the contents of the repository will be
+	// encrypted using server-side encryption with customer master keys (CMKs) stored
+	// in AWS KMS. When you use AWS KMS to encrypt your data, you can either use
+	// the default AWS managed CMK for Amazon ECR, or specify your own CMK, which
+	// you already created. For more information, see Protecting Data Using Server-Side
+	// Encryption with CMKs Stored in AWS Key Management Service (SSE-KMS) (https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html)
+	// in the Amazon Simple Storage Service Console Developer Guide..
+	//
+	// If you use the AES256 encryption type, Amazon ECR uses server-side encryption
+	// with Amazon S3-managed encryption keys which encrypts the images in the repository
+	// using an AES-256 encryption algorithm. For more information, see Protecting
+	// Data Using Server-Side Encryption with Amazon S3-Managed Encryption Keys
+	// (SSE-S3) (https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html)
+	// in the Amazon Simple Storage Service Console Developer Guide..
+	//
+	// EncryptionType is a required field
+	EncryptionType *string `locationName:"encryptionType" type:"string" required:"true" enum:"EncryptionType"`
+
+	// If you use the KMS encryption type, specify the CMK to use for encryption.
+	// The alias, key ID, or full ARN of the CMK can be specified. The key must
+	// exist in the same Region as the repository. If no key is specified, the default
+	// AWS managed CMK for Amazon ECR will be used.
+	KmsKey *string `locationName:"kmsKey" min:"1" type:"string"`
+}
+
+// String returns the string representation
+func (s EncryptionConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s EncryptionConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *EncryptionConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "EncryptionConfiguration"}
+	if s.EncryptionType == nil {
+		invalidParams.Add(request.NewErrParamRequired("EncryptionType"))
+	}
+	if s.KmsKey != nil && len(*s.KmsKey) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("KmsKey", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetEncryptionType sets the EncryptionType field's value.
+func (s *EncryptionConfiguration) SetEncryptionType(v string) *EncryptionConfiguration {
+	s.EncryptionType = &v
+	return s
+}
+
+// SetKmsKey sets the KmsKey field's value.
+func (s *EncryptionConfiguration) SetKmsKey(v string) *EncryptionConfiguration {
+	s.KmsKey = &v
+	return s
+}
+
 type GetAuthorizationTokenInput struct {
 	_ struct{} `type:"structure"`
 
 	// A list of AWS account IDs that are associated with the registries for which
 	// to get AuthorizationData objects. If you do not specify a registry, the default
 	// registry is assumed.
-	RegistryIds []*string `locationName:"registryIds" min:"1" type:"list"`
+	//
+	// Deprecated: This field is deprecated. The returned authorization token can be used to access any Amazon ECR registry that the IAM principal has access to, specifying a registry ID doesn't change the permissions scope of the authorization token.
+	RegistryIds []*string `locationName:"registryIds" min:"1" deprecated:"true" type:"list"`
 }
 
 // String returns the string representation
@@ -4974,6 +5629,52 @@ func (s *GetLifecyclePolicyPreviewOutput) SetSummary(v *LifecyclePolicyPreviewSu
 	return s
 }
 
+type GetRegistryPolicyInput struct {
+	_ struct{} `type:"structure"`
+}
+
+// String returns the string representation
+func (s GetRegistryPolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetRegistryPolicyInput) GoString() string {
+	return s.String()
+}
+
+type GetRegistryPolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The JSON text of the permissions policy for a registry.
+	PolicyText *string `locationName:"policyText" type:"string"`
+
+	// The ID of the registry.
+	RegistryId *string `locationName:"registryId" type:"string"`
+}
+
+// String returns the string representation
+func (s GetRegistryPolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s GetRegistryPolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetPolicyText sets the PolicyText field's value.
+func (s *GetRegistryPolicyOutput) SetPolicyText(v string) *GetRegistryPolicyOutput {
+	s.PolicyText = &v
+	return s
+}
+
+// SetRegistryId sets the RegistryId field's value.
+func (s *GetRegistryPolicyOutput) SetRegistryId(v string) *GetRegistryPolicyOutput {
+	s.RegistryId = &v
+	return s
+}
+
 type GetRepositoryPolicyInput struct {
 	_ struct{} `type:"structure"`
 
@@ -5076,7 +5777,7 @@ type Image struct {
 	// The image manifest associated with the image.
 	ImageManifest *string `locationName:"imageManifest" min:"1" type:"string"`
 
-	// The media type associated with the image manifest.
+	// The manifest media type of the image.
 	ImageManifestMediaType *string `locationName:"imageManifestMediaType" type:"string"`
 
 	// The AWS account ID associated with the registry containing the image.
@@ -5188,8 +5889,14 @@ func (s *ImageAlreadyExistsException) RequestID() string {
 type ImageDetail struct {
 	_ struct{} `type:"structure"`
 
+	// The artifact media type of the image.
+	ArtifactMediaType *string `locationName:"artifactMediaType" type:"string"`
+
 	// The sha256 digest of the image manifest.
 	ImageDigest *string `locationName:"imageDigest" type:"string"`
+
+	// The media type of the image manifest.
+	ImageManifestMediaType *string `locationName:"imageManifestMediaType" type:"string"`
 
 	// The date and time, expressed in standard JavaScript date format, at which
 	// the current image was pushed to the repository.
@@ -5232,9 +5939,21 @@ func (s ImageDetail) GoString() string {
 	return s.String()
 }
 
+// SetArtifactMediaType sets the ArtifactMediaType field's value.
+func (s *ImageDetail) SetArtifactMediaType(v string) *ImageDetail {
+	s.ArtifactMediaType = &v
+	return s
+}
+
 // SetImageDigest sets the ImageDigest field's value.
 func (s *ImageDetail) SetImageDigest(v string) *ImageDetail {
 	s.ImageDigest = &v
+	return s
+}
+
+// SetImageManifestMediaType sets the ImageManifestMediaType field's value.
+func (s *ImageDetail) SetImageManifestMediaType(v string) *ImageDetail {
+	s.ImageManifestMediaType = &v
 	return s
 }
 
@@ -5278,6 +5997,63 @@ func (s *ImageDetail) SetRegistryId(v string) *ImageDetail {
 func (s *ImageDetail) SetRepositoryName(v string) *ImageDetail {
 	s.RepositoryName = &v
 	return s
+}
+
+// The specified image digest does not match the digest that Amazon ECR calculated
+// for the image.
+type ImageDigestDoesNotMatchException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ImageDigestDoesNotMatchException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ImageDigestDoesNotMatchException) GoString() string {
+	return s.String()
+}
+
+func newErrorImageDigestDoesNotMatchException(v protocol.ResponseMetadata) error {
+	return &ImageDigestDoesNotMatchException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ImageDigestDoesNotMatchException) Code() string {
+	return "ImageDigestDoesNotMatchException"
+}
+
+// Message returns the exception's message.
+func (s *ImageDigestDoesNotMatchException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ImageDigestDoesNotMatchException) OrigErr() error {
+	return nil
+}
+
+func (s *ImageDigestDoesNotMatchException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ImageDigestDoesNotMatchException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ImageDigestDoesNotMatchException) RequestID() string {
+	return s.RespMetadata.RequestID
 }
 
 // An object representing an Amazon ECR image failure.
@@ -6025,6 +6801,65 @@ func (s *InvalidTagParameterException) RequestID() string {
 	return s.RespMetadata.RequestID
 }
 
+// The operation failed due to a KMS exception.
+type KmsException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	// The error code returned by AWS KMS.
+	KmsError *string `locationName:"kmsError" type:"string"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s KmsException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s KmsException) GoString() string {
+	return s.String()
+}
+
+func newErrorKmsException(v protocol.ResponseMetadata) error {
+	return &KmsException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *KmsException) Code() string {
+	return "KmsException"
+}
+
+// Message returns the exception's message.
+func (s *KmsException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *KmsException) OrigErr() error {
+	return nil
+}
+
+func (s *KmsException) Error() string {
+	return fmt.Sprintf("%s: %s\n%s", s.Code(), s.Message(), s.String())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *KmsException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *KmsException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
 // An object representing an Amazon ECR image layer.
 type Layer struct {
 	_ struct{} `type:"structure"`
@@ -6429,8 +7264,8 @@ func (s *LifecyclePolicyPreviewFilter) SetTagStatus(v string) *LifecyclePolicyPr
 	return s
 }
 
-// The previous lifecycle policy preview request has not completed. Please try
-// again later.
+// The previous lifecycle policy preview request has not completed. Wait and
+// try again.
 type LifecyclePolicyPreviewInProgressException struct {
 	_            struct{}                  `type:"structure"`
 	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
@@ -6929,6 +7764,9 @@ func (s *ListTagsForResourceOutput) SetTags(v []*Tag) *ListTagsForResourceOutput
 type PutImageInput struct {
 	_ struct{} `type:"structure"`
 
+	// The image digest of the image manifest corresponding to the image.
+	ImageDigest *string `locationName:"imageDigest" type:"string"`
+
 	// The image manifest corresponding to the image to be uploaded.
 	//
 	// ImageManifest is a required field
@@ -6940,7 +7778,8 @@ type PutImageInput struct {
 	ImageManifestMediaType *string `locationName:"imageManifestMediaType" type:"string"`
 
 	// The tag to associate with the image. This parameter is required for images
-	// that use the Docker Image Manifest V2 Schema 2 or OCI formats.
+	// that use the Docker Image Manifest V2 Schema 2 or Open Container Initiative
+	// (OCI) formats.
 	ImageTag *string `locationName:"imageTag" min:"1" type:"string"`
 
 	// The AWS account ID associated with the registry that contains the repository
@@ -6987,6 +7826,12 @@ func (s *PutImageInput) Validate() error {
 		return invalidParams
 	}
 	return nil
+}
+
+// SetImageDigest sets the ImageDigest field's value.
+func (s *PutImageInput) SetImageDigest(v string) *PutImageInput {
+	s.ImageDigest = &v
+	return s
 }
 
 // SetImageManifest sets the ImageManifest field's value.
@@ -7370,6 +8215,145 @@ func (s *PutLifecyclePolicyOutput) SetRepositoryName(v string) *PutLifecyclePoli
 	return s
 }
 
+type PutRegistryPolicyInput struct {
+	_ struct{} `type:"structure"`
+
+	// The JSON policy text to apply to your registry. The policy text follows the
+	// same format as IAM policy text. For more information, see Registry permissions
+	// (https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry-permissions.html)
+	// in the Amazon Elastic Container Registry User Guide.
+	//
+	// PolicyText is a required field
+	PolicyText *string `locationName:"policyText" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s PutRegistryPolicyInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutRegistryPolicyInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutRegistryPolicyInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutRegistryPolicyInput"}
+	if s.PolicyText == nil {
+		invalidParams.Add(request.NewErrParamRequired("PolicyText"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetPolicyText sets the PolicyText field's value.
+func (s *PutRegistryPolicyInput) SetPolicyText(v string) *PutRegistryPolicyInput {
+	s.PolicyText = &v
+	return s
+}
+
+type PutRegistryPolicyOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The JSON policy text for your registry.
+	PolicyText *string `locationName:"policyText" type:"string"`
+
+	// The registry ID.
+	RegistryId *string `locationName:"registryId" type:"string"`
+}
+
+// String returns the string representation
+func (s PutRegistryPolicyOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutRegistryPolicyOutput) GoString() string {
+	return s.String()
+}
+
+// SetPolicyText sets the PolicyText field's value.
+func (s *PutRegistryPolicyOutput) SetPolicyText(v string) *PutRegistryPolicyOutput {
+	s.PolicyText = &v
+	return s
+}
+
+// SetRegistryId sets the RegistryId field's value.
+func (s *PutRegistryPolicyOutput) SetRegistryId(v string) *PutRegistryPolicyOutput {
+	s.RegistryId = &v
+	return s
+}
+
+type PutReplicationConfigurationInput struct {
+	_ struct{} `type:"structure"`
+
+	// An object representing the replication configuration for a registry.
+	//
+	// ReplicationConfiguration is a required field
+	ReplicationConfiguration *ReplicationConfiguration `locationName:"replicationConfiguration" type:"structure" required:"true"`
+}
+
+// String returns the string representation
+func (s PutReplicationConfigurationInput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutReplicationConfigurationInput) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *PutReplicationConfigurationInput) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "PutReplicationConfigurationInput"}
+	if s.ReplicationConfiguration == nil {
+		invalidParams.Add(request.NewErrParamRequired("ReplicationConfiguration"))
+	}
+	if s.ReplicationConfiguration != nil {
+		if err := s.ReplicationConfiguration.Validate(); err != nil {
+			invalidParams.AddNested("ReplicationConfiguration", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetReplicationConfiguration sets the ReplicationConfiguration field's value.
+func (s *PutReplicationConfigurationInput) SetReplicationConfiguration(v *ReplicationConfiguration) *PutReplicationConfigurationInput {
+	s.ReplicationConfiguration = v
+	return s
+}
+
+type PutReplicationConfigurationOutput struct {
+	_ struct{} `type:"structure"`
+
+	// The contents of the replication configuration for the registry.
+	ReplicationConfiguration *ReplicationConfiguration `locationName:"replicationConfiguration" type:"structure"`
+}
+
+// String returns the string representation
+func (s PutReplicationConfigurationOutput) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s PutReplicationConfigurationOutput) GoString() string {
+	return s.String()
+}
+
+// SetReplicationConfiguration sets the ReplicationConfiguration field's value.
+func (s *PutReplicationConfigurationOutput) SetReplicationConfiguration(v *ReplicationConfiguration) *PutReplicationConfigurationOutput {
+	s.ReplicationConfiguration = v
+	return s
+}
+
 // The manifest list is referencing an image that does not exist.
 type ReferencedImagesNotFoundException struct {
 	_            struct{}                  `type:"structure"`
@@ -7426,12 +8410,230 @@ func (s *ReferencedImagesNotFoundException) RequestID() string {
 	return s.RespMetadata.RequestID
 }
 
+// The registry doesn't have an associated registry policy.
+type RegistryPolicyNotFoundException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s RegistryPolicyNotFoundException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s RegistryPolicyNotFoundException) GoString() string {
+	return s.String()
+}
+
+func newErrorRegistryPolicyNotFoundException(v protocol.ResponseMetadata) error {
+	return &RegistryPolicyNotFoundException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *RegistryPolicyNotFoundException) Code() string {
+	return "RegistryPolicyNotFoundException"
+}
+
+// Message returns the exception's message.
+func (s *RegistryPolicyNotFoundException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *RegistryPolicyNotFoundException) OrigErr() error {
+	return nil
+}
+
+func (s *RegistryPolicyNotFoundException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *RegistryPolicyNotFoundException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *RegistryPolicyNotFoundException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+// The replication configuration for a registry.
+type ReplicationConfiguration struct {
+	_ struct{} `type:"structure"`
+
+	// An array of objects representing the replication rules for a replication
+	// configuration. A replication configuration may contain only one replication
+	// rule but the rule may contain one or more replication destinations.
+	//
+	// Rules is a required field
+	Rules []*ReplicationRule `locationName:"rules" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ReplicationConfiguration) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ReplicationConfiguration) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ReplicationConfiguration) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ReplicationConfiguration"}
+	if s.Rules == nil {
+		invalidParams.Add(request.NewErrParamRequired("Rules"))
+	}
+	if s.Rules != nil {
+		for i, v := range s.Rules {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Rules", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetRules sets the Rules field's value.
+func (s *ReplicationConfiguration) SetRules(v []*ReplicationRule) *ReplicationConfiguration {
+	s.Rules = v
+	return s
+}
+
+// An array of objects representing the details of a replication destination.
+type ReplicationDestination struct {
+	_ struct{} `type:"structure"`
+
+	// A Region to replicate to.
+	//
+	// Region is a required field
+	Region *string `locationName:"region" min:"2" type:"string" required:"true"`
+
+	// The account ID of the destination registry to replicate to.
+	//
+	// RegistryId is a required field
+	RegistryId *string `locationName:"registryId" type:"string" required:"true"`
+}
+
+// String returns the string representation
+func (s ReplicationDestination) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ReplicationDestination) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ReplicationDestination) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ReplicationDestination"}
+	if s.Region == nil {
+		invalidParams.Add(request.NewErrParamRequired("Region"))
+	}
+	if s.Region != nil && len(*s.Region) < 2 {
+		invalidParams.Add(request.NewErrParamMinLen("Region", 2))
+	}
+	if s.RegistryId == nil {
+		invalidParams.Add(request.NewErrParamRequired("RegistryId"))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetRegion sets the Region field's value.
+func (s *ReplicationDestination) SetRegion(v string) *ReplicationDestination {
+	s.Region = &v
+	return s
+}
+
+// SetRegistryId sets the RegistryId field's value.
+func (s *ReplicationDestination) SetRegistryId(v string) *ReplicationDestination {
+	s.RegistryId = &v
+	return s
+}
+
+// An array of objects representing the replication destinations for a replication
+// configuration. A replication configuration may contain only one replication
+// rule but the rule may contain one or more replication destinations.
+type ReplicationRule struct {
+	_ struct{} `type:"structure"`
+
+	// An array of objects representing the details of a replication destination.
+	//
+	// Destinations is a required field
+	Destinations []*ReplicationDestination `locationName:"destinations" type:"list" required:"true"`
+}
+
+// String returns the string representation
+func (s ReplicationRule) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ReplicationRule) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *ReplicationRule) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "ReplicationRule"}
+	if s.Destinations == nil {
+		invalidParams.Add(request.NewErrParamRequired("Destinations"))
+	}
+	if s.Destinations != nil {
+		for i, v := range s.Destinations {
+			if v == nil {
+				continue
+			}
+			if err := v.Validate(); err != nil {
+				invalidParams.AddNested(fmt.Sprintf("%s[%v]", "Destinations", i), err.(request.ErrInvalidParams))
+			}
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetDestinations sets the Destinations field's value.
+func (s *ReplicationRule) SetDestinations(v []*ReplicationDestination) *ReplicationRule {
+	s.Destinations = v
+	return s
+}
+
 // An object representing a repository.
 type Repository struct {
 	_ struct{} `type:"structure"`
 
 	// The date and time, in JavaScript date format, when the repository was created.
 	CreatedAt *time.Time `locationName:"createdAt" type:"timestamp"`
+
+	// The encryption configuration for the repository. This determines how the
+	// contents of your repository are encrypted at rest.
+	EncryptionConfiguration *EncryptionConfiguration `locationName:"encryptionConfiguration" type:"structure"`
 
 	// The image scanning configuration for a repository.
 	ImageScanningConfiguration *ImageScanningConfiguration `locationName:"imageScanningConfiguration" type:"structure"`
@@ -7451,8 +8653,8 @@ type Repository struct {
 	// The name of the repository.
 	RepositoryName *string `locationName:"repositoryName" min:"2" type:"string"`
 
-	// The URI for the repository. You can use this URI for Docker push or pull
-	// operations.
+	// The URI for the repository. You can use this URI for container image push
+	// and pull operations.
 	RepositoryUri *string `locationName:"repositoryUri" type:"string"`
 }
 
@@ -7469,6 +8671,12 @@ func (s Repository) GoString() string {
 // SetCreatedAt sets the CreatedAt field's value.
 func (s *Repository) SetCreatedAt(v time.Time) *Repository {
 	s.CreatedAt = &v
+	return s
+}
+
+// SetEncryptionConfiguration sets the EncryptionConfiguration field's value.
+func (s *Repository) SetEncryptionConfiguration(v *EncryptionConfiguration) *Repository {
+	s.EncryptionConfiguration = v
 	return s
 }
 
@@ -8656,7 +9864,7 @@ func (s *UploadLayerPartOutput) SetUploadId(v string) *UploadLayerPartOutput {
 	return s
 }
 
-// The upload could not be found, or the specified upload id is not valid for
+// The upload could not be found, or the specified upload ID is not valid for
 // this repository.
 type UploadNotFoundException struct {
 	_            struct{}                  `type:"structure"`
@@ -8714,6 +9922,78 @@ func (s *UploadNotFoundException) RequestID() string {
 	return s.RespMetadata.RequestID
 }
 
+// There was an exception validating this request.
+type ValidationException struct {
+	_            struct{}                  `type:"structure"`
+	RespMetadata protocol.ResponseMetadata `json:"-" xml:"-"`
+
+	Message_ *string `locationName:"message" type:"string"`
+}
+
+// String returns the string representation
+func (s ValidationException) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation
+func (s ValidationException) GoString() string {
+	return s.String()
+}
+
+func newErrorValidationException(v protocol.ResponseMetadata) error {
+	return &ValidationException{
+		RespMetadata: v,
+	}
+}
+
+// Code returns the exception type name.
+func (s *ValidationException) Code() string {
+	return "ValidationException"
+}
+
+// Message returns the exception's message.
+func (s *ValidationException) Message() string {
+	if s.Message_ != nil {
+		return *s.Message_
+	}
+	return ""
+}
+
+// OrigErr always returns nil, satisfies awserr.Error interface.
+func (s *ValidationException) OrigErr() error {
+	return nil
+}
+
+func (s *ValidationException) Error() string {
+	return fmt.Sprintf("%s: %s", s.Code(), s.Message())
+}
+
+// Status code returns the HTTP status code for the request's response error.
+func (s *ValidationException) StatusCode() int {
+	return s.RespMetadata.StatusCode
+}
+
+// RequestID returns the service's response RequestID for request.
+func (s *ValidationException) RequestID() string {
+	return s.RespMetadata.RequestID
+}
+
+const (
+	// EncryptionTypeAes256 is a EncryptionType enum value
+	EncryptionTypeAes256 = "AES256"
+
+	// EncryptionTypeKms is a EncryptionType enum value
+	EncryptionTypeKms = "KMS"
+)
+
+// EncryptionType_Values returns all elements of the EncryptionType enum
+func EncryptionType_Values() []string {
+	return []string{
+		EncryptionTypeAes256,
+		EncryptionTypeKms,
+	}
+}
+
 const (
 	// FindingSeverityInformational is a FindingSeverity enum value
 	FindingSeverityInformational = "INFORMATIONAL"
@@ -8734,10 +10014,29 @@ const (
 	FindingSeverityUndefined = "UNDEFINED"
 )
 
+// FindingSeverity_Values returns all elements of the FindingSeverity enum
+func FindingSeverity_Values() []string {
+	return []string{
+		FindingSeverityInformational,
+		FindingSeverityLow,
+		FindingSeverityMedium,
+		FindingSeverityHigh,
+		FindingSeverityCritical,
+		FindingSeverityUndefined,
+	}
+}
+
 const (
 	// ImageActionTypeExpire is a ImageActionType enum value
 	ImageActionTypeExpire = "EXPIRE"
 )
+
+// ImageActionType_Values returns all elements of the ImageActionType enum
+func ImageActionType_Values() []string {
+	return []string{
+		ImageActionTypeExpire,
+	}
+}
 
 const (
 	// ImageFailureCodeInvalidImageDigest is a ImageFailureCode enum value
@@ -8757,7 +10056,23 @@ const (
 
 	// ImageFailureCodeImageReferencedByManifestList is a ImageFailureCode enum value
 	ImageFailureCodeImageReferencedByManifestList = "ImageReferencedByManifestList"
+
+	// ImageFailureCodeKmsError is a ImageFailureCode enum value
+	ImageFailureCodeKmsError = "KmsError"
 )
+
+// ImageFailureCode_Values returns all elements of the ImageFailureCode enum
+func ImageFailureCode_Values() []string {
+	return []string{
+		ImageFailureCodeInvalidImageDigest,
+		ImageFailureCodeInvalidImageTag,
+		ImageFailureCodeImageTagDoesNotMatchDigest,
+		ImageFailureCodeImageNotFound,
+		ImageFailureCodeMissingDigestAndTag,
+		ImageFailureCodeImageReferencedByManifestList,
+		ImageFailureCodeKmsError,
+	}
+}
 
 const (
 	// ImageTagMutabilityMutable is a ImageTagMutability enum value
@@ -8767,6 +10082,14 @@ const (
 	ImageTagMutabilityImmutable = "IMMUTABLE"
 )
 
+// ImageTagMutability_Values returns all elements of the ImageTagMutability enum
+func ImageTagMutability_Values() []string {
+	return []string{
+		ImageTagMutabilityMutable,
+		ImageTagMutabilityImmutable,
+	}
+}
+
 const (
 	// LayerAvailabilityAvailable is a LayerAvailability enum value
 	LayerAvailabilityAvailable = "AVAILABLE"
@@ -8775,6 +10098,14 @@ const (
 	LayerAvailabilityUnavailable = "UNAVAILABLE"
 )
 
+// LayerAvailability_Values returns all elements of the LayerAvailability enum
+func LayerAvailability_Values() []string {
+	return []string{
+		LayerAvailabilityAvailable,
+		LayerAvailabilityUnavailable,
+	}
+}
+
 const (
 	// LayerFailureCodeInvalidLayerDigest is a LayerFailureCode enum value
 	LayerFailureCodeInvalidLayerDigest = "InvalidLayerDigest"
@@ -8782,6 +10113,14 @@ const (
 	// LayerFailureCodeMissingLayerDigest is a LayerFailureCode enum value
 	LayerFailureCodeMissingLayerDigest = "MissingLayerDigest"
 )
+
+// LayerFailureCode_Values returns all elements of the LayerFailureCode enum
+func LayerFailureCode_Values() []string {
+	return []string{
+		LayerFailureCodeInvalidLayerDigest,
+		LayerFailureCodeMissingLayerDigest,
+	}
+}
 
 const (
 	// LifecyclePolicyPreviewStatusInProgress is a LifecyclePolicyPreviewStatus enum value
@@ -8797,6 +10136,16 @@ const (
 	LifecyclePolicyPreviewStatusFailed = "FAILED"
 )
 
+// LifecyclePolicyPreviewStatus_Values returns all elements of the LifecyclePolicyPreviewStatus enum
+func LifecyclePolicyPreviewStatus_Values() []string {
+	return []string{
+		LifecyclePolicyPreviewStatusInProgress,
+		LifecyclePolicyPreviewStatusComplete,
+		LifecyclePolicyPreviewStatusExpired,
+		LifecyclePolicyPreviewStatusFailed,
+	}
+}
+
 const (
 	// ScanStatusInProgress is a ScanStatus enum value
 	ScanStatusInProgress = "IN_PROGRESS"
@@ -8808,6 +10157,15 @@ const (
 	ScanStatusFailed = "FAILED"
 )
 
+// ScanStatus_Values returns all elements of the ScanStatus enum
+func ScanStatus_Values() []string {
+	return []string{
+		ScanStatusInProgress,
+		ScanStatusComplete,
+		ScanStatusFailed,
+	}
+}
+
 const (
 	// TagStatusTagged is a TagStatus enum value
 	TagStatusTagged = "TAGGED"
@@ -8818,3 +10176,12 @@ const (
 	// TagStatusAny is a TagStatus enum value
 	TagStatusAny = "ANY"
 )
+
+// TagStatus_Values returns all elements of the TagStatus enum
+func TagStatus_Values() []string {
+	return []string{
+		TagStatusTagged,
+		TagStatusUntagged,
+		TagStatusAny,
+	}
+}
