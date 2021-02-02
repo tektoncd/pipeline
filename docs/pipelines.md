@@ -12,21 +12,36 @@ weight: 3
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
-    - [Using Tekton Bundles](#tekton-bundles)
+    - [Tekton Bundles](#tekton-bundles)
     - [Using the `from` parameter](#using-the-from-parameter)
     - [Using the `runAfter` parameter](#using-the-runafter-parameter)
     - [Using the `retries` parameter](#using-the-retries-parameter)
-    - [Guard `Task` execution using `When Expressions`](#guard-task-execution-using-whenexpressions)
+    - [Guard `Task` execution using `WhenExpressions`](#guard-task-execution-using-whenexpressions)
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Using variable substitution](#using-variable-substitution)
   - [Using `Results`](#using-results)
-    - [Passing one Task's `Results` into the `Parameters` of another](#passing-one-tasks-results-into-the-parameters-of-another)
+    - [Passing one Task's `Results` into the `Parameters` or `WhenExpressions` of another](#passing-one-tasks-results-into-the-parameters-or-whenexpressions-of-another)
     - [Emitting `Results` from a `Pipeline`](#emitting-results-from-a-pipeline)
   - [Configuring the `Task` execution order](#configuring-the-task-execution-order)
   - [Adding a description](#adding-a-description)
   - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
+    - [Specifying `Workspaces` in Final Tasks](#specifying-workspaces-in-final-tasks)
+    - [Specifying `Parameters` in Final Tasks](#specifying-parameters-in-final-tasks)
+    - [Consuming `Task` execution results in `finally`](#consuming-task-execution-results-in-finally)
+    - [`PipelineRun` Status with `finally`](#pipelinerun-status-with-finally)
+    - [Using Execution `Status` of `pipelineTask`](#using-execution-status-of-pipelinetask)
+    - [Known Limitations](#known-limitations)
+      - [Specifying `Resources` in Final Tasks](#specifying-resources-in-final-tasks)
+      - [Cannot configure the Final Task execution order](#cannot-configure-the-final-task-execution-order)
+      - [Cannot specify execution `Conditions` in Final Tasks](#cannot-specify-execution-conditions-in-final-tasks)
+      - [Cannot configure `Pipeline` result with `finally`](#cannot-configure-pipeline-result-with-finally)
   - [Using Custom Tasks](#using-custom-tasks)
+    - [Specifying the target Custom Task](#specifying-the-target-custom-task)
+    - [Specifying parameters](#specifying-parameters-1)
+    - [Specifying workspaces](#specifying-workspaces-1)
+    - [Using `Results`](#using-results-1)
+    - [Limitations](#limitations)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -788,7 +803,7 @@ spec:
           value: "someURL"
 ```
 
-#### Consuming `Task` execution results in `finally`
+### Consuming `Task` execution results in `finally`
 
 Final tasks can be configured to consume `Results` of `PipelineTask` from the `tasks` section:
 
@@ -883,7 +898,7 @@ For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1beta1
 
 ### Known Limitations
 
-### Specifying `Resources` in Final Tasks
+#### Specifying `Resources` in Final Tasks
 
 Similar to `tasks`, you can use [PipelineResources](#specifying-resources) as inputs and outputs for
 final tasks in the Pipeline. The only difference here is, final tasks with an input resource can not have a `from` clause
@@ -914,13 +929,13 @@ spec:
               - tests
 ```
 
-### Cannot configure the Final Task execution order
+#### Cannot configure the Final Task execution order
 
 It's not possible to configure or modify the execution order of the final tasks. Unlike `Tasks` in a `Pipeline`,
 all final tasks run simultaneously and start executing once all `PipelineTasks` under `tasks` have settled which means
 no `runAfter` can be specified in final tasks.
 
-### Cannot specify execution `Conditions` in Final Tasks
+#### Cannot specify execution `Conditions` in Final Tasks
 
 `Tasks` in a `Pipeline` can be configured to run only if some conditions are satisfied using `conditions`. But the
 final tasks are guaranteed to be executed after all `PipelineTasks` therefore no `conditions` can be specified in
