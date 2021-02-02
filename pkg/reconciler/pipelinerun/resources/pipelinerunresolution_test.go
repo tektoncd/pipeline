@@ -662,7 +662,7 @@ var taskWithOptionalResources = &v1beta1.Task{
 	},
 }
 
-func dagFromState(state PipelineRunState) (*dag.Graph, error) {
+func dagFromTasks(state PipelineRunState) (*dag.Graph, error) {
 	pts := []v1beta1.PipelineTask{}
 	for _, rprt := range state {
 		pts = append(pts, *rprt.PipelineTask)
@@ -670,14 +670,23 @@ func dagFromState(state PipelineRunState) (*dag.Graph, error) {
 	return dag.Build(v1beta1.PipelineTaskList(pts), v1beta1.PipelineTaskList(pts).Deps())
 }
 
+func dagFromFinallyTasks(state PipelineRunState) (*dag.Graph, error) {
+	fpts := []v1beta1.PipelineTask{}
+	for _, rprt := range state {
+		fpts = append(fpts, *rprt.PipelineTask)
+	}
+	return dag.Build(v1beta1.PipelineTaskList(fpts), map[string][]string{})
+}
+
 func TestIsSkipped(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		state    PipelineRunState
+		tasks    PipelineRunState
+		finally  PipelineRunState
 		expected map[string]bool
 	}{{
 		name: "tasks-condition-passed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -691,7 +700,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-condition-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -705,7 +714,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-multiple-conditions-passed-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -727,13 +736,13 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name:  "tasks-condition-running",
-		state: conditionCheckStartedState,
+		tasks: conditionCheckStartedState,
 		expected: map[string]bool{
 			"mytask6": false,
 		},
 	}, {
 		name: "tasks-parent-condition-passed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -749,7 +758,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-parent-condition-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -765,7 +774,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-parent-condition-running",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-conditionaltask",
 			TaskRun:      nil,
@@ -785,25 +794,25 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name:  "tasks-failed",
-		state: oneFailedState,
+		tasks: oneFailedState,
 		expected: map[string]bool{
 			"mytask1": false,
 		},
 	}, {
 		name:  "tasks-passed",
-		state: oneFinishedState,
+		tasks: oneFinishedState,
 		expected: map[string]bool{
 			"mytask1": false,
 		},
 	}, {
 		name:  "tasks-cancelled",
-		state: taskCancelled,
+		tasks: taskCancelled,
 		expected: map[string]bool{
 			"mytask5": false,
 		},
 	}, {
 		name: "tasks-parent-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      makeFailed(trs[0]),
@@ -823,7 +832,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-parent-cancelled",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      withCancelled(makeFailed(trs[0])),
@@ -843,7 +852,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-grandparent-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      makeFailed(trs[0]),
@@ -874,7 +883,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-parents-failed-passed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[5],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      makeSucceeded(trs[0]),
@@ -901,7 +910,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "task-failed-pipeline-stopping",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      makeFailed(trs[0]),
@@ -928,7 +937,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-when-expressions-passed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[9],
 			TaskRunName:  "pipelinerun-guardedtask",
 			TaskRun:      nil,
@@ -941,7 +950,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "tasks-when-expression-failed",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[10],
 			TaskRunName:  "pipelinerun-guardedtask",
 			TaskRun:      nil,
@@ -954,7 +963,7 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name: "when-expression-task-but-without-parent-done",
-		state: PipelineRunState{{
+		tasks: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRun:      nil,
 			ResolvedTaskResources: &resources.ResolvedTaskResources{
@@ -972,32 +981,38 @@ func TestIsSkipped(t *testing.T) {
 		},
 	}, {
 		name:  "run-started",
-		state: oneRunStartedState,
+		tasks: oneRunStartedState,
 		expected: map[string]bool{
 			"mytask13": false,
 		},
 	}, {
 		name:  "run-cancelled",
-		state: runCancelled,
+		tasks: runCancelled,
 		expected: map[string]bool{
 			"mytask13": false,
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := dagFromState(tc.state)
+			d, err := dagFromTasks(tc.tasks)
 			if err != nil {
-				t.Fatalf("Could not get a dag from the TC state %#v: %v", tc.state, err)
+				t.Fatalf("Could not get a dag from the TC tasks %#v: %v", tc.tasks, err)
 			}
-			stateMap := tc.state.ToMap()
+			f, err := dagFromFinallyTasks(tc.finally)
+			if err != nil {
+				t.Fatalf("Could not get a dag from the TC finally tasks %#v: %v", tc.finally, err)
+			}
+
+			state := append(tc.tasks, tc.finally...)
 			facts := PipelineRunFacts{
-				State:           tc.state,
+				State:           state,
 				TasksGraph:      d,
-				FinalTasksGraph: &dag.Graph{},
+				FinalTasksGraph: f,
 			}
+			stateMap := state.ToMap()
 			for taskName, isSkipped := range tc.expected {
 				rprt := stateMap[taskName]
 				if rprt == nil {
-					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
+					t.Fatalf("Could not get task %s from tasks %v or finally tasks %v", taskName, tc.tasks, tc.finally)
 				}
 				if d := cmp.Diff(isSkipped, rprt.Skip(&facts)); d != "" {
 					t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
