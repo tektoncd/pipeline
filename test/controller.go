@@ -54,7 +54,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
-	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
+	fakefilteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
 )
@@ -174,7 +174,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		ClusterTask:      fakeclustertaskinformer.Get(ctx),
 		PipelineResource: fakeresourceinformer.Get(ctx),
 		Condition:        fakeconditioninformer.Get(ctx),
-		Pod:              fakepodinformer.Get(ctx),
+		Pod:              fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
 		ConfigMap:        fakeconfigmapinformer.Get(ctx),
 		ServiceAccount:   fakeserviceaccountinformer.Get(ctx),
 	}

@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -101,7 +101,7 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 }
 
 func fakeClients(t *testing.T, d Data) (*clients, context.Context, func()) {
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	fakeClients, _ := SeedTestData(t, ctx, d)
 	return &clients{
