@@ -16,7 +16,7 @@ spec:
     - name: revision
       description: git revision to checkout (branch, tag, sha, ref…)
       type: string
-      default: master
+      default: main
     - name: refspec
       description: (optional) git refspec to fetch before checking out revision
       default: ""

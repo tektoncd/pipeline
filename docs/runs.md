@@ -22,7 +22,7 @@ weight: 2
 # Overview
 
 A `Run` allows you to instantiate and execute a [Custom
-Task](https://github.com/tektoncd/community/blob/master/teps/0002-custom-tasks.md),
+Task](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md),
 which can be implemented by a custom task controller running on-cluster. Custom
 Tasks can implement behavior that doesn't correspond directly to running a
 workload in a `Pod` on the cluster. For Pod-based on-cluster workloads, you
