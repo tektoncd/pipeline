@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
+	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -52,7 +52,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		taskRunInformer := taskruninformer.Get(ctx)
 		taskInformer := taskinformer.Get(ctx)
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
-		podInformer := podinformer.Get(ctx)
+		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
 		metrics, err := NewRecorder()
 		if err != nil {
