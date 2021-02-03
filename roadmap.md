@@ -4,7 +4,7 @@ This is an incomplete list of work we hope to accomplish in 2020.
 
 Highlights:
 
-- [Tekton mission and vision](https://github.com/tektoncd/community/blob/master/roadmap.md#mission-and-vision)
+- [Tekton mission and vision](https://github.com/tektoncd/community/blob/main/roadmap.md#mission-and-vision)
 - ["Feature complete"](#feature-complete)
 - [Beta for all components](#beta-for-all-components)
 - [Task interfaces and PipelineResources](#task-interfaces-and-pipelineresources)
