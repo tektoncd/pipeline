@@ -38,7 +38,7 @@ import (
 
 const (
 	// ControllerLogKey is the name of the logger for the controller cmd
-	ControllerLogKey = "tekton"
+	ControllerLogKey = "tekton-pipelines-controller"
 )
 
 var (
