@@ -1069,16 +1069,8 @@ Final tasks can emit `Results` but results emitted from the final tasks can not 
       value: $(finally.check-count.results.comment-count-validate)
 ```
 
-In this example, `PipelineResults` is set to:
+In this example, `pipelineResults` in `status` will exclude the name-value pair for that result `comment-count-validate`.
 
-```
-"pipelineResults": [
-  {
-    "name": "comment-count-validate",
-    "value": "$(finally.check-count.results.comment-count-validate)"
-  }
-],
-```
 
 ## Using Custom Tasks
 
