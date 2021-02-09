@@ -111,9 +111,8 @@ kubectl apply -f tekton/resources.yaml
 - [`publish.yaml`](publish.yaml) - This `Task` uses
   [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
   publish base images, and uses
-  [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko) to
-  build all of the container images we release and generate the
-  `release.yaml`
+  [`ko`](https://github.com/google/ko) to build all of the container images we
+release and generate the `release.yaml`
 - [`release-pipeline.yaml`](./release-pipeline.yaml) - This `Pipeline`
   uses the
   [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
