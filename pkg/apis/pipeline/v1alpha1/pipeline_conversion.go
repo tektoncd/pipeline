@@ -100,10 +100,9 @@ func (sink *PipelineSpec) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 			}
 		}
 	}
-	// finally clause was introduced in v1beta1 and not available in v1alpha1
-	if len(source.Finally) > 0 {
-		return ConvertErrorf(FinallyFieldName, ConversionErrorFieldNotAvailableMsg)
-	}
+	// source.Finally is dropped on the floor because otherwise kube api spams pipelines
+	// webhook repeatedly. See https://github.com/tektoncd/pipeline/issues/3206 for more
+	// info.
 	return nil
 }
 
