@@ -49,7 +49,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrGeneric("expected at least one, got none", "description", "params", "resources", "tasks", "workspaces"))
 	}
 	// PipelineTask must have a valid unique label and at least one of taskRef or taskSpec should be specified
-	errs = errs.Also(validatePipelineTasks(ctx, ps.Tasks, ps.Finally))
+	errs = errs.Also(ValidatePipelineTasks(ctx, ps.Tasks, ps.Finally))
 	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
 	// that aren't declared
 	errs = errs.Also(validateDeclaredResources(ps.Resources, ps.Tasks, ps.Finally))
@@ -76,7 +76,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 // validatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
 // taskRef or taskSpec, and in case of a pipeline task with taskRef, it has a reference to a valid task (task name)
-func validatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
+func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	// Names cannot be duplicated
 	taskNames := sets.NewString()
 	var errs *apis.FieldError
