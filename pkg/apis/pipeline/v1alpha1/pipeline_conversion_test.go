@@ -215,7 +215,6 @@ func TestPipelineConversionFromWithFinally(t *testing.T) {
 			if err := p.ConvertTo(context.Background(), ver); err != nil {
 				t.Errorf("ConvertTo() = %v", err)
 			}
-			// modify ver to introduce new field which causes failure to convert v1beta1 to v1alpha1
 			source := ver
 			source.(*v1beta1.Pipeline).Spec.Finally = []v1beta1.PipelineTask{{Name: "finaltask", TaskRef: &TaskRef{Name: "task"}}}
 			got := &Pipeline{}
@@ -231,7 +230,7 @@ func TestPipelineConversionFromWithFinally(t *testing.T) {
 	}
 }
 
-func TestPipelineConversionFromBetaToAlphaWithFinally_Failure(t *testing.T) {
+func TestPipelineConversionFromBetaToAlphaWithFinally(t *testing.T) {
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       "foo",
@@ -240,18 +239,20 @@ func TestPipelineConversionFromBetaToAlphaWithFinally_Failure(t *testing.T) {
 		},
 		Spec: v1beta1.PipelineSpec{
 			Tasks:   []v1beta1.PipelineTask{{Name: "mytask", TaskRef: &TaskRef{Name: "task"}}},
-			Finally: []v1beta1.PipelineTask{{Name: "mytask", TaskRef: &TaskRef{Name: "task"}}},
+			Finally: []v1beta1.PipelineTask{{Name: "myfinallytask", TaskRef: &TaskRef{Name: "task"}}},
 		},
 	}
-	t.Run("finally not available in v1alpha1", func(t *testing.T) {
-		got := &Pipeline{}
-		if err := got.ConvertFrom(context.Background(), p); err != nil {
-			cce, ok := err.(*CannotConvertError)
-			// conversion error (cce) contains the field name which resulted in the failure and should be equal to "finally" here
-			if ok && cce.Field == FinallyFieldName {
-				return
-			}
-			t.Errorf("ConvertFrom() should have failed")
+	t.Run("finally stored by v1alpha1 and rehydrated for v1beta1", func(t *testing.T) {
+		downgrade := &Pipeline{}
+		if err := downgrade.ConvertFrom(context.Background(), p); err != nil {
+			t.Errorf("error converting from v1beta1 with finally field to v1alpha1 with finally annotation: %v", err)
+		}
+		upgrade := &v1beta1.Pipeline{}
+		if err := downgrade.ConvertTo(context.Background(), upgrade); err != nil {
+			t.Errorf("error converting from v1alpha1 with finally annotation to v1beta1 with finally field: %v", err)
+		}
+		if d := cmp.Diff(p, upgrade); d != "" {
+			t.Errorf("unexpected difference between v1beta1 with finally field and round-tripped v1beta1 with finally field: %s", diff.PrintWantGot(d))
 		}
 	})
 }

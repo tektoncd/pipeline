@@ -19,6 +19,7 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -26,6 +27,7 @@ import (
 )
 
 const FinallyFieldName = "finally"
+const finallyAnnotationKey = "tekton.dev/v1beta1Finally"
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
@@ -34,10 +36,29 @@ func (source *Pipeline) ConvertTo(ctx context.Context, obj apis.Convertible) err
 	switch sink := obj.(type) {
 	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertTo(ctx, &sink.Spec)
+		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
+			return err
+		}
+		if source.Annotations != nil {
+			if _, ok := source.Annotations[finallyAnnotationKey]; ok {
+				finally := []v1beta1.PipelineTask{}
+				if err := json.Unmarshal([]byte(source.Annotations[finallyAnnotationKey]), &finally); err != nil {
+					return fmt.Errorf("error converting finally annotation into beta field: %w", err)
+				}
+				if err := v1beta1.ValidatePipelineTasks(ctx, sink.Spec.Tasks, finally); err != nil {
+					return fmt.Errorf("error converting finally annotation into beta field: %w", err)
+				}
+				delete(sink.ObjectMeta.Annotations, finallyAnnotationKey)
+				if len(sink.ObjectMeta.Annotations) == 0 {
+					sink.ObjectMeta.Annotations = nil
+				}
+				sink.Spec.Finally = finally
+			}
+		}
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
+	return nil
 }
 
 func (source *PipelineSpec) ConvertTo(ctx context.Context, sink *v1beta1.PipelineSpec) error {
@@ -81,6 +102,16 @@ func (sink *Pipeline) ConvertFrom(ctx context.Context, obj apis.Convertible) err
 	switch source := obj.(type) {
 	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
+		if len(source.Spec.Finally) != 0 {
+			b, err := json.Marshal(source.Spec.Finally)
+			if err != nil {
+				return err
+			}
+			if sink.ObjectMeta.Annotations == nil {
+				sink.ObjectMeta.Annotations = make(map[string]string)
+			}
+			sink.ObjectMeta.Annotations[finallyAnnotationKey] = string(b)
+		}
 		return sink.Spec.ConvertFrom(ctx, source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -99,10 +130,6 @@ func (sink *PipelineSpec) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 				return err
 			}
 		}
-	}
-	// finally clause was introduced in v1beta1 and not available in v1alpha1
-	if len(source.Finally) > 0 {
-		return convertErrorf(FinallyFieldName, ConversionErrorFieldNotAvailableMsg)
 	}
 	return nil
 }
