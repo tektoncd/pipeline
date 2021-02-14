@@ -108,6 +108,15 @@ func TestEventForTaskRun(t *testing.T) {
 		desc:          "send a cloud event with successful status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionTrue, "yay"),
 		wantEventType: TaskRunSuccessfulEventV1,
+	}, {
+		desc: "send a cloud event with successful status taskrun, empty selflink",
+		taskRun: func() *v1beta1.TaskRun {
+			tr := getTaskRunByCondition(corev1.ConditionTrue, "yay")
+			// v1.20 does not set selfLink in controller
+			tr.ObjectMeta.SelfLink = ""
+			return tr
+		}(),
+		wantEventType: TaskRunSuccessfulEventV1,
 	}}
 
 	for _, c := range taskRunTests {

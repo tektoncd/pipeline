@@ -95,7 +95,18 @@ func EventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Ev
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSubject(runObject.GetObjectMeta().GetName())
-	event.SetSource(runObject.GetObjectMeta().GetSelfLink()) // TODO: SelfLink is deprecated https://github.com/tektoncd/pipeline/issues/2676
+	// TODO: SelfLink is deprecated https://github.com/tektoncd/pipeline/issues/2676
+	source := runObject.GetObjectMeta().GetSelfLink()
+	if source == "" {
+		gvk := runObject.GetObjectKind().GroupVersionKind()
+		source = fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s/%s",
+			gvk.Group,
+			gvk.Version,
+			runObject.GetObjectMeta().GetNamespace(),
+			gvk.Kind,
+			runObject.GetObjectMeta().GetName())
+	}
+	event.SetSource(source)
 	eventType, err := getEventType(runObject)
 	if err != nil {
 		return nil, err
