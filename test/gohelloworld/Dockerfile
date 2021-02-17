@@ -1,4 +1,4 @@
-FROM golang
+FROM golang:1.15
 
 # Copy the local package files to the container's workspace.
 COPY . /go/src/github.com/tektoncd/pipeline/
