@@ -42,6 +42,7 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	t.Skip("This test is broken following the golang 1.16 release, see: https://github.com/tektoncd/pipeline/pull/3766")
 	repo := ensureDockerRepo(t)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
