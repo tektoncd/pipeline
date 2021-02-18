@@ -277,7 +277,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
 			Annotations: podAnnotations,
-			Labels:      MakeLabels(taskRun),
+			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
@@ -302,8 +302,8 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}, nil
 }
 
-// MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func MakeLabels(s *v1beta1.TaskRun) map[string]string {
+// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
+func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.

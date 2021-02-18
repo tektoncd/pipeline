@@ -363,7 +363,7 @@ func ResolvePipelineRunTask(
 		rprt.PipelineTask.TaskRef.APIVersion != "" && rprt.PipelineTask.TaskRef.Kind != ""
 
 	if rprt.IsCustomTask() {
-		rprt.RunName = GetRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
+		rprt.RunName = getRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)
 		if err != nil && !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
@@ -450,9 +450,9 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
 }
 
-// GetRunName should return a unique name for a `Run` if one has not already
+// getRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func GetRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
+func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
 	for k, v := range runsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
