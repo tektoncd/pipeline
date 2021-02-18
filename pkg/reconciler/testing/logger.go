@@ -23,7 +23,7 @@ import (
 
 // SetupFakeContext sets up the the Context and the fake filtered informers for the tests.
 func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
-	ctx, _, informer := SetupFakeContextWithLabelKey(t)
+	ctx, _, informer := setupFakeContextWithLabelKey(t)
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
 		SendSuccessfully: true,
 	}
@@ -42,9 +42,9 @@ func TestLogger(t *testing.T) *zap.SugaredLogger {
 	return logger.Sugar().Named(t.Name())
 }
 
-// SetupFakeContextWithLabelKey sets up the the Context and the fake informers for the tests
+// setupFakeContextWithLabelKey sets up the the Context and the fake informers for the tests
 // The provided context includes the FilteredInformerFactory LabelKey.
-func SetupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
+func setupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
 	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
