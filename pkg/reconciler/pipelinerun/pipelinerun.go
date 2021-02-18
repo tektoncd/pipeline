@@ -616,7 +616,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	fnextRprts := pipelineRunFacts.GetFinalTasks()
 	if len(fnextRprts) != 0 {
 		// apply the runtime context just before creating taskRuns for final tasks in queue
-		resources.ApplyPipelineTaskContext(fnextRprts, pipelineRunFacts.GetPipelineTaskStatus())
+		resources.ApplyPipelineTaskStateContext(fnextRprts, pipelineRunFacts.GetPipelineTaskStatus())
 
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
@@ -709,6 +709,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
 
+	rprt.PipelineTask = resources.ApplyPipelineTaskContexts(rprt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{

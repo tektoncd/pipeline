@@ -308,6 +308,19 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid task retry count context",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Script: `
+				#!/usr/bin/env  bash
+				retry count "$(context.task.retry-count)"`,
+			}},
+		},
+	}, {
 		name: "valid taskrun name context",
 		fields: fields{
 			Steps: []v1beta1.Step{{

@@ -585,6 +585,51 @@ func TestContext(t *testing.T) {
 	}
 }
 
+func TestApplyPipelineTaskContexts(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		pt          v1beta1.PipelineTask
+		want        v1beta1.PipelineTask
+	}{{
+		description: "context retries replacement",
+		pt: v1beta1.PipelineTask{
+			Retries: 5,
+			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
+			}},
+		},
+		want: v1beta1.PipelineTask{
+			Retries: 5,
+			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("5"),
+			}},
+		},
+	}, {
+		description: "context retries replacement with no defined retries",
+		pt: v1beta1.PipelineTask{
+			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
+			}},
+		},
+		want: v1beta1.PipelineTask{
+			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("0"),
+			}},
+		},
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			got := ApplyPipelineTaskContexts(&tc.pt)
+			if d := cmp.Diff(&tc.want, got); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyWorkspaces(t *testing.T) {
 	for _, tc := range []struct {
 		description         string
@@ -1107,7 +1152,7 @@ func TestApplyTaskRunContext(t *testing.T) {
 			}},
 		},
 	}}
-	ApplyPipelineTaskContext(state, r)
+	ApplyPipelineTaskStateContext(state, r)
 	if d := cmp.Diff(expectedState, state); d != "" {
 		t.Fatalf("ApplyTaskRunContext() %s", diff.PrintWantGot(d))
 	}

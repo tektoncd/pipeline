@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -107,6 +108,7 @@ func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1bet
 		"context.task.name":         rtr.TaskName,
 		"context.taskRun.namespace": tr.Namespace,
 		"context.taskRun.uid":       string(tr.ObjectMeta.UID),
+		"context.task.retry-count":  strconv.Itoa(len(tr.Status.RetriesStatus)),
 	}
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
