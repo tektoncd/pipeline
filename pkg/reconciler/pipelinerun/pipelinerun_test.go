@@ -284,6 +284,7 @@ func TestReconcile(t *testing.T) {
 	templatedParam := tb.PipelineTaskParam("templatedparam", "$(inputs.workspace.$(params.rev-param))")
 	contextRunParam := tb.PipelineTaskParam("contextRunParam", "$(context.pipelineRun.name)")
 	contextPipelineParam := tb.PipelineTaskParam("contextPipelineParam", "$(context.pipeline.name)")
+	retriesParam := tb.PipelineTaskParam("contextRetriesParam", "$(context.pipelineTask.retries)")
 	const pipelineName = "test-pipeline"
 	ps := []*v1beta1.Pipeline{
 		tb.Pipeline(pipelineName,
@@ -296,7 +297,7 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineParamSpec("bar", v1beta1.ParamTypeString),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
-					funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam,
+					funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam,
 					tb.RunAfter("unit-test-2"),
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -304,10 +305,11 @@ func TestReconcile(t *testing.T) {
 				),
 				// unit-test-1 can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-1", "unit-test-task",
-					funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam,
+					funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam,
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+					tb.Retries(5),
 				),
 				// unit-test-2 uses `from` to indicate it should run after `unit-test-1`
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
@@ -327,7 +329,7 @@ func TestReconcile(t *testing.T) {
 	ts := []*v1beta1.Task{
 		tb.Task("unit-test-task", tb.TaskSpec(
 			tb.TaskParam("foo", v1beta1.ParamTypeString), tb.TaskParam("bar", v1beta1.ParamTypeString), tb.TaskParam("templatedparam", v1beta1.ParamTypeString),
-			tb.TaskParam("contextRunParam", v1beta1.ParamTypeString), tb.TaskParam("contextPipelineParam", v1beta1.ParamTypeString),
+			tb.TaskParam("contextRunParam", v1beta1.ParamTypeString), tb.TaskParam("contextPipelineParam", v1beta1.ParamTypeString), tb.TaskParam("contextRetriesParam", v1beta1.ParamTypeString),
 			tb.TaskResources(
 				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
 				tb.TaskResourcesOutput("image-to-use", resourcev1alpha1.PipelineResourceTypeImage),
@@ -404,6 +406,7 @@ func TestReconcile(t *testing.T) {
 			tb.TaskRunParam("templatedparam", "$(inputs.workspace.revision)"),
 			tb.TaskRunParam("contextRunParam", pipelineRunName),
 			tb.TaskRunParam("contextPipelineParam", pipelineName),
+			tb.TaskRunParam("contextRetriesParam", "5"),
 			tb.TaskRunResources(
 				tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("some-repo")),
 				tb.TaskRunResourcesOutput("image-to-use",

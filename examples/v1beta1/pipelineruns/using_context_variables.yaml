@@ -7,6 +7,7 @@ spec:
   pipelineSpec:
     tasks:
     - name: task1
+      retries: 7
       params:
       - name: pipeline-uid
         value: "$(context.pipelineRun.uid)"
@@ -14,11 +15,14 @@ spec:
         value: "$(context.pipeline.name)"
       - name: pipelineRun-name
         value: "$(context.pipelineRun.name)"
+      - name: pipelineTask-retries
+        value: "$(context.pipelineTask.retries)"
       taskSpec:
         params:
         - name: pipeline-uid
         - name: pipeline-name
         - name: pipelineRun-name
+        - name: pipelineTask-retries
         steps:
         - image: ubuntu
           name: print-uid
@@ -32,3 +36,8 @@ spec:
             echo "TaskRun name: $(context.taskRun.name)"
             echo "Pipeline name from params: $(params.pipeline-name)"
             echo "PipelineRun name from params: $(params.pipelineRun-name)"
+        - image: ubuntu
+          name: print-retries
+          script: |
+            echo "PipelineTask retries from params: $(params.pipelineTask-retries)"
+            echo "PipelineTask current retry count: $(context.task.retry-count)"

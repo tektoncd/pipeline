@@ -20,6 +20,7 @@ weight: 3
     - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Using variable substitution](#using-variable-substitution)
+    - [Using the `retries` and `retry-count` variable substitutions](#using-the-retries-and-retry-count-variable-substitutions)
   - [Using `Results`](#using-results)
     - [Passing one Task's `Results` into the `Parameters` or `WhenExpressions` of another](#passing-one-tasks-results-into-the-parameters-or-whenexpressions-of-another)
     - [Emitting `Results` from a `Pipeline`](#emitting-results-from-a-pipeline)
@@ -549,6 +550,35 @@ performed by the Tekton Controller when a PipelineRun is executed.
 
 See the [complete list of variable substitutions for Pipelines](./variables.md#variables-available-in-a-pipeline)
 and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
+
+### Using the `retries` and `retry-count` variable substitutions
+
+Tekton supports variable substitution for the [`retries`](#using-the-retries-parameter)
+parameter of `PipelineTask`. Variables like `context.pipelineTask.retries` and
+`context.task.retry-count` can be added to the parameters of a `PipelineTask`.
+`context.pipelineTask.retries` will be replaced by `retries` of the `PipelineTask`, while
+`context.task.retry-count` will be replaced by current retry number of the `PipelineTask`.
+
+```yaml
+params:
+- name: pipelineTask-retries
+  value: "$(context.pipelineTask.retries)"
+taskSpec:
+  params:
+  - name: pipelineTask-retries
+  steps:
+  - image: ubuntu
+    name: print-if-retries-exhausted
+    script: |
+      if [ "$(context.task.retry-count)" == "$(params.pipelineTask-retries)" ]
+      then
+        echo "This is the last retry."
+      fi
+      exit 1
+```
+
+**Note:** Every `PipelineTask` can only access its own `retries` and `retry-count`. These
+values aren't accessible for other `PipelineTask`s.
 
 ## Using `Results`
 

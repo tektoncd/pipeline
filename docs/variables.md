@@ -25,6 +25,7 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.pipeline.name` | The name of this `Pipeline` . |
 | `tasks.<pipelineTaskName>.status` | The execution status of the specified `pipelineTask`, only available in `finally` tasks. The execution status can be set to any one of the values (`Succeeded`, `Failed`, or `None`) described [here](pipelines.md#using-execution-status-of-pipelinetask)|
 | `tasks.status` | An aggregate status of all the `pipelineTasks` under the `tasks` section (excluding the `finally` section). This variable is only available in the `finally` tasks and can have any one of the values (`Succeeded`, `Failed`, `Completed`, or `None`) described [here](pipelines.md#using-aggregate-execution-status-of-all-tasks).  |
+| `context.pipelineTask.retries` | The retries of this `PipelineTask`. |
 
 ## Variables available in a `Task`
 
@@ -43,6 +44,7 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.taskRun.namespace` | The namespace of the `TaskRun` that this `Task` is running in. |
 | `context.taskRun.uid` | The uid of the `TaskRun` that this `Task` is running in. |
 | `context.task.name` | The name of this `Task`. |
+| `context.task.retry-count` | The current retry number of this `Task`. |
 
 ### `PipelineResource` variables available in a `Task`
 

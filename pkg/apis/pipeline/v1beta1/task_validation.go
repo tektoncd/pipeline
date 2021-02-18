@@ -276,6 +276,7 @@ func validateTaskContextVariables(steps []Step) *apis.FieldError {
 	)
 	taskContextNames := sets.NewString().Insert(
 		"name",
+		"retry-count",
 	)
 	errs := validateVariables(steps, "context\\.taskRun", taskRunContextNames)
 	return errs.Also(validateVariables(steps, "context\\.task", taskContextNames))
