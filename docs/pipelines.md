@@ -294,10 +294,11 @@ You may also specify a fixed digest instead of a tag.
  ```
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
-`ServiceAccount` specified in the `PipelineRun`. See the [Service Account](
-pipelineruns.md#service-accounts) section for details on how to configure a `ServiceAccount`
-on a `PipelineRun`. The `PipelineRun` will then run that `Task` without registering it in
-the cluster allowing multiple versions of the same named `Task` to be run at once.
+`ServiceAccount` specified in the `PipelineRun`.
+See the [Service Account](pipelineruns.md#specifying-custom-serviceaccount-credentials) section
+for details on how to configure a `ServiceAccount` on a `PipelineRun`. The `PipelineRun` will then
+run that `Task` without registering it in the cluster allowing multiple versions of the same named
+`Task` to be run at once.
 
 `Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
 so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
