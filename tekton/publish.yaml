@@ -185,11 +185,11 @@ spec:
 
       # Auth with account credentials for all regions.
       HOSTNAME=gcr.io
-      cat /secret/release.json | crane auth login -u _json_key --password-stdin https://${HOSTNAME}
+      cat /secret/release.json | crane auth login -u _json_key --password-stdin ${HOSTNAME}
       for REGION in ${REGIONS}
       do
         HOSTNAME=${REGION}.gcr.io
-        cat /secret/release.json | crane auth login -u _json_key --password-stdin https://${HOSTNAME}
+        cat /secret/release.json | crane auth login -u _json_key --password-stdin ${HOSTNAME}
       done
 
       # Tag the images and put them in all the regions
