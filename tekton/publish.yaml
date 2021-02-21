@@ -83,8 +83,32 @@ spec:
     - "-p"
     - "/workspace/output/bucket/previous/$(params.versionTag)/"
 
+  - name: container-registy-auth
+    image: gcr.io/go-containerregistry/crane:debug
+    env:
+      - name: CONTAINER_REGISTY_CREDENTIALS
+        value: "/secret/release.json"
+      - name: REGIONS
+        value: "us eu asia"
+    script: |
+      #!/busybox/sh
+      set -ex
+
+      # Login to gcr.io
+      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
+        crane auth login -u _json_key --password-stdin gcr.io 2>&1 | \
+        sed 's,^.*logged in via \(.*\)$,\1,g')
+
+      # Auth with account credentials for all regions.
+      for region in ${REGIONS}
+      do
+        HOSTNAME=${region}.gcr.io
+        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+      done
+      cp ${DOCKER_CONFIG} /workspace/docker-config.json
+
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
+    image: gcr.io/tekton-releases/dogfooding/ko:latest
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)
@@ -94,17 +118,14 @@ spec:
       value: "off"
     - name: GOFLAGS
       value: "-mod=vendor"
-    - name: GOOGLE_APPLICATION_CREDENTIALS
-      value: "/secret/release.json"
     script: |
-      #!/usr/bin/env bash
+      #!/usr/bin/env sh
       set -ex
 
-      # Activate service account
-      gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-
       # Setup docker-auth
-      gcloud auth configure-docker
+      DOCKER_CONFIG=~/.docker
+      mkdir -p ${DOCKER_CONFIG}
+      cp /workspace/docker-config.json ${DOCKER_CONFIG}/
 
       # Change to directory with our .ko.yaml
       cd /workspace/go/src/github.com/tektoncd/pipeline
@@ -181,16 +202,12 @@ spec:
       #!/busybox/sh
       set -ex
 
-      REGIONS="us eu asia"
+      # Setup docker-auth
+      DOCKER_CONFIG=~/.docker
+      mkdir -p ${DOCKER_CONFIG}
+      cp /workspace/docker-config.json ${DOCKER_CONFIG}/
 
-      # Auth with account credentials for all regions.
-      HOSTNAME=gcr.io
-      cat /secret/release.json | crane auth login -u _json_key --password-stdin ${HOSTNAME}
-      for REGION in ${REGIONS}
-      do
-        HOSTNAME=${REGION}.gcr.io
-        cat /secret/release.json | crane auth login -u _json_key --password-stdin ${HOSTNAME}
-      done
+      REGIONS="us eu asia"
 
       # Tag the images and put them in all the regions
       for IMAGE in $(cat /workspace/built_images)
