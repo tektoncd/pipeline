@@ -39,7 +39,7 @@ spec:
   tasks:
     - name: unit-tests
       taskRef:
-        name: golang-test
+        name: golang-test-legacy
       params:
         - name: package
           value: $(params.package)
@@ -49,7 +49,7 @@ spec:
             resource: source-repo
     - name: build
       taskRef:
-        name: golang-build
+        name: golang-build-legacy
       params:
         - name: package
           value: $(params.package)
