@@ -61,7 +61,7 @@ spec:
     - name: unit-tests
       runAfter: [precheck]
       taskRef:
-        name: golang-test
+        name: golang-test-legacy
       params:
         - name: package
           value: $(params.package)
@@ -74,7 +74,7 @@ spec:
     - name: build
       runAfter: [precheck]
       taskRef:
-        name: golang-build
+        name: golang-build-legacy
       params:
         - name: package
           value: $(params.package)
