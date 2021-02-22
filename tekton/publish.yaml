@@ -106,6 +106,9 @@ spec:
         cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
       done
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
+    volumeMounts:
+      - name: gcp-secret
+        mountPath: /secret
 
   - name: run-ko
     image: gcr.io/tekton-releases/dogfooding/ko:latest
@@ -154,9 +157,6 @@ spec:
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
       ko resolve --platform=$(params.platforms) --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > $OUTPUT_BUCKET_RELEASE_DIR/release.notags.yaml
-    volumeMounts:
-      - name: gcp-secret
-        mountPath: /secret
 
   - name: copy-to-latest-bucket
     image: busybox
