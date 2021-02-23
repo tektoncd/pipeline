@@ -56,7 +56,11 @@ metadata:
     # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
-  minAvailable: 80%
+  # Ensure at least one replica is available.
+  # If a node is running the only replica of this pod, K8s will spin up another
+  # replica on another node if it needs to, before killing the original replica
+  # so its node can drain.
+  minAvailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook
