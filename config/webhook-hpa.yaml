@@ -39,31 +39,3 @@ spec:
       resource:
         name: cpu
         targetAverageUtilization: 100
----
-apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
-metadata:
-  name: tekton-pipelines-webhook
-  namespace: tekton-pipelines
-  labels:
-    app.kubernetes.io/name: webhook
-    app.kubernetes.io/component: webhook
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/version: "devel"
-    app.kubernetes.io/part-of: tekton-pipelines
-    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: "devel"
-    # labels below are related to istio and should not be used for resource lookup
-    version: "devel"
-spec:
-  # Ensure at least one replica is available.
-  # If a node is running the only replica of this pod, K8s will spin up another
-  # replica on another node if it needs to, before killing the original replica
-  # so its node can drain.
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: webhook
-      app.kubernetes.io/component: webhook
-      app.kubernetes.io/instance: default
-      app.kubernetes.io/part-of: tekton-pipelines
