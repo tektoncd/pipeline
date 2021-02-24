@@ -12,63 +12,65 @@ the pipelines repo, a terminal window and a text editor.
    most recent commit at https://github.com/tektoncd/pipeline/commits/master
    and note the commit's hash.
 
-1. Create a `.yaml` file containing PipelineResource for new version. e.g.
-
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: # Example: tekton-pipelines-v0-11-2
-    spec:
-      type: git
-      params:
-      - name: url
-        value: https://github.com/tektoncd/pipeline
-      - name: revision
-        value: # The commmit you selected in the last step, e.g. 33e0847e67fc9804689e50371746c3cdad4b0a9d
-    ```
-
-1. Apply file you just made to the dogfooding cluster: `kubectl --context dogfooding apply -f your-pipeline-resource-file.yaml`
-
 1. Create environment variables for bash scripts in later steps.
 
     ```bash
-    TEKTON_VERSION=# Example: v0.11.0
-    TEKTON_RELEASE_GIT_RESOURCE=# Name of the resource you created, e.g.: tekton-pipelines-v0-11-0
+    TEKTON_VERSION=# Example: v0.21.0
+    TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
     TEKTON_IMAGE_REGISTRY=gcr.io/tekton-releases # only change if you want to publish to a different registry
     ```
 
 1. Confirm commit SHA matches what you want to release.
 
     ```bash
-    kubectl --context dogfooding get pipelineresource "$TEKTON_RELEASE_GIT_RESOURCE" -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
+    git show $TEKTON_RELEASE_GIT_SHA
     ```
+1. Create a workspace template file:
+
+   ```bash
+   cat <<EOF > workspace-template.yaml
+   spec:
+     accessModes:
+     - ReadWriteOnce
+     resources:
+       requests:
+         storage: 1Gi
+   EOF
+   ```
 
 1. Execute the release pipeline.
 
-    **If you are backporting include this flag: `--param=releaseAsLatest="false"`**
+    **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
 
     ```bash
-    tkn --context dogfooding pipeline start \
-      --param=versionTag="${TEKTON_VERSION}" \
-      --param=imageRegistry="${TEKTON_IMAGE_REGISTRY}" \
+    tkn --context dogfooding pipeline start pipeline-release \
       --serviceaccount=release-right-meow \
-      --resource=source-repo="${TEKTON_RELEASE_GIT_RESOURCE}" \
-      --resource=bucket=pipeline-tekton-bucket \
-      --resource=builtBaseImage=base-image \
-      --resource=builtEntrypointImage=entrypoint-image \
-      --resource=builtNopImage=nop-image \
-      --resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
-      --resource=builtGitInitImage=git-init-image \
-      --resource=builtControllerImage=controller-image \
-      --resource=builtWebhookImage=webhook-image \
-      --resource=builtDigestExporterImage=digest-exporter-image \
-      --resource=builtPullRequestInitImage=pull-request-init-image \
-      --resource=notification=post-release-trigger \
-    pipeline-release
+      --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+      --param=serviceAccountPath=release.json \
+      --workspace name=release-secret,secret=release-secret \
+      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
     ```
 
 1. Watch logs of pipeline-release.
+
+1. Once the pipeline is complete, check its results:
+
+   ```bash
+   tkn pr describe <pipeline-run-name>
+   
+   (...)
+   📝 Results
+
+   NAME                    VALUE
+   ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
+   ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
+   ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
+   
+   (...)
+   ```
+
+   The `commit-sha` should match `$TEKTON_RELEASE_GIT_SHA`.
+   The two URLs can be opened in the browser or via `curl` to download the release manifests.
 
 1. The YAMLs are now released! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
 
