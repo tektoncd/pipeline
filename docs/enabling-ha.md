@@ -1,38 +1,37 @@
 # HA Support for Tekton Pipeline Controllers
 
-- [Overview](#overview)
-- [Configuring HA](#configuring-ha)
-  - [Configuring the controller replicas](#configuring-the-controller-replicas)
-  - [Configuring the leader election](#configuring-the-leader-election)
-- [Disabling leader election](#disabling-leader-election)
-  - [Use the disable-ha flag](#use-the-disable-ha-flag)
-  - [Scale down your replicas](#scale-down-your-replicas)
+  - [Overview](#overview)
+  - [Controller HA](#controller-ha)
+    - [Configuring Controller Replicas](#configuring-controller-replicas)
+    - [Configuring Leader Election](#configuring-leader-election)
+    - [Disabling Controller HA](#disabling-controller-ha)
+  - [Webhook HA](#webhook-ha)
+    - [Configuring Webhook Replicas](#configuring-webhook-replicas)
+    - [Avoiding Disruptions](#avoiding-disruptions)
 
 ## Overview
 
----
-This document is aimed at helping Cluster Admins when configuring High Availability(HA) support for the Tekton Pipeline [controller deployment](./../config/controller.yaml).
+This document is aimed at helping Cluster Admins when configuring High Availability (HA) support for the Tekton Pipeline [Controller](./../config/controller.yaml) and [Webhook](./../config/webhook.yaml) components. HA support allows components to remain operational when a disruption occurs, such as nodes being drained for upgrades.
 
-HA support allows components to remain operational when a disruption occurs. This is achieved by following an active/active model, where all replicas of the Tekton controller can receive workload. In this HA approach the reconcile space is distributed across buckets, where each replica owns a subset of those buckets and can process the load if the given replica is the leader of that bucket.
+## Controller HA
 
-By default HA is enabled in the Tekton pipelines controller.
+For the Controller, HA is achieved by following an active/active model, where all replicas of the Controller can receive and process work items. In this HA approach the workqueue is distributed across buckets, where each replica owns a subset of those buckets and can process the load if the given replica is the leader of that bucket.
 
-## Configuring HA
+By default, only one Controller replica is configured, to reduce resource usage. This effectively disables HA for the Controller by default.
 
----
-In order to achieve HA, the number of replicas for the Tekton Pipeline controller should be greater than one. This allows other instance(_s_) to take over in case of any disruption on the current active controller.
+### Configuring Controller Replicas
 
-### Configuring the controller replicas
+In order to achieve HA for the Controller, the number of replicas for the Controller should be greater than one. This allows other instances to take over in case of any disruption on the current active controller.
 
-You can modify the replicas number in the [controller deployment](./../config/controller.yaml) under `spec.replicas` or apply an update to a running deployment:
+You can modify the replicas number in the [Controller deployment](./../config/controller.yaml) under `spec.replicas`, or apply an update to a running deployment:
 
 ```sh
 kubectl -n tekton-pipelines scale deployment tekton-pipelines-controller --replicas=3
 ```
 
-### Configuring the Leader Election
+### Configuring Leader Election
 
-The leader election can be configured via the [config-leader-election.yaml](./../config/config-leader-election.yaml). The configmap defines the following parameters:
+Leader election can be configured in [config-leader-election.yaml](./../config/config-leader-election.yaml). The ConfigMap defines the following parameters:
 
 | Parameter            | Default  |
 | -------------------- | -------- |
@@ -41,17 +40,11 @@ The leader election can be configured via the [config-leader-election.yaml](./..
 | `data.renewDeadline` | 10s      |
 | `data.retryPeriod`   | 2s       |
 
-_Note_: When setting `data.buckets`, the underlying Knative library only allows a value between 1 and 10, making 10 the maximum number of allowed buckets.
+_Note_: The maximum value of `data.buckets` at this time is 10.
 
-## Disabling leader election
+### Disabling Controller HA
 
----
-
-If HA is not required and running a single instance of the Tekton Pipeline controller is enough, there are two alternatives:
-
-### Use the disable-ha flag
-
-You can modify the [controller deployment](./../config/controller.yaml), by specifying in the `tekton-pipelines-controller` container the `disable-ha` flag. For example:
+If HA is not required, you can disable it by scaling the deployment back to one replica. You can also modify the [controller deployment](./../config/controller.yaml), by specifying in the `tekton-pipelines-controller` container the `disable-ha` flag. For example:
 
 ```yaml
 spec:
@@ -65,10 +58,60 @@ spec:
     ]
 ```
 
-by setting `disable-ha` to `true`, HA will be disable in the controllers.
+**Note:** If you set `-disable-ha=false` and run multiple replicas of the Controller, each replica will process work items separately, which will lead to unwanted behavior when creating resources (e.g., `TaskRuns`, etc.).
 
-**Note**: Please consider that when disabling HA and keeping multiple replicas of the [controller deployment](./../config/controller.yaml), each replica will act as an independent controller, leading to an unwanted behaviour when creating resources(e.g. `TaskRuns`, etc).
+In general, setting `-disable-ha=false` is not recommended. Instead, to disable HA, simply run one replica of the Controller deployment.
 
-### Scale down your replicas
+## Webhook HA
 
-Although HA is enable by default, if your [controller deployment](./../config/controller.yaml) replicas are set to one, there would be no High Availability in the scenario where the running instance is deleted or fails. Therefore having a single replica even with HA enable, does not ensure high availability for the controller.
+The Webhook deployment is stateless, which means it can more easily be configured for HA, and even autoscale replicas in response to load.
+
+By default, only one Webhook replica is configured, to reduce resource usage. This effectively disables HA for the Webhook by default.
+
+### Configuring Webhook Replicas
+
+In order to achieve HA for the Webhook deployment, you can modify the `replicas` number in the [Webhook deployment](./../config/webhook.yaml) under `spec.replicas`, or apply an update to a running deployment:
+
+```sh
+kubectl -n tekton-pipelines scale deployment tekton-pipelines-webhook --replicas=3
+```
+
+You can also modify the [HorizontalPodAutoscaler](./../config/webhook-hpa.yaml) to set a minimum number of replicas:
+
+```yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tekton-pipelines-webhook
+...
+spec:
+  minReplicas: 1
+```
+
+### Avoiding Disruptions
+
+To avoid the Webhook Service becoming unavailable during node unavailability (e.g., during node upgrades), you can ensure that a minimum number of Webhook replicas are available at time by defining a [`PodDisruptionBudget`](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) which sets a `minAvailable` greater than zero:
+
+```yaml
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+    ...
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-pipelines
+```
+
+Webhook replicas are configured to avoid being scheduled onto the same node by default, so that a single node disruption doesn't make all Webhook replicas unavailable.
