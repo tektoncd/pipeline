@@ -57,3 +57,4 @@ This is an incomplete list of work we hope to tackle in 2021!
   * [Config as code](https://github.com/tektoncd/pipeline/issues/859)
     ([TEP-0048](https://github.com/tektoncd/community/pull/341),
     [task references via git](https://github.com/tektoncd/pipeline/issues/2298))
+* [Rework PipelineRun and TaskRun Status](https://github.com/tektoncd/pipeline/issues/3792)
