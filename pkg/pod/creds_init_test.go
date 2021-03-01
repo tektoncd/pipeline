@@ -222,6 +222,39 @@ func TestCredsInit(t *testing.T) {
 			MountPath: "/tekton/creds-secrets/foo.bar.com",
 		}},
 		ctx: context.Background(),
+	}, {
+		desc: "service account has empty-named secrets",
+		objs: []runtime.Object{
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+				Secrets: []corev1.ObjectReference{{
+					Name: "my-creds",
+				}, {}},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-creds",
+					Namespace: namespace,
+					Annotations: map[string]string{
+						"tekton.dev/git-0": "github.com",
+					},
+				},
+				Type: "kubernetes.io/basic-auth",
+				Data: map[string][]byte{
+					"username": []byte("foo"),
+					"password": []byte("BestEver"),
+				},
+			},
+		},
+		envVars: []corev1.EnvVar{},
+		wantArgs: []string{
+			"-basic-git=my-creds=github.com",
+		},
+		wantVolumeMounts: []corev1.VolumeMount{{
+			Name:      "tekton-internal-secret-volume-my-creds-9l9zj",
+			MountPath: "/tekton/creds-secrets/my-creds",
+		}},
+		ctx: context.Background(),
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

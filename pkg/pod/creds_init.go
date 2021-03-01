@@ -73,6 +73,9 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 	var volumes []corev1.Volume
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
+		if secretEntry.Name == "" {
+			continue
+		}
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(ctx, secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, nil, err
