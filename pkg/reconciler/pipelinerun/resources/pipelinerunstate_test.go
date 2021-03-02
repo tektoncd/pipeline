@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -1045,7 +1044,12 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := tb.PipelineRun("somepipelinerun")
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "somepipelinerun",
+				},
+				Spec: v1beta1.PipelineRunSpec{},
+			}
 			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
@@ -1178,7 +1182,12 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := tb.PipelineRun("pipelinerun-final-tasks")
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerun-final-tasks",
+				},
+				Spec: v1beta1.PipelineRunSpec{},
+			}
 			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks), v1beta1.PipelineTaskList(tc.dagTasks).Deps())
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig graph for DAG tasks %v: %v", tc.dagTasks, err)
