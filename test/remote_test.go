@@ -29,8 +29,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateImage(t *testing.T) {
@@ -39,7 +40,15 @@ func TestCreateImage(t *testing.T) {
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 
-	task := tb.Task("test-create-image", tb.TaskType)
+	task := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-create-image",
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Task",
+		},
+	}
 
 	ref, err := CreateImage(u.Host+"/task/test-create-image", task)
 	if err != nil {
