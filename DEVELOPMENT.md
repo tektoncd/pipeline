@@ -153,7 +153,7 @@ _Adding the `upstream` remote sets you up nicely for regularly
 
 The recommended configuration is:
 
--   Kubernetes version 1.16 or later
+-   Kubernetes version 1.17 or later
 -   4 vCPU nodes (`n1-standard-4`)
 -   Node autoscaling, up to 3 nodes
 -   API scopes for cloud-platform
@@ -174,7 +174,7 @@ The recommended configuration is:
     variable (e.g. `PROJECT_ID`).
 
 1.  Create a GKE cluster (with `--cluster-version=latest` but you can use any
-    version 1.16 or later):
+    version 1.17 or later):
 
     ```bash
     export PROJECT_ID=my-gcp-project
@@ -192,7 +192,7 @@ The recommended configuration is:
      --machine-type=n1-standard-4 \
      --image-type=cos \
      --num-nodes=1 \
-     --cluster-version=1.16
+     --cluster-version=1.17
     ```
 
     Note that
