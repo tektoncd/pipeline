@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: guarded-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+    - taskSpec:
+        steps:
+        - uses:
+            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            step: build-container-build
+          name: build1
+        - name: build2
+          uses:
+            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            step: build-container-build
+          env:
+            - name: IMAGE
+              value: gcr.io/myproject/myimage
+        - name: build3
+          uses:
+            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            step: build-container-build
+          env:
+            - name: IMAGE
+              value: gcr.io/myproject/anotherimage

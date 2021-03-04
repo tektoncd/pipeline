@@ -95,6 +95,10 @@ type TaskSpec struct {
 	// Task, so that the steps inherit settings on the base container.
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
 
+	// UsesTemplate allows you to define shared uses defaults for all steps
+	// with the Task so that you can reuse many steps from the same Path if no Path is specified
+	UsesTemplate *Uses `json:"usesTemplate,omitempty"`
+
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
 	Sidecars []Sidecar `json:"sidecars,omitempty"`
@@ -128,6 +132,11 @@ type Step struct {
 	// Timeout is the time after which the step times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// Uses allows one or more Steps to be used from a source such as git or OCI. The steps
+	// can have their properties overridden.
+	// see: https://github.com/tektoncd/pipeline/blob/master/docs/step-composition.md
+	Uses *Uses `json:"uses,omitempty"`
 }
 
 // Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.
@@ -138,6 +147,66 @@ type Sidecar struct {
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
+}
+
+// UsesType indicates the type of a uses remote
+// Used to distinguish between git and OCI.
+type UsesType string
+
+// Valid UsesTypes:
+const (
+	UsesTypeGit UsesType = "git"
+	UsesTypeOCI UsesType = "oci"
+)
+
+// AllUsesTypes can be used for UsesType validation.
+var AllUsesTypes = []UsesType{UsesTypeGit, UsesTypeOCI}
+
+// Uses allows one or more steps to be inherited from a Task in git or some other source.
+type Uses struct {
+	// Kind the kind of remote used. Defaults to git but can use OCI
+	Kind UsesType `json:"kind,omitempty"`
+
+	// Server the server host if using git kind. Defaults to github.com if none specified.
+	Server string `json:"server,omitempty"`
+
+	// Path the path relative to the remote source.
+	// For github this is usually the 'repositoryOwner/repositoryName/path@branchTagOrSHA'
+	Path string `json:"path,omitempty"`
+
+	// Step the name of the step to be included. If not specified all of the steps of the given
+	// Task will be included.
+	Step string `json:"step,omitempty"`
+
+	// Task the name of the task if if the Path points to a PipelineRun or Pipeline which has multiple tasks. Otherwise the first Task is chosen
+	Task string `json:"task,omitempty"`
+}
+
+// String returns a useful string representation of the uses clause
+func (u *Uses) String() string {
+	if u == nil {
+		return "nil"
+	}
+	if u.Step != "" {
+		return u.Path + ":" + u.Step
+	}
+	return u.Path
+}
+
+// Key returns a unique string for the kind and server we can use for caching Remotes
+func (u *Uses) Key() string {
+	if u.Kind == UsesTypeOCI {
+		return string(u.Kind)
+	}
+	k := u.Kind
+	s := u.Server
+	if string(k) == "" {
+		k = UsesTypeGit
+	}
+	if s == "" {
+		s = "github.com"
+	}
+	return string(k) + "/" + s
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

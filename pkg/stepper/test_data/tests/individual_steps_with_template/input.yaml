@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: guarded-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+    - taskSpec:
+        usesTemplate:
+          path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+        steps:
+        - uses:
+            path: tektoncd/catalog/task/git-clone/0.2/git-clone.yaml@HEAD
+        - uses:
+            step: next-version
+        - uses:
+            step: jx-variables
+        - uses:
+            step: build-make-build
+        - name: my-custom-step
+          image: golang:1.15
+          command:
+            - sh
+            - -c
+            - "echo hello world"
+        - uses:
+            step: check-registry
+        - uses:
+            step: build-container-build
+        - uses:
+            step: promote-changelog
+        - uses:
+            step: promote-helm-release
+        - uses:
+            step: promote-jx-promote

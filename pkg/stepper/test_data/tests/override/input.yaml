@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: guarded-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+    - taskSpec:
+        usesTemplate:
+          path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+        steps:
+        - uses:
+            step: jx-variables
+          env:
+            - name: MY_NEW_ENV_VAR
+              value: this-is-a-new-value
+        - uses:
+            step: build-make-build
+          script: |
+            #!/usr/bin/env sh
+            echo "this is my custom script"
+          workingDir: /workspace/mynewdir
+        - uses:
+            step: build-container-build
+          command:
+            - bash
+          args:
+            - -c
+            - "echo this is a new custom command"
+        - uses:
+            step: promote-changelog
+          envFrom:
+            - configMapRef:
+                name: myconfigmap
+                optional: true
+        - uses:
+            step: promote-jx-promote
+          volumeMounts:
+            - mountPath: /foo/bar
+              name: my-new-volume
+
