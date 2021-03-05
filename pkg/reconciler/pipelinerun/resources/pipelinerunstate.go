@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -393,7 +392,7 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 
 // GetPipelineTaskStatus returns the status of a PipelineTask depending on its taskRun
 // the checks are implemented such that the finally tasks are requesting status of the dag tasks
-func (facts *PipelineRunFacts) GetPipelineTaskStatus(ctx context.Context) map[string]string {
+func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	// construct a map of tasks.<pipelineTask>.status and its state
 	tStatus := make(map[string]string)
 	for _, t := range facts.State {

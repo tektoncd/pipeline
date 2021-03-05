@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -1462,7 +1461,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
 			}
-			s := facts.GetPipelineTaskStatus(context.Background())
+			s := facts.GetPipelineTaskStatus()
 			if d := cmp.Diff(tc.expectedStatus, s); d != "" {
 				t.Fatalf("Test failed: %s Mismatch in pipelineTask execution state %s", tc.name, diff.PrintWantGot(d))
 			}
