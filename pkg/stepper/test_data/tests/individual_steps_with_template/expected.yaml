@@ -4,33 +4,6 @@ metadata:
   creationTimestamp: null
   generateName: my-pipeline-
 spec:
-  params:
-  - name: url
-    value: $(params.url)
-  - name: revision
-    value: $(params.revision)
-  - name: refspec
-    value: $(params.refspec)
-  - name: submodules
-    value: $(params.submodules)
-  - name: depth
-    value: $(params.depth)
-  - name: sslVerify
-    value: $(params.sslVerify)
-  - name: subdirectory
-    value: $(params.subdirectory)
-  - name: deleteExisting
-    value: $(params.deleteExisting)
-  - name: httpProxy
-    value: $(params.httpProxy)
-  - name: httpsProxy
-    value: $(params.httpsProxy)
-  - name: noProxy
-    value: $(params.noProxy)
-  - name: verbose
-    value: $(params.verbose)
-  - name: gitInitImage
-    value: $(params.gitInitImage)
   pipelineSpec:
     params:
     - description: git url to clone

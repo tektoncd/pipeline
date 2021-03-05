@@ -22,12 +22,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	faketekton "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
-	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/file"
 	"github.com/tektoncd/pipeline/pkg/stepper"
 	"github.com/tektoncd/pipeline/test/diff"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,7 +77,7 @@ func TestStepper(t *testing.T) {
 		}
 
 		ctx := context.TODO()
-		s := createTestStepper()
+		s := createTestStepper(t)
 		obj, err = s.Resolve(ctx, obj)
 		if err != nil {
 			t.Errorf(errors.Wrapf(err, "failed to invoke stepper on file %s", path).Error())
@@ -108,14 +110,58 @@ func TestStepper(t *testing.T) {
 	}
 }
 
-func createTestStepper() *stepper.Resolver {
+func createTestStepper(t *testing.T) *stepper.Resolver {
+	tektonClient := createFakeTektonClient(t)
+
+	opts := &stepper.RemoterOptions{
+		KubeClientSet:     fake.NewSimpleClientset(),
+		PipelineClientSet: tektonClient,
+		Namespace:         "myns",
+		ServiceAccount:    "tekton-controller",
+	}
+	resourceLoader := stepper.NewResourceLoader(opts)
+
+	fakeGitLoader := file.NewResolver(filepath.Join("test_data", "sources", "git"))
+
+	fakeResourceLoader := func(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
+		if uses.Git != "" {
+			return fakeGitLoader.Get("tasks", uses.Git)
+		}
+		return resourceLoader(ctx, uses)
+	}
+
+	// if this env var is set lets use the real resource loader
 	if os.Getenv("STEPPER_USE_GIT") == "true" {
-		opts := &stepper.RemoterOptions{}
-		return stepper.NewResolver(opts)
+		return &stepper.Resolver{ResolveRemote: resourceLoader}
 	}
-	fakeResolver := file.NewResolver(filepath.Join("test_data", "git"))
-	remoteResolver := func(ctx context.Context, uses *v1beta1.Uses) (remote.Resolver, error) {
-		return fakeResolver, nil
+
+	return &stepper.Resolver{ResolveRemote: fakeResourceLoader}
+}
+
+func createFakeTektonClient(t *testing.T) *faketekton.Clientset {
+	sourceDir := filepath.Join("test_data", "sources", "resources")
+	fs, err := ioutil.ReadDir(sourceDir)
+	if err != nil {
+		t.Errorf(errors.Wrapf(err, "failed to read source dir %s", sourceDir).Error())
 	}
-	return &stepper.Resolver{ResolveRemote: remoteResolver}
+	var objects []runtime.Object
+	for _, f := range fs {
+		name := f.Name()
+		if f.IsDir() || !strings.HasSuffix(name, ".yaml") {
+			continue
+		}
+
+		path := filepath.Join(sourceDir, name)
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Errorf(errors.Wrapf(err, "failed to read resource  %s", path).Error())
+		}
+
+		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
+		if err != nil {
+			t.Errorf(errors.Wrapf(err, "failed to unmarshal file %s", path).Error())
+		}
+		objects = append(objects, obj)
+	}
+	return faketekton.NewSimpleClientset(objects...)
 }

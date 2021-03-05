@@ -6,7 +6,7 @@ spec:
   serviceAccountName: 'default'
   taskSpec:
     usesTemplate:
-      path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+      git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
     steps:
     - uses:
         step: jx-variables

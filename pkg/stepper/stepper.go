@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/remote"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,21 +28,28 @@ import (
 )
 
 type Resolver struct {
-	ResolveRemote func(ctx context.Context, uses *v1beta1.Uses) (remote.Resolver, error)
+	ResolveRemote func(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error)
 }
 
 // NewResolver creates a new stepper resolver
 func NewResolver(opts *RemoterOptions) *Resolver {
+	usesResolver := NewResourceLoader(opts)
+
+	return &Resolver{
+		ResolveRemote: usesResolver,
+	}
+}
+
+// NewResourceLoader the default resolver of uses resources
+func NewResourceLoader(opts *RemoterOptions) func(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
 	if opts.Logger == nil {
 		observer, _ := observer.New(zap.InfoLevel)
 		opts.Logger = zap.New(observer).Sugar()
 	}
 
 	cachingResolver := NewCachingRemoter(opts.CreateRemote)
-
-	return &Resolver{
-		ResolveRemote: cachingResolver.CreateRemote,
-	}
+	usesResolver := cachingResolver.CreateRemote
+	return usesResolver
 }
 
 // Resolve will resolve any known kind
@@ -184,24 +190,20 @@ func (r *Resolver) resolveTaskSpec(ctx context.Context, loc *UseLocation) error 
 // UsesSteps lets resolve the uses.String() to a PipelineRun and find the step or steps
 // for the given task name and/or step name then lets apply any overrides from the step
 func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
-	remote, err := r.ResolveRemote(ctx, uses)
+	obj, err := r.ResolveRemote(ctx, uses)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to resolve remote for uses %s", uses.String())
 	}
 
-	obj, err := remote.Get("task", uses.Path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to resolve uses %s", uses.Path)
-	}
 	if obj == nil {
-		return nil, errors.Errorf("no task found for path %s", uses.Path)
+		return nil, errors.Errorf("no task found for uses %s", uses.String())
 	}
 
 	// PipelineRuns
 	if pr, ok := obj.(*v1beta1.PipelineRun); ok {
 		ps := pr.Spec.PipelineSpec
 		if ps == nil {
-			return nil, errors.Errorf("the PipelineRun %s at path %s has no PipelineSpec", pr.Name, uses.Path)
+			return nil, errors.Errorf("the PipelineRun %s for uses %s has no PipelineSpec", pr.Name, uses.String())
 		}
 		return r.findPipelineSteps(ctx, uses, ps, loc, step)
 	}
@@ -213,7 +215,7 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, loc *UseLo
 		}
 		ps := betaPR.Spec.PipelineSpec
 		if ps == nil {
-			return nil, errors.Errorf("the PipelineRun %s at path %s has no PipelineSpec", pr.Name, uses.Path)
+			return nil, errors.Errorf("the PipelineRun %s for uses %s has no PipelineSpec", pr.Name, uses.String())
 		}
 		return r.findPipelineSteps(ctx, uses, ps, loc, step)
 	}
@@ -246,7 +248,7 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, loc *UseLo
 		return r.findTaskSteps(ctx, uses, betaTask.Name, &betaTask.Spec, loc, step)
 	}
 
-	return nil, errors.Errorf("could not convert object %#v to task for path %s", obj, uses.Path)
+	return nil, errors.Errorf("could not convert object %#v to task for uses %s", obj, uses.String())
 }
 
 func (r *Resolver) findPipelineSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta1.PipelineSpec, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
@@ -268,24 +270,31 @@ func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskNa
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to ")
 	}
-
 	if ts == nil {
 		return nil, errors.Errorf("uses %s has no task spec for task %s", uses.String(), taskName)
 	}
-	name := uses.Step
-	if name == "" {
-		return ts.Steps, nil
+	overrideAllSteps := false
+	if uses.Step != "" {
+		for i := range ts.Steps {
+			s := &ts.Steps[i]
+			if uses.Step == s.Name {
+				replaceStep := *s
+				OverrideStep(&replaceStep, &step, overrideAllSteps)
+				return []v1beta1.Step{replaceStep}, nil
+			}
+		}
+		return nil, errors.Errorf("uses %s task %s has no step named %s", uses.String(), taskName, uses.Step)
 	}
 
+	overrideAllSteps = len(ts.Steps) > 1
+	var steps []v1beta1.Step
 	for i := range ts.Steps {
 		s := &ts.Steps[i]
-		if s.Name == name {
-			replaceStep := *s
-			OverrideStep(&replaceStep, &step)
-			return []v1beta1.Step{replaceStep}, nil
-		}
+		replaceStep := *s
+		OverrideStep(&replaceStep, &step, overrideAllSteps)
+		steps = append(steps, replaceStep)
 	}
-	return nil, errors.Errorf("uses %s task %s has no step named %s", uses.String(), taskName, name)
+	return steps, nil
 }
 
 // combineUsesTemplate lets share the previous uses values so we can avoid repeating paths for each step
@@ -293,12 +302,12 @@ func combineUsesTemplate(u1 *v1beta1.Uses, u2 *v1beta1.Uses) *v1beta1.Uses {
 	if u1 == nil {
 		return nil
 	}
-	if u2 == nil {
+	if u2 == nil || u1.TaskRef != nil {
 		return u1
 	}
 	result := *u1
-	if u2.Path != "" && result.Path == "" {
-		result.Path = u2.Path
+	if u2.Git != "" && result.Git == "" {
+		result.Git = u2.Git
 	}
 	return &result
 }

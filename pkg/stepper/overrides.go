@@ -22,20 +22,7 @@ import (
 )
 
 // OverrideStep overrides the step with the given overrides
-func OverrideStep(step *v1beta1.Step, override *v1beta1.Step) {
-	if override.Name != "" {
-		step.Name = override.Name
-	}
-	if len(override.Command) > 0 {
-		step.Script = override.Script
-		step.Command = override.Command
-		step.Args = override.Args
-	}
-	if override.Script != "" {
-		step.Script = override.Script
-		step.Command = nil
-		step.Args = nil
-	}
+func OverrideStep(step *v1beta1.Step, override *v1beta1.Step, overrideAllSteps bool) {
 	if override.Timeout != nil {
 		step.Timeout = override.Timeout
 	}
@@ -48,6 +35,28 @@ func OverrideStep(step *v1beta1.Step, override *v1beta1.Step) {
 	step.Env = OverrideEnv(step.Env, override.Env)
 	step.EnvFrom = OverrideEnvFrom(step.EnvFrom, override.EnvFrom)
 	step.VolumeMounts = OverrideVolumeMounts(step.VolumeMounts, override.VolumeMounts)
+
+	if overrideAllSteps {
+		// we are overriding in the included steps from a Task so lets not interfer with individual images or commands
+		return
+	}
+	if override.Name != "" {
+		step.Name = override.Name
+	}
+	if override.Image != "" {
+		step.Image = override.Image
+	}
+	if override.Script != "" {
+		step.Script = override.Script
+		step.Command = nil
+		step.Args = nil
+	} else if len(override.Command) > 0 {
+		step.Script = override.Script
+		step.Command = override.Command
+		step.Args = override.Args
+	} else if len(override.Args) > 0 {
+		step.Args = override.Args
+	}
 }
 
 // OverrideEnv override either replaces or adds the given env vars

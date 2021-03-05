@@ -8,10 +8,10 @@ spec:
     tasks:
     - taskSpec:
         usesTemplate:
-          path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+          git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         steps:
         - uses:
-            path: tektoncd/catalog/task/git-clone/0.2/git-clone.yaml@HEAD
+            git: tektoncd/catalog/task/git-clone/0.2/git-clone.yaml@HEAD
         - uses:
             step: next-version
         - uses:

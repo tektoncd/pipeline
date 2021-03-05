@@ -9,19 +9,19 @@ spec:
     - taskSpec:
         steps:
         - uses:
-            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
             step: build-container-build
           name: build1
         - name: build2
           uses:
-            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
             step: build-container-build
           env:
             - name: IMAGE
               value: gcr.io/myproject/myimage
         - name: build3
           uses:
-            path: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
+            git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
             step: build-container-build
           env:
             - name: IMAGE

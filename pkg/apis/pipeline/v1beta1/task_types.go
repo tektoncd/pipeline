@@ -19,6 +19,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 const (
@@ -164,21 +165,27 @@ var AllUsesTypes = []UsesType{UsesTypeGit, UsesTypeOCI}
 
 // Uses allows one or more steps to be inherited from a Task in git or some other source.
 type Uses struct {
-	// Kind the kind of remote used. Defaults to git but can use OCI
-	Kind UsesType `json:"kind,omitempty"`
+	// TaskRef is a reference to a task resource or bundle.
+	// +optional
+	TaskRef *TaskRef `json:"taskRef,omitempty"`
 
-	// Server the server host if using git kind. Defaults to github.com if none specified.
+	// Server the git server host if using git kind. Defaults to github.com if none specified.
+	// +optional
 	Server string `json:"server,omitempty"`
 
-	// Path the path relative to the remote source.
-	// For github this is usually the 'repositoryOwner/repositoryName/path@branchTagOrSHA'
-	Path string `json:"path,omitempty"`
+	// Git the git URI for which resource version and file in which repository to reuse.
+	// For github this is of the form: 'repositoryOwner/repositoryName/path@branchTagOrSHA'
+	// +optional
+	Git string `json:"git,omitempty"`
 
 	// Step the name of the step to be included. If not specified all of the steps of the given
 	// Task will be included.
+	// +optional
 	Step string `json:"step,omitempty"`
 
-	// Task the name of the task if if the Path points to a PipelineRun or Pipeline which has multiple tasks. Otherwise the first Task is chosen
+	// Task the name of the task to reuse the step from if we are using a PipelineRun or Pipeline resource which has multiple tasks.
+	// Otherwise the first Task is chosen
+	// +optional
 	Task string `json:"task,omitempty"`
 }
 
@@ -187,26 +194,40 @@ func (u *Uses) String() string {
 	if u == nil {
 		return "nil"
 	}
-	if u.Step != "" {
-		return u.Path + ":" + u.Step
+	prefix := u.Git
+	ref := u.TaskRef
+	if ref != nil {
+		prefix = string(ref.Kind) + "/" + ref.Name
 	}
-	return u.Path
+	if u.Step != "" {
+		return prefix + ":" + u.Step
+	}
+	return prefix
 }
 
 // Key returns a unique string for the kind and server we can use for caching Remotes
 func (u *Uses) Key() string {
-	if u.Kind == UsesTypeOCI {
-		return string(u.Kind)
+	ref := u.TaskRef
+	if ref != nil {
+		answer := "ref/"
+		if ref.APIVersion != "" {
+			answer += ref.APIVersion + "/"
+		}
+		answer += string(ref.Kind) + "/" + ref.Name
+		if ref.Bundle == "" {
+			return answer
+		}
+		return answer + "/" + ref.Bundle
 	}
-	k := u.Kind
 	s := u.Server
-	if string(k) == "" {
-		k = UsesTypeGit
-	}
 	if s == "" {
 		s = "github.com"
 	}
-	return string(k) + "/" + s
+	answer := "git/" + s
+	if u.Git == "" {
+		return answer
+	}
+	return strings.TrimSuffix(answer, "/") + "/" + strings.TrimPrefix(u.Git, "/")
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

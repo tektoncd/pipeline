@@ -18,40 +18,47 @@ package stepper
 
 import (
 	"context"
-	"fmt"
-	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	gitclient "github.com/tektoncd/pipeline/pkg/git"
-	"github.com/tektoncd/pipeline/pkg/remote"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote/git"
-	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
 type RemoterOptions struct {
-	KubeClient        kubernetes.Interface
+	KubeClientSet     kubernetes.Interface
+	PipelineClientSet clientset.Interface
 	Namespace         string
-	OCIServiceAccount string
+	ServiceAccount    string
 	Logger            *zap.SugaredLogger
 	GitOptions        gitclient.FetchSpec
 }
 
-func (o *RemoterOptions) CreateRemote(ctx context.Context, uses *v1beta1.Uses) (remote.Resolver, error) {
-	if uses.Kind == v1beta1.UsesTypeOCI {
-		bundle := uses.Path
-		kc, err := k8schain.New(ctx, o.KubeClient, k8schain.Options{
-			Namespace:          o.Namespace,
-			ServiceAccountName: o.OCIServiceAccount,
-		})
+func (o *RemoterOptions) CreateRemote(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
+	logger := o.Logger
+	if uses.TaskRef != nil {
+		getTaskfunc, _, err := resources.GetTaskFunc(ctx, o.KubeClientSet, o.PipelineClientSet, uses.TaskRef, o.Namespace, o.ServiceAccount)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get keychain: %w", err)
+			logger.Errorf("Failed to fetch task reference %s: %v", uses.TaskRef.Name, err)
+			return nil, err
 		}
-		return oci.NewResolver(bundle, kc), nil
+
+		t, err := getTaskfunc(ctx, uses.TaskRef.Name)
+		if err != nil {
+			return nil, err
+		}
+		return &v1beta1.Task{
+			ObjectMeta: t.TaskMetadata(),
+			Spec:       t.TaskSpec(),
+		}, nil
 	}
 	server := uses.Server
 	if server == "" {
 		server = "github.com"
 	}
-	return git.NewResolver(server, o.Logger, o.GitOptions), nil
+	resolver := git.NewResolver(server, o.Logger, o.GitOptions)
+	return resolver.Get("tasks", uses.Git)
 }
