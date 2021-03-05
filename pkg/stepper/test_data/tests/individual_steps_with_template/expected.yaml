@@ -16,6 +16,7 @@ spec:
     - default: ""
       description: (optional) git refspec to fetch before checking out revision
       name: refspec
+      type: string
     - default: "true"
       description: defines if the resource should initialize and fetch the submodules
       name: submodules
@@ -68,7 +69,8 @@ spec:
       name: url
       value: ""
     tasks:
-    - taskSpec:
+    - name: mytask
+      taskSpec:
         metadata: {}
         params:
         - description: git url to clone
@@ -81,6 +83,7 @@ spec:
         - default: ""
           description: (optional) git refspec to fetch before checking out revision
           name: refspec
+          type: string
         - default: "true"
           description: defines if the resource should initialize and fetch the submodules
           name: submodules

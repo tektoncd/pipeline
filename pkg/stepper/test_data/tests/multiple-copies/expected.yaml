@@ -6,7 +6,8 @@ metadata:
 spec:
   pipelineSpec:
     tasks:
-    - taskSpec:
+    - name: mytask
+      taskSpec:
         metadata: {}
         steps:
         - image: gcr.io/kaniko-project/executor:debug-v1.3.0

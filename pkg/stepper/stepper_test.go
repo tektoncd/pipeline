@@ -39,6 +39,9 @@ import (
 var (
 	// generateTestOutput enable to regenerate the expected output
 	generateTestOutput = os.Getenv("REGENERATE_TEST_OUTPUT") == "true"
+
+	// verbose whether to log expected error messages
+	verbose = os.Getenv("TEST_VERBOSE") == "true"
 )
 
 func TestStepper(t *testing.T) {
@@ -79,6 +82,17 @@ func TestStepper(t *testing.T) {
 		ctx := context.TODO()
 		s := createTestStepper(t)
 		obj, err = s.Resolve(ctx, obj)
+		if strings.HasPrefix(name, "err") {
+			if err != nil {
+				if verbose {
+					t.Logf("caught expected error for test %s of %s\n", name, err.Error())
+				}
+				continue
+			}
+			t.Errorf("test %s should have failed", name)
+			continue
+		}
+
 		if err != nil {
 			t.Errorf(errors.Wrapf(err, "failed to invoke stepper on file %s", path).Error())
 		}

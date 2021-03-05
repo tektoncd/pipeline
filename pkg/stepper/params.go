@@ -17,6 +17,7 @@ limitations under the License.
 package stepper
 
 import (
+	"context"
 	"fmt"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,14 +35,14 @@ type UseLocation struct {
 }
 
 // UseParametersAndResults adds the parameters from the used Task to the PipelineSpec if specified and the PipelineTask
-func UseParametersAndResults(loc *UseLocation, uses *v1beta1.TaskSpec) error {
+func UseParametersAndResults(ctx context.Context, loc *UseLocation, uses *v1beta1.TaskSpec) error {
 	parameterSpecs := uses.Params
 	parameters := ToParams(parameterSpecs)
 	results := uses.Results
 
 	ps := loc.PipelineSpec
 	if ps != nil {
-		ps.Params = useParameterSpecs(ps.Params, parameterSpecs)
+		ps.Params = useParameterSpecs(ctx, ps.Params, parameterSpecs)
 		ps.Results = usePipelineResults(ps.Results, results)
 		ps.Workspaces = usePipelineWorkspaces(ps.Workspaces, uses.Workspaces)
 	}
@@ -51,7 +52,7 @@ func UseParametersAndResults(loc *UseLocation, uses *v1beta1.TaskSpec) error {
 	}
 	ts := loc.TaskSpec
 	if ts != nil {
-		ts.Params = useParameterSpecs(ts.Params, parameterSpecs)
+		ts.Params = useParameterSpecs(ctx, ts.Params, parameterSpecs)
 		ts.Results = useResults(ts.Results, results)
 		ts.Workspaces = useWorkspaces(ts.Workspaces, uses.Workspaces)
 
@@ -87,7 +88,7 @@ func ToParams(params []v1beta1.ParamSpec) []v1beta1.Param {
 	return answer
 }
 
-func useParameterSpecs(params []v1beta1.ParamSpec, uses []v1beta1.ParamSpec) []v1beta1.ParamSpec {
+func useParameterSpecs(ctx context.Context, params []v1beta1.ParamSpec, uses []v1beta1.ParamSpec) []v1beta1.ParamSpec {
 	for _, u := range uses {
 		found := false
 		for i := range params {
@@ -97,13 +98,12 @@ func useParameterSpecs(params []v1beta1.ParamSpec, uses []v1beta1.ParamSpec) []v
 				if param.Description == "" {
 					param.Description = u.Description
 				}
-				if param.Type == "" {
-					param.Type = u.Type
-				}
+				param.SetDefaults(ctx)
 				break
 			}
 		}
 		if !found {
+			u.SetDefaults(ctx)
 			params = append(params, u)
 		}
 	}

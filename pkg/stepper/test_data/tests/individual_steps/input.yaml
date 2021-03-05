@@ -6,7 +6,8 @@ spec:
   serviceAccountName: 'default'
   pipelineSpec:
     tasks:
-    - taskSpec:
+    - name: mytask
+      taskSpec:
         steps:
         - uses:
             git: tektoncd/catalog/task/git-clone/0.2/git-clone.yaml@HEAD

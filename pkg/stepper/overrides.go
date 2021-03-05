@@ -17,12 +17,13 @@ limitations under the License.
 package stepper
 
 import (
+	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
 )
 
 // OverrideStep overrides the step with the given overrides
-func OverrideStep(step *v1beta1.Step, override *v1beta1.Step, overrideAllSteps bool) {
+func OverrideStep(step *v1beta1.Step, override *v1beta1.Step, overrideAllSteps bool) error {
 	if override.Timeout != nil {
 		step.Timeout = override.Timeout
 	}
@@ -38,7 +39,10 @@ func OverrideStep(step *v1beta1.Step, override *v1beta1.Step, overrideAllSteps b
 
 	if overrideAllSteps {
 		// we are overriding in the included steps from a Task so lets not interfer with individual images or commands
-		return
+		if len(override.Command) > 0 || len(override.Args) > 0 || override.Script != "" || override.Image != "" {
+			return errors.Errorf("reusing multiple steps from Task so cannot override step details for step %s. Please inline the uses task steps to override the step command", step.Name)
+		}
+		return nil
 	}
 	if override.Name != "" {
 		step.Name = override.Name
@@ -57,6 +61,7 @@ func OverrideStep(step *v1beta1.Step, override *v1beta1.Step, overrideAllSteps b
 	} else if len(override.Args) > 0 {
 		step.Args = override.Args
 	}
+	return nil
 }
 
 // OverrideEnv override either replaces or adds the given env vars

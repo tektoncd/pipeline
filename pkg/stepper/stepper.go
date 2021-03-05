@@ -143,6 +143,10 @@ func (r *Resolver) ResolvePipelineSpec(ctx context.Context, prs *v1beta1.Pipelin
 			}
 		}
 	}
+	err := ps.Validate(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to validate Pipeline")
+	}
 	return nil
 }
 
@@ -184,6 +188,10 @@ func (r *Resolver) resolveTaskSpec(ctx context.Context, loc *UseLocation) error 
 	}
 	ts.Steps = steps
 	ts.UsesTemplate = nil
+	err := ts.Validate(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to validate TaskSpec")
+	}
 	return nil
 }
 
@@ -266,7 +274,7 @@ func (r *Resolver) findPipelineSteps(ctx context.Context, uses *v1beta1.Uses, ps
 }
 
 func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskName string, ts *v1beta1.TaskSpec, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
-	err := UseParametersAndResults(loc, ts)
+	err := UseParametersAndResults(ctx, loc, ts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to ")
 	}
@@ -279,7 +287,10 @@ func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskNa
 			s := &ts.Steps[i]
 			if uses.Step == s.Name {
 				replaceStep := *s
-				OverrideStep(&replaceStep, &step, overrideAllSteps)
+				err = OverrideStep(&replaceStep, &step, overrideAllSteps)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to override step in task %s", taskName)
+				}
 				return []v1beta1.Step{replaceStep}, nil
 			}
 		}
@@ -291,7 +302,10 @@ func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskNa
 	for i := range ts.Steps {
 		s := &ts.Steps[i]
 		replaceStep := *s
-		OverrideStep(&replaceStep, &step, overrideAllSteps)
+		err = OverrideStep(&replaceStep, &step, overrideAllSteps)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to override step in task %s", taskName)
+		}
 		steps = append(steps, replaceStep)
 	}
 	return steps, nil

@@ -4,7 +4,8 @@ metadata:
   generateName: my-pipeline-
 spec:
   tasks:
-  - taskSpec:
+  - name: mytask
+    taskSpec:
       usesTemplate:
         git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
       steps:
