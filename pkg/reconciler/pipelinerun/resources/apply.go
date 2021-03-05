@@ -87,7 +87,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	}
 }
 
-//ApplyPipelineTaskContext replaces context variables referring to execution status with the specified status
+// ApplyPipelineTaskContext replaces context variables referring to execution status with the specified status
 func ApplyPipelineTaskContext(state PipelineRunState, replacements map[string]string) {
 	for _, resolvedPipelineRunTask := range state {
 		if resolvedPipelineRunTask.PipelineTask != nil {

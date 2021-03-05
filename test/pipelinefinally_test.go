@@ -144,6 +144,12 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 					Type:      "string",
 					StringVal: "$(tasks.dagtask3.status)",
 				},
+			}, {
+				Name: "dagtasks-aggregate-status",
+				Value: v1beta1.ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.status)",
+				},
 			}},
 		},
 		// final task consuming result from a failed dag task
@@ -215,6 +221,10 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 				Input:    "$(tasks.dagtask5.status)",
 				Operator: "in",
 				Values:   []string{"Succeeded"},
+			}, {
+				Input:    "$(tasks.status)",
+				Operator: "in",
+				Values:   []string{"Failed"},
 			}},
 		},
 		// final task with when expressions using execution status of a dag task
@@ -224,6 +234,10 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 			When: v1beta1.WhenExpressions{{
 				Input:    "$(tasks.dagtask5.status)",
 				Operator: "in",
+				Values:   []string{"Failed"},
+			}, {
+				Input:    "$(tasks.status)",
+				Operator: "notin",
 				Values:   []string{"Failed"},
 			}},
 		},
@@ -315,6 +329,10 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 					if p.Value.StringVal != resources.PipelineTaskStateNone {
 						t.Errorf("Task param \"%s\" is set to \"%s\", expected it to resolve to \"%s\"", param, p.Value.StringVal, resources.PipelineTaskStateNone)
 					}
+				case "dagtasks-aggregate-status":
+					if p.Value.StringVal != v1beta1.PipelineRunReasonFailed.String() {
+						t.Errorf("Task param \"%s\" is set to \"%s\", expected it to resolve to \"%s\"", param, p.Value.StringVal, v1beta1.PipelineRunReasonFailed.String())
+					}
 				}
 			}
 		case n == "finaltaskconsumingdagtask5":
@@ -373,6 +391,10 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "Succeeded",
 			Operator: "in",
+			Values:   []string{"Failed"},
+		}, {
+			Input:    "Failed",
+			Operator: "notin",
 			Values:   []string{"Failed"},
 		}},
 	}}
@@ -510,6 +532,8 @@ func getTaskVerifyingStatus(t *testing.T, namespace string) *v1beta1.Task {
 		Name: "dagtask2-status",
 	}, {
 		Name: "dagtask3-status",
+	}, {
+		Name: "dagtasks-aggregate-status",
 	}}
 	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0", params, []v1beta1.TaskResult{})
 }

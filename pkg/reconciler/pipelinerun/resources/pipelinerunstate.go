@@ -412,6 +412,28 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
 		}
 	}
+	// initialize aggregate status of all dag tasks to None
+	aggregateStatus := PipelineTaskStateNone
+	if facts.checkDAGTasksDone() {
+		// all dag tasks are done, change the aggregate status to succeeded
+		// will reset it to failed/skipped if needed
+		aggregateStatus = v1beta1.PipelineRunReasonSuccessful.String()
+		for _, t := range facts.State {
+			if facts.isDAGTask(t.PipelineTask.Name) {
+				// if any of the dag task failed, change the aggregate status to failed and return
+				if t.IsConditionStatusFalse() {
+					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
+					break
+				}
+				// if any of the dag task skipped, change the aggregate status to completed
+				// but continue checking for any other failure
+				if t.Skip(facts) {
+					aggregateStatus = v1beta1.PipelineRunReasonCompleted.String()
+				}
+			}
+		}
+	}
+	tStatus[v1beta1.PipelineTasksAggregateStatus] = aggregateStatus
 	return tStatus
 }
 

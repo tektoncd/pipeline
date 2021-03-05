@@ -31,6 +31,11 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const (
+	// PipelineTasksAggregateStatus is a param representing aggregate status of all dag pipelineTasks
+	PipelineTasksAggregateStatus = "tasks.status"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:noStatus

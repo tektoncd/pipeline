@@ -1362,6 +1362,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
 		},
 	}, {
 		name:     "one-task-started",
@@ -1370,6 +1371,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
 		},
 	}, {
 		name:     "one-task-finished",
@@ -1378,6 +1380,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
 		},
 	}, {
 		name:     "one-task-failed",
@@ -1386,6 +1389,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String(),
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              v1beta1.PipelineRunReasonFailed.String(),
 		},
 	}, {
 		name:     "all-finished",
@@ -1394,6 +1398,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
 			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
+			v1beta1.PipelineTasksAggregateStatus:                              v1beta1.PipelineRunReasonSuccessful.String(),
 		},
 	}, {
 		name: "task-with-when-expressions-passed",
@@ -1408,6 +1413,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1beta1.PipelineTask{pts[9]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
 		},
 	}, {
 		name: "tasks-when-expression-failed-and-task-skipped",
@@ -1421,6 +1427,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1beta1.PipelineTask{pts[10]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               v1beta1.PipelineRunReasonCompleted.String(),
 		},
 	}, {
 		name: "when-expression-task-with-parent-started",
@@ -1441,6 +1448,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  PipelineTaskStateNone,
 			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               PipelineTaskStateNone,
 		},
 	}, {
 		name:     "task-cancelled",
@@ -1448,6 +1456,29 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		dagTasks: []v1beta1.PipelineTask{pts[4]},
 		expectedStatus: map[string]string{
 			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name: "one-skipped-one-failed-aggregate-status-must-be-failed",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunName:  "pr-guardedtask-skipped",
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[0],
+			TaskRunName:  "pipelinerun-mytask1",
+			TaskRun:      makeFailed(trs[0]),
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[10]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1beta1.PipelineRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               v1beta1.PipelineRunReasonFailed.String(),
 		},
 	}}
 	for _, tc := range tcs {
