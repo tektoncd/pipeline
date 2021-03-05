@@ -156,12 +156,30 @@ The following requirements apply to each container image referenced in a `steps`
 
 - The container image must abide by the [container contract](./container-contract.md).
 - Each container image runs to completion or until the first failure occurs.
-- The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
-  specified, the minimums set through `LimitRanges` in that `Namespace`,
-  if the container image does not have the largest resource request out of all
-  container images in the `Task.` This ensures that the Pod that executes the `Task`
-  only requests enough resources to run a single container image in the `Task` rather
-  than hoard resources for all container images in the `Task` at once.
+- The CPU, memory, and ephemeral storage resource requests will be set
+  to zero (also known as
+  [BestEffort](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-besteffort)),
+  or, if specified, the minimums set through `LimitRanges` in that
+  `Namespace`, if the container image does not have the largest
+  resource request out of all container images in the `Task.` This
+  ensures that the Pod that executes the `Task` only requests enough
+  resources to run a single container image in the `Task` rather than
+  hoard resources for all container images in the `Task` at once.
+
+Below is an example of setting the resource requests and limits for a step:
+
+```yaml
+spec:
+  steps:
+  - name: step-with-limts
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+         memory: 2Gi
+        cpu: 800m
+```
 
 #### Reserved directories
 
