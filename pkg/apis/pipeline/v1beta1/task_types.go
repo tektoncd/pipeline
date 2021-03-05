@@ -19,6 +19,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 const (
@@ -147,25 +148,12 @@ type Sidecar struct {
 
 // Uses allows one or more steps to be inherited from a Task in git, via OCI bundles or kubernetes resources.
 type Uses struct {
-	// TaskRef is a reference to a task resource or bundle.
-	// +optional
-	TaskRef *TaskRef `json:"taskRef,omitempty"`
-
-	// Git the git URI when reusing steps from a Task, TaskRun, Pipeline or PipelineRun inside a git repository.
-	// For github this is of the form: `repositoryOwner/repositoryName/path@branchTagOrSHA`
-	// For other git servers its of the form: `gitCloneURL/path[@branchTagOrSHA]` where the `gitCloneURL` ends in `.git`
-	// +optional
-	Git string `json:"git,omitempty"`
+	TaskRef `json:",inline"`
 
 	// Step the name of the step to be included. If not specified all of the steps of the given
 	// Task will be included.
 	// +optional
 	Step string `json:"step,omitempty"`
-
-	// Task the name of the task to reuse the step from if we are using a PipelineRun or Pipeline resource which has multiple tasks.
-	// Otherwise the first Task is chosen
-	// +optional
-	Task string `json:"task,omitempty"`
 }
 
 // String returns a useful string representation of the uses clause
@@ -173,32 +161,51 @@ func (u *Uses) String() string {
 	if u == nil {
 		return "nil"
 	}
-	prefix := u.Git
-	ref := u.TaskRef
-	if ref != nil {
-		prefix = string(ref.Kind) + "/" + ref.Name
+	text := u.Git
+	if text == "" {
+		text = u.Name
+		k := string(u.Kind)
+		if k != "" {
+			text = k + "/" + text
+		}
+		if u.Bundle != "" {
+			text += "/" + u.Bundle
+		}
 	}
-	if u.Step != "" {
-		return prefix + ":" + u.Step
+	if u.Step == "" {
+		return text
 	}
-	return prefix
+	return text + ":" + u.Step
 }
 
 // Key returns a unique string for the kind and server we can use for caching Remotes
 func (u *Uses) Key() string {
-	ref := u.TaskRef
-	if ref != nil {
-		answer := "ref:"
-		if ref.APIVersion != "" {
-			answer += ref.APIVersion + "/"
+	text := ""
+	if u.Git != "" {
+		text = "git:" + u.Git
+	} else if u.Name != "" || u.Bundle != "" {
+		text = "ref:"
+		k := string(u.Kind)
+		if u.APIVersion != "" {
+			text += u.APIVersion + "/"
 		}
-		answer += string(ref.Kind) + "/" + ref.Name
-		if ref.Bundle == "" {
-			return answer
+		if k != "" {
+			text += k + "/"
 		}
-		return answer + "/" + ref.Bundle
+		if u.Name != "" {
+			text += u.Name
+		}
+		if u.Bundle != "" {
+			if !strings.HasSuffix(text, "/") {
+				text += "/"
+			}
+			text += u.Bundle
+		}
 	}
-	return "git:" + u.Git
+	if u.Step == "" {
+		return text
+	}
+	return text + ":" + u.Step
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -223,6 +230,12 @@ type TaskRef struct {
 	// Bundle url reference to a Tekton Bundle.
 	// +optional
 	Bundle string `json:"bundle,omitempty"`
+	// Git the git URI to reference a Task, TaskRun, Pipeline or PipelineRun inside a git repository.
+	// For github this is of the form: `repositoryOwner/repositoryName/path@branchTagOrSHA`
+	// For other git servers its of the form: `gitCloneURL/path[@branchTagOrSHA]` where the `gitCloneURL` ends in `.git`
+	// If the resource is a Pipeline or PipelineRun with multiple Tasks then the `name` in this reference must match the Task you refer to
+	// +optional
+	Git string `json:"git,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.

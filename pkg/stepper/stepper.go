@@ -258,7 +258,7 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, loc *UseLo
 }
 
 func (r *Resolver) findPipelineSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta1.PipelineSpec, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
-	taskName := uses.Task
+	taskName := uses.Name
 	pipelineTasks := ps.Tasks
 	for _, task := range pipelineTasks {
 		if task.Name == taskName || taskName == "" {

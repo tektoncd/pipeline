@@ -39,22 +39,22 @@ type RemoterOptions struct {
 
 func (o *RemoterOptions) CreateRemote(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
 	logger := o.Logger
-	if uses.TaskRef != nil {
-		getTaskfunc, _, err := resources.GetTaskFunc(ctx, o.KubeClientSet, o.PipelineClientSet, uses.TaskRef, o.Namespace, o.ServiceAccount)
-		if err != nil {
-			logger.Errorf("Failed to fetch task reference %s: %v", uses.TaskRef.Name, err)
-			return nil, err
-		}
-
-		t, err := getTaskfunc(ctx, uses.TaskRef.Name)
-		if err != nil {
-			return nil, err
-		}
-		return &v1beta1.Task{
-			ObjectMeta: t.TaskMetadata(),
-			Spec:       t.TaskSpec(),
-		}, nil
+	if uses.Git != "" {
+		resolver := git.NewResolver(o.Logger, o.GitOptions)
+		return resolver.Get("tasks", uses.Git)
 	}
-	resolver := git.NewResolver(o.Logger, o.GitOptions)
-	return resolver.Get("tasks", uses.Git)
+	getTaskfunc, _, err := resources.GetTaskFunc(ctx, o.KubeClientSet, o.PipelineClientSet, &uses.TaskRef, o.Namespace, o.ServiceAccount)
+	if err != nil {
+		logger.Errorf("Failed to fetch task reference %s: %v", uses.TaskRef.Name, err)
+		return nil, err
+	}
+
+	t, err := getTaskfunc(ctx, uses.TaskRef.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &v1beta1.Task{
+		ObjectMeta: t.TaskMetadata(),
+		Spec:       t.TaskSpec(),
+	}, nil
 }

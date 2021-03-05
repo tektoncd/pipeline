@@ -28,23 +28,27 @@ func TestUses_Key(t *testing.T) {
 	}{{
 		name: "empty",
 		uses: &Uses{},
-		want: "git:",
+		want: "",
 	}, {
 		name: "github-explicit",
 		uses: &Uses{
-			Git: "tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
+			TaskRef: TaskRef{
+				Git: "tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
+			},
 		},
 		want: "git:tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
 	}, {
 		name: "my-git-server-explicit",
 		uses: &Uses{
-			Git: "https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
+			TaskRef: TaskRef{
+				Git: "https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
+			},
 		},
 		want: "git:https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
 	}, {
 		name: "ref",
 		uses: &Uses{
-			TaskRef: &TaskRef{
+			TaskRef: TaskRef{
 				Name:       "my-task",
 				Kind:       NamespacedTaskKind,
 				APIVersion: "",
@@ -54,7 +58,7 @@ func TestUses_Key(t *testing.T) {
 	}, {
 		name: "oci",
 		uses: &Uses{
-			TaskRef: &TaskRef{
+			TaskRef: TaskRef{
 				Name:       "my-task",
 				Kind:       ClusterTaskKind,
 				APIVersion: "",
