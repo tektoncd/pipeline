@@ -2,15 +2,12 @@ apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   creationTimestamp: null
-  generateName: guarded-pr-
+  generateName: my-pipeline-
 spec:
   pipelineSpec:
     tasks:
     - taskSpec:
         metadata: {}
-        stepTemplate:
-          name: ""
-          resources: {}
         steps:
         - image: gcr.io/kaniko-project/executor:debug-v1.3.0
           name: build1

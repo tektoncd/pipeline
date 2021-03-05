@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/file"
 	"github.com/tektoncd/pipeline/pkg/stepper"
@@ -68,20 +69,19 @@ func TestStepper(t *testing.T) {
 			t.Errorf(errors.Wrapf(err, "failed to read file %s", path).Error())
 		}
 
-		prs := &v1beta1.PipelineRun{}
-		err = yaml.Unmarshal(data, prs)
+		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
 		if err != nil {
 			t.Errorf(errors.Wrapf(err, "failed to unmarshal file %s", path).Error())
 		}
 
 		ctx := context.TODO()
 		s := createTestStepper()
-		err = s.Resolve(ctx, prs)
+		obj, err = s.Resolve(ctx, obj)
 		if err != nil {
 			t.Errorf(errors.Wrapf(err, "failed to invoke stepper on file %s", path).Error())
 		}
 
-		data, err = yaml.Marshal(prs)
+		data, err = yaml.Marshal(obj)
 		if err != nil {
 			t.Errorf(errors.Wrapf(err, "failed to marshal output of stepper on file %s", path).Error())
 		}

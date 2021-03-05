@@ -2,15 +2,12 @@ apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   creationTimestamp: null
-  generateName: guarded-pr-
+  generateName: my-pipeline-
 spec:
   pipelineSpec:
     tasks:
     - taskSpec:
         metadata: {}
-        stepTemplate:
-          name: ""
-          resources: {}
         steps:
         - env:
           - name: MY_NEW_ENV_VAR

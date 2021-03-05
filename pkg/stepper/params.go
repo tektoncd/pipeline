@@ -23,28 +23,51 @@ import (
 	"strings"
 )
 
+// UseLocation defines the location where we are using one or more steps where we may need to modify
+// the parameters, results and workspaces
+type UseLocation struct {
+	PipelineRunSpec *v1beta1.PipelineRunSpec
+	PipelineSpec    *v1beta1.PipelineSpec
+	TaskName        string
+	TaskRunSpec     *v1beta1.TaskRunSpec
+	TaskSpec        *v1beta1.TaskSpec
+}
+
 // UseParametersAndResults adds the parameters from the used Task to the PipelineSpec if specified and the PipelineTask
-func UseParametersAndResults(ps *v1beta1.PipelineSpec, task *v1beta1.PipelineTask, uses *v1beta1.TaskSpec) error {
+func UseParametersAndResults(loc *UseLocation, uses *v1beta1.TaskSpec) error {
 	parameterSpecs := uses.Params
 	parameters := ToParams(parameterSpecs)
 	results := uses.Results
+
+	ps := loc.PipelineSpec
 	if ps != nil {
 		ps.Params = useParameterSpecs(ps.Params, parameterSpecs)
 		ps.Results = usePipelineResults(ps.Results, results)
 		ps.Workspaces = usePipelineWorkspaces(ps.Workspaces, uses.Workspaces)
 	}
-	task.Params = useParameters(task.Params, parameters)
-	if task.TaskSpec != nil {
-		task.TaskSpec.Params = useParameterSpecs(task.TaskSpec.Params, parameterSpecs)
-		task.TaskSpec.Results = useResults(task.TaskSpec.Results, results)
-		task.TaskSpec.Workspaces = useWorkspaces(task.TaskSpec.Workspaces, uses.Workspaces)
+	trs := loc.TaskRunSpec
+	if trs != nil {
+		trs.Params = useParameters(trs.Params, parameters)
+	}
+	ts := loc.TaskSpec
+	if ts != nil {
+		ts.Params = useParameterSpecs(ts.Params, parameterSpecs)
+		ts.Results = useResults(ts.Results, results)
+		ts.Workspaces = useWorkspaces(ts.Workspaces, uses.Workspaces)
 
 		// lets create a step template if its not already defined
-		if task.TaskSpec.StepTemplate == nil {
-			task.TaskSpec.StepTemplate = &corev1.Container{}
+		if len(parameters) > 0 {
+			stepTemplate := ts.StepTemplate
+			created := false
+			if stepTemplate == nil {
+				stepTemplate = &corev1.Container{}
+				created = true
+			}
+			stepTemplate.Env = useParameterEnvVars(stepTemplate.Env, parameters)
+			if len(stepTemplate.Env) > 0 && created {
+				ts.StepTemplate = stepTemplate
+			}
 		}
-		stepTemplate := task.TaskSpec.StepTemplate
-		stepTemplate.Env = useParameterEnvVars(stepTemplate.Env, parameters)
 	}
 	return nil
 }

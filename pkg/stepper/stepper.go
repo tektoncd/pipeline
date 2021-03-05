@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
 )
 
@@ -45,9 +46,75 @@ func NewResolver(opts *RemoterOptions) *Resolver {
 	}
 }
 
-// Resolve will resolve any `uses` structs on any steps in any tasks
-func (r *Resolver) Resolve(ctx context.Context, prs *v1beta1.PipelineRun) error {
-	ps := prs.Spec.PipelineSpec
+// Resolve will resolve any known kind
+func (r *Resolver) Resolve(ctx context.Context, obj runtime.Object) (runtime.Object, error) {
+	if pr, ok := obj.(*v1beta1.PipelineRun); ok {
+		return pr, r.ResolvePipelineRun(ctx, pr)
+	}
+	if pr, ok := obj.(*v1alpha1.PipelineRun); ok {
+		betaPR := &v1beta1.PipelineRun{}
+		err := pr.ConvertTo(ctx, betaPR)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to convert v1alpha1.PipelineRun")
+		}
+		err = r.ResolvePipelineRun(ctx, betaPR)
+		return betaPR, err
+	}
+
+	// Pipelines
+	if pipeline, ok := obj.(*v1beta1.Pipeline); ok {
+		return pipeline, r.ResolvePipelineSpec(ctx, nil, &pipeline.Spec)
+	}
+	if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
+		betaPipeline := &v1beta1.Pipeline{}
+		err := pipeline.ConvertTo(ctx, betaPipeline)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to convert v1alpha1.Pipeline")
+		}
+		return betaPipeline, r.ResolvePipelineSpec(ctx, nil, &betaPipeline.Spec)
+	}
+
+	// TaskRun
+	if tr, ok := obj.(*v1beta1.TaskRun); ok {
+		return tr, r.ResolveTaskSpec(ctx, tr.Name, &tr.Spec, tr.Spec.TaskSpec)
+	}
+	if tr, ok := obj.(*v1alpha1.TaskRun); ok {
+		betaTaskRun := &v1beta1.TaskRun{}
+		err := tr.ConvertTo(ctx, betaTaskRun)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to convert v1alpha1.TaskRun")
+		}
+		return betaTaskRun, r.ResolveTaskSpec(ctx, betaTaskRun.Name, &betaTaskRun.Spec, betaTaskRun.Spec.TaskSpec)
+	}
+
+	// Tasks
+	if task, ok := obj.(*v1beta1.Task); ok {
+		return task, r.ResolveTaskSpec(ctx, task.Name, nil, &task.Spec)
+	}
+	if task, ok := obj.(*v1alpha1.Task); ok {
+		betaTask := &v1beta1.Task{}
+		err := task.ConvertTo(ctx, betaTask)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to convert v1alpha1.Task")
+		}
+		return betaTask, r.ResolveTaskSpec(ctx, betaTask.TaskMetadata().Name, nil, &betaTask.Spec)
+	}
+
+	return obj, errors.Errorf("unsupported kind %v", obj)
+}
+
+// ResolvePipelineRun will resolve any `uses` structs on any steps in any tasks in the PipelineRun
+func (r *Resolver) ResolvePipelineRun(ctx context.Context, prs *v1beta1.PipelineRun) error {
+	return r.ResolvePipelineSpec(ctx, &prs.Spec, prs.Spec.PipelineSpec)
+}
+
+// ResolvePipeline will resolve any `uses` structs on any steps in any tasks in the Pipeline
+func (r *Resolver) ResolvePipeline(ctx context.Context, p *v1beta1.Pipeline) error {
+	return r.ResolvePipelineSpec(ctx, nil, &p.Spec)
+}
+
+// ResolvePipelineSpec will resolve any `uses` structs on any steps in any tasks in the PipelineSpec
+func (r *Resolver) ResolvePipelineSpec(ctx context.Context, prs *v1beta1.PipelineRunSpec, ps *v1beta1.PipelineSpec) error {
 	if ps == nil {
 		return nil
 	}
@@ -55,41 +122,68 @@ func (r *Resolver) Resolve(ctx context.Context, prs *v1beta1.PipelineRun) error 
 		pt := &ps.Tasks[i]
 		if pt.TaskSpec != nil {
 			ts := &pt.TaskSpec.TaskSpec
-			var steps []v1beta1.Step
-			for j := range ts.Steps {
-				step := ts.Steps[j]
-				uses := combineUsesTemplate(step.Uses, ts.UsesTemplate)
-				if uses == nil {
-					steps = append(steps, step)
-					continue
-				}
-				taskName := pt.Name
-				if taskName == "" {
-					taskName = strconv.Itoa(i)
-				}
-				stepName := step.Name
-				if stepName == "" {
-					stepName = strconv.Itoa(j)
-				}
-				replaceSteps, err := r.UsesSteps(ctx, uses, ps, pt, step)
-				if err != nil {
-					return errors.Wrapf(err, "failed to use %s for step %s/%s", uses.String(), taskName, stepName)
-				}
-				if len(replaceSteps) == 0 {
-					return errors.Errorf("no steps found for use %s on step %s/%s", uses.String(), taskName, stepName)
-				}
-				steps = append(steps, replaceSteps...)
+			taskName := pt.Name
+			if taskName == "" {
+				taskName = strconv.Itoa(i)
 			}
-			ts.Steps = steps
-			ts.UsesTemplate = nil
+			err := r.resolveTaskSpec(ctx, &UseLocation{
+				PipelineRunSpec: prs,
+				PipelineSpec:    ps,
+				TaskName:        taskName,
+				TaskSpec:        ts,
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
+// ResolveTaskSpec will resolve any `uses` structs on any steps in any tasks in the TaskSpec
+func (r *Resolver) ResolveTaskSpec(ctx context.Context, taskName string, trs *v1beta1.TaskRunSpec, ts *v1beta1.TaskSpec) error {
+	return r.resolveTaskSpec(ctx, &UseLocation{
+		TaskName:    taskName,
+		TaskRunSpec: trs,
+		TaskSpec:    ts,
+	})
+}
+
+// resolveTaskSpec will resolve any `uses` structs on any steps in any tasks in the TaskSpec
+func (r *Resolver) resolveTaskSpec(ctx context.Context, loc *UseLocation) error {
+	ts := loc.TaskSpec
+	if ts == nil {
+		return nil
+	}
+	var steps []v1beta1.Step
+	for j := range ts.Steps {
+		step := ts.Steps[j]
+		uses := combineUsesTemplate(step.Uses, ts.UsesTemplate)
+		if uses == nil {
+			steps = append(steps, step)
+			continue
+		}
+		stepName := step.Name
+		if stepName == "" {
+			stepName = strconv.Itoa(j)
+		}
+		replaceSteps, err := r.UsesSteps(ctx, uses, loc, step)
+		if err != nil {
+			return errors.Wrapf(err, "failed to use %s for step %s/%s", uses.String(), loc.TaskName, stepName)
+		}
+		if len(replaceSteps) == 0 {
+			return errors.Errorf("no steps found for use %s on step %s/%s", uses.String(), loc.TaskName, stepName)
+		}
+		steps = append(steps, replaceSteps...)
+	}
+	ts.Steps = steps
+	ts.UsesTemplate = nil
+	return nil
+}
+
 // UsesSteps lets resolve the uses.String() to a PipelineRun and find the step or steps
 // for the given task name and/or step name then lets apply any overrides from the step
-func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta1.PipelineSpec, pt *v1beta1.PipelineTask, step v1beta1.Step) ([]v1beta1.Step, error) {
+func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
 	remote, err := r.ResolveRemote(ctx, uses)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to resolve remote for uses %s", uses.String())
@@ -109,7 +203,7 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta
 		if ps == nil {
 			return nil, errors.Errorf("the PipelineRun %s at path %s has no PipelineSpec", pr.Name, uses.Path)
 		}
-		return r.findPipelineSteps(ctx, uses, ps, pt, step)
+		return r.findPipelineSteps(ctx, uses, ps, loc, step)
 	}
 	if pr, ok := obj.(*v1alpha1.PipelineRun); ok {
 		betaPR := &v1beta1.PipelineRun{}
@@ -121,13 +215,13 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta
 		if ps == nil {
 			return nil, errors.Errorf("the PipelineRun %s at path %s has no PipelineSpec", pr.Name, uses.Path)
 		}
-		return r.findPipelineSteps(ctx, uses, ps, pt, step)
+		return r.findPipelineSteps(ctx, uses, ps, loc, step)
 	}
 
 	// Pipelines
 	if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
 		ps := pipeline.PipelineSpec()
-		return r.findPipelineSteps(ctx, uses, &ps, pt, step)
+		return r.findPipelineSteps(ctx, uses, &ps, loc, step)
 	}
 	if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
 		betaPipeline := &v1beta1.Pipeline{}
@@ -135,13 +229,13 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert v1alpha1.Pipeline")
 		}
-		return r.findPipelineSteps(ctx, uses, &betaPipeline.Spec, pt, step)
+		return r.findPipelineSteps(ctx, uses, &betaPipeline.Spec, loc, step)
 	}
 
 	// Tasks
 	if task, ok := obj.(v1beta1.TaskObject); ok {
 		ts := task.TaskSpec()
-		return r.findTaskSteps(ctx, uses, task.TaskMetadata().Name, &ts, ps, pt, step)
+		return r.findTaskSteps(ctx, uses, task.TaskMetadata().Name, &ts, loc, step)
 	}
 	if task, ok := obj.(*v1alpha1.Task); ok {
 		betaTask := &v1beta1.Task{}
@@ -149,31 +243,28 @@ func (r *Resolver) UsesSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert v1alpha1.Task")
 		}
-		return r.findTaskSteps(ctx, uses, betaTask.Name, &betaTask.Spec, ps, pt, step)
+		return r.findTaskSteps(ctx, uses, betaTask.Name, &betaTask.Spec, loc, step)
 	}
 
 	return nil, errors.Errorf("could not convert object %#v to task for path %s", obj, uses.Path)
 }
 
-func (r *Resolver) findPipelineSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta1.PipelineSpec, pt *v1beta1.PipelineTask, step v1beta1.Step) ([]v1beta1.Step, error) {
-	taskName := pt.Name
-	if uses.Task != "" {
-		taskName = uses.Task
-	}
+func (r *Resolver) findPipelineSteps(ctx context.Context, uses *v1beta1.Uses, ps *v1beta1.PipelineSpec, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
+	taskName := uses.Task
 	pipelineTasks := ps.Tasks
 	for _, task := range pipelineTasks {
 		if task.Name == taskName || taskName == "" {
 			ts := task.TaskSpec
 			if ts != nil {
-				return r.findTaskSteps(ctx, uses, task.Name, &ts.TaskSpec, ps, pt, step)
+				return r.findTaskSteps(ctx, uses, task.Name, &ts.TaskSpec, loc, step)
 			}
 		}
 	}
 	return nil, errors.Errorf("uses %s has no spec.pipelineSpec.tasks that match task name %s", uses.String(), taskName)
 }
 
-func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskName string, ts *v1beta1.TaskSpec, ps *v1beta1.PipelineSpec, pt *v1beta1.PipelineTask, step v1beta1.Step) ([]v1beta1.Step, error) {
-	err := UseParametersAndResults(ps, pt, ts)
+func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskName string, ts *v1beta1.TaskSpec, loc *UseLocation, step v1beta1.Step) ([]v1beta1.Step, error) {
+	err := UseParametersAndResults(loc, ts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to ")
 	}
