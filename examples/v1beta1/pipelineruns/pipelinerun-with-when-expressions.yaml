@@ -130,9 +130,22 @@ spec:
             - name: echo
               image: ubuntu
               script: exit 1
-      - name: finally-task-should-be-executed # when expression using execution status, param and results
+      - name: finally-task-should-be-skipped-4 # when expression using tasks execution status, evaluates to false
+        when:
+          - input: "$(tasks.status)"
+            operator: in
+            values: ["Failure"]
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: exit 1
+      - name: finally-task-should-be-executed # when expression using execution status, tasks execution status, param, and results
         when:
           - input: "$(tasks.echo-file-exists.status)"
+            operator: in
+            values: ["Succeeded"]
+          - input: "$(tasks.status)"
             operator: in
             values: ["Succeeded"]
           - input: "$(tasks.check-file.results.exists)"
