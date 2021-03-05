@@ -51,6 +51,8 @@ spec:
     env:
     - name: DOCKER_CONFIG
       value: /tekton/home/.docker
+    - name: MY_VAR
+      value: CHEESE
     - name: IMAGE
       value: $(params.IMAGE)
     - name: DOCKERFILE
@@ -92,6 +94,24 @@ spec:
       runAsUser: 0
     workingDir: $(workspaces.source.path)
   - env:
+    - name: MY_VAR
+      value: CHEESE
+    - name: IMAGE
+      value: $(params.IMAGE)
+    - name: DOCKERFILE
+      value: $(params.DOCKERFILE)
+    - name: CONTEXT
+      value: $(params.CONTEXT)
+    - name: EXTRA_ARGS
+      value: $(params.EXTRA_ARGS)
+    - name: BUILDER_IMAGE
+      value: $(params.BUILDER_IMAGE)
+    image: docker.io/stedolan/jq@sha256:a61ed0bca213081b64be94c5e1b402ea58bc549f457c2682a86704dd55231e09
+    name: digest-to-results
+    resources: {}
+    script: cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee /tekton/results/IMAGE-DIGEST
+    workingDir: $(workspaces.source.path)
+  - env:
     - name: IMAGE
       value: $(params.IMAGE)
     - name: DOCKERFILE
@@ -108,21 +128,5 @@ spec:
     script: |
       #!/bin/sh
       echo "hello world"
-  - env:
-    - name: IMAGE
-      value: $(params.IMAGE)
-    - name: DOCKERFILE
-      value: $(params.DOCKERFILE)
-    - name: CONTEXT
-      value: $(params.CONTEXT)
-    - name: EXTRA_ARGS
-      value: $(params.EXTRA_ARGS)
-    - name: BUILDER_IMAGE
-      value: $(params.BUILDER_IMAGE)
-    image: docker.io/stedolan/jq@sha256:a61ed0bca213081b64be94c5e1b402ea58bc549f457c2682a86704dd55231e09
-    name: digest-to-results
-    resources: {}
-    script: cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee /tekton/results/IMAGE-DIGEST
-    workingDir: $(workspaces.source.path)
   workspaces:
   - name: source

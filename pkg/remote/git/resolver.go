@@ -52,6 +52,10 @@ func (o *Resolver) Get(kind, name string) (runtime.Object, error) {
 		return nil, errors.Wrapf(err, "failed to parse git URI: %s", name)
 	}
 
+	if gitURI == nil {
+		return nil, errors.Errorf("could not parse git URI %s", name)
+	}
+
 	// lets populate the spec making sure we clear anything from the options
 	// that are not generic git settings
 	spec := o.options

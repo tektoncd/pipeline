@@ -105,11 +105,7 @@ spec:
     resources: {}
     script: cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee /tekton/results/IMAGE-DIGEST
     workingDir: $(workspaces.source.path)
-  - command:
-    - sh
-    - -c
-    - echo hello world
-    env:
+  - env:
     - name: IMAGE
       value: $(params.IMAGE)
     - name: DOCKERFILE
@@ -123,5 +119,8 @@ spec:
     image: golang:1.15
     name: my-custom-step
     resources: {}
+    script: |
+      #!/bin/sh
+      echo "hello world"
   workspaces:
   - name: source

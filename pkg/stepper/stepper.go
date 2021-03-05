@@ -168,8 +168,7 @@ func (r *Resolver) resolveTaskSpec(ctx context.Context, loc *UseLocation) error 
 	var steps []v1beta1.Step
 	for j := range ts.Steps {
 		step := ts.Steps[j]
-		uses := combineUsesTemplate(step.Uses, ts.UsesTemplate)
-		if uses == nil {
+		if step.Uses == nil {
 			steps = append(steps, step)
 			continue
 		}
@@ -177,17 +176,16 @@ func (r *Resolver) resolveTaskSpec(ctx context.Context, loc *UseLocation) error 
 		if stepName == "" {
 			stepName = strconv.Itoa(j)
 		}
-		replaceSteps, err := r.UsesSteps(ctx, uses, loc, step)
+		replaceSteps, err := r.UsesSteps(ctx, step.Uses, loc, step)
 		if err != nil {
-			return errors.Wrapf(err, "failed to use %s for step %s/%s", uses.String(), loc.TaskName, stepName)
+			return errors.Wrapf(err, "failed to use %s for step %s/%s", step.Uses.String(), loc.TaskName, stepName)
 		}
 		if len(replaceSteps) == 0 {
-			return errors.Errorf("no steps found for use %s on step %s/%s", uses.String(), loc.TaskName, stepName)
+			return errors.Errorf("no steps found for use %s on step %s/%s", step.Uses.String(), loc.TaskName, stepName)
 		}
 		steps = append(steps, replaceSteps...)
 	}
 	ts.Steps = steps
-	ts.UsesTemplate = nil
 	err := ts.Validate(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "failed to validate TaskSpec")
@@ -309,19 +307,4 @@ func (r *Resolver) findTaskSteps(ctx context.Context, uses *v1beta1.Uses, taskNa
 		steps = append(steps, replaceStep)
 	}
 	return steps, nil
-}
-
-// combineUsesTemplate lets share the previous uses values so we can avoid repeating paths for each step
-func combineUsesTemplate(u1 *v1beta1.Uses, u2 *v1beta1.Uses) *v1beta1.Uses {
-	if u1 == nil {
-		return nil
-	}
-	if u2 == nil || u1.TaskRef != nil {
-		return u1
-	}
-	result := *u1
-	if u2.Git != "" && result.Git == "" {
-		result.Git = u2.Git
-	}
-	return &result
 }

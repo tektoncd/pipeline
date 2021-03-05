@@ -1,7 +1,5 @@
 ## Task reuse individual steps
 
-This example shows how to reuse individual steps from a Task which can then be interleaved with custom tasks - plus each step can have its properties changed.
+This example shows how to inline each individual step from a Task.
 
-
-* adding an extra **MY_VAR** environment variable to the **write-digest** step
-* adding an extra step **my-custom-step** before the reused **digest-to-results** stpe
+While more verbose than just referencing all steps in a task in a single step; this allows you to then add custom steps in between the steps or override individual steps such as the [task_override_steps example](../task_override_steps)

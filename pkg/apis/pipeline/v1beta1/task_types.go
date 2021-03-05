@@ -96,10 +96,6 @@ type TaskSpec struct {
 	// Task, so that the steps inherit settings on the base container.
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
 
-	// UsesTemplate allows you to define shared uses defaults for all steps
-	// with the Task so that you can reuse many steps from the same Path if no Path is specified
-	UsesTemplate *Uses `json:"usesTemplate,omitempty"`
-
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
 	Sidecars []Sidecar `json:"sidecars,omitempty"`

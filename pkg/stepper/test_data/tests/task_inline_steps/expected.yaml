@@ -73,8 +73,6 @@ spec:
     command:
     - /ko-app/imagedigestexporter
     env:
-    - name: MY_VAR
-      value: CHEESE
     - name: IMAGE
       value: $(params.IMAGE)
     - name: DOCKERFILE
@@ -91,24 +89,6 @@ spec:
     securityContext:
       runAsUser: 0
     workingDir: $(workspaces.source.path)
-  - command:
-    - sh
-    - -c
-    - echo hello world
-    env:
-    - name: IMAGE
-      value: $(params.IMAGE)
-    - name: DOCKERFILE
-      value: $(params.DOCKERFILE)
-    - name: CONTEXT
-      value: $(params.CONTEXT)
-    - name: EXTRA_ARGS
-      value: $(params.EXTRA_ARGS)
-    - name: BUILDER_IMAGE
-      value: $(params.BUILDER_IMAGE)
-    image: golang:1.15
-    name: my-custom-step
-    resources: {}
   - env:
     - name: IMAGE
       value: $(params.IMAGE)

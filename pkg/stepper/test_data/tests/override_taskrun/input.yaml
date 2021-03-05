@@ -5,36 +5,39 @@ metadata:
 spec:
   serviceAccountName: 'default'
   taskSpec:
-    usesTemplate:
-      git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
     steps:
     - uses:
+        git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         step: jx-variables
       env:
-        - name: MY_NEW_ENV_VAR
-          value: this-is-a-new-value
+      - name: MY_NEW_ENV_VAR
+        value: this-is-a-new-value
     - uses:
+        git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         step: build-make-build
       script: |
         #!/usr/bin/env sh
         echo "this is my custom script"
       workingDir: /workspace/mynewdir
     - uses:
+        git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         step: build-container-build
       command:
-        - bash
+      - bash
       args:
-        - -c
-        - "echo this is a new custom command"
+      - -c
+      - "echo this is a new custom command"
     - uses:
+        git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         step: promote-changelog
       envFrom:
-        - configMapRef:
-            name: myconfigmap
-            optional: true
+      - configMapRef:
+          name: myconfigmap
+          optional: true
     - uses:
+        git: jenkins-x/jx3-pipeline-catalog/tasks/go/release.yaml@HEAD
         step: promote-jx-promote
       volumeMounts:
-        - mountPath: /foo/bar
-          name: my-new-volume
+      - mountPath: /foo/bar
+        name: my-new-volume
 
