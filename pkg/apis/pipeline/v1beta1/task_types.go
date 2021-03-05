@@ -145,27 +145,15 @@ type Sidecar struct {
 	Script string `json:"script,omitempty"`
 }
 
-// UsesType indicates the type of a uses remote
-// Used to distinguish between git and OCI.
-type UsesType string
-
-// Valid UsesTypes:
-const (
-	UsesTypeGit UsesType = "git"
-	UsesTypeOCI UsesType = "oci"
-)
-
-// AllUsesTypes can be used for UsesType validation.
-var AllUsesTypes = []UsesType{UsesTypeGit, UsesTypeOCI}
-
-// Uses allows one or more steps to be inherited from a Task in git or some other source.
+// Uses allows one or more steps to be inherited from a Task in git, via OCI bundles or kubernetes resources.
 type Uses struct {
 	// TaskRef is a reference to a task resource or bundle.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
 
-	// Git the git URI for which resource version and file in which repository to reuse.
-	// For github this is of the form: 'repositoryOwner/repositoryName/path@branchTagOrSHA'
+	// Git the git URI when reusing steps from a Task, TaskRun, Pipeline or PipelineRun inside a git repository.
+	// For github this is of the form: `repositoryOwner/repositoryName/path@branchTagOrSHA`
+	// For other git servers its of the form: `gitCloneURL/path[@branchTagOrSHA]` where the `gitCloneURL` ends in `.git`
 	// +optional
 	Git string `json:"git,omitempty"`
 
