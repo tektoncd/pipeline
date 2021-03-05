@@ -198,6 +198,11 @@ spec:
 
 **Note:** You can use the `paths` field to [override the paths to a `Resource`](resources.md#overriding-where-resources-are-copied-from).
 
+### Specifying `Resource` limits
+
+Each Step in a Task can specify its resource requirements. See
+[Defining `Steps`](tasks.md#defining-steps)
+
 ### Specifying a `Pod` template
 
 You can specify a [`Pod` template](podtemplates.md) configuration that will serve as the configuration starting
