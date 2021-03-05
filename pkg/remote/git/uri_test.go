@@ -30,49 +30,95 @@ func TestParseGitURI(t *testing.T) {
 		wantString string
 	}{
 		{
-			text: "myowner/myrepo@v1",
+			text: "myowner/myrepo/task.yaml@v1",
 			want: &git.GitURI{
+				CloneURL:   "https://github.com/myowner/myrepo.git",
+				Server:     "https://github.com",
 				Owner:      "myowner",
 				Repository: "myrepo",
-				Path:       "",
+				Path:       "task.yaml",
 				SHA:        "v1",
 			},
-		},
-		{
-			text: "myowner/myrepo/@v1",
-			want: &git.GitURI{
-				Owner:      "myowner",
-				Repository: "myrepo",
-				Path:       "",
-				SHA:        "v1",
-			},
-			wantString: "myowner/myrepo@v1",
+			wantString: "https://github.com/myowner/myrepo.git/task.yaml@v1",
 		},
 		{
 			text: "myowner/myrepo/myfile.yaml@v1",
 			want: &git.GitURI{
+				CloneURL:   "https://github.com/myowner/myrepo.git",
+				Server:     "https://github.com",
 				Owner:      "myowner",
 				Repository: "myrepo",
 				Path:       "myfile.yaml",
 				SHA:        "v1",
 			},
+			wantString: "https://github.com/myowner/myrepo.git/myfile.yaml@v1",
 		},
 		{
 			text: "myowner/myrepo/javascript/pullrequest.yaml@v1",
 			want: &git.GitURI{
+				CloneURL:   "https://github.com/myowner/myrepo.git",
+				Server:     "https://github.com",
 				Owner:      "myowner",
 				Repository: "myrepo",
 				Path:       "javascript/pullrequest.yaml",
 				SHA:        "v1",
 			},
+			wantString: "https://github.com/myowner/myrepo.git/javascript/pullrequest.yaml@v1",
 		},
 		{
-			text: "foo.yaml",
-			want: nil,
+			text:    "foo.yaml",
+			wantErr: true,
+		},
+		{
+			text:    "foo/bar.yaml",
+			wantErr: true,
 		},
 		{
 			text: "foo/bar/thingy.yaml",
-			want: nil,
+			want: &git.GitURI{
+				CloneURL:   "https://github.com/foo/bar.git",
+				Server:     "https://github.com",
+				Owner:      "foo",
+				Repository: "bar",
+				Path:       "thingy.yaml",
+				SHA:        "",
+			},
+			wantString: "https://github.com/foo/bar.git/thingy.yaml",
+		},
+		{
+			text: "https://mybitbucket.com/scm/myowner/myrepo.git/thingy.yaml",
+			want: &git.GitURI{
+				CloneURL: "https://mybitbucket.com/scm/myowner/myrepo.git",
+				Path:     "thingy.yaml",
+			},
+			wantString: "https://mybitbucket.com/scm/myowner/myrepo.git/thingy.yaml",
+		},
+		{
+			text: "https://mybitbucket.com/scm/myowner/myrepo.git/thingy.yaml@mybranch",
+			want: &git.GitURI{
+				CloneURL: "https://mybitbucket.com/scm/myowner/myrepo.git",
+				Path:     "thingy.yaml",
+				SHA:      "mybranch",
+			},
+			wantString: "https://mybitbucket.com/scm/myowner/myrepo.git/thingy.yaml@mybranch",
+		},
+		{
+			text: "git@github.com:bar/foo.git/thingy.yaml@mybranch",
+			want: &git.GitURI{
+				CloneURL: "git@github.com:bar/foo.git",
+				Path:     "thingy.yaml",
+				SHA:      "mybranch",
+			},
+			wantString: "git@github.com:bar/foo.git/thingy.yaml@mybranch",
+		},
+		{
+			text: "git://host.xz/org/repo.git/some/path.yaml@v1.2.3",
+			want: &git.GitURI{
+				CloneURL: "git://host.xz/org/repo.git",
+				Path:     "some/path.yaml",
+				SHA:      "v1.2.3",
+			},
+			wantString: "git://host.xz/org/repo.git/some/path.yaml@v1.2.3",
 		},
 	}
 
@@ -90,7 +136,7 @@ func TestParseGitURI(t *testing.T) {
 				t.Fatalf("failed to parse %s", text)
 			}
 			if !reflect.DeepEqual(tc.want, got) {
-				t.Fatalf("ParseGitURI(%s) got %s ; want %s", text, got, tc.want)
+				t.Fatalf("ParseGitURI(%s) got %#v ; want %#v", text, got, tc.want)
 			}
 			if tc.want != nil {
 				gotString := tc.want.String()
@@ -100,7 +146,7 @@ func TestParseGitURI(t *testing.T) {
 				}
 
 				if gotString != wantString {
-					t.Fatalf("ParseGitURI().String() got %s ; want %s", gotString, tc.wantString)
+					t.Fatalf("ParseGitURI(%s).String() got %s ; want %s", text, gotString, tc.wantString)
 				}
 			}
 		}

@@ -30,13 +30,12 @@ import (
 // Resolver implements the Resolver interface using git.
 type Resolver struct {
 	options gitclient.FetchSpec
-	server  string
 	logger  *zap.SugaredLogger
 }
 
 // NewResolver creates a git resolver
-func NewResolver(server string, logger *zap.SugaredLogger, opts gitclient.FetchSpec) remote.Resolver {
-	return &Resolver{server: server, logger: logger, options: opts}
+func NewResolver(logger *zap.SugaredLogger, opts gitclient.FetchSpec) remote.Resolver {
+	return &Resolver{logger: logger, options: opts}
 }
 
 func (o *Resolver) List() ([]remote.ResolvedObject, error) {
@@ -51,9 +50,11 @@ func (o *Resolver) Get(kind, name string) (runtime.Object, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse git URI: %s", name)
 	}
-
 	if gitURI == nil {
-		return nil, errors.Errorf("could not parse git URI %s", name)
+		return nil, errors.Errorf("could not parse git URI: %s", name)
+	}
+	if gitURI.CloneURL == "" {
+		return nil, errors.Errorf("no git clone URI for git: %s", name)
 	}
 
 	// lets populate the spec making sure we clear anything from the options
@@ -68,7 +69,7 @@ func (o *Resolver) Get(kind, name string) (runtime.Object, error) {
 	if spec.Revision == "HEAD" {
 		spec.Revision = ""
 	}
-	spec.URL = GitCloneURL(o.server, gitURI.Owner, gitURI.Repository)
+	spec.URL = gitURI.CloneURL
 	path := gitURI.Path
 
 	err = gitclient.Fetch(o.logger, spec)

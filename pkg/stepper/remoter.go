@@ -55,10 +55,6 @@ func (o *RemoterOptions) CreateRemote(ctx context.Context, uses *v1beta1.Uses) (
 			Spec:       t.TaskSpec(),
 		}, nil
 	}
-	server := uses.Server
-	if server == "" {
-		server = "github.com"
-	}
-	resolver := git.NewResolver(server, o.Logger, o.GitOptions)
+	resolver := git.NewResolver(o.Logger, o.GitOptions)
 	return resolver.Get("tasks", uses.Git)
 }

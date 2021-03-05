@@ -24,12 +24,38 @@ The `uses:` object supports a number of different remote locations
 
 ### git resources
 
-To reuse steps from a `Task`, `TaskRun`, `Pipeline` or `PipelineRun` in a git repository use the notation:
+To reuse steps from a `Task`, `TaskRun`, `Pipeline` or `PipelineRun` in a git repository use the `git:` property which uses a git URI notation:
 
 ```yaml
 - uses: 
     git: owner/repository/pathToFile@branchTagOrSHA
 ```
+                                                     
+
+#### GitHub URIs
+
+The most common place of reusing tasks from git will be [GitHub](https://github.com/) which is where most open source software lives including the [Tekton Catalog](https://github.com/tektoncd/catalog) so to keep the Tekton YAML concise we support a github specific notation of:
+
+```
+ownerOrUser/repositoryName/pathToResource[@branchTagOrSHA]
+```
+                                                                                              
+e.g. to reference a Tekton catalog task use: [tektoncd/catalog/task/kaniko/0.1/kaniko.yaml](https://github.com/tektoncd/catalog/task/kaniko/0.1/kaniko.yaml) which will use the latest version of `0.1` of the `kaniko` task
+
+#### Other git servers
+
+For other git servers we support the following syntax where the `gitCloneURI` ends with `.git`
+
+```
+gitCloneURI/pathToResource[@branchTagOrSHA]
+```
+                     
+So the following examples can be used:
+    
+* `https://github.com/myowner/myrepo.git/some/path.yaml`
+* `git@github.com:bar/foo.git/thingy.yaml@mybranch`  
+* `https://mybitbucket.com/scm/myowner/myrepo.git/thingy.yaml@mybranch`
+* `git://host.xz/org/repo.git/some/path.yaml@v1.2.3`
 
 ### kubernetes resources
 

@@ -17,13 +17,14 @@ limitations under the License.
 package git
 
 import (
-	"github.com/jenkins-x/go-scm/scm"
 	"github.com/pkg/errors"
 	"strings"
 )
 
 // GitURI for parsing the git URIs in uses
 type GitURI struct {
+	CloneURL   string
+	Server     string
 	Owner      string
 	Repository string
 	Path       string
@@ -34,39 +35,44 @@ type GitURI struct {
 //
 // handles strings of the form "owner/repository(/path)@sha"
 func ParseGitURI(text string) (*GitURI, error) {
+	u := &GitURI{}
+	parts := strings.SplitN(text, ".git/", 2)
+	if len(parts) == 2 {
+		u.CloneURL = parts[0] + ".git"
+		u.Path = u.trimShaFromPath(parts[1])
+	} else {
+		if strings.Contains(text, ":") {
+			return nil, errors.Errorf("invalid format of git URI: %s if not using github.com you need to separate the git URL from the path via '.git/' before the path", text)
+		}
+
+		// lets assume the github notation: `owner/repository/path[@version]`
+		parts := strings.SplitN(text, "/", 3)
+		if len(parts) < 3 {
+			return nil, errors.Errorf("expecting github.com format 'owner/repository/path[@sha]' but got git URI %s", text)
+		}
+		u.Server = "https://github.com"
+		u.Owner = parts[0]
+		u.Repository = parts[1]
+		u.Path = u.trimShaFromPath(parts[2])
+		u.CloneURL = GitCloneURL(u.Server, u.Owner, u.Repository)
+	}
+	return u, nil
+}
+
+func (u *GitURI) trimShaFromPath(text string) string {
 	idx := strings.Index(text, "@")
 	if idx < 0 {
-		return nil, nil
+		return text
 	}
-
-	sha := text[idx+1:]
-	if sha == "" {
-		return nil, errors.Errorf("missing version, branch or sha after the '@' character in the git URI %s", text)
+	if idx+1 < len(text) {
+		u.SHA = text[idx+1:]
 	}
-
-	names := text[0:idx]
-	parts := strings.SplitN(names, "/", 3)
-
-	path := ""
-	switch len(parts) {
-	case 0, 1:
-		return nil, errors.Errorf("expecting format 'owner/repository(/path)@sha' but got git URI %s", text)
-	case 3:
-		path = parts[2]
-	}
-	owner := parts[0]
-
-	return &GitURI{
-		Owner:      owner,
-		Repository: parts[1],
-		Path:       path,
-		SHA:        sha,
-	}, nil
+	return text[0:idx]
 }
 
 // String returns the string representation of the git URI
 func (u *GitURI) String() string {
-	path := scm.Join(u.Owner, u.Repository)
+	path := u.CloneURL
 	if u.Path != "" {
 		if !strings.HasPrefix(u.Path, "/") {
 			path += "/"
@@ -74,10 +80,8 @@ func (u *GitURI) String() string {
 		path += u.Path
 	}
 	path = strings.TrimSuffix(path, "/")
-	sha := u.SHA
-	if sha == "" {
-		sha = "head"
+	if u.SHA == "" {
+		return path
 	}
-	prefix := ""
-	return prefix + path + "@" + sha
+	return path + "@" + u.SHA
 }

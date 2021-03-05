@@ -19,7 +19,6 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 const (
@@ -165,10 +164,6 @@ type Uses struct {
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
 
-	// Server the git server host if using git kind. Defaults to github.com if none specified.
-	// +optional
-	Server string `json:"server,omitempty"`
-
 	// Git the git URI for which resource version and file in which repository to reuse.
 	// For github this is of the form: 'repositoryOwner/repositoryName/path@branchTagOrSHA'
 	// +optional
@@ -205,7 +200,7 @@ func (u *Uses) String() string {
 func (u *Uses) Key() string {
 	ref := u.TaskRef
 	if ref != nil {
-		answer := "ref/"
+		answer := "ref:"
 		if ref.APIVersion != "" {
 			answer += ref.APIVersion + "/"
 		}
@@ -215,15 +210,7 @@ func (u *Uses) Key() string {
 		}
 		return answer + "/" + ref.Bundle
 	}
-	s := u.Server
-	if s == "" {
-		s = "github.com"
-	}
-	answer := "git/" + s
-	if u.Git == "" {
-		return answer
-	}
-	return strings.TrimSuffix(answer, "/") + "/" + strings.TrimPrefix(u.Git, "/")
+	return "git:" + u.Git
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
