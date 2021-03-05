@@ -614,7 +614,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	fnextRprts := pipelineRunFacts.GetFinalTasks()
 	if len(fnextRprts) != 0 {
 		// apply the runtime context just before creating taskRuns for final tasks in queue
-		resources.ApplyPipelineTaskContext(fnextRprts, pipelineRunFacts.GetPipelineTaskStatus(ctx))
+		resources.ApplyPipelineTaskContext(fnextRprts, pipelineRunFacts.GetPipelineTaskStatus())
 
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
