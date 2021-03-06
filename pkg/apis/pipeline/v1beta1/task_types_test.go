@@ -32,45 +32,37 @@ func TestUses_Key(t *testing.T) {
 	}, {
 		name: "github-explicit",
 		uses: &Uses{
-			TaskRef: TaskRef{
-				Git: "tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
-			},
+			Git: "tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
 		},
 		want: "git:tektoncd/catalog/task/git-clone/0.2/git-clone.yaml",
 	}, {
 		name: "my-git-server-explicit",
 		uses: &Uses{
-			TaskRef: TaskRef{
-				Git: "https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
-			},
+			Git: "https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
 		},
 		want: "git:https://my.git.server.com/something/else/task/git-clone/0.2/git-clone.yaml",
 	}, {
 		name: "ref",
 		uses: &Uses{
-			TaskRef: TaskRef{
-				Name:       "my-task",
-				Kind:       NamespacedTaskKind,
-				APIVersion: "",
-			},
+			Task:       "my-task",
+			Kind:       NamespacedTaskKind,
+			APIVersion: "",
 		},
 		want: "ref:Task/my-task",
 	}, {
 		name: "oci",
 		uses: &Uses{
-			TaskRef: TaskRef{
-				Name:       "my-task",
-				Kind:       ClusterTaskKind,
-				APIVersion: "",
-				Bundle:     "docker.io/myrepo/mycatalog:1.2.3",
-			},
+			Task:       "my-task",
+			Kind:       ClusterTaskKind,
+			APIVersion: "",
+			Bundle:     "docker.io/myrepo/mycatalog:1.2.3",
 		},
 		want: "ref:ClusterTask/my-task/docker.io/myrepo/mycatalog:1.2.3",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.uses.Key() != tt.want {
-				t.Fatalf("Uses key mismatch: got %s ; expected %s", tt.uses.Key(), tt.want)
+				t.Fatalf("test %s uses.Key() mismatch: got %s ; expected %s", tt.name, tt.uses.Key(), tt.want)
 			}
 		})
 	}

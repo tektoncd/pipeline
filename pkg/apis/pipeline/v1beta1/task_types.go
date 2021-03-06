@@ -147,9 +147,29 @@ type Sidecar struct {
 }
 
 // Uses allows one or more steps to be inherited from a Task in git, via OCI bundles or kubernetes resources.
+//
+// It is similar to TaskRef but has an additional optional `step` property and uses `task` rather than `name`
+// to avoid confusion over what the name is for
 type Uses struct {
-	TaskRef `json:",inline"`
-
+	// Name of the task if we are referencing a resource which is a Pipeline or PipelineRun which contains multiple
+	// Tasks
+	// More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	// +optional
+	Task string `json:"name,omitempty"`
+	// TaskKind indicates the kind of the task, namespaced or cluster scoped if referencing a kubernetes resource by name
+	Kind TaskKind `json:"kind,omitempty"`
+	// API version of the referent if using a kubernetes resource
+	// +optional
+	APIVersion string `json:"apiVersion,omitempty"`
+	// Bundle url reference to a Tekton Bundle.
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
+	// Git the git URI to reference a Task, TaskRun, Pipeline or PipelineRun inside a git repository.
+	// For github this is of the form: `repositoryOwner/repositoryName/path@branchTagOrSHA`
+	// For other git servers its of the form: `gitCloneURL/path[@branchTagOrSHA]` where the `gitCloneURL` ends in `.git`
+	// If the resource is a Pipeline or PipelineRun with multiple Tasks then the `task` in this reference must match the Task you refer to
+	// +optional
+	Git string `json:"git,omitempty"`
 	// Step the name of the step to be included. If not specified all of the steps of the given
 	// Task will be included.
 	// +optional
@@ -163,7 +183,7 @@ func (u *Uses) String() string {
 	}
 	text := u.Git
 	if text == "" {
-		text = u.Name
+		text = u.Task
 		k := string(u.Kind)
 		if k != "" {
 			text = k + "/" + text
@@ -183,7 +203,7 @@ func (u *Uses) Key() string {
 	text := ""
 	if u.Git != "" {
 		text = "git:" + u.Git
-	} else if u.Name != "" || u.Bundle != "" {
+	} else if u.Task != "" || u.Bundle != "" {
 		text = "ref:"
 		k := string(u.Kind)
 		if u.APIVersion != "" {
@@ -192,8 +212,8 @@ func (u *Uses) Key() string {
 		if k != "" {
 			text += k + "/"
 		}
-		if u.Name != "" {
-			text += u.Name
+		if u.Task != "" {
+			text += u.Task
 		}
 		if u.Bundle != "" {
 			if !strings.HasSuffix(text, "/") {
@@ -206,6 +226,17 @@ func (u *Uses) Key() string {
 		return text
 	}
 	return text + ":" + u.Step
+}
+
+// ToTaskRef converts this struct to a TaskRef so that we can find the Task
+func (u *Uses) ToTaskRef() TaskRef {
+	return TaskRef{
+		Name:       u.Task,
+		Kind:       u.Kind,
+		APIVersion: u.APIVersion,
+		Bundle:     u.Bundle,
+		Git:        u.Git,
+	}
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

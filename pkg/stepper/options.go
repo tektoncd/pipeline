@@ -36,13 +36,14 @@ type Options struct {
 
 func (o *Options) CreateRemote(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
 	logger := o.GitFactory.GetLogger()
-	getTaskfunc, _, err := resources.GetTaskFunc(ctx, o.KubeClientSet, o.PipelineClientSet, &o.GitFactory, &uses.TaskRef, o.Namespace, o.ServiceAccount)
+	taskRef := uses.ToTaskRef()
+	getTaskfunc, _, err := resources.GetTaskFunc(ctx, o.KubeClientSet, o.PipelineClientSet, &o.GitFactory, &taskRef, o.Namespace, o.ServiceAccount)
 	if err != nil {
-		logger.Errorf("Failed to fetch task reference %s: %v", uses.TaskRef.Name, err)
+		logger.Errorf("Failed to fetch task reference %s: %v", taskRef.Name, err)
 		return nil, err
 	}
 
-	t, err := getTaskfunc(ctx, uses.TaskRef.Name)
+	t, err := getTaskfunc(ctx, taskRef.Name)
 	if err != nil {
 		return nil, err
 	}
