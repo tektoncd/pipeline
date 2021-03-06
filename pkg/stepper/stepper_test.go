@@ -127,7 +127,7 @@ func TestStepper(t *testing.T) {
 func createTestStepper(t *testing.T) *stepper.Resolver {
 	tektonClient := createFakeTektonClient(t)
 
-	opts := &stepper.RemoterOptions{
+	opts := &stepper.Options{
 		KubeClientSet:     fake.NewSimpleClientset(),
 		PipelineClientSet: tektonClient,
 		Namespace:         "myns",

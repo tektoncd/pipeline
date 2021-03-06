@@ -21,8 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strconv"
 )
@@ -32,7 +30,7 @@ type Resolver struct {
 }
 
 // NewResolver creates a new stepper resolver
-func NewResolver(opts *RemoterOptions) *Resolver {
+func NewResolver(opts *Options) *Resolver {
 	usesResolver := NewResourceLoader(opts)
 
 	return &Resolver{
@@ -41,11 +39,9 @@ func NewResolver(opts *RemoterOptions) *Resolver {
 }
 
 // NewResourceLoader the default resolver of uses resources
-func NewResourceLoader(opts *RemoterOptions) func(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
-	if opts.Logger == nil {
-		observer, _ := observer.New(zap.InfoLevel)
-		opts.Logger = zap.New(observer).Sugar()
-	}
+func NewResourceLoader(opts *Options) func(ctx context.Context, uses *v1beta1.Uses) (runtime.Object, error) {
+	// lets lazy create the logger
+	opts.GitFactory.GetLogger()
 
 	cachingResolver := NewCachingRemoter(opts.CreateRemote)
 	usesResolver := cachingResolver.CreateRemote
