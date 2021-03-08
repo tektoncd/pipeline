@@ -180,3 +180,63 @@ func TestPipelineRunConversion(t *testing.T) {
 		}
 	}
 }
+
+// TestBetaPipelineRunRoundTripDown tests PipelineRun converting downwards from
+// v1beta1 to v1alpha1 and back again and to try and detect if information has
+// been lost in the transitions.
+func TestBetaPipelineRunRoundTripDown(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		in   *v1beta1.PipelineRun
+	}{{
+		name: "nested pipelinespec with finally",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskRef: &TaskRef{
+							Name: "taskref",
+						},
+					}},
+					Finally: []v1beta1.PipelineTask{{
+						Name: "finally1",
+						TaskRef: &TaskRef{
+							Name: "finallytaskref",
+						},
+					}},
+				},
+			},
+			Status: PipelineRunStatus{
+				PipelineRunStatusFields: PipelineRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now().Add(-4 * time.Minute)},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(-1 * time.Minute)},
+					TaskRuns: map[string]*PipelineRunTaskRunStatus{
+						"foo-run": {
+							PipelineTaskName: "foo",
+						},
+					},
+				},
+			},
+		},
+	}} {
+		t.Run(test.name, func(t *testing.T) {
+			alpha := &PipelineRun{}
+			beta := &v1beta1.PipelineRun{}
+			if err := alpha.ConvertFrom(context.Background(), test.in); err != nil {
+				t.Errorf("ConvertFrom() = %v", err)
+			}
+			if err := alpha.ConvertTo(context.Background(), beta); err != nil {
+				t.Errorf("ConvertTo() = %v", err)
+			}
+			if d := cmp.Diff(test.in, beta); d != "" {
+				t.Errorf("v1beta1 roundtrip %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
