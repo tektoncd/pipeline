@@ -36,6 +36,18 @@ func (source *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) 
 			return err
 		}
 		sink.Status = source.Status
+
+		spec := &v1beta1.PipelineSpec{}
+		if err := deserializeFinally(&sink.ObjectMeta, spec); err != nil {
+			return err
+		}
+		if len(spec.Finally) > 0 {
+			if sink.Spec.PipelineSpec == nil {
+				sink.Spec.PipelineSpec = spec
+			} else {
+				sink.Spec.PipelineSpec.Finally = spec.Finally
+			}
+		}
 		return nil
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -70,6 +82,13 @@ func (sink *PipelineRun) ConvertFrom(ctx context.Context, obj apis.Convertible) 
 			return err
 		}
 		sink.Status = source.Status
+
+		ps := source.Spec.PipelineSpec
+		if ps != nil && ps.Finally != nil {
+			if err := serializeFinally(&sink.ObjectMeta, ps.Finally); err != nil {
+				return err
+			}
+		}
 		return nil
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
