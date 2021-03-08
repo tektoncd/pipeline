@@ -58,12 +58,26 @@ spec:
       #check the state
       docker buildx inspect --bootstrap --builder builder-buildx1
 
-      #build multi-arch image
+      #build multi-arch original build-base image
       docker buildx build \
         --platform $(params.platforms) \
         --tag $(params.imageRegistry)/$(params.imageRegistryPath)/$(params.package)/build-base \
         --push \
         $(workspaces.source.path)/images
+
+      #build multi-arch git-init build-base image
+      docker buildx build \
+        --platform $(params.platforms) \
+        --tag $(params.imageRegistry)/$(params.imageRegistryPath)/$(params.package)/git-init-build-base \
+        --push \
+        $(workspaces.source.path)/images/git-init
+
+      #build multi-arch pullrequest-init build-base image
+      docker buildx build \
+        --platform $(params.platforms) \
+        --tag $(params.imageRegistry)/$(params.imageRegistryPath)/$(params.package)/pullrequest-init-build-base \
+        --push \
+        $(workspaces.source.path)/images/pullrequest-init
 
     volumeMounts:
     - mountPath: /certs/client
