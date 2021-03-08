@@ -749,11 +749,11 @@ spec:
   tasks:
     - name: tests
       taskRef:
-        Name: integration-test
+        name: integration-test
   finally:
     - name: cleanup-test
       taskRef:
-        Name: cleanup
+        name: cleanup
 ```
 
 ### Specifying `Workspaces` in Final Tasks
@@ -798,11 +798,11 @@ spec:
   tasks:
     - name: tests
       taskRef:
-        Name: integration-test
+        name: integration-test
   finally:
     - name: report-results
       taskRef:
-        Name: report-results
+        name: report-results
       params:
         - name: url
           value: "someURL"
