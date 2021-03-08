@@ -749,7 +749,7 @@ spec:
   tasks:
     - name: tests
       taskRef:
-        Name: integration-test
+        name: integration-test
   finally:
     - name: cleanup-test
       taskRef:
