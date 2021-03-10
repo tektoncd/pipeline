@@ -36,12 +36,12 @@ of the technology this project is built on. This project extends Kubernetes (aka
 
 At this point, you may find it useful to return to these `Tekton Pipeline` docs:
 
--   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) -
+-   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/main/docs/README.md) -
     Some of the terms here may make more sense!
 -   Install via
-    [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+    [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
--   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
+-   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
     Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
     they are run
     

@@ -11,7 +11,7 @@ This section provides guidelines for running Tekton on your local workstation vi
 
 Complete these prerequisites to run Tekton locally using Docker Desktop:
 
-- Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
+- Install the [required tools](https://github.com/tektoncd/pipeline/blob/main/DEVELOPMENT.md#requirements).
 - Install [Docker Desktop](https://www.docker.com/products/docker-desktop) 
 - Configure Docker Desktop ([Mac](https://docs.docker.com/docker-for-mac/#resources), [Windows](https://docs.docker.com/docker-for-windows/#resources))to use six CPUs, 10 GB of RAM and 2GB of swap space.
 - Set `host.docker.internal:5000` as an insecure registry with Docker for Desktop. See the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
@@ -50,7 +50,7 @@ You must reconfigure any `image` resource definitions in your `PipelineResources
 
 Complete these prerequisites to run Tekton locally using Minikube:
 
-- Install the [required tools](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
+- Install the [required tools](https://github.com/tektoncd/pipeline/blob/main/DEVELOPMENT.md#requirements).
 - Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a session as follows:
 ```bash
 minikube start --memory 6144 --cpus 2

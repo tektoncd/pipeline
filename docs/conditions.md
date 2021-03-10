@@ -93,7 +93,7 @@ The `description` field (optional) allows you to specify a meaningful descriptio
 
 ## Code examples
 
-For a better understanding of `Conditions`, study [our code examples](https://github.com/tektoncd/pipeline/tree/master/examples).
+For a better understanding of `Conditions`, study [our code examples](https://github.com/tektoncd/pipeline/tree/main/examples).
 
 ---
 

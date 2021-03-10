@@ -443,7 +443,7 @@ a `results` field but it's the responsibility of the `Task` to generate its cont
 It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
-You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/master/docs/variables.md#variables-available-in-a-task)
+You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)
 to avoid having to hardcode this path.
 
 In the example below, the `Task` specifies two files in the `results` field:
@@ -738,7 +738,7 @@ Study the following code examples to better understand how to configure your `Ta
 - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 
 _Tip: See the collection of simple
-[examples](https://github.com/tektoncd/pipeline/tree/master/examples) for
+[examples](https://github.com/tektoncd/pipeline/tree/main/examples) for
 additional code samples._
 
 ### Building and pushing a Docker image

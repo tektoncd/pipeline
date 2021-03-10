@@ -9,7 +9,7 @@ the pipelines repo, a terminal window and a text editor.
 1. `cd` to root of Pipelines git checkout.
 
 1. Select the commit you would like to build the release from, most likely the
-   most recent commit at https://github.com/tektoncd/pipeline/commits/master
+   most recent commit at https://github.com/tektoncd/pipeline/commits/main
    and note the commit's hash.
 
 1. Create environment variables for bash scripts in later steps.

@@ -20,7 +20,7 @@ The API is considered to consist of:
 - The structure of the [directories created in executing containers by Tekton](docs/tasks.md#reserved-directories)
 - The order that `PipelineResources` declared within a `Task` are applied in
 - The interfaces of the images that are built as part of Tekton Pipelines,
-  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/master/cmd) which are used as part of
+  i.e. images in [cmd](https://github.com/tektoncd/pipeline/tree/main/cmd) which are used as part of
   [PipelineResources](docs/resources.md)
 
 This policy is about changes to any of the above facets of the API.
@@ -83,5 +83,5 @@ These changes must be approved by [more than half of the project OWNERS](OWNERS)
 
 ## Deprecated Features
 
-Tekton Pipelines [maintains a list of features that have been deprecated](https://github.com/tektoncd/pipeline/tree/master/docs/deprecations.md)
+Tekton Pipelines [maintains a list of features that have been deprecated](https://github.com/tektoncd/pipeline/tree/main/docs/deprecations.md)
 which includes the earliest date each feature will be removed.
