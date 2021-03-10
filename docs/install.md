@@ -30,7 +30,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
    * **[Nightly](../tekton/README.md#nightly-releases)** - may contain bugs,
      install at your own risk. Nightlies live at `gcr.io/tekton-nightly`.
    * **[`HEAD`]** - this is the bleeding edge. It contains unreleased code that may result
-     in unpredictable behavior. To get started, see the [development guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md) instead of this page.
+     in unpredictable behavior. To get started, see the [development guide](https://github.com/tektoncd/pipeline/blob/main/DEVELOPMENT.md) instead of this page.
 
 1. Grant `cluster-admin` permissions to the current user.
 
@@ -279,7 +279,7 @@ The example below customizes the following:
 - the default service account from `default` to `tekton`.
 - the default timeout from 60 minutes to 20 minutes.
 - the default `app.kubernetes.io/managed-by` label is applied to all Pods created to execute `TaskRuns`.
-- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. A list of supported fields is available [here](https://github.com/tektoncd/pipeline/blob/master/docs/podtemplates.md#supported-fields).
+- the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. A list of supported fields is available [here](https://github.com/tektoncd/pipeline/blob/main/docs/podtemplates.md#supported-fields).
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
 - the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide
 
@@ -387,11 +387,11 @@ Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-s
 
 ## Creating a custom release of Tekton Pipelines
 
-You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
+You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/main/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
 
 ## Next steps
 
-To get started with Tekton Pipelines, see the [Tekton Pipelines Tutorial](./tutorial.md) and take a look at our [examples](https://github.com/tektoncd/pipeline/tree/master/examples).
+To get started with Tekton Pipelines, see the [Tekton Pipelines Tutorial](./tutorial.md) and take a look at our [examples](https://github.com/tektoncd/pipeline/tree/main/examples).
 
 ---
 

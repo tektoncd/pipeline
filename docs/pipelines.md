@@ -1082,7 +1082,7 @@ In this example, `pipelineResults` in `status` will exclude the name-value pair 
 can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
 For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.
 
-A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/master/docs/runs.md) instead of a `TaskRun`.
+A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md) instead of a `TaskRun`.
 In order for a custom task to execute, there must be a custom task controller running on the cluster
 that is responsible for watching and updating `Run`s which reference their type. 
 If no such controller is running, those `Run`s will never complete and Pipelines using them will time out.
@@ -1175,7 +1175,7 @@ Pipelines do not support the following items with custom tasks:
 
 ## Code examples
 
-For a better understanding of `Pipelines`, study [our code examples](https://github.com/tektoncd/pipeline/tree/master/examples).
+For a better understanding of `Pipelines`, study [our code examples](https://github.com/tektoncd/pipeline/tree/main/examples).
 
 ---
 

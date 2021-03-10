@@ -439,7 +439,7 @@ workspaces:
 ```
 
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
-a [pull request](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
+a [pull request](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md).
 
 ## Using Persistent Volumes within a `PipelineRun`
 

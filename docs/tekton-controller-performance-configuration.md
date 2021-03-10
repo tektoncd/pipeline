@@ -22,7 +22,7 @@ This document will show us how to configure [tekton-pipeline-controller](./../co
 #### Configure Thread, QPS and Burst
 
 ---
-Default, the value of ThreadsPerController, QPS and Burst is [2](https://github.com/knative/pkg/blob/master/controller/controller.go#L58), [5.0](https://github.com/tektoncd/pipeline/blob/master/vendor/k8s.io/client-go/rest/config.go#L44) and [10](https://github.com/tektoncd/pipeline/blob/master/vendor/k8s.io/client-go/rest/config.go#L45) accordingly.
+Default, the value of ThreadsPerController, QPS and Burst is [2](https://github.com/knative/pkg/blob/master/controller/controller.go#L58), [5.0](https://github.com/tektoncd/pipeline/blob/main/vendor/k8s.io/client-go/rest/config.go#L44) and [10](https://github.com/tektoncd/pipeline/blob/main/vendor/k8s.io/client-go/rest/config.go#L45) accordingly.
 
 Sometimes, above default values can't meet performance requirements, then you need to overwrite these values. You can modify them in the [tekton controller deployment](./../config/controller.yaml). You can specify these customized values in the `tekton-pipelines-controller` container via `threads-per-controller`, `kube-api-qps` and `kube-api-burst` flags accordingly. For example:
 
