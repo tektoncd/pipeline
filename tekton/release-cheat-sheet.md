@@ -158,7 +158,7 @@ Congratulations, you're done!
 ## Setup dogfooding context
 
 1. Configure `kubectl` to connect to
-   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/master/docs/dogfooding.md):
+   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
     ```bash
     gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases

@@ -367,7 +367,7 @@ test/presubmit-tests.sh --unit-tests
 ```
 
 Prow is configured in
-[the knative `config.yaml` in `tektoncd/plumbing`](https://github.com/tektoncd/plumbing/blob/master/ci/prow/config.yaml)
+[the knative `config.yaml` in `tektoncd/plumbing`](https://github.com/tektoncd/plumbing/blob/main/ci/prow/config.yaml)
 via the sections for `tektoncd/pipeline`.
 
 ### Running presubmit integration tests
@@ -379,9 +379,9 @@ The presubmit integration tests entrypoint will run:
 
 When run using Prow, integration tests will try to get a new cluster using
 [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and
-[these hardcoded GKE projects](https://github.com/tektoncd/plumbing/blob/master/ci/prow/boskos/resources.yaml#L15),
+[these hardcoded GKE projects](https://github.com/tektoncd/plumbing/blob/main/ci/prow/boskos/resources.yaml#L15),
 which only
-[the `tektoncd/plumbing` OWNERS](https://github.com/tektoncd/plumbing/blob/master/OWNERS)
+[the `tektoncd/plumbing` OWNERS](https://github.com/tektoncd/plumbing/blob/main/OWNERS)
 have access to.
 
 If you would like to run the integration tests against your cluster, you can use
