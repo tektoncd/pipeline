@@ -822,33 +822,6 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			Paths:   []string{"tasks[1].name"},
 		},
 	}, {
-		name:  "pipeline task with empty task name",
-		tasks: []PipelineTask{{Name: "", TaskRef: &TaskRef{Name: "foo-task"}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value ""`,
-			Paths:   []string{"tasks[0].name"},
-			Details: "Pipeline Task name must be a valid DNS Label." +
-				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		},
-	}, {
-		name:  "pipeline task with invalid task name",
-		tasks: []PipelineTask{{Name: "_foo", TaskRef: &TaskRef{Name: "foo-task"}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value "_foo"`,
-			Paths:   []string{"tasks[0].name"},
-			Details: "Pipeline Task name must be a valid DNS Label." +
-				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		},
-	}, {
-		name:  "pipeline task with invalid task name (camel case)",
-		tasks: []PipelineTask{{Name: "fooTask", TaskRef: &TaskRef{Name: "foo-task"}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value "fooTask"`,
-			Paths:   []string{"tasks[0].name"},
-			Details: "Pipeline Task name must be a valid DNS Label." +
-				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		},
-	}, {
 		name:  "pipeline task with invalid taskref name",
 		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: "_foo-task"}}},
 		expectedError: apis.FieldError{

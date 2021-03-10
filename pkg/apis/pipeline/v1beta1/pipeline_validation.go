@@ -89,21 +89,9 @@ func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks
 	return errs
 }
 
-func validatePipelineTaskName(name string) *apis.FieldError {
-	if err := validation.IsDNS1123Label(name); len(err) > 0 {
-		return &apis.FieldError{
-			Message: fmt.Sprintf("invalid value %q", name),
-			Paths:   []string{"name"},
-			Details: "Pipeline Task name must be a valid DNS Label." +
-				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		}
-	}
-	return nil
-}
-
 func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.String) *apis.FieldError {
 	cfg := config.FromContextOrDefaults(ctx)
-	errs := validatePipelineTaskName(t.Name)
+	errs := t.ValidateName()
 
 	hasTaskRef := t.TaskRef != nil
 	hasTaskSpec := t.TaskSpec != nil
