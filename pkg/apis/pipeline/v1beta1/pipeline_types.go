@@ -17,9 +17,13 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"knative.dev/pkg/apis"
 )
 
 // +genclient
@@ -167,6 +171,18 @@ func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 
 func (pt PipelineTask) HashKey() string {
 	return pt.Name
+}
+
+func (pt PipelineTask) ValidateName() *apis.FieldError {
+	if err := validation.IsDNS1123Label(pt.Name); len(err) > 0 {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("invalid value %q", pt.Name),
+			Paths:   []string{"name"},
+			Details: "Pipeline Task name must be a valid DNS Label." +
+				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+		}
+	}
+	return nil
 }
 
 func (pt PipelineTask) Deps() []string {

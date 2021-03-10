@@ -19,11 +19,11 @@ package v1beta1
 import (
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/diff"
-
 	"github.com/google/go-cmp/cmp"
-
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"knative.dev/pkg/apis"
 )
 
 func TestPipelineTaskList_Names(t *testing.T) {
@@ -37,6 +37,47 @@ func TestPipelineTaskList_Names(t *testing.T) {
 	actualTaskNames := PipelineTaskList(tasks).Names()
 	if d := cmp.Diff(expectedTaskNames, actualTaskNames); d != "" {
 		t.Fatalf("Failed to get list of pipeline task names, diff: %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestPipelineTask_ValidateName(t *testing.T) {
+	pipelineTasks := []struct {
+		name    string
+		task    PipelineTask
+		message string
+	}{{
+		name:    "pipeline task with empty task name",
+		task:    PipelineTask{Name: ""},
+		message: `invalid value ""`,
+	}, {
+		name:    "pipeline task with invalid task name",
+		task:    PipelineTask{Name: "_foo"},
+		message: `invalid value "_foo"`,
+	}, {
+		name:    "pipeline task with invalid task name (camel case)",
+		task:    PipelineTask{Name: "fooTask"},
+		message: `invalid value "fooTask"`,
+	}}
+
+	// expected error if a task name is not valid
+	expectedError := apis.FieldError{
+		Paths: []string{"name"},
+		Details: "Pipeline Task name must be a valid DNS Label." +
+			"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+	}
+
+	for _, tc := range pipelineTasks {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.task.ValidateName()
+			if err == nil {
+				t.Error("PipelineTask.ValidateName() did not return error for invalid pipeline task name")
+			}
+			// error message changes for each test as it includes the task name in the message
+			expectedError.Message = tc.message
+			if d := cmp.Diff(expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("PipelineTask.ValidateName() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
