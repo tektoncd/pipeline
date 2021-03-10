@@ -29,7 +29,7 @@ This is an incomplete list of work we hope to tackle in 2021!
 * [Custom Tasks](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md) completion:
   * [Pipeline Results](https://github.com/tektoncd/pipeline/issues/3595)
   * Example controller for folks who want to create custom tasks
-  * Experimental custom tasks promotion (e.g. [CELRun](https://github.com/tektoncd/experimental/tree/master/cel)):
+  * Experimental custom tasks promotion (e.g. [CELRun](https://github.com/tektoncd/experimental/tree/main/cel)):
     * Plan around how to promote (what requirements, process)
     * Continuous integration + release automation
     * Documentation and examples at tekton.dev

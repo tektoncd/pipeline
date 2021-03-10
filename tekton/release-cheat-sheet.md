@@ -57,7 +57,7 @@ the pipelines repo, a terminal window and a text editor.
 
    ```bash
    tkn pr describe <pipeline-run-name>
-   
+
    (...)
    📝 Results
 
@@ -65,7 +65,7 @@ the pipelines repo, a terminal window and a text editor.
    ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
    ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
    ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
-   
+
    (...)
    ```
 
@@ -136,7 +136,7 @@ Congratulations, you're done!
 ## Setup dogfooding context
 
 1. Configure `kubectl` to connect to
-   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/master/docs/dogfooding.md):
+   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
     ```bash
     gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases

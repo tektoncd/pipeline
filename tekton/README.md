@@ -47,7 +47,7 @@ consumers of a project. In that case we'll make a patch release. To make one:
 ## Nightly releases
 
 [The nightly release pipeline](release-pipeline-nightly.yaml) is
-[triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/master/tekton).
+[triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/main/tekton).
 
 This Pipeline uses:
 
@@ -81,7 +81,7 @@ Add all the `Tasks` to the cluster, including the
 [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
 Tasks from the
 [`tektoncd/catalog`](https://github.com/tektoncd/catalog), and the
-[release](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release) Tasks from
+[release](https://github.com/tektoncd/plumbing/tree/main/tekton/resources/release) Tasks from
 [`tektoncd/plumbing`](https://github.com/tektoncd/plumbing).
 
 Use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
@@ -92,7 +92,7 @@ Install Task from plumbing too:
 # Apply the Tasks we are using from the catalog
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/resources/release/
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/main/tekton/resources/release/
 ```
 
 Apply the tasks from the `pipeline` repo:
@@ -126,9 +126,9 @@ In order to release, these Pipelines use the `release-right-meow` service accoun
 which uses `release-secret` and has
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
 access to
-[`tekton-releases`]((https://github.com/tektoncd/plumbing/blob/master/gcp.md))
+[`tekton-releases`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md))
 and
-[`tekton-releases-nightly`]((https://github.com/tektoncd/plumbing/blob/master/gcp.md)).
+[`tekton-releases-nightly`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md)).
 
 After creating these service accounts in GCP, the kubernetes service account and
 secret were created with:
