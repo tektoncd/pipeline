@@ -59,7 +59,7 @@ the pipelines repo, a terminal window and a text editor.
 1. Once the pipeline is complete, check its results:
 
    ```bash
-   tkn pr describe <pipeline-run-name>
+   tkn --context dogfooding pr describe <pipeline-run-name>
 
    (...)
    📝 Results
@@ -91,7 +91,7 @@ the pipelines repo, a terminal window and a text editor.
     1. Create a `PipelineResource` of type `git`
 
     ```shell
-    cat <<EOF | kubectl create -f -
+    cat <<EOF | kubectl --context dogfooding create -f -
     apiVersion: tekton.dev/v1alpha1
     kind: PipelineResource
     metadata:
