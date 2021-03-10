@@ -25,6 +25,7 @@ the pipelines repo, a terminal window and a text editor.
     ```bash
     git show $TEKTON_RELEASE_GIT_SHA
     ```
+
 1. Create a workspace template file:
 
    ```bash
@@ -47,6 +48,8 @@ the pipelines repo, a terminal window and a text editor.
       --serviceaccount=release-right-meow \
       --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param=serviceAccountPath=release.json \
+      --param=versionTag="${TEKTON_VERSION}" \
+      --param=releaseBucket=gs://tekton-releases/pipeline \
       --workspace name=release-secret,secret=release-secret \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
     ```
@@ -57,7 +60,7 @@ the pipelines repo, a terminal window and a text editor.
 
    ```bash
    tkn pr describe <pipeline-run-name>
-   
+
    (...)
    📝 Results
 
@@ -65,14 +68,14 @@ the pipelines repo, a terminal window and a text editor.
    ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
    ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
    ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
-   
+
    (...)
    ```
 
    The `commit-sha` should match `$TEKTON_RELEASE_GIT_SHA`.
    The two URLs can be opened in the browser or via `curl` to download the release manifests.
 
-1. The YAMLs are now released! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
+    1. The YAMLs are now released! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
 
     1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby".
        (Check the previous releases to avoid repetition: https://github.com/tektoncd/pipeline/releases.)
@@ -85,11 +88,30 @@ the pipelines repo, a terminal window and a text editor.
     TEKTON_PACKAGE=tektoncd/pipeline
     ```
 
+    1. Create a `PipelineResource` of type `git`
+
+    ```shell
+    cat <<EOF | kubectl create -f -
+    apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: tekton-pipelines-$(echo $TEKTON_VERSION | tr '.' '-')
+      namespace: default
+    spec:
+      type: git
+      params:
+        - name: url
+          value: 'https://github.com/tektoncd/pipeline'
+        - name: revision
+          value: ${TEKTON_RELEASE_GIT_SHA}
+    EOF
+    ```
+
     1. Execute the Draft Release task.
 
     ```bash
     tkn --context dogfooding task start \
-      -i source="${TEKTON_RELEASE_GIT_RESOURCE}" \
+      -i source="tekton-pipelines-$(echo $TEKTON_VERSION | tr '.' '-')" \
       -i release-bucket=pipeline-tekton-bucket \
       -p package="${TEKTON_PACKAGE}" \
       -p release-tag="${TEKTON_VERSION}" \
