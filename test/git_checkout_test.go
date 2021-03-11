@@ -48,9 +48,9 @@ func TestGitPipelineRun(t *testing.T) {
 		refspec   string
 		sslVerify string
 	}{{
-		name:     "tekton @ master",
+		name:     "tekton @ main",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
+		revision: "main",
 	}, {
 		name:     "tekton @ commit",
 		repo:     "https://github.com/tektoncd/pipeline",
@@ -68,24 +68,24 @@ func TestGitPipelineRun(t *testing.T) {
 		repo:     "https://github.com/tektoncd/pipeline",
 		revision: "refs/pull/347/head",
 	}, {
-		name:     "tekton @ master with refspec",
+		name:     "tekton @ main with refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
-		refspec:  "refs/tags/v0.1.0:refs/tags/v0.1.0 refs/heads/master:refs/heads/master",
+		revision: "main",
+		refspec:  "refs/tags/v0.1.0:refs/tags/v0.1.0 refs/heads/main:refs/heads/main",
 	}, {
 		name:     "tekton @ commit with PR refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
 		revision: "968d5d37a61bfb85426c885dc1090c1cc4b33436",
 		refspec:  "refs/pull/1009/head",
 	}, {
-		name:     "tekton @ master with PR refspec",
+		name:     "tekton @ main with PR refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
-		refspec:  "refs/pull/1009/head:refs/heads/master",
+		revision: "main",
+		refspec:  "refs/pull/1009/head:refs/heads/main",
 	}, {
-		name:      "tekton @ master with sslverify=false",
+		name:      "tekton @ main with sslverify=false",
 		repo:      "https://github.com/tektoncd/pipeline",
-		revision:  "master",
+		revision:  "main",
 		sslVerify: "false",
 	}, {
 		name:     "non-master repo with default revision",
