@@ -1,8 +1,7 @@
 defaultBaseImage: gcr.io/distroless/static:nonroot
 baseImageOverrides:
   # git-init uses a base image that supports running either as root or as user nonroot with UID 65532.
-  github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/build-base:latest
+  github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/git-init-build-base:latest
 
-  # PullRequest resource needs root because in output mode it needs to access pr.json
-  # which might have been copied or written with any level of permissions.
-  github.com/tektoncd/pipeline/cmd/pullrequest-init: gcr.io/distroless/static:latest
+  # PullRequest resource uses a distroless base image that supports running either as root or as user nonroot with UID 65532.
+  github.com/tektoncd/pipeline/cmd/pullrequest-init: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/pullrequest-init-build-base:latest

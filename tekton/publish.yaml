@@ -64,11 +64,11 @@ spec:
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/build-base:latest
+        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
 
         # These match values configured in .ko.yaml
         $(params.package)/cmd/entrypoint: gcr.io/distroless/base:debug-nonroot
-        $(params.package)/cmd/pullrequest-init: gcr.io/distroless/static:latest
+        $(params.package)/cmd/pullrequest-init: ${CONTAINER_REGISTRY}/$(params.package)/pullrequest-init-build-base:latest
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml
