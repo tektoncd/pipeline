@@ -643,7 +643,11 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 					return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
 				}
 			} else {
-				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+				if rprt.IsFinalTask(pipelineRunFacts) {
+					rprt.TaskRun, err = c.createFinallyTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+				} else {
+					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+				}
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 					return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -694,7 +698,17 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	return nil
 }
 
+type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration
+
 func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
+	return c.createTaskRunHelper(ctx, rprt, pr, storageBasePath, getTaskRunTimeout)
+}
+
+func (c *Reconciler) createFinallyTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
+	return c.createTaskRunHelper(ctx, rprt, pr, storageBasePath, getFinallyTaskRunTimeout)
+}
+
+func (c *Reconciler) createTaskRunHelper(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
@@ -722,7 +736,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Timeout:            getTaskRunTimeout(ctx, pr, rprt),
+			Timeout:            getTimeoutFunc(ctx, pr, rprt),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		}}
 
@@ -945,30 +959,58 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 	return annotations
 }
 
-func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
 	var timeout time.Duration
-	if pr.Spec.Timeout == nil {
+
+	if pr.Spec.Timeout != nil {
+		timeout = pr.Spec.Timeout.Duration
+	} else {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		timeout = defaultTimeout * time.Minute
-	} else {
-		timeout = pr.Spec.Timeout.Duration
 	}
 
 	// If the value of the timeout is 0 for any resource, there is no timeout.
 	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
+	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
+
+	return taskRunTimeout
+}
+
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
+
+	var timeout time.Duration
+
+	// TODO @souleb wrap into alpha feature flag
+	if pr.Spec.TasksTimeout != nil {
+		timeout = pr.Spec.TasksTimeout.Duration
+	} else if pr.Spec.Timeout != nil {
+		timeout = pr.Spec.Timeout.Duration
+	} else {
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		timeout = defaultTimeout * time.Minute
+	}
+
+	// If the value of the timeout is 0 for any resource, there is no timeout.
+	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
+	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
+
+	return taskRunTimeout
+}
+
+func taskRunTimeoutHelper(timeout time.Duration, pr *v1beta1.PipelineRun, taskRunTimeout *metav1.Duration, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pTimeoutTime := pr.Status.StartTime.Add(timeout)
 		if time.Now().After(pTimeoutTime) {
-			// Just in case something goes awry and we're creating the TaskRun after it should have already timed out,
-			// set the timeout to 1 second.
+
 			taskRunTimeout = &metav1.Duration{Duration: time.Until(pTimeoutTime)}
 			if taskRunTimeout.Duration < 0 {
 				taskRunTimeout = &metav1.Duration{Duration: 1 * time.Second}
 			}
 		} else {
-			// check if PipelineTask has a timeout specified
+
 			if rprt.PipelineTask.Timeout != nil {
 				taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 			} else {
@@ -977,11 +1019,9 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 		}
 	}
 
-	// check if PipelineTask has a timeout specified even if PipelineRun doesn't have a timeout
 	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
 		taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 	}
-
 	return taskRunTimeout
 }
 

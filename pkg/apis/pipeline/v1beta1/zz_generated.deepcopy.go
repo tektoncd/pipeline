@@ -650,6 +650,11 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		*out = make([]PipelineRunSpecServiceAccountName, len(*in))
 		copy(*out, *in)
 	}
+	if in.TasksTimeout != nil {
+		in, out := &in.TasksTimeout, &out.TasksTimeout
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(metav1.Duration)

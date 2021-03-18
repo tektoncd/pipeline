@@ -529,6 +529,13 @@ func PipelineRunNilTimeout(prs *v1beta1.PipelineRunSpec) {
 	prs.Timeout = nil
 }
 
+// PipelineRunTasksTimeout sets the timeout to the PipelineRunSpec.
+func PipelineRunTasksTimeout(duration time.Duration) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		prs.TasksTimeout = &metav1.Duration{Duration: duration}
+	}
+}
+
 // PipelineRunNodeSelector sets the Node selector to the PipelineRunSpec.
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {

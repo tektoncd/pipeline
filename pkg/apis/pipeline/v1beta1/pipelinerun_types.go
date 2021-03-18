@@ -174,6 +174,10 @@ type PipelineRunSpec struct {
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
+	// Time after which the Pipeline tasks time out.
+	// Finally tasks can run beyond this as they are bound to the pipeline timeout.
+	// +optional
+	TasksTimeout *metav1.Duration `json:"tasksTimeout,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
