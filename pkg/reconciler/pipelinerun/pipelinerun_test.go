@@ -2137,12 +2137,110 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 2 * time.Minute},
-	}}
+	}, {
+		name: "taskstimeout specified in pr",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: nil,
+			},
+		},
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "40m timeout duration, 20m taskstimeout duration",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: nil,
+			},
+		},
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "taskrun being created with taskstimeout for PipelineTask",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
+			},
+		},
+		expected: &metav1.Duration{Duration: 2 * time.Minute},
+	},
+	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetFinallyTaskRunTimeout(t *testing.T) {
+	prName := "pipelinerun-finallyTimeouts"
+	ns := "foo"
+	p := "pipeline"
+
+	tcs := []struct {
+		name     string
+		pr       *v1beta1.PipelineRun
+		rprt     *resources.ResolvedPipelineRunTask
+		expected *metav1.Duration
+	}{{
+		name: "nil timeout duration",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunNilTimeout),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+		},
+		expected: &metav1.Duration{Duration: 60 * time.Minute},
+	}, {
+		name: "timeout specified in pr",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+		},
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "taskrun being created after timeout expired",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(1*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now().Add(-2*time.Minute)))),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+		},
+		expected: &metav1.Duration{Duration: 1 * time.Second},
+	}, {
+		name: "40m timeout duration, 20m taskstimeout duration",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+		},
+		expected: &metav1.Duration{Duration: 40 * time.Minute},
+	},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt)); d != "" {
+				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

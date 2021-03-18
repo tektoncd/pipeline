@@ -219,6 +219,11 @@ func (t *ResolvedPipelineRunTask) parentTasksSkip(facts *PipelineRunFacts) bool 
 	return false
 }
 
+// IsFinalTask returns true if a task is a finally task
+func (t *ResolvedPipelineRunTask) IsFinalTask(facts *PipelineRunFacts) bool {
+	return facts.isFinalTask(t.PipelineTask.Name)
+}
+
 // IsFinallySkipped returns true if a finally task is not executed and skipped due to task result validation failure
 func (t *ResolvedPipelineRunTask) IsFinallySkipped(facts *PipelineRunFacts) bool {
 	if t.IsStarted() {

@@ -59,6 +59,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					Name: "prname",
 				},
 			},
+<<<<<<< HEAD
 		},
 		want: &apis.FieldError{
 			Message: `invalid resource name "pipelinerun,name": must be a valid DNS label`,
@@ -69,6 +70,50 @@ func TestPipelineRun_Invalid(t *testing.T) {
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinelinename",
+=======
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
+		}, {
+			name: "negative pipeline tasksTimeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					TasksTimeout: &metav1.Duration{Duration: -48 * time.Hour},
+				},
+			},
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.tasksTimeout"),
+		}, {
+			name: "pipeline tasksTimeout > pipeline Timeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					TasksTimeout: &metav1.Duration{Duration: 1 * time.Hour},
+					Timeout:      &metav1.Duration{Duration: 25 * time.Minute},
+				},
+			},
+			want: apis.ErrInvalidValue("1h0m0s should be <= Timeout duration", "spec.tasksTimeout"),
+		}, {
+			name: "wrong pipelinerun cancel",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Status: "PipelineRunCancell",
+				},
+>>>>>>> Add a TaskTimeout optional field to pipelinerun type
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{
@@ -202,6 +247,19 @@ func TestPipelineRun_Validate(t *testing.T) {
 					Name: "prname",
 				},
 				Timeout: &metav1.Duration{Duration: 0},
+			},
+		},
+	}, {
+		name: "no tasksTimeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelineName",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				TasksTimeout: &metav1.Duration{Duration: 0},
 			},
 		},
 	}, {

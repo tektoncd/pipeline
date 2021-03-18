@@ -179,6 +179,7 @@ func TestPipelineRun(t *testing.T) {
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
 		tb.PipelineRunTimeout(1*time.Hour),
+		tb.PipelineRunTasksTimeout(50*time.Minute),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
 		tb.PipelineRunPipelineRefBundle("/some/registry"),
@@ -209,7 +210,8 @@ func TestPipelineRun(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:      &metav1.Duration{Duration: 1 * time.Hour},
+			TasksTimeout: &metav1.Duration{Duration: 50 * time.Minute},
 			Resources: []v1beta1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: &v1beta1.PipelineResourceRef{
@@ -244,6 +246,7 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
 		tb.PipelineRunTimeout(1*time.Hour),
+		tb.PipelineRunTasksTimeout(50*time.Minute),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
 		tb.PipelineRunNodeSelector(map[string]string{
@@ -276,7 +279,8 @@ func TestPipelineRunWithPodTemplate(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:      &metav1.Duration{Duration: 1 * time.Hour},
+			TasksTimeout: &metav1.Duration{Duration: 50 * time.Minute},
 			Resources: []v1beta1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: &v1beta1.PipelineResourceRef{
@@ -316,6 +320,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 		tb.PipelineRunParam("first-param-string", "first-value"),
 		tb.PipelineRunParam("second-param-array", "some", "array"),
 		tb.PipelineRunTimeout(1*time.Hour),
+		tb.PipelineRunTasksTimeout(50*time.Minute),
 		tb.PipelineRunResourceBinding("some-resource",
 			tb.PipelineResourceBindingResourceSpec(&resource.PipelineResourceSpec{
 				Type: v1beta1.PipelineResourceTypeGit,
@@ -351,7 +356,8 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *v1beta1.NewArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:      &metav1.Duration{Duration: 1 * time.Hour},
+			TasksTimeout: &metav1.Duration{Duration: 50 * time.Minute},
 			Resources: []v1beta1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceSpec: &resource.PipelineResourceSpec{

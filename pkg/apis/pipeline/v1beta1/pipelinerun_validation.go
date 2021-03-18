@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -83,6 +84,24 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		// timeout should be a valid duration of at least 0.
 		if ps.Timeout.Duration < 0 {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeout.Duration.String()), "timeout"))
+		}
+	}
+
+	if ps.TasksTimeout != nil {
+		// tasksTimeout should be a valid duration of at least 0.
+		if ps.TasksTimeout.Duration < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
+		}
+
+		if ps.Timeout != nil {
+			if ps.TasksTimeout.Duration > ps.Timeout.Duration {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= timeout duration", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
+			}
+		} else {
+			defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+			if ps.TasksTimeout.Duration > defaultTimeout {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= default timeout duration", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
+			}
 		}
 	}
 
