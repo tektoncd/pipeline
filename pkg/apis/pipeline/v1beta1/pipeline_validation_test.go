@@ -52,7 +52,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
 		},
-		wc: enableFeature(t, "enable-custom-tasks"),
+		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "valid pipeline with params, resources, workspaces, task results, and pipeline results",
 		p: &Pipeline{
@@ -166,37 +166,6 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			Message: `expected at least one, got none`,
 			Paths:   []string{"spec.description", "spec.params", "spec.resources", "spec.tasks", "spec.workspaces"},
 		},
-	}, {
-		name: "use of bundle without the feature flag set",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-					TaskRef: &TaskRef{
-						Name:   "bar",
-						Bundle: "docker.io/foo",
-					},
-				}},
-			},
-		},
-		expectedError: *apis.ErrDisallowedFields("spec.tasks[0].taskref.bundle"),
-	}, {
-		name: "bundle invalid reference",
-		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: PipelineSpec{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-					TaskRef: &TaskRef{
-						Name:   "bar",
-						Bundle: "invalid reference",
-					},
-				}},
-			},
-		},
-		expectedError: *apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "spec.tasks[0].taskref.bundle"),
-		wc:            enableFeature(t, "enable-tekton-oci-bundles"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -748,70 +717,13 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 	}
 }
 
-func TestValidatePipelineTasks_Success(t *testing.T) {
-	tests := []struct {
-		name  string
-		tasks []PipelineTask
-	}{{
-		name: "pipeline task with valid taskref name",
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			TaskRef: &TaskRef{Name: "example.com/my-foo-task"},
-		}},
-	}, {
-		name: "pipeline task with valid taskspec",
-		tasks: []PipelineTask{{
-			Name:     "foo",
-			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
-		}},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePipelineTasks(context.Background(), tt.tasks, []PipelineTask{})
-			if err != nil {
-				t.Errorf("Pipeline.validatePipelineTasks() returned error for valid pipeline tasks: %v", err)
-			}
-		})
-	}
-}
-
 func TestValidatePipelineTasks_Failure(t *testing.T) {
 	tests := []struct {
 		name          string
 		tasks         []PipelineTask
+		finalTasks    []PipelineTask
 		expectedError apis.FieldError
-		wc            func(context.Context) context.Context
 	}{{
-		name: "pipeline task missing taskref and taskspec",
-		tasks: []PipelineTask{{
-			Name: "foo",
-		}},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got neither`,
-			Paths:   []string{"tasks[0].taskRef", "tasks[0].taskSpec"},
-		},
-	}, {
-		name: "pipeline task with both taskref and taskspec",
-		tasks: []PipelineTask{{
-			Name:     "foo",
-			TaskRef:  &TaskRef{Name: "foo-task"},
-			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
-		}},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"tasks[0].taskRef", "tasks[0].taskSpec"},
-		},
-	}, {
-		name: "pipeline task with invalid taskspec",
-		tasks: []PipelineTask{{
-			Name:     "foo",
-			TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `missing field(s)`,
-			Paths:   []string{"tasks[0].taskSpec.steps"},
-		},
-	}, {
 		name: "pipeline tasks invalid (duplicate tasks)",
 		tasks: []PipelineTask{
 			{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}},
@@ -821,91 +733,15 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			Message: `expected exactly one, got both`,
 			Paths:   []string{"tasks[1].name"},
 		},
-	}, {
-		name:  "pipeline task with invalid taskref name",
-		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: "_foo-task"}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')`,
-			Paths:   []string{"tasks[0].name"},
-		},
-	}, {
-		name:  "pipelinetask taskRef without name",
-		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: ""}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: taskRef must specify name`,
-			Paths:   []string{"tasks[0].taskRef.name"},
-		},
-	}, {
-		name:  "pipelinetask custom task taskRef without kind",
-		tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "", Name: ""}}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom task ref must specify kind`,
-			Paths:   []string{"tasks[0].taskRef.kind"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
-	}, {
-		name: "pipelinetask custom task doesn't support conditions",
-		tasks: []PipelineTask{{
-			Name: "foo",
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-			}},
-			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support conditions - use when expressions instead`,
-			Paths:   []string{"tasks[0].conditions"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
-	}, {
-		name: "pipelinetask custom task doesn't support retries",
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			Retries: 3,
-			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support retries`,
-			Paths:   []string{"tasks[0].retries"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
-	}, {
-		name: "pipelinetask custom task doesn't support pipeline resources",
-		tasks: []PipelineTask{{
-			Name:      "foo",
-			Resources: &PipelineTaskResources{},
-			TaskRef:   &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support PipelineResources`,
-			Paths:   []string{"tasks[0].resources"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
-	}, {
-		name: "pipelinetask custom task doesn't support timeout",
-		tasks: []PipelineTask{{
-			Name:    "foo",
-			Timeout: &metav1.Duration{Duration: time.Duration(3)},
-			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support timeout`,
-			Paths:   []string{"tasks[0].timeout"},
-		},
-		wc: enableFeature(t, "enable-custom-tasks"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tt.wc != nil {
-				ctx = tt.wc(ctx)
-			}
-			err := ValidatePipelineTasks(ctx, tt.tasks, []PipelineTask{})
+			err := ValidatePipelineTasks(context.Background(), tt.tasks, tt.finalTasks)
 			if err == nil {
-				t.Error("Pipeline.validatePipelineTasks() did not return error for invalid pipeline tasks")
+				t.Error("ValidatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+				t.Errorf("ValidatePipelineTasks() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -2630,14 +2466,16 @@ func getTaskSpec() TaskSpec {
 	}
 }
 
-func enableFeature(t *testing.T, feature string) func(context.Context) context.Context {
+func enableFeatures(t *testing.T, features []string) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		s := config.NewStore(logtesting.TestLogger(t))
+		data := make(map[string]string)
+		for _, f := range features {
+			data[f] = "true"
+		}
 		s.OnConfigChanged(&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data: map[string]string{
-				feature: "true",
-			},
+			Data:       data,
 		})
 		return s.ToContext(ctx)
 	}
