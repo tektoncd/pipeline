@@ -20,6 +20,7 @@ package test
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -122,8 +123,10 @@ func TestTaskRunFailure(t *testing.T) {
 	}
 
 	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
-	if !ok || releaseAnnotation != "devel" {
-		t.Fatalf("expected Taskrun to be annotated with %s=devel, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
+	// Nightly release tag looks like v20210323-0593c7bef3
+	nightlyReleaseRegexp := regexp.MustCompile("^v[0-9]{8}-[0-9a-z]{10}$")
+	if !ok || !(releaseAnnotation == "devel" || nightlyReleaseRegexp.MatchString(releaseAnnotation)) {
+		t.Fatalf("expected Taskrun to be annotated with %s=devel or with nightly release tag, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
 	}
 }
 
