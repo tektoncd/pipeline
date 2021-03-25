@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: hello-
+spec:
+  params:
+    - name: message
+      value: "hello world!"
+  taskSpec:
+    # There are no explicit params defined here. They are derived from the TaskRun.
+    steps:
+    - name: default
+      image: ubuntu
+      script: |
+        echo $(params.message)
