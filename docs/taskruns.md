@@ -163,6 +163,69 @@ spec:
 
 **Note:** If a parameter does not have an implicit default value, you must explicitly set its value.
 
+#### Implicit Parameters
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an inlined `taskSpec`, parameters from the parent `TaskRun` will be
+available to the `Task` without needing to be explicitly defined.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: hello-
+spec:
+  params:
+    - name: message
+      value: "hello world!"
+  taskSpec:
+    # There are no explicit params defined here.
+    # They are derived from the TaskRun params above.
+    steps:
+    - name: default
+      image: ubuntu
+      script: |
+        echo $(params.message)
+```
+
+On creation, this will resolve to a fully-formed spec and will be returned back
+to clients to avoid ambiguity:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: hello-
+spec:
+  params:
+    - name: message
+      value: "hello world!"
+  taskSpec:
+    params:
+    - name: message
+      type: string
+    steps:
+    - name: default
+      image: ubuntu
+      script: |
+        echo $(params.message)
+```
+
+Note that all implicit Parameters will be passed through to inlined resource,
+even if they are not used. Extra parameters passed this way should generally
+be safe (since they aren't actually used), but may result in more verbose specs
+being returned by the API.
+
+#### Extra Parameters
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+You can pass in extra `Parameters` if needed depending on your use cases. An example use
+case is when your CI system autogenerates `TaskRuns` and it has `Parameters` it wants to
+provide to all `TaskRuns`. Because you can pass in extra `Parameters`, you don't have to
+go through the complexity of checking each `Task` and providing only the required params.
+
 ### Specifying `Resources`
 
 If a `Task` requires [`Resources`](tasks.md#specifying-resources) (that is, `inputs` and `outputs`) you must

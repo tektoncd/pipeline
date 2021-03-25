@@ -17,9 +17,11 @@ limitations under the License.
 package taskrun_test
 
 import (
+	"context"
 	"testing"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
@@ -27,6 +29,7 @@ import (
 )
 
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
+	ctx := context.Background()
 	task := tb.Task("foo", tb.TaskSpec(
 		tb.Step("myimage", tb.StepCommand("mycmd")),
 		tb.TaskResources(
@@ -55,12 +58,13 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 				tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeImage)),
 		},
 	}
-	if err := taskrun.ValidateResolvedTaskResources([]v1beta1.Param{}, rtr); err != nil {
+	if err := taskrun.ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
 }
 
 func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
+	ctx := context.Background()
 	task := tb.Task("foo", tb.TaskSpec(
 		tb.Step("myimage", tb.StepCommand("mycmd")),
 		tb.TaskParam("foo", v1beta1.ParamTypeString),
@@ -76,12 +80,24 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		Name:  "bar",
 		Value: *v1beta1.NewArrayOrString("somethinggood"),
 	}}
-	if err := taskrun.ValidateResolvedTaskResources(p, rtr); err != nil {
+	if err := taskrun.ValidateResolvedTaskResources(ctx, p, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
+
+	t.Run("alpha-extra-params", func(t *testing.T) {
+		ctx := config.ToContext(ctx, &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
+		extra := v1beta1.Param{
+			Name:  "extra",
+			Value: *v1beta1.NewArrayOrString("i am an extra param"),
+		}
+		if err := taskrun.ValidateResolvedTaskResources(ctx, append(p, extra), rtr); err != nil {
+			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+		}
+	})
 }
 
 func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
+	ctx := context.Background()
 	task := tb.Task("foo", tb.TaskSpec(
 		tb.Step("myimage", tb.StepCommand("mycmd")),
 		tb.TaskParam("foo", v1beta1.ParamTypeString),
@@ -99,22 +115,10 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 			Name:  "foobar",
 			Value: *v1beta1.NewArrayOrString("somethingfun"),
 		}},
-	}, {
-		name: "missing-params",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &task.Spec,
-		},
-		params: []v1beta1.Param{{
-			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("i am a real param"),
-		}, {
-			Name:  "extra",
-			Value: *v1beta1.NewArrayOrString("i am an extra param"),
-		}},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateResolvedTaskResources(tc.params, tc.rtr); err == nil {
+			if err := taskrun.ValidateResolvedTaskResources(ctx, tc.params, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
 			}
 		})
@@ -122,6 +126,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 }
 
 func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
+	ctx := context.Background()
 	r := tb.PipelineResource("git-test-resource", tb.PipelineResourceSpec(
 		resourcev1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("foo", "bar"),
@@ -245,7 +250,7 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateResolvedTaskResources([]v1beta1.Param{}, tc.rtr); err == nil {
+			if err := taskrun.ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})

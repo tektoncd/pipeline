@@ -64,6 +64,9 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 
 	// If this taskrun has an embedded task, apply the usual task defaults
 	if trs.TaskSpec != nil {
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+			ctx = AddContextParams(ctx, trs.Params)
+		}
 		trs.TaskSpec.SetDefaults(ctx)
 	}
 }

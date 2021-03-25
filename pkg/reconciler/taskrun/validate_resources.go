@@ -17,8 +17,10 @@ limitations under the License.
 package taskrun
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
@@ -64,7 +66,7 @@ func validateResources(requiredResources []v1beta1.TaskResource, providedResourc
 	return nil
 }
 
-func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) error {
+func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) error {
 	var neededParams []string
 	paramTypes := make(map[string]v1beta1.ParamType)
 	neededParams = make([]string, 0, len(paramSpecs))
@@ -88,15 +90,27 @@ func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) erro
 	if len(missingParamsNoDefaults) > 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNoDefaults)
 	}
-	extraParams := list.DiffLeft(providedParams, neededParams)
-	if len(extraParams) != 0 {
-		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
+	// If alpha features are enabled, disable checking for extra params.
+	// Extra params are needed to support
+	// https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md
+	// So that parent params can be passed down to subresources (even if they
+	// are not explicitly used).
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != "alpha" {
+		extraParams := list.DiffLeft(providedParams, neededParams)
+		if len(extraParams) != 0 {
+			return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
+		}
 	}
 
 	// Now that we have checked against missing/extra params, make sure each param's actual type matches
 	// the user-specified type.
 	var wrongTypeParamNames []string
 	for _, param := range params {
+		if _, ok := paramTypes[param.Name]; !ok {
+			// Ignore any missing params - this happens when extra params were
+			// passed to the task that aren't being used.
+			continue
+		}
 		if param.Value.Type != paramTypes[param.Name] {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
@@ -109,8 +123,8 @@ func validateParams(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) erro
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(params []v1beta1.Param, rtr *resources.ResolvedTaskResources) error {
-	if err := validateParams(rtr.TaskSpec.Params, params); err != nil {
+func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, rtr *resources.ResolvedTaskResources) error {
+	if err := validateParams(ctx, rtr.TaskSpec.Params, params); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	inputs := []v1beta1.TaskResource{}

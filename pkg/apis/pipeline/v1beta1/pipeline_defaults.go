@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -29,7 +30,19 @@ func (p *Pipeline) SetDefaults(ctx context.Context) {
 }
 
 func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
-	for _, pt := range ps.Tasks {
+	for i := range ps.Params {
+		ps.Params[i].SetDefaults(ctx)
+	}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+		ctx = AddContextParamSpec(ctx, ps.Params)
+		ps.Params = GetContextParamSpecs(ctx)
+	}
+	for i, pt := range ps.Tasks {
+		ctx := ctx // Ensure local scoping per Task
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+			ctx = AddContextParams(ctx, pt.Params)
+			ps.Tasks[i].Params = GetContextParams(ctx, pt.Params...)
+		}
 		if pt.TaskRef != nil {
 			if pt.TaskRef.Kind == "" {
 				pt.TaskRef.Kind = NamespacedTaskKind
@@ -39,10 +52,13 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 			pt.TaskSpec.SetDefaults(ctx)
 		}
 	}
-	for i := range ps.Params {
-		ps.Params[i].SetDefaults(ctx)
-	}
-	for _, ft := range ps.Finally {
+
+	for i, ft := range ps.Finally {
+		ctx := ctx // Ensure local scoping per Task
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+			ctx = AddContextParams(ctx, ft.Params)
+			ps.Finally[i].Params = GetContextParams(ctx, ft.Params...)
+		}
 		if ft.TaskRef != nil {
 			if ft.TaskRef.Kind == "" {
 				ft.TaskRef.Kind = NamespacedTaskKind
