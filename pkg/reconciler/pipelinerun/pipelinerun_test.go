@@ -41,6 +41,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -2846,9 +2847,18 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 		t.Errorf("expected one PVC created. %d was created", len(pvcNames))
 	}
 
-	expectedPVCName := fmt.Sprintf("%s-%s", claimName, "cab465d09a")
-	if pvcNames[0] != expectedPVCName {
-		t.Errorf("expected the created PVC to be named %s. It was named %s", expectedPVCName, pvcNames[0])
+	for _, pr := range prs {
+		for _, w := range pr.Spec.Workspaces {
+			expectedPVCName := volumeclaim.GetPersistentVolumeClaimName(&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: w.VolumeClaimTemplate.Name,
+				},
+			}, w, pr.GetOwnerReference())
+			_, err := clients.Kube.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(prt.TestAssets.Ctx, expectedPVCName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
+			}
+		}
 	}
 
 	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})

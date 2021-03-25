@@ -2982,12 +2982,15 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		if w.PersistentVolumeClaim != nil {
 			t.Fatalf("expected workspace from volumeClaimTemplate to be translated to PVC")
 		}
-	}
-
-	expectedPVCName := fmt.Sprintf("%s-%s", claimName, "a521418087")
-	_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(testAssets.Ctx, expectedPVCName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
+		expectedPVCName := volumeclaim.GetPersistentVolumeClaimName(&corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: w.VolumeClaimTemplate.Name,
+			},
+		}, w, ttt.GetOwnerReference())
+		_, err = clients.Kube.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(testAssets.Ctx, expectedPVCName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
+		}
 	}
 }
 

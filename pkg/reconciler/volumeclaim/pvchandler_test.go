@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -69,7 +70,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ownerRef := metav1.OwnerReference{Name: ownerName}
+	ownerRef := metav1.OwnerReference{UID: types.UID(ownerName)}
 	namespace := "ns"
 	fakekubeclient := fakek8s.NewSimpleClientset()
 	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
@@ -110,7 +111,7 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 		t.Fatalf("unexpected number of ownerreferences on created PVC; expected: %d got %d", expectedNumberOfOwnerRefs, len(pvc.OwnerReferences))
 	}
 
-	if pvc.OwnerReferences[0].Name != ownerName {
+	if string(pvc.OwnerReferences[0].UID) != ownerName {
 		t.Fatalf("unexptected name in ownerreference on created PVC; expected: %s got %s", ownerName, pvc.OwnerReferences[0].Name)
 	}
 }
@@ -134,7 +135,7 @@ func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ownerRef := metav1.OwnerReference{Name: ownerName}
+	ownerRef := metav1.OwnerReference{UID: types.UID(ownerName)}
 	namespace := "ns"
 	fakekubeclient := fakek8s.NewSimpleClientset()
 	pvcHandler := defaultPVCHandler{fakekubeclient, zap.NewExample().Sugar()}
