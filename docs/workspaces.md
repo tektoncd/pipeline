@@ -110,10 +110,6 @@ Note the following:
   **at most** one _writeable_ `Workspace`.
 - A `readOnly` `Workspace` will have its volume mounted as read-only. Attempting to write
   to a `readOnly` `Workspace` will result in errors and failed `TaskRuns`.
-- `mountPath` can be either absolute or relative. Absolute paths start with `/` and relative paths
-  start with the name of a directory. For example, a `mountPath` of `"/foobar"` is  absolute and exposes
-  the `Workspace` at `/foobar` inside the `Task's` `Steps`, but a `mountPath` of `"foobar"` is relative and
-  exposes the `Workspace` at `/workspace/foobar`.
 
 Below is an example `Task` definition that includes a `Workspace` called `messages` to which the `Task` writes a message:
 
