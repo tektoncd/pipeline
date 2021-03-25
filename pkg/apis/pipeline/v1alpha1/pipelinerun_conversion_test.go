@@ -173,7 +173,7 @@ func TestPipelineRunConversion(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got); d != "" {
+				if d := cmp.Diff(test.in, got, ignoreAnnotations); d != "" {
 					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 				}
 			})
@@ -181,10 +181,165 @@ func TestPipelineRunConversion(t *testing.T) {
 	}
 }
 
-// TestBetaPipelineRunRoundTripDown tests PipelineRun converting downwards from
+// TestBetaAnnotations checks that either a beta pipeline spec annotation or
+// beta finally annotation on a v1alpha1 resource gets correctly turned into
+// the pipelineSpec or finally they serialize.
+func TestBetaAnnotations(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   *PipelineRun
+		want *v1beta1.PipelineRun
+	}{{
+		name: "beta finally annotation with missing pipelineSpec",
+		in: &PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+				Annotations: map[string]string{
+					finallyAnnotationKey: `[{ "name": "task1", "taskRef": {"name": "t", "kind": "Task"} }]`,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Finally: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskRef: &v1beta1.TaskRef{
+							Kind: "Task",
+							Name: "t",
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "beta finally annotation with existing pipelineSpec",
+		in: &PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+				Annotations: map[string]string{
+					finallyAnnotationKey: `[{ "name": "task1", "taskRef": {"name": "t", "kind": "Task"} }]`,
+				},
+			},
+			Spec: PipelineRunSpec{
+				PipelineSpec: &PipelineSpec{
+					Tasks: []PipelineTask{{
+						Name: "task1",
+						TaskRef: &v1beta1.TaskRef{
+							Kind: "Task",
+							Name: "t",
+						},
+					}},
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskRef: &v1beta1.TaskRef{
+							Kind: "Task",
+							Name: "t",
+						},
+					}},
+					Finally: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskRef: &v1beta1.TaskRef{
+							Kind: "Task",
+							Name: "t",
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "beta pipeline spec annotation",
+		in: &PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+				Annotations: map[string]string{
+					V1Beta1PipelineSpecSerializedAnnotationKey: `{"tasks":[{ "name": "task1", "taskRef": {"name": "t", "kind": "Task"} }]}`,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskRef: &v1beta1.TaskRef{
+							Kind: "Task",
+							Name: "t",
+						},
+					}},
+				},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := &v1beta1.PipelineRun{}
+			if err := tc.in.ConvertTo(context.Background(), got); err != nil {
+				t.Errorf("ConvertTo() = %v", err)
+			}
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("unexpected difference in output of pipelinerun conversion: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestBetaPipelineSpecAnnotationErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   *PipelineRun
+	}{{
+		name: "invalid beta pipeline spec annotation",
+		in: &PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+				Annotations: map[string]string{
+					V1Beta1PipelineSpecSerializedAnnotationKey: `this json is invalid`,
+				},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := &v1beta1.PipelineRun{}
+			if err := tc.in.ConvertTo(context.Background(), got); err == nil {
+				t.Errorf("expected error but received none")
+			}
+		})
+	}
+}
+
+// TestBetaPipelineRunRoundTrip tests PipelineRun converting from
 // v1beta1 to v1alpha1 and back again and to try and detect if information has
 // been lost in the transitions.
-func TestBetaPipelineRunRoundTripDown(t *testing.T) {
+func TestBetaPipelineRunRoundTrip(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		in   *v1beta1.PipelineRun

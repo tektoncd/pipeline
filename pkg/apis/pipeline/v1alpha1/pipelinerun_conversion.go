@@ -37,15 +37,24 @@ func (source *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) 
 		}
 		sink.Status = source.Status
 
-		spec := &v1beta1.PipelineSpec{}
-		if err := deserializeFinally(&sink.ObjectMeta, spec); err != nil {
-			return err
-		}
-		if len(spec.Finally) > 0 {
-			if sink.Spec.PipelineSpec == nil {
-				sink.Spec.PipelineSpec = spec
-			} else {
-				sink.Spec.PipelineSpec.Finally = spec.Finally
+		if hasV1Beta1PipelineSpecAnnotation(sink.ObjectMeta.Annotations) {
+			spec := &v1beta1.PipelineSpec{}
+			if err := deserializeIntoV1Beta1PipelineSpec(&sink.ObjectMeta, spec); err != nil {
+				return err
+			}
+			sink.Spec.PipelineSpec = spec
+		} else {
+			spec := &v1beta1.PipelineSpec{}
+			if err := deserializeFinally(&sink.ObjectMeta, spec); err != nil {
+				return err
+			}
+			if len(spec.Finally) > 0 {
+				if sink.Spec.PipelineSpec == nil {
+					sink.Spec.PipelineSpec = spec
+					sink.Spec.PipelineSpec.SetDefaults(ctx)
+				} else {
+					sink.Spec.PipelineSpec.Finally = spec.Finally
+				}
 			}
 		}
 		return nil
@@ -78,17 +87,15 @@ func (sink *PipelineRun) ConvertFrom(ctx context.Context, obj apis.Convertible) 
 	switch source := obj.(type) {
 	case *v1beta1.PipelineRun:
 		sink.ObjectMeta = source.ObjectMeta
+		if source.Spec.PipelineSpec != nil {
+			if err := serializeV1Beta1PipelineSpec(&sink.ObjectMeta, source.Spec.PipelineSpec); err != nil {
+				return err
+			}
+		}
 		if err := sink.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
 			return err
 		}
 		sink.Status = source.Status
-
-		ps := source.Spec.PipelineSpec
-		if ps != nil && ps.Finally != nil {
-			if err := serializeFinally(&sink.ObjectMeta, ps.Finally); err != nil {
-				return err
-			}
-		}
 		return nil
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
