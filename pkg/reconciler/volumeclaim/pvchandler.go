@@ -91,13 +91,14 @@ func getPersistentVolumeClaims(workspaceBindings []v1beta1.WorkspaceBinding, own
 
 // GetPersistentVolumeClaimName gets the name of PersistentVolumeClaim for a Workspace and PipelineRun or TaskRun. claim
 // must be a PersistentVolumeClaim from a volumeClaimTemplate. The returned name must be consistent given the same
-// workspaceBinding name and ownerReference name - because it is first used for creating a PVC and later,
+// workspaceBinding name and ownerReference UID - because it is first used for creating a PVC and later,
 // possibly several TaskRuns to lookup the PVC to mount.
+// We use ownerReference UID over ownerReference name to distinguish runs with the same name.
 func GetPersistentVolumeClaimName(claim *corev1.PersistentVolumeClaim, wb v1beta1.WorkspaceBinding, owner metav1.OwnerReference) string {
 	if claim.Name == "" {
-		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, owner.Name))
+		return fmt.Sprintf("%s-%s", "pvc", getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 	}
-	return fmt.Sprintf("%s-%s", claim.Name, getPersistentVolumeClaimIdentity(wb.Name, owner.Name))
+	return fmt.Sprintf("%s-%s", claim.Name, getPersistentVolumeClaimIdentity(wb.Name, string(owner.UID)))
 }
 
 func getPersistentVolumeClaimIdentity(workspaceName, ownerName string) string {
