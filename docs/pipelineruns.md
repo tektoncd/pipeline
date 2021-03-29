@@ -561,8 +561,9 @@ Task Runs:
 ## Cancelling a `PipelineRun`
 
 To cancel a `PipelineRun` that's currently executing, update its definition
-to mark it as cancelled. When you do so, the spawned `TaskRuns` are also marked
-as cancelled and all associated `Pods` are deleted. For example:
+to mark it as "PipelineRunCancelled". When you do so, the spawned `TaskRuns` are also marked
+as cancelled and all associated `Pods` are deleted. Pending final tasks are not scheduled. 
+For example:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -572,6 +573,46 @@ metadata:
 spec:
   # […]
   status: "PipelineRunCancelled"
+```
+
+Warning: "PipelineRunCancelled" status is deprecated and would be removed in V1, please use "Cancelled" instead.  
+
+## Gracefully cancelling a `PipelineRun`
+
+[Graceful pipeline run termination](https://github.com/tektoncd/community/blob/main/teps/0058-graceful-pipeline-run-termination.md)
+is currently an **_alpha feature_**.
+
+To gracefully cancel a `PipelineRun` that's currently executing, update its definition
+to mark it as "CancelledRunFinally". When you do so, the spawned `TaskRuns` are also marked
+as cancelled and all associated `Pods` are deleted. Final tasks are scheduled normally. 
+For example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "CancelledRunFinally"
+```
+
+
+## Gracefully stopping a `PipelineRun`
+
+To gracefully stop a `PipelineRun` that's currently executing, update its definition
+to mark it as "StoppedRunFinally". When you do so, the spawned `TaskRuns` are completed normally,
+but no new non-final task is scheduled. Final tasks are executed afterwards.
+For example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "StoppedRunFinally"
 ```
 
 ## Pending `PipelineRuns`

@@ -1008,7 +1008,13 @@ func TestIsSkipped(t *testing.T) {
 	}
 }
 
-func getExpectedMessage(status corev1.ConditionStatus, successful, incomplete, skipped, failed, cancelled int) string {
+func getExpectedMessage(runName string, specStatus v1beta1.PipelineRunSpecStatus, status corev1.ConditionStatus,
+	successful, incomplete, skipped, failed, cancelled int) string {
+	if status == corev1.ConditionFalse &&
+		(specStatus == v1beta1.PipelineRunSpecStatusCancelledRunFinally ||
+			specStatus == v1beta1.PipelineRunSpecStatusStoppedRunFinally) {
+		return fmt.Sprintf("PipelineRun %q was cancelled", runName)
+	}
 	if status == corev1.ConditionFalse || status == corev1.ConditionTrue {
 		return fmt.Sprintf("Tasks Completed: %d (Failed: %d, Cancelled %d), Skipped: %d",
 			successful+failed+cancelled, failed, cancelled, skipped)

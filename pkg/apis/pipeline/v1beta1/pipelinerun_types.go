@@ -85,7 +85,17 @@ func (pr *PipelineRun) HasStarted() bool {
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
-	return pr.Spec.Status == PipelineRunSpecStatusCancelled
+	return pr.Spec.Status == PipelineRunSpecStatusCancelled || pr.Spec.Status == PipelineRunSpecStatusCancelledDeprecated
+}
+
+// IsGracefullyCancelled returns true if the PipelineRun's spec status is set to CancelledRunFinally state
+func (pr *PipelineRun) IsGracefullyCancelled() bool {
+	return pr.Spec.Status == PipelineRunSpecStatusCancelledRunFinally
+}
+
+// IsGracefullyStopped returns true if the PipelineRun's spec status is set to StoppedRunFinally state
+func (pr *PipelineRun) IsGracefullyStopped() bool {
+	return pr.Spec.Status == PipelineRunSpecStatusStoppedRunFinally
 }
 
 func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
@@ -216,9 +226,22 @@ type TimeoutFields struct {
 type PipelineRunSpecStatus string
 
 const (
+	// Deprecated: "PipelineRunCancelled" indicates that the user wants to cancel the task,
+	// if not already cancelled or terminated (replaced by "Cancelled")
+	PipelineRunSpecStatusCancelledDeprecated = "PipelineRunCancelled"
+
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
-	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
+	PipelineRunSpecStatusCancelled = "Cancelled"
+
+	// PipelineRunSpecStatusCancelledRunFinally indicates that the user wants to cancel the pipeline run,
+	// if not already cancelled or terminated, but ensure finally is run normally
+	PipelineRunSpecStatusCancelledRunFinally = "CancelledRunFinally"
+
+	// PipelineRunSpecStatusStoppedRunFinally indicates that the user wants to stop the pipeline run,
+	// wait for already running tasks to be completed and run finally
+	// if not already cancelled or terminated
+	PipelineRunSpecStatusStoppedRunFinally = "StoppedRunFinally"
 
 	// PipelineRunSpecStatusPending indicates that the user wants to postpone starting a PipelineRun
 	// until some condition is met
@@ -271,6 +294,12 @@ const (
 	// PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the
 	// pipeline will stop once all running tasks complete their work
 	PipelineRunReasonStopping PipelineRunReason = "PipelineRunStopping"
+	// PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled
+	// and no new Tasks will be scheduled by the controller, but final tasks are now running
+	PipelineRunReasonCancelledRunningFinally PipelineRunReason = "CancelledRunningFinally"
+	// PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped
+	// and no new Tasks will be scheduled by the controller, but final tasks are now running
+	PipelineRunReasonStoppedRunningFinally PipelineRunReason = "StoppedRunningFinally"
 )
 
 func (t PipelineRunReason) String() string {

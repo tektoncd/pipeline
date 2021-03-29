@@ -469,6 +469,69 @@ func TestPipelineRunWithFinalTask(t *testing.T) {
 	}
 }
 
+func TestPipelineRunCancelled(t *testing.T) {
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("pears", tb.PipelineRunCancelled))
+
+	expectedPipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pears"},
+			Status:      v1beta1.PipelineRunSpecStatusCancelled,
+			Timeout:     &metav1.Duration{Duration: 1 * time.Hour},
+		},
+	}
+
+	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
+	}
+}
+
+func TestPipelineRunCancelledRunFinally(t *testing.T) {
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("pears", tb.PipelineRunCancelledRunFinally))
+
+	expectedPipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pears"},
+			Status:      v1beta1.PipelineRunSpecStatusCancelledRunFinally,
+			Timeout:     &metav1.Duration{Duration: 1 * time.Hour},
+		},
+	}
+
+	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
+	}
+}
+
+func TestPipelineRunStoppedRunFinally(t *testing.T) {
+	pipelineRun := tb.PipelineRun("pear", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("pears", tb.PipelineRunStoppedRunFinally))
+
+	expectedPipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pears"},
+			Status:      v1beta1.PipelineRunSpecStatusStoppedRunFinally,
+			Timeout:     &metav1.Duration{Duration: 1 * time.Hour},
+		},
+	}
+
+	if diff := cmp.Diff(expectedPipelineRun, pipelineRun); diff != "" {
+		t.Fatalf("PipelineRun diff -want, +got: %s", diff)
+	}
+}
+
 func getTaskSpec() v1beta1.TaskSpec {
 	return v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{Container: corev1.Container{
