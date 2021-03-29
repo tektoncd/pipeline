@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-controller-cluster-access
@@ -33,7 +33,7 @@ roleRef:
 # then the ClusterRole would be namespaced. The access described by
 # the tekton-pipelines-controller-tenant-access ClusterRole would
 # be scoped to individual tenant namespaces.
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-controller-tenant-access
@@ -50,7 +50,7 @@ roleRef:
   name: tekton-pipelines-controller-tenant-access
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-webhook-cluster-access
