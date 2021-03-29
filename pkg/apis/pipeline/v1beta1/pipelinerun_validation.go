@@ -115,11 +115,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	if ps.Status != "" {
-		if ps.Status != PipelineRunSpecStatusCancelled && ps.Status != PipelineRunSpecStatusPending {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", ps.Status, PipelineRunSpecStatusCancelled, PipelineRunSpecStatusPending), "status"))
-		}
-	}
+	errs = errs.Also(validateSpecStatus(ctx, ps.Status))
 
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
@@ -133,6 +129,32 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 
 	return errs
+}
+
+func validateSpecStatus(ctx context.Context, status PipelineRunSpecStatus) *apis.FieldError {
+	switch status {
+	case "":
+		return nil
+	case PipelineRunSpecStatusPending,
+		PipelineRunSpecStatusCancelledDeprecated:
+		return nil
+	case PipelineRunSpecStatusCancelled,
+		PipelineRunSpecStatusCancelledRunFinally,
+		PipelineRunSpecStatusStoppedRunFinally:
+		return ValidateEnabledAPIFields(ctx, "graceful termination", "alpha")
+	}
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s, %s, %s or %s", status,
+			PipelineRunSpecStatusCancelled,
+			PipelineRunSpecStatusCancelledRunFinally,
+			PipelineRunSpecStatusStoppedRunFinally,
+			PipelineRunSpecStatusPending), "status")
+	}
+	return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", status,
+		PipelineRunSpecStatusCancelledDeprecated,
+		PipelineRunSpecStatusPending), "status")
 }
 
 func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {

@@ -94,6 +94,35 @@ func TestPipelineRun_Invalid(t *testing.T) {
 		},
 		want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled or PipelineRunPending", "spec.status"),
 	}, {
+		name: "wrong pipelinerun cancel with alpha features",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Status: "PipelineRunCancell",
+			},
+		},
+		want: apis.ErrInvalidValue("PipelineRunCancell should be Cancelled, CancelledRunFinally, StoppedRunFinally or PipelineRunPending", "spec.status"),
+		wc:   enableAlphaAPIFields,
+	}, {
+		name: "alpha pipelinerun graceful cancel",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Status: v1beta1.PipelineRunSpecStatusCancelled,
+			},
+		},
+		want: apis.ErrGeneric("graceful termination requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	}, {
 		name: "use of bundle without the feature flag set",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -270,6 +299,61 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 		wc: apis.WithinDelete,
+	}, {
+		name: "pipelinerun cancelled",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelled,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "pipelinerun cancelled deprecated",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelledDeprecated,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+	}, {
+		name: "pipelinerun gracefully cancelled",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelledRunFinally,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "pipelinerun gracefully stopped",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {
@@ -408,7 +492,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "negative pipeline tasks Timeout",
 		pr: v1beta1.PipelineRun{
@@ -425,7 +509,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.tasks"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "negative pipeline finally Timeout",
 		pr: v1beta1.PipelineRun{
@@ -442,7 +526,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.finally"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "pipeline tasks Timeout > pipeline Timeout",
 		pr: v1beta1.PipelineRun{
@@ -460,7 +544,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.tasks"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "pipeline finally Timeout > pipeline Timeout",
 		pr: v1beta1.PipelineRun{
@@ -478,7 +562,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.finally"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "pipeline tasks Timeout +  pipeline finally Timeout > pipeline Timeout",
 		pr: v1beta1.PipelineRun{
@@ -497,7 +581,7 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("30m0s + 30m0s should be <= pipeline duration", "spec.timeouts.finally, spec.timeouts.tasks"),
-		wc:   enableTektonTimeoutFields(),
+		wc:   enableAlphaAPIFields,
 	}, {
 		name: "Invalid Timeouts when alpha fields not enabled",
 		pr: v1beta1.PipelineRun{
@@ -554,7 +638,7 @@ func TestPipelineRunWithAlphaFields_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: enableTektonTimeoutFields(),
+		wc: enableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {
@@ -583,17 +667,15 @@ func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context 
 	}
 }
 
-func enableTektonTimeoutFields() func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-			"enable-api-fields": "alpha",
-		})
-		cfg := &config.Config{
-			Defaults: &config.Defaults{
-				DefaultTimeoutMinutes: 60,
-			},
-			FeatureFlags: featureFlags,
-		}
-		return config.ToContext(ctx, cfg)
+func enableAlphaAPIFields(ctx context.Context) context.Context {
+	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": "alpha",
+	})
+	cfg := &config.Config{
+		Defaults: &config.Defaults{
+			DefaultTimeoutMinutes: 60,
+		},
+		FeatureFlags: featureFlags,
 	}
+	return config.ToContext(ctx, cfg)
 }

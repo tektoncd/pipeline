@@ -97,7 +97,9 @@ const (
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
-	ReasonCancelled = "PipelineRunCancelled"
+	ReasonCancelled = "Cancelled"
+	// Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
+	ReasonCancelledDeprecated = "PipelineRunCancelled"
 	// ReasonPending indicates that a PipelineRun is pending.
 	ReasonPending = "PipelineRunPending"
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
@@ -324,6 +326,7 @@ func (c *Reconciler) resolvePipelineState(
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) error {
 	logger := logging.FromContext(ctx)
+	cfg := config.FromContextOrDefaults(ctx)
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
@@ -491,6 +494,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
 		State:           pipelineRunState,
+		SpecStatus:      pr.Spec.Status,
 		TasksGraph:      d,
 		FinalTasksGraph: dfinally,
 	}
@@ -503,6 +507,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
 				return controller.NewPermanentError(err)
 			}
+		}
+	}
+
+	// check if pipeline run is not gracefully cancelled and there are active task runs, which require cancelling
+	if cfg.FeatureFlags.EnableAPIFields == apisconfig.AlphaAPIFields &&
+		pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
+		// If the pipelinerun is cancelled, cancel tasks, but run finally
+		err := gracefullyCancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
+		if err != nil {
+			// failed to cancel tasks, maybe retry would help (don't return permanent error)
+			return err
 		}
 	}
 

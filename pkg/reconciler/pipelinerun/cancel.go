@@ -59,6 +59,39 @@ func init() {
 
 // cancelPipelineRun marks the PipelineRun as cancelled and any resolved TaskRun(s) too.
 func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
+	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
+
+	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
+	if len(errs) == 0 {
+		reason := ReasonCancelled
+		if pr.Spec.Status == v1beta1.PipelineRunSpecStatusCancelledDeprecated {
+			reason = ReasonCancelledDeprecated
+		}
+
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  reason,
+			Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
+		})
+		// update pr completed time
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	} else {
+		e := strings.Join(errs, "\n")
+		// Indicate that we failed to cancel the PipelineRun
+		pr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonCouldntCancel,
+			Message: fmt.Sprintf("PipelineRun %q was cancelled but had errors trying to cancel TaskRuns and/or Runs: %s", pr.Name, e),
+		})
+		return fmt.Errorf("error(s) from cancelling TaskRun(s) from PipelineRun %s: %s", pr.Name, e)
+	}
+	return nil
+}
+
+// cancelPipelineTaskRuns patches `TaskRun` and `Run` with canceled status
+func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) []string {
 	errs := []string{}
 
 	// Loop over the TaskRuns in the PipelineRun status.
@@ -80,17 +113,16 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 			continue
 		}
 	}
-	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
-	if len(errs) == 0 {
-		pr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  ReasonCancelled,
-			Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),
-		})
-		// update pr completed time
-		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-	} else {
+
+	return errs
+}
+
+// gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.
+func gracefullyCancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) error {
+	errs := cancelPipelineTaskRuns(ctx, logger, pr, clientSet)
+
+	// If we successfully cancelled all the TaskRuns and Runs, we can proceed with the PipelineRun reconciliation to trigger finally.
+	if len(errs) > 0 {
 		e := strings.Join(errs, "\n")
 		// Indicate that we failed to cancel the PipelineRun
 		pr.Status.SetCondition(&apis.Condition{

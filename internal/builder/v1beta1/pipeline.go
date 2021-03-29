@@ -115,12 +115,27 @@ func PipelineDescription(desc string) PipelineSpecOp {
 	}
 }
 
-// PipelineRunCancelled sets the status to cancel the PipelineRunSpec.
+// PipelineRunCancelled sets the status to Cancelled in the PipelineRunSpec.
 func PipelineRunCancelled(spec *v1beta1.PipelineRunSpec) {
 	spec.Status = v1beta1.PipelineRunSpecStatusCancelled
 }
 
-// PipelineRunPending sets the status to pending to the PipelineRunSpec.
+// PipelineRunCancelledDeprecated sets the status to PipelineRunCancelled in the PipelineRunSpec.
+func PipelineRunCancelledDeprecated(spec *v1beta1.PipelineRunSpec) {
+	spec.Status = v1beta1.PipelineRunSpecStatusCancelledDeprecated
+}
+
+// PipelineRunCancelledRunFinally sets the status to cancel and run finally in the PipelineRunSpec.
+func PipelineRunCancelledRunFinally(spec *v1beta1.PipelineRunSpec) {
+	spec.Status = v1beta1.PipelineRunSpecStatusCancelledRunFinally
+}
+
+// PipelineRunStoppedRunFinally sets the status to stop and run finally in the PipelineRunSpec.
+func PipelineRunStoppedRunFinally(spec *v1beta1.PipelineRunSpec) {
+	spec.Status = v1beta1.PipelineRunSpecStatusStoppedRunFinally
+}
+
+// PipelineRunPending sets the status to pending in the PipelineRunSpec.
 func PipelineRunPending(spec *v1beta1.PipelineRunSpec) {
 	spec.Status = v1beta1.PipelineRunSpecStatusPending
 }

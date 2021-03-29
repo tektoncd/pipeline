@@ -135,6 +135,28 @@ func TestPipelineRunIsCancelled(t *testing.T) {
 	}
 }
 
+func TestPipelineRunIsGracefullyCancelled(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		Spec: v1beta1.PipelineRunSpec{
+			Status: v1beta1.PipelineRunSpecStatusCancelledRunFinally,
+		},
+	}
+	if !pr.IsGracefullyCancelled() {
+		t.Fatal("Expected pipelinerun status to be gracefully cancelled")
+	}
+}
+
+func TestPipelineRunIsGracefullyStopped(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		Spec: v1beta1.PipelineRunSpec{
+			Status: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
+		},
+	}
+	if !pr.IsGracefullyStopped() {
+		t.Fatal("Expected pipelinerun status to be gracefully stopped")
+	}
+}
+
 func TestPipelineRunHasVolumeClaimTemplate(t *testing.T) {
 	pr := &v1beta1.PipelineRun{
 		Spec: v1beta1.PipelineRunSpec{

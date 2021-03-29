@@ -79,6 +79,20 @@ func (t ResolvedPipelineRunTask) IsDone(facts *PipelineRunFacts) bool {
 	return t.Skip(facts) || t.IsSuccessful() || t.IsFailure()
 }
 
+// IsRunning returns true only if the task is neither succeeded, cancelled nor failed
+func (t ResolvedPipelineRunTask) IsRunning() bool {
+	if t.IsCustomTask() {
+		if t.Run == nil {
+			return false
+		}
+	} else {
+		if t.TaskRun == nil {
+			return false
+		}
+	}
+	return !t.IsSuccessful() && !t.IsFailure() && !t.IsCancelled()
+}
+
 // IsCustomTask returns true if the PipelineTask references a Custom Task.
 func (t ResolvedPipelineRunTask) IsCustomTask() bool {
 	return t.CustomTask
@@ -163,7 +177,8 @@ func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) bool {
 		return false
 	}
 
-	if t.conditionsSkip() || t.whenExpressionsSkip(facts) || t.parentTasksSkip(facts) || facts.IsStopping() {
+	if t.conditionsSkip() || t.whenExpressionsSkip(facts) || t.parentTasksSkip(facts) ||
+		facts.IsStopping() || facts.IsGracefullyCancelled() || facts.IsGracefullyStopped() {
 		return true
 	}
 
