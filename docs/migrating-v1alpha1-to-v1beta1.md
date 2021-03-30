@@ -79,7 +79,7 @@ _More on the reasoning and what's left to do in
 [Why aren't PipelineResources in Beta?](resources.md#why-arent-pipelineresources-in-beta)._
 
 To ease migration away from `PipelineResources`
-[some types have an equivalent `Task` in the Catalog](#pipelineresource-equivalent-catalog-tasks).
+[some types have an equivalent `Task` in the Catalog](#replacing-pipelineresources-with-tasks).
 To use these replacement `Tasks` you will need to combine them with your existing `Tasks` via a `Pipeline`.
 
 For example, if you were using this `Task` which was fetching from `git` and building with
@@ -170,26 +170,26 @@ spec:
   # able to fully deliver with the Image PipelineResource!
 ```
 
-_Note that [the `image` `PipelineResource` is gone in this example](#image-resource) (replaced with
-a [`result`](docs/tasks.md#resultes)), and also that now the `Task` doesn't need to know anything
+_Note that [the `image` `PipelineResource` is gone in this example](#replacing-an-image-resource) (replaced with
+a [`result`](tasks.md#emitting-results)), and also that now the `Task` doesn't need to know anything
 about where the files come from that it builds from._
 
 ### Replacing a `git` resource
 
-You can replace a `git` resource with the [`git-clone` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/git-clone).
+You can replace a `git` resource with the [`git-clone` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/git-clone).
 
 ### Replacing a `pullrequest` resource
 
-You can replace a `pullrequest` resource with the [`pullrequest` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/pull-request).
+You can replace a `pullrequest` resource with the [`pullrequest` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/pull-request).
 
 ### Replacing a `gcs` resource
 
-You can replace a `gcs` resource with the [`gcs` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/gcs-generic).
+You can replace a `gcs` resource with the [`gcs` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/gcs-generic).
 
 ### Replacing an `image` resource
 
 Since the `image` resource is simply a way to share the digest of a built image with subsequent
-`Tasks` in your `Pipeline`, you can use [`Task` results](tasks.md#storing-execution-results) to
+`Tasks` in your `Pipeline`, you can use [`Task` results](tasks.md#emitting-results) to
 achieve equivalent functionality.
 
 For examples of replacing an `image` resource, see the following Catalog `Tasks`:
@@ -201,7 +201,7 @@ For examples of replacing an `image` resource, see the following Catalog `Tasks`
 
 ### Replacing a `cluster` resource
 
-You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/master/task/kubeconfig-creator).
+You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/kubeconfig-creator).
 
 ## Changes to PipelineResources
 
@@ -267,7 +267,7 @@ spec:
         type: git
         params:
           - name: revision
-            value: master
+            value: main
           - name: url
             value: https://github.com/tektoncd/pipeline
     outputs:

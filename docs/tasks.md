@@ -429,9 +429,9 @@ and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yam
 
 A Task is able to emit string results that can be viewed by users and passed to other Tasks in a Pipeline. These
 results have a wide variety of potential uses. To highlight just a few examples from the Tekton Catalog: the
-[`git-clone` Task](https://github.com/tektoncd/catalog/blob/master/task/git-clone/0.1/git-clone.yaml) emits a
-cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/master/task/generate-build-id/0.1/generate-build-id.yaml)
-emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/master/task/kaniko/0.1)
+[`git-clone` Task](https://github.com/tektoncd/catalog/blob/main/task/git-clone/0.1/git-clone.yaml) emits a
+cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/main/task/generate-build-id/0.1/generate-build-id.yaml)
+emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/main/task/kaniko/0.1)
 emits a container image digest as a result. In each case these results convey information for users to see when
 looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next.
 
