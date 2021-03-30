@@ -909,8 +909,8 @@ Status`](#using-execution-status-of-pipelinetask) of `Tasks`.
 
 #### `WhenExpressions` using `Parameters` in `Finally Tasks`
 
-`WhenExpressions` in `Finally Tasks` can utilize `Parameters` as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/master/task/golang-build/0.1)
-and [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/master/task/send-to-channel-slack/0.1) Catalog
+`WhenExpressions` in `Finally Tasks` can utilize `Parameters` as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/main/task/golang-build/0.1)
+and [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/main/task/send-to-channel-slack/0.1) Catalog
 `Tasks`:
 
 ```yaml
@@ -948,8 +948,8 @@ spec:
 
 #### `WhenExpressions` using `Results` in `Finally Tasks`
 
-`WhenExpressions` in `Finally Tasks` can utilize `Results`, as demonstrated using [`git-clone`](https://github.com/tektoncd/catalog/tree/master/task/git-clone/0.2)
-and [`github-add-comment`](https://github.com/tektoncd/catalog/tree/master/task/github-add-comment/0.2) Catalog `Tasks`:
+`WhenExpressions` in `Finally Tasks` can utilize `Results`, as demonstrated using [`git-clone`](https://github.com/tektoncd/catalog/tree/main/task/git-clone/0.2)
+and [`github-add-comment`](https://github.com/tektoncd/catalog/tree/main/task/github-add-comment/0.2) Catalog `Tasks`:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -985,8 +985,8 @@ If the `WhenExpressions` in a `Finally Task` use `Results` from a skipped or fai
 #### `WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`
 
 `WhenExpressions` in `Finally Tasks` can utilize [`Execution Status` of `PipelineTasks`](#using-execution-status-of-pipelinetask), 
-as as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/master/task/golang-build/0.1) and
-[`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/master/task/send-to-channel-slack/0.1) Catalog `Tasks`:
+as as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/main/task/golang-build/0.1) and
+[`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/main/task/send-to-channel-slack/0.1) Catalog `Tasks`:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
