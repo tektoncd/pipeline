@@ -3,8 +3,7 @@
 # Changes
 
 <!-- 
-Describe your changes here- ideally you can get that description straight from
-your descriptive commit message(s)! 
+Describe your changes here- ideally you can get that description straight from your descriptive commit message(s)! 
 
 In addition, categorize the changes you're making using the "/kind" Prow command, example:
 
@@ -15,24 +14,14 @@ Supported kinds are: bug, cleanup, design, documentation, failing-test, feature,
 
 # Submitter Checklist
 
-These are the criteria that every PR should meet, please check them off as you
-review them:
+As the author of this PR, please check off the items in this checklist:
 
-- [ ] Includes [tests](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if functionality changed/added)
-- [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
-- [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
-- [ ] Release notes block has been filled in or deleted (only if no user facing changes)
-
-_See [the contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md) for more details._
-
-Double check this list of stuff that's easy to miss:
-
-- If you are adding [a new binary/image to the `cmd` dir](../cmd), please update
-  [the release Task](../tekton/publish.yaml) to build and release this image.
-
-## Reviewer Notes
-
-If [API changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md) are included, [additive changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#additive-changes) must be approved by at least two [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) and [backwards incompatible changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-incompatible-changes) must be approved by [more than 50% of the OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS), and they must first be added [in a backwards compatible way](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-compatible-changes-first).
+- [ ] [Docs](https://github.com/tektoncd/community/blob/main/standards.md#docs) included if any changes are user facing
+- [ ] [Tests](https://github.com/tektoncd/community/blob/main/standards.md#tests) included if any functionality added or changed
+- [ ] Follows the [commit message standard](https://github.com/tektoncd/community/blob/main/standards.md#commits)
+- [ ] Meets the [Tekton contributor standards](https://github.com/tektoncd/community/blob/main/standards.md) (including
+  functionality, content, code)
+- [ ] Release notes block below has been filled in or deleted (only if no user facing changes)
 
 # Release Notes
 
