@@ -1,7 +1,7 @@
 // +build conformance
 
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2021 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import (
 
 type conditionFn func(name string) ConditionAccessorFn
 
-func TestTaskRun(t *testing.T) {
+func TestTaskRunConformance(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

@@ -29,9 +29,9 @@ install_pipeline_crd
 
 failed=0
 
-# Run the integration tests
+# Run the integration tests (including the conformance tests)
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test/... || failed=1
+go_test_e2e tags=e2e,conformance -timeout=20m ./test/... || failed=1
 
 # Run these _after_ the integration tests b/c they don't quite work all the way
 # and they cause a lot of noise in the logs, making it harder to debug integration
