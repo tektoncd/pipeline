@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -51,6 +52,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -759,12 +761,29 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 		},
 		Spec: v1alpha1.RunSpec{
 			Ref:                rprt.PipelineTask.TaskRef,
+			Spec:           	rprt.PipelineTask.TaskSpec,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		},
 	}
-
+	if rprt.PipelineTask.TaskSpec != nil {
+		logger.Infof("TaskSpec for custom task: %s", rprt.PipelineTask.Name)
+		r.Spec.Spec = &v1beta1.EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: rprt.PipelineTask.TaskSpec.APIVersion,
+				Kind:       rprt.PipelineTask.TaskSpec.Kind,
+			},
+		}
+		j, err := json.Marshal(rprt.PipelineTask.TaskSpec.Spec)
+		logger.Infof("Marshelled json:%s" , j)
+		if err != nil {
+			return nil, err
+		}
+		r.Spec.Spec.Spec = runtime.RawExtension{
+			Raw: j,
+		}
+	}
 	var pipelinePVCWorkspaceName string
 	var err error
 	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rprt)

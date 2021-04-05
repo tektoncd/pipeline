@@ -40,16 +40,25 @@ func (rs *RunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("spec")
 	}
 
-	if rs.Ref == nil {
-		return apis.ErrMissingField("spec.ref")
+	if rs.Ref == nil && rs.Spec == nil {
+		return apis.ErrMissingField("spec.ref or spec.spec")
 	}
-	if rs.Ref.APIVersion == "" {
-		return apis.ErrMissingField("spec.ref.apiVersion")
+	if rs.Ref != nil {
+		if rs.Ref.APIVersion == "" {
+			return apis.ErrMissingField("spec.ref.apiVersion")
+		}
+		if rs.Ref.Kind == "" {
+			return apis.ErrMissingField("spec.ref.kind")
+		}
 	}
-	if rs.Ref.Kind == "" {
-		return apis.ErrMissingField("spec.ref.kind")
+	if rs.Spec != nil {
+		if rs.Spec.APIVersion == "" {
+			return apis.ErrMissingField("spec.spec.apiVersion")
+		}
+		if rs.Spec.Kind == "" {
+			return apis.ErrMissingField("spec.spec.kind")
+		}
 	}
-
 	if err := validateParameters("spec.params", rs.Params); err != nil {
 		return err
 	}

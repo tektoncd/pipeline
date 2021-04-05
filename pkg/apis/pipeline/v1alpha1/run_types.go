@@ -41,6 +41,10 @@ type RunSpec struct {
 	// +optional
 	Ref *TaskRef `json:"ref,omitempty"`
 
+	// TaskSpec is a specification of a custom task
+	// +optional
+	Spec *v1beta1.EmbeddedTask `json:"spec,omitempty"`
+
 	// +optional
 	Params []v1beta1.Param `json:"params,omitempty"`
 
