@@ -470,7 +470,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 		pr      *v1beta1.PipelineRun
 		wantRun *v1alpha1.Run
 	}{{
-		name: "simple custom task",
+		name: "simple custom task with taskRef",
 		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      pipelineRunName,
@@ -523,6 +523,69 @@ func TestReconcile_CustomTask(t *testing.T) {
 			},
 		},
 	}, {
+		name: "simple custom task with taskSpec",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pipelineRunName,
+				Namespace: namespace,
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: pipelineTaskName,
+						Params: []v1beta1.Param{{
+							Name:  "param1",
+							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TypeMeta: runtime.TypeMeta{
+								APIVersion: "example.dev/v0",
+								Kind:       "Example",
+							},
+							Spec: runtime.RawExtension{
+								Raw: []byte(`{"field1":123,"field2":"value"}`),
+							},
+						},
+					}},
+				},
+			},
+		},
+		wantRun: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-pipelinerun-custom-task-mz4c7",
+				Namespace: namespace,
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "tekton.dev/v1beta1",
+					Kind:               "PipelineRun",
+					Name:               pipelineRunName,
+					Controller:         &trueb,
+					BlockOwnerDeletion: &trueb,
+				}},
+				Labels: map[string]string{
+					"tekton.dev/pipeline":     pipelineRunName,
+					"tekton.dev/pipelineRun":  pipelineRunName,
+					"tekton.dev/pipelineTask": pipelineTaskName,
+				},
+				Annotations: map[string]string{},
+			},
+			Spec: v1alpha1.RunSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param1",
+					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
+				}},
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+					},
+					Spec: runtime.RawExtension{
+						Raw: []byte(`{"field1":123,"field2":"value"}`),
+					},
+				},
+				ServiceAccountName: "default",
+			},
+		},
+	}, {
 		name: "custom task with workspace",
 		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -557,7 +620,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 		},
 		wantRun: &v1alpha1.Run{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pipelinerun-custom-task-mz4c7",
+				Name:      "test-pipelinerun-custom-task-mssqb",
 				Namespace: namespace,
 				OwnerReferences: []metav1.OwnerReference{{
 					APIVersion:         "tekton.dev/v1beta1",

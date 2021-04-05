@@ -25,6 +25,7 @@ import (
 	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	"github.com/tektoncd/pipeline/pkg/controller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -51,15 +52,33 @@ func TestFilterRunRef(t *testing.T) {
 		in:   (*v1alpha1.Run)(nil),
 		want: false,
 	}, {
-		desc: "nil ref",
+		desc: "nil ref and spec",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: nil,
+				Ref:  nil,
+				Spec: nil,
 			},
 		},
 		want: false,
 	}, {
-		desc: "Run without matching apiVersion",
+		desc: "both ref and spec",
+		in: &v1alpha1.Run{
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: "not-matching",
+					Kind:       kind,
+				},
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+				},
+			},
+		},
+		want: false,
+	}, {
+		desc: "Run without matching apiVersion in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
@@ -70,7 +89,7 @@ func TestFilterRunRef(t *testing.T) {
 		},
 		want: false,
 	}, {
-		desc: "Run without matching kind",
+		desc: "Run without matching kind in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
@@ -81,7 +100,7 @@ func TestFilterRunRef(t *testing.T) {
 		},
 		want: false,
 	}, {
-		desc: "Run with matching apiVersion and kind",
+		desc: "Run with matching apiVersion and kind in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
@@ -92,7 +111,46 @@ func TestFilterRunRef(t *testing.T) {
 		},
 		want: true,
 	}, {
-		desc: "Run with matching apiVersion and kind and name",
+		desc: "Run with matching apiVersion and kind in taskSpec",
+		in: &v1alpha1.Run{
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+				},
+			},
+		},
+		want: true,
+	}, {
+		desc: "Run without matching kind for taskSpec",
+		in: &v1alpha1.Run{
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       "not-matching",
+					},
+				},
+			},
+		},
+		want: false,
+	}, {
+		desc: "Run without matching apiVersion for taskSpec",
+		in: &v1alpha1.Run{
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "not-matching",
+						Kind:       kind,
+					},
+				},
+			},
+		},
+		want: false,
+	}, {
+		desc: "Run with matching apiVersion and kind and name for taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
@@ -120,7 +178,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 		owner *v1alpha1.Run
 		want  bool
 	}{{
-		desc: "Owner is a Run that references a matching apiVersion and kind",
+		desc: "Owner is a Run for taskRef that references a matching apiVersion and kind",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "some-taskrun",
@@ -151,7 +209,40 @@ func TestFilterOwnerRunRef(t *testing.T) {
 		},
 		want: true,
 	}, {
-		desc: "Owner is a Run that references a non-matching apiversion",
+		desc: "Owner is a Run for taskSpec that references a matching apiVersion and kind",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-taskrun",
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: v1alpha1.SchemeGroupVersion.String(),
+					Kind:       pipeline.RunControllerName,
+					Name:       "some-run",
+					Controller: &trueB,
+				}},
+			},
+		},
+		owner: &v1alpha1.Run{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       pipeline.RunControllerName,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-run",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+				},
+			},
+		},
+		want: true,
+	}, {
+		desc: "Owner is a Run for taskRef that references a non-matching apiversion",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "some-taskrun",
@@ -182,7 +273,40 @@ func TestFilterOwnerRunRef(t *testing.T) {
 		},
 		want: false,
 	}, {
-		desc: "Owner is a Run that references a non-matching kind",
+		desc: "Owner is a Run for taskSpec that references a non-matching apiversion",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-taskrun",
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: v1alpha1.SchemeGroupVersion.String(),
+					Kind:       pipeline.RunControllerName,
+					Name:       "some-other-run",
+					Controller: &trueB,
+				}},
+			},
+		},
+		owner: &v1alpha1.Run{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       pipeline.RunControllerName,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-other-run",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion2,
+						Kind:       kind,
+					},
+				},
+			},
+		},
+		want: false,
+	}, {
+		desc: "Owner is a Run for taskRef that references a non-matching kind",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "some-taskrun",
@@ -213,7 +337,40 @@ func TestFilterOwnerRunRef(t *testing.T) {
 		},
 		want: false,
 	}, {
-		desc: "Owner is a Run that with a missing ref",
+		desc: "Owner is a Run for taskSpec that references a non-matching kind",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-taskrun",
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: v1alpha1.SchemeGroupVersion.String(),
+					Kind:       pipeline.RunControllerName,
+					Name:       "some-other-run2",
+					Controller: &trueB,
+				}},
+			},
+		},
+		owner: &v1alpha1.Run{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       pipeline.RunControllerName,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-other-run2",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       kind2,
+					},
+				},
+			},
+		},
+		want: false,
+	}, {
+		desc: "Owner is a Run with a missing ref and spec",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "some-taskrun",
@@ -236,6 +393,43 @@ func TestFilterOwnerRunRef(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: v1alpha1.RunSpec{}, // missing ref (illegal)
+		},
+		want: false,
+	}, {
+		desc: "Owner is a Run with both ref and spec with matching apiversion and kind",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-taskrun",
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion: v1alpha1.SchemeGroupVersion.String(),
+					Kind:       pipeline.RunControllerName,
+					Name:       "some-strange-run",
+					Controller: &trueB,
+				}},
+			},
+		},
+		owner: &v1alpha1.Run{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       pipeline.RunControllerName,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "some-strange-run",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: apiVersion,
+					Kind:       kind,
+				},
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+				},
+			},
 		},
 		want: false,
 	}, {
