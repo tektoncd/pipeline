@@ -339,6 +339,15 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 	return nil
 }
 
+func isCustomTask(ctx context.Context, rprt ResolvedPipelineRunTask) bool {
+	isTaskRefCustomTask := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskRef.APIVersion != "" &&
+		rprt.PipelineTask.TaskRef.Kind != ""
+	isTaskSpecCustomTask := rprt.PipelineTask.TaskSpec != nil && rprt.PipelineTask.TaskSpec.APIVersion != "" &&
+		rprt.PipelineTask.TaskSpec.Kind != ""
+	cfg := config.FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.EnableCustomTasks && (isTaskRefCustomTask || isTaskSpecCustomTask)
+}
+
 // ResolvePipelineRunTask retrieves a single Task's instance using the getTask to fetch
 // the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
 // an error, otherwise it returns a list of all of the Tasks retrieved.  It will retrieve
@@ -357,11 +366,7 @@ func ResolvePipelineRunTask(
 	rprt := ResolvedPipelineRunTask{
 		PipelineTask: &task,
 	}
-
-	cfg := config.FromContextOrDefaults(ctx)
-	rprt.CustomTask = cfg.FeatureFlags.EnableCustomTasks && rprt.PipelineTask.TaskRef != nil &&
-		rprt.PipelineTask.TaskRef.APIVersion != "" && rprt.PipelineTask.TaskRef.Kind != ""
-
+	rprt.CustomTask = isCustomTask(ctx, rprt)
 	if rprt.IsCustomTask() {
 		rprt.RunName = getRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)

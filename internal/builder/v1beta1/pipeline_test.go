@@ -156,10 +156,10 @@ func TestPipeline(t *testing.T) {
 						Labels:      map[string]string{"label": "labelvalue"},
 						Annotations: map[string]string{"annotation": "annotationvalue"},
 					},
+
 					TaskSpec: getTaskSpec(),
 				},
-			},
-			},
+			}},
 			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
 				Name: "workspace1",
 			}},

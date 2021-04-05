@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -138,6 +139,37 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
+		},
+	}, {
+		name: "custom task - taskSpec without kind",
+		task: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example.dev/v0",
+				Kind:       "",
+			},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: custom task spec must specify kind`,
+			Paths:   []string{"taskSpec.kind"},
+		},
+	}, {
+		name: "custom task - taskSpec without apiVersion",
+		task: PipelineTask{Name: "foo", TaskSpec: &EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "",
+				Kind:       "some-kind",
+			},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: custom task spec must specify apiVersion`,
+			Paths:   []string{"taskSpec.apiVersion"},
+		},
+	}, {
+		name: "custom task - taskRef without apiVersion",
+		task: PipelineTask{Name: "foo", TaskRef: &TaskRef{APIVersion: "", Kind: "some-kind", Name: ""}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: custom task ref must specify apiVersion`,
+			Paths:   []string{"taskRef.apiVersion"},
 		},
 	}, {
 		name: "custom task doesn't support conditions",

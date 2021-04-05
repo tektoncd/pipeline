@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 )
 
@@ -43,18 +44,39 @@ func TestRun_Invalid(t *testing.T) {
 		},
 		want: apis.ErrMissingField("spec"),
 	}, {
-		name: "missing ref",
+		name: "Empty spec",
 		run: &v1alpha1.Run{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: nil,
+				Ref:  nil,
+				Spec: nil,
 			},
 		},
 		want: apis.ErrMissingField("spec"),
 	}, {
-		name: "missing apiVersion",
+		name: "Both Ref and Spec",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: "apiVersion",
+					Kind:       "kind",
+				},
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "apiVersion",
+						Kind:       "kind",
+					},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("spec.ref", "spec.spec"),
+	}, {
+		name: "missing apiVersion in Ref",
 		run: &v1alpha1.Run{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "temp",
@@ -67,7 +89,7 @@ func TestRun_Invalid(t *testing.T) {
 		},
 		want: apis.ErrMissingField("spec.ref.apiVersion"),
 	}, {
-		name: "missing kind",
+		name: "missing kind in Ref",
 		run: &v1alpha1.Run{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "temp",
@@ -80,6 +102,37 @@ func TestRun_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrMissingField("spec.ref.kind"),
+	}, {
+		name: "missing apiVersion in Spec",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "",
+					},
+				},
+			},
+		},
+		want: apis.ErrMissingField("spec.spec.apiVersion"),
+	}, {
+		name: "missing kind in Spec",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "apiVersion",
+						Kind:       "",
+					},
+				},
+			},
+		},
+		want: apis.ErrMissingField("spec.spec.kind"),
 	}, {
 		name: "non-unique params",
 		run: &v1alpha1.Run{
@@ -139,6 +192,21 @@ func TestRun_Valid(t *testing.T) {
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
+				},
+			},
+		},
+	}, {
+		name: "Spec with valid ApiVersion and Kind",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Spec: &v1alpha1.EmbeddedRunSpec{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "apiVersion",
+						Kind:       "kind",
+					},
 				},
 			},
 		},

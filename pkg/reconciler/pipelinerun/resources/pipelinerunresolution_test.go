@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -1200,6 +1201,14 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 		Name:    "customtask",
 		TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 	}, {
+		Name: "customtask-spec",
+		TaskSpec: &v1beta1.EmbeddedTask{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: "example.dev/v0",
+				Kind:       "Example",
+			},
+		},
+	}, {
 		Name:    "run-exists",
 		TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
 	}}
@@ -1208,7 +1217,7 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	}
 	run := &v1alpha1.Run{ObjectMeta: metav1.ObjectMeta{Name: "run-exists-abcde"}}
 	getRun := func(name string) (*v1alpha1.Run, error) {
-		if name == "pipelinerun-run-exists-mz4c7" {
+		if name == "pipelinerun-run-exists-mssqb" {
 			return run, nil
 		}
 		return nil, kerrors.NewNotFound(v1beta1.Resource("run"), name)
@@ -1240,7 +1249,12 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	}, {
 		PipelineTask: &pts[1],
 		CustomTask:   true,
-		RunName:      "pipelinerun-run-exists-mz4c7",
+		RunName:      "pipelinerun-customtask-spec-mz4c7",
+		Run:          nil,
+	}, {
+		PipelineTask: &pts[2],
+		CustomTask:   true,
+		RunName:      "pipelinerun-run-exists-mssqb",
 		Run:          run,
 	}}
 	if d := cmp.Diff(expectedState, pipelineState); d != "" {
@@ -2165,7 +2179,40 @@ func TestIsCustomTask(t *testing.T) {
 		pt   v1beta1.PipelineTask
 		want bool
 	}{{
-		name: "custom",
+		name: "custom taskSpec",
+		pt: v1beta1.PipelineTask{
+			TaskSpec: &v1beta1.EmbeddedTask{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "example.dev/v0",
+					Kind:       "Sample",
+				},
+			},
+		},
+		want: true,
+	}, {
+		name: "custom taskSpec missing kind",
+		pt: v1beta1.PipelineTask{
+			TaskSpec: &v1beta1.EmbeddedTask{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "example.dev/v0",
+					Kind:       "",
+				},
+			},
+		},
+		want: false,
+	}, {
+		name: "custom taskSpec missing apiVersion",
+		pt: v1beta1.PipelineTask{
+			TaskSpec: &v1beta1.EmbeddedTask{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "",
+					Kind:       "Sample",
+				},
+			},
+		},
+		want: false,
+	}, {
+		name: "custom taskRef",
 		pt: v1beta1.PipelineTask{
 			TaskRef: &v1beta1.TaskRef{
 				APIVersion: "example.dev/v0",
@@ -2173,6 +2220,24 @@ func TestIsCustomTask(t *testing.T) {
 			},
 		},
 		want: true,
+	}, {
+		name: "custom taskRef missing kind",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "",
+			},
+		},
+		want: false,
+	}, {
+		name: "custom taskRef missing apiVersion",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				APIVersion: "",
+				Kind:       "Sample",
+			},
+		},
+		want: false,
 	}, {
 		name: "non-custom taskref",
 		pt: v1beta1.PipelineTask{

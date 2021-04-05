@@ -20,9 +20,10 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -36,10 +37,26 @@ var (
 	}
 )
 
+// EmbeddedRunSpec allows custom task definitions to be embedded
+type EmbeddedRunSpec struct {
+	runtime.TypeMeta `json:",inline"`
+
+	// +optional
+	Metadata v1beta1.PipelineTaskMetadata `json:"metadata,omitempty"`
+
+	// Spec is a specification of a custom task
+	// +optional
+	Spec runtime.RawExtension `json:"spec,omitempty"`
+}
+
 // RunSpec defines the desired state of Run
 type RunSpec struct {
 	// +optional
 	Ref *TaskRef `json:"ref,omitempty"`
+
+	// Spec is a specification of a custom task
+	// +optional
+	Spec *EmbeddedRunSpec `json:"spec,omitempty"`
 
 	// +optional
 	Params []v1beta1.Param `json:"params,omitempty"`

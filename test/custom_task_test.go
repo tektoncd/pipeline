@@ -67,6 +67,19 @@ func TestCustomTask(t *testing.T) {
 							Kind:       kind,
 						},
 					}, {
+						Name: "custom-task-spec",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							EmbeddedSpec: v1beta1.EmbeddedSpec{
+								TypeMeta: runtime.TypeMeta{
+									APIVersion: apiVersion,
+									Kind:       kind,
+								},
+								Spec: runtime.RawExtension{
+									Raw: customTaskRawSpec,
+								},
+							},
+						},
+					}, {
 						Name: "result-consumer",
 						Params: []v1beta1.Param{{
 							Name: "input-result-from-custom-task", Value: *v1beta1.NewArrayOrString("$(tasks.custom-task.results.runResult)"),

@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -51,6 +52,24 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
+			},
+		},
+		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
+	}, {
+		name: "pipelinetask custom task spec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{Name: "foo",
+					TaskSpec: &EmbeddedTask{
+						TypeMeta: runtime.TypeMeta{
+							APIVersion: "example.dev/v0",
+							Kind:       "Example",
+						},
+						Spec: runtime.RawExtension{
+							Raw: []byte(`{"field1":123,"field2":"value"}`),
+						}},
+				}},
 			},
 		},
 		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
