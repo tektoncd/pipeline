@@ -22,7 +22,7 @@ Each layer of the image must map 1:1 with a single Tekton resource (eg Task).
 Each layer must contain all of the following annotations:
 
 - `dev.tekton.image.name` => `ObjectMeta.Name` of the resource
-- `dev.tekton.image.kind` => `TypeMeta.Kind` of the resource, all lowercased (eg, `task`)
+- `dev.tekton.image.kind` => `TypeMeta.Kind` of the resource, all lower-cased and singular (eg, `task`)
 - `dev.tekton.image.apiVersion` => `TypeMeta.APIVersion` of the resource (eg 
 "tekton.dev/v1alpha1")  
 
@@ -38,7 +38,7 @@ Furthermore, each layer must contain a YAML or JSON representation of the underl
 missing any identifying fields (missing an `apiVersion` for instance) then it will be considered invalid.
 
 Any tool creating a Tekton bundle must enforce this format and ensure that the annotations and contents all match and
-confirm to this spec. Additionally, the Tekton controller will reject non-conforming Tekton Bundles.
+conform to this spec. Additionally, the Tekton controller will reject non-conforming Tekton Bundles.
 
 ## Examples
 

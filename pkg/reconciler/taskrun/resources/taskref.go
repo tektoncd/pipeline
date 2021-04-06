@@ -59,7 +59,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 
 			// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
 			// don't accidentally return a Task with the same name but different kind.
-			obj, err := resolver.Get(strings.ToLower(string(kind)), name)
+			obj, err := resolver.Get(strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
 			if err != nil {
 				return nil, err
 			}
