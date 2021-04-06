@@ -33,10 +33,30 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// ObjectAnnotationMapper is a func alias that maps a runtime Object to the Tekton Bundle annotations map.
+type ObjectAnnotationMapper func(object runtime.Object) map[string]string
+
+var (
+	// DefaultObjectAnnotationMapper does the "right" thing by conforming to the Tekton Bundle spec.
+	DefaultObjectAnnotationMapper = func(obj runtime.Object) map[string]string {
+		return map[string]string{
+			tkremote.TitleAnnotation:      getObjectName(obj),
+			tkremote.KindAnnotation:       strings.TrimSuffix(strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), "s"),
+			tkremote.APIVersionAnnotation: obj.GetObjectKind().GroupVersionKind().Version,
+		}
+	}
+)
+
 // CreateImage will push a new OCI image artifact with the provided raw data object as a layer and return the full image
 // reference with a digest to fetch the image. Key must be specified as [lowercase kind]/[object name]. The image ref
 // with a digest is returned.
 func CreateImage(ref string, objs ...runtime.Object) (string, error) {
+	return CreateImageWithAnnotations(ref, DefaultObjectAnnotationMapper, objs...)
+}
+
+// CreateImageWithAnnotations is the base form of #CreateImage which accepts an ObjectAnnotationMapper to map an object
+// to the annotations for it.
+func CreateImageWithAnnotations(ref string, mapper ObjectAnnotationMapper, objs ...runtime.Object) (string, error) {
 	imgRef, err := name.ParseReference(ref)
 	if err != nil {
 		return "", fmt.Errorf("undexpected error producing image reference %w", err)
@@ -73,13 +93,10 @@ func CreateImage(ref string, objs ...runtime.Object) (string, error) {
 			return "", fmt.Errorf("unexpected error adding layer to image %w", err)
 		}
 
+		annotations := mapper(obj)
 		img, err = mutate.Append(img, mutate.Addendum{
-			Layer: layer,
-			Annotations: map[string]string{
-				tkremote.TitleAnnotation:      getObjectName(obj),
-				tkremote.KindAnnotation:       strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind),
-				tkremote.APIVersionAnnotation: strings.ToLower(obj.GetObjectKind().GroupVersionKind().Version),
-			},
+			Layer:       layer,
+			Annotations: annotations,
 		})
 		if err != nil {
 			return "", fmt.Errorf("could not add layer to image %w", err)
