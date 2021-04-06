@@ -58,27 +58,33 @@ the pipelines repo, a terminal window and a text editor.
 
 1. Once the pipeline is complete, check its results:
 
-   ```bash
-   tkn --context dogfooding pr describe <pipeline-run-name>
+    ```bash
+    tkn --context dogfooding pr describe <pipeline-run-name>
 
-   (...)
-   📝 Results
+    (...)
+    📝 Results
 
-   NAME                    VALUE
-   ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-   ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
-   ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
+    NAME                    VALUE
+    ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
+    ∙ release-file           https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.yaml
+    ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases-nightly/pipeline/previous/v20210223-xyzxyz/release.notag.yaml
 
-   (...)
-   ```
+    (...)
+    ```
 
-   The `commit-sha` should match `$TEKTON_RELEASE_GIT_SHA`.
-   The two URLs can be opened in the browser or via `curl` to download the release manifests.
+    The `commit-sha` should match `$TEKTON_RELEASE_GIT_SHA`.
+    The two URLs can be opened in the browser or via `curl` to download the release manifests.
 
-    1. The YAMLs are now released! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
+1. The YAMLs are now released! Anyone installing Tekton Pipelines will get the new version. Time to create a new GitHub release announcement:
 
-    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby".
-       (Check the previous releases to avoid repetition: https://github.com/tektoncd/pipeline/releases.)
+    1. Choose a name for the new release! The usual pattern is "< cat breed > < famous robot >" e.g. "Ragdoll Norby". Browse [the releases page](https://github.com/tektoncd/pipeline/releases) or run this command to check which names have already been used:
+
+    ```bash
+    curl \
+      -H "Accept: application/vnd.github.v3+json" \
+      https://api.github.com/repos/tektoncd/pipeline/releases\?per_page=100 \
+      | jq ".[].name"
+    ```
 
     1. Create additional environment variables
 
@@ -148,7 +154,7 @@ the pipelines repo, a terminal window and a text editor.
     kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.11.2/release.yaml
     ```
 
-1. Announce the release in Slack channels #general and #pipelines.
+1. Announce the release in Slack channels #general, #announcements and #pipelines.
 
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
 to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/master/test/e2e-tests.sh).
