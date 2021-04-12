@@ -357,10 +357,12 @@ func ResolvePipelineRunTask(
 	rprt := ResolvedPipelineRunTask{
 		PipelineTask: &task,
 	}
-
+	isTaskRefCustomTask := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskRef.APIVersion != "" &&
+		rprt.PipelineTask.TaskRef.Kind != ""
+	isTaskSpecCustomTask := rprt.PipelineTask.TaskSpec != nil && rprt.PipelineTask.TaskSpec.APIVersion != "" &&
+		rprt.PipelineTask.TaskSpec.Kind != "" && len(rprt.PipelineTask.TaskSpec.Spec.Raw) > 0
 	cfg := config.FromContextOrDefaults(ctx)
-	rprt.CustomTask = cfg.FeatureFlags.EnableCustomTasks && rprt.PipelineTask.TaskRef != nil &&
-		rprt.PipelineTask.TaskRef.APIVersion != "" && rprt.PipelineTask.TaskRef.Kind != ""
+	rprt.CustomTask = cfg.FeatureFlags.EnableCustomTasks && (isTaskRefCustomTask || isTaskSpecCustomTask)
 
 	if rprt.IsCustomTask() {
 		rprt.RunName = getRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)

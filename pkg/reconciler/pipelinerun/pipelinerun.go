@@ -327,7 +327,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
-
+	logger.Infof("Setting up defaults, before re-concile %v", ctx)
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
 		pr.Status.SetCondition(&apis.Condition{
@@ -761,22 +761,25 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 		},
 		Spec: v1alpha1.RunSpec{
 			Ref:                rprt.PipelineTask.TaskRef,
-			Spec:           	rprt.PipelineTask.TaskSpec,
+			Spec:               rprt.PipelineTask.TaskSpec,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		},
 	}
 	if rprt.PipelineTask.TaskSpec != nil {
-		logger.Infof("TaskSpec for custom task: %s", rprt.PipelineTask.Name)
+		logger.Infof("TaskSpec for task: %s,%v", rprt.PipelineTask.Name, r.Spec)
 		r.Spec.Spec = &v1beta1.EmbeddedTask{
 			TypeMeta: runtime.TypeMeta{
 				APIVersion: rprt.PipelineTask.TaskSpec.APIVersion,
 				Kind:       rprt.PipelineTask.TaskSpec.Kind,
 			},
+			Spec:     rprt.PipelineTask.TaskSpec.Spec,
+			Metadata: rprt.PipelineTask.TaskSpec.Metadata,
+			TaskSpec: rprt.PipelineTask.TaskSpec.TaskSpec,
 		}
 		j, err := json.Marshal(rprt.PipelineTask.TaskSpec.Spec)
-		logger.Infof("Marshelled json:%s" , j)
+		logger.Infof("Marshelled json:%s", j)
 		if err != nil {
 			return nil, err
 		}
