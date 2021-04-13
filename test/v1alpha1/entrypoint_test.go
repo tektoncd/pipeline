@@ -51,11 +51,17 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{Image: "busybox"},
-					Script:    "sleep 3 && touch foo",
+					Container: corev1.Container{
+						Image:      "busybox",
+						WorkingDir: "/workspace",
+					},
+					Script: "sleep 3 && touch foo",
 				}, {
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "ls foo",
+					Container: corev1.Container{
+						Image:      "ubuntu",
+						WorkingDir: "/workspace",
+					},
+					Script: "ls foo",
 				}},
 			}},
 		},

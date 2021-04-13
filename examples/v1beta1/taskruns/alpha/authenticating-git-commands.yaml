@@ -193,7 +193,7 @@ spec:
           # When disable-home-env-overwrite is "true", creds-init credentials
           # will be copied to /home/nonroot/.ssh by the entrypoint. We just need to
           # overwrite the known_hosts file with that of our test git server.
-          cp /messages/known_hosts /home/nonroot/ssh/known_hosts
+          cp /messages/known_hosts /home/nonroot/.ssh/known_hosts
         fi
 
         git clone root@localhost:/root/repo ./repo

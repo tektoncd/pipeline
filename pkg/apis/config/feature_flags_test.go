@@ -35,6 +35,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
+				DisableHomeEnvOverwrite:          false,
+				DisableWorkingDirOverwrite:       false,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				EnableAPIFields:                  "stable",
 			},
@@ -61,6 +63,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
+				DisableHomeEnvOverwrite:          true,
+				DisableWorkingDirOverwrite:       true,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
@@ -71,6 +75,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
+				DisableHomeEnvOverwrite:          true,
+				DisableWorkingDirOverwrite:       true,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
@@ -78,13 +84,19 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		verifyConfigFileWithExpectedFeatureFlagsConfig(t, tc.fileName, tc.expectedConfig)
+		fileName := tc.fileName
+		expectedConfig := tc.expectedConfig
+		t.Run(fileName, func(t *testing.T) {
+			verifyConfigFileWithExpectedFeatureFlagsConfig(t, fileName, expectedConfig)
+		})
 	}
 }
 
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
+		DisableHomeEnvOverwrite:          true,
+		DisableWorkingDirOverwrite:       true,
 		RunningInEnvWithInjectedSidecars: true,
 		EnableAPIFields:                  "stable",
 	}
