@@ -30,26 +30,18 @@ data:
   # https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline
   # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
   disable-affinity-assistant: "false"
-  # Setting this flag to "true" will prevent Tekton overriding your
+  # Setting this flag to "false" will allow Tekton to override your
   # Task container's $HOME environment variable.
-  #
-  # The default behaviour currently is for Tekton to override the
-  # $HOME environment variable but this will change in an upcoming
-  # release.
   #
   # See https://github.com/tektoncd/pipeline/issues/2013 for more
   # info.
-  disable-home-env-overwrite: "false"
-  # Setting this flag to "true" will prevent Tekton overriding your
+  disable-home-env-overwrite: "true"
+  # Setting this flag to "false" will allow Tekton to override your
   # Task container's working directory.
-  #
-  # The default behaviour currently is for Tekton to override the
-  # working directory if not set by the user but this will change
-  # in an upcoming release.
   #
   # See https://github.com/tektoncd/pipeline/issues/1836 for more
   # info.
-  disable-working-directory-overwrite: "false"
+  disable-working-directory-overwrite: "true"
   # Setting this flag to "true" will prevent Tekton scanning attached
   # service accounts and injecting any credentials it finds into your
   # Steps.
@@ -61,7 +53,7 @@ data:
   # Note: setting this to "true" will prevent PipelineResources from
   # working.
   #
-  # See https://github.com/tektoncd/pipeline/issues/1836 for more
+  # See https://github.com/tektoncd/pipeline/issues/2791 for more
   # info.
   disable-creds-init: "false"
   # This option should be set to false when Pipelines is running in a

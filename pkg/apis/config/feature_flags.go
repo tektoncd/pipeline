@@ -37,8 +37,8 @@ const (
 	enableTektonOCIBundles                  = "enable-tekton-oci-bundles"
 	enableCustomTasks                       = "enable-custom-tasks"
 	enableAPIFields                         = "enable-api-fields"
-	DefaultDisableHomeEnvOverwrite          = false
-	DefaultDisableWorkingDirOverwrite       = false
+	DefaultDisableHomeEnvOverwrite          = true
+	DefaultDisableWorkingDirOverwrite       = true
 	DefaultDisableAffinityAssistant         = false
 	DefaultDisableCredsInit                 = false
 	DefaultRunningInEnvWithInjectedSidecars = true

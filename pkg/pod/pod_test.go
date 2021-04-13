@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -59,10 +60,6 @@ var (
 )
 
 func TestPodBuild(t *testing.T) {
-	implicitEnvVars := []corev1.EnvVar{{
-		Name:  "HOME",
-		Value: homeDir,
-	}}
 	secretsVolume := corev1.Volume{
 		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
@@ -85,6 +82,7 @@ func TestPodBuild(t *testing.T) {
 		trAnnotation    map[string]string
 		ts              v1beta1.TaskSpec
 		featureFlags    map[string]string
+		overrideHomeEnv *bool
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
 	}{{
@@ -115,12 +113,10 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -160,12 +156,10 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -176,6 +170,55 @@ func TestPodBuild(t *testing.T) {
 		},
 		wantAnnotations: map[string]string{
 			readyAnnotation: readyAnnotationValue,
+		},
+	}, {
+		desc: "simple-with-home-overwrite-flag",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+		},
+		featureFlags: map[string]string{
+			// Providing this flag will make the test set the pod builder's
+			// OverrideHomeEnv setting.
+			"disable-home-env-overwrite": "true",
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: "/tekton/home",
+				}},
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
 		},
 	}, {
 		desc: "with service account",
@@ -213,7 +256,6 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
@@ -221,7 +263,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
 					MountPath: "/tekton/creds-secrets/multi-creds",
 				})...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -276,13 +317,11 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{
 					toolsMount,
 					downwardMount,
 					{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
 				}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -333,12 +372,10 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -375,12 +412,10 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -428,7 +463,6 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
@@ -477,12 +511,10 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
@@ -548,12 +580,10 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
@@ -608,12 +638,10 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
@@ -670,12 +698,10 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir: pipeline.WorkspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("8"),
@@ -699,12 +725,10 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, {
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir: pipeline.WorkspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              zeroQty,
@@ -797,12 +821,11 @@ script-heredoc-randomly-generated-78c5n
 					"template",
 					"args",
 				},
-				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
+				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
@@ -822,12 +845,11 @@ script-heredoc-randomly-generated-78c5n
 					"template",
 					"args",
 				},
-				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
+				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, toolsMount, {
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
@@ -848,12 +870,11 @@ script-heredoc-randomly-generated-78c5n
 					"template",
 					"args",
 				},
-				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
+				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, {
 					Name:      "tekton-creds-init-home-2",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -917,12 +938,10 @@ script-heredoc-randomly-generated-mz4c7
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
 				},
-				Env: append(implicitEnvVars),
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -973,12 +992,10 @@ script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -1024,12 +1041,10 @@ script-heredoc-randomly-generated-mz4c7
 					"cmd",
 					"--",
 				},
-				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
@@ -1077,12 +1092,10 @@ script-heredoc-randomly-generated-mz4c7
 						"cmd",
 						"--",
 					},
-					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					WorkingDir:             pipeline.WorkspaceDir,
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
@@ -1129,12 +1142,10 @@ script-heredoc-randomly-generated-mz4c7
 						"cmd",
 						"--",
 					},
-					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					WorkingDir:             pipeline.WorkspaceDir,
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
@@ -1195,12 +1206,10 @@ script-heredoc-randomly-generated-mz4c7
 						"cmd",
 						"--",
 					},
-					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					WorkingDir:             pipeline.WorkspaceDir,
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
@@ -1237,12 +1246,10 @@ script-heredoc-randomly-generated-mz4c7
 						"cmd",
 						"--",
 					},
-					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					WorkingDir:             pipeline.WorkspaceDir,
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
@@ -1282,9 +1289,7 @@ script-heredoc-randomly-generated-mz4c7
 						"cmd",
 						"--",
 					},
-					Env:                    implicitEnvVars,
 					VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
-					WorkingDir:             pipeline.WorkspaceDir,
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
@@ -1345,11 +1350,18 @@ script-heredoc-randomly-generated-mz4c7
 			// No entrypoints should be looked up.
 			entrypointCache := fakeCache{}
 
+			overrideHomeEnv := false
+			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
+				var err error = nil
+				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
+					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
+				}
+			}
 			builder := Builder{
 				Images:          images,
 				KubeClient:      kubeclient,
 				EntrypointCache: entrypointCache,
-				OverrideHomeEnv: true,
+				OverrideHomeEnv: overrideHomeEnv,
 			}
 			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
 			if err != nil {
@@ -1400,12 +1412,12 @@ func TestShouldOverrideHomeEnv(t *testing.T) {
 		configMap   *corev1.ConfigMap
 		expected    bool
 	}{{
-		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in true",
+		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in false",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
-		expected: true,
+		expected: false,
 	}, {
 		description: "Setting disable-home-env-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{
@@ -1441,12 +1453,12 @@ func TestShouldOverrideWorkingDir(t *testing.T) {
 		configMap   *corev1.ConfigMap
 		expected    bool
 	}{{
-		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in true",
+		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in false",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
-		expected: true,
+		expected: false,
 	}, {
 		description: "Setting disable-working-directory-overwrite to false should result in true",
 		configMap: &corev1.ConfigMap{

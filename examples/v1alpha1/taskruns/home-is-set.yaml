@@ -6,6 +6,9 @@ spec:
   taskSpec:
     steps:
     - image: ubuntu
+      env:
+      - name: HOME
+        value: /tekton/home
       script: |
         #!/usr/bin/env bash
         [[ $HOME == /tekton/home ]]
