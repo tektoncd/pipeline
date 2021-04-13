@@ -51,6 +51,7 @@ spec:
       image: ubuntu
       securityContext:
         runAsUser: 16000
+      workingDir: /workspace
       script: |
         #!/usr/bin/env bash
         cat > file << EOF

@@ -161,9 +161,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
 	// themselves their value takes precedence.
-	for i, s := range stepContainers {
-		env := append(implicitEnvVars, s.Env...)
-		stepContainers[i].Env = env
+	if len(implicitEnvVars) > 0 {
+		for i, s := range stepContainers {
+			env := append(implicitEnvVars, s.Env...)
+			stepContainers[i].Env = env
+		}
 	}
 
 	// Add implicit volume mounts to each step, unless the step specifies

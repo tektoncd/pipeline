@@ -10,6 +10,7 @@ spec:
         type: storage
     steps:
     - image: alpine
+      workingDir: /workspace
       script: unzip source/archive.zip && cat file.txt
   inputs:
     resources:
