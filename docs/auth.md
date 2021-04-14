@@ -162,6 +162,8 @@ before executing any `Steps` in the `Run`, Tekton creates a `~/.gitconfig` file 
 specified in the `Secret`. When the `Steps` execute, Tekton uses those credentials to retrieve
 `PipelineResources` specified in the `Run`.
 
+Note: Github deprecated basic authentication with username and password. You can still use basic authentication, but you wil need to use a personal access token instead of the cleartext password in the following example. You can find out how to create such a token on the [Github documentation site](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
+
 1. In `secret.yaml`, define a `Secret` that specifies the username and password that you want Tekton
    to use to access the target Git repository:
 
