@@ -359,8 +359,8 @@ func ResolvePipelineRunTask(
 	}
 	isTaskRefCustomTask := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskRef.APIVersion != "" &&
 		rprt.PipelineTask.TaskRef.Kind != ""
-	isTaskSpecCustomTask := rprt.PipelineTask.TaskSpec != nil && rprt.PipelineTask.TaskSpec.APIVersion != "" &&
-		rprt.PipelineTask.TaskSpec.Kind != "" && len(rprt.PipelineTask.TaskSpec.Spec.Raw) > 0
+	isTaskSpecCustomTask := rprt.PipelineTask.TaskSpec != nil && rprt.PipelineTask.TaskSpec.TypeMeta.APIVersion != "" &&
+		rprt.PipelineTask.TaskSpec.TypeMeta.Kind != ""
 	cfg := config.FromContextOrDefaults(ctx)
 	rprt.CustomTask = cfg.FeatureFlags.EnableCustomTasks && (isTaskRefCustomTask || isTaskSpecCustomTask)
 
