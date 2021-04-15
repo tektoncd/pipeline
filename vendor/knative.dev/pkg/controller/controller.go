@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -150,6 +151,13 @@ func FilterControllerGK(gk schema.GroupKind) func(obj interface{}) bool {
 			ownerGV.Group == gk.Group &&
 			owner.Kind == gk.Kind
 	}
+}
+
+// FilterController makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on the
+// controlling resource.
+func FilterController(r kmeta.OwnerRefable) func(obj interface{}) bool {
+	return FilterControllerGK(r.GetGroupVersionKind().GroupKind())
 }
 
 // FilterWithName makes it simple to create FilterFunc's for use with
@@ -514,7 +522,7 @@ func (c *Impl) processNextWorkItem() bool {
 
 	// Embed the key into the logger and attach that to the context we pass
 	// to the Reconciler.
-	logger := c.logger.With(zap.String(logkey.TraceID, uuid.New().String()), zap.String(logkey.Key, keyStr))
+	logger := c.logger.With(zap.String(logkey.TraceID, uuid.NewString()), zap.String(logkey.Key, keyStr))
 	ctx := logging.WithLogger(context.Background(), logger)
 
 	// Run Reconcile, passing it the namespace/name string of the
@@ -578,8 +586,8 @@ func NewSkipKey(key string) error {
 	return skipKeyError{key: key}
 }
 
-// permanentError is an error that is considered not transient.
-// We should not re-queue keys when it returns with thus error in reconcile.
+// skipKeyError is an error that indicates a key was skipped.
+// We should not re-queue keys when it returns this error from Reconcile.
 type skipKeyError struct {
 	key string
 }
@@ -685,11 +693,27 @@ func RunInformers(stopCh <-chan struct{}, informers ...Informer) (func(), error)
 	}
 
 	for i, informer := range informers {
-		if ok := cache.WaitForCacheSync(stopCh, informer.HasSynced); !ok {
+		if ok := WaitForCacheSyncQuick(stopCh, informer.HasSynced); !ok {
 			return wg.Wait, fmt.Errorf("failed to wait for cache at index %d to sync", i)
 		}
 	}
 	return wg.Wait, nil
+}
+
+// WaitForCacheSyncQuick is the same as cache.WaitForCacheSync but with a much reduced
+// check-rate for the sync period.
+func WaitForCacheSyncQuick(stopCh <-chan struct{}, cacheSyncs ...cache.InformerSynced) bool {
+	err := wait.PollImmediateUntil(time.Millisecond,
+		func() (bool, error) {
+			for _, syncFunc := range cacheSyncs {
+				if !syncFunc() {
+					return false, nil
+				}
+			}
+			return true, nil
+		},
+		stopCh)
+	return err == nil
 }
 
 // StartAll kicks off all of the passed controllers with DefaultThreadsPerController.

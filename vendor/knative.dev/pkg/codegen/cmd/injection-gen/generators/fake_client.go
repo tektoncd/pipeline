@@ -71,6 +71,10 @@ func (g *fakeClientGenerator) GenerateType(c *generator.Context, t *types.Type, 
 			Package: "knative.dev/pkg/injection",
 			Name:    "Fake.RegisterClient",
 		}),
+		"injectionRegisterClientFetcher": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/injection",
+			Name:    "Fake.RegisterClientFetcher",
+		}),
 		"loggingFromContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
@@ -91,6 +95,9 @@ func (g *fakeClientGenerator) GenerateType(c *generator.Context, t *types.Type, 
 var injectionFakeClient = `
 func init() {
 	{{.injectionRegisterClient|raw}}(withClient)
+	{{.injectionRegisterClientFetcher|raw}}(func(ctx context.Context) interface{} {
+		return Get(ctx)
+	})
 }
 
 func withClient(ctx {{.contextContext|raw}}, cfg *{{.restConfig|raw}}) {{.contextContext|raw}} {

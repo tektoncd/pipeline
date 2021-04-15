@@ -17,7 +17,6 @@ limitations under the License.
 package network
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -52,33 +51,19 @@ const (
 	// uses to find out which version of the networking config is deployed.
 	HashHeaderName = "K-Network-Hash"
 
+	// KubeProbeUAPrefix is the prefix for the User-Agent header.
 	// Since K8s 1.8, prober requests have
 	//   User-Agent = "kube-probe/{major-version}.{minor-version}".
 	KubeProbeUAPrefix = "kube-probe/"
 
+	// KubeletProbeHeaderName is the header name to augment the probes, because
 	// Istio with mTLS rewrites probes, but their probes pass a different
-	// user-agent.  So we augment the probes with this header.
+	// user-agent.
 	KubeletProbeHeaderName = "K-Kubelet-Probe"
 )
 
 // IsKubeletProbe returns true if the request is a Kubernetes probe.
 func IsKubeletProbe(r *http.Request) bool {
-	return strings.HasPrefix(r.Header.Get("User-Agent"), KubeProbeUAPrefix) ||
+	return strings.HasPrefix(r.Header.Get(UserAgentKey), KubeProbeUAPrefix) ||
 		r.Header.Get(KubeletProbeHeaderName) != ""
-}
-
-// IsKProbe returns true if the request is a knatvie probe.
-func IsKProbe(r *http.Request) bool {
-	return r.Header.Get(ProbeHeaderName) == ProbeHeaderValue
-}
-
-// ServeKProbe serve KProbe requests.
-func ServeKProbe(w http.ResponseWriter, r *http.Request) {
-	hh := r.Header.Get(HashHeaderName)
-	if hh == "" {
-		http.Error(w, fmt.Sprintf("a probe request must contain a non-empty %q header", HashHeaderName), http.StatusBadRequest)
-		return
-	}
-	w.Header().Set(HashHeaderName, hh)
-	w.WriteHeader(http.StatusOK)
 }

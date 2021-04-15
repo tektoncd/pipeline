@@ -73,7 +73,7 @@ the resulting JSON Patch can only contain fields relevant to the resource.
 
 In Knative, we follow the Kubernetes API principles of using `conditions` as a
 key part of our resources’ status, but we go a step further in
-[defining particular conventions](https://github.com/knative/serving/blob/master/docs/spec/errors.md#error-conditions-and-reporting)
+[defining particular conventions](https://github.com/knative/serving/blob/main/docs/spec/errors.md#error-conditions-and-reporting)
 on how these are used.
 
 To support this, we define:

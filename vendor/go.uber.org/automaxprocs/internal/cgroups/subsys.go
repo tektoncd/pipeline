@@ -52,7 +52,7 @@ type CGroupSubsys struct {
 // NewCGroupSubsysFromLine returns a new *CGroupSubsys by parsing a string in
 // the format of `/proc/$PID/cgroup`
 func NewCGroupSubsysFromLine(line string) (*CGroupSubsys, error) {
-	fields := strings.Split(line, _cgroupSep)
+	fields := strings.SplitN(line, _cgroupSep, _csFieldCount)
 
 	if len(fields) != _csFieldCount {
 		return nil, cgroupSubsysFormatInvalidError{line}

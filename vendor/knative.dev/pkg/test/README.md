@@ -28,7 +28,7 @@ You can use the test library in this dir to:
 
 These flags are useful for running against an existing cluster, making use of
 your existing
-[environment setup](https://github.com/knative/serving/blob/master/DEVELOPMENT.md#environment-setup).
+[environment setup](https://github.com/knative/serving/blob/main/DEVELOPMENT.md#environment-setup).
 
 By importing `knative.dev/pkg/test` you get access to a global variable called
 `test.Flags` which holds the values of
@@ -46,7 +46,7 @@ _See [e2e_flags.go](./e2e_flags.go)._
 debug logs will be emitted to stdout.
 
 We are using a generic
-[FormatLogger](https://github.com/knative/pkg/blob/master/test/logging/logging.go#L49)
+[FormatLogger](https://github.com/knative/pkg/blob/main/test/logging/logging.go#L49)
 that can be passed in any existing logger that satisfies it. Test can use the
 generic [logging methods](https://golang.org/pkg/testing/#T) to log info and
 error logs. All the common methods accept generic FormatLogger as a parameter
@@ -64,7 +64,7 @@ _See [logging.go](./logging/logging.go)._
 ### Check Knative Serving resources
 
 _WARNING: this code also exists in
-[`knative/serving`](https://github.com/knative/serving/blob/master/test/adding_tests.md#make-requests-against-deployed-services)._
+[`knative/serving`](https://github.com/knative/serving/blob/main/test/adding_tests.md#make-requests-against-deployed-services)._
 
 After creating Knative Serving resources or making changes to them, you will
 need to wait for the system to realize those changes. You can use the Knative

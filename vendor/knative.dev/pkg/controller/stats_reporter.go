@@ -26,7 +26,6 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
 	kubemetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/workqueue"
 	"knative.dev/pkg/metrics"
@@ -34,8 +33,8 @@ import (
 )
 
 var (
-	workQueueDepthStat   = stats.Int64("work_queue_depth", "Depth of the work queue", stats.UnitNone)
-	reconcileCountStat   = stats.Int64("reconcile_count", "Number of reconcile operations", stats.UnitNone)
+	workQueueDepthStat   = stats.Int64("work_queue_depth", "Depth of the work queue", stats.UnitDimensionless)
+	reconcileCountStat   = stats.Int64("reconcile_count", "Number of reconcile operations", stats.UnitDimensionless)
 	reconcileLatencyStat = stats.Int64("reconcile_latency", "Latency of reconcile operations", stats.UnitMilliseconds)
 
 	// reconcileDistribution defines the bucket boundaries for the histogram of reconcile latency metric.
@@ -58,104 +57,51 @@ func init() {
 		Adds: stats.Int64(
 			"workqueue_adds_total",
 			"Total number of adds handled by workqueue",
-			stats.UnitNone,
+			stats.UnitDimensionless,
 		),
 		Depth: stats.Int64(
 			"workqueue_depth",
 			"Current depth of workqueue",
-			stats.UnitNone,
+			stats.UnitDimensionless,
 		),
 		Latency: stats.Float64(
 			"workqueue_queue_latency_seconds",
 			"How long in seconds an item stays in workqueue before being requested.",
-			"s",
+			stats.UnitSeconds,
 		),
 		Retries: stats.Int64(
 			"workqueue_retries_total",
 			"Total number of retries handled by workqueue",
-			"s",
+			stats.UnitDimensionless,
 		),
 		WorkDuration: stats.Float64(
 			"workqueue_work_duration_seconds",
 			"How long in seconds processing an item from workqueue takes.",
-			"s",
+			stats.UnitSeconds,
 		),
 		UnfinishedWorkSeconds: stats.Float64(
 			"workqueue_unfinished_work_seconds",
 			"How long in seconds the outstanding workqueue items have been in flight (total).",
-			"s",
+			stats.UnitSeconds,
 		),
 		LongestRunningProcessorSeconds: stats.Float64(
 			"workqueue_longest_running_processor_seconds",
 			"How long in seconds the longest outstanding workqueue item has been in flight.",
-			"s",
+			stats.UnitSeconds,
 		),
 	}
 	workqueue.SetProvider(wp)
-
-	// Register to receive metrics from kubernetes reflectors (what powers informers)
-	// NOTE: today these don't actually seem to wire up to anything in Kubernetes.
-	rp := &metrics.ReflectorProvider{
-		ItemsInList: stats.Float64(
-			"reflector_items_in_list",
-			"How many items an API list returns to the reflectors",
-			stats.UnitNone,
-		),
-		// TODO(mattmoor): This is not in the latest version, so it will
-		// be removed in a future version.
-		ItemsInMatch: stats.Float64(
-			"reflector_items_in_match",
-			"",
-			stats.UnitNone,
-		),
-		ItemsInWatch: stats.Float64(
-			"reflector_items_in_watch",
-			"How many items an API watch returns to the reflectors",
-			stats.UnitNone,
-		),
-		LastResourceVersion: stats.Float64(
-			"reflector_last_resource_version",
-			"Last resource version seen for the reflectors",
-			stats.UnitNone,
-		),
-		ListDuration: stats.Float64(
-			"reflector_list_duration_seconds",
-			"How long an API list takes to return and decode for the reflectors",
-			stats.UnitNone,
-		),
-		Lists: stats.Int64(
-			"reflector_lists_total",
-			"Total number of API lists done by the reflectors",
-			stats.UnitNone,
-		),
-		ShortWatches: stats.Int64(
-			"reflector_short_watches_total",
-			"Total number of short API watches done by the reflectors",
-			stats.UnitNone,
-		),
-		WatchDuration: stats.Float64(
-			"reflector_watch_duration_seconds",
-			"How long an API watch takes to return and decode for the reflectors",
-			stats.UnitNone,
-		),
-		Watches: stats.Int64(
-			"reflector_watches_total",
-			"Total number of API watches done by the reflectors",
-			stats.UnitNone,
-		),
-	}
-	cache.SetReflectorMetricsProvider(rp)
 
 	cp := &metrics.ClientProvider{
 		Latency: stats.Float64(
 			"client_latency",
 			"How long Kubernetes API requests take",
-			"s",
+			stats.UnitSeconds,
 		),
 		Result: stats.Int64(
 			"client_results",
 			"Total number of API requests (broken down by status code)",
-			stats.UnitNone,
+			stats.UnitDimensionless,
 		),
 	}
 	opts := kubemetrics.RegisterOpts{
@@ -181,7 +127,6 @@ func init() {
 		TagKeys:     []tag.Key{reconcilerTagKey, successTagKey, NamespaceTagKey},
 	}}
 	views = append(views, wp.DefaultViews()...)
-	views = append(views, rp.DefaultViews()...)
 	views = append(views, cp.DefaultViews()...)
 
 	// Create views to see our measurements. This can return an error if

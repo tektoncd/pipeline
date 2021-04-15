@@ -130,7 +130,7 @@ func (ir *IntervalReader) Start() error {
 		reportingInterval = ir.ReportingInterval
 	}
 
-	if ir.done != nil {
+	if ir.quit != nil {
 		return errAlreadyStarted
 	}
 	ir.timer = time.NewTicker(reportingInterval)
@@ -170,6 +170,19 @@ func (ir *IntervalReader) Stop() {
 	close(ir.quit)
 	close(ir.done)
 	ir.quit = nil
+}
+
+// Flush flushes the metrics if IntervalReader is stopped, otherwise no-op.
+func (ir *IntervalReader) Flush() {
+	ir.mu.Lock()
+	defer ir.mu.Unlock()
+
+	// No-op if IntervalReader is not stopped
+	if ir.quit != nil {
+		return
+	}
+
+	ir.reader.ReadAndExport(ir.exporter)
 }
 
 // ReadAndExport reads metrics from all producer registered with

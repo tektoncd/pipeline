@@ -134,8 +134,8 @@ type statefulSetID struct {
 
 func (ssID *statefulSetID) Decode(v string) error {
 	if i := strings.LastIndex(v, "-"); i != -1 {
-		ui, err := strconv.ParseUint(v[i+1:], 10, 64)
-		ssID.ordinal = int(ui)
+		ui, err := strconv.Atoi(v[i+1:])
+		ssID.ordinal = ui
 		ssID.ssName = v[:i]
 		return err
 	}

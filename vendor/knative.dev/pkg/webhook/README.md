@@ -25,7 +25,7 @@ The code to stand up such a webhook looks roughly like this:
 ```go
 // Create a function matching this signature to pass into sharedmain.
 func NewResourceAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return resourcesemantics.NewAdmissionController(ctx,
+	return validation.NewAdmissionController(ctx,
 		// Name of the resource webhook (created via yaml)
 		fmt.Sprintf("resources.webhook.%s.knative.dev", system.Namespace()),
 
