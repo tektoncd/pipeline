@@ -40,6 +40,7 @@ type reconcilerControllerGenerator struct {
 
 	reconcilerClass    string
 	hasReconcilerClass bool
+	hasStatus          bool
 }
 
 var _ generator.Generator = (*reconcilerControllerGenerator)(nil)
@@ -66,10 +67,11 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
-		"type":     t,
-		"group":    g.groupName,
-		"class":    g.reconcilerClass,
-		"hasClass": g.hasReconcilerClass,
+		"type":      t,
+		"group":     g.groupName,
+		"class":     g.reconcilerClass,
+		"hasClass":  g.hasReconcilerClass,
+		"hasStatus": g.hasStatus,
 		"controllerImpl": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
 			Name:    "Impl",
@@ -202,7 +204,7 @@ const (
 // NewImpl returns a {{.controllerImpl|raw}} that handles queuing and feeding work from
 // the queue through an implementation of {{.controllerReconciler|raw}}, delegating to
 // the provided Interface and optional Finalizer methods. OptionsFn is used to return
-// {{.controllerOptions|raw}} to be used but the internal reconciler.
+// {{.controllerOptions|raw}} to be used by the internal reconciler.
 func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValue string{{end}}, optionsFns ...{{.controllerOptionsFn|raw}}) *{{.controllerImpl|raw}} {
 	logger := {{.loggingFromContext|raw}}(ctx)
 
@@ -264,8 +266,13 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		if opts.AgentName != "" {
 			agentName = opts.AgentName
 		}
+		{{- if .hasStatus}}
 		if opts.SkipStatusUpdates {
 			rec.skipStatusUpdates = true
+		}
+		{{- end}}
+		if opts.DemoteFunc != nil {
+			rec.DemoteFunc = opts.DemoteFunc
 		}
 	}
 

@@ -66,7 +66,11 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 		"clientSetNewForConfigOrDie": c.Universe.Function(types.Name{Package: g.clientSetPackage, Name: "NewForConfigOrDie"}),
 		"clientSetInterface":         c.Universe.Type(types.Name{Package: g.clientSetPackage, Name: "Interface"}),
 		"injectionRegisterClient":    c.Universe.Function(types.Name{Package: "knative.dev/pkg/injection", Name: "Default.RegisterClient"}),
-		"restConfig":                 c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
+		"injectionRegisterClientFetcher": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/injection",
+			Name:    "Default.RegisterClientFetcher",
+		}),
+		"restConfig": c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
 		"loggingFromContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
@@ -85,6 +89,9 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 var injectionClient = `
 func init() {
 	{{.injectionRegisterClient|raw}}(withClient)
+	{{.injectionRegisterClientFetcher|raw}}(func(ctx context.Context) interface{} {
+		return Get(ctx)
+	})
 }
 
 // Key is used as the key for associating information with a context.Context.

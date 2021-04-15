@@ -94,13 +94,14 @@ func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Bac
 	return nil, fmt.Errorf("timed out dialing after %.2fs", elapsed.Seconds())
 }
 
-func newHTTPTransport(disableKeepAlives bool, maxIdle, maxIdlePerHost int) http.RoundTripper {
+func newHTTPTransport(disableKeepAlives, disableCompression bool, maxIdle, maxIdlePerHost int) http.RoundTripper {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.DialContext = DialWithBackOff
 	transport.DisableKeepAlives = disableKeepAlives
 	transport.MaxIdleConns = maxIdle
 	transport.MaxIdleConnsPerHost = maxIdlePerHost
 	transport.ForceAttemptHTTP2 = false
+	transport.DisableCompression = disableCompression
 	return transport
 }
 
@@ -108,7 +109,7 @@ func newHTTPTransport(disableKeepAlives bool, maxIdle, maxIdlePerHost int) http.
 // since it will not cache connections.
 func NewProberTransport() http.RoundTripper {
 	return newAutoTransport(
-		newHTTPTransport(true /*disable keep-alives*/, 0, 0 /*no caching*/),
+		newHTTPTransport(true /*disable keep-alives*/, false /*disable auto-compression*/, 0, 0 /*no caching*/),
 		NewH2CTransport())
 }
 
@@ -116,8 +117,17 @@ func NewProberTransport() http.RoundTripper {
 // based on the request's HTTP version.
 func NewAutoTransport(maxIdle, maxIdlePerHost int) http.RoundTripper {
 	return newAutoTransport(
-		newHTTPTransport(false /*disable keep-alives*/, maxIdle, maxIdlePerHost),
-		NewH2CTransport())
+		newHTTPTransport(false /*disable keep-alives*/, false /*disable auto-compression*/, maxIdle, maxIdlePerHost),
+		newH2CTransport(false /*disable auto-compression*/))
+}
+
+// NewProxyAutoTransport creates a RoundTripper suitable for use by a reverse
+// proxy.  The returned transport uses HTTP or H2C based on the request's HTTP
+// version. The transport has DisableCompression set to true.
+func NewProxyAutoTransport(maxIdle, maxIdlePerHost int) http.RoundTripper {
+	return newAutoTransport(
+		newHTTPTransport(false /*disable keep-alives*/, true /*disable auto-compression*/, maxIdle, maxIdlePerHost),
+		newH2CTransport(true /*disable auto-compression*/))
 }
 
 // AutoTransport uses h2c for HTTP2 requests and falls back to `http.DefaultTransport` for all others

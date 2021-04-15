@@ -26,6 +26,10 @@ import (
 // client type to a context.
 type ClientInjector func(context.Context, *rest.Config) context.Context
 
+// ClientFetcher holds the type of a callback that returns a particular client type
+// from a context.
+type ClientFetcher func(context.Context) interface{}
+
 func (i *impl) RegisterClient(ci ClientInjector) {
 	i.m.Lock()
 	defer i.m.Unlock()
@@ -39,4 +43,22 @@ func (i *impl) GetClients() []ClientInjector {
 
 	// Copy the slice before returning.
 	return append(i.clients[:0:0], i.clients...)
+}
+
+func (i *impl) RegisterClientFetcher(f ClientFetcher) {
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	i.clientFetchers = append(i.clientFetchers, f)
+}
+
+func (i *impl) FetchAllClients(ctx context.Context) []interface{} {
+	i.m.RLock()
+	defer i.m.RUnlock()
+
+	clients := make([]interface{}, 0, len(i.clientFetchers))
+	for _, f := range i.clientFetchers {
+		clients = append(clients, f(ctx))
+	}
+	return clients
 }

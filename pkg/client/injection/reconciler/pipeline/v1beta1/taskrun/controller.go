@@ -50,7 +50,7 @@ const (
 // NewImpl returns a controller.Impl that handles queuing and feeding work from
 // the queue through an implementation of controller.Reconciler, delegating to
 // the provided Interface and optional Finalizer methods. OptionsFn is used to return
-// controller.Options to be used but the internal reconciler.
+// controller.Options to be used by the internal reconciler.
 func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsFn) *controller.Impl {
 	logger := logging.FromContext(ctx)
 
@@ -112,6 +112,9 @@ func NewImpl(ctx context.Context, r Interface, optionsFns ...controller.OptionsF
 		}
 		if opts.SkipStatusUpdates {
 			rec.skipStatusUpdates = true
+		}
+		if opts.DemoteFunc != nil {
+			rec.DemoteFunc = opts.DemoteFunc
 		}
 	}
 

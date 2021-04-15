@@ -8,7 +8,7 @@ This is a guide to start using `logstream` in your e2e testing.
    knative test scripts already define this, and in some places (e.g. serving)
    randomize it. However, to facilitate usage outside of CI, you should consider
    including a package like
-   [this](https://github.com/knative/serving/blob/master/test/defaultsystem/system.go)
+   [this](https://github.com/knative/serving/blob/main/test/defaultsystem/system.go)
    and linking it like
    [this](https://github.com/knative/serving/blob/e797247322b5aa35001152d2a2715dbc20a86cc4/test/conformance.go#L20-L23)
 
@@ -49,4 +49,4 @@ Now, any log statements that the library prints through this logger will appear
 in the logstream!
 
 For an example of this pattern, see
-[the knative/networking prober library](https://github.com/knative/networking/blob/master/pkg/status/status.go).
+[the knative/networking prober library](https://github.com/knative/networking/blob/main/pkg/status/status.go).

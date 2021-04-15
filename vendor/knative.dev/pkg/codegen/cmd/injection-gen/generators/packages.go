@@ -552,6 +552,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					schemePkg:           filepath.Join(customArgs.VersionedClientSetPackage, "scheme"),
 					reconcilerClass:     reconcilerClass,
 					hasReconcilerClass:  hasReconcilerClass,
+					hasStatus:           hasStatus(t),
 				})
 				return generators
 			},
@@ -613,6 +614,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					hasReconcilerClass: hasReconcilerClass,
 					nonNamespaced:      nonNamespaced,
 					isKRShaped:         isKRShaped,
+					hasStatus:          hasStatus(t),
 				})
 				return generators
 			},
@@ -736,4 +738,13 @@ func versionDuckPackages(basePackage string, groupPkgName string, gv clientgenty
 		})
 	}
 	return vers
+}
+
+func hasStatus(t *types.Type) bool {
+	for _, member := range t.Members {
+		if member.Name == "Status" {
+			return true
+		}
+	}
+	return false
 }

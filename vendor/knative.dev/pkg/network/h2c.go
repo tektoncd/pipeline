@@ -41,8 +41,13 @@ func NewServer(addr string, h http.Handler) *http.Server {
 // to explicitly allow h2c (http2 without TLS) transport.
 // See https://github.com/golang/go/issues/14141 for more details.
 func NewH2CTransport() http.RoundTripper {
+	return newH2CTransport(false)
+}
+
+func newH2CTransport(disableCompression bool) http.RoundTripper {
 	return &http2.Transport{
-		AllowHTTP: true,
+		AllowHTTP:          true,
+		DisableCompression: disableCompression,
 		DialTLS: func(netw, addr string, _ *tls.Config) (net.Conn, error) {
 			return DialWithBackOff(context.Background(),
 				netw, addr)
