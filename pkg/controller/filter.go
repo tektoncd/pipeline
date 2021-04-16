@@ -44,13 +44,18 @@ func FilterRunRef(apiVersion, kind string) func(interface{}) bool {
 			// Ignore.
 			return false
 		}
-		if r == nil || r.Spec.Ref == nil {
+		if r == nil || (r.Spec.Ref == nil && r.Spec.Spec == nil) {
 			// These are invalid, but just in case they get
 			// created somehow, don't panic.
 			return false
 		}
-
-		return r.Spec.Ref.APIVersion == apiVersion && r.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+		result := false
+		if r.Spec.Ref != nil {
+			result = r.Spec.Ref.APIVersion == apiVersion && r.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+		} else if r.Spec.Spec != nil {
+			result = r.Spec.Spec.APIVersion == apiVersion && r.Spec.Spec.Kind == kind
+		}
+		return result
 	}
 }
 
@@ -82,10 +87,16 @@ func FilterOwnerRunRef(runLister listersalpha.RunLister, apiVersion, kind string
 		if err != nil {
 			return false
 		}
-		if run.Spec.Ref == nil {
+		if run.Spec.Ref == nil && run.Spec.Spec == nil {
 			// These are invalid, but just in case they get created somehow, don't panic.
 			return false
 		}
-		return run.Spec.Ref.APIVersion == apiVersion && run.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+		result := false
+		if run.Spec.Ref != nil {
+			result = run.Spec.Ref.APIVersion == apiVersion && run.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+		} else if run.Spec.Spec != nil {
+			result = run.Spec.Spec.APIVersion == apiVersion && run.Spec.Spec.Kind == kind
+		}
+		return result
 	}
 }

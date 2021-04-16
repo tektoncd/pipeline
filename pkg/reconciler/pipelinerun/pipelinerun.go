@@ -635,6 +635,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		if rprt == nil || rprt.Skip(pipelineRunFacts) || rprt.IsFinallySkipped(pipelineRunFacts) {
 			continue
 		}
+		logger.Infof("Check: rprt %v", rprt)
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
 			if rprt.IsCustomTask() {
 				rprt.Run, err = c.createRun(ctx, rprt, pr)
@@ -750,6 +751,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun) (*v1alpha1.Run, error) {
 	logger := logging.FromContext(ctx)
+	logger.Infof("Inside create Run at %v.", time.Now())
 	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
 	r := &v1alpha1.Run{
 		ObjectMeta: metav1.ObjectMeta{
@@ -771,8 +773,8 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 		logger.Infof("TaskSpec for task: %s,%v", rprt.PipelineTask.Name, r.Spec)
 		r.Spec.Spec = &v1beta1.EmbeddedTask{
 			TypeMeta: runtime.TypeMeta{
-				APIVersion: rprt.PipelineTask.TaskSpec.APIVersion,
-				Kind:       rprt.PipelineTask.TaskSpec.Kind,
+				APIVersion: rprt.PipelineTask.TaskSpec.TypeMeta.APIVersion,
+				Kind:       rprt.PipelineTask.TaskSpec.TypeMeta.Kind,
 			},
 			Spec:     rprt.PipelineTask.TaskSpec.Spec,
 			Metadata: rprt.PipelineTask.TaskSpec.Metadata,

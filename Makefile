@@ -69,6 +69,10 @@ $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 apply: | $(KO) ; $(info $(M) ko apply -f config/) @ ## Apply config to the current cluster
 	$Q $(KO) apply -f config
 
+.PHONY: delete
+delete: | $(KO) ; $(info $(M) ko delete -f config/) @ ## Delete config from the current cluster
+	$Q $(KO) delete -f config
+
 .PHONY: resolve
 resolve: | $(KO) ; $(info $(M) ko resolve -f config/) @ ## Resolve config to the current cluster
 	$Q $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f config
