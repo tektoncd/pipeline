@@ -971,210 +971,263 @@ script-heredoc-randomly-generated-78c5n
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
-		}}, {
-		desc: "using hostNetwork",
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{
-				{
-					Container: corev1.Container{
-						Name:    "use-my-hostNetwork",
-						Image:   "image",
-						Command: []string{"cmd"}, // avoid entrypoint lookup.
-					},
-				},
-			},
-		},
-		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &pod.Template{
-				HostNetwork: true,
-			},
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
-			HostNetwork:    true,
-			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-			}),
-			Containers: []corev1.Container{{
-				Name:    "step-use-my-hostNetwork",
-				Image:   "image",
-				Command: []string{"/tekton/tools/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/tekton/tools/0",
-					"-termination_path",
-					"/tekton/termination",
-					"-entrypoint",
-					"cmd",
-					"--",
-				},
-				Env: implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
-					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
-				TerminationMessagePath: "/tekton/termination",
-			}},
-		},
-	}, {
-		desc: "with a propagated Affinity Assistant name - expect proper affinity",
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{
-				{
-					Container: corev1.Container{
-						Name:    "name",
-						Image:   "image",
-						Command: []string{"cmd"}, // avoid entrypoint lookup.
-					},
-				},
-			},
-		},
-		trAnnotation: map[string]string{
-			"pipeline.tekton.dev/affinity-assistant": "random-name-123",
-		},
-		trs: v1beta1.TaskRunSpec{
-			PodTemplate: &pod.Template{},
-		},
-		want: &corev1.PodSpec{
-			Affinity: &corev1.Affinity{
-				PodAffinity: &corev1.PodAffinity{
-					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"app.kubernetes.io/instance":  "random-name-123",
-								"app.kubernetes.io/component": "affinity-assistant",
-							},
+		}},
+		{
+			desc: "setting host aliases",
+			ts: v1beta1.TaskSpec{
+
+				Steps: []v1beta1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "host-aliases",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
 						},
-						TopologyKey: "kubernetes.io/hostname",
-					}},
+					},
 				},
 			},
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
-			HostNetwork:    false,
-			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-			}),
-			Containers: []corev1.Container{{
-				Name:    "step-name",
-				Image:   "image",
-				Command: []string{"/tekton/tools/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/tekton/tools/0",
-					"-termination_path",
-					"/tekton/termination",
-					"-entrypoint",
-					"cmd",
-					"--",
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					HostAliases: []corev1.HostAlias{{IP: "127.0.0.1", Hostnames: []string{"foo.bar"}}},
 				},
-				Env: implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
-					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
-				TerminationMessagePath: "/tekton/termination",
-			}},
-		},
-	}, {
-		desc: "step-with-timeout",
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "name",
-				Image:   "image",
-				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			},
-				Timeout: &metav1.Duration{Duration: time.Second},
-			}},
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
-			Containers: []corev1.Container{{
-				Name:    "step-name",
-				Image:   "image",
-				Command: []string{"/tekton/tools/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/tekton/tools/0",
-					"-termination_path",
-					"/tekton/termination",
-					"-timeout",
-					"1s",
-					"-entrypoint",
-					"cmd",
-					"--",
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-9l9zj",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-host-aliases",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					Env: implicitEnvVars,
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-9l9zj",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					WorkingDir:             pipeline.WorkspaceDir,
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				HostAliases: []corev1.HostAlias{{IP: "127.0.0.1", Hostnames: []string{"foo.bar"}}},
+			}}, {
+			desc: "using hostNetwork",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "use-my-hostNetwork",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
+						},
+					},
 				},
-				Env: implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
-					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
-				TerminationMessagePath: "/tekton/termination",
-			}},
-			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-			}),
-		},
-	}, {
-		desc: "task-with-creds-init-disabled",
-		featureFlags: map[string]string{
-			"disable-creds-init": "true",
-		},
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "name",
-				Image:   "image",
-				Command: []string{"cmd"}, // avoid entrypoint lookup.
-			}}},
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
-			Containers: []corev1.Container{{
-				Name:    "step-name",
-				Image:   "image",
-				Command: []string{"/tekton/tools/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/tekton/tools/0",
-					"-termination_path",
-					"/tekton/termination",
-					"-entrypoint",
-					"cmd",
-					"--",
+			},
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					HostNetwork: true,
 				},
-				Env:                    implicitEnvVars,
-				VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
-				WorkingDir:             pipeline.WorkspaceDir,
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
-				TerminationMessagePath: "/tekton/termination",
-			}},
-			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
-		},
-	}} {
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				HostNetwork:    true,
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-9l9zj",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-use-my-hostNetwork",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					Env: implicitEnvVars,
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-9l9zj",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					WorkingDir:             pipeline.WorkspaceDir,
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+				}},
+			},
+		}, {
+			desc: "with a propagated Affinity Assistant name - expect proper affinity",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{
+					{
+						Container: corev1.Container{
+							Name:    "name",
+							Image:   "image",
+							Command: []string{"cmd"}, // avoid entrypoint lookup.
+						},
+					},
+				},
+			},
+			trAnnotation: map[string]string{
+				"pipeline.tekton.dev/affinity-assistant": "random-name-123",
+			},
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{},
+			},
+			want: &corev1.PodSpec{
+				Affinity: &corev1.Affinity{
+					PodAffinity: &corev1.PodAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"app.kubernetes.io/instance":  "random-name-123",
+									"app.kubernetes.io/component": "affinity-assistant",
+								},
+							},
+							TopologyKey: "kubernetes.io/hostname",
+						}},
+					},
+				},
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				HostNetwork:    false,
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-9l9zj",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					Env: implicitEnvVars,
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-9l9zj",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					WorkingDir:             pipeline.WorkspaceDir,
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+				}},
+			},
+		}, {
+			desc: "step-with-timeout",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				},
+					Timeout: &metav1.Duration{Duration: time.Second},
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-timeout",
+						"1s",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					Env: implicitEnvVars,
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-9l9zj",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					WorkingDir:             pipeline.WorkspaceDir,
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-9l9zj",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+			},
+		}, {
+			desc: "task-with-creds-init-disabled",
+			featureFlags: map[string]string{
+				"disable-creds-init": "true",
+			},
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					Env:                    implicitEnvVars,
+					VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
+					WorkingDir:             pipeline.WorkspaceDir,
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+			},
+		}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			store := config.NewStore(logtesting.TestLogger(t))

@@ -31,6 +31,14 @@
           "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
           "type": "boolean"
         },
+        "hostAliases": {
+          "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.HostAlias"
+          }
+        },
         "hostNetwork": {
           "description": "HostNetwork specifies whether the pod may use the node network namespace",
           "type": "boolean"
