@@ -42,9 +42,9 @@ func TestTaskRun_Invalid(t *testing.T) {
 		want: apis.ErrMissingField("spec"),
 	}, {
 		name: "invalid taskrun metadata",
-		task: tb.TaskRun("task.name"),
+		task: tb.TaskRun("task,name"),
 		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
+			Message: `invalid resource name "task,name": must be a valid DNS label`,
 			Paths:   []string{"metadata.name"},
 		},
 	}}

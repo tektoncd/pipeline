@@ -36,20 +36,18 @@ func TestRun_Invalid(t *testing.T) {
 		want *apis.FieldError
 	}{{
 		name: "missing spec",
-		run:  &v1alpha1.Run{},
-		want: apis.ErrMissingField("spec"),
-	}, {
-		name: "invalid metadata",
 		run: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{Name: "run.name"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 		},
-		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
-			Paths:   []string{"metadata.name"},
-		},
+		want: apis.ErrMissingField("spec"),
 	}, {
 		name: "missing ref",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: nil,
 			},
@@ -58,6 +56,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "missing apiVersion",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "",
@@ -68,6 +69,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "missing kind",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -79,6 +83,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "non-unique params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -111,6 +118,9 @@ func TestRun_Valid(t *testing.T) {
 	}{{
 		name: "no params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -122,6 +132,9 @@ func TestRun_Valid(t *testing.T) {
 	}, {
 		name: "unnamed",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -132,6 +145,9 @@ func TestRun_Valid(t *testing.T) {
 	}, {
 		name: "unique params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -149,6 +165,9 @@ func TestRun_Valid(t *testing.T) {
 	}, {
 		name: "valid workspace",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -177,6 +196,9 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 	}{{
 		name: "make sure WorkspaceBinding validation invoked",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -194,6 +216,9 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 	}, {
 		name: "bind same workspace twice",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",

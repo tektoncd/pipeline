@@ -48,18 +48,18 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 			name: "invalid pipelinerun metadata",
 			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinerun.name",
+					Name: "pipelinerun,name",
 				},
 			},
 			want: &apis.FieldError{
-				Message: "Invalid resource name: special character . must not be present",
+				Message: `invalid resource name "pipelinerun,name": must be a valid DNS label`,
 				Paths:   []string{"metadata.name"},
 			},
 		}, {
 			name: "no pipeline reference",
 			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
+					Name: "pipelinelinename",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
 					ServiceAccountName: "foo",
@@ -70,7 +70,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 			name: "negative pipeline timeout",
 			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
+					Name: "pipelinelinename",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
 					PipelineRef: &v1alpha1.PipelineRef{
@@ -102,7 +102,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			name: "normal case",
 			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
+					Name: "pipelinelinename",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
 					PipelineRef: &v1alpha1.PipelineRef{
@@ -114,7 +114,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			name: "no timeout",
 			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
+					Name: "pipelinelinename",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
 					PipelineRef: &v1alpha1.PipelineRef{
