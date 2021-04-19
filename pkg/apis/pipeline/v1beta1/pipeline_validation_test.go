@@ -48,6 +48,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 	}, {
 		name: "pipelinetask custom task references",
 		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
@@ -134,15 +135,15 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 		expectedError apis.FieldError
 		wc            func(context.Context) context.Context
 	}{{
-		name: "period in name",
+		name: "comma in name",
 		p: &Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipe.line"},
+			ObjectMeta: metav1.ObjectMeta{Name: "pipe,line"},
 			Spec: PipelineSpec{
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}}},
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `Invalid resource name: special character . must not be present`,
+			Message: `invalid resource name "pipe,line": must be a valid DNS label`,
 			Paths:   []string{"metadata.name"},
 		},
 	}, {
@@ -154,7 +155,7 @@ func TestPipeline_Validate_Failure(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `Invalid resource name: length must be no more than 63 characters`,
+			Message: "Invalid resource name: length must be no more than 63 characters",
 			Paths:   []string{"metadata.name"},
 		},
 	}, {

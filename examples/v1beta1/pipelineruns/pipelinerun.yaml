@@ -17,7 +17,7 @@ roleRef:
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: unit-tests
+  name: "unit.tests"
 spec:
   workspaces:
   - name: source
@@ -222,7 +222,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: demo-pipeline
+  name: "demo.pipeline"
 spec:
   params:
   - name: image-registry
@@ -244,7 +244,7 @@ spec:
   - name: skaffold-unit-tests
     runAfter: [fetch-from-git]
     taskRef:
-      name: unit-tests
+      name: "unit.tests"
     workspaces:
     - name: source
       workspace: git-source
@@ -313,7 +313,7 @@ metadata:
   name: demo-pipeline-run-1
 spec:
   pipelineRef:
-    name: demo-pipeline
+    name: "demo.pipeline"
   serviceAccountName: 'default'
   workspaces:
   - name: git-source

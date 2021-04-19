@@ -38,21 +38,8 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	}{{
 		name: "invalid taskspec",
 		task: &v1beta1.TaskRun{},
-		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec"),
-	}, {
-		name: "invalid taskrun metadata",
-		task: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "task.name",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{Name: "task"},
-			},
-		},
-		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
-			Paths:   []string{"metadata.name"},
-		},
+		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec").Also(
+			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

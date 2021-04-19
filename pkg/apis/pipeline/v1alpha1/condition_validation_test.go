@@ -56,10 +56,10 @@ func TestCondition_Invalid(t *testing.T) {
 	}{{
 		name: "invalid meta",
 		cond: &v1alpha1.Condition{
-			ObjectMeta: metav1.ObjectMeta{Name: "invalid.,name"},
+			ObjectMeta: metav1.ObjectMeta{Name: "invalid,name"},
 		},
 		expectedError: apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
+			Message: `invalid resource name "invalid,name": must be a valid DNS label`,
 			Paths:   []string{"metadata.name"},
 		},
 	}, {
