@@ -50,34 +50,10 @@ your laptop.
 Create a GitHub personal token with `admin:repo_hook` persmissions
 at least. This will be used to create the webhook.
 
+Run the script below to deploy Tekton CI on the local kind cluster:
+
 ```bash
-# Define GitHub variables, including the token and webhook secret
-GITHUB_TOKEN=<set-the-token-here>
-GITHUB_SECRET=$(ruby -rsecurerandom -e 'puts SecureRandom.hex(20)')
-GITHUB_ORG=<org> # The org or user where your fork is hosted
-GITHUB_REPO=<repo> # The name of the fork, typically "plumbing"
-GITHUB_USER=<github-user> # Your GitHub username
-
-# Deploy plumbing resources. Run from the root of your local clone
-# The sed command injects your fork GitHub org in the CEL filters
-kustomize build tekton/ci | \
-  sed -E 's/tektoncd(\/p[^i]+|\(|\/'\'')/'$GITHUB_ORG'\1/g' | \
-  kubectl create -f -
-
-# Create the secret used by the GitHub interceptor
-kubectl create secret generic ci-webhook -n tektonci --from-literal=secret=$GITHUB_SECRET
-
-# Expose the event listener via Smee
-kubectl port-forward service/el-tekton-ci-webhook -n tektonci 9999:8080 &> el-tekton-ci-webhook-pf.log &
-smee --target http://127.0.0.1:9999/ &> smee.log &
-SMEE_TARGET=$(tail -1 smee.log | cut -d'/' -f3-)
-
-# Install a Task to create the webhook, create a secret used by it
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/triggers/master/docs/getting-started/create-webhook.yaml
-kubectl create secret generic github --from-literal=token=$GITHUB_TOKEN --from-literal=secret=$GITHUB_SECRET
-
-# Setup the webhook in your fork that points to the smee service
-tkn task start create-webhook -p ExternalDomain=$SMEE_TARGET -p GitHubUser=$GITHUB_USER -p GitHubRepo=$GITHUB_REPO -p GitHubOrg=$GITHUB_ORG -p GitHubSecretName=github -p GitHubAccessTokenKey=token -p GitHubSecretStringKey=secret
+./hack/tekton_ci.sh -u <github-user> -t <github-token> -o <github-org> -r <github-repo>
 ```
 
 Push or sync a PR to your fork, and watch the pipelines running in your
@@ -90,7 +66,7 @@ If you need those for development, you'll need to ensure that:
 - Install resources under `tekton/resources` to deploy the
   `tekton-events` event listener
 - Configure Tekton send cloud events to the `tekton-events`
-  event listener like on the [dogfooding](https://github.com/tektoncd/plumbing/blob/master/tekton/cd/pipeline/overlays/dogfooding/config-defaults.yaml) cluster.
+  event listener like on the [dogfooding](https://github.com/tektoncd/plumbing/blob/main/tekton/cd/pipeline/overlays/dogfooding/config-defaults.yaml) cluster.
 - Create the [secret](https://github.com/tektoncd/plumbing/blob/534861ab15eb5787cac51512eaae6ca2101a7573/tekton/resources/ci/github-template.yaml#L121-L123)
   needed by the GitHub update jobs to update status checks.
 

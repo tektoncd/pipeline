@@ -59,21 +59,30 @@ This is a helper script to run the presubmit tests. To use it:
    integration tests (either your custom one or the default action) and will cause
    the test to fail if they don't return success.
 
+1. [optional] Define the function `conformance_tests()`. If you don't define
+   this function, the default action for running the conformance tests is to run
+   `go test -race -v ./test -tags=conformance` in the repo.
+
+1. [optional] Define the functions `pre_conformance_tests()` and/or
+   `post_conformance_tests()`. These functions will be called before or after the
+   conformance tests (either your custom one or the default action) and will cause
+   the test to fail if they don't return success.
+
 1. Call the `main()` function passing `$@` (without quotes).
 
 Running the script without parameters, or with the `--all-tests` flag causes
 all tests to be executed, in the right order (i.e., build, then unit, then
-integration tests).
+integration, then conformance tests).
 
-Use the flags `--build-tests`, `--unit-tests` and `--integration-tests` to run
-a specific set of tests. The flag `--emit-metrics` is used to emit metrics when
+Use the flags `--build-tests`, `--unit-tests`, `--integration-tests` and `--conformance-tests`
+to run a specific set of tests. The flag `--emit-metrics` is used to emit metrics when
 running the tests, and is automatically handled by the default action for
 integration tests (see above).
 
 The script will automatically skip all presubmit tests for PRs where all changed
 files are exempt of tests (e.g., a PR changing only the `OWNERS` file).
 
-Also, for PRs touching only markdown files, the unit and integration tests are
+Also, for PRs touching only markdown files, the unit, integration and conformance tests are
 skipped.
 
 ### Sample presubmit test script
@@ -226,7 +235,7 @@ Prerequisites:
 
 Usage:
 
-`deploy-release.sh -p project -v version [-b bucket] [-e extra-path] [-f file]`
+`deploy-release.sh -p project -v version [-b bucket] [-e extra-path] [-f file] [-g post-file]`
 
 Where:
 
@@ -239,5 +248,7 @@ Where:
 - `extra-path` is the root path within the bucket where release are stored, empty by default
 
 - `file` is the name of the release file, `release.yaml` by default
+
+- `post-file` is the name of the 2nd release file, none by default, `interceptors.yaml` by default for triggers
 
 To summarize, the deployment job will look for the release file into `<bucket>/<extra-path>/<project>/previous/<version>/<file>`
