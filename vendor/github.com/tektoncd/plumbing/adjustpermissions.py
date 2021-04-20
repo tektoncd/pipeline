@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
 """
-addpermissions.py gives users access to the Tekton GCP projects
+adjustpermissions.py gives users access to the Tekton GCP projects
 
 In order to interact with GCP resources
-(https://github.com/tektoncd/plumbing/blob/master/README.md#gcp-projects)
+(https://github.com/tektoncd/plumbing/blob/main/README.md#gcp-projects)
 folks sometimes need to be able to do actions like push images and view
 a project in the web console.
 
 This script will add the permissions allowed to folks on the governing board
-(https://github.com/tektoncd/community/blob/master/governance.md#permissions-and-access)
-to all GCP projects.
-
+(https://github.com/tektoncd/community/blob/main/governance.md#permissions-and-access)
+to all GCP projects. It can also be used to remove permissions if needed.
 
 This script requires the `gcloud` command line tool and the python
 `PyYaml` library.
 
 Example usage:
-  python3 addpermissions.py --users "foo@something.com,bar@something.com"
+  python3 adjustpermissions.py --users "foo@something.com,bar@something.com"
+Or to remove access for foo@something.com and bar@something.com:
+  python3 adjustpermissions.py --users "foo@something.com,bar@something.com --remove"
 """
 import argparse
 import shlex
@@ -40,7 +41,7 @@ KNOWN_PROJECTS = (
   "tekton-releases",
   "tekton-nightly",
 )
-BOSKOS_CONFIG_URL = "https://raw.githubusercontent.com/tektoncd/plumbing/master/boskos/boskos-config.yaml"
+BOSKOS_CONFIG_URL = "https://raw.githubusercontent.com/tektoncd/plumbing/main/boskos/boskos-config.yaml"
 
 
 def gcloud_required() -> None:
@@ -49,12 +50,13 @@ def gcloud_required() -> None:
     sys.exit(1)
 
 
-def add_to_all_projects(users: List[str], projects: List[str]) -> None:
+def update_all_projects(users: List[str], projects: List[str], remove: bool) -> None:
+  command = "remove-iam-policy-binding" if remove else "add-iam-policy-binding"
   for user in users:
     for project in projects:
       for role in ROLES:
         subprocess.check_call(shlex.split(
-            "gcloud projects add-iam-policy-binding {} --member user:{} --role {}".format(project, user, role)
+            "gcloud projects {} {} --member user:{} --role {}".format(command, project, user, role)
         ))
 
 
@@ -71,11 +73,10 @@ if __name__ == '__main__':
       description="Give a user access to all plumbing resources")
   arg_parser.add_argument("--users", type=str, required=True,
                           help="The names of the users' accounts, usually their email address, comma separated")
+  arg_parser.add_argument("--remove", action="store_true",
+                          help="Use this flag to remove user access instead of adding it")
   args = arg_parser.parse_args()
 
   gcloud_required()
-
   boskos_projects = parse_boskos_projects()
-
-  add_to_all_projects([u.strip() for u in args.users.split(",")], list(KNOWN_PROJECTS) + boskos_projects)
-
+  update_all_projects([u.strip() for u in args.users.split(",")], list(KNOWN_PROJECTS) + boskos_projects, args.remove)

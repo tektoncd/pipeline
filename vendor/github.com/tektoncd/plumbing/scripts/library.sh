@@ -19,7 +19,7 @@
 # called from command line.
 
 # Default GKE version to be used with Tekton Serving
-readonly SERVING_GKE_VERSION=gke-latest
+readonly SERVING_GKE_VERSION=gke-channel-regular
 readonly SERVING_GKE_IMAGE=cos
 
 # Conveniently set GOPATH if unset
@@ -295,7 +295,7 @@ function report_go_test() {
   # Install go-junit-report if necessary.
   run_go_tool github.com/jstemmer/go-junit-report go-junit-report --help > /dev/null 2>&1
   local xml=$(mktemp ${ARTIFACTS}/junit_XXXXXXXX.xml)
-  cat ${report} \
+  cat "${report}" \
       | go-junit-report \
       | sed -e "s#\"github.com/tektoncd/${REPO_NAME}/#\"#g" \
       > ${xml}
@@ -325,7 +325,7 @@ function run_go_tool() {
   ${tool} "$@"
 }
 
-# Run dep-collector to update licenses.
+# Update licenses.
 # Parameters: $1 - output file, relative to repo root dir.
 #             $2...$n - directories and files to inspect.
 function update_licenses() {
@@ -339,7 +339,7 @@ function update_licenses() {
    chmod +w $(find ${dst} -type d)
 }
 
-# Run dep-collector to check for forbidden liceses.
+# Check for forbidden liceses.
 # Parameters: $1...$n - directories and files to inspect.
 function check_licenses() {
   go-licenses check ./...

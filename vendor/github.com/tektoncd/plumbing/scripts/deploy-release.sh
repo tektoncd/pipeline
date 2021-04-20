@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu -o pipefail
 
-declare TEKTON_PROJECT TEKTON_VERSION RELEASE_BUCKET_OPT RELEASE_EXTRA_PATH RELEASE_FILE
+declare TEKTON_PROJECT TEKTON_VERSION RELEASE_BUCKET_OPT RELEASE_EXTRA_PATH RELEASE_FILE POST_RELEASE_FILE
 
 # This script allows to deploy a Tekton release to the dogfooding cluster
 # by creating a job in the robocat cluster. The complete flow is:
@@ -13,7 +13,7 @@ declare TEKTON_PROJECT TEKTON_VERSION RELEASE_BUCKET_OPT RELEASE_EXTRA_PATH RELE
 # - cluster gke_tekton-nightly_europe-north1-a_robocat defined in the local kubeconfig
 
 # Read command line options
-while getopts ":p:v:" opt; do
+while getopts ":p:v:b:e:f:g:c:r:" opt; do
   case ${opt} in
     p )
       TEKTON_PROJECT=$OPTARG
@@ -30,10 +30,19 @@ while getopts ":p:v:" opt; do
     f )
       RELEASE_FILE=$OPTARG
       ;;
+    g )
+      POST_RELEASE_FILE=$OPTARG
+      ;;
+    c )
+      CONTEXT=$OPTARG
+      ;;
+    r )
+      CLUSTER_RESOURCE=$OPTARG
+      ;;
     \? )
       echo "Invalid option: $OPTARG" 1>&2
       echo 1>&2
-      echo "Usage:  deploy-release.sh -p project -v version [-b bucket] [-e extra-path] [-f file]" 1>&2
+      echo "Usage:  deploy-release.sh -p project -v version [-b bucket] [-e extra-path] [-f file] [-g file] [-c context] [-r cluster-resource]" 1>&2
       ;;
     : )
       echo "Invalid option: $OPTARG requires an argument" 1>&2
@@ -59,13 +68,21 @@ if [ -z "$RELEASE_FILE" ]; then
         RELEASE_FILE="release.yaml"
     fi
 fi
+if [ -z "$POST_RELEASE_FILE" ]; then
+    if [ "$TEKTON_PROJECT" == "triggers" ]; then
+        POST_RELEASE_FILE="interceptors.yaml"
+    fi
+fi
+CONTEXT=${CONTEXT:-gke_tekton-nightly_europe-north1-a_robocat}
+CLUSTER_RESOURCE=${CLUSTER_RESOURCE:-dogfooding-tekton-deployer}
 
 # Deploy the release
-cat <<EOF | kubectl create --cluster gke_tekton-nightly_europe-north1-a_robocat -f-
+# cat <<EOF | tee
+cat <<EOF | kubectl create --cluster ${CONTEXT} -f-
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: tekton-deploy-${TEKTON_PROJECT}-${TEKTON_VERSION}-to-dogfooding-
+  generateName: tekton-deploy-${TEKTON_PROJECT}-${TEKTON_VERSION}-${CLUSTER_RESOURCE%%-*}-
   namespace: default
 spec:
   template:
@@ -88,7 +105,7 @@ spec:
             "params": {
               "target": {
                 "namespace": "tekton-pipelines",
-                "cluster-resource": "dogfooding-tekton-deployer"
+                "cluster-resource": "$CLUSTER_RESOURCE"
               },
               "tekton": {
                 "project": "$TEKTON_PROJECT",
@@ -96,11 +113,12 @@ spec:
                 "environment": "dogfooding",
                 "bucket": "$RELEASE_BUCKET",
                 "file": "$RELEASE_FILE",
+                "post-file": "$POST_RELEASE_FILE",
                 "extra-path": "$RELEASE_EXTRA_PATH"
               },
               "plumbing": {
                 "repository": "github.com/tektoncd/plumbing",
-                "revision": "master"
+                "revision": "main"
               }
             }
           }

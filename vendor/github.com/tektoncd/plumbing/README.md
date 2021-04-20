@@ -22,8 +22,8 @@ More details on the infrastructure are available in the [documentation](docs/REA
 
 ## Support
 
-If you need support, reach out [in the tektoncd slack](https://github.com/tektoncd/community/blob/master/contact.md#slack)
+If you need support, reach out [in the tektoncd slack](https://github.com/tektoncd/community/blob/main/contact.md#slack)
 via the `#plumbing` channel.
 
-[Members of the Tekton governing board](https://github.com/tektoncd/community/blob/master/governance.md)
-[have access to the underlying resources](https://github.com/tektoncd/community/blob/master/governance.md#permissions-and-access).
+[Members of the Tekton governing board](https://github.com/tektoncd/community/blob/main/governance.md)
+[have access to the underlying resources](https://github.com/tektoncd/community/blob/main/governance.md#permissions-and-access).
