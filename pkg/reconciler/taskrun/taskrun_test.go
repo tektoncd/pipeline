@@ -2012,9 +2012,15 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		})))
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	taskRun.Status.PodName = pod.Name
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -2047,6 +2053,21 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	err = checkEvents(t, testAssets.Recorder, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
+	}
+
+	// reconcile the completed TaskRun again without the pod as that was deleted
+	d = test.Data{
+		TaskRuns: []*v1beta1.TaskRun{newTr},
+		Tasks:    []*v1beta1.Task{simpleTask},
+	}
+
+	testAssets, cancel = getTaskRunController(t, d)
+	defer cancel()
+	c = testAssets.Controller
+	clients = testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(newTr)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 }
 
