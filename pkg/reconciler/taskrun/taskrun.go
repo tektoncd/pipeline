@@ -204,6 +204,16 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	if tr.Status.PodName == "" {
 		return nil, nil
 	}
+
+	// do not continue if the TaskRun was canceled or timed out as this caused the pod to be deleted in failTaskRun
+	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if condition != nil {
+		reason := v1beta1.TaskRunReason(condition.Reason)
+		if reason == v1beta1.TaskRunReasonCancelled || reason == v1beta1.TaskRunReasonTimedOut {
+			return nil, nil
+		}
+	}
+
 	pod, err := podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	if err == nil {
 		// Check if any SidecarStatuses are still shown as Running after stopping
