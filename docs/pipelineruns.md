@@ -6,23 +6,23 @@ weight: 500
 -->
 # PipelineRuns
 
-- [Overview](#overview)
-- [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
-  - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
-  - [Tekton Bundles](#tekton-bundles)
+- [PipelineRuns](#pipelineruns)
+  - [Overview](#overview)
+  - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
+    - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
+      - [Tekton Bundles](#tekton-bundles)
   - [Specifying `Resources`](#specifying-resources)
-  - [Specifying `Parameters`](#specifying-parameters)
-  - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
-  - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
-  - [Specifying a `Pod` template](#specifying-a-pod-template)
-  - [Specifying `TaskRunSpecs`](#specifying-taskrunspecs)
-  - [Specifying `Workspaces`](#specifying-workspaces)
-  - [Specifying `LimitRange` values](#specifying-limitrange-values)
-  - [Configuring a failure timeout](#configuring-a-failure-timeout)
-- [Monitoring execution status](#monitoring-execution-status)
-- [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
-- [Pending `PipelineRuns`](#pending-pipelineruns)
-- [Events](events.md#pipelineruns)
+    - [Specifying `Parameters`](#specifying-parameters)
+    - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
+    - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
+    - [Specifying a `Pod` template](#specifying-a-pod-template)
+    - [Specifying taskRunSpecs](#specifying-taskrunspecs)
+    - [Specifying `Workspaces`](#specifying-workspaces)
+    - [Specifying `LimitRange` values](#specifying-limitrange-values)
+    - [Configuring a failure timeout](#configuring-a-failure-timeout)
+  - [Monitoring execution status](#monitoring-execution-status)
+  - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
+  - [Pending `PipelineRuns`](#pending-pipelineruns)
 
 
 
@@ -413,6 +413,44 @@ For more information, see the [`LimitRange` code example](../examples/v1beta1/pi
 You can use the `timeout` field to set the `PipelineRun's` desired timeout value in minutes.
 If you do not specify this value in the `PipelineRun`, the global default timeout value applies.
 If you set the timeout to 0, the `PipelineRun` fails immediately upon encountering an error.
+
+> :warning: ** `timeout`will be deprecated in future versions. Consider using `timeouts` instead.
+
+You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.  There are three sub-fields than can be used to specify failures timeout for the entire pipeline, for tasks, and for finally tasks.  
+
+```yaml
+timeouts:
+  pipeline: "0h0m60s"
+  tasks: "0h0m40s"
+  finally: "0h0m20s"
+```
+All three sub-fields are optional, and will be automatically processed according to the following constraint:
+* `timeouts.pipeline >= timeouts.tasks + timeouts.finally`
+
+You may combine the timeouts as follow:
+
+Combination 1: Set the timeout for the entire `pipeline` and reserve a portion of it for `tasks`.
+
+```yaml
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "0h4m0s"
+    tasks: "0h1m0s"
+```
+
+Combination 2: Set the timeout for the entire `pipeline` and reserve a portion of it for `finally`.
+
+```yaml
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "0h4m0s"
+    finally: "0h3m0s"
+```
+
+If you do not specify the `timeout` value or `timeouts.pipeline` in the `PipelineRun`, the global default timeout value applies.
+If you set the `timeout` value or `timeouts.pipeline` to 0, the `PipelineRun` fails immediately upon encountering an error.
 
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
