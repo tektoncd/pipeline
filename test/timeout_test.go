@@ -495,9 +495,12 @@ func TestPipelineRunTasksTimeout(t *testing.T) {
 	pipelineRun := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:  &v1beta1.PipelineRef{Name: pipeline.Name},
-			Timeout:      &metav1.Duration{Duration: 60 * time.Second},
-			TasksTimeout: &metav1.Duration{Duration: 20 * time.Second},
+			PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
+			Timeouts: &v1beta1.TimeoutFields{
+				Pipeline: &metav1.Duration{Duration: 60 * time.Second},
+				Tasks:    &metav1.Duration{Duration: 20 * time.Second},
+				Finally:  &metav1.Duration{Duration: 20 * time.Second},
+			},
 		},
 	}
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {

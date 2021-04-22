@@ -962,18 +962,48 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
-	var timeout time.Duration
+	var timeout, tasksTimeout time.Duration
+	defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 
-	if pr.Spec.Timeout != nil {
+	switch {
+	case pr.Spec.Timeout != nil:
 		timeout = pr.Spec.Timeout.Duration
-	} else {
-		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+	case pr.Spec.Timeouts != nil:
+		// Take into account the elapsed time in order to check if we still enough time to run
+		// If task timeout is defined, add it to finally timeout
+		// Else consider pipeline timeout as finally timeout
+		switch {
+		case pr.Spec.Timeouts.Finally != nil:
+			if pr.Spec.Timeouts.Tasks != nil {
+				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
+				timeout = tasksTimeout + pr.Spec.Timeouts.Finally.Duration
+			} else if pr.Spec.Timeouts.Pipeline != nil {
+				tasksTimeout = pr.Spec.Timeouts.Pipeline.Duration - pr.Spec.Timeouts.Finally.Duration
+				timeout = pr.Spec.Timeouts.Pipeline.Duration
+			}
+		case pr.Spec.Timeouts.Pipeline != nil:
+			timeout = pr.Spec.Timeouts.Pipeline.Duration
+			if pr.Spec.Timeouts.Tasks != nil {
+				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
+			}
+		default:
+			timeout = defaultTimeout * time.Minute
+			if pr.Spec.Timeouts.Tasks != nil {
+				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
+			}
+		}
+	default:
 		timeout = defaultTimeout * time.Minute
 	}
 
 	// If the value of the timeout is 0 for any resource, there is no timeout.
 	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
 	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
+
+	// Now that we know if we still have time to run the final task, substract tasksTimeout if needed
+	if taskRunTimeout.Duration > time.Second {
+		taskRunTimeout.Duration -= tasksTimeout
+	}
 
 	return taskRunTimeout
 }
@@ -983,12 +1013,23 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 
 	var timeout time.Duration
 
-	// TODO @souleb wrap into alpha feature flag
-	if pr.Spec.TasksTimeout != nil {
-		timeout = pr.Spec.TasksTimeout.Duration
-	} else if pr.Spec.Timeout != nil {
+	switch {
+	case pr.Spec.Timeout != nil:
 		timeout = pr.Spec.Timeout.Duration
-	} else {
+	case pr.Spec.Timeouts != nil:
+		if pr.Spec.Timeouts.Tasks != nil {
+			timeout = pr.Spec.Timeouts.Tasks.Duration
+			break
+		}
+
+		if pr.Spec.Timeouts.Pipeline != nil {
+			timeout = pr.Spec.Timeouts.Pipeline.Duration
+		}
+
+		if pr.Spec.Timeouts.Finally != nil {
+			timeout -= pr.Spec.Timeouts.Finally.Duration
+		}
+	default:
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		timeout = defaultTimeout * time.Minute
 	}

@@ -2143,7 +2143,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 	}, {
 		name: "taskstimeout specified in pr",
 		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
-			tb.PipelineRunSpec(p, tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunSpec(p, tb.PipelineRunTasksTimeout(20*time.Minute), tb.PipelineRunNilTimeout),
 			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
 		),
 		rprt: &resources.ResolvedPipelineRunTask{
@@ -2155,7 +2155,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 	}, {
 		name: "40m timeout duration, 20m taskstimeout duration",
 		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
-			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunSpec(p, tb.PipelineRunPipelineTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute), tb.PipelineRunNilTimeout),
 			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
 		),
 		rprt: &resources.ResolvedPipelineRunTask{
@@ -2230,13 +2230,23 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 	}, {
 		name: "40m timeout duration, 20m taskstimeout duration",
 		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
-			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute)),
+			tb.PipelineRunSpec(p, tb.PipelineRunPipelineTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute), tb.PipelineRunNilTimeout),
 			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
 		),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
-		expected: &metav1.Duration{Duration: 40 * time.Minute},
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "40m timeout duration, 20m taskstimeout duration, 20m finallytimeout duration",
+		pr: tb.PipelineRun(prName, tb.PipelineRunNamespace(ns),
+			tb.PipelineRunSpec(p, tb.PipelineRunPipelineTimeout(40*time.Minute), tb.PipelineRunTasksTimeout(20*time.Minute), tb.PipelineRunFinallyTimeout(20*time.Minute), tb.PipelineRunNilTimeout),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+		},
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	},
 	}
 

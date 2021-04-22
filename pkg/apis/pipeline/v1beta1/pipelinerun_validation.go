@@ -87,21 +87,34 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	if ps.TasksTimeout != nil {
-		// tasksTimeout should be a valid duration of at least 0.
-		if ps.TasksTimeout.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
+	if ps.Timeouts != nil {
+		if ps.Timeout != nil {
+			// can't have both at the same time
+			errs = errs.Also(apis.ErrDisallowedFields("timeout", "timeouts"))
 		}
 
-		if ps.Timeout != nil {
-			if ps.TasksTimeout.Duration > ps.Timeout.Duration {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= timeout duration", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
+		// tasks timeout should be a valid duration of at least 0.
+		if ps.Timeouts.Tasks != nil && ps.Timeouts.Tasks.Duration < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Tasks.Duration.String()), "timeouts.tasks"))
+		}
+
+		// finally timeout should be a valid duration of at least 0.
+		if ps.Timeouts.Finally != nil && ps.Timeouts.Finally.Duration < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
+		}
+
+		if ps.Timeouts.Pipeline != nil {
+			// pipeline timeout should be a valid duration of at least 0.
+			if ps.Timeouts.Pipeline.Duration < 0 {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Pipeline.Duration.String()), "timeouts.pipeline"))
 			}
+
+			errs = errs.Also(ps.validatePipelineTimeout(ps.Timeouts.Pipeline.Duration, "should be <= pipeline duration"))
+
 		} else {
 			defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-			if ps.TasksTimeout.Duration > defaultTimeout {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be <= default timeout duration", ps.TasksTimeout.Duration.String()), "tasksTimeout"))
-			}
+			errs = errs.Also(ps.validatePipelineTimeout(defaultTimeout, "should be <= default timeout duration"))
+
 		}
 	}
 
@@ -122,5 +135,23 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	return errs
+}
+
+func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorMsg string) (errs *apis.FieldError) {
+	if ps.Timeouts.Tasks != nil && ps.Timeouts.Tasks.Duration > timeout {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s "+errorMsg, ps.Timeouts.Tasks.Duration.String()), "timeouts.tasks"))
+	}
+
+	if ps.Timeouts.Finally != nil && ps.Timeouts.Finally.Duration > timeout {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s "+errorMsg, ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
+	}
+
+	if ps.Timeouts.Tasks != nil && ps.Timeouts.Finally != nil {
+		if ps.Timeouts.Tasks.Duration+ps.Timeouts.Finally.Duration > timeout {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s "+errorMsg, ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String()), "timeouts.tasks"))
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s "+errorMsg, ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
+		}
+	}
 	return errs
 }

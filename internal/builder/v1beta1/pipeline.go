@@ -532,7 +532,30 @@ func PipelineRunNilTimeout(prs *v1beta1.PipelineRunSpec) {
 // PipelineRunTasksTimeout sets the timeout to the PipelineRunSpec.
 func PipelineRunTasksTimeout(duration time.Duration) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {
-		prs.TasksTimeout = &metav1.Duration{Duration: duration}
+		if prs.Timeouts == nil {
+			prs.Timeouts = &v1beta1.TimeoutFields{}
+		}
+		prs.Timeouts.Tasks = &metav1.Duration{Duration: duration}
+	}
+}
+
+// PipelineRunFinallyTimeout sets the timeout to the PipelineRunSpec.
+func PipelineRunFinallyTimeout(duration time.Duration) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		if prs.Timeouts == nil {
+			prs.Timeouts = &v1beta1.TimeoutFields{}
+		}
+		prs.Timeouts.Finally = &metav1.Duration{Duration: duration}
+	}
+}
+
+// PipelineRunPipelineTimeout sets the timeout to the PipelineRunSpec.
+func PipelineRunPipelineTimeout(duration time.Duration) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		if prs.Timeouts == nil {
+			prs.Timeouts = &v1beta1.TimeoutFields{}
+		}
+		prs.Timeouts.Pipeline = &metav1.Duration{Duration: duration}
 	}
 }
 

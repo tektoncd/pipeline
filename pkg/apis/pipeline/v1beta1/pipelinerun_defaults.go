@@ -33,8 +33,12 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 
 func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
-	if prs.Timeout == nil {
+	if prs.Timeout == nil && prs.Timeouts == nil {
 		prs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+	}
+
+	if prs.Timeouts != nil && prs.Timeouts.Pipeline == nil {
+		prs.Timeouts.Pipeline = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 
 	defaultSA := cfg.Defaults.DefaultServiceAccount

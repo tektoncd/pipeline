@@ -73,7 +73,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 =======
 			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
 		}, {
-			name: "negative pipeline tasksTimeout",
+			name: "negative pipeline Timeout",
 			pr: v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinelineName",
@@ -82,12 +82,14 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					PipelineRef: &v1beta1.PipelineRef{
 						Name: "prname",
 					},
-					TasksTimeout: &metav1.Duration{Duration: -48 * time.Hour},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: -48 * time.Hour},
+					},
 				},
 			},
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.tasksTimeout"),
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
 		}, {
-			name: "pipeline tasksTimeout > pipeline Timeout",
+			name: "negative pipeline tasks Timeout",
 			pr: v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinelineName",
@@ -96,11 +98,80 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					PipelineRef: &v1beta1.PipelineRef{
 						Name: "prname",
 					},
-					TasksTimeout: &metav1.Duration{Duration: 1 * time.Hour},
-					Timeout:      &metav1.Duration{Duration: 25 * time.Minute},
+					Timeouts: &v1beta1.TimeoutFields{
+						Tasks: &metav1.Duration{Duration: -48 * time.Hour},
+					},
 				},
 			},
-			want: apis.ErrInvalidValue("1h0m0s should be <= Timeout duration", "spec.tasksTimeout"),
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.tasks"),
+		}, {
+			name: "negative pipeline finally Timeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Finally: &metav1.Duration{Duration: -48 * time.Hour},
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.finally"),
+		}, {
+			name: "pipeline tasks Timeout > pipeline Timeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
+						Tasks:    &metav1.Duration{Duration: 1 * time.Hour},
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.tasks"),
+		}, {
+			name: "pipeline finally Timeout > pipeline Timeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
+						Finally:  &metav1.Duration{Duration: 1 * time.Hour},
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.finally"),
+		}, {
+			name: "pipeline tasks Timeout +  pipeline finally Timeout > pipeline Timeout",
+			pr: v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "prname",
+					},
+					Timeouts: &v1beta1.TimeoutFields{
+						Pipeline: &metav1.Duration{Duration: 50 * time.Minute},
+						Tasks:    &metav1.Duration{Duration: 30 * time.Minute},
+						Finally:  &metav1.Duration{Duration: 30 * time.Minute},
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("30m0s + 30m0s should be <= pipeline duration", "spec.timeouts.finally, spec.timeouts.tasks"),
 		}, {
 			name: "wrong pipelinerun cancel",
 			pr: v1beta1.PipelineRun{
@@ -259,7 +330,11 @@ func TestPipelineRun_Validate(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{
 					Name: "prname",
 				},
-				TasksTimeout: &metav1.Duration{Duration: 0},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0},
+					Tasks:    &metav1.Duration{Duration: 0},
+					Finally:  &metav1.Duration{Duration: 0},
+				},
 			},
 		},
 	}, {

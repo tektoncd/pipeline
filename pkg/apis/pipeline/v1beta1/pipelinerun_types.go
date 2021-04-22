@@ -89,12 +89,17 @@ func (pr *PipelineRun) IsCancelled() bool {
 }
 
 func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
-	// Use the platform default is no timeout is set
-	if pr.Spec.Timeout == nil {
+	// Use the platform default if no timeout is set
+	if pr.Spec.Timeout == nil && pr.Spec.Timeouts == nil {
 		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 		return defaultTimeout * time.Minute
 	}
-	return pr.Spec.Timeout.Duration
+
+	if pr.Spec.Timeout != nil {
+		return pr.Spec.Timeout.Duration
+	}
+
+	return pr.Spec.Timeouts.Pipeline.Duration
 }
 
 // IsPending returns true if the PipelineRun's spec status is set to Pending state
@@ -174,10 +179,12 @@ type PipelineRunSpec struct {
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
-	// Time after which the Pipeline tasks time out.
-	// Finally tasks can run beyond this as they are bound to the pipeline timeout.
+	// Time after which the Pipeline times out.
+	// Currently three keys are accepted in the map
+	// pipeline, tasks and finally
+	// with Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally
 	// +optional
-	TasksTimeout *metav1.Duration `json:"tasksTimeout,omitempty"`
+	Timeouts *TimeoutFields `json:"timeouts,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
@@ -191,6 +198,12 @@ type PipelineRunSpec struct {
 	// TaskRunSpecs holds a set of runtime specs
 	// +optional
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+}
+
+type TimeoutFields struct {
+	Pipeline *metav1.Duration `json:"pipeline,omitempty"`
+	Tasks    *metav1.Duration `json:"tasks,omitempty"`
+	Finally  *metav1.Duration `json:"finally,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
