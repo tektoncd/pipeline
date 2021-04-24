@@ -2291,6 +2291,11 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Params: []Param{{
 				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
 			}},
+			WhenExpressions: WhenExpressions{WhenExpression{
+				Input:    "$(tasks.foo.status)",
+				Operator: selection.In,
+				Values:   []string{"Failure"},
+			}},
 		}},
 	}, {
 		name: "valid task result reference with status as a variable must not cause validation failure",
@@ -2299,6 +2304,11 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
 				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.results.status)"},
+			}},
+			WhenExpressions: WhenExpressions{WhenExpression{
+				Input:    "$(tasks.foo.results.status)",
+				Operator: selection.In,
+				Values:   []string{"Failure"},
 			}},
 		}},
 	}, {
@@ -2333,11 +2343,19 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Params: []Param{{
 				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.bar.status)"},
 			}},
+			WhenExpressions: WhenExpressions{WhenExpression{
+				Input:    "$(tasks.bar.status)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}},
 		}},
-		expectedError: apis.FieldError{
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task`,
 			Paths:   []string{"tasks[0].params[bar-status].value"},
-		},
+		}).Also(&apis.FieldError{
+			Message: `invalid value: when expressions in pipeline tasks can not refer to execution status of any other pipeline task`,
+			Paths:   []string{"tasks[0].when[0]"},
+		}),
 	}, {
 		name: "invalid variable concatenated with extra string in dag task accessing pipelineTask status",
 		tasks: []PipelineTask{{
