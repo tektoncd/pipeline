@@ -215,6 +215,18 @@ func validateExecutionStatusVariablesInTasks(tasks []PipelineTask) (errs *apis.F
 				}
 			}
 		}
+		for i, we := range t.WhenExpressions {
+			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+				if !LooksLikeContainsResultRefs(expressions) {
+					for _, e := range expressions {
+						if containsExecutionStatusRef(e) {
+							errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("when expressions in pipeline tasks can not refer to execution status of any other pipeline task"),
+								"").ViaFieldIndex("when", i).ViaFieldIndex("tasks", idx))
+						}
+					}
+				}
+			}
+		}
 	}
 	return errs
 }
