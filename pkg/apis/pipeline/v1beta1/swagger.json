@@ -1000,6 +1000,10 @@
           "description": "Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
+        "timeouts": {
+          "description": "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nTime after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
+          "$ref": "#/definitions/v1beta1.TimeoutFields"
+        },
         "workspaces": {
           "description": "Workspaces holds a set of workspace bindings that must match names with those declared in the pipeline.",
           "type": "array",
@@ -2466,6 +2470,23 @@
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
           }
+        }
+      }
+    },
+    "v1beta1.TimeoutFields": {
+      "type": "object",
+      "properties": {
+        "finally": {
+          "description": "Finally sets the maximum allowed duration of this pipeline's finally",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "pipeline": {
+          "description": "Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "tasks": {
+          "description": "Tasks sets the maximum allowed duration of this pipeline's tasks",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },

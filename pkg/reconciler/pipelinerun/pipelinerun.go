@@ -644,9 +644,9 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				}
 			} else {
 				if rprt.IsFinalTask(pipelineRunFacts) {
-					rprt.TaskRun, err = c.createFinallyTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
 				} else {
-					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr))
+					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
 				}
 				if err != nil {
 					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
@@ -700,15 +700,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 
 type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration
 
-func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
-	return c.createTaskRunHelper(ctx, rprt, pr, storageBasePath, getTaskRunTimeout)
-}
-
-func (c *Reconciler) createFinallyTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
-	return c.createTaskRunHelper(ctx, rprt, pr, storageBasePath, getFinallyTaskRunTimeout)
-}
-
-func (c *Reconciler) createTaskRunHelper(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
@@ -969,7 +961,7 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 	case pr.Spec.Timeout != nil:
 		timeout = pr.Spec.Timeout.Duration
 	case pr.Spec.Timeouts != nil:
-		// Take into account the elapsed time in order to check if we still enough time to run
+		// Take into account the elapsed time in order to check if we still have enough time to run
 		// If task timeout is defined, add it to finally timeout
 		// Else consider pipeline timeout as finally timeout
 		switch {
@@ -1000,7 +992,7 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
 	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
 
-	// Now that we know if we still have time to run the final task, substract tasksTimeout if needed
+	// Now that we know if we still have time to run the final task, subtract tasksTimeout if needed
 	if taskRunTimeout.Duration > time.Second {
 		taskRunTimeout.Duration -= tasksTimeout
 	}

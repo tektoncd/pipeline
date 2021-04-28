@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -59,7 +60,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 					Name: "prname",
 				},
 			},
-<<<<<<< HEAD
 		},
 		want: &apis.FieldError{
 			Message: `invalid resource name "pipelinerun,name": must be a valid DNS label`,
@@ -70,121 +70,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinelinename",
-=======
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
-		}, {
-			name: "negative pipeline Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Pipeline: &metav1.Duration{Duration: -48 * time.Hour},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
-		}, {
-			name: "negative pipeline tasks Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Tasks: &metav1.Duration{Duration: -48 * time.Hour},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.tasks"),
-		}, {
-			name: "negative pipeline finally Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Finally: &metav1.Duration{Duration: -48 * time.Hour},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.finally"),
-		}, {
-			name: "pipeline tasks Timeout > pipeline Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
-						Tasks:    &metav1.Duration{Duration: 1 * time.Hour},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.tasks"),
-		}, {
-			name: "pipeline finally Timeout > pipeline Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
-						Finally:  &metav1.Duration{Duration: 1 * time.Hour},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.finally"),
-		}, {
-			name: "pipeline tasks Timeout +  pipeline finally Timeout > pipeline Timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeouts: &v1beta1.TimeoutFields{
-						Pipeline: &metav1.Duration{Duration: 50 * time.Minute},
-						Tasks:    &metav1.Duration{Duration: 30 * time.Minute},
-						Finally:  &metav1.Duration{Duration: 30 * time.Minute},
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("30m0s + 30m0s should be <= pipeline duration", "spec.timeouts.finally, spec.timeouts.tasks"),
-		}, {
-			name: "wrong pipelinerun cancel",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Status: "PipelineRunCancell",
-				},
->>>>>>> Add a TaskTimeout optional field to pipelinerun type
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{
@@ -318,23 +203,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 					Name: "prname",
 				},
 				Timeout: &metav1.Duration{Duration: 0},
-			},
-		},
-	}, {
-		name: "no tasksTimeout",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelineName",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 0},
-					Tasks:    &metav1.Duration{Duration: 0},
-					Finally:  &metav1.Duration{Duration: 0},
-				},
 			},
 		},
 	}, {
@@ -518,6 +386,190 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	}
 }
 
+func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
+	tests := []struct {
+		name string
+		pr   v1beta1.PipelineRun
+		want *apis.FieldError
+		wc   func(context.Context) context.Context
+	}{{
+		name: "negative pipeline timeouts",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: -48 * time.Hour},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.pipeline"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "negative pipeline tasks Timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Tasks: &metav1.Duration{Duration: -48 * time.Hour},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.tasks"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "negative pipeline finally Timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Finally: &metav1.Duration{Duration: -48 * time.Hour},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeouts.finally"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "pipeline tasks Timeout > pipeline Timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
+					Tasks:    &metav1.Duration{Duration: 1 * time.Hour},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.tasks"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "pipeline finally Timeout > pipeline Timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 25 * time.Minute},
+					Finally:  &metav1.Duration{Duration: 1 * time.Hour},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("1h0m0s should be <= pipeline duration", "spec.timeouts.finally"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "pipeline tasks Timeout +  pipeline finally Timeout > pipeline Timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 50 * time.Minute},
+					Tasks:    &metav1.Duration{Duration: 30 * time.Minute},
+					Finally:  &metav1.Duration{Duration: 30 * time.Minute},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("30m0s + 30m0s should be <= pipeline duration", "spec.timeouts.finally, spec.timeouts.tasks"),
+		wc:   enableTektonTimeoutFields(),
+	}, {
+		name: "Invalid Timeouts when alpha fields not enabled",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 1 * time.Hour},
+					Tasks:    &metav1.Duration{Duration: 30 * time.Minute},
+					Finally:  &metav1.Duration{Duration: 30 * time.Minute},
+				},
+			},
+		},
+		want: apis.ErrGeneric(fmt.Sprintf(`timeouts requires "enable-api-fields" feature gate to be "alpha" but it is "stable"`)),
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.wc != nil {
+				ctx = tc.wc(ctx)
+			}
+			err := tc.pr.Validate(ctx)
+			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineRunWithAlphaFields_Validate(t *testing.T) {
+	tests := []struct {
+		name string
+		pr   v1beta1.PipelineRun
+		wc   func(context.Context) context.Context
+	}{{
+		name: "no tasksTimeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0},
+					Tasks:    &metav1.Duration{Duration: 0},
+					Finally:  &metav1.Duration{Duration: 0},
+				},
+			},
+		},
+		wc: enableTektonTimeoutFields(),
+	}}
+
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			if err := ts.pr.Validate(ctx); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		s := config.NewStore(logtesting.TestLogger(t))
@@ -528,5 +580,20 @@ func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context 
 			},
 		})
 		return s.ToContext(ctx)
+	}
+}
+
+func enableTektonTimeoutFields() func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+			"enable-api-fields": "alpha",
+		})
+		cfg := &config.Config{
+			Defaults: &config.Defaults{
+				DefaultTimeoutMinutes: 60,
+			},
+			FeatureFlags: featureFlags,
+		}
+		return config.ToContext(ctx, cfg)
 	}
 }

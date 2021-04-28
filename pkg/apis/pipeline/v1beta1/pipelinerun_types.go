@@ -179,6 +179,9 @@ type PipelineRunSpec struct {
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
+	// This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"
+	// for this field to be supported.
+	//
 	// Time after which the Pipeline times out.
 	// Currently three keys are accepted in the map
 	// pipeline, tasks and finally
@@ -201,9 +204,12 @@ type PipelineRunSpec struct {
 }
 
 type TimeoutFields struct {
+	// Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.
 	Pipeline *metav1.Duration `json:"pipeline,omitempty"`
-	Tasks    *metav1.Duration `json:"tasks,omitempty"`
-	Finally  *metav1.Duration `json:"finally,omitempty"`
+	// Tasks sets the maximum allowed duration of this pipeline's tasks
+	Tasks *metav1.Duration `json:"tasks,omitempty"`
+	// Finally sets the maximum allowed duration of this pipeline's finally
+	Finally *metav1.Duration `json:"finally,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

@@ -14,8 +14,8 @@ spec:
         - sleep 90s
       args:
         - "$(inputs.params.MESSAGE)"
----
 
+---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -54,8 +54,7 @@ spec:
     - name: NIGHT_GREETINGS
       value: "Good Night, Bob!"
 
-      ---
-
+---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -64,7 +63,10 @@ spec:
   # 1 hour and half timeout for the pipeline
   # 1 hour and fifteen minutes for the pipeline tasks
   # 15 minutes for the finally tasks
-  timeouts: 
+  #
+  # This field requires enable-api-fields: "alpha" flag
+  # Check https://github.com/tektoncd/pipeline/blob/main/config/config-feature-flags.yaml
+  timeouts:
     pipeline: 1h30m
     tasks: 1h15m
   pipelineSpec:
