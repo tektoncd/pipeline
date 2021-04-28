@@ -869,6 +869,69 @@ script-heredoc-randomly-generated-78c5n
 			}),
 		},
 	}, {
+		desc: "step with script that uses two dollar signs",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "one",
+					Image: "image",
+				},
+				Script: "#!/bin/sh\n$$",
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{
+				{
+					Name:    "place-scripts",
+					Image:   images.ShellImage,
+					Command: []string{"sh"},
+					Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
+#!/bin/sh
+$$$$
+script-heredoc-randomly-generated-mz4c7
+`},
+					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+				},
+				{
+					Name:         "place-tools",
+					Image:        images.EntrypointImage,
+					Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}},
+			Containers: []corev1.Container{{
+				Name:    "step-one",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"/tekton/scripts/script-0-9l9zj",
+					"--",
+				},
+				Env: append(implicitEnvVars),
+				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				WorkingDir:             pipeline.WorkspaceDir,
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}, {
 		desc: "using another scheduler",
 		ts: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{
