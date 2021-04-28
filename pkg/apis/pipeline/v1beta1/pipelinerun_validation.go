@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -87,34 +88,30 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	// This is an alpha feature and will fail validation if it's used in a pipelinerun spec
+	// when the enable-api-fields feature gate is anything but "alpha".
 	if ps.Timeouts != nil {
 		if ps.Timeout != nil {
 			// can't have both at the same time
 			errs = errs.Also(apis.ErrDisallowedFields("timeout", "timeouts"))
 		}
 
+		errs = errs.Also(ValidateEnabledAPIFields(ctx, "timeouts", config.AlphaAPIFields))
+
 		// tasks timeout should be a valid duration of at least 0.
-		if ps.Timeouts.Tasks != nil && ps.Timeouts.Tasks.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Tasks.Duration.String()), "timeouts.tasks"))
-		}
+		errs = errs.Also(validateTimeoutDuration("tasks", ps.Timeouts.Tasks))
 
 		// finally timeout should be a valid duration of at least 0.
-		if ps.Timeouts.Finally != nil && ps.Timeouts.Finally.Duration < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
-		}
+		errs = errs.Also(validateTimeoutDuration("finally", ps.Timeouts.Finally))
+
+		// pipeline timeout should be a valid duration of at least 0.
+		errs = errs.Also(validateTimeoutDuration("pipeline", ps.Timeouts.Pipeline))
 
 		if ps.Timeouts.Pipeline != nil {
-			// pipeline timeout should be a valid duration of at least 0.
-			if ps.Timeouts.Pipeline.Duration < 0 {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.Timeouts.Pipeline.Duration.String()), "timeouts.pipeline"))
-			}
-
 			errs = errs.Also(ps.validatePipelineTimeout(ps.Timeouts.Pipeline.Duration, "should be <= pipeline duration"))
-
 		} else {
 			defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
 			errs = errs.Also(ps.validatePipelineTimeout(defaultTimeout, "should be <= default timeout duration"))
-
 		}
 	}
 
@@ -138,19 +135,27 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
+func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {
+	if d != nil && d.Duration < 0 {
+		fieldPath := fmt.Sprintf("timeouts.%s", field)
+		return errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", d.Duration.String()), fieldPath))
+	}
+	return nil
+}
+
 func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorMsg string) (errs *apis.FieldError) {
 	if ps.Timeouts.Tasks != nil && ps.Timeouts.Tasks.Duration > timeout {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s "+errorMsg, ps.Timeouts.Tasks.Duration.String()), "timeouts.tasks"))
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", ps.Timeouts.Tasks.Duration.String(), errorMsg), "timeouts.tasks"))
 	}
 
 	if ps.Timeouts.Finally != nil && ps.Timeouts.Finally.Duration > timeout {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s "+errorMsg, ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
 	}
 
 	if ps.Timeouts.Tasks != nil && ps.Timeouts.Finally != nil {
 		if ps.Timeouts.Tasks.Duration+ps.Timeouts.Finally.Duration > timeout {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s "+errorMsg, ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String()), "timeouts.tasks"))
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s "+errorMsg, ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String()), "timeouts.finally"))
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.tasks"))
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
 		}
 	}
 	return errs
