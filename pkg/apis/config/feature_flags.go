@@ -118,7 +118,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 }
 
 // setEnabledAPIFields sets the "enable-api-fields" flag based on the content of a given map.
-// If the feature gate is invalid or missing then the flag is set to its default.
+// If the feature gate is invalid or missing then an error is returned.
 func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature *string) error {
 	value := defaultValue
 	if cfg, ok := cfgMap[enableAPIFields]; ok {

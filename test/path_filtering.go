@@ -21,12 +21,18 @@ package test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
 )
 
 type pathFilter func(string) bool
+
+const (
+	systemNamespaceEnvVar  = "SYSTEM_NAMESPACE"
+	defaultSystemNamespace = "tekton-pipelines"
+)
 
 // getPathFilter returns a pathFilter that filters out examples
 // unsuitable for the current feature-gate. For example,
@@ -35,7 +41,11 @@ type pathFilter func(string) bool
 // allowed. When the flag is set to "stable", only stable
 // examples are allowed.
 func getPathFilter(t *testing.T) (pathFilter, error) {
-	enabledFeatureGate, err := getFeatureGate()
+	ns := os.Getenv(systemNamespaceEnvVar)
+	if ns == "" {
+		ns = defaultSystemNamespace
+	}
+	enabledFeatureGate, err := getFeatureGate(ns)
 	if err != nil {
 		return nil, fmt.Errorf("error reading enabled feature gate: %v", err)
 	}
@@ -57,9 +67,11 @@ func getPathFilter(t *testing.T) (pathFilter, error) {
 // need to repeatedly query the feature flag configmap
 var enableAPIFields = ""
 
-func getFeatureGate() (string, error) {
+// getFeatureGate queries the tekton pipelines namespace for the
+// current value of the "enable-api-fields" feature gate.
+func getFeatureGate(namespace string) (string, error) {
 	if enableAPIFields == "" {
-		cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", "tekton-pipelines", "-o", `jsonpath="{.data['enable-api-fields']}"`)
+		cmd := exec.Command("kubectl", "get", "configmap", "feature-flags", "-n", namespace, "-o", `jsonpath="{.data['enable-api-fields']}"`)
 		output, err := cmd.Output()
 		if err != nil {
 			return "", fmt.Errorf("error getting feature-flags configmap: %v", err)
@@ -83,5 +95,5 @@ func stablePathFilter(p string) bool {
 // alphaPathFilter returns true for any example that should be allowed to run
 // when "enable-api-fields" is "alpha".
 func alphaPathFilter(p string) bool {
-	return strings.Contains(p, "/alpha/") || stablePathFilter(p)
+	return strings.Contains(p, "/alpha/") || strings.Contains(p, "/beta/") || stablePathFilter(p)
 }
