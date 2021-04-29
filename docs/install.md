@@ -374,6 +374,17 @@ data:
   enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
 ```
 
+### Alpha Features
+
+Alpha features are still in development and their syntax is subject to change.
+To enable these, set the `enable-api-fields` feature flag to `"alpha"` in
+the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment.
+
+Features currently in "alpha" are:
+
+- [Tekton Bundles](./taskruns.md#tekton-bundles)
+- [Custom Tasks](./runs.md)
+
 ## Configuring High Availability
 
 If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support

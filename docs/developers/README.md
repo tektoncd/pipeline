@@ -451,11 +451,11 @@ backwards-compatibility of the examples under alpha conditions.
 
 ### Integration Tests
 
-For integration tests we provide the [`requireGate` function](../../test/gate.go) which
+For integration tests we provide the [`requireAnyGate` function](../../test/gate.go) which
 should be passed to the `setup` function used by tests:
 
 ```go
-c, namespace := setup(ctx, t, requireGate("enable-api-fields", "alpha"))
+c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
 ```
 
 This will Skip your integration test if the feature gate is not set to `alpha`

@@ -19,6 +19,10 @@ spec:
     - name: signals
     steps:
     - image: alpine:3.12.0
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
       script: |
         #!/usr/bin/env ash
         echo "foo" > "$(workspaces.signals.path)"/bar
@@ -30,6 +34,10 @@ spec:
         echo "Saw ready file"
     sidecars:
     - image: alpine:3.12.0
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
       # Note: must explicitly add volumeMount to gain access to Workspace in sidecar
       volumeMounts:
       - name: $(workspaces.signals.volume)

@@ -53,6 +53,28 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields: "alpha",
+				// These are prescribed as true by enabling "alpha" API fields, even
+				// if the submitted text value is "false".
+				EnableTektonOCIBundles: true,
+				EnableCustomTasks:      true,
+
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+			},
+			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
+		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields:        "stable",
+				EnableTektonOCIBundles: true,
+				EnableCustomTasks:      true,
+
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+			},
+			fileName: "feature-flags-bundles-and-custom-tasks",
+		},
 	}
 
 	for _, tc := range testCases {
