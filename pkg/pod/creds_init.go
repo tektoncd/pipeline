@@ -122,13 +122,14 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 }
 
 // getCredsInitVolume returns a Volume and VolumeMount for /tekton/creds. Each call
-// will return a new volume and volume mount with randomized name.
-func getCredsInitVolume(ctx context.Context) (*corev1.Volume, *corev1.VolumeMount) {
+// will return a new volume and volume mount. Takes an integer index to append to
+// the name of the volume.
+func getCredsInitVolume(ctx context.Context, idx int) (*corev1.Volume, *corev1.VolumeMount) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
 		return nil, nil
 	}
-	name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(credsInitHomeMountPrefix)
+	name := fmt.Sprintf("%s-%d", credsInitHomeMountPrefix, idx)
 	v := corev1.Volume{
 		Name: name,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
