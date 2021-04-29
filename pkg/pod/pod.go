@@ -174,7 +174,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		// guarantee what UID container runs with. If legacy credential helper (creds-init)
 		// is disabled via feature flag then these can be nil since we don't want to mount
 		// the automatic credential volume.
-		v, vm := getCredsInitVolume(ctx)
+		v, vm := getCredsInitVolume(ctx, i)
 		if v != nil && vm != nil {
 			volumes = append(volumes, *v)
 			s.VolumeMounts = append(s.VolumeMounts, *vm)

@@ -117,7 +117,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -125,7 +125,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -162,7 +162,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -170,7 +170,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -215,7 +215,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-mz4c7",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, append(append([]corev1.VolumeMount{}, implicitVolumeMounts...), corev1.VolumeMount{
 					Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
@@ -226,7 +226,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, secretsVolume, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-mz4c7",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -280,14 +280,14 @@ func TestPodBuild(t *testing.T) {
 				VolumeMounts: append([]corev1.VolumeMount{
 					toolsMount,
 					downwardMount,
-					{Name: "tekton-creds-init-home-9l9zj", MountPath: "/tekton/creds"},
+					{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
 				}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 			SecurityContext: &corev1.PodSecurityContext{
@@ -335,7 +335,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -343,7 +343,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -377,7 +377,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -385,7 +385,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -430,7 +430,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             filepath.Join(pipeline.WorkspaceDir, "test"),
@@ -438,7 +438,7 @@ func TestPodBuild(t *testing.T) {
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -479,7 +479,7 @@ func TestPodBuild(t *testing.T) {
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -493,7 +493,7 @@ func TestPodBuild(t *testing.T) {
 				},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -550,7 +550,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-mssqb",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -566,7 +566,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-mssqb",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -610,7 +610,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -624,7 +624,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -672,7 +672,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir: pipeline.WorkspaceDir,
@@ -701,7 +701,7 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, {
-					Name:      "tekton-creds-init-home-mz4c7",
+					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir: pipeline.WorkspaceDir,
@@ -715,10 +715,10 @@ sidecar-script-heredoc-randomly-generated-mz4c7
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
-				Name:         "tekton-creds-init-home-mz4c7",
+				Name:         "tekton-creds-init-home-1",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -799,7 +799,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-6nl7g",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -824,7 +824,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, toolsMount, {
-					Name:      "tekton-creds-init-home-j2tds",
+					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -850,7 +850,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				Env: append(implicitEnvVars, corev1.EnvVar{Name: "FOO", Value: "bar"}),
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, {
-					Name:      "tekton-creds-init-home-vr6ds",
+					Name:      "tekton-creds-init-home-2",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -858,13 +858,13 @@ script-heredoc-randomly-generated-78c5n
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-6nl7g",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
-				Name:         "tekton-creds-init-home-j2tds",
+				Name:         "tekton-creds-init-home-1",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
-				Name:         "tekton-creds-init-home-vr6ds",
+				Name:         "tekton-creds-init-home-2",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},
@@ -891,7 +891,7 @@ script-heredoc-randomly-generated-78c5n
 			InitContainers: []corev1.Container{placeToolsInit},
 			SchedulerName:  "there-scheduler",
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 			Containers: []corev1.Container{{
@@ -912,7 +912,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -942,7 +942,7 @@ script-heredoc-randomly-generated-78c5n
 			RestartPolicy:  corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{placeToolsInit},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-9l9zj",
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 			Containers: []corev1.Container{{
@@ -963,7 +963,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-					Name:      "tekton-creds-init-home-9l9zj",
+					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             pipeline.WorkspaceDir,
@@ -995,7 +995,7 @@ script-heredoc-randomly-generated-78c5n
 				RestartPolicy:  corev1.RestartPolicyNever,
 				InitContainers: []corev1.Container{placeToolsInit},
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-9l9zj",
+					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
 				Containers: []corev1.Container{{
@@ -1016,7 +1016,7 @@ script-heredoc-randomly-generated-78c5n
 					},
 					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-						Name:      "tekton-creds-init-home-9l9zj",
+						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
 					WorkingDir:             pipeline.WorkspaceDir,
@@ -1047,7 +1047,7 @@ script-heredoc-randomly-generated-78c5n
 				InitContainers: []corev1.Container{placeToolsInit},
 				HostNetwork:    true,
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-9l9zj",
+					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
 				Containers: []corev1.Container{{
@@ -1068,7 +1068,7 @@ script-heredoc-randomly-generated-78c5n
 					},
 					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-						Name:      "tekton-creds-init-home-9l9zj",
+						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
 					WorkingDir:             pipeline.WorkspaceDir,
@@ -1113,7 +1113,7 @@ script-heredoc-randomly-generated-78c5n
 				InitContainers: []corev1.Container{placeToolsInit},
 				HostNetwork:    false,
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-9l9zj",
+					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
 				Containers: []corev1.Container{{
@@ -1134,7 +1134,7 @@ script-heredoc-randomly-generated-78c5n
 					},
 					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-						Name:      "tekton-creds-init-home-9l9zj",
+						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
 					WorkingDir:             pipeline.WorkspaceDir,
@@ -1176,7 +1176,7 @@ script-heredoc-randomly-generated-78c5n
 					},
 					Env: implicitEnvVars,
 					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
-						Name:      "tekton-creds-init-home-9l9zj",
+						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
 					WorkingDir:             pipeline.WorkspaceDir,
@@ -1184,7 +1184,7 @@ script-heredoc-randomly-generated-78c5n
 					TerminationMessagePath: "/tekton/termination",
 				}},
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-9l9zj",
+					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
 			},
