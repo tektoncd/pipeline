@@ -105,14 +105,26 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(requireGitSSHSecretKnownHostsKey, DefaultRequireGitSSHSecretKnownHosts, &tc.RequireGitSSHSecretKnownHosts); err != nil {
 		return nil, err
 	}
-	if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
-		return nil, err
-	}
-	if err := setFeature(enableCustomTasks, DefaultEnableCustomTasks, &tc.EnableCustomTasks); err != nil {
-		return nil, err
-	}
 	if err := setEnabledAPIFields(cfgMap, DefaultEnableAPIFields, &tc.EnableAPIFields); err != nil {
 		return nil, err
+	}
+
+	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
+	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
+	// each feature's individual flag.
+	//
+	// Note: the user cannot enable "alpha" while disabling bundles or custom tasks - that would
+	// defeat the purpose of having a single shared gate for all alpha features.
+	if tc.EnableAPIFields == AlphaAPIFields {
+		tc.EnableTektonOCIBundles = true
+		tc.EnableCustomTasks = true
+	} else {
+		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
+			return nil, err
+		}
+		if err := setFeature(enableCustomTasks, DefaultEnableCustomTasks, &tc.EnableCustomTasks); err != nil {
+			return nil, err
+		}
 	}
 	return &tc, nil
 }

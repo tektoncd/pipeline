@@ -100,7 +100,8 @@ spec:
 ### Tekton Bundles
 
 **Note: This is only allowed if `enable-tekton-oci-bundles` is set to
-`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
+`"true"` or `enable-api-fields` is set to `"alpha"` in the `feature-flags`
+configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
 
 You may also reference `Tasks` that are defined outside of your cluster using `Tekton
 Bundles`. A `Tekton Bundle` is an OCI artifact that contains Tekton resources like `Tasks`

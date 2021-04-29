@@ -45,11 +45,16 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+var requireFeatureFlags = requireAnyGate(map[string]string{
+	"enable-tekton-oci-bundles": "true",
+	"enable-api-fields":         "alpha",
+})
+
 // TestTektonBundlesSimpleWorkingExample is an integration test which tests a simple, working Tekton bundle using OCI
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
+	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
 
 	t.Parallel()
 
@@ -189,7 +194,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 // TestTektonBundlesUsingRegularImage is an integration test which passes a non-Tekton bundle as a task reference.
 func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
+	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
 
 	t.Parallel()
 
@@ -274,7 +279,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 // task reference.
 func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireGate("enable-tekton-oci-bundles", "true"))
+	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
 
 	t.Parallel()
 
