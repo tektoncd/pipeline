@@ -51,6 +51,15 @@ spec:
         app: tekton-pipelines-controller
         version: "devel"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
