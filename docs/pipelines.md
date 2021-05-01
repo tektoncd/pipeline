@@ -1179,6 +1179,31 @@ If the `taskRef` specifies a name, the custom task controller should look up the
 If the `taskRef` does not specify a name, the custom task controller might support
 some default behavior for executing unnamed tasks.
 
+### Specifying a Custom Task Spec in-line (or embedded)
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskSpec:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+          spec:
+            field1: value1
+            field2: value2
+```
+
+If the custom task controller supports the in-line or embedded task spec, this will create a `Run` of a custom task of
+type `Example` in the `example.dev` API group with the version `v1alpha1`.
+
+If the `taskSpec` is not supported, the custom task controller should produce proper validation errors.
+
+Please take a look at the
+[developer guide for custom controllers supporting `taskSpec`.](runs.md#developer-guide-for-custom-controllers-supporting-spec)
+
+`taskSpec` support for `pipelineRun` was designed and discussed in
+[TEP-0061](https://github.com/tektoncd/community/blob/main/teps/0061-allow-custom-task-to-be-embedded-in-pipeline.md)
+
 ### Specifying parameters
 
 If a custom task supports [`parameters`](tasks.md#parameters), you can use the
