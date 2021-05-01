@@ -47,8 +47,10 @@ A `Run` definition supports the following fields:
   - [`metadata`][kubernetes-overview] - Specifies the metadata that uniquely identifies the
     `Run`, such as a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration for the `Run`.
-    - [`ref`](#specifying-the-target-custom-task) - Specifies the type and
+    - [`ref`](#1-specifying-the-target-custom-task-with-ref) - Specifies the type and
       (optionally) name of the custom task type to execute.
+    - [`spec`](#2-specifying-the-target-custom-task-by-embedding-its-spec) - Embed the custom task resource spec
+      directly in a `Run`.
 - Optional:
   - [`params`](#specifying-parameters) - Specifies the desired execution
     parameters for the custom task.
@@ -63,6 +65,19 @@ A `Run` definition supports the following fields:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ### Specifying the target Custom Task
+
+A custom task resource's `Spec` may be directly embedded in the `Run` or it may
+be referred to by a `Ref`. But, not both at the same time.
+
+1. [Specifying the target Custom Task with ref](#1-specifying-the-target-custom-task-with-ref)
+   Referring a custom task (i.e. `Ref` ) promotes reuse of custom task definitions.
+
+2. [Specifying the target Custom Task by embedding its spec](#2-specifying-the-target-custom-task-by-embedding-its-spec)
+   Embedding a custom task (i.e. `Spec` ) helps in avoiding name collisions with other users within the same namespace.
+   Additionally, in a pipeline with multiple embedded custom tasks, the details of entire pipeline can be fetched in a
+   single API request.
+
+### 1. Specifying the target Custom Task with ref
 
 To specify the custom task type you want to execute in your `Run`, use the
 `ref` field as shown below:
@@ -98,6 +113,45 @@ some default behavior for executing unnamed tasks.
 In either case, if the named resource cannot be found, or if unnamed tasks are
 not supported, the custom task controller should update the `Run`'s status to
 indicate the error.
+
+### 2. Specifying the target Custom Task by embedding its spec
+
+To specify the custom task spec, it can be embedded directly into a
+`Run`'s spec as shown below:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Run
+metadata:
+  name: embedded-run
+spec:
+  spec:
+    apiVersion: example.dev/v1alpha1
+    kind: Example
+    spec:
+      field1: value1
+      field2: value2
+```
+
+This initiates the execution of a `Run` of a custom task of type `Example`, in
+the `example.dev` API group,  with the version `v1alpha1`.
+
+#### Developer guide for custom controllers supporting `spec`.
+
+1. A custom controller may or may not support a `Spec`. In cases where it is
+   not supported the custom controller should respond with proper validation error.
+
+2. Validation of the fields of the custom task is delegated to the custom task controller. It is recommended to
+   implement validations as asynchronous
+   (i.e. at reconcile time), rather than part of the webhook. Using a webhook for validation is problematic because, it
+   is not possible to filter custom task resource objects before validation step, as a result each custom task resource
+   has to undergo validation by all the installed custom task controllers.
+   
+3. A custom task may have an empty spec, but cannot have an empty
+    `ApiVersion` and `Kind`. Custom task controllers should handle
+   an empty spec, either with a default behaviour, in a case no default
+   behaviour is supported then, appropriate validation error should be
+   updated to the `Run`'s status.
 
 ### Specifying `Parameters`
 

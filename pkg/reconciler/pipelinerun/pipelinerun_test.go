@@ -542,6 +542,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 								APIVersion: "example.dev/v0",
 								Kind:       "Example",
 							},
+							Metadata: v1beta1.PipelineTaskMetadata{Labels: map[string]string{"test-label": "test"}},
 							Spec: runtime.RawExtension{
 								Raw: []byte(`{"field1":123,"field2":"value"}`),
 							},
@@ -578,6 +579,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 						APIVersion: "example.dev/v0",
 						Kind:       "Example",
 					},
+					Metadata: v1beta1.PipelineTaskMetadata{Labels: map[string]string{"test-label": "test"}},
 					Spec: runtime.RawExtension{
 						Raw: []byte(`{"field1":123,"field2":"value"}`),
 					},
