@@ -139,21 +139,21 @@ Below is an example `Task` definition that includes a `Workspace` called `messag
 ```yaml
 spec:
   steps:
-  - name: write-message
-    image: ubuntu
-    script: |
-      #!/usr/bin/env bash
-      set -xe
-      if [ "$(workspaces.messages.bound)" == "true" ] ; then
-        echo hello! > $(workspaces.messages.path)/message
-      fi
+    - name: write-message
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        if [ "$(workspaces.messages.bound)" == "true" ] ; then
+          echo hello! > $(workspaces.messages.path)/message
+        fi
   workspaces:
-  - name: messages
-    description: |
-      The folder where we write the message to. If no workspace
-      is provided then the message will not be written.
-    optional: true
-    mountPath: /custom/path/relative/to/root
+    - name: messages
+      description: |
+        The folder where we write the message to. If no workspace
+        is provided then the message will not be written.
+      optional: true
+      mountPath: /custom/path/relative/to/root
 ```
 
 #### Sharing `Workspaces` with `Sidecars`
@@ -166,24 +166,24 @@ a `ready` file which the `Step` is waiting for:
 ```yaml
 spec:
   workspaces:
-  - name: signals
+    - name: signals
   steps:
-  - image: alpine
-    script: |
-      while [ ! -f "$(workspaces.signals.path)/ready" ]; do
-        echo "Waiting for ready file..."
-        sleep 1
-      done
-      echo "Saw ready file!"
+    - image: alpine
+      script: |
+        while [ ! -f "$(workspaces.signals.path)/ready" ]; do
+          echo "Waiting for ready file..."
+          sleep 1
+        done
+        echo "Saw ready file!"
   sidecars:
-  - image: alpine
-    # Note: must explicitly include volumeMount for the workspace to be accessible in the Sidecar
-    volumeMounts:
-    - name: $(workspaces.signals.volume)
-      mountPath: $(workspaces.signals.path)
-    script: |
-      sleep 3
-      touch "$(workspaces.signals.path)/ready"
+    - image: alpine
+      # Note: must explicitly include volumeMount for the workspace to be accessible in the Sidecar
+      volumeMounts:
+        - name: $(workspaces.signals.volume)
+          mountPath: $(workspaces.signals.path)
+      script: |
+        sleep 3
+        touch "$(workspaces.signals.path)/ready"
 ```
 
 **Note:** Starting in Pipelines v0.24.0 `Sidecars` automatically get access to `Workspaces`.This is an
@@ -444,14 +444,14 @@ it will be deleted when the `PipelineRun` or `TaskRun` is deleted.
 
 ```yaml
 workspaces:
-- name: myworkspace
-  volumeClaimTemplate:
-    spec:
-      accessModes: 
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
+  - name: myworkspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
 ```
 
 ##### `persistentVolumeClaim`
@@ -460,10 +460,10 @@ The `persistentVolumeClaim` field references an *existing* [`persistentVolumeCla
 
 ```yaml
 workspaces:
-- name: myworkspace
-  persistentVolumeClaim:
-    claimName: mypvc
-  subPath: my-subdir
+  - name: myworkspace
+    persistentVolumeClaim:
+      claimName: mypvc
+    subPath: my-subdir
 ```
 
 #### Using other types of `VolumeSources`
@@ -476,8 +476,8 @@ However, they work well for single `TaskRuns` where the data stored in the `empt
 
 ```yaml
 workspaces:
-- name: myworkspace
-  emptyDir: {}
+  - name: myworkspace
+    emptyDir: {}
 ```
 
 ##### `configMap`
@@ -491,9 +491,9 @@ Using a `configMap` as a `Workspace` has the following limitations:
 
 ```yaml
 workspaces:
-- name: myworkspace
-  configmap:
-    name: my-configmap
+  - name: myworkspace
+    configmap:
+      name: my-configmap
 ```
 
 ##### `secret`
@@ -507,9 +507,9 @@ Using a `secret` volume has the following limitations:
 
 ```yaml
 workspaces:
-- name: myworkspace
-  secret:
-    secretName: my-secret
+  - name: myworkspace
+    secret:
+      secretName: my-secret
 ```
 
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or

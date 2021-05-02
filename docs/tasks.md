@@ -171,14 +171,14 @@ Below is an example of setting the resource requests and limits for a step:
 ```yaml
 spec:
   steps:
-  - name: step-with-limts
-    resources:
-      requests:
-        memory: 1Gi
-        cpu: 500m
-      limits:
-         memory: 2Gi
-        cpu: 800m
+    - name: step-with-limts
+      resources:
+        requests:
+          memory: 1Gi
+          cpu: 500m
+        limits:
+          memory: 2Gi
+          cpu: 800m
 ```
 
 #### Reserved directories
@@ -216,50 +216,50 @@ The example below executes a Bash script:
 
 ```yaml
 steps:
-- image: ubuntu  # contains bash
-  script: |
-    #!/usr/bin/env bash
-    echo "Hello from Bash!"
+  - image: ubuntu # contains bash
+    script: |
+      #!/usr/bin/env bash
+      echo "Hello from Bash!"
 ```
 
 The example below executes a Python script:
 
 ```yaml
 steps:
-- image: python  # contains python
-  script: |
-    #!/usr/bin/env python3
-    print("Hello from Python!")
+  - image: python # contains python
+    script: |
+      #!/usr/bin/env python3
+      print("Hello from Python!")
 ```
 
 The example below executes a Node script:
 
 ```yaml
 steps:
-- image: node  # contains node
-  script: |
-    #!/usr/bin/env node
-    console.log("Hello from Node!")
+  - image: node # contains node
+    script: |
+      #!/usr/bin/env node
+      console.log("Hello from Node!")
 ```
 
 You can execute scripts directly in the workspace:
 
 ```yaml
 steps:
-- image: ubuntu
-  script: |
-    #!/usr/bin/env bash
-    /workspace/my-script.sh  # provided by an input resource
+  - image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      /workspace/my-script.sh  # provided by an input resource
 ```
 
 You can also execute scripts within the container image:
 
 ```yaml
 steps:
-- image: my-image  # contains /bin/my-binary
-  script: |
-    #!/usr/bin/env bash
-    /bin/my-binary
+  - image: my-image # contains /bin/my-binary
+    script: |
+      #!/usr/bin/env bash
+      /bin/my-binary
 ```
 #### Specifying a timeout
 
@@ -276,7 +276,7 @@ The example `Step` below is supposed to sleep for 60 seconds but will be cancele
 steps:
   - name: sleep-then-timeout
     image: ubuntu
-    script: | 
+    script: |
       #!/usr/bin/env bash
       echo "I am supposed to sleep for 60 seconds!"
       sleep 60
@@ -359,8 +359,7 @@ resources:
 steps:
   - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
     command: [jar]
-    args:
-      ["-cvf", "-o", "/workspace/output/storage-gcs/", "projectname.war", "*"]
+    args: ["-cvf", "-o", "/workspace/output/storage-gcs/", "projectname.war", "*"]
     env:
       - name: "FOO"
         value: "world"
@@ -387,18 +386,18 @@ resources:
   outputs:
     name: tar-artifact
 steps:
- - name: untar
+  - name: untar
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'mkdir -p /workspace/tar-scratch-space/ && tar -xvf /workspace/customworkspace/rules_docker-master.tar -C /workspace/tar-scratch-space/']
- - name: edit-tar
+    args: ["-c", "mkdir -p /workspace/tar-scratch-space/ && tar -xvf /workspace/customworkspace/rules_docker-master.tar -C /workspace/tar-scratch-space/"]
+  - name: edit-tar
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'echo crazy > /workspace/tar-scratch-space/rules_docker-master/crazy.txt']
- - name: tar-it-up
-   image: ubuntu
-   command: ["/bin/bash"]
-   args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
+    args: ["-c", "echo crazy > /workspace/tar-scratch-space/rules_docker-master/crazy.txt"]
+  - name: tar-it-up
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ["-c", "cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master"]
 ```
 
 ### Specifying `Workspaces`
@@ -410,16 +409,16 @@ one writeable `Workspace`. For example:
 ```yaml
 spec:
   steps:
-  - name: write-message
-    image: ubuntu
-    script: |
-      #!/usr/bin/env bash
-      set -xe
-      echo hello! > $(workspaces.messages.path)/message
+    - name: write-message
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        echo hello! > $(workspaces.messages.path)/message
   workspaces:
-  - name: messages
-    description: The folder where we write the message to
-    mountPath: /custom/path/relative/to/root
+    - name: messages
+      description: The folder where we write the message to
+      mountPath: /custom/path/relative/to/root
 ```
 
 For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
@@ -554,14 +553,14 @@ steps:
   - image: docker
     name: client
     script: |
-        #!/usr/bin/env bash
-        cat > Dockerfile << EOF
-        FROM ubuntu
-        RUN apt-get update
-        ENTRYPOINT ["echo", "hello"]
-        EOF
-        docker build -t hello . && docker run hello
-        docker images
+      #!/usr/bin/env bash
+      cat > Dockerfile << EOF
+      FROM ubuntu
+      RUN apt-get update
+      ENTRYPOINT ["echo", "hello"]
+      EOF
+      docker build -t hello . && docker run hello
+      docker images
     volumeMounts:
       - mountPath: /var/run/
         name: dind-socket
@@ -656,25 +655,25 @@ Referencing an `array` parameter in any other way will result in an error. For e
 type `array`, then the following example is an invalid `Step` because the string isn't isolated:
 
 ```yaml
- - name: build-step
-      image: gcr.io/cloud-builders/some-image
-      args: ["build", "additionalArg $(params.build-args[*])"]
+- name: build-step
+  image: gcr.io/cloud-builders/some-image
+  args: ["build", "additionalArg $(params.build-args[*])"]
 ```
 
 Similarly, referencing `build-args` in a non-`array` field is also invalid:
 
 ```yaml
- - name: build-step
-      image: "$(params.build-args[*])"
-      args: ["build", "args"]
+- name: build-step
+  image: "$(params.build-args[*])"
+  args: ["build", "args"]
 ```
 
 A valid reference to the `build-args` parameter is isolated and in an eligible field (`args`, in this case):
 
 ```yaml
- - name: build-step
-      image: gcr.io/cloud-builders/some-image
-      args: ["build", "$(params.build-args[*])", "additionalArg"]
+- name: build-step
+  image: gcr.io/cloud-builders/some-image
+  args: ["build", "$(params.build-args[*])", "additionalArg"]
 ```
 
 #### Substituting `Workspace` paths
@@ -715,12 +714,12 @@ contents from being executed:
 # Task.yaml
 spec:
   steps:
-  - image: an-image-that-runs-bash
-    env:
-    - name: SCRIPT_CONTENTS
-      value: $(params.script)
-    script: |
-      printf '%s' "${SCRIPT_CONTENTS}" > input-script
+    - image: an-image-that-runs-bash
+      env:
+        - name: SCRIPT_CONTENTS
+          value: $(params.script)
+      script: |
+        printf '%s' "${SCRIPT_CONTENTS}" > input-script
 ```
 
 This works by injecting Tekton's variable as an environment variable into the Step's
@@ -867,34 +866,34 @@ metadata:
   name: goreleaser
 spec:
   params:
-  - name: package
-    type: string
-    description: base package to build in
-  - name: github-token-secret
-    type: string
-    description: name of the secret holding the github-token
-    default: github-token
+    - name: package
+      type: string
+      description: base package to build in
+    - name: github-token-secret
+      type: string
+      description: name of the secret holding the github-token
+      default: github-token
   resources:
     inputs:
-    - name: source
-      type: git
-      targetPath: src/$(params.package)
+      - name: source
+        type: git
+        targetPath: src/$(params.package)
   steps:
-  - name: release
-    image: goreleaser/goreleaser
-    workingDir: /workspace/src/$(params.package)
-    command:
-    - goreleaser
-    args:
-    - release
-    env:
-    - name: GOPATH
-      value: /workspace
-    - name: GITHUB_TOKEN
-      valueFrom:
-        secretKeyRef:
-          name: $(params.github-token-secret)
-          key: bot-token
+    - name: release
+      image: goreleaser/goreleaser
+      workingDir: /workspace/src/$(params.package)
+      command:
+        - goreleaser
+      args:
+        - release
+      env:
+        - name: GOPATH
+          value: /workspace
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.github-token-secret)
+              key: bot-token
 ```
 
 #### Using a `Sidecar` in a `Task`
@@ -908,21 +907,21 @@ metadata:
   name: with-sidecar-task
 spec:
   params:
-  - name: sidecar-image
-    type: string
-    description: Image name of the sidecar container
-  - name: sidecar-env
-    type: string
-    description: Environment variable value
+    - name: sidecar-image
+      type: string
+      description: Image name of the sidecar container
+    - name: sidecar-env
+      type: string
+      description: Environment variable value
   sidecars:
-  - name: sidecar
-    image: $(params.sidecar-image)
-    env:
-    - name: SIDECAR_ENV
-      value: $(params.sidecar-env)
+    - name: sidecar
+      image: $(params.sidecar-image)
+      env:
+        - name: SIDECAR_ENV
+          value: $(params.sidecar-env)
   steps:
-  - name: test
-    image: hello-world
+    - name: test
+      image: hello-world
 ```
 
 ## Debugging
@@ -940,12 +939,12 @@ the name of every file stored in the `/workspace` directory to the build log. Fo
 - name: build-and-push-1
   image: ubuntu
   command:
-  - /bin/bash
+    - /bin/bash
   args:
-  - -c
-  - |
-    set -ex
-    find /workspace
+    - -c
+    - |
+      set -ex
+      find /workspace
 ```
 
 You can also choose to examine the *contents* of every file used by your `Task`:
@@ -954,12 +953,12 @@ You can also choose to examine the *contents* of every file used by your `Task`:
 - name: build-and-push-1
   image: ubuntu
   command:
-  - /bin/bash
+    - /bin/bash
   args:
-  - -c
-  - |
-    set -ex
-    find /workspace | xargs cat
+    - -c
+    - |
+      set -ex
+      find /workspace | xargs cat
 ```
 
 ### Inspecting the `Pod`
@@ -971,7 +970,6 @@ log into the `Pod` and add a `Step` that pauses the `Task` at the desired stage.
 - name: pause
   image: docker
   args: ["sleep", "6000"]
-
 ```
 
 ### Running Step Containers as a Non Root User
@@ -991,7 +989,7 @@ metadata:
   name: show-non-root-steps
 spec:
   steps:
-    # no securityContext specified so will use 
+    # no securityContext specified so will use
     # securityContext from TaskRun podTemplate
     - name: show-user-1001
       image: ubuntu
@@ -999,7 +997,7 @@ spec:
         - ps
       args:
         - "aux"
-    # securityContext specified so will run as  
+    # securityContext specified so will run as
     # user 2000 instead of 1001
     - name: show-user-2000
       image: ubuntu

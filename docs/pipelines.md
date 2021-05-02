@@ -292,10 +292,10 @@ repeatable reference to a `Task`.
  ```yaml
  spec:
    tasks:
-   - name: hello-world
-     taskRef:
-       name: echo-task
-       bundle: docker.com/myrepo/mycatalog:v1.0.1
+     - name: hello-world
+       taskRef:
+         name: echo-task
+         bundle: docker.com/myrepo/mycatalog:v1.0.1
  ```
 
 You may also specify a fixed digest instead of a tag.
@@ -303,10 +303,10 @@ You may also specify a fixed digest instead of a tag.
  ```yaml
  spec:
    tasks:
-   - name: hello-world
-     taskRef:
-       name: echo-task
-       bundle: docker.io/myrepo/mycatalog@sha256:abc123
+     - name: hello-world
+       taskRef:
+         name: echo-task
+         bundle: docker.io/myrepo/mycatalog@sha256:abc123
  ```
 
 Any of the above options will fetch the image using the `ImagePullSecrets` attached to the
@@ -441,7 +441,7 @@ tasks:
         operator: in
         values: ["yes"]
     taskRef:
-        name: echo-file-exists
+      name: echo-file-exists
 ---
 tasks:
   - name: run-lint
@@ -635,9 +635,9 @@ In the snippet below, a `WhenExpression` is provided its value from the `exists`
 
 ```yaml
 when:
-- input: "$(tasks.check-file.results.exists)"
-  operator: in
-  values: ["yes"]
+  - input: "$(tasks.check-file.results.exists)"
+    operator: in
+    values: ["yes"]
 ```
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
@@ -661,10 +661,10 @@ In the example below, the `Pipeline` specifies a `results` entry with the name `
 references the `outputValue` `Result` emitted by the `calculate-sum` `Task`.
 
 ```yaml
-  results:
-    - name: sum
-      description: the sum of all three operands
-      value: $(tasks.calculate-sum.results.outputValue)
+results:
+  - name: sum
+    description: the sum of all three operands
+    value: $(tasks.calculate-sum.results.outputValue)
 ```
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
@@ -918,22 +918,22 @@ A `pipeline` can check the status of a specific `pipelineTask` from the `tasks` 
 parameters:
 
 ```yaml
-    finally:
-    - name: finaltask
+finally:
+  - name: finaltask
+    params:
+      - name: task1Status
+        value: "$(tasks.task1.status)"
+    taskSpec:
       params:
         - name: task1Status
-          value: "$(tasks.task1.status)"
-      taskSpec:
-        params:
-          - name: task1Status
-        steps:
-          - image: ubuntu
-            name: print-task-status
-            script: |
-              if [ $(params.task1Status) == "Failed" ]
-              then
-                echo "Task1 has failed, continue processing the failure"
-              fi
+      steps:
+        - image: ubuntu
+          name: print-task-status
+          script: |
+            if [ $(params.task1Status) == "Failed" ]
+            then
+              echo "Task1 has failed, continue processing the failure"
+            fi
 ```
 
 This kind of variable can have any one of the values from the following table:
@@ -1001,9 +1001,9 @@ metadata:
 spec:
   pipelineSpec:
     params:
-    - name: enable-notifications
-      type: string
-      description: a boolean indicating whether the notifications should be sent
+      - name: enable-notifications
+        type: string
+        description: a boolean indicating whether the notifications should be sent
     tasks:
       - name: golang-build
         taskRef:
@@ -1163,9 +1163,9 @@ Final tasks can emit `Results` but results emitted from the final tasks can not 
 (tracked in issue [#2710](https://github.com/tektoncd/pipeline/issues/2710)).
 
 ```yaml
-  results:
-    - name: comment-count-validate
-      value: $(finally.check-count.results.comment-count-validate)
+results:
+  - name: comment-count-validate
+    value: $(finally.check-count.results.comment-count-validate)
 ```
 
 In this example, `pipelineResults` in `status` will exclude the name-value pair for that result `comment-count-validate`.
@@ -1261,8 +1261,8 @@ spec:
         kind: Example
         name: myexample
       params:
-      - name: foo
-        value: bah
+        - name: foo
+          value: bah
 ```
 
 ### Specifying workspaces
@@ -1278,7 +1278,7 @@ spec:
         kind: Example
         name: myexample
       workspaces:
-      - name: my-workspace
+        - name: my-workspace
 ```
 
 Consult the documentation of the custom task that you are using to determine whether it supports workspaces and how to name them.

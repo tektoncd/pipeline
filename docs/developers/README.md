@@ -260,16 +260,16 @@ you end up with this task run status:
 ```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
-...
+# ...
 status:
-...
+# ...
   taskResults:
-  - name: current-date-human-readable
-    value: |
-      Wed Jan 22 19:47:26 UTC 2020
-  - name: current-date-unix-timestamp
-    value: |
-      1579722445
+    - name: current-date-human-readable
+      value: |
+        Wed Jan 22 19:47:26 UTC 2020
+    - name: current-date-unix-timestamp
+      value: |
+        1579722445
 ```
 
 Instead of hardcoding the path to the result file, the user can also use a variable. So `/tekton/results/current-date-unix-timestamp` can be replaced with: `$(results.current-date-unix-timestamp.path)`. This is more flexible if the path to result files ever changes.
@@ -294,7 +294,7 @@ apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: sum-and-multiply-pipeline
-    #...
+  #...
   tasks:
     - name: sum-inputs
     #...
