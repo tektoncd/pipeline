@@ -30,14 +30,14 @@ Sometimes, above default values can't meet performance requirements, then you ne
 spec:
   serviceAccountName: tekton-pipelines-controller
   containers:
-  - name: tekton-pipelines-controller
-    image: ko://github.com/tektoncd/pipeline/cmd/controller
-    args: [
-      "-kube-api-qps", "50",
-      "-kube-api-burst", "50",
-      "-threads-per-controller", "32",
-      # other flags defined here...
-    ]
+    - name: tekton-pipelines-controller
+      image: ko://github.com/tektoncd/pipeline/cmd/controller
+      args: [
+          "-kube-api-qps", "50",
+          "-kube-api-burst", "50",
+          "-threads-per-controller", "32",
+          # other flags defined here...
+        ]
 ```
 
 Now, the ThreadsPerController, QPS and Burst have been changed to be `32`, `50` and `50`.

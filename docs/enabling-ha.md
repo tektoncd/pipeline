@@ -50,12 +50,12 @@ If HA is not required, you can disable it by scaling the deployment back to one 
 spec:
   serviceAccountName: tekton-pipelines-controller
   containers:
-  - name: tekton-pipelines-controller
-    ...
-    args: [
-      # Other flags defined here...
-      "-disable-ha=true"
-    ]
+    - name: tekton-pipelines-controller
+      # ...
+      args: [
+          # Other flags defined here...
+          "-disable-ha=true",
+        ]
 ```
 
 **Note:** If you set `-disable-ha=false` and run multiple replicas of the Controller, each replica will process work items separately, which will lead to unwanted behavior when creating resources (e.g., `TaskRuns`, etc.).
@@ -83,7 +83,7 @@ apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler
 metadata:
   name: tekton-pipelines-webhook
-...
+# ...
 spec:
   minReplicas: 1
 ```
@@ -103,7 +103,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    ...
+    # ...
 spec:
   minAvailable: 1
   selector:

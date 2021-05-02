@@ -239,10 +239,10 @@ For an example of what this output looks like:
 
 ```yaml
 resourcesResult:
-- key: digest
-  value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
-  resourceRef:
-    name: skaffold-image-leeroy-web
+  - key: digest
+    value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
+    resourceRef:
+      name: skaffold-image-leeroy-web
 ```
 
 ### Description
@@ -283,7 +283,7 @@ spec:
       optional: true
   tasks:
     - name: check-workspace
-...
+# ...
 ```
 
 You can refer to different examples demonstrating usage of optional resources in
@@ -381,10 +381,10 @@ When used as an input, the Git resource includes the exact commit fetched in the
 
 ```yaml
 resourceResults:
-- key: commit
-  value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
-  resourceRef:
-    name: skaffold-git
+  - key: commit
+    value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
+    resourceRef:
+      name: skaffold-git
 ```
 
 #### Using a fork
@@ -662,13 +662,13 @@ for example:
 
 ```yaml
 status:
-    ...
+    # ...
     resourcesResult:
-    - key: "digest"
-      value: "sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660"
-      resourceRef:
-        name: skaffold-image-leeroy-web
-    ...
+      - key: "digest"
+        value: "sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660"
+        resourceRef:
+          name: skaffold-image-leeroy-web
+    # ...
 ```
 
 If the `index.json` file is not produced, the image digest will not be included
@@ -958,8 +958,8 @@ metadata:
 spec:
   type: cloudEvent
   params:
-  - name: targetURI
-    value: http://sink:8080
+    - name: targetURI
+      value: http://sink:8080
 ```
 
 The content of an event is for example:

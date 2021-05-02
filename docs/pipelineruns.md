@@ -81,7 +81,6 @@ To specify the target `Pipeline` by reference, use the `pipelineRef` field:
 spec:
   pipelineRef:
     name: mypipeline
-
 ```
 To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` field:
 
@@ -89,9 +88,9 @@ To embed a `Pipeline` definition in the `PipelineRun`, use the `pipelineSpec` fi
 spec:
   pipelineSpec:
     tasks:
-    - name: task1
-      taskRef:
-        name: mytask
+      - name: task1
+        taskRef:
+          name: mytask
 ```
 
 The `Pipeline` in the [`pipelineSpec` example](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec.yaml)
@@ -111,10 +110,9 @@ You can also embed a `Task` definition the embedded `Pipeline` definition:
 spec:
   pipelineSpec:
     tasks:
-    - name: task1
-      taskSpec:
-        steps:
-          ...
+      - name: task1
+        taskSpec:
+          steps: ...
 ```
 
 In the [`taskSpec` in `pipelineSpec` example](../examples/v1beta1/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml)
@@ -128,18 +126,18 @@ and cleaning up completed pod with certain labels, etc) even being part of one s
 spec:
   pipelineSpec:
     tasks:
-    - name: task1
-      taskSpec:
-        metadata:
-          labels:
-            pipeline-sdk-type: kfp
-       ...
-    - name: task2
-      taskSpec:
-        metadata:
-          labels:
-            pipeline-sdk-type: tfx
-       ...
+      - name: task1
+        taskSpec:
+          metadata:
+            labels:
+              pipeline-sdk-type: kfp
+        # ...
+      - name: task2
+        taskSpec:
+          metadata:
+            labels:
+              pipeline-sdk-type: tfx
+        # ...
 ```
 
 #### Tekton Bundles
@@ -238,10 +236,10 @@ For example:
 ```yaml
 spec:
   params:
-  - name: pl-param-x
-    value: "100"
-  - name: pl-param-y
-    value: "500"
+    - name: pl-param-x
+      value: "100"
+    - name: pl-param-y
+      value: "500"
 ```
 You can pass in extra `Parameters` if needed depending on your use cases. An example use
 case is when your CI system autogenerates `PipelineRuns` and it has `Parameters` it wants to
@@ -340,9 +338,9 @@ spec:
       runAsNonRoot: true
       runAsUser: 1001
     volumes:
-    - name: my-cache
-      persistentVolumeClaim:
-        claimName: my-volume-claim
+      - name: my-cache
+        persistentVolumeClaim:
+          claimName: my-volume-claim
 ```
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use a pod template.
@@ -358,7 +356,7 @@ for example:
 
 ```yaml
 spec:
-   podTemplate:
+  podTemplate:
     securityContext:
       runAsUser: 1000
       runAsGroup: 2000
@@ -381,10 +379,10 @@ can map a `PersistentVolumeClaim` volume to a `Workspace` as follows:
 
 ```yaml
 workspaces:
-- name: myworkspace # must match workspace name in Task
-  persistentVolumeClaim:
-    claimName: mypvc # this PVC must already exist
-  subPath: my-subdir
+  - name: myworkspace # must match workspace name in Task
+    persistentVolumeClaim:
+      claimName: mypvc # this PVC must already exist
+    subPath: my-subdir
 ```
 
 For more information, see the following topics:
@@ -435,11 +433,11 @@ The following example shows an extract from the `status` field of a `PipelineRun
 ```yaml
 completionTime: "2020-05-04T02:19:14Z"
 conditions:
-- lastTransitionTime: "2020-05-04T02:19:14Z"
-  message: 'Tasks Completed: 4, Skipped: 0'
-  reason: Succeeded
-  status: "True"
-  type: Succeeded
+  - lastTransitionTime: "2020-05-04T02:19:14Z"
+    message: "Tasks Completed: 4, Skipped: 0"
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
 startTime: "2020-05-04T02:00:11Z"
 taskRuns:
   triggers-release-nightly-frwmw-build-ng2qk:
@@ -447,28 +445,28 @@ taskRuns:
     status:
       completionTime: "2020-05-04T02:10:49Z"
       conditions:
-      - lastTransitionTime: "2020-05-04T02:10:49Z"
-        message: All Steps have completed executing
-        reason: Succeeded
-        status: "True"
-        type: Succeeded
+        - lastTransitionTime: "2020-05-04T02:10:49Z"
+          message: All Steps have completed executing
+          reason: Succeeded
+          status: "True"
+          type: Succeeded
       podName: triggers-release-nightly-frwmw-build-ng2qk-pod-8vj99
       resourcesResult:
-      - key: commit
-        resourceRef:
-          name: git-source-triggers-frwmw
-        value: 9ab5a1234166a89db352afa28f499d596ebb48db
+        - key: commit
+          resourceRef:
+            name: git-source-triggers-frwmw
+          value: 9ab5a1234166a89db352afa28f499d596ebb48db
       startTime: "2020-05-04T02:05:07Z"
       steps:
-      - container: step-build
-        imageID: docker-pullable://golang@sha256:a90f2671330831830e229c3554ce118009681ef88af659cd98bfafd13d5594f9
-        name: build
-        terminated:
-          containerID: docker://6b6471f501f59dbb7849f5cdde200f4eeb64302b862a27af68821a7fb2c25860
-          exitCode: 0
-          finishedAt: "2020-05-04T02:10:45Z"
-          reason: Completed
-          startedAt: "2020-05-04T02:06:24Z"
+        - container: step-build
+          imageID: docker-pullable://golang@sha256:a90f2671330831830e229c3554ce118009681ef88af659cd98bfafd13d5594f9
+          name: build
+          terminated:
+            containerID: docker://6b6471f501f59dbb7849f5cdde200f4eeb64302b862a27af68821a7fb2c25860
+            exitCode: 0
+            finishedAt: "2020-05-04T02:10:45Z"
+            reason: Completed
+            startedAt: "2020-05-04T02:06:24Z"
   ```
 
 The following tables shows how to read the overall status of a `PipelineRun`.

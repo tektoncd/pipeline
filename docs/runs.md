@@ -107,8 +107,8 @@ If a custom task supports [`parameters`](tasks.md#parameters), you can use the
 ```yaml
 spec:
   params:
-  - name: my-param
-    value: chicken
+    - name: my-param
+      value: chicken
 ```
 
 If the custom task controller knows how to interpret the parameter value, it
@@ -130,8 +130,8 @@ If the custom task supports it, you can provide [`Workspaces`](workspaces.md) to
 ```yaml
 spec:
   workspaces:
-  - name: my-workspace
-    emptyDir: {}
+    - name: my-workspace
+      emptyDir: {}
 ```
 
 Consult the documentation of the custom task that you are using to determine whether it supports workspaces and how to name them.
@@ -178,11 +178,11 @@ successfully:
 ```yaml
 completionTime: "2019-08-12T18:22:57Z"
 conditions:
-- lastTransitionTime: "2019-08-12T18:22:57Z"
-  message: Execution was successful
-  reason: Succeeded
-  status: "True"
-  type: Succeeded
+  - lastTransitionTime: "2019-08-12T18:22:57Z"
+    message: Execution was successful
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
 startTime: "2019-08-12T18:22:51Z"
 ```
 
@@ -278,8 +278,8 @@ spec:
     kind: Example
     name: my-example-task
   params:
-  - name: my-first-param
-    value: i'm number one
-  - name: my-second-param
-    value: close second
+    - name: my-first-param
+      value: i'm number one
+    - name: my-second-param
+      value: close second
 ```

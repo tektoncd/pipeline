@@ -198,7 +198,7 @@ Note: Github deprecated basic authentication with username and password. You can
 
    - Associate the `ServiceAccount` with your `TaskRun`:
 
-    ```yaml
+     ```yaml
      apiVersion: tekton.dev/v1beta1
      kind: TaskRun
      metadata:
@@ -463,7 +463,7 @@ Kubernetes `Secrets`.
      spec:
        serviceAccountName: build-bot
        steps:
-       ...
+       # ...
      ```
 
    - Associate the `ServiceAccount` with your `PipelineRun`:

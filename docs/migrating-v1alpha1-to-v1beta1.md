@@ -37,16 +37,16 @@ For example, consider the following `v1alpha1` parameters:
 spec:
   inputs:
     params:
-    - name: ADDR
-      description: Address to curl.
-      type: string
+      - name: ADDR
+        description: Address to curl.
+        type: string
 
 # TaskRun.yaml (v1alpha1)
 spec:
   inputs:
     params:
-    - name: ADDR
-      value: https://example.com/foo.json
+      - name: ADDR
+        value: https://example.com/foo.json
 ```
 
 The above parameters are now represented as follows in `v1beta1`:
@@ -55,15 +55,15 @@ The above parameters are now represented as follows in `v1beta1`:
 # Task.yaml (v1beta1)
 spec:
   params:
-  - name: ADDR
-    description: Address to curl.
-    type: string
+    - name: ADDR
+      description: Address to curl.
+      type: string
 
 # TaskRun.yaml (v1beta1)
 spec:
   params:
-  - name: ADDR
-    value: https://example.com/foo.json
+    - name: ADDR
+      value: https://example.com/foo.json
 ```
 
 ## Replacing `PipelineResources` with Tasks
@@ -93,32 +93,32 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
     params:
-    - name: pathToDockerFile
-      description: The path to the dockerfile to build
-      default: /workspace/workspace/Dockerfile
-    - name: pathToContext
-      description: The build context used by Kaniko
-      default: /workspace/workspace
+      - name: pathToDockerFile
+        description: The path to the dockerfile to build
+        default: /workspace/workspace/Dockerfile
+      - name: pathToContext
+        description: The build context used by Kaniko
+        default: /workspace/workspace
   outputs:
     resources:
-    - name: builtImage
-      type: image
+      - name: builtImage
+        type: image
   steps:
-  - name: build-and-push
-    image: gcr.io/kaniko-project/executor:v0.17.1
-    env:
-    - name: "DOCKER_CONFIG"
-      value: "/tekton/home/.docker/"
-    args:
-    - --dockerfile=$(inputs.params.pathToDockerFile)
-    - --destination=$(outputs.resources.builtImage.url)
-    - --context=$(inputs.params.pathToContext)
-    - --oci-layout-path=$(inputs.resources.builtImage.path)
-    securityContext:
-      runAsUser: 0
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:v0.17.1
+      env:
+        - name: "DOCKER_CONFIG"
+          value: "/tekton/home/.docker/"
+      args:
+        - --dockerfile=$(inputs.params.pathToDockerFile)
+        - --destination=$(outputs.resources.builtImage.url)
+        - --context=$(inputs.params.pathToContext)
+        - --oci-layout-path=$(inputs.resources.builtImage.path)
+      securityContext:
+        runAsUser: 0
 ```
 
 To do the same thing with the `git` catalog `Task` and the kaniko `Task` you will need to combine them in a
@@ -133,38 +133,38 @@ metadata:
   name: kaniko-pipeline
 spec:
   params:
-  - name: git-url
-  - name: git-revision
-  - name: image-name
-  - name: path-to-image-context
-  - name: path-to-dockerfile
+    - name: git-url
+    - name: git-revision
+    - name: image-name
+    - name: path-to-image-context
+    - name: path-to-dockerfile
   workspaces:
-  - name: git-source
+    - name: git-source
   tasks:
-  - name: fetch-from-git
-    taskRef:
-      name: git-clone
-    params:
-    - name: url
-      value: $(params.git-url)
-    - name: revision
-      value: $(params.git-revision)
-    workspaces:
-    - name: output
-      workspace: git-source
-  - name: build-image
-    taskRef:
-      name: kaniko
-    params:
-    - name: IMAGE
-      value: $(params.image-name)
-    - name: CONTEXT
-      value: $(params.path-to-image-context)
-    - name: DOCKERFILE
-      value: $(params.path-to-dockerfile)
-    workspaces:
-    - name: source
-      workspace: git-source
+    - name: fetch-from-git
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: git-source
+    - name: build-image
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+        - name: CONTEXT
+          value: $(params.path-to-image-context)
+        - name: DOCKERFILE
+          value: $(params.path-to-dockerfile)
+      workspaces:
+        - name: source
+          workspace: git-source
   # If you want you can add a Task that uses the IMAGE_DIGEST from the kaniko task
   # via $(tasks.build-image.results.IMAGE_DIGEST) - this was a feature we hadn't been
   # able to fully deliver with the Image PipelineResource!
@@ -216,33 +216,33 @@ For example, consider the following `v1alpha1` definition:
 spec:
   inputs:
     resources:
-    - name: skaffold
-      type: git
+      - name: skaffold
+        type: git
   outputs:
     resources:
-    - name: baked-image
-      type: image
+      - name: baked-image
+        type: image
 
 # TaskRun.yaml (v1alpha1)
 spec:
   inputs:
     resources:
-    - name: skaffold
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: v0.32.0
-          - name: url
-            value: https://github.com/GoogleContainerTools/skaffold
+      - name: skaffold
+        resourceSpec:
+          type: git
+          params:
+            - name: revision
+              value: v0.32.0
+            - name: url
+              value: https://github.com/GoogleContainerTools/skaffold
   outputs:
     resources:
-    - name: baked-image
-      resourceSpec:
-      - type: image
-        params:
-        - name: url
-          value: gcr.io/foo/bar
+      - name: baked-image
+        resourceSpec:
+          - type: image
+            params:
+              - name: url
+                value: gcr.io/foo/bar
 ```
 
 The above definition becomes the following in `v1beta1`:
@@ -252,29 +252,29 @@ The above definition becomes the following in `v1beta1`:
 spec:
   resources:
     inputs:
-    - name: src-repo
-      type: git
+      - name: src-repo
+        type: git
     outputs:
-    - name: baked-image
-      type: image
+      - name: baked-image
+        type: image
 
 # TaskRun.yaml (v1beta1)
 spec:
   resources:
     inputs:
-    - name: src-repo
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: main
-          - name: url
-            value: https://github.com/tektoncd/pipeline
+      - name: src-repo
+        resourceSpec:
+          type: git
+          params:
+            - name: revision
+              value: main
+            - name: url
+              value: https://github.com/tektoncd/pipeline
     outputs:
-    - name: baked-image
-      resourceSpec:
-      - type: image
-        params:
-        - name: url
-          value: gcr.io/foo/bar
+      - name: baked-image
+        resourceSpec:
+          - type: image
+            params:
+              - name: url
+                value: gcr.io/foo/bar
 ```

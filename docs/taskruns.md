@@ -243,9 +243,9 @@ spec:
       runAsNonRoot: true
       runAsUser: 1001
     volumes:
-    - name: my-cache
-      persistentVolumeClaim:
-        claimName: my-volume-claim
+      - name: my-cache
+        persistentVolumeClaim:
+          claimName: my-volume-claim
 ```
 
 ### Specifying `Workspaces`
@@ -256,10 +256,10 @@ can map a `PersistentVolumeClaim` volume to a `Workspace` as follows:
 
 ```yaml
 workspaces:
-- name: myworkspace # must match workspace name in the Task
-  persistentVolumeClaim:
-    claimName: mypvc # this PVC must already exist
-  subPath: my-subdir
+  - name: myworkspace # must match workspace name in the Task
+    persistentVolumeClaim:
+      claimName: mypvc # this PVC must already exist
+    subPath: my-subdir
 ```
 
 For more information, see the following topics:
@@ -352,23 +352,23 @@ The following example shows the `status` field of a `TaskRun` that has executed 
 ```yaml
 completionTime: "2019-08-12T18:22:57Z"
 conditions:
-- lastTransitionTime: "2019-08-12T18:22:57Z"
-  message: All Steps have completed executing
-  reason: Succeeded
-  status: "True"
-  type: Succeeded
+  - lastTransitionTime: "2019-08-12T18:22:57Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
 podName: status-taskrun-pod-6488ef
 startTime: "2019-08-12T18:22:51Z"
 steps:
-- container: step-hello
-  imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
-  name: hello
-  terminated:
-    containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
-    exitCode: 0
-    finishedAt: "2019-08-12T18:22:56Z"
-    reason: Completed
-    startedAt: "2019-08-12T18:22:54Z"
+  - container: step-hello
+    imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
+    name: hello
+    terminated:
+      containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
+      exitCode: 0
+      finishedAt: "2019-08-12T18:22:56Z"
+      reason: Completed
+      startedAt: "2019-08-12T18:22:54Z"
   ```
 
 The following tables shows how to read the overall status of a `TaskRun`:
