@@ -18,6 +18,11 @@ spec:
       env:
       - name: FOO
         value: foooooooo
+      # Test that Pods with containers run as different UIDs
+      # are able to run scripts regardless of any specific
+      # Step's UID.
+      securityContext:
+        runAsUser: 2000
       script: |
         #!/usr/bin/env bash
         set -euxo pipefail
@@ -30,6 +35,8 @@ spec:
 
     - name: place-file
       image: ubuntu
+      securityContext:
+        runAsUser: 8000
       script: |
         #!/usr/bin/env bash
         echo "echo Hello from script file" > /workspace/hello
@@ -42,6 +49,8 @@ spec:
 
     - name: contains-eof
       image: ubuntu
+      securityContext:
+        runAsUser: 16000
       script: |
         #!/usr/bin/env bash
         cat > file << EOF
