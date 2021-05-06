@@ -31,10 +31,12 @@ weight: 3
     - [Consuming `Task` execution results in `finally`](#consuming-task-execution-results-in-finally)
     - [`PipelineRun` Status with `finally`](#pipelinerun-status-with-finally)
     - [Using Execution `Status` of `pipelineTask`](#using-execution-status-of-pipelinetask)
+    - [Using Aggregate Execution `Status` of All `Tasks`](#using-aggregate-execution-status-of-all-tasks)
     - [Guard `Finally Task` execution using `WhenExpressions`](#guard-finally-task-execution-using-whenexpressions)
       - [`WhenExpressions` using `Parameters` in `Finally Tasks`](#whenexpressions-using-parameters-in-finally-tasks)
       - [`WhenExpressions` using `Results` in `Finally Tasks`](#whenexpressions-using-results-in-finally-tasks)
-      - [`WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`](#whenexpressions-using-execution-status-of-pipelinetask-in-finally-tasks)  
+      - [`WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`](#whenexpressions-using-execution-status-of-pipelinetask-in-finally-tasks)
+      - [`WhenExpressions` using `Aggregate Execution Status` of `Tasks` in `Finally Tasks`](#whenexpressions-using-aggregate-execution-status-of-tasks-in-finally-tasks)
     - [Known Limitations](#known-limitations)
       - [Specifying `Resources` in Final Tasks](#specifying-resources-in-final-tasks)
       - [Cannot configure the Final Task execution order](#cannot-configure-the-final-task-execution-order)
@@ -895,9 +897,9 @@ This kind of variable can have any one of the values from the following table:
 
 | Status | Description |
 | ------- | -----------|
-| Succeeded | `taskRun` for the `pipelineTask` completed successfully |
-| Failed | `taskRun` for the `pipelineTask` completed with a failure or cancelled by the user |
-| None | the `pipelineTask` has been skipped or no execution information available for the `pipelineTask` |
+| `Succeeded` | `taskRun` for the `pipelineTask` completed successfully |
+| `Failed` | `taskRun` for the `pipelineTask` completed with a failure or cancelled by the user |
+| `None` | the `pipelineTask` has been skipped or no execution information available for the `pipelineTask` |
 
 For an end-to-end example, see [`status` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-task-execution-status.yaml).
 
