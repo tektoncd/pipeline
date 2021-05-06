@@ -158,8 +158,7 @@ func mountAsSharedWorkspace(ts v1beta1.TaskSpec, volumeMount corev1.VolumeMount)
 	ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
 
 	for i := range ts.Sidecars {
-		sidecar := &ts.Sidecars[i]
-		sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
+		AddSidecarVolumeMount(&ts.Sidecars[i], volumeMount)
 	}
 }
 
@@ -192,4 +191,15 @@ func mountAsIsolatedWorkspace(ts v1beta1.TaskSpec, workspaceName string, volumeM
 			}
 		}
 	}
+}
+
+// AddSidecarVolumeMount is a helper to add a volumeMount to the sidecar unless its
+// MountPath would conflict with another of the sidecar's existing volume mounts.
+func AddSidecarVolumeMount(sidecar *v1beta1.Sidecar, volumeMount corev1.VolumeMount) {
+	for j := range sidecar.VolumeMounts {
+		if sidecar.VolumeMounts[j].MountPath == volumeMount.MountPath {
+			return
+		}
+	}
+	sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
 }
