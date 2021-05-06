@@ -39,6 +39,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -269,7 +270,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
-			FailedWithMessage("could not find object in image with kind: task and name: hello-world-dne", pipelineRunName),
+			FailedWithMessage("does not contain a dev.tekton.image.apiVersion annotation", pipelineRunName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
@@ -345,6 +346,7 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	img, err = mutate.Append(img, mutate.Addendum{
 		Layer: taskLayer,
 		Annotations: map[string]string{
+			// intentionally invalid name annotation
 			"org.opencontainers.image.title": taskName,
 			"dev.tekton.image.kind":          strings.ToLower(task.Kind),
 			"dev.tekton.image.apiVersion":    task.APIVersion,
@@ -380,8 +382,8 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
 	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
 		Chain(
-			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
-			FailedWithMessage("could not find object in image with kind: task and name: hello-world", pipelineRunName),
+			FailedWithReason(pipelinerun.ReasonCouldntGetPipeline, pipelineRunName),
+			FailedWithMessage("does not contain a dev.tekton.image.name annotation", pipelineRunName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}

@@ -794,6 +794,61 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				Name: "source",
 			}},
 		},
+	}, {
+		name: "existing sidecar volumeMounts are not displaced by workspace binding",
+		ts: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/my/fancy/mount/path",
+				ReadOnly:  true,
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Name: "conflicting volume mount sidecar",
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "mount-path-conflicts",
+						MountPath: "/my/fancy/mount/path",
+					}},
+				},
+			}},
+		},
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "custom",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "mypvc",
+			},
+		}},
+		expectedTaskSpec: v1beta1.TaskSpec{
+			StepTemplate: &corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-j2tds",
+					MountPath: "/my/fancy/mount/path",
+					ReadOnly:  true,
+				}},
+			},
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Name: "conflicting volume mount sidecar",
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "mount-path-conflicts",
+						MountPath: "/my/fancy/mount/path",
+					}},
+				},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "ws-j2tds",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "mypvc",
+					},
+				},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/my/fancy/mount/path",
+				ReadOnly:  true,
+			}},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := config.ToContext(context.Background(), &config.Config{
@@ -829,5 +884,84 @@ func TestApplyWithMissingWorkspaceDeclaration(t *testing.T) {
 	vols := workspace.CreateVolumes(bindings)
 	if _, err := workspace.Apply(context.Background(), ts, bindings, vols); err == nil {
 		t.Errorf("Expected error because workspace doesnt exist.")
+	}
+}
+
+// TestAddSidecarVolumeMount tests that sidecars dont receive a volume mount if
+// it has a mount that already shares the same MountPath.
+func TestAddSidecarVolumeMount(t *testing.T) {
+	for _, tc := range []struct {
+		sidecarMounts   []corev1.VolumeMount
+		volumeMount     corev1.VolumeMount
+		expectedSidecar v1beta1.Sidecar
+	}{{
+		sidecarMounts: nil,
+		volumeMount: corev1.VolumeMount{
+			Name:      "foo",
+			MountPath: "/workspace/foo",
+		},
+		expectedSidecar: v1beta1.Sidecar{
+			Container: corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/workspace/foo",
+				}},
+			},
+		},
+	}, {
+		sidecarMounts: []corev1.VolumeMount{},
+		volumeMount: corev1.VolumeMount{
+			Name:      "foo",
+			MountPath: "/workspace/foo",
+		},
+		expectedSidecar: v1beta1.Sidecar{
+			Container: corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/workspace/foo",
+				}},
+			},
+		},
+	}, {
+		sidecarMounts: []corev1.VolumeMount{{
+			Name:      "bar",
+			MountPath: "/workspace/bar",
+		}},
+		volumeMount: corev1.VolumeMount{
+			Name:      "workspace1",
+			MountPath: "/workspace/bar",
+		},
+		expectedSidecar: v1beta1.Sidecar{
+			Container: corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "bar",
+					MountPath: "/workspace/bar",
+				}},
+			},
+		},
+	}, {
+		sidecarMounts: []corev1.VolumeMount{{
+			Name:      "bar",
+			MountPath: "/workspace/bar",
+		}},
+		volumeMount: corev1.VolumeMount{
+			Name:      "foo",
+			MountPath: "/workspace/foo",
+		},
+		expectedSidecar: v1beta1.Sidecar{
+			Container: corev1.Container{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "bar",
+					MountPath: "/workspace/bar",
+				}, {
+					Name:      "foo",
+					MountPath: "/workspace/foo",
+				}},
+			},
+		},
+	}} {
+		sidecar := v1beta1.Sidecar{}
+		sidecar.Container.VolumeMounts = tc.sidecarMounts
+		workspace.AddSidecarVolumeMount(&v1beta1.Sidecar{}, corev1.VolumeMount{})
 	}
 }

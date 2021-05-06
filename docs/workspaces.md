@@ -186,8 +186,12 @@ spec:
       touch "$(workspaces.signals.path)/ready"
 ```
 
-**Note:** `Sidecars` _must_ explicitly opt-in to receiving the `Workspace` volume. Injected `Sidecars` from
-non-Tekton sources will not receive access to `Workspaces`.
+**Note:** Starting in Pipelines v0.24.0 `Sidecars` automatically get access to `Workspaces`.This is an
+alpha feature and requires Pipelines to have [the "alpha" feature gate enabled](./install.md#alpha-features).
+
+If a Sidecar already has a `volumeMount` at the location expected for a `workspace` then that `workspace` is
+not bound to the Sidecar. This preserves backwards-compatibility with any existing uses of the `volumeMount`
+trick described above.
 
 #### Isolating `Workspaces` to Specific `Steps` or `Sidecars`
 
