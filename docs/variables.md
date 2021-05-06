@@ -23,8 +23,8 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.uid` | The uid of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipeline.name` | The name of this `Pipeline` . |
-| `tasks.<pipelineTaskName>.status` | The execution status of the specified `pipelineTask`, only available in `finally` tasks. |
-| `tasks.status` | An aggregate status of all `tasks`, only available in `finally` tasks. |
+| `tasks.<pipelineTaskName>.status` | The execution status of the specified `pipelineTask`, only available in `finally` tasks. The execution status can be set to any one of the values (`Succeeded`, `Failed`, or `None`) described [here](pipelines.md#using-execution-status-of-pipelinetask)|
+| `tasks.status` | An aggregate status of all the `pipelineTasks` under the `tasks` section (excluding the `finally` section). This variable is only available in the `finally` tasks and can have any one of the values (`Succeeded`, `Failed`, `Completed`, or `None`) described [here](pipelines.md#using-aggregate-execution-status-of-all-tasks).  |
 
 ## Variables available in a `Task`
 
