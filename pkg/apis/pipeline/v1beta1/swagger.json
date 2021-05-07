@@ -2467,22 +2467,6 @@
         "values"
       ],
       "properties": {
-        "Input": {
-          "description": "DeprecatedInput for backwards compatibility with \u003cv0.17 it is the string for guard checking which can be a static input or an output from a parent Task",
-          "type": "string"
-        },
-        "Operator": {
-          "description": "DeprecatedOperator for backwards compatibility with \u003cv0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
-          "type": "string"
-        },
-        "Values": {
-          "description": "DeprecatedValues for backwards compatibility with \u003cv0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          }
-        },
         "input": {
           "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
           "type": "string",

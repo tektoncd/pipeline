@@ -4178,13 +4178,6 @@ func schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
-					"Input": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DeprecatedInput for backwards compatibility with <v0.17 it is the string for guard checking which can be a static input or an output from a parent Task",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"operator": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Operator that represents an Input's relationship to the values",
@@ -4193,31 +4186,9 @@ func schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
-					"Operator": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DeprecatedOperator for backwards compatibility with <v0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"values": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-					"Values": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DeprecatedValues for backwards compatibility with <v0.17 it represents a DeprecatedInput's relationship to the DeprecatedValues",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
