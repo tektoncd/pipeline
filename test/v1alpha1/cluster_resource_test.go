@@ -95,8 +95,8 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 			Namespace: namespace,
 		},
 		Data: map[string][]byte{
-			"cadatakey": []byte("Y2EtY2VydAo="), //ca-cert
-			"tokenkey":  []byte("dG9rZW4K"),     //token
+			"cadatakey": []byte("Y2EtY2VydAo="), // ca-cert
+			"tokenkey":  []byte("dG9rZW4K"),     // token
 		},
 	}
 }

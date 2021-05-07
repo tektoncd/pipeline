@@ -111,7 +111,7 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 		// on these instances in our args and Kubernetes reduces them back down
 		// to the expected number of dollar signs. This is a workaround for
 		// https://github.com/kubernetes/kubernetes/issues/101137
-		script = strings.Replace(script, "$$", "$$$$", -1)
+		script = strings.ReplaceAll(script, "$$", "$$$$")
 
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.

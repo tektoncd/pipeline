@@ -46,7 +46,7 @@ type Node struct {
 
 // Graph represents the Pipeline Graph
 type Graph struct {
-	//Nodes represent map of PipelineTask name to Node in Pipeline Graph
+	// Nodes represent map of PipelineTask name to Node in Pipeline Graph
 	Nodes map[string]*Node
 }
 

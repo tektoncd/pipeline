@@ -66,14 +66,14 @@ func main() {
 }
 
 func swaggify(name string) string {
-	name = strings.Replace(name, "./pkg/apis/pipeline/", "", -1)
-	name = strings.Replace(name, "./pkg/apis/resource/", "", -1)
-	name = strings.Replace(name, "github.com/tektoncd/pipeline/pkg/apis/pipeline/", "", -1)
-	name = strings.Replace(name, "github.com/tektoncd/pipeline/pkg/apis/resource/", "", -1)
-	name = strings.Replace(name, "k8s.io/api/core/", "", -1)
-	name = strings.Replace(name, "k8s.io/apimachinery/pkg/apis/meta/", "", -1)
-	name = strings.Replace(name, "knative.dev/pkg/apis.", "knative/", -1)
-	name = strings.Replace(name, "knative.dev/pkg/apis/duck/v1beta1.", "knative/", -1)
-	name = strings.Replace(name, "/", ".", -1)
+	name = strings.ReplaceAll(name, "./pkg/apis/pipeline/", "")
+	name = strings.ReplaceAll(name, "./pkg/apis/resource/", "")
+	name = strings.ReplaceAll(name, "github.com/tektoncd/pipeline/pkg/apis/pipeline/", "")
+	name = strings.ReplaceAll(name, "github.com/tektoncd/pipeline/pkg/apis/resource/", "")
+	name = strings.ReplaceAll(name, "k8s.io/api/core/", "")
+	name = strings.ReplaceAll(name, "k8s.io/apimachinery/pkg/apis/meta/", "")
+	name = strings.ReplaceAll(name, "knative.dev/pkg/apis.", "knative/")
+	name = strings.ReplaceAll(name, "knative.dev/pkg/apis/duck/v1beta1.", "knative/")
+	name = strings.ReplaceAll(name, "/", ".")
 	return name
 }
