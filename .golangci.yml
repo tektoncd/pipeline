@@ -1,6 +1,9 @@
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
+  gocritic:
+    disabled-checks:
+      - commentFormatting
 linters:
   disable-all: true
   enable:
