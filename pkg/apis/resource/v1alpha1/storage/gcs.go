@@ -45,7 +45,7 @@ type GCSResource struct {
 	Type     resourcev1alpha1.PipelineResourceType `json:"type"`
 	Location string                                `json:"location"`
 	TypeDir  bool                                  `json:"typeDir"`
-	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
+	// Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []resourcev1alpha1.SecretParam `json:"secrets"`
 
 	ShellImage  string `json:"-"`

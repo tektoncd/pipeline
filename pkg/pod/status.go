@@ -64,7 +64,7 @@ const (
 	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPending = "Pending"
 
-	//timeFormat is RFC3339 with millisecond
+	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
 )
 

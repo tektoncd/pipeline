@@ -54,7 +54,7 @@ type Resource struct {
 	ClientKeyData []byte `json:"clientKeyData"`
 	// ClientCertificateData contains PEM-encoded data from a client cert file for TLS.
 	ClientCertificateData []byte `json:"clientCertificateData"`
-	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
+	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []resource.SecretParam `json:"secrets"`
 
 	KubeconfigWriterImage string `json:"-"`

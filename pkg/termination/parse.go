@@ -40,7 +40,7 @@ func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.PipelineReso
 
 	for i, rr := range r {
 		if rr == (v1beta1.PipelineResourceResult{}) {
-			//Erase incorrect result
+			// Erase incorrect result
 			r[i] = r[len(r)-1]
 			r = r[:len(r)-1]
 			logger.Errorf("termination message contains non taskrun or pipelineresource result keys")

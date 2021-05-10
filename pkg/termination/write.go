@@ -67,7 +67,7 @@ func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	return nil
 }
 
-//MessageLengthError indicate the length of termination message of container is beyond 4096 which is the max length read by kubenates
+// MessageLengthError indicate the length of termination message of container is beyond 4096 which is the max length read by kubenates
 type MessageLengthError string
 
 const (

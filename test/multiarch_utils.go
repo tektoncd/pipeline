@@ -36,11 +36,11 @@ const (
 	busyboxImage = iota
 	// Registry image
 	registryImage
-	//kubectl image
+	// kubectl image
 	kubectlImage
-	//helm image
+	// helm image
 	helmImage
-	//kaniko executor image
+	// kaniko executor image
 	kanikoImage
 	// dockerize image
 	dockerizeImage
@@ -147,7 +147,7 @@ func initExcludedTests() sets.String {
 	switch getTestArch() {
 	case "s390x":
 		return sets.NewString(
-			//examples
+			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",
@@ -155,7 +155,7 @@ func initExcludedTests() sets.String {
 		)
 	case "ppc64le":
 		return sets.NewString(
-			//examples
+			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/pipelineruns/pipelinerun",
