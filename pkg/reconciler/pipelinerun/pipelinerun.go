@@ -697,7 +697,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
 	if tr != nil {
-		//is a retry
+		// is a retry
 		addRetryHistory(tr)
 		clearStatus(tr)
 		tr.Status.SetCondition(&apis.Condition{

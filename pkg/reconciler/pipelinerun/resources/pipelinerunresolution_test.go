@@ -1060,10 +1060,10 @@ func TestGetResourcesFromBindings(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings_Missing(t *testing.T) {
-	//p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	// p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
 	//	tb.PipelineDeclaredResource("git-resource", "git"),
 	//	tb.PipelineDeclaredResource("image-resource", "image"),
-	//))
+	// ))
 	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))

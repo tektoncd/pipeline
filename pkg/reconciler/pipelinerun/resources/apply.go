@@ -189,7 +189,7 @@ func ApplyTaskResultsToPipelineResults(
 			finalValue := pipelineResult.Value
 			for variable, value := range stringReplacements {
 				v := fmt.Sprintf("$(%s)", variable)
-				finalValue = strings.Replace(finalValue, v, value, -1)
+				finalValue = strings.ReplaceAll(finalValue, v, value)
 			}
 			runResults = append(runResults, v1beta1.PipelineRunResult{
 				Name:  pipelineResult.Name,

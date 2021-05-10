@@ -70,7 +70,7 @@ func createKubeconfigFile(resource *cluster.Resource, logger *zap.SugaredLogger,
 	if passwordFromEnv := os.Getenv("PASSWORD"); passwordFromEnv != "" {
 		resource.Password = passwordFromEnv
 	}
-	//only one authentication technique per user is allowed in a kubeconfig, so clear out the password if a token is provided
+	// only one authentication technique per user is allowed in a kubeconfig, so clear out the password if a token is provided
 	user := resource.Username
 	pass := resource.Password
 	clientKeyData := resource.ClientKeyData

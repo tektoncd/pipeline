@@ -917,7 +917,7 @@ script-heredoc-randomly-generated-mz4c7
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
 				},
-				Env: append(implicitEnvVars),
+				Env: implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",

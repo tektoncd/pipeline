@@ -285,7 +285,7 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
-	//unregisterMetrics()
+	// unregisterMetrics()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
