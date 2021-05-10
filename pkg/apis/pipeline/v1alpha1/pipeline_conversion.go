@@ -19,13 +19,16 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
 const FinallyFieldName = "finally"
+const finallyAnnotationKey = "tekton.dev/v1beta1Finally"
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
@@ -34,10 +37,19 @@ func (source *Pipeline) ConvertTo(ctx context.Context, obj apis.Convertible) err
 	switch sink := obj.(type) {
 	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertTo(ctx, &sink.Spec)
+		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
+			return err
+		}
+		if err := deserializeFinally(&sink.ObjectMeta, &sink.Spec); err != nil {
+			return err
+		}
+		if err := v1beta1.ValidatePipelineTasks(ctx, sink.Spec.Tasks, sink.Spec.Finally); err != nil {
+			return fmt.Errorf("error converting finally annotation into beta field: %w", err)
+		}
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
+	return nil
 }
 
 func (source *PipelineSpec) ConvertTo(ctx context.Context, sink *v1beta1.PipelineSpec) error {
@@ -81,6 +93,9 @@ func (sink *Pipeline) ConvertFrom(ctx context.Context, obj apis.Convertible) err
 	switch source := obj.(type) {
 	case *v1beta1.Pipeline:
 		sink.ObjectMeta = source.ObjectMeta
+		if err := serializeFinally(&sink.ObjectMeta, source.Spec.Finally); err != nil {
+			return err
+		}
 		return sink.Spec.ConvertFrom(ctx, source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -99,10 +114,6 @@ func (sink *PipelineSpec) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 				return err
 			}
 		}
-	}
-	// finally clause was introduced in v1beta1 and not available in v1alpha1
-	if len(source.Finally) > 0 {
-		return ConvertErrorf(FinallyFieldName, ConversionErrorFieldNotAvailableMsg)
 	}
 	return nil
 }
@@ -123,5 +134,42 @@ func (sink *PipelineTask) ConvertFrom(ctx context.Context, source v1beta1.Pipeli
 	sink.Params = source.Params
 	sink.Workspaces = source.Workspaces
 	sink.Timeout = source.Timeout
+	return nil
+}
+
+// serializeFinally serializes a list of Finally Tasks to the annotations
+// of an object's metadata section. This can then be used to re-instantiate
+// the Finally Tasks when converting back up to v1beta1 and beyond.
+func serializeFinally(meta *metav1.ObjectMeta, finally []v1beta1.PipelineTask) error {
+	if len(finally) != 0 {
+		b, err := json.Marshal(finally)
+		if err != nil {
+			return err
+		}
+		if meta.Annotations == nil {
+			meta.Annotations = make(map[string]string)
+		}
+		meta.Annotations[finallyAnnotationKey] = string(b)
+	}
+	return nil
+}
+
+// deserializeFinally populates a PipelineSpec's Finally list
+// from an annotation found on resources that have been previously
+// converted down from v1beta1 to v1alpha1.
+func deserializeFinally(meta *metav1.ObjectMeta, spec *v1beta1.PipelineSpec) error {
+	if meta.Annotations != nil {
+		if str, ok := meta.Annotations[finallyAnnotationKey]; ok {
+			finally := []v1beta1.PipelineTask{}
+			if err := json.Unmarshal([]byte(str), &finally); err != nil {
+				return fmt.Errorf("error converting finally annotation into beta field: %w", err)
+			}
+			delete(meta.Annotations, finallyAnnotationKey)
+			if len(meta.Annotations) == 0 {
+				meta.Annotations = nil
+			}
+			spec.Finally = finally
+		}
+	}
 	return nil
 }

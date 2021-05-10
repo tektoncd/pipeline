@@ -18,11 +18,13 @@ package v1beta1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -164,7 +166,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			}}},
 		},
 	}, {
-		name: "valid creds-init path variable",
+		name: "valid path variable for legacy credential helper (aka creds-init)",
 		fields: fields{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "mystep",
@@ -965,5 +967,206 @@ func TestTaskSpecValidateError(t *testing.T) {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func TestStepAndSidecarWorkspaces(t *testing.T) {
+	type fields struct {
+		Steps      []v1beta1.Step
+		Sidecars   []v1beta1.Sidecar
+		Workspaces []v1beta1.WorkspaceDeclaration
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{{
+		name: "valid step workspace usage",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+				Workspaces: []v1beta1.WorkspaceUsage{{
+					Name:      "foo-workspace",
+					MountPath: "/a/custom/mountpath",
+				}},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "foo-workspace",
+				Description: "my great workspace",
+				MountPath:   "some/path",
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := &v1beta1.TaskSpec{
+				Steps:      tt.fields.Steps,
+				Sidecars:   tt.fields.Sidecars,
+				Workspaces: tt.fields.Workspaces,
+			}
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+			})
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			ts.SetDefaults(ctx)
+			if err := ts.Validate(ctx); err != nil {
+				t.Errorf("TaskSpec.Validate() = %v", err)
+			}
+		})
+	}
+}
+
+func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
+	type fields struct {
+		Steps    []v1beta1.Step
+		Sidecars []v1beta1.Sidecar
+	}
+	tests := []struct {
+		name          string
+		fields        fields
+		expectedError apis.FieldError
+	}{{
+		name: "step workspace that refers to non-existent workspace declaration fails",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+				Workspaces: []v1beta1.WorkspaceUsage{{
+					Name: "foo",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `undefined workspace "foo"`,
+			Paths:   []string{"steps[0].workspaces[0].name"},
+		},
+	}, {
+		name: "sidecar workspace that refers to non-existent workspace declaration fails",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+				Workspaces: []v1beta1.WorkspaceUsage{{
+					Name: "foo",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `undefined workspace "foo"`,
+			Paths:   []string{"sidecars[0].workspaces[0].name"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := &v1beta1.TaskSpec{
+				Steps:    tt.fields.Steps,
+				Sidecars: tt.fields.Sidecars,
+			}
+
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+			})
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+			}
+
+			ctx := config.ToContext(context.Background(), cfg)
+			ts.SetDefaults(ctx)
+			err := ts.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+// TestIncompatibleAPIVersions exercises validation of fields that
+// require a specific feature gate version in order to work.
+func TestIncompatibleAPIVersions(t *testing.T) {
+	tests := []struct {
+		name            string
+		requiredVersion string
+		spec            v1beta1.TaskSpec
+	}{{
+		name:            "step workspace requires alpha",
+		requiredVersion: "alpha",
+		spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "foo",
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+				Workspaces: []v1beta1.WorkspaceUsage{{
+					Name: "foo",
+				}},
+			}},
+		},
+	}, {
+		name:            "sidecar workspace requires alpha",
+		requiredVersion: "alpha",
+		spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "foo",
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Image: "foo",
+				},
+				Workspaces: []v1beta1.WorkspaceUsage{{
+					Name: "foo",
+				}},
+			}},
+		},
+	}}
+	versions := []string{"alpha", "stable"}
+	for _, tt := range tests {
+		for _, version := range versions {
+			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
+			t.Run(testName, func(t *testing.T) {
+				ts := tt.spec
+				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+					"enable-api-fields": version,
+				})
+				cfg := &config.Config{
+					FeatureFlags: featureFlags,
+				}
+
+				ctx := config.ToContext(context.Background(), cfg)
+
+				ts.SetDefaults(ctx)
+				err := ts.Validate(ctx)
+
+				if tt.requiredVersion != version && err == nil {
+					t.Fatalf("no error received even though version required is %q while feature gate is %q", tt.requiredVersion, version)
+				}
+
+				if tt.requiredVersion == version && err != nil {
+					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
+				}
+			})
+		}
 	}
 }

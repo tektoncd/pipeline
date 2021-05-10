@@ -263,19 +263,18 @@ func TestUpdateReady(t *testing.T) {
 		desc            string
 		pod             corev1.Pod
 		wantAnnotations map[string]string
+		wantErr         bool
 	}{{
-		desc: "Pod without any annotations has it added",
+		desc: "Pod without any annotations fails",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        "pod",
 				Annotations: nil,
 			},
 		},
-		wantAnnotations: map[string]string{
-			readyAnnotation: readyAnnotationValue,
-		},
+		wantErr: true, // Nothing to replace.
 	}, {
-		desc: "Pod with existing annotations has it appended",
+		desc: "Pod without ready annotation adds it",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod",
@@ -286,19 +285,36 @@ func TestUpdateReady(t *testing.T) {
 		},
 		wantAnnotations: map[string]string{
 			"something":     "else",
-			readyAnnotation: readyAnnotationValue,
+			readyAnnotation: "READY",
 		},
 	}, {
-		desc: "Pod with other annotation value has it updated",
+		desc: "Pod with empty annotation value has it replaced",
 		pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod",
 				Annotations: map[string]string{
+					"something":     "else",
+					readyAnnotation: "",
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":     "else",
+			readyAnnotation: readyAnnotationValue,
+		},
+	}, {
+		desc: "Pod with other annotation value has it replaced",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something":     "else",
 					readyAnnotation: "something else",
 				},
 			},
 		},
 		wantAnnotations: map[string]string{
+			"something":     "else",
 			readyAnnotation: readyAnnotationValue,
 		},
 	}} {
@@ -307,8 +323,8 @@ func TestUpdateReady(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := UpdateReady(ctx, kubeclient, c.pod); err != nil {
-				t.Errorf("UpdateReady: %v", err)
+			if err := UpdateReady(ctx, kubeclient, c.pod); (err != nil) != c.wantErr {
+				t.Errorf("UpdateReady (wantErr=%t): %v", c.wantErr, err)
 			}
 
 			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
@@ -425,13 +441,8 @@ func TestStopSidecars(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
-			if err := StopSidecars(ctx, nopImage, kubeclient, c.pod); err != nil {
+			if got, err := StopSidecars(ctx, nopImage, kubeclient, c.pod.Namespace, c.pod.Name); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
-			}
-
-			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 			}

@@ -138,7 +138,7 @@ func TestSendCloudEvents(t *testing.T) {
 			successfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: true,
 			}
-			err := SendCloudEvents(tc.taskRun, NewFakeClient(&successfulBehaviour), logger)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&successfulBehaviour), logger)
 			if err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
@@ -196,7 +196,7 @@ func TestSendCloudEventsErrors(t *testing.T) {
 			unsuccessfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: false,
 			}
-			err := SendCloudEvents(tc.taskRun, NewFakeClient(&unsuccessfulBehaviour), logger)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&unsuccessfulBehaviour), logger)
 			if err == nil {
 				t.Fatalf("Unexpected success sending cloud events: %v", err)
 			}
@@ -427,7 +427,7 @@ func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bo
 }
 
 func eventFromChannel(c chan string, testName string, wantEvent string) error {
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(10 * time.Millisecond)
 	select {
 	case event := <-c:
 		if wantEvent == "" {

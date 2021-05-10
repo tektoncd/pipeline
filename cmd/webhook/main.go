@@ -18,6 +18,8 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
 	"os"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
@@ -25,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -34,6 +35,7 @@ import (
 	pkgleaderelection "knative.dev/pkg/leaderelection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
+	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 	"knative.dev/pkg/webhook/configmaps"
@@ -204,7 +206,7 @@ func main() {
 	}
 
 	// Scope informers to the webhook's namespace instead of cluster-wide
-	ctx := injection.WithNamespaceScope(signals.NewContext(), system.GetNamespace())
+	ctx := injection.WithNamespaceScope(signals.NewContext(), system.Namespace())
 
 	// Set up a signal context with our webhook options
 	ctx = webhook.WithOptions(ctx, webhook.Options{
@@ -213,7 +215,24 @@ func main() {
 		SecretName:  secretName,
 	})
 
-	sharedmain.WebhookMainWithConfig(ctx, "webhook",
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", handler)
+	mux.HandleFunc("/health", handler)
+	mux.HandleFunc("/readiness", handler)
+
+	port := os.Getenv("PROBES_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	go func() {
+		// start the web server on port and accept requests
+		log.Printf("Readiness and health check server listening on port %s", port)
+		log.Fatal(http.ListenAndServe(":"+port, mux))
+	}()
+
+	sharedmain.WebhookMainWithConfig(ctx, serviceName,
 		sharedmain.ParseAndGetConfigOrDie(),
 		certificates.NewController,
 		newDefaultingAdmissionController,
@@ -221,4 +240,8 @@ func main() {
 		newConfigValidationController,
 		newConversionController,
 	)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

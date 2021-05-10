@@ -80,6 +80,8 @@ spec:
     - name: run-js
       runAfter: [print-bound-state]
       workspaces:
+      - name: prelaunch
+        workspace: prelaunch
       - name: launch
         workspace: launch
       taskRef:

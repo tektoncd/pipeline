@@ -122,7 +122,7 @@ func (tlq *twoLaneQueue) runConsumer() {
 	}
 }
 
-// Shutdown implements workqueue.Interace.
+// Shutdown implements workqueue.Interface.
 // Shutdown shuts down both queues.
 func (tlq *twoLaneQueue) ShutDown() {
 	tlq.RateLimitingInterface.ShutDown()

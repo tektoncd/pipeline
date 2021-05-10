@@ -34,8 +34,8 @@ import (
 
 const (
 	configMapNameEnv = "CONFIG_LEADERELECTION_NAME"
-	// KnativeResourceLock is the only supported lock mechanism for Knative.
-	KnativeResourceLock = resourcelock.LeasesResourceLock
+	// knativeResourceLock is the only supported lock mechanism for Knative.
+	knativeResourceLock = resourcelock.LeasesResourceLock
 )
 
 // MaxBuckets is the maximum number of buckets to allow users to define.
@@ -134,8 +134,8 @@ type statefulSetID struct {
 
 func (ssID *statefulSetID) Decode(v string) error {
 	if i := strings.LastIndex(v, "-"); i != -1 {
-		ui, err := strconv.ParseUint(v[i+1:], 10, 64)
-		ssID.ordinal = int(ui)
+		ui, err := strconv.Atoi(v[i+1:])
+		ssID.ordinal = ui
 		ssID.ssName = v[:i]
 		return err
 	}

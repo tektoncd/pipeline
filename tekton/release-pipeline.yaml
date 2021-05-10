@@ -8,44 +8,57 @@ spec:
   - name: package
     description: package to release
     default: github.com/tektoncd/pipeline
+  - name: gitRevision
+    description: the git revision to release
   - name: imageRegistry
-    default: gcr.io/tekton-releases
+    description: The target image registry
+    default: gcr.io
+  - name: imageRegistryPath
+    description: The path (project) in the image registry
+    default: tekton-releases
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
+  - name: releaseBucket
+    description: bucket where the release is stored. The bucket must be project specific.
+    default: gs://tekton-releases-nightly/pipeline
   - name: releaseAsLatest
     description: Whether to tag and publish this release as Pipelines' latest
     default: "true"
-  resources:
-  - name: source-repo
-    type: git
-  - name: bucket
-    type: storage
-  - name: builtBaseImage
-    type: image
-  - name: builtEntrypointImage
-    type: image
-  - name: builtNopImage
-    type: image
-  - name: builtKubeconfigWriterImage
-    type: image
-  - name: builtCredsInitImage
-    type: image
-  - name: builtGitInitImage
-    type: image
-  - name: builtControllerImage
-    type: image
-  - name: builtWebhookImage
-    type: image
-  - name: builtDigestExporterImage
-    type: image
-  - name: builtPullRequestInitImage
-    type: image
-  - name: builtGcsFetcherImage
-    type: image
-  - name: notification
-    type: cloudEvent
+  - name: platforms
+    description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
+    default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
+  - name: serviceAccountPath
+    description: The path to the service account file within the release-secret workspace
+  workspaces:
+    - name: workarea
+      description: The workspace where the repo will be cloned.
+    - name: release-secret
+      description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
+  results:
+    - name: commit-sha
+      description: the sha of the commit that was released
+      value: $(tasks.git-clone.results.commit)
+    - name: release-file
+      description: the URL of the release file
+      value: $(tasks.report-bucket.results.release)
+    - name: release-file-no-tag
+      description: the URL of the release file
+      value: $(tasks.report-bucket.results.release-no-tag)
   tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: workarea
+          subpath: git
+      params:
+        - name: url
+          value: https://$(params.package)
+        - name: revision
+          value: $(params.gitRevision)
     - name: precheck
+      runAfter: [git-clone]
       taskRef:
         name: prerelease-checks
       params:
@@ -53,12 +66,12 @@ spec:
           value: $(params.package)
         - name: versionTag
           value: $(params.versionTag)
-      resources:
-        inputs:
-          - name: release-bucket
-            resource: bucket
-          - name: source-to-release
-            resource: source-repo
+        - name: releaseBucket
+          value: $(params.releaseBucket)
+      workspaces:
+        - name: source-to-release
+          workspace: workarea
+          subpath: git
     - name: unit-tests
       runAfter: [precheck]
       taskRef:
@@ -68,10 +81,10 @@ spec:
           value: $(params.package)
         - name: flags
           value: -v -mod=vendor
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+      workspaces:
+        - name: source
+          workspace: workarea
+          subpath: git
     - name: build
       runAfter: [precheck]
       taskRef:
@@ -79,55 +92,121 @@ spec:
       params:
         - name: package
           value: $(params.package)
-        - name: flags
-          value: -mod=vendor
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
-    - name: publish-images
+        - name: packages
+          value: ./cmd/...
+      workspaces:
+        - name: source
+          workspace: workarea
+          subpath: git
+    - name: build-base-image
       runAfter: [build, unit-tests]
       taskRef:
-        name: publish-tekton-pipelines
+        name: build-multiarch-base-image
       params:
-        - name: pathToProject
+        - name: package
+          value: $(params.package)
+        - name: imageRegistry
+          value: $(params.imageRegistry)
+        - name: imageRegistryPath
+          value: $(params.imageRegistryPath)
+        - name: platforms
+          value: $(params.platforms)
+        - name: serviceAccountPath
+          value: $(params.serviceAccountPath)
+      workspaces:
+        - name: source
+          workspace: workarea
+          subpath: git
+        - name: release-secret
+          workspace: release-secret
+    - name: publish-images
+      runAfter: [build-base-image]
+      taskRef:
+        name: publish-release
+      params:
+        - name: package
           value: $(params.package)
         - name: versionTag
           value: $(params.versionTag)
         - name: imageRegistry
           value: $(params.imageRegistry)
+        - name: imageRegistryPath
+          value: $(params.imageRegistryPath)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
-          - name: bucket
-            resource: bucket
-        outputs:
-          - name: bucket
-            resource: bucket
-          - name: builtBaseImage
-            resource: builtBaseImage
-          - name: builtEntrypointImage
-            resource: builtEntrypointImage
-          - name: builtNopImage
-            resource: builtNopImage
-          - name: builtKubeconfigWriterImage
-            resource: builtKubeconfigWriterImage
-          - name: builtCredsInitImage
-            resource: builtCredsInitImage
-          - name: builtGitInitImage
-            resource: builtGitInitImage
-          - name: builtControllerImage
-            resource: builtControllerImage
-          - name: builtWebhookImage
-            resource: builtWebhookImage
-          - name: builtDigestExporterImage
-            resource: builtDigestExporterImage
-          - name: builtPullRequestInitImage
-            resource: builtPullRequestInitImage
-          - name: builtGcsFetcherImage
-            resource: builtGcsFetcherImage
-          - name: notification
-            resource: notification
+        - name: platforms
+          value: $(params.platforms)
+        - name: serviceAccountPath
+          value: $(params.serviceAccountPath)
+      workspaces:
+        - name: source
+          workspace: workarea
+          subpath: git
+        - name: output
+          workspace: workarea
+          subpath: bucket
+        - name: release-secret
+          workspace: release-secret
+    - name: publish-to-bucket
+      runAfter: [publish-images]
+      taskRef:
+        name: gcs-upload
+      workspaces:
+        - name: credentials
+          workspace: release-secret
+        - name: source
+          workspace: workarea
+          subpath: bucket
+      params:
+        - name: location
+          value: $(params.releaseBucket)/previous/$(params.versionTag)
+        - name: path
+          value: $(params.versionTag)
+        - name: serviceAccountPath
+          value: $(params.serviceAccountPath)
+    - name: publish-to-bucket-latest
+      runAfter: [publish-images]
+      when:
+        - input: "$(params.releaseAsLatest)"
+          operator: in
+          values: ["true"]
+      taskRef:
+        name: gcs-upload
+      workspaces:
+        - name: credentials
+          workspace: release-secret
+        - name: source
+          workspace: workarea
+          subpath: bucket
+      params:
+        - name: location
+          value: $(params.releaseBucket)/latest
+        - name: path
+          value: $(params.versionTag)
+        - name: serviceAccountPath
+          value: $(params.serviceAccountPath)
+    - name: report-bucket
+      runAfter: [publish-to-bucket]
+      params:
+        - name: releaseBucket
+          value: $(params.releaseBucket)
+        - name: versionTag
+          value: $(params.versionTag)
+      taskSpec:
+        params:
+          - name: releaseBucket
+          - name: versionTag
+        results:
+          - name: release
+            description: The full URL of the release file in the bucket
+          - name: release-no-tag
+            description: The full URL of the release file (no tag) in the bucket
+        steps:
+          - name: create-results
+            image: alpine
+            script: |
+              BASE_URL=$(echo "$(params.releaseBucket)/previous/$(params.versionTag)")
+              # If the bucket is in the gs:// return the corresponding public https URL
+              BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
+              echo "${BASE_URL}/release.yaml" > $(results.release.path)
+              echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)

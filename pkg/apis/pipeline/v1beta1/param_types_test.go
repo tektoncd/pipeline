@@ -72,7 +72,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			ctx := context.Background()
 			tc.before.SetDefaults(ctx)
 			if d := cmp.Diff(tc.before, tc.defaultsApplied); d != "" {
-				t.Errorf("ParamSpec.SetDefaults/%s %s", tc.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -61,26 +62,6 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 	}
 }
 
-func TestPipelineRun_TaskRunref(t *testing.T) {
-	p := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-name",
-			Namespace: "test-ns",
-		},
-	}
-
-	expectTaskRunRef := corev1.ObjectReference{
-		APIVersion: "tekton.dev/v1beta1",
-		Kind:       "TaskRun",
-		Namespace:  p.Namespace,
-		Name:       p.Name,
-	}
-
-	if d := cmp.Diff(p.GetTaskRunRef(), expectTaskRunRef); d != "" {
-		t.Fatalf("Taskrun reference mismatch; diff %s", diff.PrintWantGot(d))
-	}
-}
-
 func TestInitializePipelineRunConditions(t *testing.T) {
 	p := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -91,7 +72,11 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 	p.Status.InitializeConditions()
 
 	if p.Status.TaskRuns == nil {
-		t.Fatalf("PipelineRun status not initialized correctly")
+		t.Fatalf("PipelineRun TaskRun status not initialized correctly")
+	}
+
+	if p.Status.Runs == nil {
+		t.Fatalf("PipelineRun Run status not initialized correctly")
 	}
 
 	if p.Status.StartTime.IsZero() {
@@ -103,6 +88,7 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 		t.Fatalf("PipelineRun initialize reason should be %s, got %s instead", v1beta1.PipelineRunReasonStarted.String(), condition.Reason)
 	}
 	p.Status.TaskRuns["fooTask"] = &v1beta1.PipelineRunTaskRunStatus{}
+	p.Status.Runs["bahTask"] = &v1beta1.PipelineRunRunStatus{}
 
 	// Change the reason before we initialize again
 	p.Status.SetCondition(&apis.Condition{
@@ -114,7 +100,10 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
-		t.Fatalf("PipelineRun status getting reset")
+		t.Fatalf("PipelineRun TaskRun status getting reset")
+	}
+	if len(p.Status.Runs) != 1 {
+		t.Fatalf("PipelineRun Run status getting reset")
 	}
 
 	newCondition := p.Status.GetCondition(apis.ConditionSucceeded)
@@ -304,10 +293,12 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 		},
 	} {
 		for taskName, expected := range tt.saNames {
-			sa := tt.pr.GetServiceAccountName(taskName)
-			if expected != sa {
-				t.Errorf("%s: wrong service account: got: %v, want: %v", tt.name, sa, expected)
-			}
+			t.Run(tt.name, func(t *testing.T) {
+				sa := tt.pr.GetServiceAccountName(taskName)
+				if expected != sa {
+					t.Errorf("wrong service account: got: %v, want: %v", sa, expected)
+				}
+			})
 		}
 	}
 }
@@ -338,8 +329,7 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 				"unknown":  "defaultSA",
 				"taskName": "newTaskSA",
 			},
-		},
-		{
+		}, {
 			name: "mixed default SA backward compatibility",
 			pr: &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
@@ -360,13 +350,33 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 				"taskNameOne": "TaskSAOne",
 				"taskNameTwo": "newTaskTwo",
 			},
+		}, {
+			name: "mixed SA and TaskRunSpec",
+			pr: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
+					ServiceAccountName: "defaultSA",
+					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+						PipelineTaskName: "taskNameOne",
+					}, {
+						PipelineTaskName:       "taskNameTwo",
+						TaskServiceAccountName: "newTaskTwo",
+					}},
+				},
+			},
+			expectedSAs: map[string]string{
+				"unknown":     "defaultSA",
+				"taskNameOne": "defaultSA",
+				"taskNameTwo": "newTaskTwo",
+			},
 		},
 	} {
 		for taskName, expected := range tt.expectedSAs {
 			t.Run(tt.name, func(t *testing.T) {
-				sa, _ := tt.pr.GetTaskRunSpecs(taskName)
-				if expected != sa {
-					t.Errorf("%s: wrong service account: got: %v, want: %v", tt.name, sa, expected)
+				s := tt.pr.GetTaskRunSpec(taskName)
+				if expected != s.TaskServiceAccountName {
+					t.Errorf("wrong service account: got: %v, want: %v", s.TaskServiceAccountName, expected)
 				}
 			})
 		}
@@ -384,17 +394,17 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 			pr: &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1beta1.PipelineRunSpec{
-					PodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTest"},
+					PodTemplate:        &pod.Template{SchedulerName: "scheduleTest"},
 					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
 					ServiceAccountName: "defaultSA",
 					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
 						PipelineTaskName:       "taskNameOne",
 						TaskServiceAccountName: "TaskSAOne",
-						TaskPodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTestOne"},
+						TaskPodTemplate:        &pod.Template{SchedulerName: "scheduleTestOne"},
 					}, {
 						PipelineTaskName:       "taskNameTwo",
 						TaskServiceAccountName: "newTaskTwo",
-						TaskPodTemplate:        &v1beta1.PodTemplate{SchedulerName: "scheduleTestTwo"},
+						TaskPodTemplate:        &pod.Template{SchedulerName: "scheduleTestTwo"},
 					}},
 				},
 			},
@@ -407,12 +417,12 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 	} {
 		for taskName, values := range tt.expectedPodTemplates {
 			t.Run(tt.name, func(t *testing.T) {
-				sa, taskPodTemplate := tt.pr.GetTaskRunSpecs(taskName)
-				if values[0] != taskPodTemplate.SchedulerName {
-					t.Errorf("%s: wrong task podtemplate scheduler name: got: %v, want: %v", tt.name, taskPodTemplate.SchedulerName, values[0])
+				s := tt.pr.GetTaskRunSpec(taskName)
+				if values[0] != s.TaskPodTemplate.SchedulerName {
+					t.Errorf("wrong task podtemplate scheduler name: got: %v, want: %v", s.TaskPodTemplate.SchedulerName, values[0])
 				}
-				if values[1] != sa {
-					t.Errorf("%s: wrong service account: got: %v, want: %v", tt.name, sa, values[1])
+				if values[1] != s.TaskServiceAccountName {
+					t.Errorf("wrong service account: got: %v, want: %v", s.TaskServiceAccountName, values[1])
 				}
 			})
 		}

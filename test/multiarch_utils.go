@@ -36,6 +36,14 @@ const (
 	busyboxImage = iota
 	// Registry image
 	registryImage
+	// kubectl image
+	kubectlImage
+	// helm image
+	helmImage
+	// kaniko executor image
+	kanikoImage
+	// dockerize image
+	dockerizeImage
 )
 
 func init() {
@@ -54,15 +62,34 @@ func getTestArch() string {
 
 // initImageNames returns the map with arch dependent image names for e2e tests
 func initImageNames() map[int]string {
-	if getTestArch() == "s390x" {
+	switch getTestArch() {
+	case "s390x":
 		return map[int]string{
-			busyboxImage:  "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
-			registryImage: "ibmcom/registry:2.6.2.5",
+			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
+			registryImage:  "ibmcom/registry:2.6.2.5",
+			kubectlImage:   "ibmcom/kubectl:v1.13.9",
+			helmImage:      "ibmcom/alpine-helm-s390x:latest",
+			kanikoImage:    "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
+			dockerizeImage: "ibmcom/dockerize-s390x",
 		}
-	}
-	return map[int]string{
-		busyboxImage:  "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
-		registryImage: "registry",
+	case "ppc64le":
+		return map[int]string{
+			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
+			registryImage:  "ppc64le/registry:2",
+			kubectlImage:   "ibmcom/kubectl:v1.13.9",
+			helmImage:      "ibmcom/helm-ppc64le:latest",
+			kanikoImage:    "ibmcom/kaniko-project-executor-ppc64le:v0.17.1",
+			dockerizeImage: "ibmcom/dockerize-ppc64le",
+		}
+	default:
+		return map[int]string{
+			busyboxImage:   "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+			registryImage:  "registry",
+			kubectlImage:   "lachlanevenson/k8s-kubectl",
+			helmImage:      "alpine/helm:3.1.2",
+			kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
+			dockerizeImage: "jwilder/dockerize",
+		}
 	}
 }
 
@@ -82,11 +109,33 @@ func getImagesMappingRE() map[*regexp.Regexp][]byte {
 // imageNamesMapping provides mapping between image name in the examples yaml files and desired image name for specific arch.
 // by default empty map is returned.
 func imageNamesMapping() map[string]string {
-	if getTestArch() == "s390x" {
+
+	switch getTestArch() {
+	case "s390x":
 		return map[string]string{
-			"registry": getTestImage(registryImage),
-			"node":     "node:alpine3.11",
+			"registry":                              getTestImage(registryImage),
+			"node":                                  "node:alpine3.11",
+			"lachlanevenson/k8s-kubectl":            getTestImage(kubectlImage),
+			"gcr.io/cloud-builders/git":             "alpine/git:latest",
+			"docker:dind":                           "ibmcom/docker-s390x:dind",
+			"docker":                                "docker:18.06.3",
+			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
+			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
+			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
+	case "ppc64le":
+		return map[string]string{
+			"registry":                              getTestImage(registryImage),
+			"node":                                  "node:alpine3.11",
+			"lachlanevenson/k8s-kubectl":            getTestImage(kubectlImage),
+			"gcr.io/cloud-builders/git":             "alpine/git:latest",
+			"docker:dind":                           "ibmcom/docker-ppc64le:19.03-dind",
+			"docker":                                "docker:18.06.3",
+			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
+			"stedolan/jq":                           "ibmcom/jq-ppc64le:latest",
+			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
+		}
+
 	}
 
 	return make(map[string]string)
@@ -94,61 +143,26 @@ func imageNamesMapping() map[string]string {
 
 // initExcludedTests provides list of excluded tests for e2e and exanples tests
 func initExcludedTests() sets.String {
-	if getTestArch() == "s390x" {
+
+	switch getTestArch() {
+	case "s390x":
 		return sets.NewString(
-			//examples
-			"TestExamples/v1alpha1/taskruns/dind-sidecar",
-			"TestExamples/v1beta1/taskruns/dind-sidecar",
-			"TestExamples/v1alpha1/taskruns/build-gcs-targz",
-			"TestExamples/v1beta1/taskruns/build-gcs-targz",
-			"TestExamples/v1alpha1/taskruns/build-push-kaniko",
-			"TestExamples/v1alpha1/taskruns/pull-private-image",
-			"TestExamples/v1beta1/taskruns/pull-private-image",
-			"TestExamples/v1alpha1/pipelineruns/pipelinerun",
-			"TestExamples/v1beta1/pipelineruns/pipelinerun",
-			"TestExamples/v1beta1/taskruns/build-gcs-zip",
-			"TestExamples/v1alpha1/taskruns/build-gcs-zip",
-			"TestExamples/v1alpha1/taskruns/git-volume",
-			"TestExamples/v1beta1/taskruns/git-volume",
-			"TestExamples/v1beta1/taskruns/docker-creds",
-			"TestExamples/v1alpha1/taskruns/docker-creds",
-			"TestExamples/v1beta1/taskruns/steps-run-in-order",
-			"TestExamples/v1alpha1/taskruns/steps-run-in-order",
-			"TestExamples/v1beta1/taskruns/step-by-digest",
-			"TestExamples/v1alpha1/taskruns/step-by-digest",
+			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
-			"TestExamples/v1beta1/taskruns/authenticating-git-commands",
-			"TestExamples/v1beta1/pipelineruns/pipelinerun-with-final-tasks",
-			"TestExamples/v1beta1/taskruns/pullrequest_input_copystep_output",
-			"TestExamples/v1alpha1/taskruns/pullrequest_input_copystep_output",
-			"TestExamples/v1beta1/taskruns/pullrequest",
-			"TestExamples/v1alpha1/taskruns/pullrequest",
-			"TestExamples/v1beta1/pipelineruns/conditional-pipelinerun",
-			"TestExamples/v1alpha1/pipelineruns/pipelinerun-with-resourcespec",
-			"TestExamples/v1beta1/pipelineruns/pipelinerun-with-resourcespec",
-			"TestExamples/v1beta1/taskruns/git-ssh-creds-without-known_hosts",
-			"TestExamples/v1alpha1/taskruns/optional-resources",
-			"TestExamples/v1beta1/taskruns/optional-resources",
-			"TestExamples/v1beta1/taskruns/task-output-image",
-			//e2e
-			"TestEntrypointRunningStepsInOrder",
-			"TestWorkingDirIgnoredNonSlashWorkspace",
-			"TestTaskRun_EmbeddedResource",
-			"TestTaskRunPipelineRunCancel",
-			"TestEntrypointRunningStepsInOrder",
-			"TestGitPipelineRun",
-			"TestHelmDeployPipelineRun",
-			"TestKanikoTaskRun",
-			"TestPipelineRun",
-			"TestSidecarTaskSupport",
-			"TestWorstkingDirCreated",
-			"TestWorkingDirIgnoredNonSlashWorkspace",
-			"TestWorkingDirCreated",
-			"TestPipelineRun/service_account_propagation_and_pipeline_param",
-			"TestPipelineRun/pipelinerun_succeeds_with_LimitRange_minimum_in_namespace",
+			"TestExamples/v1beta1/pipelineruns/pipelinerun",
+			"TestYamls/yamls/v1beta1/pipelineruns/pipelinerun.yaml",
+		)
+	case "ppc64le":
+		return sets.NewString(
+			// examples
+			"TestExamples/v1alpha1/taskruns/gcs-resource",
+			"TestExamples/v1beta1/taskruns/gcs-resource",
+			"TestExamples/v1beta1/pipelineruns/pipelinerun",
+			"TestYamls/yamls/v1beta1/pipelineruns/pipelinerun.yaml",
 		)
 	}
+
 	return sets.NewString()
 }
 

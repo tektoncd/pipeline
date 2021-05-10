@@ -144,7 +144,12 @@ func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1beta1.St
 		args = append(args, "-disable-strict-json-comments=true")
 	}
 
-	evs := []corev1.EnvVar{}
+	evs := []corev1.EnvVar{
+		{
+			Name:  "TEKTON_RESOURCE_NAME",
+			Value: s.Name,
+		},
+	}
 	for _, sec := range s.Secrets {
 		if strings.EqualFold(sec.FieldName, authTokenField) {
 			ev := corev1.EnvVar{

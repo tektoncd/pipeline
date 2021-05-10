@@ -27,6 +27,16 @@ refers to `TaskRuns` and `PipelineRuns` as `Runs` for the sake of brevity.
   - [`basic-auth` for Git](#basic-auth-for-git)
   - [`ssh-auth` for Git](#ssh-auth-for-git)
   - [`basic-auth` for Docker](#basic-auth-for-docker)
+  - [Errors and their meaning](#errors-and-their-meaning)
+    - ["unsuccessful cred copy" Warning](#unsuccessful-cred-copy-warning)
+      - [Multiple Steps with varying UIDs](#multiple-steps-with-varying-uids)
+      - [A Workspace or Volume is also Mounted for the same credentials](#a-workspace-or-volume-is-also-mounted-for-the-same-credentials)
+      - [A Task employes a read-only-Workspace or Volume for `$HOME`](#a-task-employs-a-read-only-workspace-or-volume-for-home)
+      - [The Step is named `image-digest-exporter`](#the-step-is-named-image-digest-exporter)
+- [Disabling Tekton's Built-In Auth](#disabling-tektons-built-in-auth)
+  - [Why would an organization want to do this?](#why-would-an-organization-want-to-do-this)
+  - [What are the effects of making this change?](#what-are-the-effects-of-making-this-change)
+  - [How to disable the built-in auth](#how-to-disable-the-built-in-auth)
 
 ## Overview
 
@@ -151,6 +161,8 @@ This section describes how to configure a `basic-auth` type `Secret` for use wit
 before executing any `Steps` in the `Run`, Tekton creates a `~/.gitconfig` file containing the credentials
 specified in the `Secret`. When the `Steps` execute, Tekton uses those credentials to retrieve
 `PipelineResources` specified in the `Run`.
+
+Note: Github deprecated basic authentication with username and password. You can still use basic authentication, but you wil need to use a personal access token instead of the cleartext password in the following example. You can find out how to create such a token on the [Github documentation site](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
 
 1. In `secret.yaml`, define a `Secret` that specifies the username and password that you want Tekton
    to use to access the target Git repository:
@@ -358,7 +370,7 @@ the credentials specified in the `Secret`. When the `Steps` execute, Tekton uses
      password: <cleartext password>
    ```
 
-   In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
+   In the above example, the value for `tekton.dev/docker-0` specifies the URL for which Tekton will use this `Secret`,
    as described in [Understanding credential selection](#understanding-credential-selection).
 
 1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
@@ -554,7 +566,109 @@ on `Secrets` of that type.
   }
 }
 ```
+
+## Errors and their meaning
+
+### "unsuccessful cred copy" Warning
+
+This message has the following format:
+
+> `warning: unsuccessful cred copy: ".docker" from "/tekton/creds" to
+> "/tekton/home": unable to open destination: open
+> /tekton/home/.docker/config.json: permission denied`
+
+The precise credential and paths mentioned can vary. This message is only a
+warning but can be indicative of the following problems:
+
+#### Multiple Steps with varying UIDs
+
+Multiple Steps with different users / UIDs are trying to initialize docker
+or git credentials in the same Task. If those Steps need access to the
+credentials then they may fail as they might not have permission to access them.
+
+This happens because, by default, `/tekton/home` is set to be a Step user's home
+directory and Tekton makes this directory a shared volume that all Steps in a
+Task have access to. Any credentials initialized by one Step are overwritten
+by subsequent Steps also initializing credentials.
+
+If the Steps reporting this warning do not use the credentials mentioned
+in the message then you can safely ignore it.
+
+This can most easily be resolved by ensuring that each Step executing in your
+Task and TaskRun runs with the same UID. A blanket UID can be set with [a
+TaskRun's `Pod template` field](./taskruns.md#specifying-a-pod-template).
+
+If you require Steps to run with different UIDs then you should disable
+Tekton's built-in credential initialization and use Workspaces to mount
+credentials from Secrets instead. See [the section on disabling Tekton's
+credential initialization](#disabling-tektons-built-in-auth).
+
+#### A Workspace or Volume is also Mounted for the same credentials
+
+A Task has mounted both a Workspace (or Volume) for credentials and the TaskRun
+has attached a service account with git or docker credentials that Tekton will
+try to initialize.
+
+The simplest solution to this problem is to not mix credentials mounted via
+Workspace with those initialized using the process described in this document.
+See [the section on disabling Tekton's credential initialization](#disabling-tektons-built-in-auth).
+
+#### A Task employs a read-only Workspace or Volume for `$HOME`
+
+A Task has mounted a read-only Workspace (or Volume) for the user's `HOME`
+directory and the TaskRun attaches a service account with git or docker
+credentials that Tekton will try to initialize.
+
+The simplest solution to this problem is to not mix credentials mounted via
+Workspace with those initialized using the process described in this document.
+See [the section on disabling Tekton's credential initialization](#disabling-tektons-built-in-auth).
+
+#### The contents of `$HOME` are `chown`ed to a different user
+
+A Task Step that modifies the ownership of files in the user home directory
+may prevent subsequent Steps from initializing credentials in that same home
+directory. The simplest solution to this problem is to avoid running chown
+on files and directories under `/tekton`. Another option is to run all Steps
+with the same UID.
+
+#### The Step is named `image-digest-exporter`
+
+If you see this warning reported specifically by an `image-digest-exporter` Step
+you can safely ignore this message. The reason it appears is that this Step is
+injected by Tekton for Image PipelineResources and it runs with a non-root UID
+that can differ from those of the Steps in the Task. The Step does not use
+these credentials.
+
 ---
+
+## Disabling Tekton's Built-In Auth
+
+### Why would an organization want to do this?
+
+There are a number of reasons that an organization may want to disable
+Tekton's built-in credential handling:
+
+1. The mechanism can be quite difficult to debug.
+2. There are an extremely limited set of supported credential types.
+3. Tasks with Steps that have different UIDs can break if multiple Steps
+are trying to share access to the same credentials.
+4. Tasks with Steps that have different UIDs can log more warning messages,
+creating more noise in TaskRun logs. Again this is because multiple Steps
+with differing UIDs cannot share access to the same credential files.
+
+
+### What are the effects of making this change?
+
+1. Credentials must now be passed explicitly to Tasks either with [Workspaces](./workspaces.md#using-workspaces-in-tasks),
+environment variables (using [`envFrom`](https://kubernetes.io/docs/concepts/configuration/secret/#use-case-as-container-environment-variables) in your Steps and a Task param to
+specify a Secret), or a custom volume and volumeMount definition.
+2. Git PipelineResources may not work or may only work with public repositories.
+
+### How to disable the built-in auth
+
+To disable Tekton's built-in auth, edit the `feature-flag` `ConfigMap` in the
+`tekton-pipelines` namespace and update the value of `disable-creds-init`
+from `"false"` to `"true"`.
 
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),

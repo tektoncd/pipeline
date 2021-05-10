@@ -17,6 +17,7 @@ limitations under the License.
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -47,7 +48,8 @@ var newTimer = func(d time.Duration) timer {
 }
 
 // Drainer wraps an inner http.Handler to support responding to kubelet
-// probes with a "200 OK" until the handler is told to Drain.
+// probes and KProbes with a "200 OK" until the handler is told to Drain,
+// or Drainer will optionally run the HealthCheck if it is defined.
 // When the Drainer is told to Drain, it will immediately start to fail
 // probes with a "500 shutting down", and the call will block until no
 // requests have been received for QuietPeriod (defaults to
@@ -55,6 +57,10 @@ var newTimer = func(d time.Duration) timer {
 type Drainer struct {
 	// Mutex guards the initialization and resets of the timer
 	sync.RWMutex
+
+	// HealthCheck is an optional health check that is performed until the drain signal is received.
+	// When unspecified, a "200 OK" is returned, otherwise this function is invoked.
+	HealthCheck http.HandlerFunc
 
 	// Inner is the http.Handler to which we delegate actual requests.
 	Inner http.Handler
@@ -78,8 +84,18 @@ func (d *Drainer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if network.IsKubeletProbe(r) { // Respond to probes regardless of path.
 		if d.draining() {
 			http.Error(w, "shutting down", http.StatusServiceUnavailable)
+		} else if d.HealthCheck != nil {
+			d.HealthCheck(w, r)
 		} else {
 			w.WriteHeader(http.StatusOK)
+		}
+		return
+	}
+	if isKProbe(r) {
+		if d.draining() {
+			http.Error(w, "shutting down", http.StatusServiceUnavailable)
+		} else {
+			serveKProbe(w, r)
 		}
 		return
 	}
@@ -130,4 +146,22 @@ func (d *Drainer) draining() bool {
 	d.RLock()
 	defer d.RUnlock()
 	return d.timer != nil
+}
+
+// isKProbe returns true if the request is a knatvie probe.
+func isKProbe(r *http.Request) bool {
+	return r.Header.Get(network.ProbeHeaderName) == network.ProbeHeaderValue
+}
+
+// serveKProbe serve KProbe requests.
+func serveKProbe(w http.ResponseWriter, r *http.Request) {
+	hh := r.Header.Get(network.HashHeaderName)
+	if hh == "" {
+		http.Error(w,
+			fmt.Sprintf("a probe request must contain a non-empty %q header", network.HashHeaderName),
+			http.StatusBadRequest)
+		return
+	}
+	w.Header().Set(network.HashHeaderName, hh)
+	w.WriteHeader(http.StatusOK)
 }

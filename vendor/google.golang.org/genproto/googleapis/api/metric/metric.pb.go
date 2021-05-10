@@ -44,6 +44,8 @@ const (
 const _ = proto.ProtoPackageIsVersion4
 
 // The kind of measurement. It describes how the data is reported.
+// For information on setting the start time and end time based on
+// the MetricKind, see [TimeInterval][google.monitoring.v3.TimeInterval].
 type MetricDescriptor_MetricKind int32
 
 const (
@@ -179,17 +181,6 @@ func (MetricDescriptor_ValueType) EnumDescriptor() ([]byte, []int) {
 // deleting or altering it stops data collection and makes the metric type's
 // existing data unusable.
 //
-// The following are specific rules for service defined Monitoring metric
-// descriptors:
-//
-// * `type`, `metric_kind`, `value_type`, `description`, `display_name`,
-//   `launch_stage` fields are all required. The `unit` field must be specified
-//   if the `value_type` is any of DOUBLE, INT64, DISTRIBUTION.
-// * Maximum of default 500 metric descriptors per service is allowed.
-// * Maximum of default 10 labels per metric descriptor is allowed.
-//
-// The default maximum limit can be overridden. Please follow
-// https://cloud.google.com/monitoring/quotas
 type MetricDescriptor struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -198,39 +189,16 @@ type MetricDescriptor struct {
 	// The resource name of the metric descriptor.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The metric type, including its DNS name prefix. The type is not
-	// URL-encoded.
-	//
-	// All service defined metrics must be prefixed with the service name, in the
-	// format of `{service name}/{relative metric name}`, such as
-	// `cloudsql.googleapis.com/database/cpu/utilization`. The relative metric
-	// name must follow:
-	//
-	// * Only upper and lower-case letters, digits, '/' and underscores '_' are
-	//   allowed.
-	// * The maximum number of characters allowed for the relative_metric_name is
-	//   100.
-	//
-	// All user-defined metric types have the DNS name
-	// `custom.googleapis.com`, `external.googleapis.com`, or
-	// `logging.googleapis.com/user/`.
-	//
-	// Metric types should use a natural hierarchical grouping. For example:
+	// URL-encoded. All user-defined metric types have the DNS name
+	// `custom.googleapis.com` or `external.googleapis.com`. Metric types should
+	// use a natural hierarchical grouping. For example:
 	//
 	//     "custom.googleapis.com/invoice/paid/amount"
 	//     "external.googleapis.com/prometheus/up"
 	//     "appengine.googleapis.com/http/server/response_latencies"
 	Type string `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"`
 	// The set of labels that can be used to describe a specific
-	// instance of this metric type.
-	//
-	// The label key name must follow:
-	//
-	// * Only upper and lower-case letters, digits and underscores (_) are
-	//   allowed.
-	// * Label name must start with a letter or digit.
-	// * The maximum length of a label name is 100 characters.
-	//
-	// For example, the
+	// instance of this metric type. For example, the
 	// `appengine.googleapis.com/http/server/response_latencies` metric
 	// type has a label for the HTTP response code, `response_code`, so
 	// you can look at latencies for successful responses or just

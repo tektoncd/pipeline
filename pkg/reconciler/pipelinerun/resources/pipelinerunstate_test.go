@@ -17,11 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -31,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
@@ -98,6 +100,27 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		},
 	}}
 
+	var runRunningState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunStarted(runs[0]),
+	}}
+
+	var runSucceededState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunSucceeded(runs[0]),
+	}}
+
+	var runFailedState = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run:          makeRunFailed(runs[0]),
+	}}
+
 	tcs := []struct {
 		name       string
 		state      PipelineRunState
@@ -138,11 +161,26 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		state:      noTaskRunState,
 		expected:   false,
 		ptExpected: []bool{false},
+	}, {
+		name:       "run-running-no-candidates",
+		state:      runRunningState,
+		expected:   false,
+		ptExpected: []bool{false},
+	}, {
+		name:       "run-succeeded-no-candidates",
+		state:      runSucceededState,
+		expected:   true,
+		ptExpected: []bool{true},
+	}, {
+		name:       "run-failed-no-candidates",
+		state:      runFailedState,
+		expected:   true,
+		ptExpected: []bool{true},
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -154,12 +192,12 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 
 			isDone := facts.checkTasksDone(d)
 			if d := cmp.Diff(isDone, tc.expected); d != "" {
-				t.Errorf("Didn't get expected IsDone %s", diff.PrintWantGot(d))
+				t.Errorf("Didn't get expected checkTasksDone %s", diff.PrintWantGot(d))
 			}
 			for i, pt := range tc.state {
-				isDone = pt.IsDone()
+				isDone = pt.IsDone(&facts)
 				if d := cmp.Diff(isDone, tc.ptExpected[i]); d != "" {
-					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) checkTasksDone %s", diff.PrintWantGot(d))
+					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone %s", diff.PrintWantGot(d))
 				}
 
 			}
@@ -173,9 +211,21 @@ func TestIsBeforeFirstTaskRun_WithNotStartedTask(t *testing.T) {
 	}
 }
 
+func TestIsBeforeFirstTaskRun_WithNotStartedRun(t *testing.T) {
+	if !noRunStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be before first taskrun (Run test)")
+	}
+}
+
 func TestIsBeforeFirstTaskRun_WithStartedTask(t *testing.T) {
 	if oneStartedState.IsBeforeFirstTaskRun() {
 		t.Fatalf("Expected state to be after first taskrun")
+	}
+}
+
+func TestIsBeforeFirstTaskRun_WithStartedRun(t *testing.T) {
+	if oneRunStartedState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be after first taskrun (Run test)")
 	}
 }
 
@@ -290,6 +340,21 @@ func TestGetNextTasks(t *testing.T) {
 		state:        taskCancelled,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "no-runs-started-both-candidates",
+		state:        noRunStartedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{noRunStartedState[0], noRunStartedState[1]},
+	}, {
+		name:         "one-run-started-both-candidates",
+		state:        oneRunStartedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{oneRunStartedState[1]},
+	}, {
+		name:         "one-run-failed-both-candidates",
+		state:        oneRunFailedState,
+		candidates:   sets.NewString("mytask13", "mytask14"),
+		expectedNext: []*ResolvedPipelineRunTask{oneRunFailedState[1]},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -408,6 +473,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 }
 
 func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
+	largePipelineState := buildPipelineStateWithLargeDepencyGraph(t)
 	tcs := []struct {
 		name          string
 		state         PipelineRunState
@@ -454,10 +520,26 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 			"not skipped since it failed",
 		state:         conditionCheckFailedWithOthersFailedState,
 		expectedNames: []string{pts[5].Name},
+	}, {
+		name:          "large deps, not started",
+		state:         largePipelineState,
+		expectedNames: []string{},
+	}, {
+		name:          "one-run-started",
+		state:         oneRunStartedState,
+		expectedNames: []string{},
+	}, {
+		name:          "one-run-finished",
+		state:         oneRunFinishedState,
+		expectedNames: []string{pts[12].Name},
+	}, {
+		name:          "one-run-failed",
+		state:         oneRunFailedState,
+		expectedNames: []string{pts[13].Name},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := DagFromState(tc.state)
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -472,6 +554,65 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
+	t.Helper()
+	var task = &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "task",
+		},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name: "step1",
+			}}},
+		},
+	}
+	var pipelineRunState PipelineRunState
+	pipelineRunState = []*ResolvedPipelineRunTask{{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "t1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		TaskRun: nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+	for i := 2; i < 400; i++ {
+		dependFrom := 1
+		if i > 10 {
+			if i%10 == 0 {
+				dependFrom = i - 10
+			} else {
+				dependFrom = i - (i % 10)
+			}
+		}
+		params := []v1beta1.Param{}
+		var alpha byte
+		for alpha = 'a'; alpha <= 'j'; alpha++ {
+			params = append(params, v1beta1.Param{
+				Name: fmt.Sprintf("%c", alpha),
+				Value: v1beta1.ArrayOrString{
+					Type:      v1beta1.ParamTypeString,
+					StringVal: fmt.Sprintf("$(tasks.t%d.results.%c)", dependFrom, alpha),
+				},
+			})
+		}
+		pipelineRunState = append(pipelineRunState, &ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    fmt.Sprintf("t%d", i),
+				Params:  params,
+				TaskRef: &v1beta1.TaskRef{Name: "task"},
+			},
+			TaskRun: nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		},
+		)
+	}
+	return pipelineRunState
 }
 
 func TestPipelineRunState_GetFinalTasks(t *testing.T) {
@@ -622,11 +763,11 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		expectedFinalTasks: PipelineRunState{},
 	}}
 	for _, tc := range tcs {
-		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks))
+		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())
 		if err != nil {
 			t.Fatalf("Unexpected error while buildig DAG for pipelineTasks %v: %v", tc.DAGTasks, err)
 		}
-		finalGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks))
+		finalGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks), map[string][]string{})
 		if err != nil {
 			t.Fatalf("Unexpected error while buildig DAG for final pipelineTasks %v: %v", tc.finalTasks, err)
 		}
@@ -675,6 +816,21 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var cancelledRun = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask13",
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1alpha1.RunReasonCancelled,
+				}}},
+			},
 		},
 	}}
 
@@ -878,11 +1034,22 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedStatus:    corev1.ConditionFalse,
 		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
 		expectedCancelled: 1,
+	}, {
+		name:              "cancelled run should result in cancelled pipeline",
+		state:             cancelledRun,
+		expectedStatus:    corev1.ConditionFalse,
+		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
+		expectedCancelled: 1,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := tb.PipelineRun("somepipelinerun")
-			d, err := DagFromState(tc.state)
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "somepipelinerun",
+				},
+				Spec: v1beta1.PipelineRunSpec{},
+			}
+			d, err := dagFromState(tc.state)
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
 			}
@@ -941,6 +1108,15 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 		TaskRun:      makeFailed(trs[0]),
 	}}
 
+	// pipeline state with one DAG failed, one final task skipped
+	dagFailedFinalSkipped := PipelineRunState{{
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[0],
+		TaskRun:      makeFailed(trs[0]),
+	}, {
+		PipelineTask: &pts[14],
+	}}
+
 	tcs := []struct {
 		name               string
 		state              PipelineRunState
@@ -989,16 +1165,33 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 		expectedSkipped:    0,
 		expectedFailed:     2,
 		expectedCancelled:  0,
+	}, {
+		name:               "pipeline with one failed DAG task and skipped final task",
+		state:              dagFailedFinalSkipped,
+		dagTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[14]},
+		expectedStatus:     corev1.ConditionFalse,
+		expectedReason:     v1beta1.PipelineRunReasonFailed.String(),
+		expectedSucceeded:  0,
+		expectedIncomplete: 0,
+		expectedSkipped:    1,
+		expectedFailed:     1,
+		expectedCancelled:  0,
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := tb.PipelineRun("pipelinerun-final-tasks")
-			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks))
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerun-final-tasks",
+				},
+				Spec: v1beta1.PipelineRunSpec{},
+			}
+			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks), v1beta1.PipelineTaskList(tc.dagTasks).Deps())
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig graph for DAG tasks %v: %v", tc.dagTasks, err)
 			}
-			df, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks))
+			df, err := dag.Build(v1beta1.PipelineTaskList(tc.finalTasks), map[string][]string{})
 			if err != nil {
 				t.Fatalf("Unexpected error while buildig graph for final tasks %v: %v", tc.finalTasks, err)
 			}
@@ -1024,7 +1217,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 
 // pipeline should result in timeout if its runtime exceeds its spec.Timeout based on its status.Timeout
 func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
-	d, err := DagFromState(oneFinishedState)
+	d, err := dagFromState(oneFinishedState)
 	if err != nil {
 		t.Fatalf("Unexpected error while buildig DAG for state %v: %v", oneFinishedState, err)
 	}
@@ -1047,5 +1240,290 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 	c := facts.GetPipelineConditionStatus(pr, zap.NewNop().Sugar())
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
+	}
+}
+
+func TestAdjustStartTime(t *testing.T) {
+	baseline := metav1.Time{Time: time.Now()}
+
+	tests := []struct {
+		name string
+		prs  PipelineRunState
+		want time.Time
+	}{{
+		name: "same times",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: baseline,
+				},
+			},
+		}},
+		want: baseline.Time,
+	}, {
+		name: "taskrun starts later",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(1 * time.Second)},
+				},
+			},
+		}},
+		// Stay where you are, you are before the TaskRun.
+		want: baseline.Time,
+	}, {
+		name: "taskrun starts earlier",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-1 * time.Second),
+	}, {
+		name: "multiple taskruns, some earlier",
+		prs: PipelineRunState{{
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah1",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}, {
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah2",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-2 * time.Second)},
+				},
+			},
+		}, {
+			TaskRun: nil,
+		}, {
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah3",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(2 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-2 * time.Second),
+	}, {
+		name: "run starts later",
+		prs: PipelineRunState{{
+			Run: &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(1 * time.Second)},
+				},
+			},
+		}},
+		// Stay where you are, you are before the Run.
+		want: baseline.Time,
+	}, {
+		name: "run starts earlier",
+		prs: PipelineRunState{{
+			Run: &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "blah",
+					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
+				},
+			},
+		}},
+		// We expect this to adjust to the earlier time.
+		want: baseline.Time.Add(-1 * time.Second),
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := test.prs.AdjustStartTime(&baseline)
+			if got.Time != test.want {
+				t.Errorf("AdjustStartTime() = %v, wanted %v", got.Time, test.want)
+			}
+		})
+	}
+}
+
+func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
+	tcs := []struct {
+		name           string
+		state          PipelineRunState
+		dagTasks       []v1beta1.PipelineTask
+		expectedStatus map[string]string
+	}{{
+		name:     "no-tasks-started",
+		state:    noneStartedState,
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name:     "one-task-started",
+		state:    oneStartedState,
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name:     "one-task-finished",
+		state:    oneFinishedState,
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name:     "one-task-failed",
+		state:    oneFailedState,
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              v1beta1.PipelineRunReasonFailed.String(),
+		},
+	}, {
+		name:     "all-finished",
+		state:    allFinishedState,
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[1]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
+			PipelineTaskStatusPrefix + pts[1].Name + PipelineTaskStatusSuffix: v1beta1.TaskRunReasonSuccessful.String(),
+			v1beta1.PipelineTasksAggregateStatus:                              v1beta1.PipelineRunReasonSuccessful.String(),
+		},
+	}, {
+		name: "task-with-when-expressions-passed",
+		state: PipelineRunState{{
+			PipelineTask: &pts[9],
+			TaskRunName:  "pr-guard-succeeded-task-not-started",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[9]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[9].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name: "tasks-when-expression-failed-and-task-skipped",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunName:  "pr-guardedtask-skipped",
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[10]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               v1beta1.PipelineRunReasonCompleted.String(),
+		},
+	}, {
+		name: "when-expression-task-with-parent-started",
+		state: PipelineRunState{{
+			PipelineTask: &pts[0],
+			TaskRun:      makeStarted(trs[0]),
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[11],
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[11]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  PipelineTaskStateNone,
+			PipelineTaskStatusPrefix + pts[11].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               PipelineTaskStateNone,
+		},
+	}, {
+		name:     "task-cancelled",
+		state:    taskCancelled,
+		dagTasks: []v1beta1.PipelineTask{pts[4]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[4].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                              PipelineTaskStateNone,
+		},
+	}, {
+		name: "one-skipped-one-failed-aggregate-status-must-be-failed",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+			TaskRunName:  "pr-guardedtask-skipped",
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			PipelineTask: &pts[0],
+			TaskRunName:  "pipelinerun-mytask1",
+			TaskRun:      makeFailed(trs[0]),
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[10]},
+		expectedStatus: map[string]string{
+			PipelineTaskStatusPrefix + pts[0].Name + PipelineTaskStatusSuffix:  v1beta1.PipelineRunReasonFailed.String(),
+			PipelineTaskStatusPrefix + pts[10].Name + PipelineTaskStatusSuffix: PipelineTaskStateNone,
+			v1beta1.PipelineTasksAggregateStatus:                               v1beta1.PipelineRunReasonFailed.String(),
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks), v1beta1.PipelineTaskList(tc.dagTasks).Deps())
+			if err != nil {
+				t.Fatalf("Unexpected error while buildig graph for DAG tasks %v: %v", tc.dagTasks, err)
+			}
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+			}
+			s := facts.GetPipelineTaskStatus()
+			if d := cmp.Diff(tc.expectedStatus, s); d != "" {
+				t.Fatalf("Test failed: %s Mismatch in pipelineTask execution state %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
+	dagFailedFinalSkipped := PipelineRunState{{
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[0],
+		TaskRun:      makeFailed(trs[0]),
+	}, {
+		PipelineTask: &pts[14],
+	}}
+	expectedSkippedTasks := []v1beta1.SkippedTask{{Name: pts[14].Name}}
+	d, err := dag.Build(v1beta1.PipelineTaskList{pts[0]}, v1beta1.PipelineTaskList{pts[0]}.Deps())
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", v1beta1.PipelineTaskList{pts[0]}, err)
+	}
+	df, err := dag.Build(v1beta1.PipelineTaskList{pts[14]}, map[string][]string{})
+	if err != nil {
+		t.Fatalf("Unexpected error while building graph for final tasks %v: %v", v1beta1.PipelineTaskList{pts[14]}, err)
+	}
+	facts := PipelineRunFacts{
+		State:           dagFailedFinalSkipped,
+		TasksGraph:      d,
+		FinalTasksGraph: df,
+	}
+	actualSkippedTasks := facts.GetSkippedTasks()
+	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
+		t.Fatalf("Mismatch skipped tasks %s", diff.PrintWantGot(d))
 	}
 }

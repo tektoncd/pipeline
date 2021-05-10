@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -96,7 +97,7 @@ func (state TaskConditionCheckState) IsSuccess() bool {
 // ConditionToTaskSpec creates a TaskSpec from a given Condition
 func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1beta1.TaskSpec, error) {
 	if rcc.Condition.Spec.Check.Name == "" {
-		rcc.Condition.Spec.Check.Name = unnamedCheckNamePrefix + rcc.Condition.Name
+		rcc.Condition.Spec.Check.Name = names.SimpleNameGenerator.RestrictLength(unnamedCheckNamePrefix + rcc.Condition.Name)
 	}
 
 	t := &v1beta1.TaskSpec{
@@ -114,7 +115,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1beta1.TaskSpec, err
 	}
 
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
-	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
+	err := applyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace resource template strings %w", err)
@@ -134,9 +135,9 @@ func convertParamTemplates(step *v1beta1.Step, params []v1beta1.ParamSpec) {
 	v1beta1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
-// ApplyResourceSubstitution applies the substitution from values in resources which are referenced
+// applyResourceSubstitution applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
-func ApplyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
+func applyResourceSubstitution(step *v1beta1.Step, resolvedResources map[string]*resourcev1alpha1.PipelineResource, conditionResources []v1beta1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
@@ -176,6 +177,8 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1beta1.ConditionC
 	}
 }
 
+// ToTaskResourceBindings converts pipeline resources in a ResolvedConditionCheck to a list of TaskResourceBinding
+// and returns them.
 func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1beta1.TaskResourceBinding {
 	var trb []v1beta1.TaskResourceBinding
 

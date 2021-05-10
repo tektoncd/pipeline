@@ -17,9 +17,11 @@ limitations under the License.
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
@@ -148,6 +150,17 @@ func (trs *TaskRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
 	})
 }
 
+// MarkResourceOngoing sets the ConditionSucceeded condition to ConditionUnknown
+// with the reason and message.
+func (trs *TaskRunStatus) MarkResourceOngoing(reason TaskRunReason, message string) {
+	taskRunCondSet.Manage(trs).SetCondition(apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  reason.String(),
+		Message: message,
+	})
+}
+
 // MarkResourceFailed sets the ConditionSucceeded condition to ConditionFalse
 // based on an error that occurred and a reason
 func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
@@ -157,6 +170,8 @@ func (trs *TaskRunStatus) MarkResourceFailed(reason TaskRunReason, err error) {
 		Reason:  reason.String(),
 		Message: err.Error(),
 	})
+	succeeded := trs.GetCondition(apis.ConditionSucceeded)
+	trs.CompletionTime = &succeeded.LastTransitionTime.Inner
 }
 
 // TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
@@ -336,16 +351,6 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetBuildPodRef for task
-func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
-	return corev1.ObjectReference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}
-}
-
 // GetPipelineRunPVCName for taskrun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
 	if tr == nil {
@@ -391,11 +396,11 @@ func (tr *TaskRun) IsCancelled() bool {
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
-func (tr *TaskRun) HasTimedOut() bool {
+func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
 	if tr.Status.StartTime.IsZero() {
 		return false
 	}
-	timeout := tr.GetTimeout()
+	timeout := tr.GetTimeout(ctx)
 	// If timeout is set to 0 or defaulted to 0, there is no timeout.
 	if timeout == apisconfig.NoTimeoutDuration {
 		return false
@@ -404,10 +409,11 @@ func (tr *TaskRun) HasTimedOut() bool {
 	return runtime > timeout
 }
 
-func (tr *TaskRun) GetTimeout() time.Duration {
+func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set
 	if tr.Spec.Timeout == nil {
-		return apisconfig.DefaultTimeoutMinutes * time.Minute
+		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
+		return defaultTimeout * time.Minute
 	}
 	return tr.Spec.Timeout.Duration
 }

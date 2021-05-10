@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"time"
 
@@ -63,7 +64,7 @@ type Options struct {
 }
 
 // Operation is the verb being operated on
-// it is aliasde in Validation from the k8s admission package
+// it is aliased in Validation from the k8s admission package
 type Operation = admissionv1.Operation
 
 // Operation types
@@ -140,7 +141,7 @@ func New(
 	}
 
 	webhook.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, fmt.Sprintf("no controller registered for: %s", r.URL.Path), http.StatusBadRequest)
+		http.Error(w, fmt.Sprint("no controller registered for: ", html.EscapeString(r.URL.Path)), http.StatusBadRequest)
 	})
 
 	for _, controller := range controllers {
@@ -181,22 +182,30 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 
 	server := &http.Server{
 		Handler: drainer,
-		Addr:    fmt.Sprintf(":%d", wh.Options.Port),
+		Addr:    fmt.Sprint(":", wh.Options.Port),
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
+
+			// If we return (nil, error) the client sees - 'tls: internal error"
+			// If we return (nil, nil) the client sees - 'tls: no certificates configured'
+			//
+			// We'll return (nil, nil) when we don't find a certificate
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 				secret, err := wh.secretlister.Secrets(system.Namespace()).Get(wh.Options.SecretName)
 				if err != nil {
-					return nil, err
+					logger.Errorw("failed to fetch secret", zap.Error(err))
+					return nil, nil
 				}
 
 				serverKey, ok := secret.Data[certresources.ServerKey]
 				if !ok {
-					return nil, errors.New("server key missing")
+					logger.Warn("server key missing")
+					return nil, nil
 				}
 				serverCert, ok := secret.Data[certresources.ServerCert]
 				if !ok {
-					return nil, errors.New("server cert missing")
+					logger.Warn("server cert missing")
+					return nil, nil
 				}
 				cert, err := tls.X509KeyPair(serverCert, serverKey)
 				if err != nil {
@@ -209,7 +218,7 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Errorw("ListenAndServeTLS for admission webhook returned error", zap.Error(err))
 			return err
 		}

@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-images: test-runner skopeo tkn
+CONTAINER_RUNTIME=docker
+REPO =
+IMAGES = $(sort $(patsubst tekton/images/%/,%,$(dir $(wildcard tekton/images/*/))))
 
-skopeo:
-	docker build . -f tekton/images/skopeo/Dockerfile -t gcr.io/tekton-releases/dogfooding/skopeo
+images: $(IMAGES)
+	echo $(IMAGES)
 
-test-runner:
-	docker build . -f tekton/images/test-runner/Dockerfile -t gcr.io/tekton-releases/dogfooding/test-runner
+%: tekton/images/%
+	$(CONTAINER_RUNTIME) build $< -f $</Dockerfile -t $(REPO)$@
 
-tkn:
-	docker build . -f tekton/images/tkn/Dockerfile -t gcr.io/tekton-releases/dogfooding/tkn
+push: $(patsubst %,push-%,$(IMAGES))
 
-push: images
-	docker push gcr.io/tekton-releases/dogfooding/skopeo
-	docker push gcr.io/tekton-releases/dogfooding/test-runner
-	docker push gcr.io/tekton-releases/dogfooding/tkn
+push-%: %
+	$(CONTAINER_RUNTIME) push $(REPO)$<

@@ -22,13 +22,16 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	logtesting "knative.dev/pkg/logging/testing"
+	"knative.dev/pkg/system"
+
+	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
 )
 
 // TestCreateAndDeleteOfAffinityAssistant tests to create and delete an Affinity Assistant
@@ -89,7 +92,7 @@ func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t 
 			Name: "pipelinerun-with-custom-podtemplate",
 		},
 		Spec: v1beta1.PipelineRunSpec{
-			PodTemplate: &v1beta1.PodTemplate{
+			PodTemplate: &pod.Template{
 				Tolerations: []corev1.Toleration{{
 					Key:      "key",
 					Operator: "Equal",
@@ -170,7 +173,7 @@ func TestThatCleanupIsAvoidedIfAssistantIsDisabled(t *testing.T) {
 	}
 
 	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
 			featureFlagDisableAffinityAssistantKey: "true",
 		},
@@ -202,14 +205,14 @@ func TestDisableAffinityAssistant(t *testing.T) {
 	}{{
 		description: "Default behaviour: A missing disable-affinity-assistant flag should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		},
 		expected: false,
 	}, {
 		description: "Setting disable-affinity-assistant to false should result in false",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableAffinityAssistantKey: "false",
 			},
@@ -218,7 +221,7 @@ func TestDisableAffinityAssistant(t *testing.T) {
 	}, {
 		description: "Setting disable-affinity-assistant to true should result in true",
 		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.GetNamespace()},
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				featureFlagDisableAffinityAssistantKey: "true",
 			},

@@ -34,15 +34,16 @@ import (
 )
 
 var (
-	ep                  = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFiles           = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
-	waitFileContent     = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
-	postFile            = flag.String("post_file", "", "If specified, file to write upon completion")
-	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
-	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
-	waitPollingInterval = time.Second
-	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
+	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
+	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
+	terminationPath = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
+	results         = flag.String("results", "", "If specified, list of file names that might contain task results")
+	timeout         = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 )
+
+const defaultWaitPollingInterval = time.Second
 
 func cp(src, dst string) error {
 	s, err := os.Open(src)
@@ -64,7 +65,8 @@ func cp(src, dst string) error {
 }
 
 func main() {
-	// Add credential flags originally used in creds-init.
+	// Add credential flags originally introduced with our legacy credentials helper
+	// image (creds-init).
 	gitcreds.AddFlags(flag.CommandLine)
 	dockercreds.AddFlags(flag.CommandLine)
 
@@ -83,9 +85,10 @@ func main() {
 		return
 	}
 
-	// Copy creds-init credentials from secret volume mounts to /tekton/creds
-	// This is done to support the expansion of a variable, $(credentials.path), that
-	// resolves to a single place with all the stored credentials.
+	// Copy credentials we're expecting from the legacy credentials helper (creds-init)
+	// from secret volume mounts to /tekton/creds. This is done to support the expansion
+	// of a variable, $(credentials.path), that resolves to a single place with all the
+	// stored credentials.
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
 		if err := c.Write("/tekton/creds"); err != nil {
@@ -100,7 +103,7 @@ func main() {
 		PostFile:        *postFile,
 		TerminationPath: *terminationPath,
 		Args:            flag.Args(),
-		Waiter:          &realWaiter{},
+		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval},
 		Runner:          &realRunner{},
 		PostWriter:      &realPostWriter{},
 		Results:         strings.Split(*results, ","),

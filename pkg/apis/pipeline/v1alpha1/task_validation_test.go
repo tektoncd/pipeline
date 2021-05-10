@@ -262,7 +262,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			}}},
 		},
 	}, {
-		name: "valid creds-init path variable",
+		name: "valid legacy credential helper (creds-init) path variable",
 		fields: fields{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "mystep",

@@ -23,19 +23,6 @@ import (
 )
 
 const (
-	// DefaultConnTimeout specifies a short default connection timeout
-	// to avoid hitting the issue fixed in
-	// https://github.com/kubernetes/kubernetes/pull/72534 but only
-	// avalailable after Kubernetes 1.14.
-	//
-	// Our connections are usually between pods in the same cluster
-	// like activator <-> queue-proxy, or even between containers
-	// within the same pod queue-proxy <-> user-container, so a
-	// smaller connect timeout would be justifiable.
-	//
-	// We should consider exposing this as a configuration.
-	DefaultConnTimeout = 200 * time.Millisecond
-
 	// DefaultDrainTimeout is the time that Knative components on the data
 	// path will wait before shutting down server, but after starting to fail
 	// readiness probes to ensure network layer propagation and so that no requests
@@ -54,17 +41,29 @@ const (
 	// included in request metrics.
 	ProbeHeaderName = "K-Network-Probe"
 
+	// ProbeHeaderValue is the value of a header that can be added to
+	// requests to probe the knative networking layer.  Requests
+	// with `K-Network-Probe` this value will not be passed to the user
+	// container or included in request metrics.
+	ProbeHeaderValue = "probe"
+
+	// HashHeaderName is the name of an internal header that Ingress controller
+	// uses to find out which version of the networking config is deployed.
+	HashHeaderName = "K-Network-Hash"
+
+	// KubeProbeUAPrefix is the prefix for the User-Agent header.
 	// Since K8s 1.8, prober requests have
 	//   User-Agent = "kube-probe/{major-version}.{minor-version}".
 	KubeProbeUAPrefix = "kube-probe/"
 
+	// KubeletProbeHeaderName is the header name to augment the probes, because
 	// Istio with mTLS rewrites probes, but their probes pass a different
-	// user-agent.  So we augment the probes with this header.
+	// user-agent.
 	KubeletProbeHeaderName = "K-Kubelet-Probe"
 )
 
 // IsKubeletProbe returns true if the request is a Kubernetes probe.
 func IsKubeletProbe(r *http.Request) bool {
-	return strings.HasPrefix(r.Header.Get("User-Agent"), KubeProbeUAPrefix) ||
+	return strings.HasPrefix(r.Header.Get(UserAgentKey), KubeProbeUAPrefix) ||
 		r.Header.Get(KubeletProbeHeaderName) != ""
 }

@@ -1,4 +1,4 @@
-# Copyright 2019 The Tekton Authors
+# Copyright 2020 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,12 +54,40 @@ spec:
         app: tekton-pipelines-webhook
         version: "devel"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: webhook
+                  app.kubernetes.io/component: webhook
+                  app.kubernetes.io/instance: default
+                  app.kubernetes.io/part-of: tekton-pipelines
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       serviceAccountName: tekton-pipelines-webhook
       containers:
       - name: webhook
         # This is the Go import path for the binary that is containerized
         # and substituted here.
         image: ko://github.com/tektoncd/pipeline/cmd/webhook
+        # Resource request required for autoscaler to take any action for a metric
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 500Mi
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -82,8 +110,12 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
+          runAsGroup: 65532
         ports:
         - name: metrics
           containerPort: 9090
@@ -91,17 +123,24 @@ spec:
           containerPort: 8008
         - name: https-webhook
           containerPort: 8443
+        - name: probes
+          containerPort: 8080
         livenessProbe:
-          tcpSocket:
-            port: https-webhook
+          httpGet:
+            path: /health
+            port: probes
+            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
-          tcpSocket:
-            port: https-webhook
+          httpGet:
+            path: /readiness
+            port: probes
+            scheme: HTTP
           initialDelaySeconds: 5
           periodSeconds: 10
+          timeoutSeconds: 5
 ---
 apiVersion: v1
 kind: Service
@@ -131,6 +170,8 @@ spec:
   - name: https-webhook
     port: 443
     targetPort: 8443
+  - name: probes
+    port: 8080
   selector:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook

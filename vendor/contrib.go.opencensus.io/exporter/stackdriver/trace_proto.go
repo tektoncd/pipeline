@@ -44,7 +44,7 @@ const (
 )
 
 // proto returns a protocol buffer representation of a SpanData.
-func protoFromSpanData(s *trace.SpanData, projectID string, mr *monitoredrespb.MonitoredResource) *tracepb.Span {
+func protoFromSpanData(s *trace.SpanData, projectID string, mr *monitoredrespb.MonitoredResource, userAgent string) *tracepb.Span {
 	if s == nil {
 		return nil
 	}
@@ -109,6 +109,10 @@ func protoFromSpanData(s *trace.SpanData, projectID string, mr *monitoredrespb.M
 	// Only set the agent label if it is not already set. That enables the
 	// OpenCensus agent/collector to set the agent label based on the library that
 	// sent the span to the agent.
+	//
+	// We now provide a config option to set the userAgent explicitly, which is
+	// used both here and in request headers when sending metric data, but have
+	// retained this non-override functionality for backwards compatibility.
 	if _, hasAgent := sp.Attributes.AttributeMap[agentLabel]; !hasAgent {
 		sp.Attributes.AttributeMap[agentLabel] = &tracepb.AttributeValue{
 			Value: &tracepb.AttributeValue_StringValue{

@@ -134,6 +134,12 @@ func WithinParent(ctx context.Context, om metav1.ObjectMeta) context.Context {
 	return context.WithValue(ctx, parentMetaKey{}, om)
 }
 
+// IsWithinParent returns true if we're within parent context.
+func IsWithinParent(ctx context.Context) bool {
+	_, ok := ctx.Value(parentMetaKey{}).(metav1.ObjectMeta)
+	return ok
+}
+
 // ParentMeta accesses the ObjectMeta of the enclosing parent resource
 // from the context.  See WithinParent for how to attach the parent's
 // ObjectMeta to the context.

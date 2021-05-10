@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -31,12 +32,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/pod"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
-	"github.com/tektoncd/pipeline/pkg/timeout"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
+	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 )
@@ -50,9 +52,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		taskRunInformer := taskruninformer.Get(ctx)
 		taskInformer := taskinformer.Get(ctx)
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
-		podInformer := podinformer.Get(ctx)
+		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
-		timeoutHandler := timeout.NewHandler(ctx.Done(), logger)
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create taskrun metrics recorder %v", err)
@@ -71,7 +72,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
-			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
 			entrypointCache:   entrypointCache,
@@ -87,8 +87,12 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			}
 		})
 
-		timeoutHandler.SetCallbackFunc(impl.EnqueueKey)
-		timeoutHandler.CheckTimeouts(ctx, namespace, kubeclientset, pipelineclientset)
+		c.snooze = func(acc kmeta.Accessor, amnt time.Duration) {
+			impl.EnqueueKeyAfter(types.NamespacedName{
+				Namespace: acc.GetNamespace(),
+				Name:      acc.GetName(),
+			}, amnt)
+		}
 
 		logger.Info("Setting up event handlers")
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

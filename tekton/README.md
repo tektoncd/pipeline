@@ -5,8 +5,8 @@ if the `tekton` folder were the place to look for CI/CD logic in most repos!_
 
 We dogfood our project by using Tekton Pipelines to build, test and release
 Tekton Pipelines! This directory contains the
-[`Tasks`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md) and
-[`Pipelines`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
+[`Tasks`](https://github.com/tektoncd/pipeline/blob/main/docs/tasks.md) and
+[`Pipelines`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md)
 that we use.
 
 * [How to create a release](#create-an-official-release)
@@ -31,7 +31,7 @@ consumers of a project. In that case we'll make a patch release. To make one:
    [`needs-cherry-pick`](https://github.com/tektoncd/pipeline/pulls?q=label%3Aneeds-cherry-pick).
 1. Create a branch for the release named `release-<version number>x`, e.g. [`release-v0.13.0x`](https://github.com/tektoncd/pipeline/tree/release-v0.13.0x)
    and push it to the repo https://github.com/tektoncd/pipeline (you may need help from
-   [an OWNER](../OWNER) with permission to push).
+   [an OWNER](../OWNERS_ALIASES) with permission to push).
 1. Use [git cherry-pick](https://git-scm.com/docs/git-cherry-pick) to cherry pick the
    fixes from master into the release branch you have created (use `-x` to include
    the original commit information).
@@ -47,7 +47,7 @@ consumers of a project. In that case we'll make a patch release. To make one:
 ## Nightly releases
 
 [The nightly release pipeline](release-pipeline-nightly.yaml) is
-[triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/master/tekton).
+[triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/main/tekton).
 
 This Pipeline uses:
 
@@ -72,7 +72,7 @@ kubectl create clusterrolebinding cluster-admin-binding-someusername \
 
 # Example, Tekton v0.9.1
 export TEKTON_VERSION=0.9.1
-kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v${TEKTON_VERSION}/release.yaml
+kubectl apply --filename  https://storage.googleapis.com/tekton-releases/pipeline/previous/v${TEKTON_VERSION}/release.yaml
 ```
 
 ### Install tasks and pipelines
@@ -81,7 +81,7 @@ Add all the `Tasks` to the cluster, including the
 [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
 Tasks from the
 [`tektoncd/catalog`](https://github.com/tektoncd/catalog), and the
-[release](https://github.com/tektoncd/plumbing/tree/master/tekton/resources/release) Tasks from
+[release](https://github.com/tektoncd/plumbing/tree/main/tekton/resources/release) Tasks from
 [`tektoncd/plumbing`](https://github.com/tektoncd/plumbing).
 
 Use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
@@ -92,7 +92,7 @@ Install Task from plumbing too:
 # Apply the Tasks we are using from the catalog
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/resources/release/
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/main/tekton/resources/release/
 ```
 
 Apply the tasks from the `pipeline` repo:
@@ -111,9 +111,8 @@ kubectl apply -f tekton/resources.yaml
 - [`publish.yaml`](publish.yaml) - This `Task` uses
   [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
   publish base images, and uses
-  [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko) to
-  build all of the container images we release and generate the
-  `release.yaml`
+  [`ko`](https://github.com/google/ko) to build all of the container images we
+release and generate the `release.yaml`
 - [`release-pipeline.yaml`](./release-pipeline.yaml) - This `Pipeline`
   uses the
   [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
@@ -127,9 +126,9 @@ In order to release, these Pipelines use the `release-right-meow` service accoun
 which uses `release-secret` and has
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
 access to
-[`tekton-releases`]((https://github.com/tektoncd/plumbing/blob/master/gcp.md))
+[`tekton-releases`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md))
 and
-[`tekton-releases-nightly`]((https://github.com/tektoncd/plumbing/blob/master/gcp.md)).
+[`tekton-releases-nightly`]((https://github.com/tektoncd/plumbing/blob/main/gcp.md)).
 
 After creating these service accounts in GCP, the kubernetes service account and
 secret were created with:

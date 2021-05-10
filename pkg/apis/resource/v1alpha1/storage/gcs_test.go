@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
@@ -28,6 +29,17 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
+
+var images = pipeline.Images{
+	EntrypointImage:          "override-with-entrypoint:latest",
+	NopImage:                 "override-with-nop:latest",
+	GitImage:                 "override-with-git:latest",
+	KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
+	ShellImage:               "busybox",
+	GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
+	PRImage:                  "override-with-pr:latest",
+	ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+}
 
 func TestInvalidNewStorageResource(t *testing.T) {
 	for _, tc := range []struct {

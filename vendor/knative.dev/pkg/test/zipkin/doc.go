@@ -21,7 +21,7 @@ i.e HTTP request that have HTTP status between 500 to 600.
 
 This package exposes following methods:
 
-	SetupZipkinTracing(*kubernetes.Clientset) error
+	SetupZipkinTracing(kubernetes.Interface) error
 		SetupZipkinTracing sets up zipkin tracing by setting up port-forwarding from
 		localhost to zipkin pod on the cluster. On successful setup this method sets
 		an internal flag zipkinTracingEnabled to true.
@@ -33,7 +33,7 @@ This package exposes following methods:
 
 A general flow for a Test Suite to use Zipkin Tracing support is as follows:
 
-		1. Call SetupZipkinTracing(*kubernetes.Clientset) in TestMain.
+		1. Call SetupZipkinTracing(kubernetes.Interface) in TestMain.
 		2. Use SpoofingClient to make HTTP requests.
 		3. Call CleanupZipkinTracingSetup on cleanup after tests are executed.
 

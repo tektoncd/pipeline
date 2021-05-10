@@ -97,7 +97,7 @@ func (p *Pipeline) PipelineSpec() PipelineSpec {
 	return p.Spec
 }
 
-func (p *Pipeline) Copy() PipelineInterface {
+func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
 }
 
@@ -199,6 +199,14 @@ func (l PipelineTaskList) Items() []dag.Task {
 		tasks = append(tasks, dag.Task(t))
 	}
 	return tasks
+}
+
+func (l PipelineTaskList) Deps() map[string][]string {
+	deps := map[string][]string{}
+	for _, pt := range l {
+		deps[pt.HashKey()] = pt.Deps()
+	}
+	return deps
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.

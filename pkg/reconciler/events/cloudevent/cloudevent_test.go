@@ -84,7 +84,7 @@ func getPipelineRunByCondition(status corev1.ConditionStatus, reason string) *v1
 }
 
 func TestEventForTaskRun(t *testing.T) {
-	for _, c := range []struct {
+	taskRunTests := []struct {
 		desc          string
 		taskRun       *v1beta1.TaskRun
 		wantEventType TektonEventType
@@ -108,11 +108,22 @@ func TestEventForTaskRun(t *testing.T) {
 		desc:          "send a cloud event with successful status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionTrue, "yay"),
 		wantEventType: TaskRunSuccessfulEventV1,
-	}} {
+	}, {
+		desc: "send a cloud event with successful status taskrun, empty selflink",
+		taskRun: func() *v1beta1.TaskRun {
+			tr := getTaskRunByCondition(corev1.ConditionTrue, "yay")
+			// v1.20 does not set selfLink in controller
+			tr.ObjectMeta.SelfLink = ""
+			return tr
+		}(),
+		wantEventType: TaskRunSuccessfulEventV1,
+	}}
+
+	for _, c := range taskRunTests {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 
-			got, err := EventForTaskRun(c.taskRun)
+			got, err := eventForTaskRun(c.taskRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
@@ -123,7 +134,7 @@ func TestEventForTaskRun(t *testing.T) {
 				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
 					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
-				wantData := NewTektonCloudEventData(c.taskRun)
+				wantData := newTektonCloudEventData(c.taskRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)
@@ -141,7 +152,7 @@ func TestEventForTaskRun(t *testing.T) {
 }
 
 func TestEventForPipelineRun(t *testing.T) {
-	for _, c := range []struct {
+	pipelineRunTests := []struct {
 		desc          string
 		pipelineRun   *v1beta1.PipelineRun
 		wantEventType TektonEventType
@@ -165,11 +176,13 @@ func TestEventForPipelineRun(t *testing.T) {
 		desc:          "send a cloud event with unknown status pipelinerun",
 		pipelineRun:   getPipelineRunByCondition(corev1.ConditionFalse, "meh"),
 		wantEventType: PipelineRunFailedEventV1,
-	}} {
+	}}
+
+	for _, c := range pipelineRunTests {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 
-			got, err := EventForPipelineRun(c.pipelineRun)
+			got, err := eventForPipelineRun(c.pipelineRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
@@ -180,7 +193,7 @@ func TestEventForPipelineRun(t *testing.T) {
 				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
 					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
-				wantData := NewTektonCloudEventData(c.pipelineRun)
+				wantData := newTektonCloudEventData(c.pipelineRun)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)

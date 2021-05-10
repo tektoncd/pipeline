@@ -41,6 +41,31 @@ var _ tracker.Interface = (*FakeTracker)(nil)
 // OnChanged implements OnChanged.
 func (*FakeTracker) OnChanged(interface{}) {}
 
+// GetObservers implements GetObservers.
+func (n *FakeTracker) GetObservers(obj interface{}) []types.NamespacedName {
+	item, err := kmeta.DeletionHandlingAccessor(obj)
+	if err != nil {
+		return nil
+	}
+
+	or := kmeta.ObjectReference(item)
+	ref := tracker.Reference{
+		APIVersion: or.APIVersion,
+		Kind:       or.Kind,
+		Namespace:  or.Namespace,
+		Name:       or.Name,
+	}
+
+	n.Lock()
+	defer n.Unlock()
+
+	keys := make([]types.NamespacedName, 0, len(n.references[ref]))
+	for key := range n.references[ref] {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 // OnDeletedObserver implements OnDeletedObserver.
 func (n *FakeTracker) OnDeletedObserver(obj interface{}) {
 	item, err := kmeta.DeletionHandlingAccessor(obj)

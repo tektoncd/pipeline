@@ -38,8 +38,8 @@ const (
 	kanikoTaskRunName       = "kanikotask-run"
 	kanikoGitResourceName   = "go-example-git"
 	kanikoImageResourceName = "go-example-image"
-	// This is a random revision chosen on 10/11/2019
-	revision = "1c9d566ecd13535f93789595740f20932f655905"
+	// This is a random revision chosen on 2020/10/09
+	revision = "a310cc6d1cd449f95cedd23393de766fdc649651"
 )
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
@@ -161,7 +161,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 		),
 		tb.StepSecurityContext(&corev1.SecurityContext{RunAsUser: &root}),
 	}
-	step := tb.Step("gcr.io/kaniko-project/executor:v0.17.1", stepOps...)
+	step := tb.Step("gcr.io/kaniko-project/executor:v1.3.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
 	sidecar := tb.Sidecar("registry", "registry")
 	taskSpecOps = append(taskSpecOps, sidecar)
@@ -188,7 +188,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 func getRemoteDigest(ctx context.Context, t *testing.T, c *clients, namespace, image string) (string, error) {
 	t.Helper()
 	podName := "skopeo-jq"
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	if _, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      podName,
@@ -210,7 +210,7 @@ func getRemoteDigest(ctx context.Context, t *testing.T, c *clients, namespace, i
 	}, "PodContainersTerminated"); err != nil {
 		t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
 	}
-	logs, err := getContainerLogsFromPod(ctx, c.KubeClient.Kube, podName, "skopeo", namespace)
+	logs, err := getContainerLogsFromPod(ctx, c.KubeClient, podName, "skopeo", namespace)
 	if err != nil {
 		t.Fatalf("Could not get logs for pod %s: %s", podName, err)
 	}

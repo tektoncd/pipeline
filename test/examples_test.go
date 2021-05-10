@@ -93,7 +93,13 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 // koCreate wraps the ko binary and invokes `ko create` for input within
 // namespace
 func koCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("ko", "create", "-n", namespace, "-f", "-")
+	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-n", namespace, "-f", "-")
+	cmd.Stdin = bytes.NewReader(input)
+	return cmd.CombinedOutput()
+}
+
+func kubectlCreate(input []byte, namespace string) ([]byte, error) {
+	cmd := exec.Command("kubectl", "create", "-n", namespace, "-f", "-")
 	cmd.Stdin = bytes.NewReader(input)
 	return cmd.CombinedOutput()
 }
@@ -109,9 +115,10 @@ func deleteClusterTask(ctx context.Context, t *testing.T, c *clients, name strin
 	}
 }
 
+type createFunc func(input []byte, namespace string) ([]byte, error)
 type waitFunc func(ctx context.Context, t *testing.T, c *clients, name string)
 
-func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *testing.T) {
+func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, kind string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
@@ -135,7 +142,7 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 			t.Skipf("Couldn't substitute environment: %v", err)
 		}
 
-		out, err := koCreate(subbedInput, namespace)
+		out, err := createFunc(subbedInput, namespace)
 		if err != nil {
 			t.Fatalf("%s Output: %s", err, out)
 		}
@@ -165,7 +172,7 @@ func exampleTest(path string, waitValidateFunc waitFunc, kind string) func(t *te
 	}
 }
 
-func getExamplePaths(t *testing.T, dir string) []string {
+func getExamplePaths(t *testing.T, dir string, filter pathFilter) []string {
 	var examplePaths []string
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -178,6 +185,9 @@ func getExamplePaths(t *testing.T, dir string) []string {
 		}
 		if info.Name() == "no-ci" && info.IsDir() {
 			return filepath.SkipDir
+		}
+		if !filter(path) {
+			return nil
 		}
 		if info.IsDir() == false && filepath.Ext(info.Name()) == ".yaml" {
 			// Ignore test matching the regexp in the TEST_EXAMPLES_IGNORES
@@ -214,10 +224,27 @@ func extractTestName(baseDir string, path string) string {
 }
 
 func TestExamples(t *testing.T) {
-	baseDir := "../examples"
+	pf, err := getPathFilter(t)
+	if err != nil {
+		t.Fatal(err.Error())
+		return
+	}
+	testYamls(t, "../examples", kubectlCreate, pf)
+}
 
+func TestYamls(t *testing.T) {
+	pf, err := getPathFilter(t)
+	if err != nil {
+		t.Fatal(err.Error())
+		return
+	}
+	testYamls(t, "./yamls", koCreate, pf)
+}
+
+func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
 	t.Parallel()
-	for _, path := range getExamplePaths(t, baseDir) {
+	for _, path := range getExamplePaths(t, baseDir, filter) {
+		path := path // capture range variable
 		testName := extractTestName(baseDir, path)
 		waitValidateFunc := waitValidatePipelineRunDone
 		kind := "pipelinerun"
@@ -227,6 +254,6 @@ func TestExamples(t *testing.T) {
 			kind = "taskrun"
 		}
 
-		t.Run(testName, exampleTest(path, waitValidateFunc, kind))
+		t.Run(testName, exampleTest(path, waitValidateFunc, createFunc, kind))
 	}
 }

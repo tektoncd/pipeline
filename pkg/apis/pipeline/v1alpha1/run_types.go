@@ -18,14 +18,12 @@ package v1alpha1
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/json"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -50,10 +48,20 @@ type RunSpec struct {
 	// +optional
 	Status RunSpecStatus `json:"status,omitempty"`
 
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName"`
+
+	// PodTemplate holds pod specific configuration
+	// +optional
+	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+
+	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
+	// +optional
+	Workspaces []v1beta1.WorkspaceBinding `json:"workspaces,omitempty"`
+
 	// TODO(https://github.com/tektoncd/community/pull/128)
 	// - timeout
 	// - inline task spec
-	// - workspaces ?
 }
 
 // RunSpecStatus defines the taskrun spec status the user can provide
@@ -75,84 +83,21 @@ func (rs RunSpec) GetParam(name string) *v1beta1.Param {
 	return nil
 }
 
-type RunStatus struct {
-	duckv1.Status `json:",inline"`
+const (
+	// RunReasonCancelled must be used in the Condition Reason to indicate that a Run was cancelled.
+	RunReasonCancelled = "RunCancelled"
+	// RunReasonWorkspaceNotSupported can be used in the Condition Reason to indicate that the
+	// Run contains a workspace which is not supported by this custom task.
+	RunReasonWorkspaceNotSupported = "RunWorkspaceNotSupported"
+	// RunReasonPodTemplateNotSupported can be used in the Condition Reason to indicate that the
+	// Run contains a pod template which is not supported by this custom task.
+	RunReasonPodTemplateNotSupported = "RunPodTemplateNotSupported"
+)
 
-	// RunStatusFields inlines the status fields.
-	RunStatusFields `json:",inline"`
-}
+// RunStatus defines the observed state of Run.
+type RunStatus = runv1alpha1.RunStatus
 
 var runCondSet = apis.NewBatchConditionSet()
-
-// GetCondition returns the Condition matching the given type.
-func (r *RunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return runCondSet.Manage(r).GetCondition(t)
-}
-
-// InitializeConditions will set all conditions in runCondSet to unknown for the PipelineRun
-// and set the started time to the current time
-func (r *RunStatus) InitializeConditions() {
-	started := false
-	if r.StartTime.IsZero() {
-		r.StartTime = &metav1.Time{Time: time.Now()}
-		started = true
-	}
-	conditionManager := runCondSet.Manage(r)
-	conditionManager.InitializeConditions()
-	// Ensure the started reason is set for the "Succeeded" condition
-	if started {
-		initialCondition := conditionManager.GetCondition(apis.ConditionSucceeded)
-		initialCondition.Reason = "Started"
-		conditionManager.SetCondition(*initialCondition)
-	}
-}
-
-// SetCondition sets the condition, unsetting previous conditions with the same
-// type as necessary.
-func (r *RunStatus) SetCondition(newCond *apis.Condition) {
-	if newCond != nil {
-		runCondSet.Manage(r).SetCondition(*newCond)
-	}
-}
-
-// MarkRunSucceeded changes the Succeeded condition to True with the provided reason and message.
-func (r *RunStatus) MarkRunSucceeded(reason, messageFormat string, messageA ...interface{}) {
-	runCondSet.Manage(r).MarkTrueWithReason(apis.ConditionSucceeded, reason, messageFormat, messageA...)
-	succeeded := r.GetCondition(apis.ConditionSucceeded)
-	r.CompletionTime = &succeeded.LastTransitionTime.Inner
-}
-
-// MarkRunFailed changes the Succeeded condition to False with the provided reason and message.
-func (r *RunStatus) MarkRunFailed(reason, messageFormat string, messageA ...interface{}) {
-	runCondSet.Manage(r).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
-	succeeded := r.GetCondition(apis.ConditionSucceeded)
-	r.CompletionTime = &succeeded.LastTransitionTime.Inner
-}
-
-// MarkRunRunning changes the Succeeded condition to Unknown with the provided reason and message.
-func (r *RunStatus) MarkRunRunning(reason, messageFormat string, messageA ...interface{}) {
-	runCondSet.Manage(r).MarkUnknown(apis.ConditionSucceeded, reason, messageFormat, messageA...)
-}
-
-// DecodeExtraFields deserializes the extra fields in the Run status.
-func (r *RunStatus) DecodeExtraFields(into interface{}) error {
-	if len(r.ExtraFields.Raw) == 0 {
-		return nil
-	}
-	return json.Unmarshal(r.ExtraFields.Raw, into)
-}
-
-// EncodeExtraFields serializes the extra fields in the Run status.
-func (r *RunStatus) EncodeExtraFields(from interface{}) error {
-	data, err := json.Marshal(from)
-	if err != nil {
-		return err
-	}
-	r.ExtraFields = runtime.RawExtension{
-		Raw: data,
-	}
-	return nil
-}
 
 // GetConditionSet retrieves the condition set for this resource. Implements
 // the KRShaped interface.
@@ -165,24 +110,10 @@ func (r *Run) GetStatus() *duckv1.Status { return &r.Status.Status }
 // RunStatusFields holds the fields of Run's status.  This is defined
 // separately and inlined so that other types can readily consume these fields
 // via duck typing.
-type RunStatusFields struct {
-	// StartTime is the time the build is actually started.
-	// +optional
-	StartTime *metav1.Time `json:"startTime,omitempty"`
+type RunStatusFields = runv1alpha1.RunStatusFields
 
-	// CompletionTime is the time the build completed.
-	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// Results reports any output result values to be consumed by later
-	// tasks in a pipeline.
-	// +optional
-	Results []v1beta1.TaskRunResult `json:"results,omitempty"`
-
-	// ExtraFields holds arbitrary fields provided by the custom task
-	// controller.
-	ExtraFields runtime.RawExtension `json:"extraFields,omitempty"`
-}
+// RunResult used to describe the results of a task
+type RunResult = runv1alpha1.RunResult
 
 // +genclient
 // +genreconciler

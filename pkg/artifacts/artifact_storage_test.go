@@ -40,11 +40,9 @@ var (
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
-		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
@@ -56,7 +54,7 @@ var (
 	}
 	defaultStorageClass   *string
 	customStorageClass    = "custom-storage-class"
-	persistentVolumeClaim = GetPersistentVolumeClaim(config.DefaultPVCSize, defaultStorageClass)
+	persistentVolumeClaim = getPersistentVolumeClaim(config.DefaultPVCSize, defaultStorageClass)
 	quantityComparer      = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
@@ -101,7 +99,7 @@ var (
 	}
 )
 
-func GetPersistentVolumeClaim(size string, storageClassName *string) *corev1.PersistentVolumeClaim {
+func getPersistentVolumeClaim(size string, storageClassName *string) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelineruntest-pvc", Namespace: pipelinerun.Namespace, OwnerReferences: []metav1.OwnerReference{pipelinerun.GetOwnerReference()}},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -158,7 +156,7 @@ func TestNeedsPVC(t *testing.T) {
 				ArtifactBucket: artifactBucket,
 			}
 			ctx := config.ToContext(context.Background(), &configs)
-			needed := NeedsPVC(ctx)
+			needed := needsPVC(ctx)
 			if needed != c.pvcNeeded {
 				t.Fatalf("Expected that ConfigMapNeedsPVC would be %t, but was %t", c.pvcNeeded, needed)
 			}
@@ -181,7 +179,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		storagetype: "pvc",
 		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi", defaultStorageClass),
+			PersistentVolumeClaim: getPersistentVolumeClaim("10Gi", defaultStorageClass),
 			ShellImage:            "busybox",
 		},
 	}, {
@@ -192,7 +190,7 @@ func TestInitializeArtifactStorage(t *testing.T) {
 		storagetype: "pvc",
 		expectedArtifactStorage: &storage.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: GetPersistentVolumeClaim("5Gi", &customStorageClass),
+			PersistentVolumeClaim: getPersistentVolumeClaim("5Gi", &customStorageClass),
 			ShellImage:            "busybox",
 		},
 	}, {
@@ -447,7 +445,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		storageConfig: map[string]string{},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			fakekubeclient := fakek8s.NewSimpleClientset(GetPVCSpec(pipelinerun, persistentVolumeClaim.Spec.Resources.Requests["storage"], defaultStorageClass))
+			fakekubeclient := fakek8s.NewSimpleClientset(getPVCSpec(pipelinerun, persistentVolumeClaim.Spec.Resources.Requests["storage"], defaultStorageClass))
 			ab, err := config.NewArtifactBucketFromMap(c.storageConfig)
 			if err != nil {
 				t.Fatalf("Error getting an ArtifactBucket from data %s, %s", c.storageConfig, err)

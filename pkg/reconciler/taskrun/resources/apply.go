@@ -17,12 +17,14 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -112,7 +114,7 @@ func ApplyContexts(spec *v1beta1.TaskSpec, rtr *ResolvedTaskResources, tr *v1bet
 // ApplyWorkspaces applies the substitution from paths that the workspaces in declarations mounted to, the
 // volumes that bindings are realized with in the task spec and the PersistentVolumeClaim names for the
 // workspaces.
-func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDeclaration, bindings []v1beta1.WorkspaceBinding, vols map[string]corev1.Volume) *v1beta1.TaskSpec {
+func ApplyWorkspaces(ctx context.Context, spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDeclaration, bindings []v1beta1.WorkspaceBinding, vols map[string]corev1.Volume) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{}
 
 	bindNames := sets.NewString()
@@ -127,7 +129,12 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 			stringReplacements[prefix+"path"] = ""
 		} else {
 			stringReplacements[prefix+"bound"] = "true"
-			stringReplacements[prefix+"path"] = declaration.GetMountPath()
+			alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
+			if alphaAPIEnabled {
+				spec = applyWorkspaceMountPath(prefix+"path", spec, declaration)
+			} else {
+				stringReplacements[prefix+"path"] = declaration.GetMountPath()
+			}
 		}
 	}
 
@@ -142,6 +149,40 @@ func ApplyWorkspaces(spec *v1beta1.TaskSpec, declarations []v1beta1.WorkspaceDec
 		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
+}
+
+// applyWorkspaceMountPath accepts a workspace path variable of the form $(workspaces.foo.path) and replaces
+// it in the fields of the TaskSpec. A new updated TaskSpec is returned. Steps or Sidecars in the TaskSpec
+// that override the mountPath will receive that mountPath in place of the variable's value. Other Steps and
+// Sidecars will see either the workspace's declared mountPath or the default of /workspaces/<name>.
+func applyWorkspaceMountPath(variable string, spec *v1beta1.TaskSpec, declaration v1beta1.WorkspaceDeclaration) *v1beta1.TaskSpec {
+	stringReplacements := map[string]string{variable: ""}
+	emptyArrayReplacements := map[string][]string{}
+	defaultMountPath := declaration.GetMountPath()
+	// Replace instances of the workspace path variable that are overridden per-Step
+	for i := range spec.Steps {
+		step := &spec.Steps[i]
+		for _, usage := range step.Workspaces {
+			if usage.Name == declaration.Name && usage.MountPath != "" {
+				stringReplacements[variable] = usage.MountPath
+				v1beta1.ApplyStepReplacements(step, stringReplacements, emptyArrayReplacements)
+			}
+		}
+	}
+	// Replace instances of the workspace path variable that are overridden per-Sidecar
+	for i := range spec.Sidecars {
+		sidecar := &spec.Sidecars[i]
+		for _, usage := range sidecar.Workspaces {
+			if usage.Name == declaration.Name && usage.MountPath != "" {
+				stringReplacements[variable] = usage.MountPath
+				v1beta1.ApplySidecarReplacements(sidecar, stringReplacements, emptyArrayReplacements)
+			}
+		}
+	}
+	// Replace any remaining instances of the workspace path variable, which should fall
+	// back to the mount path specified in the declaration.
+	stringReplacements[variable] = defaultMountPath
+	return ApplyReplacements(spec, stringReplacements, emptyArrayReplacements)
 }
 
 // ApplyTaskResults applies the substitution from values in results which are referenced in spec as subitems

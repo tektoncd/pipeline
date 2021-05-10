@@ -54,8 +54,8 @@ Tekton Pipelines defines the following entities:
 
 ## Getting started
 
-To get started, complete the [Tekton Pipelines Tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) and go through our
-[examples](https://github.com/tektoncd/pipeline/tree/master/examples).
+To get started, complete the [Tekton Pipelines Tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) and go through our
+[examples](https://github.com/tektoncd/pipeline/tree/main/examples).
 
 ## Understanding Tekton Pipelines
 
@@ -71,12 +71,12 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Using labels](labels.md)
 - [Viewing logs](logs.md)
 - [Pipelines metrics](metrics.md)
-- [Variable Substitutions](variables.md)
+- [Variable Substitutions](tasks.md#using-variable-substitution)
 - [Running a Custom Task (alpha)](runs.md)
 
 ## Contributing to Tekton Pipelines
 
-If you'd like to contribute to the Tekton Pipelines project, see the [Tekton Pipeline Contributor's Guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
+If you'd like to contribute to the Tekton Pipelines project, see the [Tekton Pipeline Contributor's Guide](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md).
 
 ---
 

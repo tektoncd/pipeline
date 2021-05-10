@@ -31,6 +31,9 @@ import (
 
 func init() {
 	injection.Fake.RegisterClient(withClient)
+	injection.Fake.RegisterClientFetcher(func(ctx context.Context) interface{} {
+		return Get(ctx)
+	})
 }
 
 func withClient(ctx context.Context, cfg *rest.Config) context.Context {

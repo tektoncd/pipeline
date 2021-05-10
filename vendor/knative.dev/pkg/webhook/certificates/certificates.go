@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"go.uber.org/zap"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +36,7 @@ import (
 
 const (
 	// Time used for updating a certificate before it expires.
-	oneWeek = 7 * 24 * time.Hour
+	oneDay = 24 * time.Hour
 )
 
 type reconciler struct {
@@ -56,7 +57,7 @@ func (r *reconciler) Reconcile(ctx context.Context, key string) error {
 		// only reconciler the certificate when we are leader.
 		return r.reconcileCertificate(ctx)
 	}
-	return nil
+	return controller.NewSkipKey(key)
 }
 
 func (r *reconciler) reconcileCertificate(ctx context.Context) error {
@@ -83,12 +84,12 @@ func (r *reconciler) reconcileCertificate(ctx context.Context) error {
 		// Check the expiration date of the certificate to see if it needs to be updated
 		cert, err := tls.X509KeyPair(secret.Data[certresources.ServerCert], secret.Data[certresources.ServerKey])
 		if err != nil {
-			logger.Warnf("Error creating pem from certificate and key: %v", err)
+			logger.Warnw("Error creating pem from certificate and key", zap.Error(err))
 		} else {
 			certData, err := x509.ParseCertificate(cert.Certificate[0])
 			if err != nil {
-				logger.Errorf("Error parsing certificate: %v", err)
-			} else if time.Now().Add(oneWeek).Before(certData.NotAfter) {
+				logger.Errorw("Error parsing certificate", zap.Error(err))
+			} else if time.Now().Add(oneDay).Before(certData.NotAfter) {
 				return nil
 			}
 		}

@@ -18,6 +18,11 @@ spec:
       env:
       - name: FOO
         value: foooooooo
+      # Test that Pods with containers run as different UIDs
+      # are able to run scripts regardless of any specific
+      # Step's UID.
+      securityContext:
+        runAsUser: 2000
       script: |
         #!/usr/bin/env bash
         set -euxo pipefail
@@ -30,6 +35,8 @@ spec:
 
     - name: place-file
       image: ubuntu
+      securityContext:
+        runAsUser: 8000
       script: |
         #!/usr/bin/env bash
         echo "echo Hello from script file" > /workspace/hello
@@ -42,6 +49,9 @@ spec:
 
     - name: contains-eof
       image: ubuntu
+      securityContext:
+        runAsUser: 16000
+      workingDir: /workspace
       script: |
         #!/usr/bin/env bash
         cat > file << EOF
@@ -87,3 +97,22 @@ spec:
         [[ $# == 2 ]]
         [[ $1 == "hello" ]]
         [[ $2 == "world" ]]
+
+    # Test that multiple dollar signs next to each other are not replaced by Kubernetes
+    - name: dollar-signs-allowed
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        if '$' != '\u0024':
+          print('single dollar signs ($) are not passed through as expected :(')
+          exit(1)
+        if '$$' != '\u0024\u0024':
+          print('double dollar signs ($$) are not passed through as expected :(')
+          exit(2)
+        if '$$$' != '\u0024\u0024\u0024':
+          print('three dollar signs ($$$) are not passed through as expected :(')
+          exit(3)
+        if '$$$$' != '\u0024\u0024\u0024\u0024':
+          print('four dollar signs ($$$$) are not passed through as expected :(')
+          exit(3)
+        print('dollar signs appear to be handled correctly! :)')

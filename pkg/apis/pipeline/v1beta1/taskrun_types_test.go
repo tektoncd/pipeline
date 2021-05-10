@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -29,23 +30,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
-
-func TestTaskRun_GetBuildPodRef(t *testing.T) {
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "testns",
-			Name:      "taskrunname",
-		},
-	}
-	if d := cmp.Diff(tr.GetBuildPodRef(), corev1.ObjectReference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  "testns",
-		Name:       "taskrunname",
-	}); d != "" {
-		t.Fatalf("taskrun build pod ref mismatch: %s", diff.PrintWantGot(d))
-	}
-}
 
 func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 	tests := []struct {
@@ -329,7 +313,7 @@ func TestHasTimedOut(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.taskRun.HasTimedOut()
+			result := tc.taskRun.HasTimedOut(context.Background())
 			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}

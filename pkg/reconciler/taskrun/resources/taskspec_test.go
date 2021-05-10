@@ -47,7 +47,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) { return task, nil }
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) { return task, nil }
 	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
@@ -76,7 +76,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
 		return nil, errors.New("shouldn't be called")
 	}
 	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
@@ -100,7 +100,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
 		return nil, errors.New("shouldn't be called")
 	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)
@@ -120,7 +120,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskInterface, error) {
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
 		return nil, errors.New("something went wrong")
 	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)

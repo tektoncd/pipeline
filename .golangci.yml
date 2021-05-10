@@ -28,6 +28,7 @@ run:
   - e2e
   skip-files:
   - .*/zz_generated.deepcopy.go
+  - pkg/apis/pipeline/v1beta1/openapi_generated.go
   skip-dirs:
   - vendor
   - pkg/client

@@ -20,7 +20,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
+// ApplySidecarReplacements applies variable interpolation on a Sidecar.
 func ApplySidecarReplacements(sidecar *Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	sidecar.Script = substitution.ApplyReplacements(sidecar.Script, stringReplacements)
-	ApplyContainerReplacements(&sidecar.Container, stringReplacements, arrayReplacements)
+	applyContainerReplacements(&sidecar.Container, stringReplacements, arrayReplacements)
 }

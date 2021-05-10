@@ -111,3 +111,13 @@ type WorkspacePipelineTaskBinding struct {
 	// +optional
 	SubPath string `json:"subPath,omitempty"`
 }
+
+// WorkspaceUsage is used by a Step or Sidecar to declare that it wants isolated access
+// to a Workspace defined in a Task.
+type WorkspaceUsage struct {
+	// Name is the name of the workspace this Step or Sidecar wants access to.
+	Name string `json:"name"`
+	// MountPath is the path that the workspace should be mounted to inside the Step or Sidecar,
+	// overriding any MountPath specified in the Task's WorkspaceDeclaration.
+	MountPath string `json:"mountPath"`
+}

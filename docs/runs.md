@@ -5,12 +5,13 @@ weight: 2
 ---
 -->
 
-# `Run`s
+# Runs
 
 - [Overview](#overview)
 - [Configuring a `Run`](#configuring-a-run)
   - [Specifying the target Custom Task](#specifying-the-target-custom-task)
-  - [Specifying `Parameters`](#specifying-parameters)
+  - [Specifying Parameters](#specifying-parameters)
+  - [Specifying Workspaces, Service Account, and Pod Template](#specifying-workspaces-service-account-and-pod-template)
 - [Monitoring execution status](#monitoring-execution-status)
   - [Monitoring `Results`](#monitoring-results)
 - [Code examples](#code-examples)
@@ -21,7 +22,7 @@ weight: 2
 # Overview
 
 A `Run` allows you to instantiate and execute a [Custom
-Task](https://github.com/tektoncd/community/blob/master/teps/0002-custom-tasks.md),
+Task](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md),
 which can be implemented by a custom task controller running on-cluster. Custom
 Tasks can implement behavior that doesn't correspond directly to running a
 workload in a `Pod` on the cluster. For Pod-based on-cluster workloads, you
@@ -34,10 +35,6 @@ will have no `.status` value and no further action will be taken.
 
 `Run`s are an **_experimental alpha feature_** and should be expected to change
 in breaking ways or even be removed.
-
-`Run`s are not currently integrated with Pipelines, and require a running
-third-party controller to actually perform any work. Without a third-party
-controller, `Run`s will just exist without a status indefinitely.
 
 ## Configuring a `Run`
 
@@ -55,6 +52,12 @@ A `Run` definition supports the following fields:
 - Optional:
   - [`params`](#specifying-parameters) - Specifies the desired execution
     parameters for the custom task.
+  - [`serviceAccountName`](#specifying-a-serviceaccount) - Specifies a `ServiceAccount`
+    object that provides custom credentials for executing the `Run`.
+  - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
+    [`Workspaces`](workspaces.md) required by a custom task.
+  - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](podtemplates.md) to use
+    to configure pods created by the custom task.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -111,6 +114,57 @@ spec:
 If the custom task controller knows how to interpret the parameter value, it
 will do so. It might enforce that some parameter values must be specified, or
 reject unknown parameter values.
+
+### Specifying Workspaces, Service Account, and Pod Template
+
+A `Run` object can specify workspaces, a service account name, or a pod template.
+These are intended to be used with custom tasks that create Pods or other resources that embed a Pod specification.
+The custom task can use these specifications to construct the Pod specification.
+Not all custom tasks will support these values.
+Consult the documentation of the custom task that you are using to determine whether these values apply.
+
+#### Specifying workspaces
+
+If the custom task supports it, you can provide [`Workspaces`](workspaces.md) to share data with the custom task.
+
+```yaml
+spec:
+  workspaces:
+  - name: my-workspace
+    emptyDir: {}
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports workspaces and how to name them.
+
+#### Specifying a ServiceAccount
+
+If the custom task supports it, you can execute the `Run` with a specific set of credentials by
+specifying a `ServiceAccount` object name in the `serviceAccountName` field in your `Run`
+definition. If you do not explicitly specify this, the `Run` executes with the service account
+specified in the `configmap-defaults` `ConfigMap`. If this default is not specified, `Runs`
+will execute with the [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
+set for the target [`namespace`](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/).
+
+```yaml
+spec:
+  serviceAccountName: my-account
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports a service account name.
+
+#### Specifying a pod template
+
+If the custom task supports it, you can specify a [`Pod` template](podtemplates.md) configuration that the custom task will
+use to configure Pods (or other resources that embed a Pod specification) that it creates.
+
+```yaml
+spec:
+  podTemplate:
+    securityContext:
+      runAsUser: 1001
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports a pod template.
 
 ## Monitoring execution status
 

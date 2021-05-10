@@ -62,7 +62,7 @@ type GroupKindConversion struct {
 	DefinitionName string
 
 	// HubVersion specifies which version of the CustomResource supports
-	// convertions to and from all types
+	// conversions to and from all types
 	//
 	// It is expected that the Zygotes map contains an entry for the
 	// specified HubVersion
@@ -117,7 +117,9 @@ func NewConversionController(
 		crdLister:    crdInformer.Lister(),
 	}
 
-	c := controller.NewImpl(r, logging.FromContext(ctx), "ConversionWebhook")
+	const queueName = "ConversionWebhook"
+	logger := logging.FromContext(ctx)
+	c := controller.NewImpl(r, logger.Named(queueName), queueName)
 
 	// Reconciler when the named CRDs change.
 	for _, gkc := range kinds {

@@ -55,7 +55,7 @@ func TestWhenExpressions_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.wes.validate(); err != nil {
-				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s, %s", tt.name, tt.wes)
+				t.Errorf("WhenExpressions.validate() returned an error for valid when expressions: %s", tt.wes)
 			}
 		})
 	}
@@ -99,13 +99,37 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 			Values:   []string{"bar"},
 		}},
 	}, {
+		name: "multiple inputs",
+		wes: []WhenExpression{{
+			Input:           "foo",
+			DeprecatedInput: "nay",
+			Operator:        selection.In,
+			Values:          []string{"bar"},
+		}},
+	}, {
+		name: "multiple operators",
+		wes: []WhenExpression{{
+			Input:              "foo",
+			Operator:           selection.In,
+			DeprecatedOperator: selection.NotIn,
+			Values:             []string{"bar"},
+		}},
+	}, {
+		name: "multiple values",
+		wes: []WhenExpression{{
+			Input:            "foo",
+			Operator:         selection.In,
+			Values:           []string{"bar"},
+			DeprecatedValues: []string{"bar"},
+		}},
+	}, {
 		name: "missing when expression",
 		wes:  []WhenExpression{{}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.wes.validate(); err == nil {
-				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s, %s", tt.name, tt.wes, err)
+				t.Errorf("WhenExpressions.validate() did not return error for invalid when expressions: %s, %s", tt.wes, err)
 			}
 		})
 	}

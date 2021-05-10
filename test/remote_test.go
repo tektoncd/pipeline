@@ -17,7 +17,8 @@ limitations under the License.
 package test
 
 import (
-	"io/ioutil"
+	"archive/tar"
+	"io"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -28,7 +29,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateImage(t *testing.T) {
@@ -37,7 +40,15 @@ func TestCreateImage(t *testing.T) {
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 
-	task := tb.Task("test-create-image", tb.TaskType())
+	task := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-create-image",
+		},
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Task",
+		},
+	}
 
 	ref, err := CreateImage(u.Host+"/task/test-create-image", task)
 	if err != nil {
@@ -65,13 +76,13 @@ func TestCreateImage(t *testing.T) {
 		t.Errorf("img layers were incorrect. Num Layers: %d. Err: %w", len(layers), err)
 	}
 
-	if diff := cmp.Diff(m.Layers[0].Annotations["org.opencontainers.image.title"], "test-create-image"); diff != "" {
+	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.TitleAnnotation], "test-create-image"); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(m.Layers[0].Annotations["cdf.tekton.image.kind"], "task"); diff != "" {
+	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.KindAnnotation], "task"); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(m.Layers[0].Annotations["cdf.tekton.image.apiVersion"], "v1beta1"); diff != "" {
+	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.APIVersionAnnotation], "v1beta1"); diff != "" {
 		t.Error(diff)
 	}
 
@@ -81,9 +92,16 @@ func TestCreateImage(t *testing.T) {
 		t.Errorf("layer contents were corrupted: %w", err)
 	}
 	defer rc.Close()
-	actual, err := ioutil.ReadAll(rc)
+
+	reader := tar.NewReader(rc)
+	header, err := reader.Next()
 	if err != nil {
-		t.Errorf("layer contents weren't readable: %w", err)
+		t.Errorf("failed to load tar bundle: %w", err)
+	}
+
+	actual := make([]byte, header.Size)
+	if _, err := reader.Read(actual); err != nil && err != io.EOF {
+		t.Errorf("failed to read contents of tar bundle: %w", err)
 	}
 
 	raw, err := yaml.Marshal(task)

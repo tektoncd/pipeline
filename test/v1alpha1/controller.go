@@ -40,7 +40,7 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
-	fakepodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake"
+	fakefilteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered/fake"
 	"knative.dev/pkg/controller"
 )
 
@@ -101,7 +101,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		ClusterTask:      fakeclustertaskinformer.Get(ctx),
 		PipelineResource: fakeresourceinformer.Get(ctx),
 		Condition:        fakeconditioninformer.Get(ctx),
-		Pod:              fakepodinformer.Get(ctx),
+		Pod:              fakefilteredpodinformer.Get(ctx, v1alpha1.ManagedByLabelKey),
 	}
 
 	for _, pr := range d.PipelineRuns {

@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
+	"go.opencensus.io/resource"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +31,13 @@ import (
 var (
 	curMetricsExporter view.Exporter
 	curMetricsConfig   *metricsConfig
-	metricsMux         sync.RWMutex
+	mWorker            *metricsWorker
 )
+
+func init() {
+	mWorker = newMetricsWorker()
+	go mWorker.start()
+}
 
 // SecretFetcher is a function (extracted from SecretNamespaceLister) for fetching
 // a specific Secret. This avoids requiring global or namespace list in controllers.
@@ -66,12 +71,17 @@ type ExporterOptions struct {
 
 	// PrometheusPort is the port to expose metrics if metrics backend is Prometheus.
 	// It should be between maxPrometheusPort and maxPrometheusPort. 0 value means
-	// using the default 9090 value. If is ignored if metrics backend is not
+	// using the default 9090 value. It is ignored if metrics backend is not
 	// Prometheus.
 	PrometheusPort int
 
+	// PrometheusHost is the host to expose metrics on if metrics backend is Prometheus.
+	// The default value is "0.0.0.0". It is ignored if metrics backend is not
+	// Prometheus.
+	PrometheusHost string
+
 	// ConfigMap is the data from config map config-observability. Must be present.
-	// See https://github.com/knative/serving/blob/master/config/config-observability.yaml
+	// See https://github.com/knative/serving/blob/main/config/config-observability.yaml
 	// for details.
 	ConfigMap map[string]string
 
@@ -148,28 +158,14 @@ func UpdateExporter(ctx context.Context, ops ExporterOptions, logger *zap.Sugare
 
 	// Updating the metrics config and the metrics exporters needs to be atomic to
 	// avoid using an outdated metrics config with new exporters.
-	metricsMux.Lock()
-	defer metricsMux.Unlock()
-
-	if isNewExporterRequired(newConfig) {
-		logger.Info("Flushing the existing exporter before setting up the new exporter.")
-		flushGivenExporter(curMetricsExporter)
-		e, f, err := newMetricsExporter(newConfig, logger)
-		if err != nil {
-			logger.Errorw("Failed to update a new metrics exporter based on metric config", newConfig, zap.Error(err))
-			return err
-		}
-		existingConfig := curMetricsConfig
-		curMetricsExporter = e
-		if err := setFactory(f); err != nil {
-			logger.Errorw("Failed to update metrics factory when loading metric config", newConfig, zap.Error(err))
-			return err
-		}
-		logger.Infof("Successfully updated the metrics exporter; old config: %v; new config %v", existingConfig, newConfig)
+	updateCmd := &updateMetricsConfigWithExporter{
+		ctx:       ctx,
+		newConfig: newConfig,
+		done:      make(chan error),
 	}
-
-	setCurMetricsConfigUnlocked(newConfig)
-	return nil
+	mWorker.c <- updateCmd
+	err = <-updateCmd.done
+	return err
 }
 
 // isNewExporterRequired compares the non-nil newConfig against curMetricsConfig. When backend changes,
@@ -196,7 +192,7 @@ func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.
 	// If there is a Prometheus Exporter server running, stop it.
 	resetCurPromSrv()
 
-	// TODO(https://github.com/knative/pkg/issues/866): Move Stackdriver and Promethus
+	// TODO(https://github.com/knative/pkg/issues/866): Move Stackdriver and Prometheus
 	// operations before stopping to an interface.
 	if se, ok := curMetricsExporter.(stoppable); ok {
 		se.StopMetricsExporter()
@@ -207,39 +203,50 @@ func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.
 		openCensus:  newOpenCensusExporter,
 		prometheus:  newPrometheusExporter,
 		none: func(*metricsConfig, *zap.SugaredLogger) (view.Exporter, ResourceExporterFactory, error) {
-			return nil, nil, nil
+			noneFactory := func(*resource.Resource) (view.Exporter, error) {
+				return &noneExporter{}, nil
+			}
+			return &noneExporter{}, noneFactory, nil
 		},
 	}
 
 	ff := factory[config.backendDestination]
 	if ff == nil {
-		return nil, nil, fmt.Errorf("unsuppored metrics backend %v", config.backendDestination)
+		return nil, nil, fmt.Errorf("unsupported metrics backend %v", config.backendDestination)
 	}
 	return ff(config, logger)
 }
 
 func getCurMetricsExporter() view.Exporter {
-	metricsMux.RLock()
-	defer metricsMux.RUnlock()
-	return curMetricsExporter
+	readCmd := &readExporter{done: make(chan *view.Exporter)}
+	mWorker.c <- readCmd
+	e := <-readCmd.done
+	return *e
 }
 
 func setCurMetricsExporter(e view.Exporter) {
-	metricsMux.Lock()
-	defer metricsMux.Unlock()
-	curMetricsExporter = e
+	setCmd := &setExporter{
+		newExporter: &e,
+		done:        make(chan struct{}),
+	}
+	mWorker.c <- setCmd
+	<-setCmd.done
 }
 
 func getCurMetricsConfig() *metricsConfig {
-	metricsMux.RLock()
-	defer metricsMux.RUnlock()
-	return curMetricsConfig
+	readCmd := &readMetricsConfig{done: make(chan *metricsConfig)}
+	mWorker.c <- readCmd
+	cfg := <-readCmd.done
+	return cfg
 }
 
 func setCurMetricsConfig(c *metricsConfig) {
-	metricsMux.Lock()
-	defer metricsMux.Unlock()
-	setCurMetricsConfigUnlocked(c)
+	setCmd := &setMetricsConfig{
+		newConfig: c,
+		done:      make(chan struct{}),
+	}
+	mWorker.c <- setCmd
+	<-setCmd.done
 }
 
 func setCurMetricsConfigUnlocked(c *metricsConfig) {
@@ -266,4 +273,11 @@ func flushGivenExporter(e view.Exporter) bool {
 		return true
 	}
 	return false
+}
+
+type noneExporter struct {
+}
+
+// NoneExporter implements view.Exporter in the nil case.
+func (*noneExporter) ExportView(*view.Data) {
 }

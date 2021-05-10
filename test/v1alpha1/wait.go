@@ -65,6 +65,17 @@ const (
 // ConditionAccessorFn is a condition function used polling functions
 type ConditionAccessorFn func(ca apis.ConditionAccessor) (bool, error)
 
+func pollImmediateWithContext(ctx context.Context, fn func() (bool, error)) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		select {
+		case <-ctx.Done():
+			return true, ctx.Err()
+		default:
+		}
+		return fn()
+	})
+}
+
 // WaitForTaskRunState polls the status of the TaskRun called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
@@ -74,7 +85,7 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+	return pollImmediateWithContext(ctx, func() (bool, error) {
 		r, err := c.TaskRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -92,8 +103,8 @@ func WaitForDeploymentState(ctx context.Context, c *clients, name string, namesp
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		d, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		d, err := c.KubeClient.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -110,8 +121,8 @@ func WaitForPodState(ctx context.Context, c *clients, name string, namespace str
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -128,7 +139,9 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, polltimeout, func() (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, polltimeout)
+	defer cancel()
+	return pollImmediateWithContext(ctx, func() (bool, error) {
 		r, err := c.PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
@@ -146,8 +159,8 @@ func WaitForServiceExternalIPState(ctx context.Context, c *clients, namespace, n
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
-		r, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.KubeClient.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -197,7 +210,7 @@ func FailedWithReason(reason, name string) ConditionAccessorFn {
 				if c.Reason == reason {
 					return true, nil
 				}
-				return true, fmt.Errorf("%q completed with the wrong reason: %s", name, c.Reason)
+				return true, fmt.Errorf("%q completed with the wrong reason: %s (message: %s)", name, c.Reason, c.Message)
 			} else if c.Status == corev1.ConditionTrue {
 				return true, fmt.Errorf("%q completed successfully, should have been failed with reason %q", name, reason)
 			}

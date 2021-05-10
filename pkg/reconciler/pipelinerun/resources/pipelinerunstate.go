@@ -23,8 +23,18 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+)
+
+const (
+	// ReasonUnknown indicates that the execution status of a pipelineTask is unknown
+	PipelineTaskStateNone = "None"
+	// PipelineTaskStatusPrefix is a prefix of the param representing execution state of pipelineTask
+	PipelineTaskStatusPrefix = "tasks."
+	// PipelineTaskStatusSuffix is a suffix of the param representing execution state of pipelineTask
+	PipelineTaskStatusSuffix = ".status"
 )
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -36,6 +46,16 @@ type PipelineRunFacts struct {
 	State           PipelineRunState
 	TasksGraph      *dag.Graph
 	FinalTasksGraph *dag.Graph
+
+	// SkipCache is a hash of PipelineTask names that stores whether a task will be
+	// executed or not, because it's either not reachable via the DAG due to the pipeline
+	// state, or because it has failed conditions.
+	// We cache this data along the state, because it's expensive to compute, it requires
+	// traversing potentially the whole graph; this way it can built incrementally, when
+	// needed, via the `Skip` method in pipelinerunresolution.go
+	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
+	// can be used to clean the cache and force re-computation when needed.
+	SkipCache map[string]bool
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks
@@ -52,6 +72,11 @@ type pipelineRunStatusCount struct {
 	Incomplete int
 }
 
+// ResetSkippedCache resets the skipped cache in the facts map
+func (facts *PipelineRunFacts) ResetSkippedCache() {
+	facts.SkipCache = make(map[string]bool)
+}
+
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
 func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 	m := make(map[string]*ResolvedPipelineRunTask)
@@ -64,11 +89,39 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if t.TaskRun != nil {
+		if t.IsCustomTask() && t.Run != nil {
+			return false
+		} else if t.TaskRun != nil {
 			return false
 		}
 	}
 	return true
+}
+
+// AdjustStartTime adjusts potential drift in the PipelineRun's start time.
+//
+// The StartTime will only adjust earlier, so that the PipelineRun's StartTime
+// is no later than any of its constituent TaskRuns.
+//
+// This drift could be due to us either failing to record the Run's start time
+// previously, or our own failure to observe a prior update before reconciling
+// the resource again.
+func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
+	adjustedStartTime := unadjustedStartTime
+	for _, rprt := range state {
+		if rprt.TaskRun == nil {
+			if rprt.Run != nil {
+				if rprt.Run.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &rprt.Run.CreationTimestamp
+				}
+			}
+		} else {
+			if rprt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+				adjustedStartTime = &rprt.TaskRun.CreationTimestamp
+			}
+		}
+	}
+	return adjustedStartTime.DeepCopy()
 }
 
 // GetTaskRunsStatus returns a map of taskrun name and the taskrun
@@ -77,6 +130,9 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunTaskRunStatus {
 	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	for _, rprt := range state {
+		if rprt.IsCustomTask() {
+			continue
+		}
 		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
@@ -124,21 +180,57 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 	return status
 }
 
+// GetRunsStatus returns a map of run name and the run.
+// Ignore a nil run in pipelineRunState, otherwise, capture run object from PipelineRun Status.
+// Update run status based on the pipelineRunState before returning it in the map.
+func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunRunStatus {
+	status := map[string]*v1beta1.PipelineRunRunStatus{}
+	for _, rprt := range state {
+		if !rprt.IsCustomTask() {
+			continue
+		}
+		if rprt.Run == nil && rprt.ResolvedConditionChecks == nil {
+			continue
+		}
+
+		var prrs *v1beta1.PipelineRunRunStatus
+		if rprt.Run != nil {
+			prrs = pr.Status.Runs[rprt.RunName]
+		}
+
+		if prrs == nil {
+			prrs = &v1beta1.PipelineRunRunStatus{
+				PipelineTaskName: rprt.PipelineTask.Name,
+				WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+			}
+		}
+
+		if rprt.Run != nil {
+			prrs.Status = &rprt.Run.Status
+		}
+
+		// TODO(#3133): Include any condition check statuses here too.
+		status[rprt.RunName] = prrs
+	}
+	return status
+}
+
 // getNextTasks returns a list of tasks which should be executed next i.e.
 // a list of tasks from candidateTasks which aren't yet indicated in state to be running and
 // a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
 func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
 	tasks := []*ResolvedPipelineRunTask{}
 	for _, t := range state {
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
-			tasks = append(tasks, t)
-		}
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
-			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-			if status != nil && status.IsFalse() {
-				if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
-					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
-						tasks = append(tasks, t)
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
+			if t.TaskRun == nil && t.Run == nil {
+				tasks = append(tasks, t)
+			} else if t.TaskRun != nil { // only TaskRun currently supports retry
+				status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+				if status != nil && status.IsFalse() {
+					if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
+						if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
+							tasks = append(tasks, t)
+						}
 					}
 				}
 			}
@@ -283,8 +375,66 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 			}
 			skipped = append(skipped, skippedTask)
 		}
+		if rprt.IsFinallySkipped(facts) {
+			skippedTask := v1beta1.SkippedTask{
+				Name: rprt.PipelineTask.Name,
+			}
+			// include the when expressions only when the finally task was skipped because
+			// its when expressions evaluated to false (not because results variables were missing)
+			if !rprt.PipelineTask.WhenExpressions.HaveVariables() {
+				skippedTask.WhenExpressions = rprt.PipelineTask.WhenExpressions
+			}
+			skipped = append(skipped, skippedTask)
+		}
 	}
 	return skipped
+}
+
+// GetPipelineTaskStatus returns the status of a PipelineTask depending on its taskRun
+// the checks are implemented such that the finally tasks are requesting status of the dag tasks
+func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
+	// construct a map of tasks.<pipelineTask>.status and its state
+	tStatus := make(map[string]string)
+	for _, t := range facts.State {
+		if facts.isDAGTask(t.PipelineTask.Name) {
+			var s string
+			switch {
+			// execution status is Succeeded when a task has succeeded condition with status set to true
+			case t.IsSuccessful():
+				s = v1beta1.TaskRunReasonSuccessful.String()
+			// execution status is Failed when a task has succeeded condition with status set to false
+			case t.IsConditionStatusFalse():
+				s = v1beta1.TaskRunReasonFailed.String()
+			default:
+				// None includes skipped as well
+				s = PipelineTaskStateNone
+			}
+			tStatus[PipelineTaskStatusPrefix+t.PipelineTask.Name+PipelineTaskStatusSuffix] = s
+		}
+	}
+	// initialize aggregate status of all dag tasks to None
+	aggregateStatus := PipelineTaskStateNone
+	if facts.checkDAGTasksDone() {
+		// all dag tasks are done, change the aggregate status to succeeded
+		// will reset it to failed/skipped if needed
+		aggregateStatus = v1beta1.PipelineRunReasonSuccessful.String()
+		for _, t := range facts.State {
+			if facts.isDAGTask(t.PipelineTask.Name) {
+				// if any of the dag task failed, change the aggregate status to failed and return
+				if t.IsConditionStatusFalse() {
+					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
+					break
+				}
+				// if any of the dag task skipped, change the aggregate status to completed
+				// but continue checking for any other failure
+				if t.Skip(facts) {
+					aggregateStatus = v1beta1.PipelineRunReasonCompleted.String()
+				}
+			}
+		}
+	}
+	tStatus[v1beta1.PipelineTasksAggregateStatus] = aggregateStatus
+	return tStatus
 }
 
 // successfulOrSkippedTasks returns a list of the names of all of the PipelineTasks in state
@@ -306,16 +456,7 @@ func (facts *PipelineRunFacts) successfulOrSkippedDAGTasks() []string {
 func (facts *PipelineRunFacts) checkTasksDone(d *dag.Graph) bool {
 	for _, t := range facts.State {
 		if isTaskInGraph(t.PipelineTask.Name, d) {
-			if t.TaskRun == nil {
-				// this task might have skipped if taskRun is nil
-				// continue and ignore if this task was skipped
-				// skipped task is considered part of done
-				if t.Skip(facts) {
-					continue
-				}
-				return false
-			}
-			if !t.IsDone() {
+			if !t.IsDone(facts) {
 				return false
 			}
 		}
@@ -347,14 +488,17 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 		// increment success counter since the task is successful
 		case t.IsSuccessful():
 			s.Succeeded++
-		// increment failure counter since the task has failed
-		case t.IsFailure():
-			s.Failed++
 		// increment cancelled counter since the task is cancelled
 		case t.IsCancelled():
 			s.Cancelled++
+		// increment failure counter since the task has failed
+		case t.IsFailure():
+			s.Failed++
 		// increment skip counter since the task is skipped
 		case t.Skip(facts):
+			s.Skipped++
+		// checking if any finally tasks were referring to invalid/missing task results
+		case t.IsFinallySkipped(facts):
 			s.Skipped++
 		// increment incomplete counter since the task is pending and not executed yet
 		default:

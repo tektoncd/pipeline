@@ -27,29 +27,35 @@ data:
   # The default behaviour is for Tekton to create Affinity Assistants
   #
   # See more in the workspace documentation about Affinity Assistant
-  # https://github.com/tektoncd/pipeline/blob/master/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline
+  # https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline
   # or https://github.com/tektoncd/pipeline/pull/2630 for more info.
   disable-affinity-assistant: "false"
-  # Setting this flag to "true" will prevent Tekton overriding your
+  # Setting this flag to "false" will allow Tekton to override your
   # Task container's $HOME environment variable.
-  #
-  # The default behaviour currently is for Tekton to override the
-  # $HOME environment variable but this will change in an upcoming
-  # release.
   #
   # See https://github.com/tektoncd/pipeline/issues/2013 for more
   # info.
-  disable-home-env-overwrite: "false"
-  # Setting this flag to "true" will prevent Tekton overriding your
+  disable-home-env-overwrite: "true"
+  # Setting this flag to "false" will allow Tekton to override your
   # Task container's working directory.
-  #
-  # The default behaviour currently is for Tekton to override the
-  # working directory if not set by the user but this will change
-  # in an upcoming release.
   #
   # See https://github.com/tektoncd/pipeline/issues/1836 for more
   # info.
-  disable-working-directory-overwrite: "false"
+  disable-working-directory-overwrite: "true"
+  # Setting this flag to "true" will prevent Tekton scanning attached
+  # service accounts and injecting any credentials it finds into your
+  # Steps.
+  #
+  # The default behaviour currently is for Tekton to search service
+  # accounts for secrets matching a specified format and automatically
+  # mount those into your Steps.
+  #
+  # Note: setting this to "true" will prevent PipelineResources from
+  # working.
+  #
+  # See https://github.com/tektoncd/pipeline/issues/2791 for more
+  # info.
+  disable-creds-init: "false"
   # This option should be set to false when Pipelines is running in a
   # cluster that does not use injected sidecars such as Istio. Setting
   # it to false should decrease the time it takes for a TaskRun to start
@@ -64,3 +70,15 @@ data:
   # See https://github.com/tektoncd/pipeline/issues/2981 for more
   # info.
   require-git-ssh-secret-known-hosts: "false"
+  # Setting this flag to "true" enables the use of Tekton OCI bundle.
+  # This is an experimental feature and thus should still be considered
+  # an alpha feature.
+  enable-tekton-oci-bundles: "false"
+  # Setting this flag to "true" enables the use of custom tasks from
+  # within pipelines.
+  # This is an experimental feature and thus should still be considered
+  # an alpha feature.
+  enable-custom-tasks: "false"
+  # Setting this flag will determine which gated features are enabled.
+  # Acceptable values are "stable" or "alpha".
+  enable-api-fields: "stable"

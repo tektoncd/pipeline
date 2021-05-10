@@ -48,12 +48,25 @@ func (we *WhenExpression) validateWhenExpressionFields() *apis.FieldError {
 	if equality.Semantic.DeepEqual(we, &WhenExpression{}) || we == nil {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
-	if !sets.NewString(validWhenOperators...).Has(string(we.Operator)) {
-		message := fmt.Sprintf("operator %q is not recognized. valid operators: %s", we.Operator, strings.Join(validWhenOperators, ","))
+	if !sets.NewString(validWhenOperators...).Has(string(we.GetOperator())) {
+		message := fmt.Sprintf("operator %q is not recognized. valid operators: %s", we.GetOperator(), strings.Join(validWhenOperators, ","))
 		return apis.ErrInvalidValue(message, apis.CurrentField)
 	}
-	if len(we.Values) == 0 {
+	if len(we.GetValues()) == 0 {
 		return apis.ErrInvalidValue("expecting non-empty values field", apis.CurrentField)
+	}
+	return we.validateWhenExpressionsDuplicateFields()
+}
+
+func (we *WhenExpression) validateWhenExpressionsDuplicateFields() *apis.FieldError {
+	if we.Input != "" && we.DeprecatedInput != "" {
+		return apis.ErrMultipleOneOf("input", "Input")
+	}
+	if we.Operator != "" && we.DeprecatedOperator != "" {
+		return apis.ErrMultipleOneOf("operator", "Operator")
+	}
+	if we.Values != nil && we.DeprecatedValues != nil {
+		return apis.ErrMultipleOneOf("values", "Values")
 	}
 	return nil
 }
@@ -77,8 +90,8 @@ func (wes WhenExpressions) validateTaskResultsVariables() *apis.FieldError {
 
 func (wes WhenExpressions) validatePipelineParametersVariables(prefix string, paramNames sets.String, arrayParamNames sets.String) (errs *apis.FieldError) {
 	for idx, we := range wes {
-		errs = errs.Also(validateStringVariable(we.Input, prefix, paramNames, arrayParamNames).ViaField("input").ViaFieldIndex("when", idx))
-		for _, val := range we.Values {
+		errs = errs.Also(validateStringVariable(we.GetInput(), prefix, paramNames, arrayParamNames).ViaField("input").ViaFieldIndex("when", idx))
+		for _, val := range we.GetValues() {
 			errs = errs.Also(validateStringVariable(val, prefix, paramNames, arrayParamNames).ViaField("values").ViaFieldIndex("when", idx))
 		}
 	}

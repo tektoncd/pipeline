@@ -31,24 +31,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestPipelineRunTimeout is an integration test that will
 // verify that pipelinerun timeout works and leads to the the correct TaskRun statuses
 // and pod deletions.
 func TestPipelineRunTimeout(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+	// cancel the context after we have waited a suitable buffer beyond the given deadline.
+	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "banana", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Image:   "busybox",
@@ -58,20 +59,20 @@ func TestPipelineRunTimeout(t *testing.T) {
 		},
 	}
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
 
 	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
+				TaskRef: &v1beta1.TaskRef{Name: task.Name},
 			}},
 		},
 	}
 	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
 			Timeout:     &metav1.Duration{Duration: 5 * time.Second},
@@ -106,8 +107,8 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	for i := 1; i <= len(taskrunList.Items); i++ {
-		if <-errChan != nil {
-			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+		if err := <-errChan; err != nil {
+			t.Errorf("Error waiting for TaskRun %s to be running: %v", taskrunList.Items[i-1].Name, err)
 		}
 	}
 
@@ -141,18 +142,18 @@ func TestPipelineRunTimeout(t *testing.T) {
 	// Verify that we can create a second Pipeline using the same Task without a Pipeline-level timeout that will not
 	// time out
 	secondPipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "peppers", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "foo",
-				TaskRef: &v1beta1.TaskRef{Name: "banana"},
+				TaskRef: &v1beta1.TaskRef{Name: task.Name},
 			}},
 		},
 	}
 	secondPipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "kiwi", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "peppers"},
+			PipelineRef: &v1beta1.PipelineRef{Name: secondPipeline.Name},
 		},
 	}
 	if _, err := c.PipelineClient.Create(ctx, secondPipeline, metav1.CreateOptions{}); err != nil {
@@ -170,22 +171,18 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 // TestStepTimeout is an integration test that will verify a Step can be timed out.
 func TestStepTimeout(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
 
 	t.Logf("Creating Task with Step step-no-timeout, Step step-timeout, and Step step-canceled in namespace %s", namespace)
 
-	taskrunName := "run-timeout"
-
-	t.Logf("Creating TaskRun %s in namespace %s", taskrunName, namespace)
 	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskrunName, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
@@ -208,23 +205,23 @@ func TestStepTimeout(t *testing.T) {
 						Image: "busybox",
 					},
 					Script: "sleep 1",
-				},
-				},
+				}},
 			},
 		},
 	}
+	t.Logf("Creating TaskRun %s in namespace %s", taskRun.Name, namespace)
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", taskrunName, err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", taskRun.Name, err)
 	}
 
 	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
 	t.Logf("Waiting for %s in namespace %s to time out", "step-timeout", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskrunName, FailedWithMessage(failMsg, "run-timeout"), "StepTimeout"); err != nil {
-		t.Logf("Error in taskRun %s status: %s\n", taskrunName, err)
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout"); err != nil {
+		t.Logf("Error in taskRun %s status: %s\n", taskRun.Name, err)
 		t.Errorf("Expected: %s", failMsg)
 	}
 
-	tr, err := c.TaskRunClient.Get(ctx, taskrunName, metav1.GetOptions{})
+	tr, err := c.TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error getting Taskrun: %v", err)
 	}
@@ -243,18 +240,18 @@ func TestStepTimeout(t *testing.T) {
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+	timeout := 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "giraffe", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Image:   "busybox",
@@ -264,24 +261,24 @@ func TestTaskRunTimeout(t *testing.T) {
 		},
 	}
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
 	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "run-giraffe", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: "giraffe"},
+			TaskRef: &v1beta1.TaskRef{Name: task.Name},
 			// Do not reduce this timeout. Taskrun e2e test is also verifying
 			// if reconcile is triggered from timeout handler and not by pod informers
-			Timeout: &metav1.Duration{Duration: 30 * time.Second},
+			Timeout: &metav1.Duration{Duration: timeout},
 		},
 	}
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", taskRun.Name, err)
 	}
 
-	t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRun.Name, namespace)
 	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithReason(v1beta1.TaskRunReasonTimedOut.String(), taskRun.Name), v1beta1.TaskRunReasonTimedOut.String()); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRun.Name, err)
 	}
 
 	tr, err := c.TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
@@ -300,18 +297,17 @@ func TestTaskRunTimeout(t *testing.T) {
 }
 
 func TestPipelineTaskTimeout(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
 
 	t.Logf("Creating Tasks in namespace %s", namespace)
 	task1 := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "success", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Image:   "busybox",
@@ -321,7 +317,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 		},
 	}
 	task2 := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "timeout", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Image:   "busybox",
@@ -339,7 +335,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 	}
 
 	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinetasktimeout", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
 				Name:    "pipelinetask1",
@@ -353,7 +349,7 @@ func TestPipelineTaskTimeout(t *testing.T) {
 		},
 	}
 	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "prtasktimeout", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
 		},

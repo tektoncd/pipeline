@@ -106,13 +106,13 @@ func (s *Status) GetCondition(t apis.ConditionType) *apis.Condition {
 }
 
 // ConvertTo helps implement apis.Convertible for types embedding this Status.
-func (source *Status) ConvertTo(ctx context.Context, sink *Status) {
-	sink.ObservedGeneration = source.ObservedGeneration
-	if source.Annotations != nil {
+func (s *Status) ConvertTo(ctx context.Context, sink *Status) {
+	sink.ObservedGeneration = s.ObservedGeneration
+	if s.Annotations != nil {
 		// This will deep copy the map.
-		sink.Annotations = kmeta.UnionMaps(source.Annotations)
+		sink.Annotations = kmeta.UnionMaps(s.Annotations)
 	}
-	for _, c := range source.Conditions {
+	for _, c := range s.Conditions {
 		switch c.Type {
 		// Copy over the "happy" condition, which is the only condition that
 		// we can reliably transfer.

@@ -53,10 +53,6 @@ const (
 
 	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
 	PipelineResourceTypeGCS PipelineResourceType = "gcs"
-
-	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
-	// with additional functionality that was added to be compatible with knative build.
-	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.

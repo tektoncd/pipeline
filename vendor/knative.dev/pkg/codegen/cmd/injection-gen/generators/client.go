@@ -60,13 +60,17 @@ func (g *clientGenerator) Imports(c *generator.Context) (imports []string) {
 func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
 		"clientSetNewForConfigOrDie": c.Universe.Function(types.Name{Package: g.clientSetPackage, Name: "NewForConfigOrDie"}),
 		"clientSetInterface":         c.Universe.Type(types.Name{Package: g.clientSetPackage, Name: "Interface"}),
 		"injectionRegisterClient":    c.Universe.Function(types.Name{Package: "knative.dev/pkg/injection", Name: "Default.RegisterClient"}),
-		"restConfig":                 c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
+		"injectionRegisterClientFetcher": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/injection",
+			Name:    "Default.RegisterClientFetcher",
+		}),
+		"restConfig": c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Config"}),
 		"loggingFromContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
@@ -85,6 +89,9 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 var injectionClient = `
 func init() {
 	{{.injectionRegisterClient|raw}}(withClient)
+	{{.injectionRegisterClientFetcher|raw}}(func(ctx context.Context) interface{} {
+		return Get(ctx)
+	})
 }
 
 // Key is used as the key for associating information with a context.Context.
@@ -98,8 +105,13 @@ func withClient(ctx {{.contextContext|raw}}, cfg *{{.restConfig|raw}}) context.C
 func Get(ctx {{.contextContext|raw}}) {{.clientSetInterface|raw}} {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		{{.loggingFromContext|raw}}(ctx).Panic(
-			"Unable to fetch {{.clientSetInterface}} from context.")
+		if injection.GetConfig(ctx) == nil {
+		    {{.loggingFromContext|raw}}(ctx).Panic(
+		    	    "Unable to fetch {{.clientSetInterface}} from context. This context is not the application context (which is typically given to constructors via sharedmain).")
+		} else {
+		    {{.loggingFromContext|raw}}(ctx).Panic(
+		    	    "Unable to fetch {{.clientSetInterface}} from context.")
+		}
 	}
 	return untyped.({{.clientSetInterface|raw}})
 }

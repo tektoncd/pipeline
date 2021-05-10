@@ -12,29 +12,31 @@ To set up your environment and begin working on our code, see [Developing for Te
 
 [The `community` repo](https://github.com/tektoncd/community) contains information on the following:
 
-- [Development standards](https://github.com/tektoncd/community/blob/master/standards.md), including:
-  - [Writing high quality code](https://github.com/tektoncd/community/blob/master/standards.md#coding-standards)
-  - [Adopting good development principles](https://github.com/tektoncd/community/blob/master/standards.md#principles)
-  - [Writing useful commit messages](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
-- [Contacting other contributors](https://github.com/tektoncd/community/blob/master/contact.md)
-- [Tekton development processes](https://github.com/tektoncd/community/blob/master/process.md), including:
-  - [Finding things to work on](https://github.com/tektoncd/community/blob/master/process.md#finding-something-to-work-on)
-  - [Proposing new features](https://github.com/tektoncd/community/blob/master/process.md#proposing-features)
-  - [Performing code reviews](https://github.com/tektoncd/community/blob/master/process.md#reviews)
-  - [Becoming a code owner](https://github.com/tektoncd/community/blob/master/process.md#owners)
+- [Development standards](https://github.com/tektoncd/community/blob/main/standards.md), including:
+  - [Writing high quality code](https://github.com/tektoncd/community/blob/main/standards.md#coding-standards)
+  - [Adopting good development principles](https://github.com/tektoncd/community/blob/main/standards.md#principles)
+  - [Writing useful commit messages](https://github.com/tektoncd/community/blob/main/standards.md#commit-messages)
+- [Contacting other contributors](https://github.com/tektoncd/community/blob/main/contact.md)
+- [Tekton development processes](https://github.com/tektoncd/community/blob/main/process.md), including:
+  - [Finding things to work on](https://github.com/tektoncd/community/blob/main/process.md#finding-something-to-work-on)
+  - [Proposing new features](https://github.com/tektoncd/community/blob/main/process.md#proposing-features)
+  - [Performing code reviews](https://github.com/tektoncd/community/blob/main/process.md#reviews)
+  - [Becoming a code owner](https://github.com/tektoncd/community/blob/main/process.md#owners)
 - [Making changes to the Tekton API](api_compatibility_policy.md#approving-api-changes)
 - [Understanding the Tekton automation infrastructure](https://github.com/tektoncd/plumbing)
 
 Additionally, please read the following resources specific to Tekton Pipelines:
 
 - [Tekton Pipelines GitHub project](https://github.com/orgs/tektoncd/projects/3)
-- [Tekton Pipelines roadmap](roadmap-2019.md)
+- [Tekton Pipelines roadmap](roadmap.md)
 - [Tekton Pipelines API compatibility policy](api_compatibility_policy.md)
+
+For support in contributing to specific areas, contact the relevant [Tekton Pipelines Topical Owner(s)](topical-ownership.md). 
 
 ## Contributing to Tekton documentation
 
 If you want to contribute to Tekton documentation, see the
-[Tekton Documentation Contributor's Guide](https://github.com/tektoncd/website/blob/master/content/en/doc-con-main.md).
+[Tekton Documentation Contributor's Guide](https://github.com/tektoncd/website/blob/main/content/en/doc-con-main.md).
 
 This guide describes:
 - The contribution process for documentation

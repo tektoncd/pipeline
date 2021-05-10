@@ -24,7 +24,7 @@ import (
 // Event leverages go's 1.13 error wrapping.
 type Event error
 
-// Is reports whether any error in err's chain matches target.
+// EventIs reports whether any error in err's chain matches target.
 //
 // The chain consists of err itself followed by the sequence of errors obtained by
 // repeatedly calling Unwrap.
@@ -34,7 +34,7 @@ type Event error
 // (text from errors/wrap.go)
 var EventIs = errors.Is
 
-// As finds the first error in err's chain that matches target, and if so, sets
+// EventAs finds the first error in err's chain that matches target, and if so, sets
 // target to that error value and returns true.
 //
 // The chain consists of err itself followed by the sequence of errors obtained by
@@ -62,7 +62,7 @@ func NewEvent(eventtype, reason, messageFmt string, args ...interface{}) Event {
 
 // ReconcilerEvent wraps the fields required for recorders to create a
 // kubernetes recorder Event.
-type ReconcilerEvent struct {
+type ReconcilerEvent struct { //nolint:golint // for backcompat.
 	EventType string
 	Reason    string
 	Format    string
@@ -75,7 +75,8 @@ var _ error = (*ReconcilerEvent)(nil)
 // Is returns if the target error is a ReconcilerEvent type checking that
 // EventType and Reason match.
 func (e *ReconcilerEvent) Is(target error) bool {
-	if t, ok := target.(*ReconcilerEvent); ok {
+	var t *ReconcilerEvent
+	if errors.As(target, &t) {
 		if t != nil && t.EventType == e.EventType && t.Reason == e.Reason {
 			return true
 		}

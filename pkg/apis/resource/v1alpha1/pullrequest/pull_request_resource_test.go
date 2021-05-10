@@ -87,7 +87,7 @@ func containerTestCases(mode string) []testcase {
 			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
-			Env:        []corev1.EnvVar{},
+			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
 		}}},
 	}, {
 		in: &pullrequest.Resource{
@@ -108,17 +108,19 @@ func containerTestCases(mode string) []testcase {
 			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode, "-provider", "github"},
-			Env: []corev1.EnvVar{{
-				Name: "AUTH_TOKEN",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "github-creds",
+			Env: []corev1.EnvVar{
+				{Name: "TEKTON_RESOURCE_NAME", Value: "creds"},
+				{
+					Name: "AUTH_TOKEN",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "github-creds",
+							},
+							Key: "token",
 						},
-						Key: "token",
 					},
-				},
-			}},
+				}},
 		}}},
 	}, {
 		in: &pullrequest.Resource{
@@ -133,7 +135,7 @@ func containerTestCases(mode string) []testcase {
 			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-insecure-skip-tls-verify=true"},
-			Env:        []corev1.EnvVar{},
+			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
 		}}},
 	}, {
 		in: &pullrequest.Resource{
@@ -148,7 +150,7 @@ func containerTestCases(mode string) []testcase {
 			WorkingDir: pipeline.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-disable-strict-json-comments=true"},
-			Env:        []corev1.EnvVar{},
+			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "strict-json-comments"}},
 		}}},
 	}}
 }

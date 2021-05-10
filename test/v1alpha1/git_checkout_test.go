@@ -46,9 +46,9 @@ func TestGitPipelineRun(t *testing.T) {
 		refspec   string
 		sslVerify string
 	}{{
-		name:     "tekton @ master",
+		name:     "tekton @ main",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
+		revision: "main",
 	}, {
 		name:     "tekton @ commit",
 		repo:     "https://github.com/tektoncd/pipeline",
@@ -66,24 +66,24 @@ func TestGitPipelineRun(t *testing.T) {
 		repo:     "https://github.com/tektoncd/pipeline",
 		revision: "refs/pull/347/head",
 	}, {
-		name:     "tekton @ master with refspec",
+		name:     "tekton @ main with refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
-		refspec:  "refs/tags/v0.1.0:refs/tags/v0.1.0 refs/heads/master:refs/heads/master",
+		revision: "main",
+		refspec:  "refs/tags/v0.1.0:refs/tags/v0.1.0 refs/heads/main:refs/heads/main",
 	}, {
 		name:     "tekton @ commit with PR refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
 		revision: "968d5d37a61bfb85426c885dc1090c1cc4b33436",
 		refspec:  "refs/pull/1009/head",
 	}, {
-		name:     "tekton @ master with PR refspec",
+		name:     "tekton @ main with PR refspec",
 		repo:     "https://github.com/tektoncd/pipeline",
-		revision: "master",
-		refspec:  "refs/pull/1009/head:refs/heads/master",
+		revision: "main",
+		refspec:  "refs/pull/1009/head:refs/heads/main",
 	}, {
-		name:      "tekton @ master with sslverify=false",
+		name:      "tekton @ main with sslverify=false",
 		repo:      "https://github.com/tektoncd/pipeline",
-		revision:  "master",
+		revision:  "main",
 		sslVerify: "false",
 	}, {
 		name:     "non-master repo with default revision",
@@ -94,6 +94,7 @@ func TestGitPipelineRun(t *testing.T) {
 		repo:     "https://github.com/spring-projects/spring-petclinic",
 		revision: "main",
 	}} {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -180,6 +181,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 		name:       "invalid httpsproxy",
 		httpsproxy: "invalid.https.proxy.example.com",
 	}} {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
@@ -249,7 +251,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 				}
 				for _, tr := range taskruns.Items {
 					if tr.Status.PodName != "" {
-						p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+						p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 						if err != nil {
 							t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 						}
@@ -257,7 +259,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 						for _, stat := range p.Status.ContainerStatuses {
 							if strings.HasPrefix(stat.Name, "step-git-source-"+gitSourceResourceName) {
 								if stat.State.Terminated != nil {
-									req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
+									req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
 									logContent, err := req.Do(ctx).Raw()
 									if err != nil {
 										t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)

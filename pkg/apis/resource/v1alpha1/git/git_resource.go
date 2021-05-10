@@ -39,7 +39,7 @@ type Resource struct {
 	Type resource.PipelineResourceType `json:"type"`
 	URL  string                        `json:"url"`
 	// Git revision (branch, tag, commit SHA) to clone, and optionally the refspec to fetch from.
-	//See https://git-scm.com/docs/gitrevisions#_specifying_revisions for more information.
+	// See https://git-scm.com/docs/gitrevisions#_specifying_revisions for more information.
 	Revision   string `json:"revision"`
 	Refspec    string `json:"refspec"`
 	Submodules bool   `json:"submodules"`

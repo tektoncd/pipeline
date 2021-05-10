@@ -22,22 +22,19 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
   - apiGroups: [""]
-    # Namespace access is required because the controller timeout handling logic
-    # iterates over all namespaces and times out any PipelineRuns that have expired.
-    # Pod access is required because the taskrun controller wants to be updated when
-    # a Pod underlying a TaskRun changes state.
-    resources: ["namespaces", "pods"]
+    # Controller needs to watch Pods created by TaskRuns to see them progress.
+    resources: ["pods"]
     verbs: ["list", "watch"]
     # Controller needs cluster access to all of the CRDs that it is responsible for
     # managing.
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "conditions"]
+    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "conditions", "runs"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["taskruns/finalizers", "pipelineruns/finalizers"]
+    resources: ["taskruns/finalizers", "pipelineruns/finalizers", "runs/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "pipelineresources/status"]
+    resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "pipelineresources/status", "runs/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 ---
 kind: ClusterRole
@@ -50,16 +47,17 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
+  # Read-write access to create Pods, K8s Events and PVCs (for Workspaces)
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims", "limitranges"]
+    resources: ["pods", "pods/log", "events", "persistentvolumeclaims"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-    # Unclear if this access is actually required.  Simply a hold-over from the previous
-    # incarnation of the controller's ClusterRole.
+  # Read-only access to these.
+  - apiGroups: [""]
+    resources: ["configmaps", "limitranges", "secrets", "serviceaccounts"]
+    verbs: ["get", "list", "watch"]
+  # Read-write access to StatefulSets for Affinity Assistant.
   - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments/finalizers"]
+    resources: ["statefulsets"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 ---
 kind: ClusterRole
@@ -102,16 +100,3 @@ rules:
     resources: ["podsecuritypolicies"]
     resourceNames: ["tekton-pipelines"]
     verbs: ["use"]
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: tekton-pipelines-leader-election
-  labels:
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-rules:
-  # We uses leases for leaderelection
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

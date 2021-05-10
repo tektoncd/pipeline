@@ -7,6 +7,9 @@ weight: 15
 # Variable Substitutions Supported by `Tasks` and `Pipelines`
 
 This page documents the variable substitutions supported by `Tasks` and `Pipelines`.
+
+For instructions on using variable substitutions see the relevant section of [the Tasks doc](tasks.md#using-variable-substitution).
+
 **Note:** Tekton does not escape the contents of variables. Task authors are responsible for properly escaping a variable's value according to the shell, image or scripting language that the variable will be used in.
 
 ## Variables available in a `Pipeline`
@@ -20,7 +23,8 @@ This page documents the variable substitutions supported by `Tasks` and `Pipelin
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.uid` | The uid of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipeline.name` | The name of this `Pipeline` . |
-
+| `tasks.<pipelineTaskName>.status` | The execution status of the specified `pipelineTask`, only available in `finally` tasks. The execution status can be set to any one of the values (`Succeeded`, `Failed`, or `None`) described [here](pipelines.md#using-execution-status-of-pipelinetask)|
+| `tasks.status` | An aggregate status of all the `pipelineTasks` under the `tasks` section (excluding the `finally` section). This variable is only available in the `finally` tasks and can have any one of the values (`Succeeded`, `Failed`, `Completed`, or `None`) described [here](pipelines.md#using-aggregate-execution-status-of-all-tasks).  |
 
 ## Variables available in a `Task`
 
@@ -89,14 +93,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `type` | Type value of `"gcs"`. |
 | `location` | The fully qualified address of the blob storage. |
 
-#### Variables for the  `BuildGCS` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"build-gcs"`. |
-| `location` | The fully qualified address of the blob storage. |
-
 #### Variables for the `Cluster` type
 
 | Variable | Description |
@@ -127,6 +123,7 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | --- | ----- |
 | `Task` | `spec.steps[].name` |
 | `Task` | `spec.steps[].image` |
+| `Task` | `spec.steps[].imagePullPolicy` |
 | `Task` | `spec.steps[].env.value` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.name` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.key` |
@@ -150,6 +147,7 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.volumes[].csi.volumeattributes.* `|
 | `Task` | `spec.sidecars[].name` |
 | `Task` | `spec.sidecars[].image` |
+| `Task` | `spec.sidecars[].imagePullPolicy` |
 | `Task` | `spec.sidecars[].env.value` |
 | `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.name` |
 | `Task` | `spec.sidecars[].env.valuefrom.secretkeyref.key` |

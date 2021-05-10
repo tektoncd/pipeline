@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -35,20 +36,18 @@ func TestRun_Invalid(t *testing.T) {
 		want *apis.FieldError
 	}{{
 		name: "missing spec",
-		run:  &v1alpha1.Run{},
-		want: apis.ErrMissingField("spec"),
-	}, {
-		name: "invalid metadata",
 		run: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{Name: "run.name"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 		},
-		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
-			Paths:   []string{"metadata.name"},
-		},
+		want: apis.ErrMissingField("spec"),
 	}, {
 		name: "missing ref",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: nil,
 			},
@@ -57,6 +56,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "missing apiVersion",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "",
@@ -67,6 +69,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "missing kind",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -78,6 +83,9 @@ func TestRun_Invalid(t *testing.T) {
 	}, {
 		name: "non-unique params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -110,6 +118,9 @@ func TestRun_Valid(t *testing.T) {
 	}{{
 		name: "no params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -121,6 +132,9 @@ func TestRun_Valid(t *testing.T) {
 	}, {
 		name: "unnamed",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -131,6 +145,9 @@ func TestRun_Valid(t *testing.T) {
 	}, {
 		name: "unique params",
 		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
 			Spec: v1alpha1.RunSpec{
 				Ref: &v1alpha1.TaskRef{
 					APIVersion: "blah",
@@ -145,10 +162,86 @@ func TestRun_Valid(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid workspace",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: "blah",
+					Kind:       "blah",
+				},
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "workspace",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+			},
+		},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			if err := c.run.Validate(context.Background()); err != nil {
 				t.Fatalf("validating valid Run: %v", err)
+			}
+		})
+	}
+}
+
+func TestRun_Workspaces_Invalid(t *testing.T) {
+	tests := []struct {
+		name    string
+		run     *v1alpha1.Run
+		wantErr *apis.FieldError
+	}{{
+		name: "make sure WorkspaceBinding validation invoked",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: "blah",
+					Kind:       "blah",
+				},
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name: "workspace",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "",
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrMissingField("workspace.persistentvolumeclaim.claimname"),
+	}, {
+		name: "bind same workspace twice",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1alpha1.TaskRef{
+					APIVersion: "blah",
+					Kind:       "blah",
+				},
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "workspace",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}, {
+					Name:     "workspace",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("spec.workspaces.name"),
+	}}
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			err := ts.run.Validate(context.Background())
+			if err == nil {
+				t.Errorf("Expected error for invalid Run but got none")
+			} else if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
+				t.Errorf("Did not get expected error for %q: %s", ts.name, diff.PrintWantGot(d))
 			}
 		})
 	}

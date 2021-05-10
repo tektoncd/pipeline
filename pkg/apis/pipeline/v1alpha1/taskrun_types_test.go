@@ -31,18 +31,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestTaskRun_GetBuildPodRef(t *testing.T) {
-	tr := tb.TaskRun("taskrunname", tb.TaskRunNamespace("testns"))
-	if d := cmp.Diff(tr.GetBuildPodRef(), corev1.ObjectReference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  "testns",
-		Name:       "taskrunname",
-	}); d != "" {
-		t.Fatalf("taskrun build pod ref mismatch %s", diff.PrintWantGot(d))
-	}
-}
-
 func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 	tests := []struct {
 		name            string

@@ -18,23 +18,6 @@ package contexts
 
 import "context"
 
-// hdcnKey is used as the key for associating information
-// with a context.Context.
-type hdcnKey struct{}
-
-// WithDefaultConfigurationName notes on the context for nested validation
-// that there is a default configuration name, which affects how an empty
-// configurationName is validated.
-func WithDefaultConfigurationName(ctx context.Context) context.Context {
-	return context.WithValue(ctx, hdcnKey{}, struct{}{})
-}
-
-// HasDefaultConfigurationName checks to see whether the given context has
-// been marked as having a default configurationName.
-func HasDefaultConfigurationName(ctx context.Context) bool {
-	return ctx.Value(hdcnKey{}) != nil
-}
-
 // lemonadeKey is used as the key for associating information
 // with a context.Context. This variable doesn't really matter, so it's
 // a total random name (for history purpose, used lemonade as it was written

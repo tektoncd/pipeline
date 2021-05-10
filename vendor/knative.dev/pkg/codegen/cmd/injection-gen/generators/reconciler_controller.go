@@ -40,6 +40,7 @@ type reconcilerControllerGenerator struct {
 
 	reconcilerClass    string
 	hasReconcilerClass bool
+	hasStatus          bool
 }
 
 var _ generator.Generator = (*reconcilerControllerGenerator)(nil)
@@ -63,13 +64,14 @@ func (g *reconcilerControllerGenerator) Imports(c *generator.Context) (imports [
 func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *types.Type, w io.Writer) error {
 	sw := generator.NewSnippetWriter(w, c, "{{", "}}")
 
-	klog.V(5).Infof("processing type %v", t)
+	klog.V(5).Info("processing type ", t)
 
 	m := map[string]interface{}{
-		"type":     t,
-		"group":    g.groupName,
-		"class":    g.reconcilerClass,
-		"hasClass": g.hasReconcilerClass,
+		"type":      t,
+		"group":     g.groupName,
+		"class":     g.reconcilerClass,
+		"hasClass":  g.hasReconcilerClass,
+		"hasStatus": g.hasStatus,
 		"controllerImpl": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
 			Name:    "Impl",
@@ -170,6 +172,18 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "fmt",
 			Name:    "Sprintf",
 		}),
+		"logkeyControllerType": c.Universe.Constant(types.Name{
+			Package: "knative.dev/pkg/logging/logkey",
+			Name:    "ControllerType",
+		}),
+		"logkeyControllerKind": c.Universe.Constant(types.Name{
+			Package: "knative.dev/pkg/logging/logkey",
+			Name:    "Kind",
+		}),
+		"zapString": c.Universe.Function(types.Name{
+			Package: "go.uber.org/zap",
+			Name:    "String",
+		}),
 	}
 
 	sw.Do(reconcilerControllerNewImpl, m)
@@ -190,13 +204,13 @@ const (
 // NewImpl returns a {{.controllerImpl|raw}} that handles queuing and feeding work from
 // the queue through an implementation of {{.controllerReconciler|raw}}, delegating to
 // the provided Interface and optional Finalizer methods. OptionsFn is used to return
-// {{.controllerOptions|raw}} to be used but the internal reconciler.
+// {{.controllerOptions|raw}} to be used by the internal reconciler.
 func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValue string{{end}}, optionsFns ...{{.controllerOptionsFn|raw}}) *{{.controllerImpl|raw}} {
 	logger := {{.loggingFromContext|raw}}(ctx)
 
 	// Check the options function input. It should be 0 or 1.
 	if len(optionsFns) > 1 {
-		logger.Fatalf("up to one options function is supported, found %d", len(optionsFns))
+		logger.Fatal("Up to one options function is supported, found: ", len(optionsFns))
 	}
 
 	{{.type|lowercaseSingular}}Informer := {{.informerGet|raw}}(ctx)
@@ -227,10 +241,17 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		{{if .hasClass}}classValue: classValue,{{end}}
 	}
 
-	t := {{.reflectTypeOf|raw}}(r).Elem()
-	queueName := {{.fmtSprintf|raw}}("%s.%s", {{.stringsReplaceAll|raw}}(t.PkgPath(), "/", "-"), t.Name())
+	ctrType := {{.reflectTypeOf|raw}}(r).Elem()
+	ctrTypeName := {{.fmtSprintf|raw}}("%s.%s", ctrType.PkgPath(), ctrType.Name())
+	ctrTypeName = {{.stringsReplaceAll|raw}}(ctrTypeName, "/", ".")
 
-	impl := {{.controllerNewImpl|raw}}(rec, logger, queueName)
+	logger = logger.With(
+			{{.zapString|raw}}({{.logkeyControllerType|raw}}, ctrTypeName),
+			{{.zapString|raw}}({{.logkeyControllerKind|raw}}, "{{ printf "%s.%s" .group .type.Name.Name }}"),
+	)
+
+
+	impl := {{.controllerNewImpl|raw}}(rec, logger, ctrTypeName)
 	agentName := defaultControllerAgentName
 
 	// Pass impl to the options. Save any optional results.
@@ -245,8 +266,13 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		if opts.AgentName != "" {
 			agentName = opts.AgentName
 		}
+		{{- if .hasStatus}}
 		if opts.SkipStatusUpdates {
 			rec.skipStatusUpdates = true
+		}
+		{{- end}}
+		if opts.DemoteFunc != nil {
+			rec.DemoteFunc = opts.DemoteFunc
 		}
 	}
 

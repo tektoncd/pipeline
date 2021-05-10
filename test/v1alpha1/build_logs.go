@@ -30,7 +30,7 @@ import (
 
 // CollectPodLogs will get the logs for all containers in a Pod
 func CollectPodLogs(ctx context.Context, c *clients, podName, namespace string, logf logging.FormatLogger) {
-	logs, err := getContainersLogsFromPod(ctx, c.KubeClient.Kube, podName, namespace)
+	logs, err := getContainersLogsFromPod(ctx, c.KubeClient, podName, namespace)
 	if err != nil {
 		logf("Could not get logs for pod %s: %s", podName, err)
 	}
@@ -57,7 +57,10 @@ func getContainersLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, 
 
 func getContainerLogsFromPod(ctx context.Context, c kubernetes.Interface, pod, container, namespace string) (string, error) {
 	sb := strings.Builder{}
-	req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: true, Container: container})
+	// Do not follow, which will block until the Pod terminates, and potentially deadlock the test.
+	// If done in the wrong order, this could actually block things and prevent the Pod from being
+	// deleted at all.
+	req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: false, Container: container})
 	rc, err := req.Stream(ctx)
 	if err != nil {
 		return "", err

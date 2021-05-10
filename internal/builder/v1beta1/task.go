@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -93,12 +94,10 @@ func Task(name string, ops ...TaskOp) *v1beta1.Task {
 }
 
 // TaskType sets the TypeMeta on the Task which is useful for making it serializable/deserializable.
-func TaskType() TaskOp {
-	return func(t *v1beta1.Task) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task",
-		}
+func TaskType(t *v1beta1.Task) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1beta1",
+		Kind:       "Task",
 	}
 }
 
@@ -126,12 +125,10 @@ func TaskNamespace(namespace string) TaskOp {
 }
 
 // ClusterTaskType sets the TypeMeta on the ClusterTask which is useful for making it serializable/deserializable.
-func ClusterTaskType() ClusterTaskOp {
-	return func(t *v1beta1.ClusterTask) {
-		t.TypeMeta = metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "ClusterTask",
-		}
+func ClusterTaskType(t *v1beta1.ClusterTask) {
+	t.TypeMeta = metav1.TypeMeta{
+		APIVersion: "tekton.dev/v1beta1",
+		Kind:       "ClusterTask",
 	}
 }
 
@@ -455,7 +452,7 @@ func TaskRunNilTimeout(spec *v1beta1.TaskRunSpec) {
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1beta1.TaskRunSpec) {
 		if spec.PodTemplate == nil {
-			spec.PodTemplate = &v1beta1.PodTemplate{}
+			spec.PodTemplate = &pod.Template{}
 		}
 		spec.PodTemplate.NodeSelector = values
 	}
@@ -616,6 +613,13 @@ func TaskRefAPIVersion(version string) TaskRefOp {
 	}
 }
 
+// TaskRefBundle sets the specified ref to the TaskRef's bundle.
+func TaskRefBundle(url string) TaskRefOp {
+	return func(ref *v1beta1.TaskRef) {
+		ref.Bundle = url
+	}
+}
+
 // TaskRunTaskSpec sets the specified TaskRunSpec reference to the TaskRunSpec.
 // Any number of TaskRunSpec modifier can be passed to transform it.
 func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
@@ -717,7 +721,7 @@ func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
 }
 
 // TaskRunPodTemplate add a custom PodTemplate to the TaskRun
-func TaskRunPodTemplate(podTemplate *v1beta1.PodTemplate) TaskRunSpecOp {
+func TaskRunPodTemplate(podTemplate *pod.Template) TaskRunSpecOp {
 	return func(spec *v1beta1.TaskRunSpec) {
 		spec.PodTemplate = podTemplate
 	}

@@ -29,16 +29,6 @@ func TestContexts(t *testing.T) {
 		check func(context.Context) bool
 		want  bool
 	}{{
-		name:  "has default config name",
-		ctx:   WithDefaultConfigurationName(ctx),
-		check: HasDefaultConfigurationName,
-		want:  true,
-	}, {
-		name:  "doesn't have default config name",
-		ctx:   ctx,
-		check: HasDefaultConfigurationName,
-		want:  false,
-	}, {
 		name:  "are upgrading via defaulting",
 		ctx:   WithUpgradeViaDefaulting(ctx),
 		check: IsUpgradeViaDefaulting,

@@ -11,11 +11,9 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:          "set",
 		NopImage:                 "set",
 		GitImage:                 "set",
-		CredsImage:               "set",
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "set",
 		GsutilImage:              "set",
-		BuildGCSFetcherImage:     "set",
 		PRImage:                  "set",
 		ImageDigestExporterImage: "set",
 	}
@@ -27,15 +25,13 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:          "set",
 		NopImage:                 "set",
 		GitImage:                 "", // unset!
-		CredsImage:               "set",
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "", // unset!
 		GsutilImage:              "set",
-		BuildGCSFetcherImage:     "", // unset!
 		PRImage:                  "", // unset!
 		ImageDigestExporterImage: "set",
 	}
-	wantErr := "found unset image flags: [build-gcs-fetcher git pr shell]"
+	wantErr := "found unset image flags: [git pr shell]"
 	if err := invalid.Validate(); err == nil {
 		t.Error("invalid Images expected error, got nil")
 	} else if err.Error() != wantErr {

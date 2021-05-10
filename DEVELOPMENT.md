@@ -36,12 +36,12 @@ of the technology this project is built on. This project extends Kubernetes (aka
 
 At this point, you may find it useful to return to these `Tekton Pipeline` docs:
 
--   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) -
+-   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/main/docs/README.md) -
     Some of the terms here may make more sense!
 -   Install via
-    [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+    [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
--   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) -
+-   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
     Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
     they are run
     
@@ -86,6 +86,47 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 
 ```shell
 gcloud auth configure-docker
+```
+
+Besides, if your registry `KO_DOCKER_REPO` is private, then you also should create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets) 
+and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` serviceAccounts accordingly to pull images.
+
+- Create a secret
+```yaml
+kubectl create secret docker-registry ${SECRET_NAME} \
+  --docker-username=${USERNAME} \
+  --docker-password=${PASSWORD} \
+  --docker-email=me@here.com \
+  --namespace=tekton-pipelines
+```
+
+- Add it to serviceAccount
+
+Because you will install tekton-pipelines use `ko` later, before that, you need to change [the contents of serviceAccount](./config/200-serviceaccount.yaml) to below:
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+imagePullSecrets:
+  - name: ${SECRET_NAME}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+imagePullSecrets:
+  - name: ${SECRET_NAME}
 ```
 
 After setting `GOPATH` and putting `$GOPATH/bin` on your `PATH`, you must then install these tools:
@@ -153,7 +194,7 @@ _Adding the `upstream` remote sets you up nicely for regularly
 
 The recommended configuration is:
 
--   Kubernetes version 1.16 or later
+-   Kubernetes version 1.17 or later
 -   4 vCPU nodes (`n1-standard-4`)
 -   Node autoscaling, up to 3 nodes
 -   API scopes for cloud-platform
@@ -161,35 +202,11 @@ The recommended configuration is:
 
 ### To setup a cluster using MiniKube:
 
-- Follow instructions for your platform to [Install Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) and start a session as follows:
-
-```bash
-minikube start eval $(minikube docker-env)
-```
+- Follow the instructions for [running locally with Minikube](docs/developers/local-setup.md#using-minikube)
 
 ### To setup a cluster with Docker Desktop:
 
-Docker Desktop versions come integrated with an edge version of Kubernetes that has been proven to work for both developing and running Pipelines.  To find out what Kubernetes a specific version of Docker Desktop includes, please refer to the release notes for your platform here: https://docs.docker.com/.
-
-To enable the Kubernetes that comes with Docker Desktop:
-
-1.  From the Docker Desktop dropdown menu, open the `preferences...` interface.
-
-1. Under the `Resources` tab ensure that in the `ADVANCED` menuitem you have at allocated at least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap.
-
-1.  Under the `Kubernetes` tab, check the   `Enable Kubernetes` box.
-
-    * *Note: the Kubernetes version Docker Desktop will use is displayed at the top of the window.*
-
-1.  Click the `Apply and Restart` button to save the preferences.
-
-1.  Switch the proper `kubectl` config context:
-
-    ```bash
-    kubectl config get-contexts # You should see docker-for-desktop in the previous command output
-    kubectl config use-context docker-for-desktop
-    ```
-    * *Note: Docker Desktop menu provides a `Kubernetes` menuitem that allows you to select between contexts which is equivalent to the `kubectl` command.*
+- Follow the instructions for [running locally with Docker Desktop](docs/developers/local-setup.md#using-docker-desktop)
 
 ### To setup a cluster with GKE:
 
@@ -198,7 +215,7 @@ To enable the Kubernetes that comes with Docker Desktop:
     variable (e.g. `PROJECT_ID`).
 
 1.  Create a GKE cluster (with `--cluster-version=latest` but you can use any
-    version 1.16 or later):
+    version 1.17 or later):
 
     ```bash
     export PROJECT_ID=my-gcp-project
@@ -216,7 +233,7 @@ To enable the Kubernetes that comes with Docker Desktop:
      --machine-type=n1-standard-4 \
      --image-type=cos \
      --num-nodes=1 \
-     --cluster-version=1.16
+     --cluster-version=1.17
     ```
 
     Note that
@@ -241,13 +258,14 @@ While iterating on the project, you may need to:
 1.  Verify it's working by [looking at the logs](#accessing-logs)
 1.  Update your (external) dependencies with: `./hack/update-deps.sh`.
 1.  Update your type definitions with: `./hack/update-codegen.sh`.
+1.  Update your OpenAPI specs with: `./hack/update-openapigen.sh`.
 1.  [Add new CRD types](#adding-new-types)
 1.  [Add and run tests](./test/README.md#tests)
 
 To make changes to these CRDs, you will probably interact with:
 
 -   The CRD type definitions in
-    [./pkg/apis/pipeline/alpha1](./pkg/apis/pipeline/v1alpha1)
+    [./pkg/apis/pipeline/v1beta1](./pkg/apis/pipeline/v1beta1)
 -   The reconcilers in [./pkg/reconciler](./pkg/reconciler)
 -   The clients are in [./pkg/client](./pkg/client) (these are generated by
     `./hack/update-codegen.sh`)

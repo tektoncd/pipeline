@@ -18,6 +18,7 @@ package v1alpha1_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -102,6 +103,71 @@ func TestGetParams(t *testing.T) {
 	}
 }
 
+func TestRunHasStarted(t *testing.T) {
+	params := []struct {
+		name          string
+		runStatus     v1alpha1.RunStatus
+		expectedValue bool
+	}{{
+		name:          "runWithNoStartTime",
+		runStatus:     v1alpha1.RunStatus{},
+		expectedValue: false,
+	}, {
+		name: "runWithStartTime",
+		runStatus: v1alpha1.RunStatus{
+			RunStatusFields: v1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+		expectedValue: true,
+	}, {
+		name: "runWithZeroStartTime",
+		runStatus: v1alpha1.RunStatus{
+			RunStatusFields: v1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{},
+			},
+		},
+		expectedValue: false,
+	}}
+	for _, tc := range params {
+		t.Run(tc.name, func(t *testing.T) {
+			run := v1alpha1.Run{}
+			run.Status = tc.runStatus
+			if run.HasStarted() != tc.expectedValue {
+				t.Fatalf("Expected run HasStarted() to return %t but got %t", tc.expectedValue, run.HasStarted())
+			}
+		})
+	}
+}
+
+func TestRunIsDone(t *testing.T) {
+	run := v1alpha1.Run{
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+	}
+
+	if !run.IsDone() {
+		t.Fatal("Expected run status to be done")
+	}
+}
+
+func TestRunIsCancelled(t *testing.T) {
+	run := v1alpha1.Run{
+		Spec: v1alpha1.RunSpec{
+			Status: v1alpha1.RunSpecStatusCancelled,
+		},
+	}
+	if !run.IsCancelled() {
+		t.Fatal("Expected run status to be cancelled")
+	}
+}
+
 // TestRunStatusExtraFields tests that extraFields in a RunStatus can be parsed
 // from YAML.
 func TestRunStatus(t *testing.T) {
@@ -153,7 +219,7 @@ status:
 			},
 			RunStatusFields: v1alpha1.RunStatusFields{
 				// Results are parsed correctly.
-				Results: []v1beta1.TaskRunResult{{
+				Results: []v1alpha1.RunResult{{
 					Name:  "foo",
 					Value: "bar",
 				}},

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +72,14 @@ func Pipeline(name string, ops ...PipelineOp) *v1beta1.Pipeline {
 	return p
 }
 
+// PipelineType will add a TypeMeta to the pipeline's definition.
+func PipelineType(t *v1beta1.Pipeline) {
+	t.TypeMeta = metav1.TypeMeta{
+		Kind:       "Pipeline",
+		APIVersion: "tekton.dev/v1beta1",
+	}
+}
+
 // PipelineNamespace sets the namespace on the Pipeline
 func PipelineNamespace(namespace string) PipelineOp {
 	return func(t *v1beta1.Pipeline) {
@@ -106,9 +115,14 @@ func PipelineDescription(desc string) PipelineSpecOp {
 	}
 }
 
-// PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
+// PipelineRunCancelled sets the status to cancel the PipelineRunSpec.
 func PipelineRunCancelled(spec *v1beta1.PipelineRunSpec) {
 	spec.Status = v1beta1.PipelineRunSpecStatusCancelled
+}
+
+// PipelineRunPending sets the status to pending to the PipelineRunSpec.
+func PipelineRunPending(spec *v1beta1.PipelineRunSpec) {
+	spec.Status = v1beta1.PipelineRunSpecStatusPending
 }
 
 // PipelineDeclaredResource adds a resource declaration to the Pipeline Spec,
@@ -193,6 +207,13 @@ func PipelineRunResult(name, value string) PipelineRunStatusOp {
 			Value: value,
 		}
 		s.PipelineResults = append(s.PipelineResults, *pResult)
+	}
+}
+
+// PipelineTaskRefBundle will add the specified URL as a bundle url on the task ref.
+func PipelineTaskRefBundle(url string) PipelineTaskOp {
+	return func(pt *v1beta1.PipelineTask) {
+		pt.TaskRef.Bundle = url
 	}
 }
 
@@ -512,7 +533,7 @@ func PipelineRunNilTimeout(prs *v1beta1.PipelineRunSpec) {
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {
 		if prs.PodTemplate == nil {
-			prs.PodTemplate = &v1beta1.PodTemplate{}
+			prs.PodTemplate = &pod.Template{}
 		}
 		prs.PodTemplate.NodeSelector = values
 	}
@@ -528,6 +549,13 @@ func PipelineRunPipelineSpec(ops ...PipelineSpecOp) PipelineRunSpecOp {
 			op(ps)
 		}
 		prs.PipelineSpec = ps
+	}
+}
+
+// PipelineRunPipelineRefBundle will specify the given URL as the bundle url in the pipeline ref.
+func PipelineRunPipelineRefBundle(url string) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		prs.PipelineRef.Bundle = url
 	}
 }
 

@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/markbates/inflect"
+	"github.com/gobuffalo/flect"
 	"go.uber.org/zap"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,8 +77,7 @@ func (ac *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
 
 	if !ac.IsLeaderFor(ac.key) {
-		logger.Debugf("Skipping key %q, not the leader.", ac.key)
-		return nil
+		return controller.NewSkipKey(key)
 	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.
@@ -101,7 +100,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 
 	rules := make([]admissionregistrationv1.RuleWithOperations, 0, len(ac.handlers))
 	for gvk := range ac.handlers {
-		plural := strings.ToLower(inflect.Pluralize(gvk.Kind))
+		plural := strings.ToLower(flect.Pluralize(gvk.Kind))
 
 		rules = append(rules, admissionregistrationv1.RuleWithOperations{
 			Operations: []admissionregistrationv1.OperationType{
@@ -112,7 +111,7 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{gvk.Group},
 				APIVersions: []string{gvk.Version},
-				Resources:   []string{plural + "/*"},
+				Resources:   []string{plural, plural + "/status"},
 			},
 		})
 	}
@@ -134,41 +133,41 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 		return fmt.Errorf("error retrieving webhook: %w", err)
 	}
 
-	webhook := configuredWebhook.DeepCopy()
+	current := configuredWebhook.DeepCopy()
 
 	// Clear out any previous (bad) OwnerReferences.
 	// See: https://github.com/knative/serving/issues/5845
-	webhook.OwnerReferences = nil
+	current.OwnerReferences = nil
 
-	for i, wh := range webhook.Webhooks {
-		if wh.Name != webhook.Name {
+	for i, wh := range current.Webhooks {
+		if wh.Name != current.Name {
 			continue
 		}
-		webhook.Webhooks[i].Rules = rules
-		webhook.Webhooks[i].NamespaceSelector = &metav1.LabelSelector{
-			MatchExpressions: []metav1.LabelSelectorRequirement{{
-				Key:      "webhooks.knative.dev/exclude",
-				Operator: metav1.LabelSelectorOpDoesNotExist,
-			}, {
-				// "control-plane" is added to support Azure's AKS, otherwise the controllers fight.
-				// See knative/pkg#1590 for details.
-				Key:      "control-plane",
-				Operator: metav1.LabelSelectorOpDoesNotExist,
-			}},
-		}
-		webhook.Webhooks[i].ClientConfig.CABundle = caCert
-		if webhook.Webhooks[i].ClientConfig.Service == nil {
+		cur := &current.Webhooks[i]
+		cur.Rules = rules
+
+		cur.NamespaceSelector = webhook.EnsureLabelSelectorExpressions(
+			cur.NamespaceSelector,
+			&metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{{
+					Key:      "webhooks.knative.dev/exclude",
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				}},
+			})
+
+		cur.ClientConfig.CABundle = caCert
+		if cur.ClientConfig.Service == nil {
 			return fmt.Errorf("missing service reference for webhook: %s", wh.Name)
 		}
-		webhook.Webhooks[i].ClientConfig.Service.Path = ptr.String(ac.Path())
+		cur.ClientConfig.Service.Path = ptr.String(ac.Path())
 	}
 
-	if ok, err := kmp.SafeEqual(configuredWebhook, webhook); err != nil {
+	if ok, err := kmp.SafeEqual(configuredWebhook, current); err != nil {
 		return fmt.Errorf("error diffing webhooks: %w", err)
 	} else if !ok {
 		logger.Info("Updating webhook")
 		vwhclient := ac.client.AdmissionregistrationV1().ValidatingWebhookConfigurations()
-		if _, err := vwhclient.Update(ctx, webhook, metav1.UpdateOptions{}); err != nil {
+		if _, err := vwhclient.Update(ctx, current, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("failed to update webhook: %w", err)
 		}
 	} else {

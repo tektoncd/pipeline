@@ -129,3 +129,27 @@ func parseExpression(substitutionExpression string) (string, string, error) {
 	}
 	return subExpressions[1], subExpressions[3], nil
 }
+
+// PipelineTaskResultRefs walks all the places a result reference can be used
+// in a PipelineTask and returns a list of any references that are found.
+func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
+	refs := []*ResultRef{}
+	for _, condition := range pt.Conditions {
+		for _, p := range condition.Params {
+			expressions, _ := GetVarSubstitutionExpressionsForParam(p)
+			refs = append(refs, NewResultRefs(expressions)...)
+		}
+	}
+
+	for _, p := range pt.Params {
+		expressions, _ := GetVarSubstitutionExpressionsForParam(p)
+		refs = append(refs, NewResultRefs(expressions)...)
+	}
+
+	for _, whenExpression := range pt.WhenExpressions {
+		expressions, _ := whenExpression.GetVarSubstitutionExpressions()
+		refs = append(refs, NewResultRefs(expressions)...)
+	}
+
+	return refs
+}

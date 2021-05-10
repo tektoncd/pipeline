@@ -40,8 +40,8 @@ const (
 	kanikoTaskRunName       = "kanikotask-run"
 	kanikoGitResourceName   = "go-example-git"
 	kanikoImageResourceName = "go-example-image"
-	// This is a random revision chosen on 10/11/2019
-	revision = "1c9d566ecd13535f93789595740f20932f655905"
+	// This is a random revision chosen on 2020/10/09
+	revision = "a310cc6d1cd449f95cedd23393de766fdc649651"
 )
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
@@ -163,7 +163,7 @@ func getTask(repo, namespace string) *v1beta1.Task {
 			},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:  "kaniko",
-				Image: "gcr.io/kaniko-project/executor:v0.17.1",
+				Image: getTestImage(kanikoImage),
 				Args: []string{
 					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 					fmt.Sprintf("--destination=%s", repo),
@@ -214,7 +214,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
+	if _, err := c.KubeClient.CoreV1().Pods(namespace).Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      podName,
@@ -236,7 +236,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 	}, "PodContainersTerminated"); err != nil {
 		t.Fatalf("Error waiting for Pod %q to terminate: %v", podName, err)
 	}
-	logs, err := getContainerLogsFromPod(ctx, c.KubeClient.Kube, podName, "skopeo", namespace)
+	logs, err := getContainerLogsFromPod(ctx, c.KubeClient, podName, "skopeo", namespace)
 	if err != nil {
 		t.Fatalf("Could not get logs for pod %s: %s", podName, err)
 	}

@@ -19,6 +19,7 @@ package pod
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -36,6 +37,8 @@ const (
 	sshKnownHosts            = "known_hosts"
 )
 
+var dnsLabel1123Forbidden = regexp.MustCompile("[^a-zA-Z0-9-]+")
+
 // credsInit reads secrets available to the given service account and
 // searches for annotations matching a specific format (documented in
 // docs/auth.md). Matching secrets are turned into Volumes for the Pod
@@ -48,6 +51,11 @@ const (
 // caller. If no matching annotated secrets are found, nil lists with a
 // nil error are returned.
 func credsInit(ctx context.Context, serviceAccountName, namespace string, kubeclient kubernetes.Interface) ([]string, []corev1.Volume, []corev1.VolumeMount, error) {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
+		return nil, nil, nil, nil
+	}
+
 	// service account if not specified in pipeline/task spec, read it from the ConfigMap
 	// and defaults to `default` if its missing from the ConfigMap as well
 	if serviceAccountName == "" {
@@ -65,6 +73,9 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 	var volumes []corev1.Volume
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
+		if secretEntry.Name == "" {
+			continue
+		}
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(ctx, secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, nil, err
@@ -83,7 +94,10 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 		}
 
 		if matched {
-			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("tekton-internal-secret-volume-%s", secret.Name))
+			// While secret names can use RFC1123 DNS subdomain name rules, the volume mount
+			// name required the stricter DNS label standard, for example no dots anymore.
+			sanitizedName := dnsLabel1123Forbidden.ReplaceAllString(secret.Name, "-")
+			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("tekton-internal-secret-volume-%s", sanitizedName))
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
@@ -108,9 +122,14 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 }
 
 // getCredsInitVolume returns a Volume and VolumeMount for /tekton/creds. Each call
-// will return a new volume and volume mount with randomized name.
-func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
-	name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(credsInitHomeMountPrefix)
+// will return a new volume and volume mount. Takes an integer index to append to
+// the name of the volume.
+func getCredsInitVolume(ctx context.Context, idx int) (*corev1.Volume, *corev1.VolumeMount) {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg != nil && cfg.FeatureFlags != nil && cfg.FeatureFlags.DisableCredsInit {
+		return nil, nil
+	}
+	name := fmt.Sprintf("%s-%d", credsInitHomeMountPrefix, idx)
 	v := corev1.Volume{
 		Name: name,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
@@ -121,7 +140,7 @@ func getCredsInitVolume() (corev1.Volume, corev1.VolumeMount) {
 		Name:      name,
 		MountPath: pipeline.CredsDir,
 	}
-	return v, vm
+	return &v, &vm
 }
 
 // checkGitSSHSecret requires `known_host` field must be included in Git SSH Secret when feature flag

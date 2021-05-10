@@ -19,7 +19,6 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -62,10 +61,10 @@ const (
 	ReasonPodCreationFailed = "PodCreationFailed"
 
 	// ReasonPending indicates that the pod is in corev1.Pending, and the reason is not
-	// ReasonExceededNodeResources or IsPodHitConfigError
+	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPending = "Pending"
 
-	//timeFormat is RFC3339 with millisecond
+	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
 )
 
@@ -101,7 +100,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
-		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	}
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
@@ -272,9 +271,9 @@ func extractStartedAtTimeFromResults(results []v1beta1.PipelineResourceResult) (
 func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	if DidTaskRunFail(pod) {
 		msg := getFailureMessage(logger, pod)
-		MarkStatusFailure(trs, msg)
+		markStatusFailure(trs, v1beta1.TaskRunReasonFailed.String(), msg)
 	} else {
-		MarkStatusSuccess(trs)
+		markStatusSuccess(trs)
 	}
 
 	// update tr completed time
@@ -284,21 +283,16 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRu
 func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
-		MarkStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	case corev1.PodPending:
-		var reason, msg string
 		switch {
 		case IsPodExceedingNodeResources(pod):
-			reason = ReasonExceededNodeResources
-			msg = "TaskRun Pod exceeded available resources"
-		case IsPodHitConfigError(pod):
-			reason = ReasonCreateContainerConfigError
-			msg = getWaitingMessage(pod)
+			markStatusRunning(trs, ReasonExceededNodeResources, "TaskRun Pod exceeded available resources")
+		case isPodHitConfigError(pod):
+			markStatusFailure(trs, ReasonCreateContainerConfigError, "Failed to create pod due to config error")
 		default:
-			reason = ReasonPending
-			msg = getWaitingMessage(pod)
+			markStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
 		}
-		MarkStatusRunning(trs, reason, msg)
 	}
 }
 
@@ -380,10 +374,10 @@ func IsPodExceedingNodeResources(pod *corev1.Pod) bool {
 	return false
 }
 
-// IsPodHitConfigError returns true if the Pod's status undicates there are config error raised
-func IsPodHitConfigError(pod *corev1.Pod) bool {
+// isPodHitConfigError returns true if the Pod's status undicates there are config error raised
+func isPodHitConfigError(pod *corev1.Pod) bool {
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == "CreateContainerConfigError" {
+		if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == ReasonCreateContainerConfigError {
 			return true
 		}
 	}
@@ -417,8 +411,8 @@ func getWaitingMessage(pod *corev1.Pod) string {
 	return "Pending"
 }
 
-// MarkStatusRunning sets taskrun status to running
-func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
+// markStatusRunning sets taskrun status to running
+func markStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
@@ -427,18 +421,18 @@ func MarkStatusRunning(trs *v1beta1.TaskRunStatus, reason, message string) {
 	})
 }
 
-// MarkStatusFailure sets taskrun status to failure
-func MarkStatusFailure(trs *v1beta1.TaskRunStatus, message string) {
+// markStatusFailure sets taskrun status to failure with specified reason
+func markStatusFailure(trs *v1beta1.TaskRunStatus, reason string, message string) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
-		Reason:  v1beta1.TaskRunReasonFailed.String(),
+		Reason:  reason,
 		Message: message,
 	})
 }
 
-// MarkStatusSuccess sets taskrun status to success
-func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
+// markStatusSuccess sets taskrun status to success
+func markStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
@@ -447,62 +441,19 @@ func MarkStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	})
 }
 
-// sortPodContainerStatuses sorts the pod container statuses in the same order as the original
-// TaskSpec steps.
-func sortPodContainerStatuses(podContainerStatuses []corev1.ContainerStatus, podSpecContainers []corev1.Container) []corev1.ContainerStatus {
-	trt := &podContainerStatusSorter{
-		podContainerStatuses: podContainerStatuses,
+// sortPodContainerStatuses reorders a pod's container statuses so that
+// they're in the same order as the step containers from the TaskSpec.
+func sortPodContainerStatuses(podContainerStatuses []corev1.ContainerStatus, podSpecContainers []corev1.Container) {
+	statuses := map[string]corev1.ContainerStatus{}
+	for _, status := range podContainerStatuses {
+		statuses[status.Name] = status
 	}
-	trt.mapForSort = trt.constructPodContainerStatusesSorter(podSpecContainers)
-	sort.Sort(trt)
-	return trt.podContainerStatuses
-}
-
-// podContainerStatusSorter implements a sorting mechanism to align the order of the pod container statuses in the pod
-// with the spec steps in Task.
-type podContainerStatusSorter struct {
-	podContainerStatuses []corev1.ContainerStatus
-	mapForSort           map[string]int
-}
-
-// constructPodContainerStatusesSorter constructs a map matching the names of
-// the containers to their step indices for a task.
-func (trt *podContainerStatusSorter) constructPodContainerStatusesSorter(podSpecContainers []corev1.Container) map[string]int {
-	sorter := make(map[string]int)
-	for index, container := range podSpecContainers {
-		sorter[container.Name] = index
+	for i, c := range podSpecContainers {
+		// prevent out-of-bounds panic on incorrectly formed lists
+		if i < len(podContainerStatuses) {
+			podContainerStatuses[i] = statuses[c.Name]
+		}
 	}
-	return sorter
-}
-
-// changeIndex sorts the containers of a pod, based on the
-// order of the steps in the task. Instead of changing the element with the one next to it,
-// we directly swap it with the desired index.
-func (trt *podContainerStatusSorter) changeIndex(index int) {
-	// Check if the current index is equal to the desired index. If they are equal, do not swap; if they
-	// are not equal, swap index j with the desired index.
-	desiredIndex, exist := trt.mapForSort[trt.podContainerStatuses[index].Name]
-	if exist && index != desiredIndex {
-		trt.podContainerStatuses[desiredIndex], trt.podContainerStatuses[index] = trt.podContainerStatuses[index], trt.podContainerStatuses[desiredIndex]
-	}
-}
-
-func (trt *podContainerStatusSorter) Len() int { return len(trt.podContainerStatuses) }
-
-func (trt *podContainerStatusSorter) Swap(i, j int) {
-	trt.changeIndex(j)
-	// The index j is unable to reach the last index.
-	// When i reaches the end of the array, we need to check whether the last one needs a swap.
-	if i == trt.Len()-1 {
-		trt.changeIndex(i)
-	}
-}
-
-func (trt *podContainerStatusSorter) Less(i, j int) bool {
-	// Since the logic is complicated, we move it into the Swap function to decide whether
-	// and how to change the index. We set it to true here in order to iterate all the
-	// elements of the array in the Swap function.
-	return true
 }
 
 func isOOMKilled(s corev1.ContainerStatus) bool {

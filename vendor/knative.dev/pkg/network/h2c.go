@@ -17,10 +17,10 @@ limitations under the License.
 package network
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"net/http"
-	"time"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -41,15 +41,16 @@ func NewServer(addr string, h http.Handler) *http.Server {
 // to explicitly allow h2c (http2 without TLS) transport.
 // See https://github.com/golang/go/issues/14141 for more details.
 func NewH2CTransport() http.RoundTripper {
+	return newH2CTransport(false)
+}
+
+func newH2CTransport(disableCompression bool) http.RoundTripper {
 	return &http2.Transport{
-		AllowHTTP: true,
-		DialTLS: func(netw, addr string, cfg *tls.Config) (net.Conn, error) {
-			d := &net.Dialer{
-				Timeout:   DefaultConnTimeout,
-				KeepAlive: 5 * time.Second,
-				DualStack: true,
-			}
-			return d.Dial(netw, addr)
+		AllowHTTP:          true,
+		DisableCompression: disableCompression,
+		DialTLS: func(netw, addr string, _ *tls.Config) (net.Conn, error) {
+			return DialWithBackOff(context.Background(),
+				netw, addr)
 		},
 	}
 }

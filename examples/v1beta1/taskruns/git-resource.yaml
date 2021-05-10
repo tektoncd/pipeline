@@ -10,6 +10,7 @@ spec:
         type: git
     steps:
     - image: ubuntu
+      workingDir: /workspace
       script: cat skaffold/README.md
   resources:
     inputs:
@@ -34,6 +35,7 @@ spec:
         type: git
     steps:
     - image: ubuntu
+      workingDir: /workspace
       script: cat skaffold/README.md
   resources:
     inputs:
@@ -58,6 +60,7 @@ spec:
         type: git
     steps:
     - image: ubuntu
+      workingDir: /workspace
       script: cat skaffold/README.md
   resources:
     inputs:

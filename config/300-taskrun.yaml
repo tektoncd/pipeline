@@ -25,8 +25,7 @@ spec:
   group: tekton.dev
   preserveUnknownFields: false
   versions:
-  - &version
-    name: v1alpha1
+  - name: v1alpha1
     served: true
     storage: false
     schema:
@@ -57,9 +56,37 @@ spec:
     # starts to increment
     subresources:
       status: {}
-  - <<: *version
-    name: v1beta1
+  - name: v1beta1
+    served: true
     storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        # One can use x-kubernetes-preserve-unknown-fields: true
+        # at the root of the schema (and inside any properties, additionalProperties)
+        # to get the traditional CRD behaviour that nothing is pruned, despite
+        # setting spec.preserveUnknownProperties: false.
+        #
+        # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
+        # See issue: https://github.com/knative/serving/issues/912
+        x-kubernetes-preserve-unknown-fields: true
+    additionalPrinterColumns:
+    - name: Succeeded
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Succeeded\")].status"
+    - name: Reason
+      type: string
+      jsonPath: ".status.conditions[?(@.type==\"Succeeded\")].reason"
+    - name: StartTime
+      type: date
+      jsonPath: .status.startTime
+    - name: CompletionTime
+      type: date
+      jsonPath: .status.completionTime
+    # Opt into the status subresource so metadata.generation
+    # starts to increment
+    subresources:
+      status: {}
   names:
     kind: TaskRun
     plural: taskruns

@@ -45,9 +45,9 @@ func TestPipeline_Validate(t *testing.T) {
 		},
 		failureExpected: false,
 	}, {
-		name: "period in name",
+		name: "comma in name",
 		p: &v1alpha1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipe.line"},
+			ObjectMeta: metav1.ObjectMeta{Name: "pipe,line"},
 			Spec: v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name:    "foo",

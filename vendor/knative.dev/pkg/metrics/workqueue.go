@@ -35,9 +35,7 @@ type WorkqueueProvider struct {
 	WorkDuration                   *stats.Float64Measure
 }
 
-var (
-	_ workqueue.MetricsProvider = (*WorkqueueProvider)(nil)
-)
+var _ workqueue.MetricsProvider = (*WorkqueueProvider)(nil)
 
 // NewAddsMetric implements MetricsProvider
 func (wp *WorkqueueProvider) NewAddsMetric(name string) workqueue.CounterMetric {

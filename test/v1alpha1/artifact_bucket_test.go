@@ -65,7 +65,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	bucketName := fmt.Sprintf("build-pipeline-test-%s-%d", namespace, time.Now().Unix())
 
 	t.Logf("Creating Secret %s", bucketSecretName)
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(ctx, getBucketSecret(t, configFilePath, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getBucketSecret(t, configFilePath, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Secret %q: %v", bucketSecretName, err)
 	}
 	defer deleteBucketSecret(ctx, c, t, namespace)
@@ -105,7 +105,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	defer runTaskToDeleteBucket(ctx, c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
-	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(ctx, config.GetArtifactBucketConfigName(), metav1.GetOptions{})
+	originalConfigMap, err := c.KubeClient.CoreV1().ConfigMaps(systemNamespace).Get(ctx, config.GetArtifactBucketConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetArtifactBucketConfigName(), err)
 	}
@@ -225,7 +225,7 @@ func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Sec
 }
 
 func deleteBucketSecret(ctx context.Context, c *clients, t *testing.T, namespace string) {
-	if err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Delete(ctx, bucketSecretName, metav1.DeleteOptions{}); err != nil {
+	if err := c.KubeClient.CoreV1().Secrets(namespace).Delete(ctx, bucketSecretName, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete Secret `%s`: %s", bucketSecretName, err)
 	}
 }

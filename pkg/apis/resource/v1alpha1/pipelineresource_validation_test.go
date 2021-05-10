@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -35,6 +36,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		{
 			name: "cluster with invalid url",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeCluster,
 					Params: []v1alpha1.ResourceParam{{
@@ -59,6 +63,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		{
 			name: "cluster with missing auth",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeCluster,
 					Params: []v1alpha1.ResourceParam{{
@@ -72,6 +79,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "cluster with missing cadata",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeCluster,
 					Params: []v1alpha1.ResourceParam{{
@@ -89,6 +99,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "storage with no type",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeStorage,
 					Params: []v1alpha1.ResourceParam{{
@@ -100,6 +113,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "storage with unimplemented type",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeStorage,
 					Params: []v1alpha1.ResourceParam{{
@@ -111,6 +127,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "storage with gcs type with no location param",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeStorage,
 					Params: []v1alpha1.ResourceParam{{
@@ -122,6 +141,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "storage with gcs type with empty location param",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeStorage,
 					Params: []v1alpha1.ResourceParam{{
@@ -135,6 +157,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "invalid resource type",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: "not-supported",
 				},
@@ -142,11 +167,19 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrInvalidValue("spec.type", "not-supported"),
 		}, {
 			name: "missing spec",
-			res:  &v1alpha1.PipelineResource{},
+			res: &v1alpha1.PipelineResource{
+
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
+			},
 			want: apis.ErrMissingField("spec.type"),
 		}, {
 			name: "pull request with invalid field name in secrets",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypePullRequest,
 					SecretParams: []v1alpha1.SecretParam{{
@@ -175,6 +208,9 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		{
 			name: "success validate",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeCluster,
 					Params: []v1alpha1.ResourceParam{{
@@ -198,6 +234,9 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		{
 			name: "specify insecure without cadata",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypeCluster,
 					Params: []v1alpha1.ResourceParam{{
@@ -217,6 +256,9 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		{
 			name: "specify pullrequest with no secrets",
 			res: &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "temp",
+				},
 				Spec: v1alpha1.PipelineResourceSpec{
 					Type: v1alpha1.PipelineResourceTypePullRequest,
 				},
@@ -240,10 +282,6 @@ func TestAllowedGCSStorageType(t *testing.T) {
 	}{
 		{name: "storage with gcs type",
 			storageType: "gcs",
-			want:        true,
-		},
-		{name: "storage with build-gcs type",
-			storageType: "build-gcs",
 			want:        true,
 		},
 		{name: "storage with incorrent type",

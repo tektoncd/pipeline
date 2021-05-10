@@ -29,14 +29,34 @@ install_pipeline_crd
 
 failed=0
 
-# Run the integration tests
-header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test/... || failed=1
+function set_feature_gate() {
+  local gate="$1"
+  if [ "$gate" != "alpha" ] && [ "$gate" != "stable" ] && [ "$gate" != "beta" ] ; then
+    printf "Invalid gate %s\n" ${gate}
+    exit 255
+  fi
+  printf "Setting feature gate to %s\n", ${gate}
+  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
 
-# Run these _after_ the integration tests b/c they don't quite work all the way
-# and they cause a lot of noise in the logs, making it harder to debug integration
-# test failures.
-go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
+function run_e2e() {
+  # Run the integration tests
+  header "Running Go e2e tests"
+  go_test_e2e -timeout=20m ./test/... || failed=1
+
+  # Run these _after_ the integration tests b/c they don't quite work all the way
+  # and they cause a lot of noise in the logs, making it harder to debug integration
+  # test failures.
+  go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
+}
+
+set_feature_gate "stable"
+run_e2e
+
+set_feature_gate "alpha"
+run_e2e
 
 (( failed )) && fail_test
 success

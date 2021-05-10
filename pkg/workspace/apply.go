@@ -16,8 +16,10 @@ limitations under the License.
 package workspace
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -82,10 +84,10 @@ func getDeclaredWorkspace(name string, w []v1beta1.WorkspaceDeclaration) (*v1bet
 	return nil, fmt.Errorf("even though validation should have caught it, bound workspace %s did not exist in declared workspaces", name)
 }
 
-// Apply will update the StepTemplate and Volumes declaration in ts so that the workspaces
+// Apply will update the StepTemplate, Sidecars and Volumes declaration in ts so that the workspaces
 // specified through wb combined with the declared workspaces in ts will be available for
-// all containers in the resulting pod.
-func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
+// all Step and Sidecar containers in the resulting pod.
+func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
 	// If there are no bound workspaces, we don't need to do anything
 	if len(wb) == 0 {
 		return &ts, nil
@@ -98,6 +100,23 @@ func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]core
 		ts.StepTemplate = &corev1.Container{}
 	}
 
+	isolatedWorkspaces := sets.NewString()
+
+	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
+
+	if alphaAPIEnabled {
+		for _, step := range ts.Steps {
+			for _, workspaceUsage := range step.Workspaces {
+				isolatedWorkspaces.Insert(workspaceUsage.Name)
+			}
+		}
+		for _, sidecar := range ts.Sidecars {
+			for _, workspaceUsage := range sidecar.Workspaces {
+				isolatedWorkspaces.Insert(workspaceUsage.Name)
+			}
+		}
+	}
+
 	for i := range wb {
 		w, err := getDeclaredWorkspace(wb[i].Name, ts.Workspaces)
 		if err != nil {
@@ -106,12 +125,23 @@ func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]core
 		// Get the volume we should be using for this binding
 		vv := v[wb[i].Name]
 
-		ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, corev1.VolumeMount{
+		volumeMount := corev1.VolumeMount{
 			Name:      vv.Name,
 			MountPath: w.GetMountPath(),
 			SubPath:   wb[i].SubPath,
 			ReadOnly:  w.ReadOnly,
-		})
+		}
+
+		if alphaAPIEnabled {
+			if isolatedWorkspaces.Has(w.Name) {
+				mountAsIsolatedWorkspace(ts, w.Name, volumeMount)
+			} else {
+				mountAsSharedWorkspace(ts, volumeMount)
+			}
+		} else {
+			// Prior to the alpha feature gate only Steps may receive workspaces.
+			ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
+		}
 
 		// Only add this volume if it hasn't already been added
 		if !addedVolumes.Has(vv.Name) {
@@ -120,4 +150,56 @@ func Apply(ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]core
 		}
 	}
 	return &ts, nil
+}
+
+// mountAsSharedWorkspace takes a volumeMount and adds it to all the steps and sidecars in
+// a TaskSpec.
+func mountAsSharedWorkspace(ts v1beta1.TaskSpec, volumeMount corev1.VolumeMount) {
+	ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
+
+	for i := range ts.Sidecars {
+		AddSidecarVolumeMount(&ts.Sidecars[i], volumeMount)
+	}
+}
+
+// mountAsIsolatedWorkspace takes a volumeMount and adds it only to the steps and sidecars
+// that have requested access to it.
+func mountAsIsolatedWorkspace(ts v1beta1.TaskSpec, workspaceName string, volumeMount corev1.VolumeMount) {
+	for i := range ts.Steps {
+		step := &ts.Steps[i]
+		for _, workspaceUsage := range step.Workspaces {
+			if workspaceUsage.Name == workspaceName {
+				vm := volumeMount
+				if workspaceUsage.MountPath != "" {
+					vm.MountPath = workspaceUsage.MountPath
+				}
+				step.VolumeMounts = append(step.VolumeMounts, vm)
+				break
+			}
+		}
+	}
+	for i := range ts.Sidecars {
+		sidecar := &ts.Sidecars[i]
+		for _, workspaceUsage := range sidecar.Workspaces {
+			if workspaceUsage.Name == workspaceName {
+				vm := volumeMount
+				if workspaceUsage.MountPath != "" {
+					vm.MountPath = workspaceUsage.MountPath
+				}
+				sidecar.VolumeMounts = append(sidecar.VolumeMounts, vm)
+				break
+			}
+		}
+	}
+}
+
+// AddSidecarVolumeMount is a helper to add a volumeMount to the sidecar unless its
+// MountPath would conflict with another of the sidecar's existing volume mounts.
+func AddSidecarVolumeMount(sidecar *v1beta1.Sidecar, volumeMount corev1.VolumeMount) {
+	for j := range sidecar.VolumeMounts {
+		if sidecar.VolumeMounts[j].MountPath == volumeMount.MountPath {
+			return
+		}
+	}
+	sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
 }

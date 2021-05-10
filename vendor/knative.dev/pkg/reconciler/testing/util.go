@@ -44,7 +44,7 @@ func ExpectNormalEventDelivery(t *testing.T, messageRegexp string) CreateHookFun
 	t.Helper()
 	wantRegexp, err := regexp.Compile(messageRegexp)
 	if err != nil {
-		t.Fatalf("Invalid regular expression: %v", err)
+		t.Fatal("Invalid regular expression:", err)
 	}
 	return func(obj runtime.Object) HookResult {
 		t.Helper()
@@ -68,7 +68,7 @@ func ExpectWarningEventDelivery(t *testing.T, messageRegexp string) CreateHookFu
 	t.Helper()
 	wantRegexp, err := regexp.Compile(messageRegexp)
 	if err != nil {
-		t.Fatalf("Invalid regular expression: %v", err)
+		t.Fatal("Invalid regular expression:", err)
 	}
 	return func(obj runtime.Object) HookResult {
 		t.Helper()

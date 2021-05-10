@@ -60,7 +60,7 @@ func (t *Task) TaskMetadata() metav1.ObjectMeta {
 	return t.ObjectMeta
 }
 
-func (t *Task) Copy() TaskInterface {
+func (t *Task) Copy() TaskObject {
 	return t.DeepCopy()
 }
 
@@ -123,11 +123,24 @@ type Step struct {
 
 	// Script is the contents of an executable file to execute.
 	//
-	// If Script is not empty, the Step cannot have an Command or Args.
+	// If Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.
+	// +optional
 	Script string `json:"script,omitempty"`
+
 	// Timeout is the time after which the step times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"
+	// for this field to be supported.
+	//
+	// Workspaces is a list of workspaces from the Task that this Step wants
+	// exclusive access to. Adding a workspace to this list means that any
+	// other Step or Sidecar that does not also request this Workspace will
+	// not have access to it.
+	// +optional
+	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 }
 
 // Sidecar has nearly the same data structure as Step, consisting of a Container and an optional Script, but does not have the ability to timeout.
@@ -137,7 +150,18 @@ type Sidecar struct {
 	// Script is the contents of an executable file to execute.
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
+	// +optional
 	Script string `json:"script,omitempty"`
+
+	// This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"
+	// for this field to be supported.
+	//
+	// Workspaces is a list of workspaces from the Task that this Sidecar wants
+	// exclusive access to. Adding a workspace to this list means that any
+	// other Step or Sidecar that does not also request this Workspace will
+	// not have access to it.
+	// +optional
+	Workspaces []WorkspaceUsage
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -159,6 +183,9 @@ type TaskRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
+	// Bundle url reference to a Tekton Bundle.
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
 }
 
 // Check that Pipeline may be validated and defaulted.

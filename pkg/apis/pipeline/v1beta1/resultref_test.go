@@ -116,7 +116,7 @@ func TestNewResultReference(t *testing.T) {
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -205,7 +205,7 @@ func TestHasResultReference(t *testing.T) {
 				return true
 			})
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -384,7 +384,7 @@ func TestNewResultReferenceWhenExpressions(t *testing.T) {
 			} else {
 				got := v1beta1.NewResultRefs(expressions)
 				if d := cmp.Diff(tt.want, got); d != "" {
-					t.Errorf("TestNewResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+					t.Error(diff.PrintWantGot(d))
 				}
 			}
 		})
@@ -459,7 +459,7 @@ func TestHasResultReferenceWhenExpression(t *testing.T) {
 			}
 			got := v1beta1.NewResultRefs(expressions)
 			if d := cmp.Diff(tt.wantRef, got); d != "" {
-				t.Errorf("TestHasResultReference/%s %s", tt.name, diff.PrintWantGot(d))
+				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -551,5 +551,46 @@ func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
 				t.Errorf("expected expressions to not look like they contain results refs")
 			}
 		})
+	}
+}
+
+// TestPipelineTaskResultReferences tests that PipelineTaskResultRefs()
+// parses all the result variables used in a PipelineTask correctly and
+// returns them all in the expected order.
+func TestPipelineTaskResultRefs(t *testing.T) {
+	pt := v1beta1.PipelineTask{
+		Conditions: []v1beta1.PipelineTaskCondition{{
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.r1)"),
+			}},
+		}},
+		Params: []v1beta1.Param{{
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt2.results.r2)"),
+		}},
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "$(tasks.pt3.results.r3)",
+			Operator: selection.In,
+			Values: []string{
+				"$(tasks.pt4.results.r4)",
+			},
+		}},
+	}
+	refs := v1beta1.PipelineTaskResultRefs(&pt)
+	expectedRefs := []*v1beta1.ResultRef{{
+		PipelineTask: "pt1",
+		Result:       "r1",
+	}, {
+		PipelineTask: "pt2",
+		Result:       "r2",
+	}, {
+		PipelineTask: "pt3",
+		Result:       "r3",
+	}, {
+		PipelineTask: "pt4",
+		Result:       "r4",
+	}}
+	if d := cmp.Diff(refs, expectedRefs); d != "" {
+		t.Errorf("%v", d)
 	}
 }

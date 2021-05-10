@@ -26,6 +26,9 @@ import (
 	"go.opencensus.io/trace"
 	"google.golang.org/api/support/bundler"
 	tracepb "google.golang.org/genproto/googleapis/devtools/cloudtrace/v2"
+
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 )
 
 // traceExporter is an implementation of trace.Exporter that uploads spans to
@@ -76,6 +79,9 @@ func newTraceExporterWithClient(o Options, c *tracingclient.Client) *traceExport
 	} else {
 		b.BundleCountThreshold = 50
 	}
+	if o.NumberOfWorkers > 0 {
+		b.HandlerLimit = o.NumberOfWorkers
+	}
 	// The measured "bytes" are not really bytes, see exportReceiver.
 	b.BundleByteThreshold = b.BundleCountThreshold * 200
 	b.BundleByteLimit = b.BundleCountThreshold * 1000
@@ -92,7 +98,7 @@ func newTraceExporterWithClient(o Options, c *tracingclient.Client) *traceExport
 
 // ExportSpan exports a SpanData to Stackdriver Trace.
 func (e *traceExporter) ExportSpan(s *trace.SpanData) {
-	protoSpan := protoFromSpanData(s, e.projectID, e.o.Resource)
+	protoSpan := protoFromSpanData(s, e.projectID, e.o.Resource, e.o.UserAgent)
 	protoSize := proto.Size(protoSpan)
 	err := e.bundler.Add(protoSpan, protoSize)
 	switch err {
@@ -112,6 +118,42 @@ func (e *traceExporter) ExportSpan(s *trace.SpanData) {
 // spans.
 func (e *traceExporter) Flush() {
 	e.bundler.Flush()
+}
+
+func (e *traceExporter) pushTraceSpans(ctx context.Context, node *commonpb.Node, r *resourcepb.Resource, spans []*trace.SpanData) (int, error) {
+	ctx, span := trace.StartSpan(
+		ctx,
+		"contrib.go.opencensus.io/exporter/stackdriver.PushTraceSpans",
+		trace.WithSampler(trace.NeverSample()),
+	)
+	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("num_spans", int64(len(spans))))
+
+	protoSpans := make([]*tracepb.Span, 0, len(spans))
+
+	res := e.o.Resource
+	if r != nil {
+		res = e.o.MapResource(resourcepbToResource(r))
+	}
+
+	for _, span := range spans {
+		protoSpans = append(protoSpans, protoFromSpanData(span, e.projectID, res, e.o.UserAgent))
+	}
+
+	req := tracepb.BatchWriteSpansRequest{
+		Name:  "projects/" + e.projectID,
+		Spans: protoSpans,
+	}
+	// Create a never-sampled span to prevent traces associated with exporter.
+	ctx, cancel := newContextWithTimeout(ctx, e.o.Timeout)
+	defer cancel()
+
+	err := e.client.BatchWriteSpans(ctx, &req)
+
+	if err != nil {
+		return len(spans), err
+	}
+	return 0, nil
 }
 
 // uploadSpans uploads a set of spans to Stackdriver.

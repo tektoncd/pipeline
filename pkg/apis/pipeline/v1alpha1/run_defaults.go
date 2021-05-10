@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -30,5 +31,13 @@ func (r *Run) SetDefaults(ctx context.Context) {
 }
 
 func (rs *RunSpec) SetDefaults(ctx context.Context) {
-	// No defaults to set.
+	cfg := config.FromContextOrDefaults(ctx)
+	defaultSA := cfg.Defaults.DefaultServiceAccount
+	if rs.ServiceAccountName == "" && defaultSA != "" {
+		rs.ServiceAccountName = defaultSA
+	}
+	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
+	if rs.PodTemplate == nil {
+		rs.PodTemplate = defaultPodTemplate
+	}
 }

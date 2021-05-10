@@ -20,9 +20,7 @@ import (
 	"strings"
 
 	"go.uber.org/zap/zapcore"
-	"knative.dev/pkg/logging/logkey"
 
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -39,22 +37,6 @@ import (
 func StringSet(s sets.String) zapcore.ObjectMarshalerFunc {
 	return func(enc zapcore.ObjectEncoder) error {
 		enc.AddString("keys", strings.Join(s.UnsortedList(), ","))
-		return nil
-	}
-}
-
-// NamespacedName returns a marshaler for NamespacedName.
-// To use this in sugared logger do:
-//	logger.Infow("Enqueuing", zap.Object("key", logging.NamespacedName(n)))
-// To use with non-sugared logger do:
-//	logger.Info("Enqueuing", zap.Object("key", logging.NamespacedName(n)))
-func NamespacedName(n types.NamespacedName) zapcore.ObjectMarshalerFunc {
-	return func(enc zapcore.ObjectEncoder) error {
-		if n.Namespace == "" {
-			enc.AddString(logkey.Key, n.Name)
-		} else {
-			enc.AddString(logkey.Key, n.Namespace+"/"+n.Name)
-		}
 		return nil
 	}
 }

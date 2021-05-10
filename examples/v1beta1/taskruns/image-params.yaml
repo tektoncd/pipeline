@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: image-params
+spec:
+  params:
+  - name: image
+    type: string
+    default: ubuntu
+  - name: imagePullPolicy
+    type: string
+    default: IfNotPresent
+  steps:
+  - image: $(params.image)
+    imagePullPolicy: $(params.imagePullPolicy)
+    script: echo hello
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: image-params-
+spec:
+  taskRef:
+    name: image-params
+    kind: ClusterTask

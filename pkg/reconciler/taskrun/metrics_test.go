@@ -25,13 +25,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/metrics/metricstest"
 	_ "knative.dev/pkg/metrics/testing"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -243,7 +243,7 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 		}
 	}
 
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	informer := faketaskruninformer.Get(ctx)
 	// Add N randomly-named TaskRuns with differently-succeeded statuses.
 	for _, tr := range []*v1beta1.TaskRun{

@@ -23,13 +23,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/metrics/metricstest" // Required to setup metrics env for testing
 	_ "knative.dev/pkg/metrics/testing"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -154,7 +154,7 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		}
 	}
 
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	informer := fakepipelineruninformer.Get(ctx)
 	// Add N randomly-named PipelineRuns with differently-succeeded statuses.
 	for _, tr := range []*v1beta1.PipelineRun{

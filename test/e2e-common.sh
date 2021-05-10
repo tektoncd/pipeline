@@ -26,6 +26,8 @@ function install_pipeline_crd() {
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
       | kubectl apply -f - || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
+
+  export SYSTEM_NAMESPACE=tekton-pipelines
 }
 
 # Install the Tekton pipeline crd based on the release number

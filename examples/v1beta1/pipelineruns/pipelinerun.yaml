@@ -17,7 +17,7 @@ roleRef:
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: unit-tests
+  name: "unit.tests"
 spec:
   workspaces:
   - name: source
@@ -80,7 +80,7 @@ spec:
     description: The precise commit SHA that was fetched by this Task
   steps:
   - name: clone
-    image: ko://github.com/tektoncd/pipeline/cmd/git-init
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
     script: |
       CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
       cleandir() {
@@ -140,7 +140,7 @@ spec:
     default: ""
   - name: BUILDER_IMAGE
     description: The image on which builds will run
-    default: gcr.io/kaniko-project/executor:latest
+    default: gcr.io/kaniko-project/executor:v1.3.0
   results:
   - name: IMAGE_DIGEST
     description: Digest of the image just built.
@@ -167,7 +167,7 @@ spec:
       runAsUser: 0
   - name: write-digest
     workingDir: $(workspaces.source.path)
-    image: ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter:latest
     # output of imagedigestexport [{"name":"image","digest":"sha256:eed29..660"}]
     command: ["/ko-app/imagedigestexporter"]
     securityContext:
@@ -200,7 +200,7 @@ spec:
   - name: source
   steps:
   - name: replace-image
-    image: mikefarah/yq
+    image: mikefarah/yq:3
     command: ['yq']
     args:
     - "w"
@@ -222,7 +222,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: demo-pipeline
+  name: "demo.pipeline"
 spec:
   params:
   - name: image-registry
@@ -244,7 +244,7 @@ spec:
   - name: skaffold-unit-tests
     runAfter: [fetch-from-git]
     taskRef:
-      name: unit-tests
+      name: "unit.tests"
     workspaces:
     - name: source
       workspace: git-source
@@ -313,7 +313,7 @@ metadata:
   name: demo-pipeline-run-1
 spec:
   pipelineRef:
-    name: demo-pipeline
+    name: "demo.pipeline"
   serviceAccountName: 'default'
   workspaces:
   - name: git-source

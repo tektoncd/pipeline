@@ -26,18 +26,18 @@ import (
 // The set of query string keys that we expect to send as part of the registry
 // protocol. Anything else is potentially dangerous to leak, as it's probably
 // from a redirect. These redirects often included tokens or signed URLs.
-var paramWhitelist = map[string]struct{}{
+var paramAllowlist = map[string]struct{}{
 	// Token exchange
-	"scope":   struct{}{},
-	"service": struct{}{},
+	"scope":   {},
+	"service": {},
 	// Cross-repo mounting
-	"mount": struct{}{},
-	"from":  struct{}{},
+	"mount": {},
+	"from":  {},
 	// Layer PUT
-	"digest": struct{}{},
+	"digest": {},
 	// Listing tags and catalog
-	"n":    struct{}{},
-	"last": struct{}{},
+	"n":    {},
+	"last": {},
 }
 
 // Error implements error to support the following error specification:
@@ -59,7 +59,7 @@ var _ error = (*Error)(nil)
 func (e *Error) Error() string {
 	prefix := ""
 	if e.request != nil {
-		prefix = fmt.Sprintf("%s %s: ", e.request.Method, redact(e.request.URL))
+		prefix = fmt.Sprintf("%s %s: ", e.request.Method, redactURL(e.request.URL))
 	}
 	return prefix + e.responseErr()
 }
@@ -68,9 +68,12 @@ func (e *Error) responseErr() string {
 	switch len(e.Errors) {
 	case 0:
 		if len(e.rawBody) == 0 {
-			return fmt.Sprintf("unsupported status code %d", e.StatusCode)
+			if e.request != nil && e.request.Method == http.MethodHead {
+				return fmt.Sprintf("unexpected status code %d %s (HEAD responses have no body, use GET for details)", e.StatusCode, http.StatusText(e.StatusCode))
+			}
+			return fmt.Sprintf("unexpected status code %d %s", e.StatusCode, http.StatusText(e.StatusCode))
 		}
-		return fmt.Sprintf("unsupported status code %d; body: %s", e.StatusCode, e.rawBody)
+		return fmt.Sprintf("unexpected status code %d %s: %s", e.StatusCode, http.StatusText(e.StatusCode), e.rawBody)
 	case 1:
 		return e.Errors[0].String()
 	default:
@@ -86,7 +89,8 @@ func (e *Error) responseErr() string {
 // Temporary returns whether the request that preceded the error is temporary.
 func (e *Error) Temporary() bool {
 	if len(e.Errors) == 0 {
-		return false
+		_, ok := temporaryStatusCodes[e.StatusCode]
+		return ok
 	}
 	for _, d := range e.Errors {
 		if _, ok := temporaryErrorCodes[d.Code]; !ok {
@@ -96,12 +100,13 @@ func (e *Error) Temporary() bool {
 	return true
 }
 
-func redact(original *url.URL) *url.URL {
+// TODO(jonjohnsonjr): Consider moving to pkg/internal/redact.
+func redactURL(original *url.URL) *url.URL {
 	qs := original.Query()
 	for k, v := range qs {
 		for i := range v {
-			if _, ok := paramWhitelist[k]; !ok {
-				// key is not in the whitelist
+			if _, ok := paramAllowlist[k]; !ok {
+				// key is not in the Allowlist
 				v[i] = "REDACTED"
 			}
 		}
@@ -153,8 +158,14 @@ const (
 
 // TODO: Include other error types.
 var temporaryErrorCodes = map[ErrorCode]struct{}{
-	BlobUploadInvalidErrorCode: struct{}{},
-	TooManyRequestsErrorCode:   struct{}{},
+	BlobUploadInvalidErrorCode: {},
+	TooManyRequestsErrorCode:   {},
+}
+
+var temporaryStatusCodes = map[int]struct{}{
+	http.StatusInternalServerError: {},
+	http.StatusBadGateway:          {},
+	http.StatusServiceUnavailable:  {},
 }
 
 // CheckError returns a structured error if the response status is not in codes.

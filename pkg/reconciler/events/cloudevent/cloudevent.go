@@ -71,14 +71,14 @@ func (t TektonEventType) String() string {
 type CEClient cloudevents.Client
 
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
-// a Tekton cloud event. It can include a PipelineRun or a PipelineRun
+// a Tekton cloud event. It can include a TaskRun or a PipelineRun
 type TektonCloudEventData struct {
 	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
 	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
 }
 
-// NewTektonCloudEventData returns a new instance of NewTektonCloudEventData
-func NewTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData {
+// newTektonCloudEventData returns a new instance of TektonCloudEventData
+func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData {
 	tektonCloudEventData := TektonCloudEventData{}
 	switch v := runObject.(type) {
 	case *v1beta1.TaskRun:
@@ -89,13 +89,24 @@ func NewTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData
 	return tektonCloudEventData
 }
 
-// EventForObjectWithCondition creates a new event based for a objectWithCondition,
+// eventForObjectWithCondition creates a new event based for a objectWithCondition,
 // or return an error if not possible.
-func EventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Event, error) {
+func eventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Event, error) {
 	event := cloudevents.NewEvent()
 	event.SetID(uuid.New().String())
 	event.SetSubject(runObject.GetObjectMeta().GetName())
-	event.SetSource(runObject.GetObjectMeta().GetSelfLink()) // TODO: SelfLink is deprecated https://github.com/tektoncd/pipeline/issues/2676
+	// TODO: SelfLink is deprecated https://github.com/tektoncd/pipeline/issues/2676
+	source := runObject.GetObjectMeta().GetSelfLink()
+	if source == "" {
+		gvk := runObject.GetObjectKind().GroupVersionKind()
+		source = fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s/%s",
+			gvk.Group,
+			gvk.Version,
+			runObject.GetObjectMeta().GetNamespace(),
+			gvk.Kind,
+			runObject.GetObjectMeta().GetName())
+	}
+	event.SetSource(source)
 	eventType, err := getEventType(runObject)
 	if err != nil {
 		return nil, err
@@ -105,30 +116,30 @@ func EventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Ev
 	}
 	event.SetType(eventType.String())
 
-	if err := event.SetData(cloudevents.ApplicationJSON, NewTektonCloudEventData(runObject)); err != nil {
+	if err := event.SetData(cloudevents.ApplicationJSON, newTektonCloudEventData(runObject)); err != nil {
 		return nil, err
 	}
 	return &event, nil
 }
 
-// EventForTaskRun will create a new event based on a TaskRun,
+// eventForTaskRun will create a new event based on a TaskRun,
 // or return an error if not possible.
-func EventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
+func eventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
 	// Check if the TaskRun is defined
 	if taskRun == nil {
 		return nil, errors.New("Cannot send an event for an empty TaskRun")
 	}
-	return EventForObjectWithCondition(taskRun)
+	return eventForObjectWithCondition(taskRun)
 }
 
-// EventForPipelineRun will create a new event based on a TaskRun,
+// eventForPipelineRun will create a new event based on a PipelineRun,
 // or return an error if not possible.
-func EventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, error) {
+func eventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, error) {
 	// Check if the TaskRun is defined
 	if pipelineRun == nil {
 		return nil, errors.New("Cannot send an event for an empty PipelineRun")
 	}
-	return EventForObjectWithCondition(pipelineRun)
+	return eventForObjectWithCondition(pipelineRun)
 }
 
 func getEventType(runObject objectWithCondition) (*TektonEventType, error) {

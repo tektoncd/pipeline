@@ -35,7 +35,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
+				DisableHomeEnvOverwrite:          false,
+				DisableWorkingDirOverwrite:       false,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				EnableAPIFields:                  "stable",
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -46,20 +49,56 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableAffinityAssistant:         true,
 				RunningInEnvWithInjectedSidecars: false,
 				RequireGitSSHSecretKnownHosts:    true,
+				EnableTektonOCIBundles:           true,
+				EnableCustomTasks:                true,
+				EnableAPIFields:                  "alpha",
 			},
 			fileName: "feature-flags-all-flags-set",
+		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields: "alpha",
+				// These are prescribed as true by enabling "alpha" API fields, even
+				// if the submitted text value is "false".
+				EnableTektonOCIBundles: true,
+				EnableCustomTasks:      true,
+
+				DisableHomeEnvOverwrite:          true,
+				DisableWorkingDirOverwrite:       true,
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+			},
+			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
+		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields:        "stable",
+				EnableTektonOCIBundles: true,
+				EnableCustomTasks:      true,
+
+				DisableHomeEnvOverwrite:          true,
+				DisableWorkingDirOverwrite:       true,
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+			},
+			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
 	}
 
 	for _, tc := range testCases {
-		verifyConfigFileWithExpectedFeatureFlagsConfig(t, tc.fileName, tc.expectedConfig)
+		fileName := tc.fileName
+		expectedConfig := tc.expectedConfig
+		t.Run(fileName, func(t *testing.T) {
+			verifyConfigFileWithExpectedFeatureFlagsConfig(t, fileName, expectedConfig)
+		})
 	}
 }
 
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
+		DisableHomeEnvOverwrite:          true,
+		DisableWorkingDirOverwrite:       true,
 		RunningInEnvWithInjectedSidecars: true,
+		EnableAPIFields:                  "stable",
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -95,10 +134,27 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 	}
 }
 
+func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
+	for _, tc := range []struct {
+		fileName string
+	}{{
+		fileName: "feature-flags-invalid-boolean",
+	}, {
+		fileName: "feature-flags-invalid-enable-api-fields",
+	}} {
+		t.Run(tc.fileName, func(t *testing.T) {
+			cm := test.ConfigMapFromTestFile(t, tc.fileName)
+			if _, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
+				t.Error("expected error but received nil")
+			}
+		})
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if flags, err := config.NewFeatureFlagsFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(flags, expectedConfig); d != "" {
+		if d := cmp.Diff(expectedConfig, flags); d != "" {
 			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 		}
 	} else {

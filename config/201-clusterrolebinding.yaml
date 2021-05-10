@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-controller-cluster-access
@@ -27,30 +27,13 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: tekton-pipelines-controller-cluster-access
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: tekton-pipelines-controller-leaderelection
-  labels:
-    app.kubernetes.io/component: controller
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-subjects:
-  - kind: ServiceAccount
-    name: tekton-pipelines-controller
-    namespace: tekton-pipelines
-roleRef:
-  kind: ClusterRole
-  name: tekton-pipelines-leader-election
   apiGroup: rbac.authorization.k8s.io
 ---
 # If this ClusterRoleBinding is replaced with a RoleBinding
 # then the ClusterRole would be namespaced. The access described by
 # the tekton-pipelines-controller-tenant-access ClusterRole would
 # be scoped to individual tenant namespaces.
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-controller-tenant-access
@@ -67,7 +50,7 @@ roleRef:
   name: tekton-pipelines-controller-tenant-access
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-webhook-cluster-access
@@ -82,21 +65,4 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: tekton-pipelines-webhook-cluster-access
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: tekton-pipelines-webhook-leaderelection
-  labels:
-    app.kubernetes.io/component: webhook
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-subjects:
-  - kind: ServiceAccount
-    name: tekton-pipelines-webhook
-    namespace: tekton-pipelines
-roleRef:
-  kind: ClusterRole
-  name: tekton-pipelines-leader-election
   apiGroup: rbac.authorization.k8s.io

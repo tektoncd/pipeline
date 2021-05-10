@@ -89,8 +89,6 @@ Tekton automatically adds labels to Tekton entities as described in the followin
 	</tbody>
 </table>
 
-**Note:** For backward compatibility, `TaskRuns` that reference a `ClusterTask` also get the `tekton.dev/task` label.
-
 ## Usage examples
 
 Below are some examples of using labels:

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/version"
@@ -39,7 +40,8 @@ const (
 	// ResultsDir is the folder used by default to create the results file
 	ResultsDir = "/tekton/results"
 
-	taskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
+	// TaskRunLabelKey is the name of the label added to the Pod to identify the TaskRun
+	TaskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -159,9 +161,11 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
 	// themselves their value takes precedence.
-	for i, s := range stepContainers {
-		env := append(implicitEnvVars, s.Env...)
-		stepContainers[i].Env = env
+	if len(implicitEnvVars) > 0 {
+		for i, s := range stepContainers {
+			env := append(implicitEnvVars, s.Env...)
+			stepContainers[i].Env = env
+		}
 	}
 
 	// Add implicit volume mounts to each step, unless the step specifies
@@ -169,10 +173,14 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	for i, s := range stepContainers {
 		// Mount /tekton/creds with a fresh volume for each Step. It needs to
 		// be world-writeable and empty so creds can be initialized in there. Cant
-		// guarantee what UID container runs with.
-		v, vm := getCredsInitVolume()
-		volumes = append(volumes, v)
-		s.VolumeMounts = append(s.VolumeMounts, vm)
+		// guarantee what UID container runs with. If legacy credential helper (creds-init)
+		// is disabled via feature flag then these can be nil since we don't want to mount
+		// the automatic credential volume.
+		v, vm := getCredsInitVolume(ctx, i)
+		if v != nil && vm != nil {
+			volumes = append(volumes, *v)
+			s.VolumeMounts = append(s.VolumeMounts, *vm)
+		}
 
 		requestedVolumeMounts := map[string]bool{}
 		for _, vm := range s.VolumeMounts {
@@ -206,7 +214,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// By default, use an empty pod template and take the one defined in the task run spec if any
-	podTemplate := v1beta1.PodTemplate{}
+	podTemplate := pod.Template{}
 
 	if taskRun.Spec.PodTemplate != nil {
 		podTemplate = *taskRun.Spec.PodTemplate
@@ -271,7 +279,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
 			Annotations: podAnnotations,
-			Labels:      MakeLabels(taskRun),
+			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                corev1.RestartPolicyNever,
@@ -292,12 +300,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			EnableServiceLinks:           podTemplate.EnableServiceLinks,
 			PriorityClassName:            priorityClassName,
 			ImagePullSecrets:             podTemplate.ImagePullSecrets,
+			HostAliases:                  podTemplate.HostAliases,
 		},
 	}, nil
 }
 
-// MakeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func MakeLabels(s *v1beta1.TaskRun) map[string]string {
+// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
+func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
 	// has a managed-by label, it should override this default.
@@ -309,7 +318,7 @@ func MakeLabels(s *v1beta1.TaskRun) map[string]string {
 
 	// NB: Set this *after* passing through TaskRun Labels. If the TaskRun
 	// specifies this label, it should be overridden by this value.
-	labels[taskRunLabelKey] = s.Name
+	labels[TaskRunLabelKey] = s.Name
 	return labels
 }
 

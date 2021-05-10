@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"knative.dev/pkg/apis"
 )
@@ -29,11 +31,17 @@ var _ apis.Validatable = (*PipelineRun)(nil)
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
+
+	if pr.IsPending() && pr.HasStarted() {
+		errs = errs.Also(apis.ErrInvalidValue("PipelineRun cannot be Pending after it is started", "spec.status"))
+	}
+
 	return errs.Also(pr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
 // Validate pipelinerun spec
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	cfg := config.FromContextOrDefaults(ctx)
 	// can't have both pipelineRef and pipelineSpec at the same time
 	if (ps.PipelineRef != nil && ps.PipelineRef.Name != "") && ps.PipelineSpec != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("pipelineref", "pipelinespec"))
@@ -42,6 +50,24 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	// Check that one of PipelineRef and PipelineSpec is present
 	if (ps.PipelineRef == nil || (ps.PipelineRef != nil && ps.PipelineRef.Name == "")) && ps.PipelineSpec == nil {
 		errs = errs.Also(apis.ErrMissingField("pipelineref.name", "pipelinespec"))
+	}
+
+	// If EnableTektonOCIBundles feature flag is on validate it.
+	// Otherwise, fail if it is present (as it won't be allowed nor used)
+	if cfg.FeatureFlags.EnableTektonOCIBundles {
+		// Check that if a bundle is specified, that a PipelineRef is specified as well.
+		if (ps.PipelineRef != nil && ps.PipelineRef.Bundle != "") && ps.PipelineRef.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("pipelineref.name"))
+		}
+
+		// If a bundle url is specified, ensure it is parseable.
+		if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
+			if _, err := name.ParseReference(ps.PipelineRef.Bundle); err != nil {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "pipelineref.bundle"))
+			}
+		}
+	} else if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
+		errs = errs.Also(apis.ErrDisallowedFields("pipelineref.bundle"))
 	}
 
 	// Validate PipelineSpec if it's present
@@ -57,8 +83,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 
 	if ps.Status != "" {
-		if ps.Status != PipelineRunSpecStatusCancelled {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ps.Status, PipelineRunSpecStatusCancelled), "status"))
+		if ps.Status != PipelineRunSpecStatusCancelled && ps.Status != PipelineRunSpecStatusPending {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", ps.Status, PipelineRunSpecStatusCancelled, PipelineRunSpecStatusPending), "status"))
 		}
 	}
 

@@ -254,12 +254,12 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "nested var references",
 			input:    "$(VAR_A$(VAR_B))",
-			expected: expectedError, //"$(VAR_A$(VAR_B))" -- in Tekton this is a bad JSONPath expression
+			expected: expectedError, // "$(VAR_A$(VAR_B))" -- in Tekton this is a bad JSONPath expression
 		},
 		{
 			name:     "nested var references second type",
 			input:    "$(VAR_A$(VAR_B)",
-			expected: "$(VAR_AB", //"$(VAR_A$(VAR_B)"
+			expected: "$(VAR_AB", // "$(VAR_A$(VAR_B)"
 		},
 		{
 			name:     "value is a reference",
@@ -299,7 +299,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "undefined vars are passed through",
 			input:    "$(VAR_DNE)",
-			expected: expectedError, //"$(VAR_DNE)" -- in Tekton a missing key is an error
+			expected: expectedError, // "$(VAR_DNE)" -- in Tekton a missing key is an error
 		},
 		{
 			name:     "multiple (even) operators, var undefined",
@@ -314,7 +314,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "multiple (odd) operators, var undefined",
 			input:    "$$$$$$$(GOOD_ODDS)",
-			expected: expectedError, //"$$$$(GOOD_ODDS)" -- in Tekton a missing key is an error
+			expected: expectedError, // "$$$$(GOOD_ODDS)" -- in Tekton a missing key is an error
 		},
 		{
 			name:     "multiple (odd) operators, var defined",
@@ -369,7 +369,7 @@ func TestContainerEnvMapping(t *testing.T) {
 		{
 			name:     "escaped operators in variable names are not escaped",
 			input:    "$('foo$$var')",
-			expected: "foo$$var", //"$(foo$$var)" -- (reworked valid testcase) in Tekton a missing key is an error
+			expected: "foo$$var", // "$(foo$$var)" -- (reworked valid testcase) in Tekton a missing key is an error
 		},
 		{
 			name:     "newline not expanded",

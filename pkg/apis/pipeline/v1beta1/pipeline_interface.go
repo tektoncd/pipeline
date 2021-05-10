@@ -18,9 +18,9 @@ package v1beta1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// PipelineInterface is implemented by Pipeline and ClusterPipeline
-type PipelineInterface interface {
+// PipelineObject is implemented by Pipeline and ClusterPipeline
+type PipelineObject interface {
 	PipelineMetadata() metav1.ObjectMeta
 	PipelineSpec() PipelineSpec
-	Copy() PipelineInterface
+	Copy() PipelineObject
 }

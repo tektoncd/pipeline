@@ -70,14 +70,14 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	if tr.Status.PodName == "" {
 		t.Fatal("Error getting a PodName (empty)")
 	}
-	p, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	p, err := c.KubeClient.CoreV1().Pods(namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
 
 	if err != nil {
 		t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 	}
 	for _, stat := range p.Status.ContainerStatuses {
 		if strings.Contains(stat.Name, "step-attempt-write") {
-			req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
+			req := c.KubeClient.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
 			logContent, err := req.Do(ctx).Raw()
 			if err != nil {
 				t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)

@@ -22,82 +22,155 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
-func TestPipelineRun_Invalidate(t *testing.T) {
+func TestPipelineRun_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun
 		want *apis.FieldError
-	}{
+		wc   func(context.Context) context.Context
+	}{{
+		name: "no pipeline reference",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: "foo",
+			},
+		},
+		want: apis.ErrMissingField("spec.pipelineref.name, spec.pipelinespec"),
+	}, {
+		name: "invalid pipelinerun metadata",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerun,name",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `invalid resource name "pipelinerun,name": must be a valid DNS label`,
+			Paths:   []string{"metadata.name"},
+		},
+	}, {
+		name: "negative pipeline timeout",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeout: &metav1.Duration{Duration: -48 * time.Hour},
+			},
+		},
+		want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
+	}, {
+		name: "wrong pipelinerun cancel",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Status: "PipelineRunCancell",
+			},
+		},
+		want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled or PipelineRunPending", "spec.status"),
+	}, {
+		name: "use of bundle without the feature flag set",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name:   "my-pipeline",
+					Bundle: "docker.io/foo",
+				},
+			},
+		},
+		want: apis.ErrDisallowedFields("spec.pipelineref.bundle"),
+	}, {
+		name: "bundle missing name",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Bundle: "docker.io/foo",
+				},
+				PipelineSpec: &v1beta1.PipelineSpec{Description: "foo"},
+			},
+		},
+		want: apis.ErrMissingField("spec.pipelineref.name"),
+		wc:   enableTektonOCIBundles(t),
+	}, {
+		name: "invalid bundle reference",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name:   "my-pipeline",
+					Bundle: "not a valid reference",
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
+		wc:   enableTektonOCIBundles(t),
+	},
 		{
-			name: "invalid pipelinerun metadata",
+			name: "pipelinerun pending while running",
 			pr: v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinerun.name",
+					Name: "pipelinerunname",
 				},
 				Spec: v1beta1.PipelineRunSpec{
+					Status: v1beta1.PipelineRunSpecStatusPending,
 					PipelineRef: &v1beta1.PipelineRef{
 						Name: "prname",
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{time.Now()},
 					},
 				},
 			},
 			want: &apis.FieldError{
-				Message: "Invalid resource name: special character . must not be present",
-				Paths:   []string{"metadata.name"},
+				Message: "invalid value: PipelineRun cannot be Pending after it is started",
+				Paths:   []string{"spec.status"},
 			},
-		}, {
-			name: "no pipeline reference",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					ServiceAccountName: "foo",
-				},
-			},
-			want: apis.ErrMissingField("spec.pipelineref.name, spec.pipelinespec"),
-		}, {
-			name: "negative pipeline timeout",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
-				},
-			},
-			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
-		}, {
-			name: "wrong pipelinerun cancel",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-					Status: "PipelineRunCancell",
-				},
-			},
-			want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled", "spec.status"),
 		},
 	}
 
-	for _, ps := range tests {
-		t.Run(ps.name, func(t *testing.T) {
-			err := ps.pr.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s %s", ps.name, diff.PrintWantGot(d))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.wc != nil {
+				ctx = tc.wc(ctx)
+			}
+			err := tc.pr.Validate(ctx)
+			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -111,7 +184,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 		name: "normal case",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelineName",
+				Name: "pipelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{
@@ -123,7 +196,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 		name: "no timeout",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelineName",
+				Name: "pipelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{
@@ -136,7 +209,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 		name: "array param with pipelinespec and taskspec",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelineName",
+				Name: "pipelinelinename",
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
@@ -170,12 +243,25 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "pipelinerun pending",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusPending,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
 	}}
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.pr.Validate(context.Background()); err != nil {
-				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+				t.Error(err)
 			}
 		})
 	}
@@ -250,7 +336,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		t.Run(ps.name, func(t *testing.T) {
 			err := ps.spec.Validate(context.Background())
 			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, d)
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -276,8 +362,21 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			if err := ps.spec.Validate(context.Background()); err != nil {
-				t.Errorf("PipelineRunSpec.Validate/%s (-want, +got) = %v", ps.name, err)
+				t.Error(err)
 			}
 		})
+	}
+}
+
+func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := config.NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		})
+		return s.ToContext(ctx)
 	}
 }

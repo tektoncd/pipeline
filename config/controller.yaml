@@ -51,6 +51,15 @@ spec:
         app: tekton-pipelines-controller
         version: "devel"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: NotIn
+                  values:
+                  - windows
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
@@ -61,23 +70,24 @@ spec:
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
           "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "ko://github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
-          "-build-gcs-fetcher-image", "ko://github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
 
           # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
           "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of October 5, 2020
-          "-shell-image", "gcr.io/distroless/base:debug@sha256:2c12bde3d050850e976fe682193b94f0855866ea4f37a12ed7db8668e8071047"
+          # gcr.io/distroless/base:debug as of Apirl 17, 2021
+          # image shall not contains tag, so it will be supported on a runtime like cri-o
+          "-shell-image", "gcr.io/distroless/base@sha256:aa4fd987555ea10e1a4ec8765da8158b5ffdfef1e72da512c7ede509bc9966c4"
         ]
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
+        - name: config-registry-cert
+          mountPath: /etc/config-registry-cert
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -100,16 +110,46 @@ spec:
           value: feature-flags
         - name: CONFIG_LEADERELECTION_NAME
           value: config-leader-election
+        - name: SSL_CERT_FILE
+          value: /etc/config-registry-cert/cert
+        - name: SSL_CERT_DIR
+          value: /etc/ssl/certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
           # User 65532 is the distroless nonroot user ID
           runAsUser: 65532
+          runAsGroup: 65532
+        ports:
+        - name: probes
+          containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: probes
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
       volumes:
         - name: config-logging
           configMap:
             name: config-logging
+        - name: config-registry-cert
+          configMap:
+            name: config-registry-cert
 ---
 apiVersion: v1
 kind: Service
@@ -133,6 +173,8 @@ spec:
     port: 9090
     protocol: TCP
     targetPort: 9090
+  - name: probes
+    port: 8080
   selector:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller

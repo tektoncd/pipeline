@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	apixv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apixclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apixlisters "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
@@ -64,14 +65,13 @@ func (r *reconciler) Reconcile(ctx context.Context, key string) error {
 	logger := logging.FromContext(ctx)
 
 	if !r.IsLeaderFor(types.NamespacedName{Name: key}) {
-		logger.Debugf("Skipping key %q, not the leader.", key)
-		return nil
+		return controller.NewSkipKey(key)
 	}
 
 	// Look up the webhook secret, and fetch the CA cert bundle.
 	secret, err := r.secretLister.Secrets(system.Namespace()).Get(r.secretName)
 	if err != nil {
-		logger.Errorf("Error fetching secret: %v", err)
+		logger.Errorw("Error fetching secret", zap.Error(err))
 		return err
 	}
 

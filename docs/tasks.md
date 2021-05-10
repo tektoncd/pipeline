@@ -26,6 +26,7 @@ weight: 1
     - [Substituting `Array` parameters](#substituting-array-parameters)
     - [Substituting `Workspace` paths](#substituting-workspace-paths)
     - [Substituting `Volume` names and types](#substituting-volume-names-and-types)
+    - [Substituting in `Script` blocks](#substituting-in-script-blocks)
 - [Code examples](#code-examples)
   - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
   - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
@@ -155,12 +156,30 @@ The following requirements apply to each container image referenced in a `steps`
 
 - The container image must abide by the [container contract](./container-contract.md).
 - Each container image runs to completion or until the first failure occurs.
-- The CPU, memory, and ephemeral storage resource requests will be set to zero, or, if
-  specified, the minimums set through `LimitRanges` in that `Namespace`,
-  if the container image does not have the largest resource request out of all
-  container images in the `Task.` This ensures that the Pod that executes the `Task`
-  only requests enough resources to run a single container image in the `Task` rather
-  than hoard resources for all container images in the `Task` at once.
+- The CPU, memory, and ephemeral storage resource requests will be set
+  to zero (also known as
+  [BestEffort](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#create-a-pod-that-gets-assigned-a-qos-class-of-besteffort)),
+  or, if specified, the minimums set through `LimitRanges` in that
+  `Namespace`, if the container image does not have the largest
+  resource request out of all container images in the `Task.` This
+  ensures that the Pod that executes the `Task` only requests enough
+  resources to run a single container image in the `Task` rather than
+  hoard resources for all container images in the `Task` at once.
+
+Below is an example of setting the resource requests and limits for a step:
+
+```yaml
+spec:
+  steps:
+  - name: step-with-limts
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+         memory: 2Gi
+        cpu: 800m
+```
 
 #### Reserved directories
 
@@ -410,9 +429,9 @@ and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yam
 
 A Task is able to emit string results that can be viewed by users and passed to other Tasks in a Pipeline. These
 results have a wide variety of potential uses. To highlight just a few examples from the Tekton Catalog: the
-[`git-clone` Task](https://github.com/tektoncd/catalog/blob/master/task/git-clone/0.1/git-clone.yaml) emits a
-cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/master/task/generate-build-id/0.1/generate-build-id.yaml)
-emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/master/task/kaniko/0.1)
+[`git-clone` Task](https://github.com/tektoncd/catalog/blob/main/task/git-clone/0.1/git-clone.yaml) emits a
+cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/main/task/generate-build-id/0.1/generate-build-id.yaml)
+emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/main/task/kaniko/0.1)
 emits a container image digest as a result. In each case these results convey information for users to see when
 looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next.
 
@@ -424,7 +443,7 @@ a `results` field but it's the responsibility of the `Task` to generate its cont
 It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
-You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/master/docs/variables.md#variables-available-in-a-task)
+You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)
 to avoid having to hardcode this path.
 
 In the example below, the `Task` specifies two files in the `results` field:
@@ -469,8 +488,13 @@ small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, 
 
 If your `Task` writes a large number of small results, you can work around this limitation
 by writing each result from a separate `Step` so that each `Step` has its own termination message.
-About size limitation, there is validation for it, will raise exception: `Termination message is above max allowed size 4096, caused by large task result`. Since Tekton also uses the termination message for some internal information, so the real available size will less than 4096 bytes. For results larger than a kilobyte, use a [`Workspace`](#specifying-workspaces) to
-shuttle data between `Tasks` within a `Pipeline`.
+If a termination message is detected as being too large the TaskRun will be placed into a failed state
+with the following message: `Termination message is above max allowed size 4096, caused by large task
+result`. Since Tekton also uses the termination message for some internal information, so the real
+available size will less than 4096 bytes.
+
+As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you should likely use a
+[`Workspace`](#specifying-workspaces) to store and pass it between `Tasks` within a `Pipeline`.
 
 ### Specifying `Volumes`
 
@@ -581,6 +605,14 @@ The `description` field is an optional field that allows you to add an informati
 
 ### Using variable substitution
 
+Tekton provides variables to inject values into the contents of certain fields.
+The values you can inject come from a range of sources including other fields
+in the Task, context-sensitive information that Tekton provides, and runtime
+information received from a TaskRun.
+
+The mechanism of variable substitution is quite simple - string replacement is
+performed by the Tekton Controller when a TaskRun is executed.
+
 `Tasks` allow you to substitute variable names for the following entities:
 
 - [Parameters and resources](#substituting-parameters-and-resources)
@@ -588,7 +620,8 @@ The `description` field is an optional field that allows you to add an informati
 - [`Workspaces`](#substituting-workspace-paths)
 - [`Volume` names and types](#substituting-volume-names-and-paths)
 
-Also see the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task).
+See the [complete list of variable substitutions for Tasks](./variables.md#variables-available-in-a-task)
+and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
 
 #### Substituting parameters and resources
 
@@ -666,6 +699,34 @@ by parameterizing them. Tekton supports popular `Volume` types such as `ConfigMa
 See this [example](#mounting-a-configmap-as-a-volume-source) to find out how to perform this type of substitution
 in your `Task.`
 
+#### Substituting in `Script` blocks
+
+Variables can contain any string, including snippets of script that can
+be injected into a Task's `Script` field. If you are using Tekton's variables
+in your Task's `Script` field be aware that the strings you're interpolating
+could include executable instructions.
+
+Preventing a substituted variable from executing as code depends on the container
+image, language or shell that your Task uses. Here's an example of interpolating
+a Tekton variable into a `bash` `Script` block that prevents the variable's string
+contents from being executed:
+
+```yaml
+# Task.yaml
+spec:
+  steps:
+  - image: an-image-that-runs-bash
+    env:
+    - name: SCRIPT_CONTENTS
+      value: $(params.script)
+    script: |
+      printf '%s' "${SCRIPT_CONTENTS}" > input-script
+```
+
+This works by injecting Tekton's variable as an environment variable into the Step's
+container. The `printf` program is then used to write the environment variable's
+content to a file.
+
 ## Code examples
 
 Study the following code examples to better understand how to configure your `Tasks`:
@@ -677,7 +738,7 @@ Study the following code examples to better understand how to configure your `Ta
 - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 
 _Tip: See the collection of simple
-[examples](https://github.com/tektoncd/pipeline/tree/master/examples) for
+[examples](https://github.com/tektoncd/pipeline/tree/main/examples) for
 additional code samples._
 
 ### Building and pushing a Docker image

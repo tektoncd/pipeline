@@ -31,7 +31,7 @@ type Logger interface {
 	Errorf(string, ...interface{})
 }
 
-// Constructors is a map for specifying config names to
+// Constructors is a map for specifying configmap names to
 // their function constructors
 //
 // The values of this map must be functions with the definition

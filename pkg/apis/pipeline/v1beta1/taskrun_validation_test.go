@@ -38,27 +38,14 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	}{{
 		name: "invalid taskspec",
 		task: &v1beta1.TaskRun{},
-		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec"),
-	}, {
-		name: "invalid taskrun metadata",
-		task: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "task.name",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{Name: "task"},
-			},
-		},
-		want: &apis.FieldError{
-			Message: "Invalid resource name: special character . must not be present",
-			Paths:   []string{"metadata.name"},
-		},
+		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec").Also(
+			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("TaskRun.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -120,7 +107,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 				t.Errorf("Expected error for invalid TaskRun but got none")
 			}
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -131,6 +118,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name    string
 		spec    v1beta1.TaskRunSpec
 		wantErr *apis.FieldError
+		wc      func(context.Context) context.Context
 	}{{
 		name:    "invalid taskspec",
 		spec:    v1beta1.TaskRunSpec{},
@@ -201,12 +189,45 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myname].name"),
+	}, {
+		name: "use of bundle without the feature flag set",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "my-task",
+				Bundle: "docker.io/foo",
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskref.bundle"),
+	}, {
+		name: "bundle missing name",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Bundle: "docker.io/foo",
+			},
+			TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{Container: corev1.Container{Image: "foo"}}}},
+		},
+		wantErr: apis.ErrMissingField("taskref.name"),
+		wc:      enableTektonOCIBundles(t),
+	}, {
+		name: "invalid bundle reference",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "my-task",
+				Bundle: "invalid reference",
+			},
+		},
+		wantErr: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "taskref.bundle"),
+		wc:      enableTektonOCIBundles(t),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.spec.Validate(context.Background())
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			err := ts.spec.Validate(ctx)
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
-				t.Errorf("TaskRunSpec.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -269,7 +290,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.spec.Validate(context.Background()); err != nil {
-				t.Errorf("TaskRunSpec.Validate()/%s error = %v", ts.name, err)
+				t.Error(err)
 			}
 		})
 	}
@@ -502,7 +523,7 @@ func TestResources_Invalidate(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.resources.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("TaskRunInputs.Validate/%s %s", ts.name, diff.PrintWantGot(d))
+				t.Error(diff.PrintWantGot(d))
 			}
 		})
 	}

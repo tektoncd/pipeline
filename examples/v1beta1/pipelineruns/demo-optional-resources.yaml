@@ -1,5 +1,5 @@
 # `Conditions` are deprecated, use `WhenExpressions` instead
-# https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#guard-task-execution-using-whenexpressions
+# https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#guard-task-execution-using-whenexpressions
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
 metadata:
@@ -16,7 +16,7 @@ spec:
     script: 'test -f $(resources.git-repo.path)/$(params.path)'
 ---
 # `Conditions` are deprecated, use `WhenExpressions` instead
-# https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md#guard-task-execution-using-whenexpressions
+# https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#guard-task-execution-using-whenexpressions
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
 metadata:
@@ -51,7 +51,7 @@ spec:
         optional: true
   steps:
     - name: build-an-image
-      image: "gcr.io/kaniko-project/executor:latest"
+      image: gcr.io/kaniko-project/executor:v1.3.0
       command:
         - /kaniko/executor
       args:
@@ -124,7 +124,7 @@ spec:
         type: git
         params:
           - name: revision
-            value: master
+            value: main
           - name: url
             value: https://github.com/tektoncd/pipeline
 ---
