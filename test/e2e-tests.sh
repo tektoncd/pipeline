@@ -52,11 +52,14 @@ function run_e2e() {
   go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
 }
 
-set_feature_gate "stable"
-run_e2e
+if [ "$PIPELINE_FEATURE_GATE" == "" ]; then
+  set_feature_gate "stable"
+  run_e2e
+else
+  set_feature_gate "$PIPELINE_FEATURE_GATE"
+  run_e2e
+fi
 
-set_feature_gate "alpha"
-run_e2e
 
 (( failed )) && fail_test
 success
