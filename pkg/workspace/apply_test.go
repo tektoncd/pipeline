@@ -962,6 +962,9 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 	}} {
 		sidecar := v1beta1.Sidecar{}
 		sidecar.Container.VolumeMounts = tc.sidecarMounts
-		workspace.AddSidecarVolumeMount(&v1beta1.Sidecar{}, corev1.VolumeMount{})
+		workspace.AddSidecarVolumeMount(&sidecar, tc.volumeMount)
+		if d := cmp.Diff(tc.expectedSidecar, sidecar); d != "" {
+			t.Error(diff.PrintWantGot(d))
+		}
 	}
 }
