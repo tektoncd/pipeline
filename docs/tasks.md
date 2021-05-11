@@ -261,6 +261,18 @@ steps:
     #!/usr/bin/env bash
     /bin/my-binary
 ```
+
+**Note:** Kubernetes processes the contents of the `script` field using rules applied to
+`args` fields of containers. This can result in some unexpected behaviour:
+1. Instances of two dollar signs can be replaced in your scripts with a single dollar sign.
+   In other words, "$$" is replaced with "$".
+2. Usage of Kubernetes variable references such as `$(MY_ENV_VAR)` will not work as expected.
+   An init container writes your script to disk before your `Step` can execute it and the `env`
+   of the init container differs from that of your `Step`.
+
+For more information about Kubernetes variable references see the
+[Kubernetes docs for the args field](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#entrypoint).
+
 #### Specifying a timeout
 
 A `Step` can specify a `timeout` field.
