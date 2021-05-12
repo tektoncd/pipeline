@@ -36,6 +36,9 @@ var _ apis.Validatable = (*Pipeline)(nil)
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 

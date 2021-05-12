@@ -32,18 +32,18 @@ import (
 
 func TestTaskRun_Invalidate(t *testing.T) {
 	tests := []struct {
-		name string
-		task *v1beta1.TaskRun
-		want *apis.FieldError
+		name    string
+		taskRun *v1beta1.TaskRun
+		want    *apis.FieldError
 	}{{
-		name: "invalid taskspec",
-		task: &v1beta1.TaskRun{},
+		name:    "invalid taskspec",
+		taskRun: &v1beta1.TaskRun{},
 		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec").Also(
 			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.task.Validate(context.Background())
+			err := ts.taskRun.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -52,16 +52,37 @@ func TestTaskRun_Invalidate(t *testing.T) {
 }
 
 func TestTaskRun_Validate(t *testing.T) {
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "taskrname",
+	tests := []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+		wc      func(context.Context) context.Context
+	}{{
+		name: "simple taskref",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrname",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "taskrefname"},
+			},
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: "taskrefname"},
+	}, {
+		name: "do not validate spec on delete",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "taskrname"},
 		},
-	}
-	if err := tr.Validate(context.Background()); err != nil {
-		t.Errorf("TaskRun.Validate() error = %v", err)
+		wc: apis.WithinDelete,
+	}}
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			if err := ts.taskRun.Validate(ctx); err != nil {
+				t.Errorf("TaskRun.Validate() error = %v", err)
+			}
+		})
 	}
 }
 

@@ -32,6 +32,10 @@ var _ apis.Validatable = (*PipelineRun)(nil)
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
 
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
+
 	if pr.IsPending() && pr.HasStarted() {
 		errs = errs.Also(apis.ErrInvalidValue("PipelineRun cannot be Pending after it is started", "spec.status"))
 	}

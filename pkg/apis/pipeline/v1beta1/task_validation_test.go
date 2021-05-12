@@ -56,6 +56,32 @@ var invalidSteps = []v1beta1.Step{{Container: corev1.Container{
 	Image: "myimage",
 }}}
 
+func TestTaskValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		t    *v1beta1.Task
+		wc   func(context.Context) context.Context
+	}{{
+		name: "do not validate spec on delete",
+		t: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+		},
+		wc: apis.WithinDelete,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.t.Validate(ctx)
+			if err != nil {
+				t.Errorf("Task.Validate() returned error for valid Task: %v", err)
+			}
+		})
+	}
+}
+
 func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
