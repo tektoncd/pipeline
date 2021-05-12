@@ -438,6 +438,7 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
+				placeToolsInit,
 				{
 					Name:         "working-dir-initializer",
 					Image:        images.ShellImage,
@@ -446,7 +447,6 @@ func TestPodBuild(t *testing.T) {
 					WorkingDir:   pipeline.WorkspaceDir,
 					VolumeMounts: implicitVolumeMounts,
 				},
-				placeToolsInit,
 			},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
@@ -550,20 +550,20 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
+				placeToolsInit,
 				{
 					Name:         "place-scripts",
 					Image:        "busybox",
 					Command:      []string{"sh"},
-					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 					Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'sidecar-script-heredoc-randomly-generated-mz4c7'
-#!/bin/sh
-echo hello from sidecar
-sidecar-script-heredoc-randomly-generated-mz4c7
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCmVjaG8gaGVsbG8gZnJvbSBzaWRlY2Fy
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
 `},
 				},
-				placeToolsInit,
 			},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
@@ -779,32 +779,27 @@ print("Hello from Python")`,
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
+				placeToolsInit,
 				{
 					Name:    "place-scripts",
 					Image:   images.ShellImage,
 					Command: []string{"sh"},
 					Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
-#!/bin/sh
-echo hello from step one
-script-heredoc-randomly-generated-mz4c7
-tmpfile="/tekton/scripts/script-1-mssqb"
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCmVjaG8gaGVsbG8gZnJvbSBzdGVwIG9uZQ==
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+tmpfile="/tekton/scripts/script-1-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
-#!/usr/bin/env python
-print("Hello from Python")
-script-heredoc-randomly-generated-78c5n
+cat > ${tmpfile} << '_EOF_'
+IyEvdXNyL2Jpbi9lbnYgcHl0aG9uCnByaW50KCJIZWxsbyBmcm9tIFB5dGhvbiIp
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
 `},
-					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 				},
-				{
-					Name:         "place-tools",
-					WorkingDir:   "/",
-					Image:        images.EntrypointImage,
-					Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
-					VolumeMounts: []corev1.VolumeMount{toolsMount},
-				}},
+			},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
 				Image:   "image",
@@ -842,7 +837,7 @@ script-heredoc-randomly-generated-78c5n
 					"-termination_path",
 					"/tekton/termination",
 					"-entrypoint",
-					"/tekton/scripts/script-1-mssqb",
+					"/tekton/scripts/script-1-mz4c7",
 					"--",
 					"template",
 					"args",
@@ -888,6 +883,60 @@ script-heredoc-randomly-generated-78c5n
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
 				Name:         "tekton-creds-init-home-2",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+		},
+	}, {
+		desc: "step with script that uses two dollar signs",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:  "one",
+					Image: "image",
+				},
+				Script: "#!/bin/sh\n$$",
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit, {
+				Name:    "place-scripts",
+				Image:   images.ShellImage,
+				Command: []string{"sh"},
+				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCiQk
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+`},
+				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+			}},
+			Containers: []corev1.Container{{
+				Name:    "step-one",
+				Image:   "image",
+				Command: []string{"/tekton/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/tools/0",
+					"-termination_path",
+					"/tekton/termination",
+					"-entrypoint",
+					"/tekton/scripts/script-0-9l9zj",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
 		},

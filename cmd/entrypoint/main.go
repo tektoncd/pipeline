@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -45,25 +45,6 @@ var (
 
 const defaultWaitPollingInterval = time.Second
 
-func cp(src, dst string) error {
-	s, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer s.Close()
-
-	// Owner has permission to write and execute, and anybody has
-	// permission to execute.
-	d, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0311)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-
-	_, err = io.Copy(d, s)
-	return err
-}
-
 func main() {
 	// Add credential flags originally introduced with our legacy credentials helper
 	// image (creds-init).
@@ -72,17 +53,14 @@ func main() {
 
 	flag.Parse()
 
-	// If invoked in "cp mode" (`entrypoint cp <src> <dst>`), simply copy
-	// the src path to the dst path. This is used to place the entrypoint
-	// binary in the tools directory, without requiring the cp command to
-	// exist in the base image.
-	if len(flag.Args()) == 3 && flag.Args()[0] == "cp" {
-		src, dst := flag.Args()[1], flag.Args()[2]
-		if err := cp(src, dst); err != nil {
-			log.Fatal(err)
+	if err := subcommands.Process(flag.Args()); err != nil {
+		log.Println(err.Error())
+		switch err.(type) {
+		case subcommands.SubcommandSuccessful:
+			return
+		default:
+			os.Exit(1)
 		}
-		log.Println("Copied", src, "to", dst)
-		return
 	}
 
 	// Copy credentials we're expecting from the legacy credentials helper (creds-init)
