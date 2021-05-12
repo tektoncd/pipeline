@@ -136,31 +136,29 @@ func TestPipelineRun_Invalid(t *testing.T) {
 		},
 		want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
 		wc:   enableTektonOCIBundles(t),
-	},
-		{
-			name: "pipelinerun pending while running",
-			pr: v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinerunname",
-				},
-				Spec: v1beta1.PipelineRunSpec{
-					Status: v1beta1.PipelineRunSpecStatusPending,
-					PipelineRef: &v1beta1.PipelineRef{
-						Name: "prname",
-					},
-				},
-				Status: v1beta1.PipelineRunStatus{
-					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-						StartTime: &metav1.Time{time.Now()},
-					},
+	}, {
+		name: "pipelinerun pending while running",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinerunname",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusPending,
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
 				},
 			},
-			want: &apis.FieldError{
-				Message: "invalid value: PipelineRun cannot be Pending after it is started",
-				Paths:   []string{"spec.status"},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{time.Now()},
+				},
 			},
 		},
-	}
+		want: &apis.FieldError{
+			Message: "invalid value: PipelineRun cannot be Pending after it is started",
+			Paths:   []string{"spec.status"},
+		},
+	}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -180,6 +178,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   v1beta1.PipelineRun
+		wc   func(context.Context) context.Context
 	}{{
 		name: "normal case",
 		pr: v1beta1.PipelineRun{
@@ -256,11 +255,29 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "do not validate spec on delete",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeout: &metav1.Duration{Duration: -48 * time.Hour},
+			},
+		},
+		wc: apis.WithinDelete,
 	}}
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			if err := ts.pr.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			if err := ts.pr.Validate(ctx); err != nil {
 				t.Error(err)
 			}
 		})

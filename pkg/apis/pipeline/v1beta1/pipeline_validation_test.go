@@ -132,6 +132,12 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "do not validate spec on delete",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		},
+		wc: apis.WithinDelete,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

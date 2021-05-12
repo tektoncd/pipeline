@@ -32,6 +32,9 @@ func (c Condition) Validate(ctx context.Context) *apis.FieldError {
 	if err := validate.ObjectMetadata(c.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return c.Spec.Validate(ctx).ViaField("Spec")
 }
 
