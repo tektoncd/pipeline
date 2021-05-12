@@ -69,8 +69,8 @@ A `Pipeline` definition supports the following fields:
     `Pipeline` object. For example, a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     this `Pipeline` object. This must include:
-    - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
-      and the details of their execution.
+      - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
+        and the details of their execution.
 - Optional:
   - [`resources`](#specifying-resources) - **alpha only** Specifies
     [`PipelineResources`](resources.md) needed or created by the `Tasks` comprising the `Pipeline`.
