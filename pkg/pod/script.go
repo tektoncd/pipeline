@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -58,7 +59,7 @@ func convertScripts(shellImage string, steps []v1beta1.Step, sidecars []v1beta1.
 		Image:        shellImage,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", ""},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, "script")
@@ -107,22 +108,18 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 		// non-nil init container.
 		*placeScripts = true
 
+		script = encodeScript(script)
+
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.
 		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
-		// heredoc is the "here document" placeholder string
-		// used to cat script contents into the file. Typically
-		// this is the string "EOF" but if this value were
-		// "EOF" it would prevent users from including the
-		// string "EOF" in their own scripts. Instead we
-		// randomly generate a string to (hopefully) prevent
-		// collisions.
-		heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-heredoc-randomly-generated", namePrefix))
+		heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
 		initContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << '%s'
 %s
 %s
+/tekton/tools/entrypoint decode-script "${tmpfile}"
 `, tmpFile, heredoc, script, heredoc)
 
 		// Set the command to execute the correct script in the mounted
@@ -135,4 +132,10 @@ cat > ${tmpfile} << '%s'
 		containers = append(containers, steps[i].Container)
 	}
 	return containers
+}
+
+// encodeScript encodes a script field into a format that avoids kubernetes' built-in processing of container args,
+// which can mangle dollar signs and unexpectedly replace variable references in the user's script.
+func encodeScript(script string) string {
+	return base64.StdEncoding.EncodeToString([]byte(script))
 }

@@ -97,3 +97,37 @@ spec:
         [[ $# == 2 ]]
         [[ $1 == "hello" ]]
         [[ $2 == "world" ]]
+
+    # Test that multiple dollar signs next to each other are not replaced by Kubernetes
+    - name: dollar-signs-allowed
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        if '$' != '\u0024':
+          print('single dollar signs ($) are not passed through as expected :(')
+          exit(1)
+        if '$$' != '\u0024\u0024':
+          print('double dollar signs ($$) are not passed through as expected :(')
+          exit(2)
+        if '$$$' != '\u0024\u0024\u0024':
+          print('three dollar signs ($$$) are not passed through as expected :(')
+          exit(3)
+        if '$$$$' != '\u0024\u0024\u0024\u0024':
+          print('four dollar signs ($$$$) are not passed through as expected :(')
+          exit(4)
+        print('dollar signs appear to be handled correctly! :)')
+
+    # Test that bash scripts with variable evaluations work as expected
+    - name: bash-variable-evaluations
+      image: bash:5.1.8
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        var1=var1_value
+        var2=var1
+        echo $(eval echo \$$var2) > tmpfile
+        eval_result=$(cat tmpfile)
+        if [ "$eval_result" != "var1_value" ] ; then
+          echo "unexpected eval result: $eval_result"
+          exit 1
+        fi

@@ -154,7 +154,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if err != nil {
 		return nil, err
 	}
-	initContainers = append(initContainers, entrypointInit)
+	// place the entrypoint first in case other init containers rely on its
+	// features (e.g. decode-script).
+	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
 	volumes = append(volumes, toolsVolume, downwardVolume)
 
 	limitRangeMin, err := getLimitRangeMinimum(ctx, taskRun.Namespace, b.KubeClient)

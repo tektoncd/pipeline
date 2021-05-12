@@ -160,26 +160,24 @@ script-3`,
 		Command: []string{"sh"},
 		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
-#!/bin/sh
-script-1
-script-heredoc-randomly-generated-mz4c7
-tmpfile="/tekton/scripts/script-2-mssqb"
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC0x
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+tmpfile="/tekton/scripts/script-2-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
-
-#!/bin/sh
-script-3
-script-heredoc-randomly-generated-78c5n
-tmpfile="/tekton/scripts/script-3-6nl7g"
+cat > ${tmpfile} << '_EOF_'
+CiMhL2Jpbi9zaApzY3JpcHQtMw==
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+tmpfile="/tekton/scripts/script-3-mssqb"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-j2tds'
-#!/bin/sh
-set -xe
-no-shebang
-script-heredoc-randomly-generated-j2tds
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -189,12 +187,12 @@ script-heredoc-randomly-generated-j2tds
 		Image: "step-2",
 	}, {
 		Image:        "step-3",
-		Command:      []string{"/tekton/scripts/script-2-mssqb"},
+		Command:      []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:         []string{"my", "args"},
 		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
 	}, {
 		Image:   "step-3",
-		Command: []string{"/tekton/scripts/script-3-6nl7g"},
+		Command: []string{"/tekton/scripts/script-3-mssqb"},
 		Args:    []string{"my", "args"},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
@@ -251,24 +249,24 @@ sidecar-1`,
 		Command: []string{"sh"},
 		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-mz4c7'
-#!/bin/sh
-script-1
-script-heredoc-randomly-generated-mz4c7
-tmpfile="/tekton/scripts/script-2-mssqb"
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC0x
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+tmpfile="/tekton/scripts/script-2-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
-#!/bin/sh
-script-3
-script-heredoc-randomly-generated-78c5n
-tmpfile="/tekton/scripts/sidecar-script-0-6nl7g"
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC0z
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
+tmpfile="/tekton/scripts/sidecar-script-0-mssqb"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'sidecar-script-heredoc-randomly-generated-j2tds'
-#!/bin/sh
-sidecar-1
-sidecar-script-heredoc-randomly-generated-j2tds
+cat > ${tmpfile} << '_EOF_'
+IyEvYmluL3NoCnNpZGVjYXItMQ==
+_EOF_
+/tekton/tools/entrypoint decode-script "${tmpfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -278,7 +276,7 @@ sidecar-script-heredoc-randomly-generated-j2tds
 		Image: "step-2",
 	}, {
 		Image:   "step-3",
-		Command: []string{"/tekton/scripts/script-2-mssqb"},
+		Command: []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:    []string{"my", "args"},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
@@ -289,7 +287,7 @@ sidecar-script-heredoc-randomly-generated-j2tds
 
 	wantSidecars := []corev1.Container{{
 		Image:        "sidecar-1",
-		Command:      []string{"/tekton/scripts/sidecar-script-0-6nl7g"},
+		Command:      []string{"/tekton/scripts/sidecar-script-0-mssqb"},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
