@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -30,38 +31,38 @@ func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	}
 }
 
-func mustParseTaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
+func mustParseTaskRun(t *testing.T, yaml string, args ...interface{}) *v1beta1.TaskRun {
 	var tr v1beta1.TaskRun
-	yaml = `apiVersion: tekton.dev/v1beta1
+	yaml = fmt.Sprintf(`apiVersion: tekton.dev/v1beta1
 kind: TaskRun
-` + yaml
+`+yaml, args...)
 	mustParseYAML(t, yaml, &tr)
 	return &tr
 }
 
-func mustParseTask(t *testing.T, yaml string) *v1beta1.Task {
+func mustParseTask(t *testing.T, yaml string, args ...interface{}) *v1beta1.Task {
 	var task v1beta1.Task
-	yaml = `apiVersion: tekton.dev/v1beta1
+	yaml = fmt.Sprintf(`apiVersion: tekton.dev/v1beta1
 kind: Task
-` + yaml
+`+yaml, args...)
 	mustParseYAML(t, yaml, &task)
 	return &task
 }
 
-func mustParsePipelineRun(t *testing.T, yaml string) *v1beta1.PipelineRun {
+func mustParsePipelineRun(t *testing.T, yaml string, args ...interface{}) *v1beta1.PipelineRun {
 	var pr v1beta1.PipelineRun
-	yaml = `apiVersion: tekton.dev/v1beta1
+	yaml = fmt.Sprintf(`apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
-` + yaml
+`+yaml, args...)
 	mustParseYAML(t, yaml, &pr)
 	return &pr
 }
 
-func mustParsePipeline(t *testing.T, yaml string) *v1beta1.Pipeline {
+func mustParsePipeline(t *testing.T, yaml string, args ...interface{}) *v1beta1.Pipeline {
 	var pipeline v1beta1.Pipeline
-	yaml = `apiVersion: tekton.dev/v1beta1
+	yaml = fmt.Sprintf(`apiVersion: tekton.dev/v1beta1
 kind: Pipeline
-` + yaml
+`+yaml, args...)
 	mustParseYAML(t, yaml, &pipeline)
 	return &pipeline
 }
