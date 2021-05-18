@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Variable Substitutions"
-weight: 15
+weight: 900
 ---
 -->
 # Variable Substitutions Supported by `Tasks` and `Pipelines`
