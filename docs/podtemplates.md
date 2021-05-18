@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Pod templates"
-weight: 12
+weight: 1400
 ---
 -->
 # Pod templates
