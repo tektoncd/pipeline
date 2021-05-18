@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Tekton Controller Performance Configuration"
+weight: 1600
+---
+-->
+
 # Tekton Controller Performance Configuration
 Configure ThreadsPerController, QPS and Burst
 
