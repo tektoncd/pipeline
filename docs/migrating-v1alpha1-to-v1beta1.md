@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Migrating from Tekton v1alpha1"
+weight: 4000
+---
+-->
+
 # Migrating From Tekton `v1alpha1` to Tekton `v1beta1`
 
 - [Changes to fields](#changes-to-fields)
