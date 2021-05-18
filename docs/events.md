@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Events"
-weight: 2
+weight: 700
 ---
 -->
 # Events
