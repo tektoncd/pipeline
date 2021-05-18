@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Pipelines"
-weight: 3
+weight: 400
 ---
 -->
 # Pipelines
