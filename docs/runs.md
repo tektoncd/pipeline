@@ -153,6 +153,11 @@ the `example.dev` API group,  with the version `v1alpha1`.
    behaviour is supported then, appropriate validation error should be
    updated to the `Run`'s status.
 
+4. A custom task controller can support `retries` by watching the `/spec/status`
+   of `Run`. If it is `RunRetry` then start executing retry and clear its
+   status to let `tektoncd` controller know that the custom task has started
+   retrying.
+
 ### Specifying `Parameters`
 
 If a custom task supports [`parameters`](tasks.md#parameters), you can use the
