@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Migration from KNative Build"
-weight: 13
+weight: 4100
 ---
 -->
 # Migrating from [Knative Build](https://github.com/knative/build)
