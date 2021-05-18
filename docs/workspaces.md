@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Workspaces"
-weight: 5
+weight: 600
 ---
 -->
 # Workspaces
