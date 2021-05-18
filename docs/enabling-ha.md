@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "HA Support"
+weight: 1500
+---
+-->
+
 # HA Support for Tekton Pipeline Controllers
 
 - [Overview](#overview)
