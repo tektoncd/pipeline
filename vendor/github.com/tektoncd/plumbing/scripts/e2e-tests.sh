@@ -166,7 +166,7 @@ function create_test_cluster() {
 
   # Smallest cluster required to run the end-to-end-tests
   local CLUSTER_CREATION_ARGS=(
-    --gke-create-command="container clusters create --quiet --enable-autoscaling --min-nodes=${E2E_MIN_CLUSTER_NODES} --max-nodes=${E2E_MAX_CLUSTER_NODES} --scopes=cloud-platform --enable-basic-auth --no-issue-client-certificate ${EXTRA_CLUSTER_CREATION_FLAGS[@]}"
+    --gke-create-command="container clusters create --quiet --enable-autoscaling --min-nodes=${E2E_MIN_CLUSTER_NODES} --max-nodes=${E2E_MAX_CLUSTER_NODES} --scopes=cloud-platform --no-issue-client-certificate ${EXTRA_CLUSTER_CREATION_FLAGS[@]}"
     --gke-shape={\"default\":{\"Nodes\":${E2E_MIN_CLUSTER_NODES}\,\"MachineType\":\"${E2E_CLUSTER_MACHINE}\"}}
     --provider=gke
     --deployment=gke
@@ -282,11 +282,8 @@ function setup_test_cluster() {
   local k8s_user=$(gcloud config get-value core/account)
   local k8s_cluster=$(kubectl config current-context)
 
-  # If cluster admin role isn't set, this is a brand new cluster
-  # Setup the admin role and also KO_DOCKER_REPO
-  if [[ -z "$(kubectl get clusterrolebinding cluster-admin-binding 2> /dev/null)" ]]; then
-    acquire_cluster_admin_role ${k8s_user} ${E2E_CLUSTER_NAME} ${E2E_CLUSTER_REGION} ${E2E_CLUSTER_ZONE}
-    kubectl config set-context ${k8s_cluster} --namespace=default
+  # If KO_DOCKER_REPO isn't set, use default.
+  if [[ -z "${KO_DOCKER_REPO}" ]]; then
     export KO_DOCKER_REPO=gcr.io/${E2E_PROJECT_ID}/${E2E_BASE_NAME}-e2e-img
   fi
 
