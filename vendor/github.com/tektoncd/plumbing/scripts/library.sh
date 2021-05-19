@@ -240,44 +240,6 @@ function dump_app_logs() {
   done
 }
 
-# Sets the given user as cluster admin.
-# Parameters: $1 - user
-#             $2 - cluster name
-#             $3 - cluster region
-#             $4 - cluster zone, optional
-function acquire_cluster_admin_role() {
-  echo "Acquiring cluster-admin role for user '$1'"
-  local geoflag="--region=$3"
-  [[ -n $4 ]] && geoflag="--zone=$3-$4"
-  # Get the password of the admin and use it, as the service account (or the user)
-  # might not have the necessary permission.
-  local password=$(gcloud --format="value(masterAuth.password)" \
-      container clusters describe $2 ${geoflag})
-  if [[ -n "${password}" ]]; then
-    # Cluster created with basic authentication
-    kubectl config set-credentials cluster-admin \
-        --username=admin --password=${password}
-  else
-    local cert=$(mktemp)
-    local key=$(mktemp)
-    echo "Certificate in ${cert}, key in ${key}"
-    gcloud --format="value(masterAuth.clientCertificate)" \
-      container clusters describe $2 ${geoflag} | base64 -d > ${cert}
-    gcloud --format="value(masterAuth.clientKey)" \
-      container clusters describe $2 ${geoflag} | base64 -d > ${key}
-    kubectl config set-credentials cluster-admin \
-      --client-certificate=${cert} --client-key=${key}
-  fi
-  kubectl config set-context $(kubectl config current-context) \
-      --user=cluster-admin
-  kubectl create clusterrolebinding cluster-admin-binding \
-      --clusterrole=cluster-admin \
-      --user=$1
-  # Reset back to the default account
-  gcloud container clusters get-credentials \
-      $2 ${geoflag} --project $(gcloud config get-value project)
-}
-
 # Runs a go test and generate a junit summary.
 # Parameters: $1... - parameters to go test
 function report_go_test() {

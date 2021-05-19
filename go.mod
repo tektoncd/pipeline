@@ -22,7 +22,7 @@ require (
 	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0 // indirect
-	github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9
+	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect

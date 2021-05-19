@@ -290,7 +290,7 @@ github.com/shurcooL/graphql/internal/jsonutil
 github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9
+# github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
 # github.com/vdemeester/k8s-pkg-credentialprovider v1.19.7
