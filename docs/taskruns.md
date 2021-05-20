@@ -24,6 +24,7 @@ weight: 2
   - [Monitoring `Results`](#monitoring-results)
 - [Cancelling a `TaskRun`](#cancelling-a-taskrun)
 - [Events](events.md#taskruns)
+- [Running a TaskRun Hermetically](hermetic.md)
 - [Code examples](#code-examples)
   - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
   - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)

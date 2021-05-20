@@ -383,6 +383,7 @@ Features currently in "alpha" are:
 - [Tekton Bundles](./taskruns.md#tekton-bundles)
 - [Custom Tasks](./runs.md)
 - [Isolated Step & Sidecar Workspaces](./workspaces.md#isolated-workspaces)
+- [Hermetic Execution Mode](./hermetic.md)
 
 ## Configuring High Availability
 

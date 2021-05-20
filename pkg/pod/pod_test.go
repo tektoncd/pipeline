@@ -1234,6 +1234,103 @@ script-heredoc-randomly-generated-78c5n
 				}},
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 			},
+		}, {
+			desc:         "hermetic env var",
+			featureFlags: map[string]string{"enable-api-fields": "alpha"},
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}}},
+			},
+			trAnnotation: map[string]string{
+				"experimental.tekton.dev/execution-mode": "hermetic",
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+					Env: []corev1.EnvVar{
+						{Name: "TEKTON_HERMETIC", Value: "1"},
+					},
+				}},
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+			},
+		}, {
+			desc:         "override hermetic env var",
+			featureFlags: map[string]string{"enable-api-fields": "alpha"},
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+					Env:     []corev1.EnvVar{{Name: "TEKTON_HERMETIC", Value: "something_else"}},
+				}}},
+			},
+			trAnnotation: map[string]string{
+				"experimental.tekton.dev/execution-mode": "hermetic",
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/tools/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/tools/0",
+						"-termination_path",
+						"/tekton/termination",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+					TerminationMessagePath: "/tekton/termination",
+					Env: []corev1.EnvVar{
+						{Name: "TEKTON_HERMETIC", Value: "something_else"},
+						// this value must be second to override the first
+						{Name: "TEKTON_HERMETIC", Value: "1"},
+					},
+				}},
+				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+			},
 		}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

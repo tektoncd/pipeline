@@ -12,7 +12,7 @@ go test ./...
 # Integration tests (against your current kube cluster)
 go test -v -count=1 -tags=e2e -timeout=20m ./test
 
-#conformance tests  (against your current kube cluster)
+# Conformance tests  (against your current kube cluster)
 go test -v -count=1 -tags=conformance -timeout=10m ./test
 ```
 

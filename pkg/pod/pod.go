@@ -42,6 +42,13 @@ const (
 
 	// TaskRunLabelKey is the name of the label added to the Pod to identify the TaskRun
 	TaskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
+
+	// TektonHermeticEnvVar is the env var we set in containers to indicate they should be run hermetically
+	TektonHermeticEnvVar = "TEKTON_HERMETIC"
+	// ExecutionModeAnnotation is an experimental optional annotation to set the execution mode on a TaskRun
+	ExecutionModeAnnotation = "experimental.tekton.dev/execution-mode"
+	// ExecutionModeHermetic indicates hermetic execution mode
+	ExecutionModeHermetic = "hermetic"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -164,6 +171,16 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if len(implicitEnvVars) > 0 {
 		for i, s := range stepContainers {
 			env := append(implicitEnvVars, s.Env...)
+			stepContainers[i].Env = env
+		}
+	}
+
+	// Add env var if hermetic execution was requested & if the alpha API is enabled
+	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
+	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
+		for i, s := range stepContainers {
+			// Add it at the end so it overrides
+			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"})
 			stepContainers[i].Env = env
 		}
 	}
