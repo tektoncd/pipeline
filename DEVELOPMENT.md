@@ -2,24 +2,30 @@
 
 ## Getting started
 
-1.  [Ramp up on kubernetes and CRDs](#ramp-up)
-1.  Create [a GitHub account](https://github.com/join)
-1.  Setup
-    [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
-1.  Set up your [development environment](#environment-setup)
-1.  [Create and checkout a repo fork](#checkout-your-fork)
-1.  [Set up a Kubernetes cluster](#kubernetes-cluster)
-1.  [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-1.  [Set up a docker repository you can push to](https://github.com/knative/serving/blob/4a8c859741a4454bdd62c2b60069b7d05f5468e7/docs/setting-up-a-docker-registry.md)
+First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Definitions (CRDs) as Tekton implements several Kubernetes resource controllers configured by Tekton CRDs. Then follow these steps to start developing and contributing project code:
 
-Then you can [iterate](#iterating) (including
-[running the controllers with `ko`](#install-pipeline)).
+1. [Setting up a development environment](#setting-up-a-environment-setup)
+    1. [Setup a GitHub account accessible via SSH](#setup-a-github-account-accessible-via-ssh)
+    1. [Install tools](#install-tools)
+    1. [Configure environment](#configure-environment)
+    1. [Setup a fork](#setup-a-fork) of the [tektoncd/pipeline](https://github.com/tektoncd/pipeline) project repository
+    1. [Configure a container image registry](#configure-container-registry)
+1. [Building and deploying](#building-and-deploying) Tekton source code from a local clone.
+    1. [Setup a Kubernetes cluster](#setup-a-kubernetes-cluster)
+    1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+    1. [Set up a docker repository 'ko' can push images to](https://github.com/knative/serving/blob/4a8c859741a4454bdd62c2b60069b7d05f5468e7/docs/setting-up-a-docker-registry.md)
+1. [Developing and testing](#developing-and-testing) Tekton pipelines
+    1. Learn how to [iterate](#iterating) on code changes
+    1. [Managing Tekton Objects using `ko`](#managing-tekton-objects-using-ko) in Kubernetes
+    1. [Accessing logs](#accessing-logs)
+    1. [Adding new CRD types](#adding-new-crd-types)
+
+---
 
 ### Ramp up
 
-Welcome to the project!! You may find these resources helpful to ramp up on some
-of the technology this project is built on. This project extends Kubernetes (aka
-`k8s`) with Custom Resource Definitions (CRDs). To find out more:
+Welcome to the project! :clap::clap::clap:  You may find these resources helpful to "ramp up" on some of the technologies this project builds and runs on. This project extends Kubernetes (aka
+`k8s`) with Custom Resource Definitions (CRDs). To find out more, read:
 
 -   [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
     These will orient you on what words like "Resource" and "Controller"
@@ -42,44 +48,143 @@ At this point, you may find it useful to return to these `Tekton Pipeline` docs:
     [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
 -   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
-    Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
-    they are run
-    
-## Environment Setup
+    Define `Tasks`, `Pipelines`, and `PipelineResources` (i.e., Tekton CRDs), and see what happens when they are run
+
+---
+
+## Setting up a development environment
+
+### Setup a GitHub account accessible via SSH
+
+GitHub is used for project Source Code Management (SCM) using the SSH protocol for authentication.
+
+1. Create [a GitHub account](https://github.com/join) if you do not already have one.
+1. Setup
+[GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
+
+### Install tools
 
 You must install these tools:
 
-1.  [`git`](https://help.github.com/articles/set-up-git/): For source control
+1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 
-1.  [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
-    built in. You need go version [v1.15](https://golang.org/dl/) or higher.
+1. [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
+    built in.
+    > **Note** Golang [version v1.15](https://golang.org/dl/) or higher is recommended.
 
-Your [`$GOPATH`] setting is critical for `ko apply` to function properly: a
-successful run will typically involve building pushing images instead of only
-configuring Kubernetes resources.
+1. [`ko`](https://github.com/google/ko#install): The Tekton project  uses `ko` to simplify the building of its container images from `go` source, push these images to the configured image repository and deploy these images into Kubernetes clusters.
+    > **Note** `ko` version v0.5.1 or
+    higher is required for `pipeline` to work correctly.
 
-To [run your controllers with `ko`](#install-pipeline) you'll need to set these
-environment variables (we recommend adding them to your `.bashrc`):
+1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
+    interacting with your Kubernetes cluster
 
-1.  `GOPATH`: If you don't have one, simply pick a directory and add `export
-    GOPATH=...`
-1.  `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
-    work properly.
-1.  `KO_DOCKER_REPO`: The docker repository to which developer images should be
-    pushed (e.g. `gcr.io/[gcloud-project]`). You can also
-    [run a local registry](https://docs.docker.com/registry/deploying/) and set
-    `KO_DOCKER_REPO` to reference the registry (e.g. at
-    `localhost:5000/mypipelineimages`).
+    > :warning: The user interacting with your K8s cluster **must be a cluster admin** to create role bindings.
 
-`.bashrc` example:
+    **Setting cluster admin role example**:
 
-```shell
-export GOPATH="$HOME/go"
-export PATH="${PATH}:${GOPATH}/bin"
-export KO_DOCKER_REPO='gcr.io/my-gcloud-project-name'
-```
+    ```shell
+    # Using gcloud to get your current user
+    USER=$(gcloud config get-value core/account)
+    # Make that user a cluster admin
+    kubectl create clusterrolebinding cluster-admin-binding \
+    --clusterrole=cluster-admin \
+    --user="${USER}"
+    ```
 
-Make sure to configure
+### Configure environment
+
+To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you'll need to set these environment variables:
+
+1. `GOROOT`: Set `GOROOT` to the location of the Go installation you want `ko` to use for builds.
+
+    > **NOTE** You may need to set `GOROOT` if you installed Go tools to a a non-default location or have multiple Go versions installed.
+
+    If it is not set, `ko` infers the location by effectively using `go env GOROOT`.
+
+1. `KO_DOCKER_REPO`: The docker repository to which developer images should be pushed.
+For example:
+    - Using **Google Container Registry (GCR)**:
+
+        ```shell
+        # format: `gcr.io/${GCP-PROJECT-NAME}`
+        export KO_DOCKER_REPO='gcr.io/my-gcloud-project-name'
+        ```
+
+    - Using **Docker Desktop** (Docker Hub):
+
+        ```shell
+        # format: 'docker.io/${DOCKER_HUB_USERNAME}'
+        export KO_DOCKER_REPO='docker.io/my-dockerhub-username'
+        ```
+
+    - You can also [host your own Docker Registry server](https://docs.docker.com/registry/deploying/) and reference it:
+
+        ```shell
+        # format: ${localhost:port}/{}
+        export KO_DOCKER_REPO=`localhost:5000/mypipelineimages`
+        ```
+
+1. Optionally, add `$HOME/go/bin` to your system `PATH` so that any tooling installed via `go get` will work properly. For example:
+
+    ```shell
+    export PATH="${PATH}:$HOME/go/bin"
+    ```
+
+> **Note** It is recommended to add these environment variables to your shell's configuration files (e.g., `~/.bash_profile` or `~/.bashrc`).
+
+### Setup a fork
+
+The Tekton project requires that you develop (commit) code changes to branches that belong to a fork of the `tektoncd/pipeline` repository in your GitHub account before submitting them as Pull Requests (PRs) to the actual project repository.
+
+1. [Create a fork](https://help.github.com/articles/fork-a-repo/) of the `tektoncd/pipeline` repository in your GitHub account.
+
+1. Create a clone of your fork on your local machine:
+
+    ```shell
+    git clone git@github.com:${YOUR_GITHUB_USERNAME}/pipeline.git
+    ```
+
+    > **Note** Tekton uses [Go Modules](https://golang.org/doc/modules/gomod-ref) (i.e., `go mod`) for package management so you may clone the repository to a location of your choosing.
+
+1. Configure `git` remote repositories
+
+    Adding `tektoncd/pipelines` as the `upstream` and your fork as the `origin` remote repositories to your `.git/config` sets you up nicely for regularly [syncing your fork](https://help.github.com/articles/syncing-a-fork/) and submitting pull requests.
+
+    1. Change into the project directory
+
+        ```shell
+        cd pipeline
+        ```
+
+    1. Configure Tekton as the `upstream` repository
+
+        ```shell
+        git remote add upstream git@github.com:tektoncd/pipeline.git
+
+        # Optional: Prevent accidental pushing of commits by changing the upstream URL to `no_push`
+        git remote set-url --push upstream no_push
+        ```
+
+    1. Configure your fork as the `origin` repository
+
+        ```shell
+        git remote add origin git@github.com:${YOUR_GITHUB_USERNAME}/pipeline.git
+        ```
+
+### Configure Container Registry
+
+Depending on your chosen container registry that you set in the `KO_DOCKER_REPO` environment variable, you may need to additionally configure access control to allow `ko` to authenticate to it.
+
+<!-- TODO: Need instructions for MiniKube -->
+
+#### Using Docker Desktop (Docker Hub)
+
+Docker Desktop provides seamless integration with both a local (default) image registry as well as Docker Hub remote registries.  To use Docker Hub registries with `ko`, all you need do is to configure Docker Desktop with your Docker ID and password in its dashboard.
+
+#### Using Google Container Registry (GCR)
+
+If using GCR with `ko`, make sure to configure
 [authentication](https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
 for your `KO_DOCKER_REPO` if required. To be able to push images to
 `gcr.io/<project>`, you need to run this once:
@@ -88,133 +193,78 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 gcloud auth configure-docker
 ```
 
-Besides, if your registry `KO_DOCKER_REPO` is private, then you also should create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets) 
-and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` serviceAccounts accordingly to pull images.
+Besides, if your registry `KO_DOCKER_REPO` is private, then you also should create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets)
+and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` ServiceAccounts accordingly to pull images.
 
-- Create a secret
-```yaml
-kubectl create secret docker-registry ${SECRET_NAME} \
-  --docker-username=${USERNAME} \
-  --docker-password=${PASSWORD} \
-  --docker-email=me@here.com \
-  --namespace=tekton-pipelines
-```
+1. Create a secret
 
-- Add it to serviceAccount
+    ```yaml
+    kubectl create secret docker-registry ${SECRET_NAME} \
+    --docker-username=${USERNAME} \
+    --docker-password=${PASSWORD} \
+    --docker-email=me@here.com \
+    --namespace=tekton-pipelines
+    ```
 
-Because you will install tekton-pipelines use `ko` later, before that, you need to change [the contents of serviceAccount](./config/200-serviceaccount.yaml) to below:
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: tekton-pipelines-controller
-  namespace: tekton-pipelines
-  labels:
-    app.kubernetes.io/component: controller
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-imagePullSecrets:
-  - name: ${SECRET_NAME}
+2. Add the `secret` to the K8s `ServiceAccount` configuration file
+
+    Before using `ko` to deploy `tekton-pipelines`, you need to change [the contents of the ServiceAccount](./config/200-serviceaccount.yaml) configuration file as shown below:
+
+    ```yaml
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+    name: tekton-pipelines-controller
+    namespace: tekton-pipelines
+    labels:
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: tekton-pipelines
+    imagePullSecrets:
+    - name: ${SECRET_NAME}
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+    name: tekton-pipelines-webhook
+    namespace: tekton-pipelines
+    labels:
+        app.kubernetes.io/component: webhook
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: tekton-pipelines
+    imagePullSecrets:
+    - name: ${SECRET_NAME}
+    ```
+
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: tekton-pipelines-webhook
-  namespace: tekton-pipelines
-  labels:
-    app.kubernetes.io/component: webhook
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
-imagePullSecrets:
-  - name: ${SECRET_NAME}
-```
 
-After setting `GOPATH` and putting `$GOPATH/bin` on your `PATH`, you must then install these tools:
+## Building and deploying
 
-3.  [`ko`](https://github.com/google/ko): For development. `ko` version v0.5.1 or
-    higher is required for `pipeline` to work correctly.
-    
-4.  [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
-    interacting with your kube cluster
+### Setup a Kubernetes cluster
 
-The user you are using to interact with your k8s cluster must be a cluster admin
-to create role bindings:
+The recommended minimum development configuration is:
 
-```shell
-# Using gcloud to get your current user
-USER=$(gcloud config get-value core/account)
-# Make that user a cluster admin
-kubectl create clusterrolebinding cluster-admin-binding \
-  --clusterrole=cluster-admin \
-  --user="${USER}"
-```
+- Kubernetes version 1.18 or later
+- 4 (virtual) CPU nodes
+  - 8 GB of (actual or virtualized) platform memory
+- Node autoscaling, up to 3 nodes
 
-### Install in custom namespace
-
-1.  To install into a different namespace you can use this script :
-
-```shell
-#!/usr/bin/env bash
-set -e
-
-# Set your target namespace here
-TARGET_NAMESPACE=new-target-namespace
-
-ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
-    sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
-    kubectl apply -f-
-kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
-```
-
-### Checkout your fork
-
-The Go tools require that you clone the repository to the
-`src/github.com/tektoncd/pipeline` directory in your
-[`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
-
-To check out this repository:
-
-1.  Create your own
-    [fork of this repo](https://help.github.com/articles/fork-a-repo/)
-1.  Clone it to your machine:
-
-```shell
-mkdir -p ${GOPATH}/src/github.com/tektoncd
-cd ${GOPATH}/src/github.com/tektoncd
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/pipeline.git
-cd pipeline
-git remote add upstream git@github.com:tektoncd/pipeline.git
-git remote set-url --push upstream no_push
-```
-
-_Adding the `upstream` remote sets you up nicely for regularly
-[syncing your fork](https://help.github.com/articles/syncing-a-fork/)._
-
-## Kubernetes cluster
-
-The recommended configuration is:
-
--   Kubernetes version 1.17 or later
--   4 vCPU nodes (`n1-standard-4`)
--   Node autoscaling, up to 3 nodes
--   API scopes for cloud-platform
-
-
-### To setup a cluster using MiniKube:
+#### Using MiniKube
 
 - Follow the instructions for [running locally with Minikube](docs/developers/local-setup.md#using-minikube)
 
-### To setup a cluster with Docker Desktop:
+#### Using Docker Desktop
 
 - Follow the instructions for [running locally with Docker Desktop](docs/developers/local-setup.md#using-docker-desktop)
 
-### To setup a cluster with GKE:
+#### Using GKE
 
-1.  [Install required tools and setup GCP project](https://knative.dev/v0.12-docs/install/knative-with-gke/)
+1. [Install required tools and setup GCP project](https://knative.dev/v0.12-docs/install/knative-with-gke/)
     (You may find it useful to save the ID of the project in an environment
     variable (e.g. `PROJECT_ID`).
 
-1.  Create a GKE cluster (with `--cluster-version=latest` but you can use any
+<!-- TODO: Someone needs to validate the cluster-version-->
+1. Create a GKE cluster (with `--cluster-version=latest` but you can use any
     version 1.17 or later):
 
     ```bash
@@ -236,58 +286,66 @@ The recommended configuration is:
      --cluster-version=1.17
     ```
 
-    Note that
+    > **Note** The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `n1-standard-4`
+    > **Note** that
     [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
     controls what GCP resources the cluster's default service account has access
     to; for example to give the default service account full access to your GCR
-    registry, you can add `storage-full` to your `--scopes` arg.
+    registry, you can add `storage-full` to your `--scopes` arg. See [Authenticating to GCP](https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform) for more details.
 
-1.  Grant cluster-admin permissions to the current user:
+1. Grant cluster-admin permissions to the current user:
 
-    ```bash
-    kubectl create clusterrolebinding cluster-admin-binding \
-    --clusterrole=cluster-admin \
-    --user=$(gcloud config get-value core/account)
-    ```
+   ```bash
+   kubectl create clusterrolebinding cluster-admin-binding \
+   --clusterrole=cluster-admin \
+   --user=$(gcloud config get-value core/account)
+   ```
 
-## Iterating
+---
 
-While iterating on the project, you may need to:
+## Developing and testing
 
-1.  [Install/Run everything](#install-pipeline)
-1.  Verify it's working by [looking at the logs](#accessing-logs)
-1.  Update your (external) dependencies with: `./hack/update-deps.sh`.
-1.  Update your type definitions with: `./hack/update-codegen.sh`.
-1.  Update your OpenAPI specs with: `./hack/update-openapigen.sh`.
-1.  [Add new CRD types](#adding-new-types)
-1.  [Add and run tests](./test/README.md#tests)
+### Iterating on code changes
+
+While iterating on code changes to the project, you may need to:
+
+1. [Manage Tekton objects](managing-tekton-objects-using-ko)
+1. [Verify installation](#verify-installation) and make sure there are no errors by [accessing the logs](#accessing-logs)
+1. Use various development scripts, as needed, in the ['hack' directory](https://github.com/tektoncd/pipeline/tree/main/hack), For example:
+    - Update your (external) dependencies with: `./hack/update-deps.sh`.
+    - Update your type definitions with: `./hack/update-codegen.sh`.
+    -  Update your OpenAPI specs with: `./hack/update-openapigen.sh`.
+1. Update or [add new CRD types](#adding-new-types) as needed
+1. Update, [add and run tests](./test/README.md#tests)
 
 To make changes to these CRDs, you will probably interact with:
 
--   The CRD type definitions in
-    [./pkg/apis/pipeline/v1beta1](./pkg/apis/pipeline/v1beta1)
--   The reconcilers in [./pkg/reconciler](./pkg/reconciler)
--   The clients are in [./pkg/client](./pkg/client) (these are generated by
+- The CRD type definitions in [./pkg/apis/pipeline/v1beta1](./pkg/apis/pipeline/v1beta1)
+- The reconcilers in [./pkg/reconciler](./pkg/reconciler)
+- The clients are in [./pkg/client](./pkg/client) (these are generated by
     `./hack/update-codegen.sh`)
 
-## Install Pipeline
+### Managing Tekton Objects using `ko`
 
-You can stand up a version of this controller on-cluster (to your `kubectl
-config current-context`):
+The `ko` command is the preferred method to manage (i.e., create, modify or delete) Tekton Objects in Kubernetes from your local fork of the project. Some common operations include:
+
+#### Install Pipeline
+
+You can stand up a version of Tekton using your local clone's code to the currently configured K8s context (i.e.,  `kubectl config current-context`):
 
 ```shell
 ko apply -f config/
 ```
 
-### Redeploy controller
+#### Verify installation
 
-As you make changes to the code, you can redeploy your controller with:
+You can verify your development installation using `ko` was successful by checking to see oif the Tekton pipeline pods are running in Kubernetes:
 
 ```shell
-ko apply -f config/controller.yaml
+kubectl get pods -n tekton-pipelines
 ```
 
-### Tear it down
+#### Delete Pipeline
 
 You can clean up everything with:
 
@@ -295,7 +353,41 @@ You can clean up everything with:
 ko delete -f config/
 ```
 
-## Accessing logs
+#### Redeploy controller
+
+As you make changes to the code, you can redeploy your controller with:
+
+```shell
+ko apply -f config/controller.yaml
+```
+
+#### Install in custom namespace
+
+When managing different development branches of code (with changed Tekton objects and controllers) in the same K8s instance, it may be helpful to install them into a custom (non-default) namespace. The ability to map a code branch to a corresponding namespace may make it easier to identify and manage the objects as a group as well as isolate log output.
+
+To install into a different namespace you can use this script:
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+# Set your target namespace here
+TARGET_NAMESPACE=new-target-namespace
+
+ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
+    sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
+    kubectl apply -f-
+kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
+```
+
+This script will cause `ko` to:
+- Change (resolve) all `namespace` values in K8s configuration files within the `config/` subdirectory to be updated to a name of your choosing.
+- Builds and push images with the new namespace to your container registry and
+- Update all Tekton Objects in K8s using these images
+
+It will also update the default system namespace used for K8s `deployments` to the new value for all subsequent `kubectl` commands.
+
+### Accessing logs
 
 To look at the controller logs, run:
 
@@ -312,24 +404,24 @@ kubectl -n tekton-pipelines logs $(kubectl -n tekton-pipelines get pods -l app=t
 To look at the logs for individual `TaskRuns` or `PipelineRuns`, see
 [docs on accessing logs](docs/logs.md).
 
-## Adding new types
+### Adding new CRD types
 
 If you need to add a new CRD type, you will need to add:
 
-1.  A yaml definition in [config/](./config)
-1.  Add the type to the cluster roles in:
-    -   [200-clusterrole.yaml](./config/200-clusterrole.yaml)
-    -   [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
-    -   [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
-1.  Add go structs for the types in
+1. A yaml definition in [config/](./config)
+1. Add the type to the cluster roles in:
+    - [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+    - [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
+    - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
+1. Add go structs for the types in
     [pkg/apis/pipeline/v1alpha1](./pkg/apis/pipeline/v1alpha1) e.g
     [condition_types.go](./pkg/apis/pipeline/v1alpha1/condition_types.go) This
     should implement the
     [Defaultable](./pkg/apis/pipeline/v1alpha1/condition_defaults.go) and
     [Validatable](./pkg/apis/pipeline/v1alpha1/condition_validation.go)
     interfaces as they are needed for the webhook in the next step.
-1.  Register it with the [webhook](./cmd/webhook/main.go)
-1.  Add the new type to the
+1. Register it with the [webhook](./cmd/webhook/main.go)
+1. Add the new type to the
     [list of known types](./pkg/apis/pipeline/v1alpha1/register.go)
 
 _See [the API compatibility policy](api_compatibility_policy.md)._
