@@ -161,8 +161,12 @@ The `description` and `default` fields for a `Parameter` are optional.
 
 The following example illustrates the use of `Parameters` in a `Pipeline`.
 
-The following `Pipeline` declares an input parameter called `context` and passes its
-value to the `Task` to set the value of the `pathToContext` parameter within the `Task`.
+The following `Pipeline` declares two input parameters :
+
+- `context` which passes its value (a string) to the `Task` to set the value of the `pathToContext` parameter within the `Task`.
+- `flags` which passes its value (an array) to the `Task` to set the value of
+  the `flags` parameter within the `Task`. The `flags` parameter within the
+`Task` **must** also be an array.
 If you specify a value for the `default` field and invoke this `Pipeline` in a `PipelineRun`
 without specifying a value for `context`, that value will be used.
 
@@ -180,6 +184,9 @@ spec:
       type: string
       description: Path to context
       default: /some/where/or/other
+    - name: flags
+      type: array
+      description: List of flags
   tasks:
     - name: build-skaffold-web
       taskRef:
@@ -189,6 +196,8 @@ spec:
           value: Dockerfile
         - name: pathToContext
           value: "$(params.context)"
+        - name: flags
+          value: ["$(params.flags[*])"]
 ```
 
 The following `PipelineRun` supplies a value for `context`:
@@ -204,6 +213,10 @@ spec:
   params:
     - name: "context"
       value: "/workspace/examples/microservices/leeroy-web"
+    - name: "flags"
+      value:
+        - "foo"
+        - "bar"
 ```
 
 ## Adding `Tasks` to the `Pipeline`
@@ -1021,7 +1034,7 @@ If the `WhenExpressions` in a `Finally Task` use `Results` from a skipped or fai
 
 #### `WhenExpressions` using `Execution Status` of `PipelineTask` in `Finally Tasks`
 
-`WhenExpressions` in `Finally Tasks` can utilize [`Execution Status` of `PipelineTasks`](#using-execution-status-of-pipelinetask), 
+`WhenExpressions` in `Finally Tasks` can utilize [`Execution Status` of `PipelineTasks`](#using-execution-status-of-pipelinetask),
 as demonstrated using [`golang-build`](https://github.com/tektoncd/catalog/tree/main/task/golang-build/0.1) and
 [`send-to-channel-slack`](https://github.com/tektoncd/catalog/tree/main/task/send-to-channel-slack/0.1) Catalog `Tasks`:
 
@@ -1139,7 +1152,7 @@ For example, a custom task might execute some operation outside of the cluster a
 
 A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md) instead of a `TaskRun`.
 In order for a custom task to execute, there must be a custom task controller running on the cluster
-that is responsible for watching and updating `Run`s which reference their type. 
+that is responsible for watching and updating `Run`s which reference their type.
 If no such controller is running, those `Run`s will never complete and Pipelines using them will time out.
 
 Custom tasks are an **_experimental alpha feature_** and should be expected to change
