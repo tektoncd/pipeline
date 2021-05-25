@@ -505,8 +505,14 @@
     "v1beta1.EmbeddedTask": {
       "type": "object",
       "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
         "description": {
           "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        },
+        "kind": {
           "type": "string"
         },
         "metadata": {
@@ -540,6 +546,11 @@
             "default": {},
             "$ref": "#/definitions/v1beta1.Sidecar"
           }
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "default": {},
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         },
         "stepTemplate": {
           "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
