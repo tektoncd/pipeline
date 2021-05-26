@@ -99,6 +99,7 @@ func TestOrderContainers(t *testing.T) {
 	wantInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
+		WorkingDir:   "/",
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
