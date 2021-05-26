@@ -44,6 +44,9 @@ func (rs *RunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if rs.Ref != nil && rs.Spec != nil {
 		return apis.ErrMultipleOneOf("spec.ref", "spec.spec")
 	}
+	if rs.Ref == nil && rs.Spec == nil {
+		return apis.ErrMissingOneOf("spec.ref", "spec.spec")
+	}
 	if rs.Ref != nil {
 		if rs.Ref.APIVersion == "" {
 			return apis.ErrMissingField("spec.ref.apiVersion")

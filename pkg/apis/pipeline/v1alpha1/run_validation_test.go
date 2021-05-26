@@ -49,12 +49,22 @@ func TestRun_Invalid(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "temp",
 			},
-			Spec: v1alpha1.RunSpec{
-				Ref:  nil,
-				Spec: nil,
-			},
+			Spec: v1alpha1.RunSpec{},
 		},
 		want: apis.ErrMissingField("spec"),
+	}, {
+		name: "Both spec and ref missing",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref:                nil,
+				Spec:               nil,
+				ServiceAccountName: "test-sa",
+			},
+		},
+		want: apis.ErrMissingOneOf("spec.ref", "spec.spec"),
 	}, {
 		name: "Both Ref and Spec",
 		run: &v1alpha1.Run{
