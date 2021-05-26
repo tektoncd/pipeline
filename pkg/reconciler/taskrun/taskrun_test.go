@@ -229,6 +229,7 @@ var (
 		actualOps := []tb.ContainerOp{
 			tb.Command("/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation),
 			tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+			tb.WorkingDir("/"),
 			tb.Args(),
 		}
 		actualOps = append(actualOps, ops...)
