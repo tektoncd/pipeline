@@ -95,6 +95,10 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 	initContainer := corev1.Container{
 		Name:  "place-tools",
 		Image: entrypointImage,
+		// Rewrite default WorkingDir from "/home/nonroot" to "/"
+		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
+		// to avoid permission errors with nonroot users not equal to `65532`
+		WorkingDir: "/",
 		// Invoke the entrypoint binary in "cp mode" to copy itself
 		// into the correct location for later steps.
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},

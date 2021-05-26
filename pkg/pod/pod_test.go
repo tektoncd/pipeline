@@ -67,6 +67,7 @@ func TestPodBuild(t *testing.T) {
 	placeToolsInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
+		WorkingDir:   "/",
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
@@ -799,6 +800,7 @@ script-heredoc-randomly-generated-78c5n
 				},
 				{
 					Name:         "place-tools",
+					WorkingDir:   "/",
 					Image:        images.EntrypointImage,
 					Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 					VolumeMounts: []corev1.VolumeMount{toolsMount},
