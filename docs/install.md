@@ -22,14 +22,14 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 ## Before you begin
 
-1. You must have a Kubernetes cluster running version 1.17 or later.
+1. You must have a Kubernetes cluster running version 1.18 or later.
 
    If you don't already have a cluster, you can create one for testing with `kind`.
    [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and create a cluster by running [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster). This
    will create a cluster running locally, with RBAC enabled and your user granted
    the `cluster-admin` role.
 
-1. If you want to support high availability usecases, install a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) on your cluster. 
+1. If you want to support high availability usecases, install a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) on your cluster.
 
 1. Choose the version of Tekton Pipelines you want to install. You have the following options:
 
@@ -355,7 +355,7 @@ not running.
   disabled (`"false"`), which means it is disallowed to use the
   `bundle` field.
 
-- `disable-creds-init` - set this flag to `"true"` to [disable Tekton's built-in credential initialization](auth.md#disabling-tektons-built-in-auth) 
+- `disable-creds-init` - set this flag to `"true"` to [disable Tekton's built-in credential initialization](auth.md#disabling-tektons-built-in-auth)
 and use Workspaces to mount credentials from Secrets instead.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/3399).
 
@@ -397,7 +397,7 @@ Features currently in "alpha" are:
 If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support
 high concurrency scenarios, you need to run a [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) in
 your Kubernetes cluster. This is required by the [Horizontal Pod Autoscalers](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
-to compute replica count. 
+to compute replica count.
 
 See [HA Support for Tekton Pipeline Controllers](./enabling-ha.md) for instructions on configuring
 High Availability in the Tekton Pipelines Controller.
