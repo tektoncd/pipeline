@@ -9,7 +9,7 @@ In addition, categorize the changes you're making using the "/kind" Prow command
 
 /kind <kind>
 
-Supported kinds are: bug, cleanup, design, documentation, failing-test, feature, flake, misc, question, tep
+Supported kinds are: bug, cleanup, design, documentation, feature, flake, misc, question, tep
 -->
 
 # Submitter Checklist
