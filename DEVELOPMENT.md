@@ -265,7 +265,7 @@ The recommended minimum development configuration is:
 
 <!-- TODO: Someone needs to validate the cluster-version-->
 1. Create a GKE cluster (with `--cluster-version=latest` but you can use any
-    version 1.17 or later):
+    version 1.18 or later):
 
     ```bash
     export PROJECT_ID=my-gcp-project
@@ -283,7 +283,7 @@ The recommended minimum development configuration is:
      --machine-type=n1-standard-4 \
      --image-type=cos \
      --num-nodes=1 \
-     --cluster-version=1.17
+     --cluster-version=1.18
     ```
 
     > **Note** The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `n1-standard-4`

@@ -30,8 +30,8 @@ Tekton Pipelines are **Typed**:
 - Jump in with [the tutorial!](docs/tutorial.md)
 - Take a look at our [roadmap](roadmap.md)
 
-*Note that starting from the 0.20 release of Tekton, you need to have
-a cluster with **Kubernetes version 1.17 or later***.
+*Note that starting from the 0.24 release of Tekton, you need to have
+a cluster with **Kubernetes version 1.18 or later***.
 
 ### Read the docs
 
