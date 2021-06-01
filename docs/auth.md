@@ -305,7 +305,7 @@ specified in the `Run`.
 1. Execute the `Run`:
 
    ```shell
-   kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
+   kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
    ```
 
 ### Using a custom port for SSH authentication
