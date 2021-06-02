@@ -167,7 +167,7 @@ func getHelmDeployTask(namespace, helmDeployTaskName string) *v1beta1.Task {
 				Name: "chartname", Type: v1beta1.ParamTypeString, Default: &empty,
 			}},
 			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image: getTestImage(helmImage),
+				Image: "alpine/helm:3.5.4",
 				Args: []string{
 					"upgrade",
 					"--wait",
@@ -328,7 +328,7 @@ func removeAllHelmReleases(ctx context.Context, c *clients, t *testing.T, namesp
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{Container: corev1.Container{
 				Name:    "helm-remove-all",
-				Image:   getTestImage(helmImage),
+				Image:   "alpine/helm:3.5.4",
 				Command: []string{"/bin/sh"},
 				Args:    []string{"-c", fmt.Sprintf("helm ls --short --all --namespace %s | xargs -n1 helm delete --namespace %s", namespace, namespace)},
 			}}},
