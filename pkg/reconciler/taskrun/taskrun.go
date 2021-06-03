@@ -366,6 +366,17 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 	}
 
+	// Convert the os requirement from Task to a nodeSelector on TaskRun
+	if taskSpec.OSRequirement != "" {
+		if tr.Spec.PodTemplate == nil {
+			tr.Spec.PodTemplate = &pod.Template{}
+		}
+		if tr.Spec.PodTemplate.NodeSelector == nil {
+			tr.Spec.PodTemplate.NodeSelector = make(map[string]string, 1)
+		}
+		tr.Spec.PodTemplate.NodeSelector["kubernetes.io/os"] = taskSpec.OSRequirement
+	}
+
 	// Initialize the cloud events if at least a CloudEventResource is defined
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced

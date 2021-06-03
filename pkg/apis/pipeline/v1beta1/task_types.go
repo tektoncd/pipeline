@@ -104,6 +104,13 @@ type TaskSpec struct {
 
 	// Results are values that this Task can output
 	Results []TaskResult `json:"results,omitempty"`
+
+	// OSRequirement indicates an Operating System requirement for the task.
+	// If a value is supplied, a nodeSelector will be added to the PodTemplate
+	// of a TaskRun with the key "kubernetes.io/os". Some example values
+	// are: "linux" or "windows".
+	// +optional
+	OSRequirement string `json:"osRequirement,omitempty"`
 }
 
 // TaskResult used to describe the results of a task
