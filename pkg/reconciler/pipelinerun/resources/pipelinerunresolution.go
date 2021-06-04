@@ -386,16 +386,32 @@ func ResolvePipelineRunTask(
 			kind     v1beta1.TaskKind
 		)
 
-		if task.TaskRef != nil {
-			t, err = getTask(ctx, task.TaskRef.Name)
-			if err != nil {
-				return nil, &TaskNotFoundError{
-					Name: task.TaskRef.Name,
-					Msg:  err.Error(),
-				}
+		taskRun, err := getTaskRun(rprt.TaskRunName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
 			}
-			spec = t.TaskSpec()
-			taskName = t.TaskMetadata().Name
+		}
+		if taskRun != nil {
+			rprt.TaskRun = taskRun
+		}
+
+		if task.TaskRef != nil {
+			// If the TaskRun has already a store TaskSpec in its status, use it as source of truth
+			if taskRun != nil && taskRun.Status.TaskSpec != nil {
+				spec = *taskRun.Status.TaskSpec
+				taskName = task.TaskRef.Name
+			} else {
+				t, err = getTask(ctx, task.TaskRef.Name)
+				if err != nil {
+					return nil, &TaskNotFoundError{
+						Name: task.TaskRef.Name,
+						Msg:  err.Error(),
+					}
+				}
+				spec = t.TaskSpec()
+				taskName = t.TaskMetadata().Name
+			}
 			kind = task.TaskRef.Kind
 		} else {
 			spec = task.TaskSpec.TaskSpec
@@ -407,16 +423,6 @@ func ResolvePipelineRunTask(
 		}
 
 		rprt.ResolvedTaskResources = rtr
-
-		taskRun, err := getTaskRun(rprt.TaskRunName)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
-			}
-		}
-		if taskRun != nil {
-			rprt.TaskRun = taskRun
-		}
 
 		// Get all conditions that this pipelineTask will be using, if any
 		if len(task.Conditions) > 0 {

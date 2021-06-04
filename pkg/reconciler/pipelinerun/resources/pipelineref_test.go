@@ -146,8 +146,7 @@ func TestGetPipelineFunc(t *testing.T) {
 			Name: "simple",
 		},
 		expected: tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
-	},
-	}
+	}}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -175,7 +174,7 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
 
-			pipeline, err := fn(context.Background(), tc.ref.Name)
+			pipeline, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
@@ -184,5 +183,60 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	tektonclient := fake.NewSimpleClientset(simplePipeline, dummyPipeline)
+	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "default",
+		},
+	})
+
+	name := "anyname-really"
+	pipelineSpec := v1beta1.PipelineSpec{
+		Tasks: []v1beta1.PipelineTask{{
+			Name:    "task1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		}},
+	}
+	pipelineRun := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				// Using simple here to show that, it won't fetch the simple pipelinespec,
+				// which is different from the pipelineSpec above
+				Name: "simple",
+			},
+			ServiceAccountName: "default",
+		},
+		Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			PipelineSpec: &pipelineSpec,
+		}},
+	}
+	expectedPipeline := &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+		Spec: pipelineSpec,
+	}
+
+	fn, err := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, pipelineRun)
+	if err != nil {
+		t.Fatalf("failed to get pipeline fn: %s", err.Error())
+	}
+	actualPipeline, err := fn(ctx, name)
+	if err != nil {
+		t.Fatalf("failed to call pipelinefn: %s", err.Error())
+	}
+
+	if diff := cmp.Diff(actualPipeline, expectedPipeline); expectedPipeline != nil && diff != "" {
+		t.Error(diff)
 	}
 }

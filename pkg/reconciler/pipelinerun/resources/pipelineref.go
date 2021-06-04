@@ -37,6 +37,18 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	cfg := config.FromContextOrDefaults(ctx)
 	pr := pipelineRun.Spec.PipelineRef
 	namespace := pipelineRun.Namespace
+	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth
+	if pipelineRun.Status.PipelineSpec != nil {
+		return func(_ context.Context, name string) (v1beta1.PipelineObject, error) {
+			return &v1beta1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: *pipelineRun.Status.PipelineSpec,
+			}, nil
+		}, nil
+	}
 	switch {
 	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.Bundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
