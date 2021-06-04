@@ -324,6 +324,77 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1beta
 	}
 }
 
+// TestPipelineRunRefDeleted tests that a running PipelineRun doesn't fail when the Pipeline
+// it references is deleted.
+func TestPipelineRunRefDeleted(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := "pipelinerun-referencing-deleted"
+	t.Logf("Creating Pipeline, and PipelineRun %s in namespace %s", prName, namespace)
+
+	pipeline := mustParsePipeline(t, `
+metadata:
+  name: pipeline-to-be-deleted
+spec:
+  tasks:
+  - name: step1
+    taskSpec:
+      steps:
+      - name: echo
+        image: ubuntu
+        script: |
+          #!/usr/bin/env bash
+          # Sleep for 10s
+          sleep 10
+  - name: step2
+    runAfter: [step1]
+    taskSpec:
+      steps:
+      - name: echo
+        image: ubuntu
+        script: |
+          #!/usr/bin/env bash
+          # Sleep for another 10s
+          sleep 10
+`)
+	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", prName, err)
+	}
+
+	pipelinerun := mustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun-referencing-deleted
+spec:
+  pipelineRef:
+    name: pipeline-to-be-deleted
+`)
+	_, err := c.PipelineRunClient.Create(ctx, pipelinerun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, Running(prName), "PipelineRunRunning"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+
+	if err := c.PipelineClient.Delete(ctx, pipeline.Name, metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("Failed to delete Pipeline `%s`: %s", pipeline.Name, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+
+}
+
 // TestPipelineRunPending tests that a Pending PipelineRun is not run until the pending
 // status is cleared. This is separate from the TestPipelineRun suite because it has to
 // transition PipelineRun states during the test, which the TestPipelineRun suite does not

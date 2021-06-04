@@ -271,7 +271,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	getTaskfunc, kind, err := resources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, tr.Spec.TaskRef, tr.Namespace, tr.Spec.ServiceAccountName)
+	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
@@ -324,7 +324,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		inputs = tr.Spec.Resources.Inputs
 		outputs = tr.Spec.Resources.Outputs
 	}
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, resources.GetTaskKind(tr), inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		if k8serrors.IsNotFound(err) && tknreconciler.IsYoungResource(tr) {
 			// For newly created resources, don't fail immediately.

@@ -226,13 +226,9 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Fatalf("failed to upload test image: %s", err.Error())
 			}
 
-			fn, kind, err := resources.GetTaskFunc(ctx, kubeclient, tektonclient, tc.ref, "default", "default")
+			fn, err := resources.GetTaskFunc(ctx, kubeclient, tektonclient, tc.ref, "default", "default")
 			if err != nil {
 				t.Fatalf("failed to get task fn: %s", err.Error())
-			}
-
-			if string(tc.expectedKind) != string(kind) {
-				t.Errorf("expected kind %s did not match actual kind %s", tc.expectedKind, kind)
 			}
 
 			task, err := fn(ctx, tc.ref.Name)
@@ -244,5 +240,65 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestGetTaskFuncFromTaskRunSpecAlreadyFetched(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	tektonclient := fake.NewSimpleClientset(tb.Task("simple", tb.TaskType, tb.TaskNamespace("default"), tb.TaskSpec(tb.Step("something"))))
+	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "default",
+		},
+	})
+
+	name := "anyname-really"
+	TaskSpec := v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{
+			Container: corev1.Container{
+				Image: "myimage",
+			},
+			Script: `
+#!/usr/bin/env bash
+echo hello
+`,
+		}},
+	}
+	TaskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				// Using simple here to show that, it won't fetch the simple Taskspec,
+				// which is different from the TaskSpec above
+				Name: "simple",
+			},
+			ServiceAccountName: "default",
+		},
+		Status: v1beta1.TaskRunStatus{TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+			TaskSpec: &TaskSpec,
+		}},
+	}
+	expectedTask := &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+		Spec: TaskSpec,
+	}
+
+	fn, err := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, TaskRun)
+	if err != nil {
+		t.Fatalf("failed to get Task fn: %s", err.Error())
+	}
+	actualTask, err := fn(ctx, name)
+	if err != nil {
+		t.Fatalf("failed to call Taskfn: %s", err.Error())
+	}
+
+	if diff := cmp.Diff(actualTask, expectedTask); expectedTask != nil && diff != "" {
+		t.Error(diff)
 	}
 }
