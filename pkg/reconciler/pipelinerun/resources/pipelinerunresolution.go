@@ -345,12 +345,13 @@ func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.Pipeline
 }
 
 func isCustomTask(ctx context.Context, rprt ResolvedPipelineRunTask) bool {
+	invalidSpec := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskSpec != nil
 	isTaskRefCustomTask := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskRef.APIVersion != "" &&
 		rprt.PipelineTask.TaskRef.Kind != ""
 	isTaskSpecCustomTask := rprt.PipelineTask.TaskSpec != nil && rprt.PipelineTask.TaskSpec.APIVersion != "" &&
 		rprt.PipelineTask.TaskSpec.Kind != ""
 	cfg := config.FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.EnableCustomTasks && (isTaskRefCustomTask || isTaskSpecCustomTask)
+	return cfg.FeatureFlags.EnableCustomTasks && !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
 }
 
 // ResolvePipelineRunTask retrieves a single Task's instance using the getTask to fetch
