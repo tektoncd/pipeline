@@ -465,6 +465,22 @@ There are a lot of scenarios where `WhenExpressions` can be really useful. Some 
 - Checking if the name of a CI job matches
 - Checking if an optional Workspace has been provided
 
+#### Guarding a `Task` and its dependent `Tasks`
+
+When  `WhenExpressions` evaluate to `False`, the `Task` and its branch (of dependent `Tasks`) will be skipped by
+default while the rest of the `Pipeline` will execute. The global default scope of `WhenExpressions` is set to `Branch`;
+`scope-when-expressions-to-task` field in [`config/config-feature-flags.yaml`](./../config/config-feature-flags.yaml)
+defaults to `False`.
+
+**Note:** Scoping `WhenExpressions` to a `Task` and its dependent `Tasks` is deprecated. To guard a `Task` and its
+dependent `Tasks`, cascade `WhenExpressions` to the specific dependent `Tasks` to be guarded as well.
+
+#### Guarding a `Task` only
+
+To guard a `Task` only and unblock execution of its dependent `Tasks`, set the global default scope of `WhenExpressions`
+to `Task` using the `scope-when-expressions-to-task` field in [`config/config-feature-flags.yaml`](./../config/config-feature-flags.yaml)
+by changing it to `True`.
+
 ### Guard `Task` execution using `Conditions`
 
 **Note:** `Conditions` are [deprecated](./deprecations.md), use [`WhenExpressions`](#guard-task-execution-using-whenexpressions) instead.

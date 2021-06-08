@@ -673,9 +673,10 @@ func dagFromState(state PipelineRunState) (*dag.Graph, error) {
 
 func TestIsSkipped(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		state    PipelineRunState
-		expected map[string]bool
+		name                       string
+		state                      PipelineRunState
+		scopeWhenExpressionsToTask bool
+		expected                   map[string]bool
 	}{{
 		name: "tasks-condition-passed",
 		state: PipelineRunState{{
@@ -983,6 +984,196 @@ func TestIsSkipped(t *testing.T) {
 		expected: map[string]bool{
 			"mytask13": false,
 		},
+	}, {
+		name: "tasks-with-when-expression-scoped-to-branch",
+		state: PipelineRunState{{
+			// skipped because when expressions evaluate to false
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped because parent was skipped and when expressions are scoped to branch
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask18",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-1",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		scopeWhenExpressionsToTask: false,
+		expected: map[string]bool{
+			"mytask11": true,
+			"mytask18": true,
+		},
+	}, {
+		name: "tasks-when-expressions-scoped-to-task",
+		state: PipelineRunState{{
+			// skipped because when expressions evaluate to false
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// not skipped regardless of its parent task being skipped because when expressions are scoped to task
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask18",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-1",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		scopeWhenExpressionsToTask: true,
+		expected: map[string]bool{
+			"mytask11": true,
+			"mytask18": false,
+		},
+	}, {
+		name: "tasks-when-expressions-scoped-to-branch-skip-multiple-dependent-tasks",
+		state: PipelineRunState{{
+			// skipped because when expressions evaluate to false
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped because parent was skipped and when expressions are scoped to branch
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask18",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-1",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped because parent was skipped and when expressions are scoped to branch
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask19",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask18"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-2",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		scopeWhenExpressionsToTask: false,
+		expected: map[string]bool{
+			"mytask11": true,
+			"mytask18": true,
+			"mytask19": true,
+		},
+	}, {
+		name: "tasks-when-expressions-scoped-to-task-run-multiple-dependent-tasks",
+		state: PipelineRunState{{
+			// skipped because when expressions evaluate to false
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// not skipped regardless of its parent task being skipped because when expressions are scoped to task
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask18",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-1",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// not skipped regardless of its parent task being skipped because when expressions are scoped to task
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask19",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask18"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-2",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		scopeWhenExpressionsToTask: true,
+		expected: map[string]bool{
+			"mytask11": true,
+			"mytask18": false,
+			"mytask19": false,
+		},
+	}, {
+		name: "tasks-parent-condition-failed-parent-when-expressions-passed-scoped-to-task",
+		state: PipelineRunState{{
+			// skipped because conditions fail
+			PipelineTask: &pts[5],
+			TaskRunName:  "pipelinerun-conditionaltask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+			ResolvedConditionChecks: failedTaskConditionCheckState,
+		}, {
+			// skipped because when expressions evaluate to false
+			PipelineTask: &pts[10],
+			TaskRunName:  "pipelinerun-guardedtask",
+			TaskRun:      nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// skipped because of parent task guarded using conditions is skipped, regardless of another parent task
+			// being guarded with when expressions that are scoped to task
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask18",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask6", "mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-1",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}, {
+			// not skipped regardless of its parent task being skipped because when expressions are scoped to task
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:     "mytask19",
+				TaskRef:  &v1beta1.TaskRef{Name: "task"},
+				RunAfter: []string{"mytask11"},
+			},
+			TaskRunName: "pipelinerun-ordering-dependent-task-2",
+			TaskRun:     nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		}},
+		scopeWhenExpressionsToTask: true,
+		expected: map[string]bool{
+			"mytask6":  true,
+			"mytask11": true,
+			"mytask18": true,
+			"mytask19": false,
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			d, err := dagFromState(tc.state)
@@ -991,9 +1182,10 @@ func TestIsSkipped(t *testing.T) {
 			}
 			stateMap := tc.state.ToMap()
 			facts := PipelineRunFacts{
-				State:           tc.state,
-				TasksGraph:      d,
-				FinalTasksGraph: &dag.Graph{},
+				State:                      tc.state,
+				TasksGraph:                 d,
+				FinalTasksGraph:            &dag.Graph{},
+				ScopeWhenExpressionsToTask: tc.scopeWhenExpressionsToTask,
 			}
 			for taskName, isSkipped := range tc.expected {
 				rprt := stateMap[taskName]
@@ -1001,7 +1193,7 @@ func TestIsSkipped(t *testing.T) {
 					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
 				}
 				if d := cmp.Diff(isSkipped, rprt.Skip(&facts)); d != "" {
-					t.Errorf("Didn't get expected isSkipped %s", diff.PrintWantGot(d))
+					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
 		})

@@ -3487,6 +3487,156 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 	}
 }
 
+func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
+	names.TestingSeed()
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("a-task", "a-task"),
+		tb.PipelineTask("b-task", "b-task",
+			tb.PipelineTaskWhenExpression("$(tasks.a-task.results.aResult)", selection.In, []string{"aResultValue"}),
+			tb.PipelineTaskWhenExpression("aResultValue", selection.In, []string{"$(tasks.a-task.results.aResult)"}),
+		),
+		tb.PipelineTask("c-task", "c-task",
+			tb.PipelineTaskWhenExpression("$(tasks.a-task.results.aResult)", selection.In, []string{"missing"}),
+		),
+		tb.PipelineTask("d-task", "d-task", tb.RunAfter("c-task")),
+	))}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+		),
+	)}
+	ts := []*v1beta1.Task{
+		tb.Task("a-task", tb.TaskNamespace("foo")),
+		tb.Task("b-task", tb.TaskNamespace("foo")),
+		tb.Task("c-task", tb.TaskNamespace("foo")),
+		tb.Task("d-task", tb.TaskNamespace("foo")),
+	}
+	trs := []*v1beta1.TaskRun{
+		tb.TaskRun("test-pipeline-run-different-service-accs-a-task-xxyyy",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+			tb.TaskRunStatus(
+				tb.StatusCondition(
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				),
+				tb.TaskRunResult("aResult", "aResultValue"),
+			),
+		),
+	}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"scope-when-expressions-to-task": "true",
+			},
+		},
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 1 \\(Failed: 0, Cancelled 0\\), Incomplete: 2, Skipped: 1",
+	}
+	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
+
+	expectedTaskRunName := "test-pipeline-run-different-service-accs-b-task-9l9zj"
+	expectedTaskRun := tb.TaskRun(expectedTaskRunName,
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-different-service-accs",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
+		tb.TaskRunLabel("tekton.dev/pipelineTask", "b-task"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("b-task"),
+			tb.TaskRunServiceAccountName("test-sa-0"),
+		),
+	)
+	// Check that the expected TaskRun was created
+	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("Failure to list TaskRun's %s", err)
+	}
+	if len(actual.Items) != 1 {
+		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
+	}
+	actualTaskRun := actual.Items[0]
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
+	actualWhenExpressionsInTaskRun := pipelineRun.Status.PipelineRunStatusFields.TaskRuns[expectedTaskRunName].WhenExpressions
+	expectedWhenExpressionsInTaskRun := []v1beta1.WhenExpression{{
+		Input:    "aResultValue",
+		Operator: "in",
+		Values:   []string{"aResultValue"},
+	}, {
+		Input:    "aResultValue",
+		Operator: "in",
+		Values:   []string{"aResultValue"},
+	}}
+	if d := cmp.Diff(expectedWhenExpressionsInTaskRun, actualWhenExpressionsInTaskRun); d != "" {
+		t.Errorf("expected to see When Expressions %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
+	}
+
+	actualSkippedTasks := pipelineRun.Status.SkippedTasks
+	expectedSkippedTasks := []v1beta1.SkippedTask{{
+		Name: "c-task",
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "aResultValue",
+			Operator: "in",
+			Values:   []string{"missing"},
+		}},
+	}}
+	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
+		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
+	}
+
+	skippedTasks := []string{"c-task", "d-task"}
+	for _, skippedTask := range skippedTasks {
+		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
+		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+			Limit:         1,
+		})
+		if err != nil {
+			t.Fatalf("Failure to list TaskRun's %s", err)
+		}
+		if len(actualSkippedTask.Items) != 0 {
+			t.Fatalf("Expected 0 TaskRuns got %d", len(actualSkippedTask.Items))
+		}
+	}
+}
+
 // TestReconcileWithAffinityAssistantStatefulSet tests that given a pipelineRun with workspaces,
 // an Affinity Assistant StatefulSet is created for each PVC workspace and
 // that the Affinity Assistant names is propagated to TaskRuns.
