@@ -29,6 +29,86 @@ var (
 	}
 )
 
+var pipelineRunState = PipelineRunState{{
+	TaskRunName: "aTaskRun",
+	TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
+		tb.StatusCondition(successCondition),
+		tb.TaskRunResult("aResult", "aResultValue"),
+	)),
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "aTask",
+		TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+	},
+}, {
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "bTask",
+		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+		Params: []v1beta1.Param{{
+			Name:  "bParam",
+			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+		}},
+	},
+}, {
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "bTask",
+		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "$(tasks.aTask.results.aResult)",
+			Operator: selection.In,
+			Values:   []string{"$(tasks.aTask.results.aResult)"},
+		}},
+	},
+}, {
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "bTask",
+		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "$(tasks.aTask.results.missingResult)",
+			Operator: selection.In,
+			Values:   []string{"$(tasks.aTask.results.missingResult)"},
+		}},
+	},
+}, {
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "bTask",
+		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+		Params: []v1beta1.Param{{
+			Name:  "bParam",
+			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.missingResult)"),
+		}},
+	},
+}, {
+	CustomTask: true,
+	RunName:    "aRun",
+	Run: &v1alpha1.Run{
+		ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
+		Status: v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{successCondition},
+			},
+			RunStatusFields: v1alpha1.RunStatusFields{
+				Results: []v1alpha1.RunResult{{
+					Name:  "aResult",
+					Value: "aResultValue",
+				}},
+			},
+		},
+	},
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "aCustomPipelineTask",
+		TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "aTask"},
+	},
+}, {
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "bTask",
+		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+		Params: []v1beta1.Param{{
+			Name:  "bParam",
+			Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
+		}},
+	},
+}}
+
 func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 
 	for _, tt := range []struct {
@@ -314,92 +394,13 @@ func resolvedSliceAsString(rs []*ResolvedResultRef) string {
 }
 
 func TestResolveResultRefs(t *testing.T) {
-	pipelineRunState := PipelineRunState{{
-		TaskRunName: "aTaskRun",
-		TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-			tb.StatusCondition(successCondition),
-			tb.TaskRunResult("aResult", "aResultValue"),
-		)),
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "aTask",
-			TaskRef: &v1beta1.TaskRef{Name: "aTask"},
-		},
-	}, {
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "bTask",
-			TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-			Params: []v1beta1.Param{{
-				Name:  "bParam",
-				Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
-			}},
-		},
-	}, {
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "bTask",
-			TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-			WhenExpressions: []v1beta1.WhenExpression{{
-				Input:    "$(tasks.aTask.results.aResult)",
-				Operator: selection.In,
-				Values:   []string{"$(tasks.aTask.results.aResult)"},
-			}},
-		},
-	}, {
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "bTask",
-			TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-			WhenExpressions: []v1beta1.WhenExpression{{
-				Input:    "$(tasks.aTask.results.missingResult)",
-				Operator: selection.In,
-				Values:   []string{"$(tasks.aTask.results.missingResult)"},
-			}},
-		},
-	}, {
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "bTask",
-			TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-			Params: []v1beta1.Param{{
-				Name:  "bParam",
-				Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.missingResult)"),
-			}},
-		},
-	}, {
-		CustomTask: true,
-		RunName:    "aRun",
-		Run: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
-			Status: v1alpha1.RunStatus{
-				Status: duckv1.Status{
-					Conditions: []apis.Condition{successCondition},
-				},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
-						Name:  "aResult",
-						Value: "aResultValue",
-					}},
-				},
-			},
-		},
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "aCustomPipelineTask",
-			TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "aTask"},
-		},
-	}, {
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "bTask",
-			TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-			Params: []v1beta1.Param{{
-				Name:  "bParam",
-				Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
-			}},
-		},
-	}}
-
 	for _, tt := range []struct {
 		name             string
 		pipelineRunState PipelineRunState
 		targets          PipelineRunState
 		want             ResolvedResultRefs
 		wantErr          bool
+		wantPt           string
 	}{{
 		name:             "Test successful result references resolution - params",
 		pipelineRunState: pipelineRunState,
@@ -446,6 +447,7 @@ func TestResolveResultRefs(t *testing.T) {
 		},
 		want:    nil,
 		wantErr: true,
+		wantPt:  "aTask",
 	}, {
 		name:             "Test unsuccessful result references resolution - params",
 		pipelineRunState: pipelineRunState,
@@ -454,6 +456,7 @@ func TestResolveResultRefs(t *testing.T) {
 		},
 		want:    nil,
 		wantErr: true,
+		wantPt:  "aTask",
 	}, {
 		name:             "Test successful result references resolution - params - Run",
 		pipelineRunState: pipelineRunState,
@@ -471,7 +474,7 @@ func TestResolveResultRefs(t *testing.T) {
 		wantErr: false,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)
+			got, pt, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)
 			sort.SliceStable(got, func(i, j int) bool {
 				fromI := got[i].FromTaskRun
 				if fromI == "" {
@@ -489,6 +492,104 @@ func TestResolveResultRefs(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tt.wantPt, pt); d != "" {
+				t.Fatalf("ResolvedPipelineRunTask %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolveResultRef(t *testing.T) {
+	for _, tt := range []struct {
+		name             string
+		pipelineRunState PipelineRunState
+		target           *ResolvedPipelineRunTask
+		want             ResolvedResultRefs
+		wantErr          bool
+		wantPt           string
+	}{{
+		name:             "Test successful result references resolution - params",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[1],
+		want: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		wantErr: false,
+	}, {
+		name:             "Test successful result references resolution - when expressions",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[2],
+		want: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		wantErr: false,
+	}, {
+		name:             "Test successful result references resolution non result references",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[0],
+		want:             nil,
+		wantErr:          false,
+	}, {
+		name:             "Test unsuccessful result references resolution - when expression",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[3],
+		want:             nil,
+		wantErr:          true,
+		wantPt:           "aTask",
+	}, {
+		name:             "Test unsuccessful result references resolution - params",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[4],
+		want:             nil,
+		wantErr:          true,
+		wantPt:           "aTask",
+	}, {
+		name:             "Test successful result references resolution - params - Run",
+		pipelineRunState: pipelineRunState,
+		target:           pipelineRunState[6],
+		want: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aCustomPipelineTask",
+				Result:       "aResult",
+			},
+			FromRun: "aRun",
+		}},
+		wantErr: false,
+	}} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, pt, err := ResolveResultRef(tt.pipelineRunState, tt.target)
+			sort.SliceStable(got, func(i, j int) bool {
+				fromI := got[i].FromTaskRun
+				if fromI == "" {
+					fromI = got[i].FromRun
+				}
+				fromJ := got[j].FromTaskRun
+				if fromJ == "" {
+					fromJ = got[j].FromRun
+				}
+				return strings.Compare(fromI, fromJ) < 0
+			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tt.wantPt, pt); d != "" {
+				t.Fatalf("ResolvedPipelineRunTask %s", diff.PrintWantGot(d))
 			}
 		})
 	}

@@ -474,6 +474,226 @@ There are a lot of scenarios where `when` expressions can be really useful. Some
 - Checking if the name of a CI job matches
 - Checking if an optional Workspace has been provided
 
+#### Guarding a `Task` and its dependent `Tasks`
+
+When  `when` expressions evaluate to `False`, the `Task` and its dependent `Tasks` will be skipped by default while the
+rest of the `Pipeline` will execute. Dependencies between `Tasks` can be either ordering ([`runAfter`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#using-the-runafter-parameter))
+or resource (e.g. [`Results`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#using-results))
+dependencies, as further described in [configuring execution order](#configuring-the-task-execution-order). The global
+default scope of `when` expressions is set to a `Task` and its dependent`Tasks`; `scope-when-expressions-to-task` field
+in [`config/config-feature-flags.yaml`](install.md#customizing-the-pipelines-controller-behavior) defaults to "false".
+
+**Note:** Scoping `when` expressions to a `Task` and its dependent `Tasks` is deprecated
+
+To guard a `Task` and its dependent Tasks:
+- cascade the `when` expressions to the specific dependent `Tasks` to be guarded as well
+- compose the `Task` and its dependent `Tasks` as a unit to be guarded and executed together using `Pipelines` in `Pipelines`
+
+##### Cascade `when` expressions to the specific dependent `Tasks`
+
+Pick and choose which specific dependent `Tasks` to guard as well, and cascade the `when` expressions to those `Tasks`. 
+
+Taking the use case below, a user who wants to guard `manual-approval` and its dependent `Tasks`:
+
+```
+                                     tests
+                                       |
+                                       v
+                                 manual-approval
+                                 |            |
+                                 v        (approver)
+                            build-image       |
+                                |             v
+                                v          slack-msg
+                            deploy-image
+```
+
+The user can design the `Pipeline` to solve their use case as such:
+
+```yaml
+tasks:
+...
+- name: manual-approval
+  runAfter:
+    - tests
+  when:
+    - input: $(params.git-action)
+      operator: in
+      values:
+        - merge
+  taskRef:
+    name: manual-approval
+
+- name: build-image
+  when:
+    - input: $(params.git-action)
+      operator: in
+      values:
+        - merge
+  runAfter:
+    - manual-approval
+  taskRef:
+    name: build-image
+
+- name: deploy-image
+  when:
+    - input: $(params.git-action)
+      operator: in
+      values:
+        - merge
+  runAfter:
+    - build-image
+  taskRef:
+    name: deploy-image
+
+- name: slack-msg
+  params:
+    - name: approver
+      value: $(tasks.manual-approval.results.approver)
+  taskRef:
+    name: slack-msg
+```  
+
+##### Compose using Pipelines in Pipelines
+
+Compose a set of `Tasks` as a unit of execution using `Pipelines` in `Pipelines`, which allows for guarding a `Task` and 
+its dependent `Tasks` (as a sub-`Pipeline`) using `when` expressions. 
+
+**Note:** `Pipelines` in `Pipelines` is an [experimental feature](https://github.com/tektoncd/experimental/tree/main/pipelines-in-pipelines)
+
+Taking the use case below, a user who wants to guard `manual-approval` and its dependent `Tasks`:
+
+```
+                                     tests
+                                       |
+                                       v
+                                 manual-approval
+                                 |            |
+                                 v        (approver)
+                            build-image       |
+                                |             v
+                                v          slack-msg
+                            deploy-image
+```
+
+The user can design the `Pipelines` to solve their use case as such:
+
+```yaml
+## sub pipeline (approve-build-deploy-slack)
+tasks:
+  - name: manual-approval
+    runAfter:
+      - integration-tests
+    taskRef:
+      name: manual-approval
+
+  - name: build-image
+    runAfter:
+      - manual-approval
+    taskRef:
+      name: build-image
+
+  - name: deploy-image
+    runAfter:
+      - build-image
+    taskRef:
+      name: deploy-image
+
+  - name: slack-msg
+    params:
+      - name: approver
+        value: $(tasks.manual-approval.results.approver)
+    taskRef:
+      name: slack-msg
+      
+---
+## main pipeline
+tasks:
+...
+- name: approve-build-deploy-slack
+  runAfter:
+    - tests
+  when:
+    - input: $(params.git-action)
+      operator: in
+      values:
+        - merge
+  taskRef:
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+    name: approve-build-deploy-slack
+```
+
+#### Guarding a `Task` only
+
+To guard a `Task` only and unblock execution of its dependent `Tasks`, set the global default scope of `when` expressions
+to `Task` using the `scope-when-expressions-to-task` field in [`config/config-feature-flags.yaml`](install.md#customizing-the-pipelines-controller-behavior)
+by changing it to "true"
+- The ordering-dependent `Tasks` will be executed
+- The resource-dependent `Tasks` (and their dependencies) will be skipped because of missing `Results` from the skipped 
+  parent `Task`. When we add support for [default `Results`](https://github.com/tektoncd/community/pull/240), then the 
+  resource-dependent `Tasks` may be executed if the default `Results` from the skipped parent `Task` are specified. In 
+  addition, if a resource-dependent `Task` needs a file from a guarded parent `Task` in a shared `Workspace`, make sure
+  to handle the execution of the child `Task` in case the expected file is missing from the `Workspace` because the 
+  guarded parent `Task` is skipped. 
+
+```
+                                     tests
+                                       |
+                                       v
+                                 manual-approval
+                                 |            |
+                                 v        (approver)
+                            build-image       |
+                                |             v
+                                v          slack-msg
+                            deploy-image
+```
+
+Taking the use case above, a user who wants to guard `manual-approval` only can design the `Pipeline` as such:
+
+```yaml
+tasks:
+...
+- name: manual-approval
+  runAfter:
+    - tests
+  when:
+    - input: $(params.git-action)
+      operator: in
+      values:
+        - merge
+  taskRef:
+    name: manual-approval
+
+- name: build-image
+  runAfter:
+    - manual-approval
+  taskRef:
+    name: build-image
+
+- name: deploy-image
+  runAfter:
+    - build-image
+  taskRef:
+    name: deploy-image
+
+- name: slack-msg
+  params:
+    - name: approver
+      value: $(tasks.manual-approval.results.approver)
+  taskRef:
+    name: slack-msg
+```
+
+With `when` expressions scoped to `Task`, if `manual-approval` is skipped, execution of it's dependent `Tasks` 
+(`slack-msg`, `build-image` and `deploy-image`) would be unblocked regardless:
+- `build-image` and `deploy-image` should be executed successfully
+- `slack-msg` will be skipped because it is missing the `approver` `Result` from `manual-approval`
+  - dependents of `slack-msg` would have been skipped too if it had any of them
+  - if `manual-approval` specifies a default `approver` `Result`, such as "None", then `slack-msg` would be executed 
+    ([supporting default `Results` is in progress](https://github.com/tektoncd/community/pull/240))
+
 ### Guard `Task` execution using `Conditions`
 
 **Note:** `Conditions` are [deprecated](./deprecations.md), use [`when` expressions](#guard-task-execution-using-when-expressions) instead.
@@ -700,10 +920,13 @@ so that one will run before another and the execution of the `Pipeline` progress
 without getting stuck in an infinite loop.
 
 This is done using:
-
-- [`from`](#using-the-from-parameter) clauses on the [`PipelineResources`](resources.md) used by each `Task`
-- [`runAfter`](#using-the-runafter-parameter) clauses on the corresponding `Tasks`
-- By linking the [`results`](#configuring-execution-results-at-the-pipeline-level) of one `Task` to the params of another
+- _resource dependencies_:
+  - [`from`](#using-the-from-parameter) clauses on the [`PipelineResources`](resources.md) used by each `Task`
+  - [`results`](#configuring-execution-results-at-the-pipeline-level) of one `Task` being pa `params` or
+    `when` expressions of another
+    
+- _ordering dependencies_:
+  - [`runAfter`](#using-the-runafter-parameter) clauses on the corresponding `Tasks`
 
 For example, the `Pipeline` defined as follows
 
