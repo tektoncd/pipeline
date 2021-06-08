@@ -482,10 +482,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
-		State:           pipelineRunState,
-		SpecStatus:      pr.Spec.Status,
-		TasksGraph:      d,
-		FinalTasksGraph: dfinally,
+		State:                      pipelineRunState,
+		SpecStatus:                 pr.Spec.Status,
+		TasksGraph:                 d,
+		FinalTasksGraph:            dfinally,
+		ScopeWhenExpressionsToTask: config.FromContextOrDefaults(ctx).FeatureFlags.ScopeWhenExpressionsToTask,
 	}
 
 	for _, rprt := range pipelineRunFacts.State {
@@ -634,7 +635,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRprts)
+	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRprts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
@@ -655,7 +656,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
 		for _, rprt := range fnextRprts {
-			resolvedResultRefs, err := resources.ResolveResultRef(pipelineRunFacts.State, rprt)
+			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rprt)
 			if err != nil {
 				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rprt.PipelineTask.Name, pr.Name, err)
 				continue
@@ -666,7 +667,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	}
 
 	for _, rprt := range nextRprts {
-		if rprt == nil || rprt.Skip(pipelineRunFacts) || rprt.IsFinallySkipped(pipelineRunFacts) {
+		if rprt == nil || rprt.Skip(pipelineRunFacts).IsSkipped || rprt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
 		}
 		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
