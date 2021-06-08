@@ -2687,7 +2687,7 @@ func schema_pkg_apis_pipeline_v1beta1_Sidecar(ref common.ReferenceCallback) comm
 							Format:      "",
 						},
 					},
-					"Workspaces": {
+					"workspaces": {
 						SchemaProps: spec.SchemaProps{
 							Description: "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nWorkspaces is a list of workspaces from the Task that this Sidecar wants exclusive access to. Adding a workspace to this list means that any other Step or Sidecar that does not also request this Workspace will not have access to it.",
 							Type:        []string{"array"},

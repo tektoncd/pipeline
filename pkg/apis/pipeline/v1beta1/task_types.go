@@ -161,7 +161,7 @@ type Sidecar struct {
 	// other Step or Sidecar that does not also request this Workspace will
 	// not have access to it.
 	// +optional
-	Workspaces []WorkspaceUsage
+	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
