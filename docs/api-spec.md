@@ -307,11 +307,6 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 
 ### `WorkspaceDeclaration`
 
-  name	string
-  description	string
-  mountPath	string
-  readOnly	bool
-
 | Field Name    | Field Type | Requirement |
 |---------------|------------|-------------|
 | `name`        | string     | REQUIRED    |
