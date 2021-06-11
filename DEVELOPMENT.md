@@ -17,6 +17,7 @@ First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Def
 1. [Developing and testing](#developing-and-testing) Tekton pipelines
     1. Learn how to [iterate](#iterating) on code changes
     1. [Managing Tekton Objects using `ko`](#managing-tekton-objects-using-ko) in Kubernetes
+    1. [Standing up a K8s cluster with Tekton using the kind tool](#standing-up-a-k8s-cluster-with-tekton-using-the-kind-tool)
     1. [Accessing logs](#accessing-logs)
     1. [Adding new CRD types](#adding-new-crd-types)
 
@@ -81,7 +82,7 @@ You must install these tools:
 
     > :warning: The user interacting with your K8s cluster **must be a cluster admin** to create role bindings.
 
-    **Setting cluster admin role example**:
+    **Google Cloud Platform (GCP) example**:
 
     ```shell
     # Using gcloud to get your current user
@@ -98,7 +99,7 @@ To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you
 
 1. `GOROOT`: Set `GOROOT` to the location of the Go installation you want `ko` to use for builds.
 
-    > **NOTE** You may need to set `GOROOT` if you installed Go tools to a a non-default location or have multiple Go versions installed.
+    > **Note**: You may need to set `GOROOT` if you installed Go tools to a non-default location or have multiple Go versions installed.
 
     If it is not set, `ko` infers the location by effectively using `go env GOROOT`.
 
@@ -131,7 +132,7 @@ For example:
     export PATH="${PATH}:$HOME/go/bin"
     ```
 
-> **Note** It is recommended to add these environment variables to your shell's configuration files (e.g., `~/.bash_profile` or `~/.bashrc`).
+> **Note**: It is recommended to add these environment variables to your shell's configuration files (e.g., `~/.bash_profile` or `~/.bashrc`).
 
 ### Setup a fork
 
@@ -145,7 +146,7 @@ The Tekton project requires that you develop (commit) code changes to branches t
     git clone git@github.com:${YOUR_GITHUB_USERNAME}/pipeline.git
     ```
 
-    > **Note** Tekton uses [Go Modules](https://golang.org/doc/modules/gomod-ref) (i.e., `go mod`) for package management so you may clone the repository to a location of your choosing.
+    > **Note**: Tekton uses [Go Modules](https://golang.org/doc/modules/gomod-ref) (i.e., `go mod`) for package management so you may clone the repository to a location of your choosing.
 
 1. Configure `git` remote repositories
 
@@ -286,12 +287,9 @@ The recommended minimum development configuration is:
      --cluster-version=1.18
     ```
 
-    > **Note** The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `n1-standard-4`
-    > **Note** that
-    [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
-    controls what GCP resources the cluster's default service account has access
-    to; for example to give the default service account full access to your GCR
-    registry, you can add `storage-full` to your `--scopes` arg. See [Authenticating to GCP](https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform) for more details.
+    > **Note**: The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `'n1-standard-4'`.
+
+    > **Note**: [The `'--scopes'` argument](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes) on the  `'gcloud container cluster create'` command controls what GCP resources the cluster's default service account has access to; for example, to give the default service account full access to your GCR registry, you can add `'storage-full'` to the `--scopes` arg. See [Authenticating to GCP](https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform) for more details.
 
 1. Grant cluster-admin permissions to the current user:
 
@@ -312,9 +310,9 @@ While iterating on code changes to the project, you may need to:
 1. [Manage Tekton objects](managing-tekton-objects-using-ko)
 1. [Verify installation](#verify-installation) and make sure there are no errors by [accessing the logs](#accessing-logs)
 1. Use various development scripts, as needed, in the ['hack' directory](https://github.com/tektoncd/pipeline/tree/main/hack), For example:
-    - Update your (external) dependencies with: `./hack/update-deps.sh`.
-    - Update your type definitions with: `./hack/update-codegen.sh`.
-    -  Update your OpenAPI specs with: `./hack/update-openapigen.sh`.
+    - Update your (external) dependencies with: `./hack/update-deps.sh`
+    - Update your type definitions with: `./hack/update-codegen.sh`
+    -  Update your OpenAPI specs with: `./hack/update-openapigen.sh`
 1. Update or [add new CRD types](#adding-new-types) as needed
 1. Update, [add and run tests](./test/README.md#tests)
 
@@ -324,6 +322,8 @@ To make changes to these CRDs, you will probably interact with:
 - The reconcilers in [./pkg/reconciler](./pkg/reconciler)
 - The clients are in [./pkg/client](./pkg/client) (these are generated by
     `./hack/update-codegen.sh`)
+
+---
 
 ### Managing Tekton Objects using `ko`
 
@@ -361,7 +361,7 @@ As you make changes to the code, you can redeploy your controller with:
 ko apply -f config/controller.yaml
 ```
 
-#### Install in custom namespace
+#### Installing into custom namespaces
 
 When managing different development branches of code (with changed Tekton objects and controllers) in the same K8s instance, it may be helpful to install them into a custom (non-default) namespace. The ability to map a code branch to a corresponding namespace may make it easier to identify and manage the objects as a group as well as isolate log output.
 
@@ -381,11 +381,68 @@ kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARG
 ```
 
 This script will cause `ko` to:
+
 - Change (resolve) all `namespace` values in K8s configuration files within the `config/` subdirectory to be updated to a name of your choosing.
 - Builds and push images with the new namespace to your container registry and
 - Update all Tekton Objects in K8s using these images
 
 It will also update the default system namespace used for K8s `deployments` to the new value for all subsequent `kubectl` commands.
+
+---
+
+### Standing up a K8s cluster with Tekton using the `kind` tool
+
+An alternative to standing up your own K8s cluster and installing Tekton using `ko` is by using the [kind](https://kind.sigs.k8s.io/) tool. It was designed to help create and run local Kubernetes clusters in Docker to assist in local development and testing.
+
+The [Tekton "plumbing" project](https://github.com/tektoncd/plumbing) provides a convenience script, named ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/blob/main/hack/tekton_in_kind.sh), that leverages `kind` to create a cluster and then deploy Tekton Pipeline, [Tekton Triggers](https://github.com/tektoncd/triggers) and [Tekton Dashboard](https://github.com/tektoncd/dashboard) components into it.
+
+See Tekton Plumbing's [DEVELOPMENT.md](https://github.com/tektoncd/plumbing/blob/main/DEVELOPMENT.md) for more details on this and other helpful scripts and tools.
+
+#### Installation and prerequisites
+
+- Clone the [Tekton Plumbing](https://github.com/tektoncd/plumbing) repository which has the ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/blob/main/hack/tekton_in_kind.sh) and other helpful scripts.
+- `kind`: Install using its ["quick start"](https://kind.sigs.k8s.io/docs/user/quick-start/) documentation.
+- `Docker`: `kind` also requires Docker to be installed and running locally. Use the [Get Docker](https://docs.docker.com/get-docker/) instructions.
+
+#### Create a cluster with Tekton components
+
+Change into the Tekton plumbing repository you cloned and invoke the script:
+
+```shell
+cd plumbing
+./hack/tekton_in_kind.sh
+```
+
+The script, after using `kind` to create the K8s cluster, uses `kubectl` to install the `latest` released versions of Tekton components. After successful completion, the script will have:
+
+- Created a K8s cluster named `tekton`
+- Created a `cluster-context` for `kubectl` named `'kind-tekton'` and set it as the `current-context`
+- Deployed the latest Tekton Pipeline, Trigger and Dashboard components
+- Made Tekton Dashboard available at `http://localhost:9097`
+
+After the Tekton components are installed using this script, you can than use the `ko` tool to build and apply your development changes to the cluster for testing.
+
+##### Using a different cluster name and Tekton versions
+
+You can also specify a different cluster name and released versions of components you want installed:
+
+```shell
+# Script usage:
+tekton_in_kind.sh [-c cluster-name -p pipeline-version -t triggers-version -d dashboard-version]"
+```
+
+#### Delete the cluster
+
+If you wish to delete the cluster that the script created, use the following command:
+
+```shell
+# Delete the cluster using the default name
+kind delete cluster --name tekton
+```
+
+> **Note**: Be sure to set a `kubectl` context, as its unset as a side-effect of the delete (i.e., `kubectl config use-context`*`<context-name>`*).
+
+---
 
 ### Accessing logs
 
