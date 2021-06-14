@@ -87,11 +87,11 @@ func TestGitPipelineRun(t *testing.T) {
 		sslVerify: "false",
 	}, {
 		name:     "non-master repo with default revision",
-		repo:     "https://github.com/spring-projects/spring-petclinic",
+		repo:     "https://github.com/tektoncd/results",
 		revision: "",
 	}, {
 		name:     "non-master repo with main revision",
-		repo:     "https://github.com/spring-projects/spring-petclinic",
+		repo:     "https://github.com/tektoncd/results",
 		revision: "main",
 	}} {
 		tc := tc // capture range variable
