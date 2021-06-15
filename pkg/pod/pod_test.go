@@ -556,12 +556,12 @@ func TestPodBuild(t *testing.T) {
 					Image:        "busybox",
 					Command:      []string{"sh"},
 					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
-					Args: []string{"-c", `tmpfile="/tekton/scripts/sidecar-script-0-9l9zj"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+					Args: []string{"-c", `scriptfile="/tekton/scripts/sidecar-script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCmVjaG8gaGVsbG8gZnJvbSBzaWRlY2Fy
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
+/tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
 				},
 			},
@@ -784,18 +784,18 @@ print("Hello from Python")`,
 					Name:    "place-scripts",
 					Image:   images.ShellImage,
 					Command: []string{"sh"},
-					Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+					Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCmVjaG8gaGVsbG8gZnJvbSBzdGVwIG9uZQ==
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-tmpfile="/tekton/scripts/script-1-mz4c7"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/script-1-mz4c7"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvdXNyL2Jpbi9lbnYgcHl0aG9uCnByaW50KCJIZWxsbyBmcm9tIFB5dGhvbiIp
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
+/tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
 					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 				},
@@ -903,12 +903,12 @@ _EOF_
 				Name:    "place-scripts",
 				Image:   images.ShellImage,
 				Command: []string{"sh"},
-				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+				Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCiQk
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
+/tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 			}},

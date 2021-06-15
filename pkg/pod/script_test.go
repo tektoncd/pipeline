@@ -158,24 +158,24 @@ script-3`,
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
 		Command: []string{"sh"},
-		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+		Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-tmpfile="/tekton/scripts/script-2-mz4c7"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/script-2-mz4c7"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 CiMhL2Jpbi9zaApzY3JpcHQtMw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-tmpfile="/tekton/scripts/script-3-mssqb"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/script-3-mssqb"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
+/tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 	}
@@ -247,24 +247,24 @@ sidecar-1`,
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
 		Command: []string{"sh"},
-		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-9l9zj"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+		Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-tmpfile="/tekton/scripts/script-2-mz4c7"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/script-2-mz4c7"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0z
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-tmpfile="/tekton/scripts/sidecar-script-0-mssqb"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '_EOF_'
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+scriptfile="/tekton/scripts/sidecar-script-0-mssqb"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNpZGVjYXItMQ==
 _EOF_
-/tekton/tools/entrypoint decode-script "${tmpfile}"
+/tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
 	}

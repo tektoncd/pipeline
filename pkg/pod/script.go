@@ -112,22 +112,22 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 
 		// Append to the place-scripts script to place the
 		// script file in a known location in the scripts volume.
-		tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
+		scriptFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%d", namePrefix, i)))
 		heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
-		initContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '%s'
+		initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '%s'
 %s
 %s
-/tekton/tools/entrypoint decode-script "${tmpfile}"
-`, tmpFile, heredoc, script, heredoc)
+/tekton/tools/entrypoint decode-script "${scriptfile}"
+`, scriptFile, heredoc, script, heredoc)
 
 		// Set the command to execute the correct script in the mounted
 		// volume.
 		// A previous merge with stepTemplate may have populated
 		// Command and Args, even though this is not normally valid, so
 		// we'll clear out the Args and overwrite Command.
-		steps[i].Command = []string{tmpFile}
+		steps[i].Command = []string{scriptFile}
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 		containers = append(containers, steps[i].Container)
 	}
