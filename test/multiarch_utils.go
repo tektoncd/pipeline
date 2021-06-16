@@ -37,8 +37,6 @@ const (
 	// Registry image
 	registryImage
 	// kubectl image
-	kubectlImage
-	// kaniko executor image
 	kanikoImage
 	// dockerize image
 	dockerizeImage
@@ -65,7 +63,6 @@ func initImageNames() map[int]string {
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
 			registryImage:  "ibmcom/registry:2.6.2.5",
-			kubectlImage:   "ibmcom/kubectl:v1.13.9",
 			kanikoImage:    "gcr.io/kaniko-project/executor:s390x-9ed158c1f63a059cde4fd5f8b95af51d452d9aa7",
 			dockerizeImage: "ibmcom/dockerize-s390x",
 		}
@@ -73,7 +70,6 @@ func initImageNames() map[int]string {
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:4f47c01fa91355af2865ac10fef5bf6ec9c7f42ad2321377c21e844427972977",
 			registryImage:  "ppc64le/registry:2",
-			kubectlImage:   "ibmcom/kubectl:v1.13.9",
 			kanikoImage:    "ibmcom/kaniko-project-executor-ppc64le:v0.17.1",
 			dockerizeImage: "ibmcom/dockerize-ppc64le",
 		}
@@ -81,7 +77,6 @@ func initImageNames() map[int]string {
 		return map[int]string{
 			busyboxImage:   "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
 			registryImage:  "registry",
-			kubectlImage:   "lachlanevenson/k8s-kubectl",
 			kanikoImage:    "gcr.io/kaniko-project/executor:v1.3.0",
 			dockerizeImage: "jwilder/dockerize",
 		}
@@ -111,7 +106,6 @@ func imageNamesMapping() map[string]string {
 		return map[string]string{
 			"registry":                              getTestImage(registryImage),
 			"node":                                  "node:alpine3.11",
-			"lachlanevenson/k8s-kubectl":            getTestImage(kubectlImage),
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
 			"docker:dind":                           "ibmcom/docker-s390x:dind",
 			"docker":                                "docker:18.06.3",
@@ -123,7 +117,6 @@ func imageNamesMapping() map[string]string {
 		return map[string]string{
 			"registry":                              getTestImage(registryImage),
 			"node":                                  "node:alpine3.11",
-			"lachlanevenson/k8s-kubectl":            getTestImage(kubectlImage),
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
 			"docker:dind":                           "ibmcom/docker-ppc64le:19.03-dind",
 			"docker":                                "docker:18.06.3",
