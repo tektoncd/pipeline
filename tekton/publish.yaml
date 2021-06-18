@@ -108,7 +108,7 @@ spec:
       # Setup docker-auth
       DOCKER_CONFIG=~/.docker
       mkdir -p ${DOCKER_CONFIG}
-      cp /workspace/docker-config.json ${DOCKER_CONFIG}/
+      cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
 
       # Change to directory with our .ko.yaml
       cd ${PROJECT_ROOT}
@@ -166,7 +166,7 @@ spec:
       # Setup docker-auth
       DOCKER_CONFIG=~/.docker
       mkdir -p ${DOCKER_CONFIG}
-      cp /workspace/docker-config.json ${DOCKER_CONFIG}/
+      cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
 
       REGIONS="us eu asia"
 
