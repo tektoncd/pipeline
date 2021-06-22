@@ -307,7 +307,7 @@ The recommended minimum development configuration is:
 
 While iterating on code changes to the project, you may need to:
 
-1. [Manage Tekton objects](managing-tekton-objects-using-ko)
+1. [Manage Tekton objects](#managing-tekton-objects-using-ko)
 1. [Verify installation](#verify-installation) and make sure there are no errors by [accessing the logs](#accessing-logs)
 1. Use various development scripts, as needed, in the ['hack' directory](https://github.com/tektoncd/pipeline/tree/main/hack), For example:
     - Update your (external) dependencies with: `./hack/update-deps.sh`
