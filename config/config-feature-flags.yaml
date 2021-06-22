@@ -85,3 +85,11 @@ data:
   # Setting this flag to "true" scopes when expressions to guard a Task only
   # instead of a Task and its dependent Tasks.
   scope-when-expressions-to-task: "false"
+  # Setting this flag to "true" prevents the TaskRun and PipelineRun
+  # reconcilers from performing resolution of tasks and pipelines from
+  # the cluster or Tekton Bundles. This resolution process can then be
+  # performed by external processes / other reconcilers.
+  #
+  # Warning: setting this flag to "true" without also introducing an external
+  # resolution mechanism will render TaskRuns and PipelineRuns inoperable.
+  experimental-disable-ref-resolution: "false"

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -226,6 +227,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
+	resolutionDisabled := config.FromContextOrDefaults(ctx).FeatureFlags.ExperimentalDisableRefResolution
+	if resolutionDisabled && err == resolution.ErrorResourceNotResolved {
+		// This is not an error: an out-of-band process may still
+		// resolve the PipelineRun, at which point reconciliation can
+		// continue as normal.
+		err = nil
+	}
+
 	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
 		return err
 	}
@@ -328,6 +337,41 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 			Message: fmt.Sprintf("PipelineRun %q is pending", pr.Name),
 		})
 		return nil
+	}
+
+	var (
+		pipelineMeta *metav1.ObjectMeta
+		pipelineSpec *v1beta1.PipelineSpec
+	)
+
+	resolutionDisabled := config.FromContextOrDefaults(ctx).FeatureFlags.ExperimentalDisableRefResolution
+	if resolutionDisabled {
+		if pr.Status.PipelineSpec == nil {
+			return resolution.ErrorResourceNotResolved
+		}
+
+		pipelineSpec = pr.Status.PipelineSpec
+		if pr.Spec.PipelineRef != nil {
+			pipelineMeta = &metav1.ObjectMeta{
+				Name:      pr.Spec.PipelineRef.Name,
+				Namespace: pr.Namespace,
+			}
+		} else {
+			pipelineMeta = &metav1.ObjectMeta{
+				Name:      pr.ObjectMeta.Name,
+				Namespace: pr.Namespace,
+			}
+		}
+		// Annotations and labels are populated by resolution
+		// reconcilers but that doesn't guarantee there was anything
+		// to populate with. Ensure these maps are at least non-nil
+		// to avoid panics.
+		if pr.ObjectMeta.Labels == nil {
+			pr.ObjectMeta.Labels = map[string]string{}
+		}
+		if pr.ObjectMeta.Annotations == nil {
+			pr.ObjectMeta.Annotations = map[string]string{}
+		}
 	}
 
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)

@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/resolver"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
@@ -54,6 +55,8 @@ var (
 	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 		"issue upstream!")
+	experimentalEnableResolutionReconcilers = flag.Bool("experimental-enable-resolution-reconcilers", false,
+		"Enable resolution of taskrun and pipelinerun refs by experimental resolution-specific reconcilers.")
 )
 
 func main() {
@@ -107,10 +110,20 @@ func main() {
 	}()
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
-	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
+
+	controllers := []injection.ControllerConstructor{
 		taskrun.NewController(*namespace, images),
 		pipelinerun.NewController(*namespace, images),
-	)
+	}
+
+	if *experimentalEnableResolutionReconcilers {
+		controllers = append(controllers,
+			resolver.NewTaskRunResolverController(),
+			resolver.NewPipelineRunResolverController(),
+		)
+	}
+
+	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg, controllers...)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

@@ -28,6 +28,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -72,6 +73,7 @@ type Reconciler struct {
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
+	disableResolution bool
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -162,29 +164,36 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
+	resolutionDisabled := config.FromContextOrDefaults(ctx).FeatureFlags.ExperimentalDisableRefResolution
+
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API convertions. Errors that come out of prepare are
 	// permanent one, so in case of error we update, emit events and return
 	_, rtr, err := c.prepare(ctx, tr)
-	if err != nil {
-		logger.Errorf("TaskRun prepare error: %v", err.Error())
-		// We only return an error if update failed, otherwise we don't want to
-		// reconcile an invalid TaskRun anymore
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
-	}
+	if resolutionDisabled && err == resolution.ErrorResourceNotResolved {
+		// This is not an error: the taskrun is still expected to be resolved
+		// out-of-band, at which point reconciliation can continue normally.
+	} else {
+		if err != nil {
+			logger.Errorf("TaskRun prepare error: %v", err.Error())
+			// We only return an error if update failed, otherwise we don't want to
+			// reconcile an invalid TaskRun anymore
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+		}
 
-	// Store the condition before reconcile
-	before = tr.Status.GetCondition(apis.ConditionSucceeded)
+		// Store the condition before reconcile
+		before = tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	// Reconcile this copy of the task run and then write back any status
-	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, tr, rtr); err != nil {
-		logger.Errorf("Reconcile: %v", err.Error())
-	}
+		// Reconcile this copy of the task run and then write back any status
+		// updates regardless of whether the reconciliation errored out.
+		if err = c.reconcile(ctx, tr, rtr); err != nil {
+			logger.Errorf("Reconcile: %v", err.Error())
+		}
 
-	// Emit events (only when ConditionSucceeded was changed)
-	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
-		return err
+		// Emit events (only when ConditionSucceeded was changed)
+		if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+			return err
+		}
 	}
 
 	if tr.Status.StartTime != nil {
@@ -268,51 +277,85 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
 
-	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
-	if err != nil {
-		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  podconvert.ReasonFailedResolution,
-			Message: err.Error(),
-		})
-		return nil, nil, err
-	}
+	var (
+		taskMeta *metav1.ObjectMeta
+		taskSpec *v1beta1.TaskSpec
+	)
 
-	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
-	if err != nil {
-		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	// Store the fetched TaskSpec on the TaskRun for auditing
-	if err := storeTaskSpec(ctx, tr, taskSpec); err != nil {
-		logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
-	}
-
-	// Propagate labels from Task to TaskRun.
-	if tr.ObjectMeta.Labels == nil {
-		tr.ObjectMeta.Labels = make(map[string]string, len(taskMeta.Labels)+1)
-	}
-	for key, value := range taskMeta.Labels {
-		tr.ObjectMeta.Labels[key] = value
-	}
-	if tr.Spec.TaskRef != nil {
-		if tr.Spec.TaskRef.Kind == "ClusterTask" {
-			tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = taskMeta.Name
-		} else {
-			tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = taskMeta.Name
+	resolutionDisabled := config.FromContextOrDefaults(ctx).FeatureFlags.ExperimentalDisableRefResolution
+	if resolutionDisabled {
+		if tr.Status.TaskSpec == nil {
+			return nil, nil, resolution.ErrorResourceNotResolved
 		}
-	}
+		taskSpec = tr.Status.TaskSpec
+		if tr.Spec.TaskRef != nil {
+			taskMeta = &metav1.ObjectMeta{
+				Name:      tr.Spec.TaskRef.Name,
+				Namespace: tr.Namespace,
+			}
+		} else {
+			taskMeta = &metav1.ObjectMeta{
+				Name:      tr.Name,
+				Namespace: tr.Namespace,
+			}
+		}
+		// Annotations and labels are populated by resolution
+		// reconcilers but that doesn't guarantee there was anything
+		// to populate with. Ensure these maps are at least non-nil
+		// to avoid panics.
+		if tr.ObjectMeta.Labels == nil {
+			tr.ObjectMeta.Labels = map[string]string{}
+		}
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = map[string]string{}
+		}
+	} else {
+		getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
+		if err != nil {
+			logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  podconvert.ReasonFailedResolution,
+				Message: err.Error(),
+			})
+			return nil, nil, err
+		}
 
-	// Propagate annotations from Task to TaskRun.
-	if tr.ObjectMeta.Annotations == nil {
-		tr.ObjectMeta.Annotations = make(map[string]string, len(taskMeta.Annotations))
-	}
-	for key, value := range taskMeta.Annotations {
-		tr.ObjectMeta.Annotations[key] = value
+		taskMeta, taskSpec, err = resources.GetTaskData(ctx, tr, getTaskfunc)
+		if err != nil {
+			logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+
+		// Store the fetched TaskSpec on the TaskRun for auditing
+		if err := storeTaskSpec(ctx, tr, taskSpec); err != nil {
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+		}
+
+		// Propagate labels from Task to TaskRun.
+		if tr.ObjectMeta.Labels == nil {
+			tr.ObjectMeta.Labels = make(map[string]string, len(taskMeta.Labels)+1)
+		}
+		for key, value := range taskMeta.Labels {
+			tr.ObjectMeta.Labels[key] = value
+		}
+		if tr.Spec.TaskRef != nil {
+			if tr.Spec.TaskRef.Kind == "ClusterTask" {
+				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = taskMeta.Name
+			} else {
+				tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = taskMeta.Name
+			}
+		}
+
+		// Propagate annotations from Task to TaskRun.
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = make(map[string]string, len(taskMeta.Annotations))
+		}
+		for key, value := range taskMeta.Annotations {
+			tr.ObjectMeta.Annotations[key] = value
+		}
 	}
 
 	inputs := []v1beta1.TaskResourceBinding{}

@@ -38,6 +38,7 @@ const (
 	enableCustomTasks                       = "enable-custom-tasks"
 	enableAPIFields                         = "enable-api-fields"
 	scopeWhenExpressionsToTask              = "scope-when-expressions-to-task"
+	experimentalDisableRefResolution        = "experimental-disable-ref-resolution"
 	DefaultDisableHomeEnvOverwrite          = true
 	DefaultDisableWorkingDirOverwrite       = true
 	DefaultDisableAffinityAssistant         = false
@@ -48,6 +49,7 @@ const (
 	DefaultEnableCustomTasks                = false
 	DefaultScopeWhenExpressionsToTask       = false
 	DefaultEnableAPIFields                  = StableAPIFields
+	DefaultExperimentalDisableRefResolution = false
 )
 
 // FeatureFlags holds the features configurations
@@ -63,6 +65,7 @@ type FeatureFlags struct {
 	EnableCustomTasks                bool
 	ScopeWhenExpressionsToTask       bool
 	EnableAPIFields                  string
+	ExperimentalDisableRefResolution bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -112,6 +115,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setEnabledAPIFields(cfgMap, DefaultEnableAPIFields, &tc.EnableAPIFields); err != nil {
+		return nil, err
+	}
+	if err := setFeature(experimentalDisableRefResolution, DefaultExperimentalDisableRefResolution, &tc.ExperimentalDisableRefResolution); err != nil {
 		return nil, err
 	}
 
