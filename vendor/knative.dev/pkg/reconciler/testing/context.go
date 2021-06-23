@@ -39,16 +39,21 @@ import (
 )
 
 // SetupFakeContext sets up the the Context and the fake informers for the tests.
-func SetupFakeContext(t testing.TB) (context.Context, []controller.Informer) {
-	c, _, is := SetupFakeContextWithCancel(t)
+// The optional fs() can be used to edit ctx before the SetupInformer steps
+func SetupFakeContext(t testing.TB, fs ...func(context.Context) context.Context) (context.Context, []controller.Informer) {
+	c, _, is := SetupFakeContextWithCancel(t, fs...)
 	return c, is
 }
 
 // SetupFakeContextWithCancel sets up the the Context and the fake informers for the tests
 // The provided context can be canceled using provided callback.
-func SetupFakeContextWithCancel(t testing.TB) (context.Context, context.CancelFunc, []controller.Informer) {
+// The optional fs() can be used to edit ctx before the SetupInformer steps
+func SetupFakeContextWithCancel(t testing.TB, fs ...func(context.Context) context.Context) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
 	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
+	for _, f := range fs {
+		ctx = f(ctx)
+	}
 	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is
 }

@@ -17,12 +17,11 @@
 package prometheus // import "contrib.go.opencensus.io/exporter/prometheus"
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
-
-	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -105,7 +104,8 @@ func (o *Options) onError(err error) {
 // corresponding Prometheus Metric: SumData will be converted
 // to Untyped Metric, CountData will be a Counter Metric,
 // DistributionData will be a Histogram Metric.
-// Deprecated in lieu of metricexport.Reader interface.
+//
+// Deprecated: in lieu of metricexport.Reader interface.
 func (e *Exporter) ExportView(vd *view.Data) {
 }
 
@@ -117,7 +117,6 @@ func (e *Exporter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // collector implements prometheus.Collector
 type collector struct {
 	opts Options
-	mu   sync.Mutex // mu guards all the fields.
 
 	registerOnce sync.Once
 
@@ -151,11 +150,12 @@ func newCollector(opts Options, registrar prometheus.Registerer) *collector {
 
 func (c *collector) toDesc(metric *metricdata.Metric) *prometheus.Desc {
 	var labels prometheus.Labels
-	if metric.Resource == nil {
+	switch {
+	case metric.Resource == nil:
 		labels = c.opts.ConstLabels
-	} else if c.opts.ConstLabels == nil {
+	case c.opts.ConstLabels == nil:
 		labels = metric.Resource.Labels
-	} else {
+	default:
 		labels = prometheus.Labels{}
 		for k, v := range c.opts.ConstLabels {
 			labels[k] = v
@@ -171,7 +171,6 @@ func (c *collector) toDesc(metric *metricdata.Metric) *prometheus.Desc {
 		metric.Descriptor.Description,
 		toPromLabels(metric.Descriptor.LabelKeys),
 		labels)
-
 }
 
 type metricExporter struct {

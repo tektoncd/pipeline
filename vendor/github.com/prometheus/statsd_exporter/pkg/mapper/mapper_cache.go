@@ -20,26 +20,41 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	cacheLength = prometheus.NewGauge(
+type CacheMetrics struct {
+	CacheLength    prometheus.Gauge
+	CacheGetsTotal prometheus.Counter
+	CacheHitsTotal prometheus.Counter
+}
+
+func NewCacheMetrics(reg prometheus.Registerer) *CacheMetrics {
+	var m CacheMetrics
+
+	m.CacheLength = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "statsd_metric_mapper_cache_length",
 			Help: "The count of unique metrics currently cached.",
 		},
 	)
-	cacheGetsTotal = prometheus.NewCounter(
+	m.CacheGetsTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "statsd_metric_mapper_cache_gets_total",
 			Help: "The count of total metric cache gets.",
 		},
 	)
-	cacheHitsTotal = prometheus.NewCounter(
+	m.CacheHitsTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "statsd_metric_mapper_cache_hits_total",
 			Help: "The count of total metric cache hits.",
 		},
 	)
-)
+
+	if reg != nil {
+		reg.MustRegister(m.CacheLength)
+		reg.MustRegister(m.CacheGetsTotal)
+		reg.MustRegister(m.CacheHitsTotal)
+	}
+	return &m
+}
 
 type cacheOptions struct {
 	cacheType string
@@ -67,26 +82,28 @@ type MetricMapperCache interface {
 
 type MetricMapperLRUCache struct {
 	MetricMapperCache
-	cache *lru.Cache
+	cache   *lru.Cache
+	metrics *CacheMetrics
 }
 
 type MetricMapperNoopCache struct {
 	MetricMapperCache
+	metrics *CacheMetrics
 }
 
-func NewMetricMapperCache(size int) (*MetricMapperLRUCache, error) {
-	cacheLength.Set(0)
+func NewMetricMapperCache(reg prometheus.Registerer, size int) (*MetricMapperLRUCache, error) {
+	metrics := NewCacheMetrics(reg)
 	cache, err := lru.New(size)
 	if err != nil {
 		return &MetricMapperLRUCache{}, err
 	}
-	return &MetricMapperLRUCache{cache: cache}, nil
+	return &MetricMapperLRUCache{metrics: metrics, cache: cache}, nil
 }
 
 func (m *MetricMapperLRUCache) Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool) {
-	cacheGetsTotal.Inc()
+	m.metrics.CacheGetsTotal.Inc()
 	if result, ok := m.cache.Get(formatKey(metricString, metricType)); ok {
-		cacheHitsTotal.Inc()
+		m.metrics.CacheHitsTotal.Inc()
 		return result.(*MetricMapperCacheResult), true
 	} else {
 		return nil, false
@@ -104,16 +121,15 @@ func (m *MetricMapperLRUCache) AddMiss(metricString string, metricType MetricTyp
 }
 
 func (m *MetricMapperLRUCache) trackCacheLength() {
-	cacheLength.Set(float64(m.cache.Len()))
+	m.metrics.CacheLength.Set(float64(m.cache.Len()))
 }
 
 func formatKey(metricString string, metricType MetricType) string {
 	return string(metricType) + "." + metricString
 }
 
-func NewMetricMapperNoopCache() *MetricMapperNoopCache {
-	cacheLength.Set(0)
-	return &MetricMapperNoopCache{}
+func NewMetricMapperNoopCache(reg prometheus.Registerer) *MetricMapperNoopCache {
+	return &MetricMapperNoopCache{metrics: NewCacheMetrics(reg)}
 }
 
 func (m *MetricMapperNoopCache) Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool) {
@@ -130,16 +146,18 @@ func (m *MetricMapperNoopCache) AddMiss(metricString string, metricType MetricTy
 
 type MetricMapperRRCache struct {
 	MetricMapperCache
-	lock  sync.RWMutex
-	size  int
-	items map[string]*MetricMapperCacheResult
+	lock    sync.RWMutex
+	size    int
+	items   map[string]*MetricMapperCacheResult
+	metrics *CacheMetrics
 }
 
-func NewMetricMapperRRCache(size int) (*MetricMapperRRCache, error) {
-	cacheLength.Set(0)
+func NewMetricMapperRRCache(reg prometheus.Registerer, size int) (*MetricMapperRRCache, error) {
+	metrics := NewCacheMetrics(reg)
 	c := &MetricMapperRRCache{
-		items: make(map[string]*MetricMapperCacheResult, size+1),
-		size:  size,
+		items:   make(map[string]*MetricMapperCacheResult, size+1),
+		size:    size,
+		metrics: metrics,
 	}
 	return c, nil
 }
@@ -188,11 +206,5 @@ func (m *MetricMapperRRCache) trackCacheLength() {
 	m.lock.RLock()
 	length := len(m.items)
 	m.lock.RUnlock()
-	cacheLength.Set(float64(length))
-}
-
-func init() {
-	prometheus.MustRegister(cacheLength)
-	prometheus.MustRegister(cacheGetsTotal)
-	prometheus.MustRegister(cacheHitsTotal)
+	m.metrics.CacheLength.Set(float64(length))
 }

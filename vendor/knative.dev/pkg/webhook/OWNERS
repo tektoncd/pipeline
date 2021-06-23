@@ -1,7 +1,9 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- webhook-approvers
+- dprotaso
+- mattmoor
+- tcnghia
 
 reviewers:
-- webhook-reviewers
+- whaught

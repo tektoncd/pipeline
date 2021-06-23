@@ -28,6 +28,8 @@ import (
 // Thus differing VolatileTime values are not considered different.
 // Note, go-cmp will still return inequality, see unit test if you
 // need this behavior for go-cmp.
+//
+// +kubebuilder:validation:Type=string
 type VolatileTime struct {
 	Inner metav1.Time `json:",inline"`
 }

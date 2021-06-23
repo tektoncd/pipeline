@@ -40,7 +40,7 @@ At first, the FSM only contains three states, representing three possible metric
           /
     (start)---- [counter]
           \
-           '--- [ timer ]
+           '--- [observer]
 
 
 Adding a rule `client.*.request.count` with type `counter` will make the FSM to be:
@@ -50,7 +50,7 @@ Adding a rule `client.*.request.count` with type `counter` will make the FSM to 
           /
     (start)---- [counter] -- [client] -- [*] -- [request] -- [count] -- {R1}
           \
-           '--- [timer]
+           '--- [observer]
 
 `{R1}` is short for result 1, which is the match result for `client.*.request.count`.
 
@@ -60,7 +60,7 @@ Adding a rule `client.*.*.size` with type `counter` will make the FSM to be:
           /                                 /
     (start)---- [counter] -- [client] -- [*]
           \                                  \__ [*] -- [size] -- {R2}
-           '--- [timer]
+           '--- [observer]
 
 
 ### Finding a result state in FSM
@@ -76,7 +76,7 @@ FSM, the `^1` to `^7` symbols indicate how FSM will traversal in its tree:
           /                                 /       ^5        ^6         ^7
     (start)---- [counter] -- [client] -- [*]
        ^1 \          ^2           ^3        \__ [*] -- [size] -- {R2}
-           '--- [timer]                   ^4 
+           '--- [observer]                ^4 
 
 
 To map `client.bbb.request.size`, FSM will do a backtracking:
@@ -86,7 +86,7 @@ To map `client.bbb.request.size`, FSM will do a backtracking:
           /                                 /       ^5         ^6
     (start)---- [counter] -- [client] -- [*]
        ^1 \          ^2           ^3        \__ [*] -- [size] -- {R2}
-           '--- [timer]                   ^4
+           '--- [observer]                ^4
                                                  ^7      ^8        ^9
 
 
