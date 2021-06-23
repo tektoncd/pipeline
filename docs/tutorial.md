@@ -212,7 +212,7 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v0.16.0
+      image: gcr.io/kaniko-project/executor:latest
       # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
       env:
         - name: "DOCKER_CONFIG"
@@ -223,6 +223,7 @@ spec:
         - --dockerfile=$(params.pathToDockerFile)
         - --destination=$(resources.outputs.builtImage.url)
         - --context=$(params.pathToContext)
+        - --build-arg=BASE=alpine:3
 ```
 
 ### Configuring `Task` execution credentials
@@ -438,7 +439,7 @@ spec:
         type: image
   steps:
     - name: replace-image
-      image: mikefarah/yq
+      image: mikefarah/yq:3.4.1
       command: ["yq"]
       args:
         - "w"
