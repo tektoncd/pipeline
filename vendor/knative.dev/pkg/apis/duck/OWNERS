@@ -1,7 +1,8 @@
 # The OWNERS file is used by prow to automatically merge approved PRs.
 
 approvers:
-- apis-duck-approvers
+- mattmoor
+- vaikas
 
 reviewers:
-- apis-duck-reviewers
+- whaught

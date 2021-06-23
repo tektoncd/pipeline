@@ -183,6 +183,10 @@ func isNewExporterRequired(newConfig *metricsConfig) bool {
 		return newConfig.collectorAddress != cc.collectorAddress || newConfig.requireSecure != cc.requireSecure
 	}
 
+	if newConfig.backendDestination == prometheus {
+		return newConfig.prometheusHost != cc.prometheusHost || newConfig.prometheusPort != cc.prometheusPort
+	}
+
 	return newConfig.backendDestination == stackdriver && newConfig.stackdriverClientConfig != cc.stackdriverClientConfig
 }
 

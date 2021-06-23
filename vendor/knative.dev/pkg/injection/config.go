@@ -22,8 +22,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"os/user"
-	"path/filepath"
 	"sync"
 
 	"k8s.io/client-go/rest"
@@ -112,10 +110,8 @@ func GetRESTConfig(serverURL, kubeconfig string) (*rest.Config, error) {
 	}
 
 	// If no in-cluster config, try the default location in the user's home directory.
-	if usr, err := user.Current(); err == nil {
-		if c, err := clientcmd.BuildConfigFromFlags("", filepath.Join(usr.HomeDir, ".kube", "config")); err == nil {
-			return c, nil
-		}
+	if c, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile); err == nil {
+		return c, nil
 	}
 
 	return nil, errors.New("could not create a valid kubeconfig")
