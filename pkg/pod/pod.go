@@ -37,16 +37,15 @@ import (
 const (
 	homeDir = "/tekton/home"
 
-	// ResultsDir is the folder used by default to create the results file
-	ResultsDir = "/tekton/results"
-
 	// TaskRunLabelKey is the name of the label added to the Pod to identify the TaskRun
 	TaskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 
 	// TektonHermeticEnvVar is the env var we set in containers to indicate they should be run hermetically
 	TektonHermeticEnvVar = "TEKTON_HERMETIC"
+
 	// ExecutionModeAnnotation is an experimental optional annotation to set the execution mode on a TaskRun
 	ExecutionModeAnnotation = "experimental.tekton.dev/execution-mode"
+
 	// ExecutionModeHermetic indicates hermetic execution mode
 	ExecutionModeHermetic = "hermetic"
 )
@@ -69,7 +68,7 @@ var (
 		MountPath: homeDir,
 	}, {
 		Name:      "tekton-internal-results",
-		MountPath: ResultsDir,
+		MountPath: pipeline.DefaultResultPath,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",

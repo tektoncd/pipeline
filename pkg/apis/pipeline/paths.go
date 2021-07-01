@@ -19,7 +19,7 @@ package pipeline
 const (
 	// WorkspaceDir is the root directory used for PipelineResources and (by default) Workspaces
 	WorkspaceDir = "/workspace"
-	// DefaultResultPath is the path for task result
+	// DefaultResultPath is the path for a task result to create the result file
 	DefaultResultPath = "/tekton/results"
 	// HomeDir is the HOME directory of PipelineResources
 	HomeDir = "/tekton/home"
