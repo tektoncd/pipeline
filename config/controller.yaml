@@ -93,6 +93,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        # These phony AWS credentials are here to work around a bug in the aws go sdk
+        # that causes extremely long delays in the execution of tasks after the initial
+        # deployment of the Tekton Pipelines controller.
+        - name: AWS_ACCESS_KEY_ID
+          value: foobarbaz
+        - name: AWS_SECRET_ACCESS_KEY
+          value: foobarbaz
+        - name: AWS_DEFAULT_REGION
+          value: foobarbaz
+
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.
