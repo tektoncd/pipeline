@@ -34,6 +34,7 @@ import (
 
 var (
 	ignoreUnexportedResources = cmpopts.IgnoreUnexported()
+	ttrue                     = true
 )
 
 func TestTaskRunSpec_SetDefaults(t *testing.T) {
@@ -342,7 +343,7 @@ func TestTaskRunDefaulting(t *testing.T) {
 			return s.ToContext(ctx)
 		},
 	}, {
-		name: "TaskRef pod template takes precedence over default config pod template",
+		name: "TaskRef pod template NodeSelector takes precedence over default config pod template NodeSelector",
 		in: &v1beta1.TaskRun{
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{Name: "foo"},
@@ -364,6 +365,50 @@ func TestTaskRunDefaulting(t *testing.T) {
 				PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label2": "value2",
+					},
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "TaskRef pod template merges non competing fields with default config pod template",
+		in: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "foo"},
+				PodTemplate: &pod.Template{
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &ttrue,
+					},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef:            &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &pod.Template{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &ttrue,
 					},
 				},
 			},

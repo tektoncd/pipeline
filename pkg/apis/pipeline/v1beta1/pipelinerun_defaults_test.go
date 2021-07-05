@@ -238,7 +238,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			return s.ToContext(ctx)
 		},
 	}, {
-		name: "PipelineRef pod template takes precedence over default config pod template",
+		name: "PipelineRef pod template nodeselector takes precedence over default config pod template nodeselector",
 		in: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
@@ -271,6 +271,52 @@ func TestPipelineRunDefaulting(t *testing.T) {
 					"default-timeout-minutes": "5",
 					"default-service-account": "tekton",
 					"default-pod-template":    "nodeSelector: { 'label': 'value' }",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "PipelineRef pod template merges non competing fields with default config pod template",
+		in: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+				PodTemplate: &pod.Template{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &ttrue,
+					},
+					HostNetwork: false,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+				PodTemplate: &pod.Template{
+					NodeSelector: map[string]string{
+						"label2": "value2",
+					},
+					SecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: &ttrue,
+					},
+					HostNetwork: true,
+				},
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.GetDefaultsConfigName(),
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
+					"default-pod-template":    "nodeSelector: { 'label': 'value' }\nhostNetwork: true",
 				},
 			})
 			return s.ToContext(ctx)
