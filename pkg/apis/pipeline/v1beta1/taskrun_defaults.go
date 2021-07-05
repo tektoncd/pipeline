@@ -60,12 +60,66 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	}
 
 	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
-	if trs.PodTemplate == nil {
-		trs.PodTemplate = defaultPodTemplate
-	}
+	trs.PodTemplate = mergePodTemplateWithDefault(trs.PodTemplate, defaultPodTemplate)
 
 	// If this taskrun has an embedded task, apply the usual task defaults
 	if trs.TaskSpec != nil {
 		trs.TaskSpec.SetDefaults(ctx)
+	}
+}
+
+func mergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
+	switch {
+	case defaultTpl == nil:
+		// No configured default, just return the template
+		return tpl
+	case tpl == nil:
+		// No template, just return the default template
+		return defaultTpl
+	default:
+		// Otherwise, merge fields
+		if tpl.NodeSelector == nil {
+			tpl.NodeSelector = defaultTpl.NodeSelector
+		}
+		if tpl.Tolerations == nil {
+			tpl.Tolerations = defaultTpl.Tolerations
+		}
+		if tpl.SecurityContext == nil {
+			tpl.SecurityContext = defaultTpl.SecurityContext
+		}
+		if tpl.Volumes == nil {
+			tpl.Volumes = defaultTpl.Volumes
+		}
+		if tpl.RuntimeClassName == nil {
+			tpl.RuntimeClassName = defaultTpl.RuntimeClassName
+		}
+		if tpl.AutomountServiceAccountToken == nil {
+			tpl.AutomountServiceAccountToken = defaultTpl.AutomountServiceAccountToken
+		}
+		if tpl.DNSPolicy == nil {
+			tpl.DNSPolicy = defaultTpl.DNSPolicy
+		}
+		if tpl.DNSConfig == nil {
+			tpl.DNSConfig = defaultTpl.DNSConfig
+		}
+		if tpl.EnableServiceLinks == nil {
+			tpl.EnableServiceLinks = defaultTpl.EnableServiceLinks
+		}
+		if tpl.PriorityClassName == nil {
+			tpl.PriorityClassName = defaultTpl.PriorityClassName
+		}
+		if tpl.SchedulerName == "" {
+			tpl.SchedulerName = defaultTpl.SchedulerName
+		}
+		if tpl.ImagePullSecrets == nil {
+			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
+		}
+		if tpl.HostAliases == nil {
+			tpl.HostAliases = defaultTpl.HostAliases
+		}
+		if tpl.HostNetwork == false && defaultTpl.HostNetwork == true {
+			tpl.HostNetwork = true
+		}
+		return tpl
 	}
 }

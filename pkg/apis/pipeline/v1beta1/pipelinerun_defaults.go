@@ -47,9 +47,7 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	}
 
 	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
-	if prs.PodTemplate == nil {
-		prs.PodTemplate = defaultPodTemplate
-	}
+	prs.PodTemplate = mergePodTemplateWithDefault(prs.PodTemplate, defaultPodTemplate)
 
 	if prs.PipelineSpec != nil {
 		prs.PipelineSpec.SetDefaults(ctx)

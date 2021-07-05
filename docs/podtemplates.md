@@ -13,7 +13,10 @@ You can specify a Pod template for `TaskRuns` and `PipelineRuns`. In the templat
 the execution of individual `Tasks` or for all `Tasks` executed by a given `PipelineRun`.
 
 You also have the option to define a global Pod template [in your Tekton config](./install.md#customizing-basic-execution-parameters).
-However, this global template is overridden by any templates you specify in your `TaskRuns` and `PipelineRuns`.
+However, this global template is going to be merged with any templates
+you specify in your `TaskRuns` and `PipelineRuns`. Any field that is
+present in both the global template and the `TaskRun`'s or
+`PipelineRun`'s template will be taken from the `TaskRun` or `PipelineRun`.
 
 See the following for examples of specifying a Pod template:
 - [Specifying a Pod template for a `TaskRun`](./taskruns.md#specifying-a-pod-template)
