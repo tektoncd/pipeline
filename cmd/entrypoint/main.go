@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -69,7 +70,7 @@ func main() {
 	// stored credentials.
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
-		if err := c.Write("/tekton/creds"); err != nil {
+		if err := c.Write(pipeline.CredsDir); err != nil {
 			log.Printf("Error initializing credentials: %s", err)
 		}
 	}
