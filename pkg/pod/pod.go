@@ -35,8 +35,6 @@ import (
 )
 
 const (
-	homeDir = "/tekton/home"
-
 	// TaskRunLabelKey is the name of the label added to the Pod to identify the TaskRun
 	TaskRunLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 
@@ -65,7 +63,7 @@ var (
 		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
-		MountPath: homeDir,
+		MountPath: pipeline.HomeDir,
 	}, {
 		Name:      "tekton-internal-results",
 		MountPath: pipeline.DefaultResultPath,
@@ -111,7 +109,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if b.OverrideHomeEnv {
 		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
 			Name:  "HOME",
-			Value: homeDir,
+			Value: pipeline.HomeDir,
 		})
 	}
 
