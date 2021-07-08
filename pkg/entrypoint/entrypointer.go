@@ -18,10 +18,12 @@ package entrypoint
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,7 +37,9 @@ import (
 
 // RFC3339 with millisecond
 const (
-	timeFormat = "2006-01-02T15:04:05.000Z07:00"
+	timeFormat      = "2006-01-02T15:04:05.000Z07:00"
+	ContinueOnError = "continue"
+	FailOnError     = "fail"
 )
 
 // Entrypointer holds fields for running commands with redirected
@@ -71,6 +75,16 @@ type Entrypointer struct {
 	Timeout *time.Duration
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
 	BreakpointOnFailure bool
+	// OnError defines exiting behavior of the entrypoint
+	// set it to "fail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
+	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
+	OnError string
+	// StepMetadataDir is the directory for a step where the step related metadata can be stored
+	StepMetadataDir string
+	// StepMetadataDirLink is the directory which needs to be linked to the StepMetadataDir
+	// the symlink is mainly created for providing easier access to the step metadata
+	// i.e. use `/tekton/steps/0/exitCode` instead of `/tekton/steps/my-awesome-step/exitCode`
+	StepMetadataDirLink string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -87,7 +101,9 @@ type Runner interface {
 // PostWriter encapsulates writing a file when complete.
 type PostWriter interface {
 	// Write writes to the path when complete.
-	Write(file string)
+	Write(file, content string)
+	// CreateDirWithSymlink creates directory and a symlink
+	CreateDirWithSymlink(source, link string)
 }
 
 // Go optionally waits for a file, runs the command, and writes a
@@ -103,6 +119,10 @@ func (e Entrypointer) Go() error {
 		}
 		_ = logger.Sync()
 	}()
+
+	// Create the directory where we will store the exit codes (and eventually other metadata) of Steps.
+	// Create a symlink to the directory for easier access by the index instead of a step name.
+	e.PostWriter.CreateDirWithSymlink(e.StepMetadataDir, e.StepMetadataDirLink)
 
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
@@ -153,9 +173,26 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
-	if err != nil && e.BreakpointOnFailure {
+	var ee *exec.ExitError
+	switch {
+	case err != nil && e.BreakpointOnFailure:
 		logger.Info("Skipping writing to PostFile")
-	} else {
+	case e.OnError == ContinueOnError && errors.As(err, &ee):
+		// with continue on error and an ExitError, write non-zero exit code and a post file
+		exitCode := strconv.Itoa(ee.ExitCode())
+		output = append(output, v1beta1.PipelineResourceResult{
+			Key:        "ExitCode",
+			Value:      exitCode,
+			ResultType: v1beta1.InternalTektonResultType,
+		})
+		e.WritePostFile(e.PostFile, nil)
+		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
+	case err == nil:
+		// if err is nil, write zero exit code and a post file
+		e.WritePostFile(e.PostFile, nil)
+		e.WriteExitCodeFile(e.StepMetadataDirLink, "0")
+	default:
+		// for a step without continue on error and any error, write a post file with .err
 		e.WritePostFile(e.PostFile, err)
 	}
 
@@ -215,6 +252,12 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 		postFile = fmt.Sprintf("%s.err", postFile)
 	}
 	if postFile != "" {
-		e.PostWriter.Write(postFile)
+		e.PostWriter.Write(postFile, "")
 	}
+}
+
+// WriteExitCodeFile write the exitCodeFile
+func (e Entrypointer) WriteExitCodeFile(stepPath, content string) {
+	exitCodeFile := filepath.Join(stepPath, "exitCode")
+	e.PostWriter.Write(exitCodeFile, content)
 }

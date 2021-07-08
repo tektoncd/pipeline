@@ -45,6 +45,8 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.taskRun.uid` | The uid of the `TaskRun` that this `Task` is running in. |
 | `context.task.name` | The name of this `Task`. |
 | `context.task.retry-count` | The current retry number of this `Task`. |
+| `steps.step-<stepName>.exitCode.path` | The path to the file where a Step's exit code is stored. |
+| `steps.step-unnamed-<stepIndex>.exitCode.path` | The path to the file where a Step's exit code is stored for a step without any name. |
 
 ### `PipelineResource` variables available in a `Task`
 

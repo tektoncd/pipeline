@@ -13,6 +13,10 @@ weight: 200
     - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
     - [Specifying a timeout](#specifying-a-timeout)
+    - [Specifying `onError` for a `step`](#specifying-onerror-for-a-step)
+    - [Accessing Step's `exitCode` in subsequent `Steps`](#accessing-steps-exitcode-in-subsequent-steps)
+    - [Produce a task result with `onError`](#produce-a-task-result-with-onerror)
+    - [Breakpoint on failure with `onError`](#breakpoint-on-failure-with-onerror)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
@@ -282,6 +286,116 @@ steps:
       sleep 60
     timeout: 5s
 ``` 
+
+#### Specifying `onError` for a `step`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+to specify `onError` for a `step`.
+
+When a `step` in a `task` results in a failure, the rest of the steps in the `task` are skipped and the `taskRun` is
+declared a failure. If you would like to ignore such step errors and continue executing the rest of the steps in
+the task, you can specify `onError` for such a `step`.
+
+`onError` can be set to either `continue` or `fail` as part of the step definition. If `onError` is
+set to `continue`, the entrypoint sets the original failed exit code of the [script](#running-scripts-within-steps)
+in the container terminated state. A `step` with `onError` set to `continue` does not fail the `taskRun` and continues
+executing the rest of the steps in a task.
+
+To ignore a step error, set `onError` to `continue`:
+
+```yaml
+steps:
+  - image: docker.io/library/golang:latest
+    name: ignore-unit-test-failure
+    onError: continue
+    script: |
+      go test .
+```
+
+The original failed exit code of the [script](#running-scripts-within-steps) is available in the terminated state of
+the container.
+
+```
+kubectl get tr taskrun-unit-test-t6qcl -o json | jq .status
+{
+  "conditions": [
+    {
+      "message": "All Steps have completed executing",
+      "reason": "Succeeded",
+      "status": "True",
+      "type": "Succeeded"
+    }
+  ],
+  "steps": [
+    {
+      "container": "step-ignore-unit-test-failure",
+      "imageID": "...",
+      "name": "ignore-unit-test-failure",
+      "terminated": {
+        "containerID": "...",
+        "exitCode": 1,
+        "reason": "Completed",
+      }
+    },
+  ],
+```
+
+For an end-to-end example, see [the taskRun ignoring a step error](../examples/v1beta1/taskruns/alpha/ignore-step-error.yaml)
+and [the pipelineRun ignoring a step error](../examples/v1beta1/pipelineruns/alpha/ignore-step-error.yaml).
+
+#### Accessing Step's `exitCode` in subsequent `Steps`
+
+A step can access the exit code of any previous step by reading the file pointed to by the `exitCode` path variable:
+
+```shell
+cat $(steps.step-<step-name>.exitCode.path)
+```
+
+The `exitCode` of a step without any name can be referenced using:
+
+```shell
+cat $(steps.step-unnamed-<step-index>.exitCode.path)
+```
+
+#### Produce a task result with `onError`
+
+When a step is set to ignore the step error and if that step is able to initialize a result file before failing,
+that result is made available to its consumer task.
+
+```yaml
+steps:
+  - name: ignore-failure-and-produce-a-result
+    onError: continue
+    image: busybox
+    script: |
+      echo -n 123 | tee $(results.result1.path)
+      exit 1
+```
+
+The task consuming the result using the result reference `$(tasks.task1.results.result1)` in a `pipeline` will be able
+to access the result and run with the resolved value.
+
+Now, a step can fail before initializing a result and the `pipeline` can ignore such step failure. But, the  `pipeline`
+will fail with `InvalidTaskResultReference` if it has a task consuming that task result. For example, any task
+consuming `$(tasks.task1.results.result2)` will cause the pipeline to fail.
+
+```yaml
+steps:
+  - name: ignore-failure-and-produce-a-result
+    onError: continue
+    image: busybox
+    script: |
+      echo -n 123 | tee $(results.result1.path)
+      exit 1
+      echo -n 456 | tee $(results.result2.path)
+```
+
+#### Breakpoint on failure with `onError`
+
+[Debugging](taskruns.md#debugging-a-taskrun) a taskRun is supported to debug a container and comes with a set of
+[tools](taskruns.md#debug-environment) to declare the step as a failure or a success. Specifying
+[breakpoint](taskruns.md#breakpoint-on-failure) at the `taskRun` level overrides ignoring a step error using `onError`.
+
 ### Specifying `Parameters`
 
 You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.
