@@ -142,6 +142,8 @@ of how this directory is used:
   * These folders are [part of the Tekton API](../api_compatibility_policy.md):
     * `/tekton/results` is where [results](#results) are written to
       (path available to `Task` authors via [`$(results.name.path)`](../variables.md))
+    * `/tekton/steps` is where the `step` exitCodes are written to
+      (path available to `Task` authors via [`$(steps.<stepName>.exitCode.path)`](../variables.md#variables-available-in-a-task))
   * These folders are implementation details of Tekton and **users should not
     rely on this specific behavior as it may change in the future**:
     * `/tekton/tools` contains tools like the [entrypoint binary](#entrypoint-rewriting-and-step-ordering)
@@ -466,3 +468,163 @@ flag to `alpha` in your test cluster to see your alpha integration tests
 run. When the flag in your cluster is `alpha` _all_ integration tests are executed,
 both `stable` and `alpha`. Setting the feature flag to `stable` will exclude `alpha`
 tests.
+
+## What and Why of `/tekton/steps`
+
+`/tekton/steps/` is an implicit volume mounted on a pod and created for storing the step specific information/metadata.
+There is one more subdirectory created under `/tekton/steps/` for each step in a task.
+
+Let's take an example of a task with three steps, each exiting with non-zero exit code:
+
+```yaml
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  generateName: test-taskrun-
+spec:
+  taskSpec:
+    steps:
+      - image: alpine
+        name: step0
+        onError: continue
+        script: |
+          echo "This is step 0"
+          ls -1R /tekton/steps/
+          exit 1
+      - image: alpine
+        onError: continue
+        script: |
+          echo "This is step 1"
+          ls -1R /tekton/steps/
+          exit 2
+      - image: alpine
+        name: step2
+        onError: continue
+        script: |
+          echo "This is step 2"
+          ls -1R /tekton/steps/
+          exit 3
+```
+
+The container `step-step0` for the first step `step0` shows three subdirectories (one for each step) under
+`/tekton/steps/` and all three of them are empty.
+
+```
+kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-step0
++ echo 'This is step 0'
++ ls -1R /tekton/steps/
+This is step 0
+/tekton/steps/:
+0
+1
+2
+step-step0
+step-step2
+step-unnamed-1
+
+/tekton/steps/step-step0:
+/tekton/steps/step-step2:
+/tekton/steps/step-unnamed-1:
++ exit 1
+```
+
+The container `step-unnamed-1` for the second step which has no name shows three subdirectories (one for each step)
+under `/tekton/steps/` along with the `exitCode` file under the first step directory which has finished executing:
+
+```
+kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-unnamed-1
+This is step 1
++ echo 'This is step 1'
++ ls -1R /tekton/steps/
+/tekton/steps/:
+0
+1
+2
+step-step0
+step-step2
+step-unnamed-1
+
+/tekton/steps/step-step0:
+exitCode
+
+/tekton/steps/step-step2:
+
+/tekton/steps/step-unnamed-1:
++ exit 2
+```
+
+The container `step-step2` for the third step `step2` shows three subdirectories (one for each step) under
+`/tekton/steps/` along with the `exitCode` file under the first and second step directory since both are done executing:
+
+```
+kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-step2
+This is step 2
++ echo 'This is step 2'
++ ls -1R /tekton/steps/
+/tekton/steps/:
+0
+1
+2
+step-step0
+step-step2
+step-unnamed-1
+
+/tekton/steps/step-step0:
+exitCode
+
+/tekton/steps/step-step2:
+
+/tekton/steps/step-unnamed-1:
+exitCode
++ exit 3
+```
+
+The entrypoint is modified to include an additional two flags representing the step specific directory and a symbolic
+link:
+
+```
+step_metadata_dir - the dir specified in this flag is created to hold a step specific metadata
+step_metadata_dir_link - the dir specified in this flag is created as a symbolic link to step_metadata_dir
+```
+
+`step_metadata_dir` is set to `/tekton/steps/step-step0` and `step_metadata_dir_link` is set to `/tekton/steps/0` for
+the entrypoint of the first step in the above example task.
+
+Notice an additional entries `0`, `1`, and `2` showing under `/tekton/steps/`. These are symbolic links created which are
+linked with their respective step directories, `step-step0`, `step-unnamed-1`, and `step-step2`. These symbolic links
+are created to provide simplified access to the step metadata directories i.e., instead of referring to a directory with
+the step name, access it via the step index. The step index becomes complex and hard to keep track of in a task with
+a long list of steps, for example, a task with 20 steps. Creating the step metadata directory using a step name
+and creating a symbolic link using the step index gives the user flexibility, and an option to choose whatever works
+best for them.
+
+
+## How to access the exit code of a step from any subsequent step in a task
+
+The entrypoint now allows exiting with an error and continue running rest of the steps in a task i.e., it is possible
+for a step to exit with a non-zero exit code. Now, it is possible to design a task with a step which can take an action
+depending on the exit code of any prior steps. The user can access the exit code of a step by reading the file pointed
+by the path variable `$(steps.step-<step-name>.exitCode.path)` or `$(steps.step-unnamed-<step-index>.exitCode.path)`.
+For example:
+
+* `$(steps.step-my-awesome-step.exitCode.path)` where the step name is `my-awesome-step`.
+* `$(steps.step-unnamed-0.exitCode.path)` where the first step in a task has no name.
+
+The exit code of a step is stored in a file named `exitCode` under a directory `/tekton/steps/step-<step-name>/` or
+`/tekton/steps/step-unnamed-<step-index>/` which is reserved for any other step specific information in the future.
+
+If you would like to use the tekton internal path, you can access the exit code by reading the file
+(which is not recommended though since the path might change in the future):
+
+```shell
+cat /tekton/steps/step-<step-name>/exitCode
+```
+
+And, access the step exit code without a step name:
+
+```shell
+cat /tekton/steps/step-unnamed-<step-index>/exitCode
+```
+
+Or, you can access the step metadata directory via symlink, for example, use `cat /tekton/steps/0/exitCode` for the
+first step in a task.

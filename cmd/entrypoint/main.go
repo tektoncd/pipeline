@@ -43,6 +43,10 @@ var (
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
+	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
+		" Set to \"fail\" to declare a failure with a step error and stop executing the rest of the steps.")
+	stepMetadataDir     = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
+	stepMetadataDirLink = flag.String("step_metadata_dir_link", "", "creates a symbolic link to the specified step_metadata_dir e.g. /tekton/steps/<step-index>/")
 )
 
 const (
@@ -108,6 +112,9 @@ func main() {
 		Results:             strings.Split(*results, ","),
 		Timeout:             timeout,
 		BreakpointOnFailure: *breakpointOnFailure,
+		OnError:             *onError,
+		StepMetadataDir:     *stepMetadataDir,
+		StepMetadataDirLink: *stepMetadataDirLink,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
@@ -134,9 +141,15 @@ func main() {
 			// same signature.
 			if status, ok := t.Sys().(syscall.WaitStatus); ok {
 				checkForBreakpointOnFailure(e, breakpointExitPostFile)
-				os.Exit(status.ExitStatus())
+				// ignore a step error i.e. do not exit if a container terminates with a non-zero exit code when onError is set to "continue"
+				if e.OnError != entrypoint.ContinueOnError {
+					os.Exit(status.ExitStatus())
+				}
 			}
-			log.Fatalf("Error executing command (ExitError): %v", err)
+			// log and exit only if a step error must cause run failure
+			if e.OnError != entrypoint.ContinueOnError {
+				log.Fatalf("Error executing command (ExitError): %v", err)
+			}
 		default:
 			checkForBreakpointOnFailure(e, breakpointExitPostFile)
 			log.Fatalf("Error executing command: %v", err)

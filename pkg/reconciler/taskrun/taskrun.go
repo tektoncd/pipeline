@@ -655,6 +655,9 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Apply task result substitution
 	ts = resources.ApplyTaskResults(ts)
 
+	// Apply step exitCode path substitution
+	ts = resources.ApplyStepExitCodePath(ts)
+
 	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr
