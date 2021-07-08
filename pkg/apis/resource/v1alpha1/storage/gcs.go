@@ -119,6 +119,8 @@ func (s *GCSResource) GetOutputTaskModifier(ts *v1beta1.TaskSpec, path string) (
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
+	envVars = append(envVars, corev1.EnvVar{Name: "HOME", Value: pipeline.HomeDir})
+
 	step := v1beta1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        s.GsutilImage,
@@ -149,6 +151,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
+	envVars = append(envVars, corev1.EnvVar{Name: "HOME", Value: pipeline.HomeDir})
 	steps := []v1beta1.Step{
 		CreateDirStep(s.ShellImage, s.Name, path),
 		{

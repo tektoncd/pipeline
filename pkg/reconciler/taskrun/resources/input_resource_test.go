@@ -683,6 +683,10 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				Container: corev1.Container{
 					Name:  "fetch-storage1-mz4c7",
 					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+					Env: []corev1.EnvVar{{
+						Name:  "HOME",
+						Value: pipeline.HomeDir,
+					}},
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -726,7 +730,10 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gcs-dir"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
+				Env: []corev1.EnvVar{{
+					Name:  "TEKTON_RESOURCE_NAME",
+					Value: "workspace",
+				}},
 			}}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
@@ -1081,6 +1088,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 				Container: corev1.Container{
 					Name:  "fetch-gcs-input-resource-mz4c7",
 					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+					Env:   []corev1.EnvVar{{Name: "HOME", Value: pipeline.HomeDir}},
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -1156,6 +1164,7 @@ gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 					},
 					Env: []corev1.EnvVar{
 						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
+						{Name: "HOME", Value: pipeline.HomeDir},
 					},
 				},
 			}},
