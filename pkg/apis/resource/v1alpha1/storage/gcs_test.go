@@ -199,6 +199,9 @@ gsutil rsync -d -r gs://some-bucket /workspace
 				Env: []corev1.EnvVar{{
 					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 					Value: "/var/secret/secretName/key.json",
+				}, {
+					Name:  "HOME",
+					Value: "/tekton/home",
 				}},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "volume-gcs-valid-secretName",
@@ -241,6 +244,9 @@ gsutil cp gs://some-bucket /workspace
 				Env: []corev1.EnvVar{{
 					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 					Value: "/var/secret/secretName/key.json",
+				}, {
+					Name:  "HOME",
+					Value: "/tekton/home",
 				}},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "volume-gcs-valid-secretName",
@@ -288,7 +294,13 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"rsync", "-d", "-r", "/workspace/", "gs://some-bucket"},
-			Env:     []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
+			Env: []corev1.EnvVar{{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/var/secret/secretName/key.json",
+			}, {
+				Name:  "HOME",
+				Value: "/tekton/home",
+			}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
@@ -315,9 +327,13 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
-			Env: []corev1.EnvVar{
-				{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
-			},
+			Env: []corev1.EnvVar{{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/var/secret/secretName/key.json",
+			}, {
+				Name:  "HOME",
+				Value: "/tekton/home",
+			}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
@@ -336,6 +352,10 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
 			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/tekton/home",
+			}},
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -345,7 +365,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
 
-			if d := cmp.Diff(got.GetStepsToAppend(), tc.wantSteps); d != "" {
+			if d := cmp.Diff(tc.wantSteps, got.GetStepsToAppend()); d != "" {
 				t.Errorf("Error mismatch between upload containers spec %s", diff.PrintWantGot(d))
 			}
 		})

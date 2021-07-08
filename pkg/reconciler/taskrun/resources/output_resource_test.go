@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -485,7 +486,9 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"},
+				},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
@@ -496,9 +499,10 @@ func TestValidOutputResources(t *testing.T) {
 				}},
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-				Env: []corev1.EnvVar{{
-					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-				}},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 			}},
 		},
 
@@ -576,7 +580,9 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"}},
+				Env: []corev1.EnvVar{
+					{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"},
+				},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
@@ -584,9 +590,10 @@ func TestValidOutputResources(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
-				Env: []corev1.EnvVar{{
-					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-				}},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
@@ -655,9 +662,10 @@ func TestValidOutputResources(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
-				Env: []corev1.EnvVar{{
-					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-				}},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
@@ -716,9 +724,10 @@ func TestValidOutputResources(t *testing.T) {
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
-				Env: []corev1.EnvVar{{
-					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-				}},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
+					{Name: "HOME", Value: pipeline.HomeDir},
+				},
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
@@ -1461,12 +1470,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 					"gs://fake-bucket/pipeline-task-path/*",
 					"/workspace/faraway-disk",
 				},
-				Env: []corev1.EnvVar{
-					{
-						Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-						Value: "/var/bucketsecret/sname/key.json",
-					},
-				},
+				Env: []corev1.EnvVar{{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/bucketsecret/sname/key.json",
+				}},
 				VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-sname", MountPath: "/var/bucketsecret/sname"}},
 			}},
 			{Container: corev1.Container{
@@ -1475,6 +1482,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 				VolumeMounts: nil,
 				Command:      []string{"gsutil"},
 				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: pipeline.HomeDir,
+				}},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -1606,6 +1617,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 				Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command: []string{"gsutil"},
 				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-3", "gs://some-bucket-3"},
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: pipeline.HomeDir,
+				}},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -1689,6 +1704,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 					"/workspace/output/source-workspace",
 					"gs://some-bucket",
 				},
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: pipeline.HomeDir,
+				}},
 			}},
 			{Container: corev1.Container{
 				Name:         "upload-source-gcs-bucket-2-78c5n",
@@ -1696,7 +1715,10 @@ func TestInputOutputBucketResources(t *testing.T) {
 				VolumeMounts: nil,
 				Command:      []string{"gsutil"},
 				Args:         []string{"rsync", "-d", "-r", "/workspace/output/source-workspace-2", "gs://some-bucket-2"},
-				Env:          nil,
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: pipeline.HomeDir,
+				}},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
