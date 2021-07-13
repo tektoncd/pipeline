@@ -4,7 +4,7 @@ To run tests:
 
 ```shell
 # Land the latest codes
-ko apply -f ./config/
+ko apply -R -f ./config/
 
 # Unit tests
 go test ./...

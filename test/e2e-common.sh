@@ -20,11 +20,11 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko resolve -f config/ \
+  ko resolve -R -f config/ \
       | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
-      | kubectl apply -f - || fail_test "Build pipeline installation failed"
+      | kubectl apply -R -f - || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
 
   export SYSTEM_NAMESPACE=tekton-pipelines
@@ -47,7 +47,7 @@ function verify_pipeline_installation() {
 
 function uninstall_pipeline_crd() {
   echo ">> Uninstalling Tekton Pipelines"
-  ko delete --ignore-not-found=true -f config/
+  ko delete --ignore-not-found=true -R -f config/
 
   # Make sure that everything is cleaned up in the current namespace.
   delete_pipeline_resources

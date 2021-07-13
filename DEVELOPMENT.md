@@ -363,7 +363,7 @@ The `ko` command is the preferred method to manage (i.e., create, modify or dele
 You can stand up a version of Tekton using your local clone's code to the currently configured K8s context (i.e.,  `kubectl config current-context`):
 
 ```shell
-ko apply -f config/
+ko apply -R -f config/
 ```
 
 #### Verify installation
@@ -379,8 +379,14 @@ kubectl get pods -n tekton-pipelines
 You can clean up everything with:
 
 ```shell
+# If you should not delete the namespace of a pipeline component
 ko delete -f config/
+
+# If you also can delete the namespace of a pipeline component
+ko delete -R -f config/
 ```
+
+**Note:** If you use a pipeline component in the same namespace as other components such as dashboard or triggers, executing `ko delete -R -f config/` deletes these other components too.
 
 #### Redeploy controller
 
@@ -403,9 +409,9 @@ set -e
 # Set your target namespace here
 TARGET_NAMESPACE=new-target-namespace
 
-ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
+ko resolve -R -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
     sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
-    kubectl apply -f-
+    kubectl apply -R -f-
 kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
 ```
 
