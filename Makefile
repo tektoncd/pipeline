@@ -66,12 +66,12 @@ KO = $(BIN)/ko
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
 .PHONY: apply
-apply: | $(KO) ; $(info $(M) ko apply -f config/) @ ## Apply config to the current cluster
-	$Q $(KO) apply -f config
+apply: | $(KO) ; $(info $(M) ko apply -R -f config/) @ ## Apply config to the current cluster
+	$Q $(KO) apply -R -f config
 
 .PHONY: resolve
-resolve: | $(KO) ; $(info $(M) ko resolve -f config/) @ ## Resolve config to the current cluster
-	$Q $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f config
+resolve: | $(KO) ; $(info $(M) ko resolve -R -f config/) @ ## Resolve config to the current cluster
+	$Q $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -R -f config
 
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files

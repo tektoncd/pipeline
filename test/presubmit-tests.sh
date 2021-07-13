@@ -59,7 +59,7 @@ function check_yaml_lint() {
 
 function ko_resolve() {
   header "Running `ko resolve`"
-  KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config 1>/dev/null
+  KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -R -f config 1>/dev/null
 }
 
 function post_build_tests() {
