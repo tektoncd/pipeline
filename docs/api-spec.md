@@ -128,6 +128,8 @@ Standard Kubernetes [meta.v1/ObjectMeta](https://kubernetes.io/docs/reference/ge
 | `startTime`           | string                 | REQUIRED    |
 | `completionTime`*     | string                 | REQUIRED    |
 | `steps`               | `[]StepState`          | REQUIRED    |
+| `taskResults`         | `[]TaskRunResult`      | REQUIRED    |
+| `taskSpec`            | `TaskSpec`             | REQUIRED    |
 | `observedGeneration`  | int64                  | RECOMMENDED |
 
 \* `startTime` and `completionTime` MUST be populated by the implementation, in [RFC3339](https://tools.ietf.org/html/rfc3339).
@@ -267,8 +269,6 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 | `waiting`*    | `ContainerStateWaiting`    | REQUIRED    |
 | `running`*    | `ContainerStateRunning`    | REQUIRED    |
 | `terminated`* | `ContainerStateTerminated` | REQUIRED    |
-| `taskResults` | `[]TaskRunResult`          | REQUIRED    |
-| `taskSpec`    | `TaskSpec`                 | REQUIRED    |
 
 \* Only one of `waiting`, `running` or `terminated` can be returned at a time.
 
