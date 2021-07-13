@@ -162,3 +162,5 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Pipeline` | `spec.tasks[].params[].value` |
 | `Pipeline` | `spec.tasks[].conditions[].params[].value` |
 | `Pipeline` | `spec.results[].value` |
+| `Pipeline` | `spec.tasks[].when[].input` |
+| `Pipeline` | `spec.tasks[].when[].values` |
