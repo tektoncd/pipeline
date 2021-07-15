@@ -46,8 +46,17 @@ func TestCp(t *testing.T) {
 		t.Fatalf("error statting destination file: %v", err)
 	}
 
-	if info.Mode().Perm() != dstPermissions {
-		t.Errorf("expected permissions %#o for destination file but found %#o", dstPermissions, info.Mode().Perm())
+	// os.OpenFile is subject to umasks, so the created permissions of the
+	// created dst file might be more restrictive than dstPermissions.
+	// excludePerm represents the value of permissions we do not want in the
+	// resulting file - e.g. if dstPermissions is 0311, excludePerm should be
+	// 0466.
+	// This is done instead of trying to look up the system umask, since this
+	// relies on syscalls that we are not sure will be portable across
+	// environments.
+	excludePerm := os.ModePerm ^ dstPermissions
+	if p := info.Mode().Perm(); p&excludePerm != 0 {
+		t.Errorf("expected permissions <= %#o for destination file but found %#o", dstPermissions, p)
 	}
 }
 
