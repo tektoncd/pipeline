@@ -56,7 +56,8 @@ type PipelineRunFacts struct {
 	// needed, via the `Skip` method in pipelinerunresolution.go
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
-	SkipCache map[string]bool
+	SkipCache                  map[string]bool
+	ScopeWhenExpressionsToTask bool
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks

@@ -227,7 +227,11 @@ func (t *ResolvedPipelineRunTask) parentTasksSkip(facts *PipelineRunFacts) bool 
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		if stateMap[p.Task.HashKey()].Skip(facts) {
+		parentTask := stateMap[p.Task.HashKey()]
+		if parentTask.Skip(facts) {
+			if facts.ScopeWhenExpressionsToTask && parentTask.PipelineTask.WhenExpressions != nil {
+				continue
+			}
 			return true
 		}
 	}
