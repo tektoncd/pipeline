@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
 	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
@@ -96,18 +97,16 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		}
 
 		logger.Info("Setting up event handlers")
-		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-			DeleteFunc: impl.Enqueue,
-		})
+		pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
-		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
-		runInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		runInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		go metrics.ReportRunningPipelineRuns(ctx, pipelineRunInformer.Lister())

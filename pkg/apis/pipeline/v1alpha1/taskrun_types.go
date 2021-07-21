@@ -28,14 +28,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var (
-	taskRunGroupVersionKind = schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    pipeline.TaskRunControllerName,
-	}
-)
-
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	// +optional
@@ -169,9 +161,9 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetOwnerReference gets the task run as owner reference for any related objects
-func (tr *TaskRun) GetOwnerReference() metav1.OwnerReference {
-	return *metav1.NewControllerRef(tr, taskRunGroupVersionKind)
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*TaskRun) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.TaskRunControllerName)
 }
 
 // GetPipelineRunPVCName for taskrun gets pipelinerun

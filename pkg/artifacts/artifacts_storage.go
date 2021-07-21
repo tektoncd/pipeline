@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 )
 
@@ -220,7 +221,7 @@ func getPVCSpec(pr *v1beta1.PipelineRun, pvcSize resource.Quantity, storageClass
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,
 			Name:            GetPVCName(pr),
-			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},

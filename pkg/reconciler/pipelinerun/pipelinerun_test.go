@@ -58,6 +58,7 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/reconciler"
@@ -3634,7 +3635,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: w.VolumeClaimTemplate.Name,
 				},
-			}, w, pr.GetOwnerReference())
+			}, w, *kmeta.NewControllerRef(pr))
 			_, err := clients.Kube.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(prt.TestAssets.Ctx, expectedPVCName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("expected PVC %s to exist but instead got error when getting it: %v", expectedPVCName, err)
