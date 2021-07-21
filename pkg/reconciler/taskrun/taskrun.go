@@ -55,7 +55,6 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
-	"knative.dev/pkg/tracker"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -70,7 +69,6 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
-	tracker           tracker.Interface
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
@@ -440,16 +438,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
-	}
-
-	if err := c.tracker.TrackReference(tracker.Reference{
-		APIVersion: "v1",
-		Kind:       "Pod",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}, tr); err != nil {
-		logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
-		return err
 	}
 
 	if podconvert.IsPodExceedingNodeResources(pod) {

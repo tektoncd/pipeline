@@ -59,7 +59,6 @@ import (
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
-	"knative.dev/pkg/tracker"
 )
 
 const (
@@ -129,7 +128,6 @@ type Reconciler struct {
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
 	cloudEventClient  cloudevent.CEClient
-	tracker           tracker.Interface
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
 
@@ -212,16 +210,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
 		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
-		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
-	}
-
-	if err := c.tracker.TrackReference(tracker.Reference{
-		APIVersion: v1beta1.SchemeGroupVersion.String(),
-		Kind:       "TaskRun",
-		Namespace:  pr.GetNamespace(),
-		Name:       pr.GetName(),
-	}, pr); err != nil {
-		logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
 
