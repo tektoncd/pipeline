@@ -95,10 +95,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		}
 
 		logger.Info("Setting up event handlers")
-		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    impl.Enqueue,
-			UpdateFunc: controller.PassNew(impl.Enqueue),
-		})
+		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
 

@@ -28,14 +28,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    pipeline.PipelineRunControllerName,
-	}
-)
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -143,9 +135,9 @@ type PipelineRunList struct {
 // and produces logs.
 type PipelineTaskRun = v1beta1.PipelineTaskRun
 
-// GetOwnerReference gets the pipeline run as owner reference for any related objects
-func (pr *PipelineRun) GetOwnerReference() metav1.OwnerReference {
-	return *metav1.NewControllerRef(pr, groupVersionKind)
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*PipelineRun) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.PipelineRunControllerName)
 }
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.

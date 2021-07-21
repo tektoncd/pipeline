@@ -29,14 +29,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	runGroupVersionKind = schema.GroupVersionKind{
-		Group:   SchemeGroupVersion.Group,
-		Version: SchemeGroupVersion.Version,
-		Kind:    pipeline.RunControllerName,
-	}
-)
-
 // EmbeddedRunSpec allows custom task definitions to be embedded
 type EmbeddedRunSpec struct {
 	runtime.TypeMeta `json:",inline"`
@@ -160,9 +152,9 @@ type RunList struct {
 	Items           []Run `json:"items"`
 }
 
-// GetOwnerReference gets the task run as owner reference for any related objects
-func (r *Run) GetOwnerReference() metav1.OwnerReference {
-	return *metav1.NewControllerRef(r, runGroupVersionKind)
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*Run) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.RunControllerName)
 }
 
 // HasPipelineRunOwnerReference returns true of Run has

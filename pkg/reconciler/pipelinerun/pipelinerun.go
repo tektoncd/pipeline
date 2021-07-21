@@ -542,7 +542,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 		if pr.HasVolumeClaimTemplate() {
 			// create workspace PVC from template
-			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, pr.GetOwnerReference(), pr.Namespace); err != nil {
+			if err = c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, pr.Spec.Workspaces, *kmeta.NewControllerRef(pr), pr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for PipelineRun %s: %v", pr.Name, err)
 				pr.Status.MarkFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					"Failed to create PVC for PipelineRun %s/%s Workspaces correctly: %s",
@@ -736,7 +736,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 			Labels:          combineTaskRunAndTaskSpecLabels(pr, rprt.PipelineTask),
 			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rprt.PipelineTask),
 		},
@@ -777,7 +777,7 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.RunName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name, true),
 			Annotations:     getTaskrunAnnotations(pr),
 		},
@@ -835,7 +835,7 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
 				pipelinePVCWorkspaceName = pipelineWorkspaceName
 			}
-			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, pr.GetOwnerReference()))
+			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr)))
 		} else {
 			workspaceIsOptional := false
 			if rprt.ResolvedTaskResources != nil && rprt.ResolvedTaskResources.TaskSpec != nil {
@@ -1116,7 +1116,7 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
 			Namespace:       pr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{pr.GetOwnerReference()},
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 			Labels:          labels,
 			Annotations:     annotations,
 		},

@@ -421,7 +421,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 
 	if pod == nil {
 		if tr.HasVolumeClaimTemplate() {
-			if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, tr.GetOwnerReference(), tr.Namespace); err != nil {
+			if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
 				logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
 				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
 					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
@@ -429,7 +429,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 				return controller.NewPermanentError(err)
 			}
 
-			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, tr.GetOwnerReference())
+			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, *kmeta.NewControllerRef(tr))
 			// This is used by createPod below. Changes to the Spec are not updated.
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
