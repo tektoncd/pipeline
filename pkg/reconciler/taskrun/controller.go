@@ -97,7 +97,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterGroupKind(v1beta1.Kind("TaskRun")),
+			FilterFunc: controller.FilterController(&v1beta1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
