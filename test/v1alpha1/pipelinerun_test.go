@@ -29,6 +29,7 @@ import (
 	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -556,8 +557,18 @@ func getPipelineWithFailingCondition(suffix int) *v1alpha1.Pipeline {
 }
 
 func getFailingCondition(namespace string) *v1alpha1.Condition {
-	return tb.Condition(cond1Name, tb.ConditionNamespace(namespace), tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
-		tb.Command("/bin/bash"), tb.Args("exit 1"))))
+
+	return &resource.Condition{
+		ObjectMeta: metav1.ObjectMeta{Name: cond1Name, Namespace: namespace},
+		Spec: resource.ConditionSpec{
+			Container: &corev1.Container{
+				Name:    "",
+				Image:   "ubuntu",
+				Command: "/bin/bash",
+				Args:    "exit 1",
+			},
+		},
+	}
 }
 
 func getConditionalPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
