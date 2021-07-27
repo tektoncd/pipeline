@@ -96,6 +96,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			// If the resolved object is already a v1beta1.{Cluster}Task, it should be returnable as a
 			// v1beta1.TaskObject.
 			if ti, ok := obj.(v1beta1.TaskObject); ok {
+				ti.SetDefaults(ctx)
 				return ti, nil
 			}
 
@@ -105,10 +106,12 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			case *v1alpha1.Task:
 				betaTask := &v1beta1.Task{}
 				err := tt.ConvertTo(ctx, betaTask)
+				betaTask.SetDefaults(ctx)
 				return betaTask, err
 			case *v1alpha1.ClusterTask:
 				betaTask := &v1beta1.ClusterTask{}
 				err := tt.ConvertTo(ctx, betaTask)
+				betaTask.SetDefaults(ctx)
 				return betaTask, err
 			}
 
