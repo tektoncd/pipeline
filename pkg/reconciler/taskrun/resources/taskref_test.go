@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
+	ta "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -152,6 +153,30 @@ func TestGetTaskFunc(t *testing.T) {
 				Bundle: u.Host + "/remote-task",
 			},
 			expected:     tb.Task("simple", tb.TaskType),
+			expectedKind: v1beta1.NamespacedTaskKind,
+		}, {
+			name:       "remote-task-without-defaults",
+			localTasks: []runtime.Object{},
+			remoteTasks: []runtime.Object{
+				tb.Task("simple", tb.TaskType, tb.TaskNamespace("default"), tb.TaskSpec(tb.TaskParam("foo", ""), tb.Step("something"))),
+			},
+			ref: &v1beta1.TaskRef{
+				Name:   "simple",
+				Bundle: u.Host + "/remote-task-without-defaults",
+			},
+			expected:     tb.Task("simple", tb.TaskType, tb.TaskNamespace("default"), tb.TaskSpec(tb.TaskParam("foo", v1beta1.ParamTypeString), tb.Step("something"))),
+			expectedKind: v1beta1.NamespacedTaskKind,
+		}, {
+			name:       "remote-v1alpha1-task-without-defaults",
+			localTasks: []runtime.Object{},
+			remoteTasks: []runtime.Object{
+				ta.Task("simple", ta.TaskType, ta.TaskNamespace("default"), ta.TaskSpec(ta.TaskParam("foo", ""), ta.Step("something"))),
+			},
+			ref: &v1alpha1.TaskRef{
+				Name:   "simple",
+				Bundle: u.Host + "/remote-v1alpha1-task-without-defaults",
+			},
+			expected:     tb.Task("simple", tb.TaskNamespace("default"), tb.TaskSpec(tb.TaskParam("foo", v1alpha1.ParamTypeString), tb.Step("something"))),
 			expectedKind: v1beta1.NamespacedTaskKind,
 		}, {
 			name: "local-task",
