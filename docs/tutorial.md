@@ -163,7 +163,7 @@ spec:
   type: git
   params:
     - name: revision
-      value: master
+      value: main
     - name: url
       value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local git repository.
 ```
