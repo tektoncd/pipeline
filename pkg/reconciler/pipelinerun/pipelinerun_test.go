@@ -5881,6 +5881,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 			Resources:          &v1beta1.TaskRunResources{},
 			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			TaskRef: &v1beta1.TaskRef{
+				Kind:   "Task",
 				Name:   "unit-test-task",
 				Bundle: ref,
 			},

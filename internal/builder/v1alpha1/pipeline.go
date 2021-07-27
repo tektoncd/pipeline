@@ -76,6 +76,14 @@ func Pipeline(name string, ops ...PipelineOp) *v1alpha1.Pipeline {
 	return p
 }
 
+// PipelineType will add a TypeMeta to the pipeline's definition.
+func PipelineType(t *v1alpha1.Pipeline) {
+	t.TypeMeta = metav1.TypeMeta{
+		Kind:       "Pipeline",
+		APIVersion: "tekton.dev/v1alpha1",
+	}
+}
+
 // PipelineNamespace sets the namespace on the Pipeline
 func PipelineNamespace(namespace string) PipelineOp {
 	return func(t *v1alpha1.Pipeline) {

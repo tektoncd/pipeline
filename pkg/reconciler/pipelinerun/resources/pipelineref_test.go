@@ -24,8 +24,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
+	ta "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -146,6 +148,31 @@ func TestGetPipelineFunc(t *testing.T) {
 			Name: "simple",
 		},
 		expected: tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+	}, {
+		name:           "remote-pipeline-without-defaults",
+		localPipelines: []runtime.Object{simplePipeline},
+		remotePipelines: []runtime.Object{
+			tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"),
+				tb.PipelineSpec(tb.PipelineTask("something", "something"), tb.PipelineParamSpec("foo", ""))),
+			dummyPipeline},
+		ref: &v1beta1.PipelineRef{
+			Name:   "simple",
+			Bundle: u.Host + "/remote-pipeline-without-defaults",
+		},
+		expected: tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"),
+			tb.PipelineSpec(tb.PipelineTask("something", "something", tb.PipelineTaskRefKind(v1beta1.NamespacedTaskKind)), tb.PipelineParamSpec("foo", v1beta1.ParamTypeString))),
+	}, {
+		name:           "remote-v1alpha1-pipeline-without-defaults",
+		localPipelines: []runtime.Object{simplePipeline},
+		remotePipelines: []runtime.Object{
+			ta.Pipeline("simple", ta.PipelineType, ta.PipelineNamespace("default"),
+				ta.PipelineSpec(ta.PipelineTask("something", "something"), ta.PipelineParamSpec("foo", "")))},
+		ref: &v1alpha1.PipelineRef{
+			Name:   "simple",
+			Bundle: u.Host + "/remote-v1alpha1-pipeline-without-defaults",
+		},
+		expected: tb.Pipeline("simple", tb.PipelineNamespace("default"),
+			tb.PipelineSpec(tb.PipelineTask("something", "something", tb.PipelineTaskRefKind(v1beta1.NamespacedTaskKind)), tb.PipelineParamSpec("foo", v1beta1.ParamTypeString))),
 	}}
 
 	for _, tc := range testcases {
