@@ -69,12 +69,14 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 				return nil, err
 			}
 			if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
+				pipeline.SetDefaults(ctx)
 				return pipeline, nil
 			}
 
 			if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
 				betaPipeline := &v1beta1.Pipeline{}
 				err := pipeline.ConvertTo(ctx, betaPipeline)
+				betaPipeline.SetDefaults(ctx)
 				return betaPipeline, err
 			}
 
