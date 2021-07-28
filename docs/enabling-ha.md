@@ -95,9 +95,9 @@ spec:
   minReplicas: 1
 ```
 
-By default, the Webhook deployment is configured to block a [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) from scaling down the node that's running the only replica of the deployment using the `cluster-autoscaler.kubernetes.io/safe-to-evict` annotation.
-This is configured because, while the only replica of the Webhook is unavailable, Tekton resources can't be created, updated or deleted.
-If you configure more than one replica, you can remove the annotation to allow the Cluster Autoscaler more freedom to scale down nodes, without disrupting the Webhook service.
+By default, the Webhook deployment is _not_ configured to block a [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) from scaling down the node that's running the only replica of the deployment using the `cluster-autoscaler.kubernetes.io/safe-to-evict` annotation.
+This means that during node drains, the Webhook might be unavailable temporarily, during which time Tekton resources can't be created, updated or deleted.
+To avoid this, you can add the `safe-to-evict` annotation set to `false` to block node drains during autoscaling, or, better yet, configure multiple replicas of the Webhook deployment.
 
 ### Avoiding Disruptions
 
