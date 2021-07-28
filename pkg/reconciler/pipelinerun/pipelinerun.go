@@ -907,6 +907,22 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includeP
 	if pipelineTaskName != "" {
 		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
+	if pr.Status.PipelineSpec != nil {
+		// check if a task is part of the "tasks" section, add a label to identify it during the runtime
+		for _, f := range pr.Status.PipelineSpec.Tasks {
+			if pipelineTaskName == f.Name {
+				labels[pipeline.GroupName+pipeline.MemberOfLabelKey] = v1beta1.PipelineTasks
+				break
+			}
+		}
+		// check if a task is part of the "finally" section, add a label to identify it during the runtime
+		for _, f := range pr.Status.PipelineSpec.Finally {
+			if pipelineTaskName == f.Name {
+				labels[pipeline.GroupName+pipeline.MemberOfLabelKey] = v1beta1.PipelineFinallyTasks
+				break
+			}
+		}
+	}
 	return labels
 }
 

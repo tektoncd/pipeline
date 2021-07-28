@@ -403,6 +403,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-1"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccountName("test-sa"),
@@ -512,9 +513,10 @@ func TestReconcile_CustomTask(t *testing.T) {
 					BlockOwnerDeletion: &trueb,
 				}},
 				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
+					"tekton.dev/pipeline":                          pipelineRunName,
+					"tekton.dev/pipelineRun":                       pipelineRunName,
+					"tekton.dev/pipelineTask":                      pipelineTaskName,
+					pipeline.GroupName + pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
 				},
 				Annotations: map[string]string{},
 			},
@@ -571,9 +573,10 @@ func TestReconcile_CustomTask(t *testing.T) {
 					BlockOwnerDeletion: &trueb,
 				}},
 				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
+					"tekton.dev/pipeline":                          pipelineRunName,
+					"tekton.dev/pipelineRun":                       pipelineRunName,
+					"tekton.dev/pipelineTask":                      pipelineTaskName,
+					pipeline.GroupName + pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
 				},
 				Annotations: map[string]string{},
 			},
@@ -640,9 +643,10 @@ func TestReconcile_CustomTask(t *testing.T) {
 					BlockOwnerDeletion: &trueb,
 				}},
 				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
+					"tekton.dev/pipeline":                          pipelineRunName,
+					"tekton.dev/pipelineRun":                       pipelineRunName,
+					"tekton.dev/pipelineTask":                      pipelineTaskName,
+					pipeline.GroupName + pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
 				},
 				Annotations: map[string]string{
 					"pipeline.tekton.dev/affinity-assistant": getAffinityAssistantName("pipelinews", pipelineRunName),
@@ -774,6 +778,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),
 			tb.TaskRunServiceAccountName(config.DefaultServiceAccountValue)),
 	)
@@ -2458,6 +2463,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
 		tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
 			tb.TaskRunServiceAccountName("test-sa"),
@@ -2528,6 +2534,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
 			tb.TaskRunLabel("tekton.dev/pipelineTask", "hello-world-0"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		),
 		tb.TaskRun(taskRunNames[1],
 			tb.TaskRunNamespace("foo"),
@@ -2542,6 +2549,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
 			tb.TaskRunLabel("tekton.dev/pipelineTask", "hello-world-1"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		),
 	}
 	for i := range ps[0].Spec.Tasks {
@@ -2739,6 +2747,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-annotations"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
@@ -3002,6 +3011,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline-run"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
@@ -3212,6 +3222,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 			tb.TaskRunOwnerReference("kind", "name"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-with-conditions"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
 			tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 				Type:   apis.ConditionSucceeded,
@@ -3267,6 +3278,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "task-3"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline-run-with-conditions"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
@@ -3289,6 +3301,7 @@ func makeExpectedTr(condName, ccName string, labels, annotations map[string]stri
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline-run"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.ConditionCheckKey, ccName),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.ConditionNameKey, condName),
 		tb.TaskRunLabels(labels),
@@ -3378,6 +3391,7 @@ func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline-run"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world-1"),
@@ -3507,6 +3521,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
 		tb.TaskRunLabel("tekton.dev/pipelineTask", "b-task"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("b-task"),
 			tb.TaskRunServiceAccountName("test-sa-0"),
@@ -3921,6 +3936,7 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
 		tb.TaskRunLabel("tekton.dev/pipelineTask", "b-task"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("b-task"),
 			tb.TaskRunServiceAccountName("test-sa-0"),
@@ -3997,6 +4013,7 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline-run-different-service-accs"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
 		tb.TaskRunLabel("tekton.dev/pipelineTask", "a-task"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("a-task", tb.TaskRefKind(v1beta1.NamespacedTaskKind)),
 			tb.TaskRunServiceAccountName("test-sa-0"),
@@ -5534,6 +5551,7 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 		tb.TaskRunLabel("tekton.dev/pipeline", pipelineName),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", pipelineRunName),
 		tb.TaskRunLabel("tekton.dev/pipelineTask", "finaltask"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineFinallyTasks),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("finaltask"),
 			tb.TaskRunServiceAccountName("test-sa"),
@@ -5764,9 +5782,10 @@ func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 				BlockOwnerDeletion: &trueb,
 			}},
 			Labels: map[string]string{
-				"tekton.dev/pipeline":     "test-pipeline",
-				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
-				"tekton.dev/pipelineTask": "final-task-1",
+				"tekton.dev/pipeline":                          "test-pipeline",
+				"tekton.dev/pipelineRun":                       "test-pipeline-run-final-task-results",
+				"tekton.dev/pipelineTask":                      "final-task-1",
+				pipeline.GroupName + pipeline.MemberOfLabelKey: v1beta1.PipelineFinallyTasks,
 			},
 			Annotations: map[string]string{},
 		},
@@ -5953,6 +5972,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 				"tekton.dev/pipeline":                              "test-pipeline",
 				"tekton.dev/pipelineRun":                           "test-pipeline-run-success",
 				pipeline.GroupName + pipeline.PipelineTaskLabelKey: "unit-test-1",
+				pipeline.GroupName + pipeline.MemberOfLabelKey:     v1beta1.PipelineTasks,
 			},
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion:         "tekton.dev/v1beta1",
@@ -6060,6 +6080,7 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 				"tekton.dev/pipeline":                              "test-pipeline-run-success",
 				"tekton.dev/pipelineRun":                           "test-pipeline-run-success",
 				pipeline.GroupName + pipeline.PipelineTaskLabelKey: "unit-test-1",
+				pipeline.GroupName + pipeline.MemberOfLabelKey:     v1beta1.PipelineTasks,
 			},
 			OwnerReferences: []metav1.OwnerReference{{
 				APIVersion: "tekton.dev/v1beta1",
@@ -6263,6 +6284,7 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, p),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, pr),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, t),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
 		tb.TaskRunLabels(labels),
 		tb.TaskRunAnnotations(annotations),
 		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),

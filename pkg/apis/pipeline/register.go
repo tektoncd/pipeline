@@ -48,6 +48,10 @@ const (
 
 	// RunKey is used as the label identifier for a Run
 	RunKey = "/run"
+
+	// MemberOfLabelKey is used as the label identifier for a PipelineTask
+	// Set to Tasks/Finally depending on the position of the PipelineTask
+	MemberOfLabelKey = "/memberOf"
 )
 
 var (

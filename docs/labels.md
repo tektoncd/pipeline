@@ -81,6 +81,12 @@ Tekton automatically adds labels to Tekton entities as described in the followin
 			<td>Name of the <code>TaskRun</code> that created the <code>Pod</code>.</td>
 		</tr>
 		<tr>
+			<td><code>tekton.dev/memberOf</code></td>
+			<td><code>TaskRuns</code> that are created automatically during the execution of a <code>PipelineRun</code>.</td>
+			<td><code>TaskRuns, Pods</code></td>
+			<td><code>tasks</code> or <code>finally</code> depending on the <code>PipelineTask</code>'s membership in the <code>Pipeline</code>.</td>
+		</tr>
+		<tr>
 			<td><code>app.kubernetes.io/instance</code>, <code>app.kubernetes.io/component</code></td>
 			<td><code>Pods</code>, <code>StatefulSets</code> (Affinity Assistant)</td>
 			<td>No propagation.</td>
