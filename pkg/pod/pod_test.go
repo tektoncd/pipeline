@@ -19,6 +19,7 @@ package pod
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,13 +32,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/version"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/changeset"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 
@@ -57,7 +58,18 @@ var (
 	featureFlagDisableHomeEnvKey             = "disable-home-env-overwrite"
 	featureFlagDisableWorkingDirKey          = "disable-working-directory-overwrite"
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
+
+	fakeVersion string
 )
+
+func init() {
+	os.Setenv("KO_DATA_PATH", "./testdata/")
+	commit, err := changeset.Get()
+	if err != nil {
+		panic(err)
+	}
+	fakeVersion = commit
+}
 
 func TestPodBuild(t *testing.T) {
 	secretsVolume := corev1.Volume{
@@ -1464,11 +1476,11 @@ _EOF_
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: version.PipelineVersion,
+					ReleaseAnnotation: fakeVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = version.PipelineVersion
+				trAnnotations[ReleaseAnnotation] = fakeVersion
 			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1618,11 +1630,11 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: version.PipelineVersion,
+					ReleaseAnnotation: fakeVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = version.PipelineVersion
+				trAnnotations[ReleaseAnnotation] = fakeVersion
 			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{

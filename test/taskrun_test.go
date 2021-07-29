@@ -123,9 +123,9 @@ func TestTaskRunFailure(t *testing.T) {
 	}
 
 	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
-	// Nightly release tag looks like v20210323-0593c7bef3
-	nightlyReleaseRegexp := regexp.MustCompile("^v[0-9]{8}-[0-9a-z]{10}$")
-	if !ok || !(releaseAnnotation == "devel" || nightlyReleaseRegexp.MatchString(releaseAnnotation)) {
+	// This should always contain a commit truncated to ~7 characters (based on knative.dev/pkg/changeset)
+	commitIDRegexp := regexp.MustCompile(`^[a-f0-9]{7}$`)
+	if !ok || !commitIDRegexp.MatchString(releaseAnnotation) {
 		t.Fatalf("expected Taskrun to be annotated with %s=devel or with nightly release tag, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
 	}
 }
