@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
-	"github.com/tektoncd/pipeline/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
@@ -51,7 +50,6 @@ var (
 	prImage                  = flag.String("pr-image", "", "The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
 	namespace                = flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
-	versionGiven             = flag.String("version", "devel", "Version of Tekton running")
 	threadsPerController     = flag.Int("threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
 	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
@@ -61,7 +59,6 @@ var (
 func main() {
 	cfg := sharedmain.ParseAndGetConfigOrDie()
 	controller.DefaultThreadsPerController = *threadsPerController
-	version.SetVersion(*versionGiven)
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
