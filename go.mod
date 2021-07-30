@@ -3,13 +3,14 @@ module github.com/tektoncd/pipeline
 go 1.13
 
 require (
+	github.com/aws/aws-sdk-go v1.31.12 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.1.0
 	github.com/docker/cli v20.10.2+incompatible // indirect
 	github.com/docker/docker v20.10.2+incompatible // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.2
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.4.1-0.20210128200529-19c2b639fab1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210129212729-5c4818de4025
 	github.com/google/uuid v1.2.0
@@ -23,20 +24,18 @@ require (
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	go.opencensus.io v0.23.0
-	go.uber.org/zap v1.16.0
-	golang.org/x/mod v0.4.1 // indirect
-	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78
+	go.uber.org/zap v1.18.1
+	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
-	gomodules.xyz/jsonpatch/v2 v2.1.0
+	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.20.7
 	k8s.io/apimachinery v0.20.7
 	k8s.io/client-go v0.20.7
 	k8s.io/code-generator v0.20.7
-	k8s.io/gengo v0.0.0-20201214224949-b6c5ce23f027 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
-	knative.dev/pkg v0.0.0-20210510175900-4564797bf3b7
+	knative.dev/pkg v0.0.0-20210730172132-bb4aaf09c430
 )
 
 // Knative deps (release-0.20)

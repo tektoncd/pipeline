@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"knative.dev/pkg/apis"
 )
@@ -41,7 +42,13 @@ type KReference struct {
 	Name string `json:"name"`
 
 	// API version of the referent.
-	APIVersion string `json:"apiVersion"`
+	// +optional
+	APIVersion string `json:"apiVersion,omitempty"`
+
+	// Group of the API, without the version of the group. This can be used as an alternative to the APIVersion, and then resolved using ResolveGroup.
+	// Note: This API is EXPERIMENTAL and might break anytime. For more details: https://github.com/knative/eventing/issues/5086
+	// +optional
+	Group string `json:"group,omitempty"`
 }
 
 func (kr *KReference) Validate(ctx context.Context) *apis.FieldError {
@@ -54,8 +61,25 @@ func (kr *KReference) Validate(ctx context.Context) *apis.FieldError {
 	if kr.Name == "" {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
-	if kr.APIVersion == "" {
-		errs = errs.Also(apis.ErrMissingField("apiVersion"))
+	if isKReferenceGroupAllowed(ctx) {
+		if kr.APIVersion == "" && kr.Group == "" {
+			errs = errs.Also(apis.ErrMissingField("apiVersion")).
+				Also(apis.ErrMissingField("group"))
+		}
+		if kr.APIVersion != "" && kr.Group != "" && !strings.HasPrefix(kr.APIVersion, kr.Group) {
+			errs = errs.Also(&apis.FieldError{
+				Message: "both apiVersion and group are specified and they refer to different API groups",
+				Paths:   []string{"apiVersion", "group"},
+				Details: "Only one of them must be specified",
+			})
+		}
+	} else {
+		if kr.Group != "" {
+			errs = errs.Also(apis.ErrDisallowedFields("group"))
+		}
+		if kr.APIVersion == "" {
+			errs = errs.Also(apis.ErrMissingField("apiVersion"))
+		}
 	}
 	if kr.Kind == "" {
 		errs = errs.Also(apis.ErrMissingField("kind"))
@@ -85,4 +109,18 @@ func (kr *KReference) SetDefaults(ctx context.Context) {
 	if kr.Namespace == "" {
 		kr.Namespace = apis.ParentMeta(ctx).Namespace
 	}
+}
+
+type isGroupAllowed struct{}
+
+func isKReferenceGroupAllowed(ctx context.Context) bool {
+	return ctx.Value(isGroupAllowed{}) != nil
+}
+
+// KReferenceGroupAllowed notes on the context that further validation
+// should allow the KReference.Group, which is disabled by default.
+// Note: This API is EXPERIMENTAL and may disappear once the KReference.Group feature will stabilize.
+// For more details: https://github.com/knative/eventing/issues/5086
+func KReferenceGroupAllowed(ctx context.Context) context.Context {
+	return context.WithValue(ctx, isGroupAllowed{}, struct{}{})
 }

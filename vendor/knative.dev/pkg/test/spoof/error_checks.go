@@ -58,3 +58,7 @@ func isConnectionRefused(err error) bool {
 func isConnectionReset(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "connection reset by peer")
 }
+
+func isNoRouteToHostError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "connect: no route to host")
+}

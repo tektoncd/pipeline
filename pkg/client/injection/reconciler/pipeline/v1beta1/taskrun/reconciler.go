@@ -297,8 +297,14 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 			return nil
 		}
 
-		logger.Errorw("Returned an error", zap.Error(reconcileEvent))
-		r.Recorder.Event(resource, v1.EventTypeWarning, "InternalError", reconcileEvent.Error())
+		if controller.IsSkipKey(reconcileEvent) {
+			// This is a wrapped error, don't emit an event.
+		} else if ok, _ := controller.IsRequeueKey(reconcileEvent); ok {
+			// This is a wrapped error, don't emit an event.
+		} else {
+			logger.Errorw("Returned an error", zap.Error(reconcileEvent))
+			r.Recorder.Event(resource, v1.EventTypeWarning, "InternalError", reconcileEvent.Error())
+		}
 		return reconcileEvent
 	}
 

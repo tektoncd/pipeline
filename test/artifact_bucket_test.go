@@ -33,6 +33,7 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -256,8 +257,8 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 // updateConfigMap updates the config map for specified @name with values. We can't use the one from knativetest because
 // it assumes that Data is already a non-nil map, and by default, it isn't!
-func updateConfigMap(ctx context.Context, client *knativetest.KubeClient, name string, configName string, values map[string]string) error {
-	configMap, err := client.GetConfigMap(name).Get(ctx, configName, metav1.GetOptions{})
+func updateConfigMap(ctx context.Context, client kubernetes.Interface, name string, configName string, values map[string]string) error {
+	configMap, err := client.CoreV1().ConfigMaps(name).Get(ctx, configName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -270,7 +271,7 @@ func updateConfigMap(ctx context.Context, client *knativetest.KubeClient, name s
 		configMap.Data[key] = value
 	}
 
-	_, err = client.GetConfigMap(name).Update(ctx, configMap, metav1.UpdateOptions{})
+	_, err = client.CoreV1().ConfigMaps(name).Update(ctx, configMap, metav1.UpdateOptions{})
 	return err
 }
 

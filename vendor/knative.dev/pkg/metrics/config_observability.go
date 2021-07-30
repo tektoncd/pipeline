@@ -65,8 +65,8 @@ type ObservabilityConfig struct {
 	// EnableProbeRequestLog enables queue-proxy to write health check probe request logs.
 	EnableProbeRequestLog bool
 
-	// RequestMetricsBackend specifies the request metrics destination, e.g. Prometheus,
-	// Stackdriver. "None" disables all backends.
+	// RequestMetricsBackend specifies the request metrics destination, e.g. Prometheus or
+	// OpenCensus. "None" disables all backends.
 	RequestMetricsBackend string
 
 	// EnableProfiling indicates whether it is allowed to retrieve runtime profiling data from

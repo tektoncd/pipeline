@@ -45,12 +45,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	resourceversioned "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/typed/resource/v1alpha1"
+	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.
 type clients struct {
-	KubeClient *knativetest.KubeClient
+	KubeClient kubernetes.Interface
 
 	PipelineClient         v1alpha1.PipelineInterface
 	TaskClient             v1alpha1.TaskInterface
@@ -68,15 +69,16 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	var err error
 	c := &clients{}
 
-	c.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
-	if err != nil {
-		t.Fatalf("failed to create kubeclient from config file at %s: %s", configPath, err)
-	}
-
 	cfg, err := knativetest.BuildClientConfig(configPath, clusterName)
 	if err != nil {
 		t.Fatalf("failed to create configuration obj from %s for cluster %s: %s", configPath, clusterName, err)
 	}
+
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		t.Fatalf("failed to create kubeclient from config file at %s: %s", configPath, err)
+	}
+	c.KubeClient = kubeClient
 
 	cs, err := versioned.NewForConfig(cfg)
 	if err != nil {

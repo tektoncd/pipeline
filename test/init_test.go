@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // Mysteriously by k8s libs, or they fail to create `KubeClient`s when using oidc authentication. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/345
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"knative.dev/pkg/system"
@@ -130,7 +131,7 @@ func initializeLogsAndMetrics(t *testing.T) {
 	})
 }
 
-func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
 	t.Logf("Create namespace %s to deploy to", namespace)
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
@@ -145,7 +146,7 @@ func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeCl
 	}
 }
 
-func getDefaultSA(ctx context.Context, t *testing.T, kubeClient *knativetest.KubeClient, namespace string) string {
+func getDefaultSA(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string) string {
 	configDefaultsCM, err := kubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetDefaultsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetDefaultsConfigName(), err)
@@ -157,7 +158,7 @@ func getDefaultSA(ctx context.Context, t *testing.T, kubeClient *knativetest.Kub
 	return actual
 }
 
-func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
 	defaultSA := getDefaultSA(ctx, t, kubeClient, namespace)
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 

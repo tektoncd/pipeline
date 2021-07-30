@@ -217,6 +217,8 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 
 	lister := {{.type|lowercaseSingular}}Informer.Lister()
 
+	var promoteFilterFunc func(obj interface{}) bool
+
 	rec := &reconcilerImpl{
 		LeaderAwareFuncs: {{.reconcilerLeaderAwareFuncs|raw}}{
 			PromoteFunc: func(bkt {{.reconcilerBucket|raw}}, enq func({{.reconcilerBucket|raw}}, {{.typesNamespacedName|raw}})) error {
@@ -225,7 +227,11 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 					return err
 				}
 				for _, elt := range all {
-					// TODO: Consider letting users specify a filter in options.
+					if promoteFilterFunc != nil {
+						if ok := promoteFilterFunc(elt); !ok {
+							continue
+						}
+					}
 					enq(bkt, {{.typesNamespacedName|raw}}{
 						Namespace: elt.GetNamespace(),
 						Name: elt.GetName(),
@@ -273,6 +279,9 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 		{{- end}}
 		if opts.DemoteFunc != nil {
 			rec.DemoteFunc = opts.DemoteFunc
+		}
+		if opts.PromoteFilterFunc != nil {
+			promoteFilterFunc = opts.PromoteFilterFunc
 		}
 	}
 

@@ -130,7 +130,7 @@ func WaitForPodDeleted(ctx context.Context, client kubernetes.Interface, name, n
 	return nil
 }
 
-// WaitForServiceHasAtLeastOneEndpoint polls the status of the specified Service
+// WaitForServiceEndpoints polls the status of the specified Service
 // from client every interval until number of service endpoints = numOfEndpoints
 func WaitForServiceEndpoints(ctx context.Context, client kubernetes.Interface, svcName string, svcNamespace string, numOfEndpoints int) error {
 	endpointsService := client.CoreV1().Endpoints(svcNamespace)
@@ -207,11 +207,11 @@ func DeploymentScaledToZeroFunc() func(d *appsv1.Deployment) (bool, error) {
 
 // WaitForLogContent waits until logs for given Pod/Container include the given content.
 // If the content is not present within timeout it returns error.
-func WaitForLogContent(ctx context.Context, client *KubeClient, podName, containerName, namespace, content string) error {
+func WaitForLogContent(ctx context.Context, client kubernetes.Interface, podName, containerName, namespace, content string) error {
 	var logs []byte
 	waitErr := wait.PollImmediate(interval, logTimeout, func() (bool, error) {
 		var err error
-		logs, err = client.PodLogs(ctx, podName, containerName, namespace)
+		logs, err = PodLogs(ctx, client, podName, containerName, namespace)
 		if err != nil {
 			return true, err
 		}

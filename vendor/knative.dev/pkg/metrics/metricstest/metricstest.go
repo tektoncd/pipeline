@@ -103,7 +103,7 @@ func CheckDistributionData(t ti, name string, wantTags map[string]string, expect
 	}
 }
 
-// CheckDistributionRange checks the view with a name matching string name to verify that the DistributionData stats reported
+// CheckDistributionCount checks the view with a name matching string name to verify that the DistributionData stats reported
 // are tagged with the tags in wantTags and that expectedCount number of records were reported.
 func CheckDistributionCount(t ti, name string, wantTags map[string]string, expectedCount int64) {
 	t.Helper()

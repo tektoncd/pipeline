@@ -199,6 +199,7 @@ var singularToPluralSuffixList = []singularToPluralSuffix{
 	{"shoe", "shoes"},
 	{"stis", "stes"},
 	{"tive", "tives"},
+	{"vice", "vices"},
 	{"wife", "wives"},
 	{"afe", "aves"},
 	{"bfe", "bves"},

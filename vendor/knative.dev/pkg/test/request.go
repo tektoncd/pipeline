@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"knative.dev/pkg/test/flags"
-
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/test/logging"
 	"knative.dev/pkg/test/spoof"
@@ -102,7 +100,7 @@ func WaitForEndpointState(
 	resolvable bool,
 	opts ...interface{}) (*spoof.Response, error) {
 	return WaitForEndpointStateWithTimeout(ctx, kubeClient, logf, url, inState,
-		desc, resolvable, flags.Flags().SpoofRequestTimeout, opts...)
+		desc, resolvable, Flags.SpoofRequestTimeout, opts...)
 }
 
 // WaitForEndpointStateWithTimeout will poll an endpoint until inState indicates the state is achieved
@@ -122,6 +120,22 @@ func WaitForEndpointStateWithTimeout(
 	timeout time.Duration,
 	opts ...interface{}) (*spoof.Response, error) {
 
+	client, rOpts, err := makeSpoofClient(ctx, kubeClient, logf, url, resolvable, timeout /* true, */, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return client.WaitForEndpointState(ctx, url, inState, desc, rOpts...)
+}
+
+func makeSpoofClient(
+	ctx context.Context,
+	kubeClient kubernetes.Interface,
+	logf logging.FormatLogger,
+	url *url.URL,
+	resolvable bool,
+	timeout time.Duration,
+	opts ...interface{}) (*spoof.SpoofingClient, []spoof.RequestOption, error) {
+
 	var tOpts []spoof.TransportOption
 	var rOpts []spoof.RequestOption
 
@@ -136,9 +150,26 @@ func WaitForEndpointStateWithTimeout(
 
 	client, err := NewSpoofingClient(ctx, kubeClient, logf, url.Hostname(), resolvable, tOpts...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	client.RequestTimeout = timeout
 
-	return client.WaitForEndpointState(ctx, url, inState, desc, rOpts...)
+	return client, rOpts, nil
+}
+
+func CheckEndpointState(
+	ctx context.Context,
+	kubeClient kubernetes.Interface,
+	logf logging.FormatLogger,
+	url *url.URL,
+	inState spoof.ResponseChecker,
+	desc string,
+	resolvable bool,
+	opts ...interface{},
+) (*spoof.Response, error) {
+	client, rOpts, err := makeSpoofClient(ctx, kubeClient, logf, url, resolvable, Flags.SpoofRequestTimeout /* false, */, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return client.CheckEndpointState(ctx, url, inState, desc, rOpts...)
 }
