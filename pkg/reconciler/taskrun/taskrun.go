@@ -72,8 +72,6 @@ type Reconciler struct {
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
-
-	snooze func(kmeta.Accessor, time.Duration)
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -163,15 +161,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
-	defer func() {
-		if tr.Status.StartTime == nil {
-			return
-		}
-		// Compute the time since the task started.
-		elapsed := time.Since(tr.Status.StartTime.Time)
-		// Snooze this resource until the timeout has elapsed.
-		c.snooze(tr, tr.GetTimeout(ctx)-elapsed)
-	}()
 
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API convertions. Errors that come out of prepare are
@@ -194,7 +183,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 
 	// Emit events (only when ConditionSucceeded was changed)
-	return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
+		return err
+	}
+
+	if tr.Status.StartTime != nil {
+		// Compute the time since the task started.
+		elapsed := time.Since(tr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		return controller.NewRequeueAfter(tr.GetTimeout(ctx) - elapsed)
+	}
+	return nil
 }
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*corev1.Pod, error) {
 	logger := logging.FromContext(ctx)

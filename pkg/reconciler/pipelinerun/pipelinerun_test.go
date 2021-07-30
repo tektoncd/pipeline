@@ -2186,7 +2186,9 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 	failingReactorActivated = false
 
 	err = c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
-	if err != nil {
+	if err == nil {
+		// No error is ok
+	} else if ok, _ := controller.IsRequeueKey(err); !ok { // Requeue is also fine.
 		t.Errorf("Expected to cancel TaskRun successfully!")
 	}
 
@@ -6070,6 +6072,8 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 		if controller.IsPermanentError(reconcileError) != permanentError {
 			prt.Test.Fatalf("Expected the error to be permanent: %v but got: %v", permanentError, controller.IsPermanentError(reconcileError))
 		}
+	} else if ok, _ := controller.IsRequeueKey(reconcileError); ok {
+		// This is normal, it happens for timeouts when we otherwise successfully reconcile.
 	} else if reconcileError != nil {
 		prt.Test.Fatalf("Error reconciling: %s", reconcileError)
 	}

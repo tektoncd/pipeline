@@ -543,7 +543,9 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			c := testAssets.Controller
 			clients := testAssets.Clients
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -726,7 +728,9 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			}, metav1.CreateOptions{}); err != nil {
 				t.Fatal(err)
 			}
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -811,7 +815,9 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("expected no error. Got error %v", err)
 	}
 	if len(clients.Kube.Actions()) == 0 {
@@ -1550,7 +1556,9 @@ func TestReconcile(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1620,7 +1628,9 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -1774,7 +1784,7 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	// Such TaskRun enters Reconciler and from within the isDone block, marks the run success so that
 	// reconciler does not keep trying to reconcile
 	if reconcileErr != nil {
-		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
+		t.Fatalf("Expected to see error when reconciling TaskRun with Permanent Error but was not none")
 	}
 
 	// Check actions
@@ -1877,7 +1887,9 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
@@ -1913,7 +1925,9 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	// lister cache is update to reflect the result of the previous Reconcile.
 	testAssets.Informers.TaskRun.Informer().GetIndexer().Add(newTr)
 
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
@@ -2178,13 +2192,10 @@ func TestHandlePodCreationError(t *testing.T) {
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-		snooze: func(acc kmeta.Accessor, amnt time.Duration) {
-			t.Error("Unexpected call to snooze.")
-		},
-		cloudEventClient: testAssets.Clients.CloudEvents,
-		metrics:          nil, // Not used
-		entrypointCache:  nil, // Not used
-		pvcHandler:       volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		cloudEventClient:  testAssets.Clients.CloudEvents,
+		metrics:           nil, // Not used
+		entrypointCache:   nil, // Not used
+		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 	}
 
 	testcases := []struct {
@@ -2393,7 +2404,9 @@ func TestReconcileCloudEvents(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err != nil {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				// No error is ok.
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
@@ -2611,7 +2624,9 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		// No error is ok.
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -2734,7 +2749,9 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRunOmittingWorkspace)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRunOmittingWorkspace)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Unexpected reconcile error for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
 	}
 
@@ -2963,7 +2980,9 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -3231,13 +3250,10 @@ func TestFailTaskRun(t *testing.T) {
 				taskLister:        testAssets.Informers.Task.Lister(),
 				clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-				snooze: func(acc kmeta.Accessor, amnt time.Duration) {
-					t.Error("Unexpected call to snooze.")
-				},
-				cloudEventClient: testAssets.Clients.CloudEvents,
-				metrics:          nil, // Not used
-				entrypointCache:  nil, // Not used
-				pvcHandler:       volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil, // Not used
+				entrypointCache:   nil, // Not used
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
 			}
 
 			err := c.failTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)
@@ -3378,7 +3394,9 @@ func TestPodAdoption(t *testing.T) {
 	}
 
 	// Reconcile the TaskRun.  This creates a Pod.
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Error reconciling TaskRun. Got error %v", err)
 	}
 
@@ -3411,7 +3429,9 @@ func TestPodAdoption(t *testing.T) {
 	}
 
 	// Reconcile the TaskRun again.
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err != nil {
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Error reconciling TaskRun again. Got error %v", err)
 	}
 
