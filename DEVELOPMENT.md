@@ -334,7 +334,7 @@ The `ko` command is the preferred method to manage (i.e., create, modify or dele
 You can stand up a version of Tekton using your local clone's code to the currently configured K8s context (i.e.,  `kubectl config current-context`):
 
 ```shell
-ko apply -f config/
+ko apply -R -f config/
 ```
 
 #### Verify installation

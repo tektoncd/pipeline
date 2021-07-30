@@ -20,7 +20,7 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko resolve -f config/ \
+  ko resolve -R -f config/ \
       | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
