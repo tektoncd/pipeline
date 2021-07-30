@@ -352,51 +352,58 @@ func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
 	return nil
 }
 
-func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
+func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for idx, f := range finalTasks {
 		if len(f.RunAfter) != 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "").ViaFieldIndex("finally", idx)
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "").ViaFieldIndex("finally", idx))
 		}
 		if len(f.Conditions) != 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "").ViaFieldIndex("finally", idx)
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "").ViaFieldIndex("finally", idx))
 		}
 	}
 
 	ts := PipelineTaskList(tasks).Names()
 	fts := PipelineTaskList(finalTasks).Names()
 
-	if err := validateTaskResultReference(finalTasks, ts, fts).ViaField("finally"); err != nil {
-		return err
-	}
+	errs = errs.Also(validateTaskResultReferenceInFinallyTasks(finalTasks, ts, fts))
+	errs = errs.Also(validateTasksInputFrom(finalTasks).ViaField("finally"))
 
-	if err := validateTasksInputFrom(finalTasks).ViaField("finally"); err != nil {
-		return err
-	}
-
-	return nil
+	return errs
 }
 
-func validateTaskResultReference(finalTasks []PipelineTask, ts, fts sets.String) *apis.FieldError {
+func validateTaskResultReferenceInFinallyTasks(finalTasks []PipelineTask, ts sets.String, fts sets.String) (errs *apis.FieldError) {
 	for idx, t := range finalTasks {
 		for _, p := range t.Params {
-			expressions, ok := GetVarSubstitutionExpressionsForParam(p)
-			if ok {
-				if LooksLikeContainsResultRefs(expressions) {
-					resultRefs := NewResultRefs(expressions)
-					for _, resultRef := range resultRefs {
-						if fts.Has(resultRef.PipelineTask) {
-							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
-								"final task param %s has task result reference from a final task", p.Name), "params").ViaIndex(idx)
-						} else if !ts.Has(resultRef.PipelineTask) {
-							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
-								"final task param %s has task result reference from a task which is not defined in the pipeline", p.Name), "params").ViaIndex(idx)
-						}
-					}
-				}
+			if expressions, ok := GetVarSubstitutionExpressionsForParam(p); ok {
+				errs = errs.Also(validateResultsVariablesExpressionsInFinally(expressions, ts, fts, "value").ViaFieldKey(
+					"params", p.Name).ViaFieldIndex("finally", idx))
+			}
+		}
+		for i, we := range t.WhenExpressions {
+			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+				errs = errs.Also(validateResultsVariablesExpressionsInFinally(expressions, ts, fts, "").ViaFieldIndex(
+					"when", i).ViaFieldIndex("finally", idx))
 			}
 		}
 	}
-	return nil
+	return errs
+}
+
+func validateResultsVariablesExpressionsInFinally(expressions []string, pipelineTasksNames sets.String, finalTasksNames sets.String, fieldPath string) (errs *apis.FieldError) {
+	if LooksLikeContainsResultRefs(expressions) {
+		resultRefs := NewResultRefs(expressions)
+		for _, resultRef := range resultRefs {
+			pt := resultRef.PipelineTask
+			if finalTasksNames.Has(pt) {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+					"final task has task result reference from a final task %s", pt), fieldPath))
+			} else if !pipelineTasksNames.Has(resultRef.PipelineTask) {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+					"final task has task result reference from a task %s which is not defined in the pipeline", pt), fieldPath))
+			}
+		}
+	}
+	return errs
 }
 
 func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
