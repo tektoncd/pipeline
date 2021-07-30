@@ -13,6 +13,7 @@ func TestValidate(t *testing.T) {
 		GitImage:                 "set",
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "set",
+		ShellImageWin:            "set",
 		GsutilImage:              "set",
 		PRImage:                  "set",
 		ImageDigestExporterImage: "set",
@@ -27,6 +28,7 @@ func TestValidate(t *testing.T) {
 		GitImage:                 "", // unset!
 		KubeconfigWriterImage:    "set",
 		ShellImage:               "", // unset!
+		ShellImageWin:            "set",
 		GsutilImage:              "set",
 		PRImage:                  "", // unset!
 		ImageDigestExporterImage: "set",

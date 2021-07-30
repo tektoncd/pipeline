@@ -34,6 +34,8 @@ type Images struct {
 	KubeconfigWriterImage string
 	// ShellImage is the container image containing bash shell.
 	ShellImage string
+	// ShellImageWin is the container image containing powershell.
+	ShellImageWin string
 	// GsutilImage is the container image containing gsutil.
 	GsutilImage string
 	// PRImage is the container image that we use to implement the PR source step.
@@ -55,6 +57,7 @@ func (i Images) Validate() error {
 		{i.GitImage, "git"},
 		{i.KubeconfigWriterImage, "kubeconfig-writer"},
 		{i.ShellImage, "shell"},
+		{i.ShellImageWin, "windows-shell"},
 		{i.GsutilImage, "gsutil"},
 		{i.PRImage, "pr"},
 		{i.ImageDigestExporterImage, "imagedigest-exporter"},

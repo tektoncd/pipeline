@@ -46,6 +46,7 @@ var (
 	gitImage                 = flag.String("git-image", "", "The container image containing our Git binary.")
 	kubeconfigWriterImage    = flag.String("kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
 	shellImage               = flag.String("shell-image", "", "The container image containing a shell")
+	shellImageWin            = flag.String("shell-image-win", "", "The container image containing a windows shell")
 	gsutilImage              = flag.String("gsutil-image", "", "The container image containing gsutil")
 	prImage                  = flag.String("pr-image", "", "The container image containing our PR binary.")
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
@@ -65,6 +66,7 @@ func main() {
 		GitImage:                 *gitImage,
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
 		ShellImage:               *shellImage,
+		ShellImageWin:            *shellImageWin,
 		GsutilImage:              *gsutilImage,
 		PRImage:                  *prImage,
 		ImageDigestExporterImage: *imageDigestExporterImage,
