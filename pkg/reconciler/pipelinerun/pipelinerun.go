@@ -131,8 +131,6 @@ type Reconciler struct {
 	cloudEventClient  cloudevent.CEClient
 	metrics           *Recorder
 	pvcHandler        volumeclaim.PvcHandler
-
-	snooze func(kmeta.Accessor, time.Duration)
 }
 
 var (
@@ -221,15 +219,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 	}
-	defer func() {
-		if pr.Status.StartTime == nil {
-			return
-		}
-		// Compute the time since the task started.
-		elapsed := time.Since(pr.Status.StartTime.Time)
-		// Snooze this resource until the timeout has elapsed.
-		c.snooze(pr, pr.GetTimeout(ctx)-elapsed)
-	}()
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
@@ -237,7 +226,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
-	return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+	if err = c.finishReconcileUpdateEmitEvents(ctx, pr, before, err); err != nil {
+		return err
+	}
+
+	if pr.Status.StartTime != nil {
+		// Compute the time since the task started.
+		elapsed := time.Since(pr.Status.StartTime.Time)
+		// Snooze this resource until the timeout has elapsed.
+		return controller.NewRequeueAfter(pr.GetTimeout(ctx) - elapsed)
+	}
+	return nil
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1beta1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
