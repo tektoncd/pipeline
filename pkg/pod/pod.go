@@ -136,9 +136,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
 	} else {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, steps, taskSpec.Sidecars, nil)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, taskSpec.Sidecars, nil)
 	}
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)

@@ -231,6 +231,13 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			})
 		}
 	}
+
+	if s.Script != "" {
+		cleaned := strings.TrimSpace(s.Script)
+		if strings.HasPrefix(cleaned, "#!win") {
+			errs = errs.Also(ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
+		}
+	}
 	return errs
 }
 

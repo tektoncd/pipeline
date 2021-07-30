@@ -1253,6 +1253,19 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		name:            "windows script support requires alpha",
+		requiredVersion: "alpha",
+		spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+				},
+				Script: `
+				#!win powershell -File
+				script-1`,
+			}},
+		},
 	}}
 	versions := []string{"alpha", "stable"}
 	for _, tt := range tests {
