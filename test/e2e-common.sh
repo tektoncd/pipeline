@@ -24,7 +24,7 @@ function install_pipeline_crd() {
       | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
-      | kubectl apply -f - || fail_test "Build pipeline installation failed"
+      | kubectl apply -R -f - || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
 
   export SYSTEM_NAMESPACE=tekton-pipelines
