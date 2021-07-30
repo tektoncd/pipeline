@@ -208,7 +208,7 @@ func DefaultErrorRetryChecker(err error) (bool, error) {
 	if isTCPTimeout(err) {
 		return true, fmt.Errorf("retrying for TCP timeout: %w", err)
 	}
-	// Retrying on DNS error, since we may be using xip.io or nip.io in tests.
+	// Retrying on DNS error, since we may be using sslip.io or nip.io in tests.
 	if isDNSError(err) {
 		return true, fmt.Errorf("retrying for DNS error: %w", err)
 	}
@@ -222,6 +222,11 @@ func DefaultErrorRetryChecker(err error) (bool, error) {
 	// Retry on connection/network errors.
 	if errors.Is(err, io.EOF) {
 		return true, fmt.Errorf("retrying for: %w", err)
+	}
+	// No route to host errors are in the same category as connection refused errors and
+	// are usually transient.
+	if isNoRouteToHostError(err) {
+		return true, fmt.Errorf("retrying for 'no route to host' error: %w", err)
 	}
 	return false, err
 }
@@ -254,7 +259,25 @@ func (sc *SpoofingClient) WaitForEndpointState(
 	desc string,
 	opts ...RequestOption) (*Response, error) {
 
-	defer logging.GetEmitableSpan(ctx, "WaitForEndpointState/"+desc).End()
+	return sc.endpointState(
+		ctx,
+		url,
+		inState,
+		desc,
+		func(req *http.Request, check ResponseChecker) (*Response, error) { return sc.Poll(req, check) },
+		"WaitForEndpointState",
+		opts...)
+}
+
+func (sc *SpoofingClient) endpointState(
+	ctx context.Context,
+	url *url.URL,
+	inState ResponseChecker,
+	desc string,
+	f func(*http.Request, ResponseChecker) (*Response, error),
+	logName string,
+	opts ...RequestOption) (*Response, error) {
+	defer logging.GetEmitableSpan(ctx, logName+"/"+desc).End()
 
 	if url.Scheme == "" || url.Host == "" {
 		return nil, fmt.Errorf("invalid URL: %q", url.String())
@@ -269,5 +292,57 @@ func (sc *SpoofingClient) WaitForEndpointState(
 		opt(req)
 	}
 
-	return sc.Poll(req, inState)
+	return f(req, inState)
+}
+
+func (sc *SpoofingClient) Check(req *http.Request, inState ResponseChecker) (*Response, error) {
+	traceContext, span := trace.StartSpan(req.Context(), "SpoofingClient-Trace")
+	defer span.End()
+	rawResp, err := sc.Client.Do(req.WithContext(traceContext))
+	if err != nil {
+		sc.Logf("NOT Retrying %s: %v", req.URL.String(), err)
+		return nil, err
+	}
+	defer rawResp.Body.Close()
+
+	body, err := ioutil.ReadAll(rawResp.Body)
+	if err != nil {
+		return nil, err
+	}
+	rawResp.Header.Add(zipkin.ZipkinTraceIDHeader, span.SpanContext().TraceID.String())
+
+	resp := &Response{
+		Status:     rawResp.Status,
+		StatusCode: rawResp.StatusCode,
+		Header:     rawResp.Header,
+		Body:       body,
+	}
+	ok, err := inState(resp)
+
+	sc.logZipkinTrace(resp)
+
+	if err != nil {
+		return resp, fmt.Errorf("response: %s did not pass checks: %w", resp, err)
+	}
+	if ok {
+		return resp, nil
+	}
+
+	return nil, err
+}
+
+func (sc *SpoofingClient) CheckEndpointState(
+	ctx context.Context,
+	url *url.URL,
+	inState ResponseChecker,
+	desc string,
+	opts ...RequestOption) (*Response, error) {
+	return sc.endpointState(
+		ctx,
+		url,
+		inState,
+		desc,
+		sc.Check,
+		"CheckEndpointState",
+		opts...)
 }

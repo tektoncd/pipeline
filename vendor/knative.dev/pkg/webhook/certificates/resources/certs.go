@@ -18,7 +18,8 @@ package resources
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -62,7 +63,7 @@ func createCertTemplate(name, namespace string, notAfter time.Time) (*x509.Certi
 			Organization: []string{organization},
 			CommonName:   commonName,
 		},
-		SignatureAlgorithm:    x509.PureEd25519,
+		SignatureAlgorithm:    x509.ECDSAWithSHA256,
 		NotBefore:             time.Now(),
 		NotAfter:              notAfter,
 		BasicConstraintsValid: true,
@@ -112,13 +113,14 @@ func createCert(template, parent *x509.Certificate, pub, parentPriv interface{})
 	return
 }
 
-func createCA(ctx context.Context, name, namespace string, notAfter time.Time) (ed25519.PrivateKey, *x509.Certificate, []byte, error) {
+func createCA(ctx context.Context, name, namespace string, notAfter time.Time) (*ecdsa.PrivateKey, *x509.Certificate, []byte, error) {
 	logger := logging.FromContext(ctx)
-	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		logger.Errorw("error generating random key", zap.Error(err))
 		return nil, nil, nil, err
 	}
+	publicKey := privateKey.Public()
 
 	rootCertTmpl, err := createCACertTemplate(name, namespace, notAfter)
 	if err != nil {
@@ -148,11 +150,13 @@ func CreateCerts(ctx context.Context, name, namespace string, notAfter time.Time
 	}
 
 	// Then create the private key for the serving cert
-	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		logger.Errorw("error generating random key", zap.Error(err))
 		return nil, nil, nil, err
 	}
+	publicKey := privateKey.Public()
+
 	servCertTemplate, err := createServerCertTemplate(name, namespace, notAfter)
 	if err != nil {
 		logger.Errorw("failed to create the server certificate template", zap.Error(err))

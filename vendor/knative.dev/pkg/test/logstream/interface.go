@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
@@ -46,9 +47,15 @@ func Start(t ti) Canceler {
 	// Do this lazily to make import ordering less important.
 	once.Do(func() {
 		if ns := os.Getenv(system.NamespaceEnvKey); ns != "" {
-			kc, err := test.NewKubeClient(test.Flags.Kubeconfig, test.Flags.Cluster)
+			config, err := test.Flags.GetRESTConfig()
 			if err != nil {
 				t.Error("Error loading client config", "error", err)
+				return
+			}
+
+			kc, err := kubernetes.NewForConfig(config)
+			if err != nil {
+				t.Error("Error creating kubernetes client", "error", err)
 				return
 			}
 

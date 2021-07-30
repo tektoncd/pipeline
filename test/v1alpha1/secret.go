@@ -27,14 +27,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
+	"k8s.io/client-go/kubernetes"
 )
 
 // CreateGCPServiceAccountSecret will create a kube secret called secretName in namespace
 // from the value in the GCP_SERVICE_ACCOUNT_KEY_PATH environment variable. If the env var
 // doesn't exist, no secret will be created. Returns true if the secret was created, false
 // otherwise.
-func CreateGCPServiceAccountSecret(t *testing.T, c *knativetest.KubeClient, namespace string, secretName string) (bool, error) {
+func CreateGCPServiceAccountSecret(t *testing.T, c kubernetes.Interface, namespace string, secretName string) (bool, error) {
 	t.Helper()
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)

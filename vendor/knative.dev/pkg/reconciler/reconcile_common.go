@@ -31,9 +31,13 @@ import (
 const failedGenerationBump = "NewObservedGenFailure"
 
 const (
-	DoReconcileKind       = "ReconcileKind"
-	DoFinalizeKind        = "FinalizeKind"
-	DoObserveKind         = "ObserveKind"
+	// DoReconcileKind is the function name for reconciling the resource (as a leader).
+	DoReconcileKind = "ReconcileKind"
+	// DoFinalizeKind is the function name for finalizing the resource (as a leader).
+	DoFinalizeKind = "FinalizeKind"
+	// DoObserveKind is the function name for observing the resource (as a non leader).
+	DoObserveKind = "ObserveKind"
+	// DoObserveFinalizeKind is the function name for observing finalization of the resource (as a non leader).
 	DoObserveFinalizeKind = "ObserveFinalizeKind"
 )
 

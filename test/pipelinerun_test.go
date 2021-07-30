@@ -38,6 +38,7 @@ import (
 	k8sres "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
 )
@@ -710,7 +711,7 @@ func getName(namespace string, suffix int) string {
 // collectMatchingEvents collects list of events under 5 seconds that match
 // 1. matchKinds which is a map of Kind of Object with name of objects
 // 2. reason which is the expected reason of event
-func collectMatchingEvents(ctx context.Context, kubeClient *knativetest.KubeClient, namespace string, kinds map[string][]string, reason string) ([]*corev1.Event, error) {
+func collectMatchingEvents(ctx context.Context, kubeClient kubernetes.Interface, namespace string, kinds map[string][]string, reason string) ([]*corev1.Event, error) {
 	var events []*corev1.Event
 
 	watchEvents, err := kubeClient.CoreV1().Events(namespace).Watch(ctx, metav1.ListOptions{})
@@ -832,7 +833,7 @@ func checkAnnotationPropagation(ctx context.Context, t *testing.T, c *clients, n
 	assertAnnotationsMatch(t, annotations, pod.ObjectMeta.Annotations)
 }
 
-func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1beta1.TaskRun) *corev1.Pod {
+func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string, tr *v1beta1.TaskRun) *corev1.Pod {
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
 	pods, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: pipeline.GroupName + pipeline.TaskRunLabelKey + " = " + tr.Name,

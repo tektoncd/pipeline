@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Knative Authors
+Copyright 2021 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,10 +38,6 @@ func init() {
 
 func withInformerFactory(ctx context.Context) context.Context {
 	c := fake.Get(ctx)
-	opts := []informers.SharedInformerOption{}
-	if injection.HasNamespaceScope(ctx) {
-		opts = append(opts, informers.WithNamespace(injection.GetNamespaceScope(ctx)))
-	}
 	untyped := ctx.Value(filtered.LabelKey{})
 	if untyped == nil {
 		logging.FromContext(ctx).Panic(
@@ -49,11 +45,15 @@ func withInformerFactory(ctx context.Context) context.Context {
 	}
 	labelSelectors := untyped.([]string)
 	for _, selector := range labelSelectors {
-		thisOpts := append(opts, informers.WithTweakListOptions(func(l *v1.ListOptions) {
+		opts := []informers.SharedInformerOption{}
+		if injection.HasNamespaceScope(ctx) {
+			opts = append(opts, informers.WithNamespace(injection.GetNamespaceScope(ctx)))
+		}
+		opts = append(opts, informers.WithTweakListOptions(func(l *v1.ListOptions) {
 			l.LabelSelector = selector
 		}))
 		ctx = context.WithValue(ctx, filtered.Key{Selector: selector},
-			informers.NewSharedInformerFactoryWithOptions(c, controller.GetResyncPeriod(ctx), thisOpts...))
+			informers.NewSharedInformerFactoryWithOptions(c, controller.GetResyncPeriod(ctx), opts...))
 	}
 	return ctx
 }

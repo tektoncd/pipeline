@@ -232,8 +232,7 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux))
 	}()
 
-	sharedmain.WebhookMainWithConfig(ctx, serviceName,
-		sharedmain.ParseAndGetConfigOrDie(),
+	sharedmain.MainWithContext(ctx, serviceName,
 		certificates.NewController,
 		newDefaultingAdmissionController,
 		newValidationAdmissionController,

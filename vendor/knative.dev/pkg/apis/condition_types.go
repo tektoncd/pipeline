@@ -52,7 +52,7 @@ const (
 	ConditionSeverityInfo ConditionSeverity = "Info"
 )
 
-// Conditions defines a readiness condition for a Knative resource.
+// Condition defines a readiness condition for a Knative resource.
 // See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 // +k8s:deepcopy-gen=true
 type Condition struct {

@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging"
 	"knative.dev/pkg/test/logstream"
@@ -128,7 +129,7 @@ func initializeLogsAndMetrics(t *testing.T) {
 	})
 }
 
-func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
 	t.Logf("Create namespace %s to deploy to", namespace)
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
@@ -143,7 +144,7 @@ func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeCl
 	}
 }
 
-func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
 	defaultSA := "default"
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 

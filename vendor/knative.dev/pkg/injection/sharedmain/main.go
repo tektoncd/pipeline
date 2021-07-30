@@ -57,17 +57,6 @@ func init() {
 	maxprocs.Set()
 }
 
-// GetConfig returns a rest.Config to be used for kubernetes client creation.
-// It does so in the following order:
-//   1. Use the passed kubeconfig/serverURL.
-//   2. Fallback to the KUBECONFIG environment variable.
-//   3. Fallback to in-cluster config.
-//   4. Fallback to the ~/.kube/config.
-// Deprecated: use injection.GetRESTConfig
-func GetConfig(serverURL, kubeconfig string) (*rest.Config, error) {
-	return injection.GetRESTConfig(serverURL, kubeconfig)
-}
-
 // GetLoggingConfig gets the logging config from either the file system if present
 // or via reading a configMap from the API.
 // The context is expected to be initialized with injection.
@@ -178,6 +167,10 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 	logger, atomicLevel := SetupLoggerOrDie(ctx, component)
 	defer flush(logger)
 	ctx = logging.WithLogger(ctx, logger)
+
+	// Override client-go's warning handler to give us nicely printed warnings.
+	rest.SetDefaultWarningHandler(&logging.WarningHandler{Logger: logger})
+
 	profilingHandler := profiling.NewHandler(logger, false)
 	profilingServer := profiling.NewServer(profilingHandler)
 
@@ -251,13 +244,6 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 func flush(logger *zap.SugaredLogger) {
 	logger.Sync()
 	metrics.FlushExporter()
-}
-
-// ParseAndGetConfigOrDie parses the rest config flags and creates a client or
-// dies by calling log.Fatalf.
-// Deprecated: use injection.ParseAndGetRESTConfigOrDie
-func ParseAndGetConfigOrDie() *rest.Config {
-	return injection.ParseAndGetRESTConfigOrDie()
 }
 
 // SetupLoggerOrDie sets up the logger using the config from the given context

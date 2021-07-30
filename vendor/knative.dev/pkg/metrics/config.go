@@ -43,17 +43,9 @@ const (
 	// The following keys are used to configure metrics reporting.
 	// See https://github.com/knative/serving/blob/main/config/config-observability.yaml
 	// for details.
-	allowStackdriverCustomMetricsKey = "metrics.allow-stackdriver-custom-metrics"
-	collectorAddressKey              = "metrics.opencensus-address"
-	collectorSecureKey               = "metrics.opencensus-require-tls"
-	reportingPeriodKey               = "metrics.reporting-period-seconds"
-
-	// Stackdriver client configuration keys
-	stackdriverClusterNameKey           = "metrics.stackdriver-cluster-name"
-	stackdriverCustomMetricSubDomainKey = "metrics.stackdriver-custom-metrics-subdomain"
-	stackdriverGCPLocationKey           = "metrics.stackdriver-gcp-location"
-	stackdriverProjectIDKey             = "metrics.stackdriver-project-id"
-	stackdriverUseSecretKey             = "metrics.stackdriver-use-secret"
+	collectorAddressKey = "metrics.opencensus-address"
+	collectorSecureKey  = "metrics.opencensus-require-tls"
+	reportingPeriodKey  = "metrics.reporting-period-seconds"
 
 	defaultBackendEnvName = "DEFAULT_METRICS_BACKEND"
 	defaultPrometheusPort = 9090
@@ -66,14 +58,12 @@ const (
 
 var (
 	// TestOverrideBundleCount is a variable for testing to reduce the size (number of metrics) buffered before
-	// Stackdriver will send a bundled metric report. Only applies if non-zero.
+	// OpenCensus will send a bundled metric report. Only applies if non-zero.
 	TestOverrideBundleCount = 0
 )
 
 // Metrics backend "enum".
 const (
-	// stackdriver is used for Stackdriver backend
-	stackdriver metricsBackend = "stackdriver"
 	// prometheus is used for Prometheus backend
 	prometheus metricsBackend = "prometheus"
 	// openCensus is used to export to the OpenCensus Agent / Collector,
@@ -104,6 +94,7 @@ type metricsConfig struct {
 	// ---- OpenCensus specific below ----
 	// collectorAddress is the address of the collector, if not `localhost:55678`
 	collectorAddress string
+
 	// Require mutual TLS. Defaults to "false" because mutual TLS is hard to set up.
 	requireSecure bool
 
@@ -115,52 +106,6 @@ type metricsConfig struct {
 	// prometheusHost is the host where the metrics are exposed in Prometheus
 	// format. It defaults to "0.0.0.0"
 	prometheusHost string
-
-	// ---- Stackdriver specific below ----
-	// True if backendDestination equals to "stackdriver". Store this in a variable
-	// to reduce string comparison operations.
-	isStackdriverBackend bool
-	// stackdriverMetricTypePrefix is the metric domain joins component, e.g.
-	// "knative.dev/serving/activator". Store this in a variable to reduce string
-	// join operations.
-	stackdriverMetricTypePrefix string
-	// stackdriverCustomMetricTypePrefix is "custom.googleapis.com" joined with the subdomain and component.
-	// E.g., "custom.googleapis.com/<subdomain>/<component>".
-	// Store this in a variable to reduce string join operations.
-	stackdriverCustomMetricTypePrefix string
-	// stackdriverClientConfig is the metadata to configure the metrics exporter's Stackdriver client.
-	stackdriverClientConfig StackdriverClientConfig
-}
-
-// StackdriverClientConfig encapsulates the metadata required to configure a Stackdriver client.
-type StackdriverClientConfig struct {
-	// ProjectID is the stackdriver project ID to which data is uploaded.
-	// This is not necessarily the GCP project ID where the Kubernetes cluster is hosted.
-	// Required when the Kubernetes cluster is not hosted on GCE.
-	ProjectID string
-	// GCPLocation is the GCP region or zone to which data is uploaded.
-	// This is not necessarily the GCP location where the Kubernetes cluster is hosted.
-	// Required when the Kubernetes cluster is not hosted on GCE.
-	GCPLocation string
-	// ClusterName is the cluster name with which the data will be associated in Stackdriver.
-	// Required when the Kubernetes cluster is not hosted on GCE.
-	ClusterName string
-	// UseSecret is whether the credentials stored in a Kubernetes Secret should be used to
-	// authenticate with Stackdriver. The Secret name and namespace can be specified by calling
-	// metrics.SetStackdriverSecretLocation.
-	// If UseSecret is false, Google Application Default Credentials
-	// will be used (https://cloud.google.com/docs/authentication/production).
-	UseSecret bool
-}
-
-// NewStackdriverClientConfigFromMap creates a stackdriverClientConfig from the given map
-func NewStackdriverClientConfigFromMap(config map[string]string) *StackdriverClientConfig {
-	return &StackdriverClientConfig{
-		ProjectID:   config[stackdriverProjectIDKey],
-		GCPLocation: config[stackdriverGCPLocationKey],
-		ClusterName: config[stackdriverClusterNameKey],
-		UseSecret:   strings.EqualFold(config[stackdriverUseSecretKey], "true"),
-	}
 }
 
 // record applies the `ros` Options to each measurement in `mss` and then records the resulting
@@ -184,7 +129,7 @@ func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ro
 	return mc.recorder(ctx, mss, ros...)
 }
 
-func createMetricsConfig(ctx context.Context, ops ExporterOptions) (*metricsConfig, error) {
+func createMetricsConfig(_ context.Context, ops ExporterOptions) (*metricsConfig, error) {
 	var mc metricsConfig
 
 	if ops.Domain == "" {
@@ -213,7 +158,7 @@ func createMetricsConfig(ctx context.Context, ops ExporterOptions) (*metricsConf
 	}
 
 	switch lb := metricsBackend(strings.ToLower(backend)); lb {
-	case stackdriver, prometheus, openCensus, none:
+	case prometheus, openCensus, none:
 		mc.backendDestination = lb
 	default:
 		return nil, fmt.Errorf("unsupported metrics backend value %q", backend)
@@ -252,16 +197,12 @@ func createMetricsConfig(ctx context.Context, ops ExporterOptions) (*metricsConf
 
 		mc.prometheusPort = pp
 		mc.prometheusHost = prometheusHost()
-	case stackdriver:
-		if err := sdinit(ctx, m, &mc, ops); err != nil {
-			return nil, err
-		}
 	}
 
 	// If reporting period is specified, use the value from the configuration.
 	// If not, set a default value based on the selected backend.
 	// Each exporter makes different promises about what the lowest supported
-	// reporting period is. For Stackdriver, this value is 1 minute.
+	// reporting period is. For OpenCensus, this value is 1 minute.
 	// For Prometheus, we will use a lower value since the exporter doesn't
 	// push anything but just responds to pull requests, and shorter durations
 	// do not really hurt the performance and we rely on the scraping configuration.
@@ -273,7 +214,7 @@ func createMetricsConfig(ctx context.Context, ops ExporterOptions) (*metricsConf
 		mc.reportingPeriod = time.Duration(repInt) * time.Second
 	} else {
 		switch mc.backendDestination {
-		case stackdriver, openCensus:
+		case openCensus:
 			mc.reportingPeriod = time.Minute
 		case prometheus:
 			mc.reportingPeriod = 5 * time.Second

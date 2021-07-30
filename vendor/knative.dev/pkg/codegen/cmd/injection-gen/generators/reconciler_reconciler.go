@@ -210,6 +210,14 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "knative.dev/pkg/reconciler",
 			Name:    "DoObserveFinalizeKind",
 		}),
+		"controllerIsSkipKey": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/controller",
+			Name:    "IsSkipKey",
+		}),
+		"controllerIsRequeueKey": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/controller",
+			Name:    "IsRequeueKey",
+		}),
 	}
 
 	sw.Do(reconcilerInterfaceFactory, m)
@@ -517,8 +525,14 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 			return nil
 		}
 
-		logger.Errorw("Returned an error", zap.Error(reconcileEvent))
-		r.Recorder.Event(resource, {{.corev1EventTypeWarning|raw}}, "InternalError", reconcileEvent.Error())
+		if {{ .controllerIsSkipKey|raw }}(reconcileEvent) {
+			// This is a wrapped error, don't emit an event.
+		} else if ok, _ := {{ .controllerIsRequeueKey|raw }}(reconcileEvent); ok {
+			// This is a wrapped error, don't emit an event.
+		} else {
+			logger.Errorw("Returned an error", zap.Error(reconcileEvent))
+			r.Recorder.Event(resource, {{.corev1EventTypeWarning|raw}}, "InternalError", reconcileEvent.Error())
+		}
 		return reconcileEvent
 	}
 

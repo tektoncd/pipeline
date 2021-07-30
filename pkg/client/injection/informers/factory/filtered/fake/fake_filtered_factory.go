@@ -38,10 +38,6 @@ func init() {
 
 func withInformerFactory(ctx context.Context) context.Context {
 	c := fake.Get(ctx)
-	opts := []externalversions.SharedInformerOption{}
-	if injection.HasNamespaceScope(ctx) {
-		opts = append(opts, externalversions.WithNamespace(injection.GetNamespaceScope(ctx)))
-	}
 	untyped := ctx.Value(filtered.LabelKey{})
 	if untyped == nil {
 		logging.FromContext(ctx).Panic(
@@ -49,11 +45,15 @@ func withInformerFactory(ctx context.Context) context.Context {
 	}
 	labelSelectors := untyped.([]string)
 	for _, selector := range labelSelectors {
-		thisOpts := append(opts, externalversions.WithTweakListOptions(func(l *v1.ListOptions) {
+		opts := []externalversions.SharedInformerOption{}
+		if injection.HasNamespaceScope(ctx) {
+			opts = append(opts, externalversions.WithNamespace(injection.GetNamespaceScope(ctx)))
+		}
+		opts = append(opts, externalversions.WithTweakListOptions(func(l *v1.ListOptions) {
 			l.LabelSelector = selector
 		}))
 		ctx = context.WithValue(ctx, filtered.Key{Selector: selector},
-			externalversions.NewSharedInformerFactoryWithOptions(c, controller.GetResyncPeriod(ctx), thisOpts...))
+			externalversions.NewSharedInformerFactoryWithOptions(c, controller.GetResyncPeriod(ctx), opts...))
 	}
 	return ctx
 }

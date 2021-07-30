@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Conditions is the interface for a Resource that implements the getter and
+// ConditionsAccessor is the interface for a Resource that implements the getter and
 // setter for accessing a Condition collection.
 // +k8s:deepcopy-gen=true
 type ConditionsAccessor interface {

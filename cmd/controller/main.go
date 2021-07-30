@@ -57,7 +57,7 @@ var (
 )
 
 func main() {
-	cfg := sharedmain.ParseAndGetConfigOrDie()
+	cfg := injection.ParseAndGetRESTConfigOrDie()
 	controller.DefaultThreadsPerController = *threadsPerController
 	images := pipeline.Images{
 		EntrypointImage:          *entrypointImage,

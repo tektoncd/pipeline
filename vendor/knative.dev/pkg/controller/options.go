@@ -38,6 +38,14 @@ type Options struct {
 
 	// DemoteFunc configures the demote function this reconciler uses
 	DemoteFunc func(b reconciler.Bucket)
+
+	// Concurrency - The number of workers to use when processing the controller's workqueue.
+	Concurrency int
+
+	// PromoteFilterFunc filters the objects that are enqueued when the reconciler is promoted to leader.
+	// Objects that pass the filter (return true) will be reconciled when a new leader is promoted.
+	// If no filter is specified, all objects will be reconciled.
+	PromoteFilterFunc func(obj interface{}) bool
 }
 
 // OptionsFn is a callback method signature that accepts an Impl and returns

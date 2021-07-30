@@ -20,6 +20,7 @@ limitations under the License.
 
 package test
 
+// T is an interface mimicking *testing.T.
 // Deprecated: Do not use this. Define your own interface.
 type T interface {
 	Name() string
@@ -30,6 +31,7 @@ type T interface {
 	Error(args ...interface{})
 }
 
+// TLegacy is an interface mimicking *testing.T.
 // Deprecated: Do not use this. Define your own interface.
 type TLegacy interface {
 	T

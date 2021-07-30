@@ -1,15 +1,14 @@
 # Common metrics export interfaces for Knative
 
-_Note that this directory is currently in transition. See [the Plan](#the-plan)
-for details on where this is heading._
+See [the Plan](#the-plan) for details on where this is heading.
 
 ## Current status
 
 The code currently uses OpenCensus to support exporting metrics to multiple
-backends. Currently, two backends are supported: Prometheus and Stackdriver.
+backends. Currently, two backends are supported: Prometheus and OpenCensus/OTel.
 
 Metrics export is controlled by a ConfigMap called `config-observability` which
-is a key-value map with specific values supported for each of the Stackdriver
+is a key-value map with specific values supported for each of the OpenCensus
 and Prometheus backends. Hot-reload of the ConfigMap on a running process is
 supported by directly watching (via the Kubernetes API) the
 `config-observability` object. Configuration via environment is also supported
@@ -20,9 +19,7 @@ namespace.
 
 There are currently
 [6 supported Golang exporters for OpenCensus](https://opencensus.io/exporters/supported-exporters/go/).
-At least the Stackdriver exporter causes problems/failures if started without
-access to (Google) application default credentials. It's not clear that we want
-to build all of those backends into the core of `knative.dev/pkg` and all
+We do not want to build all of those backends into the core of `knative.dev/pkg` and all
 downstream dependents, and we'd like all the code shipped in `knative.dev/pkg`
 to be able to be tested without needing any special environment setup.
 
@@ -89,19 +86,22 @@ statistics for a short period of time if not.
 
 ### Steps to reach the goal
 
-- [ ] [Add OpenCensus Agent as one of the export options](https://github.com/knative/pkg/issues/955).
-- [ ] Ensure that all tests pass in a non-Google-Cloud connected environment.
+- [x] [Add OpenCensus Agent as one of the export options](https://github.com/knative/pkg/issues/955).
+- [x] Ensure that all tests pass in a non-Google-Cloud connected environment.
       **This is true today.**
       [Ensure this on an ongoing basis.](https://github.com/knative/pkg/issues/957)
-- [ ] Google to implement OpenCensus Agent configuration to match what they are
+- [x] Google to implement OpenCensus Agent configuration to match what they are
       doing for Stackdriver now. (No public issue link because this should be in
       Google's vendor-specific configuration.)
-- [ ] Document how to configure OpenCensus/OpenTelemetry Agent + Prometheus to
+- [x] Document how to configure OpenCensus/OpenTelemetry Agent + Prometheus to
       achieve the current level of application visibility, and determine a
       long-term course for how to maintain this as a "bare minimum" supported
-      configuration.
-- [ ] Stop adding exporter features outside of the OpenCensus / OpenTelemetry
+      configuration. https://github.com/knative/docs/pull/3005
+- [x] Stop adding exporter features outside of the OpenCensus / OpenTelemetry
       export as of 0.13 release (03 March 2020). Between now and 0.13, small
       amounts of additional features can be built in to assist with the bridging
       process or to support existing products. New products should build on the
       OpenCensus Agent approach.
+- [x] Removal of the Stackdriver OpenCensus Exporter
+      https://github.com/knative/pkg/issues/2173
+- [ ] Revisit Adopting OpenTelemetry SDKs instead of OpenCensus
