@@ -90,9 +90,9 @@ func TestTaskRunRetry(t *testing.T) {
 	// There should only be one TaskRun created.
 	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
-		t.Errorf("Failed to list TaskRuns: %v", err)
+		t.Fatalf("Failed to list TaskRuns: %v", err)
 	} else if len(trs.Items) != 1 {
-		t.Errorf("Found %d TaskRuns, want 1", len(trs.Items))
+		t.Fatalf("Found %d TaskRuns, want 1", len(trs.Items))
 	}
 
 	// The TaskRun status should have N retriesStatuses, all failures.
