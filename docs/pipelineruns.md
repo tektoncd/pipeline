@@ -562,7 +562,9 @@ Task Runs:
 
 To cancel a `PipelineRun` that's currently executing, update its definition
 to mark it as "PipelineRunCancelled". When you do so, the spawned `TaskRuns` are also marked
-as cancelled and all associated `Pods` are deleted. Pending final tasks are not scheduled. 
+as cancelled, all associated `Pods` are deleted, and their `Retries` are not executed.
+Pending final tasks are not scheduled.
+
 For example:
 
 ```yaml
@@ -584,7 +586,9 @@ is currently an **_alpha feature_**.
 
 To gracefully cancel a `PipelineRun` that's currently executing, update its definition
 to mark it as "CancelledRunFinally". When you do so, the spawned `TaskRuns` are also marked
-as cancelled and all associated `Pods` are deleted. Final tasks are scheduled normally. 
+as cancelled, all associated `Pods` are deleted, and their `Retries` are not executed.
+Final tasks are scheduled normally.
+
 For example:
 
 ```yaml

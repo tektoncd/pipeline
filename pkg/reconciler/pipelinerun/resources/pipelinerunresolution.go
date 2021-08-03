@@ -117,7 +117,7 @@ func (t ResolvedPipelineRunTask) IsFailure() bool {
 	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 	retriesDone := len(t.TaskRun.Status.RetriesStatus)
 	retries := t.PipelineTask.Retries
-	return c.IsFalse() && retriesDone >= retries
+	return c.IsFalse() && (retriesDone >= retries || c.Reason == v1beta1.TaskRunReasonCancelled.String())
 }
 
 // IsCancelled returns true only if the run is cancelled
