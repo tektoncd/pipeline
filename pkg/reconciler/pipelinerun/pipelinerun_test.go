@@ -1789,6 +1789,92 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testin
 	}
 }
 
+func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *testing.T) {
+	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries runs "Reconcile" on a PipelineRun that has
+	// been gracefully cancelled. It verifies that reconcile is successful, the pipeline status updated and events generated.
+
+	// Pipeline has a DAG task "hello-world-1" and Finally task "hello-world-2"
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world", tb.Retries(2)),
+		tb.FinalPipelineTask("hello-world-2", "hello-world"),
+	))}
+
+	// PipelineRun has been gracefully cancelled, and it has a TaskRun for DAG task "hello-world-1" that has failed
+	// with reason of cancellation
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-cancelled-run-finally",
+		tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineRunCancelledRunFinally,
+		),
+		tb.PipelineRunStatus(
+			tb.PipelineRunTaskRunsStatus("test-pipeline-run-cancelled-run-finally-hello-world", &v1beta1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "hello-world-1",
+				Status: &v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: v1beta1.TaskRunReasonCancelled.String(),
+						}},
+					},
+				},
+			}),
+		),
+	)}
+
+	// TaskRun exists for DAG task "hello-world-1" that has failed with reason of cancellation
+	trs := []*v1beta1.TaskRun{
+		tb.TaskRun("test-pipeline-run-cancelled-run-finally-hello-world",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-cancelled-run-finally"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccountName("test-sa"),
+			),
+			tb.TaskRunStatus(
+				tb.PodName("my-pod-name"),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1beta1.TaskRunSpecStatusCancelled,
+				}),
+			),
+		),
+	}
+
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+	cms := getConfigMapsWithEnabledAlphaAPIFields()
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		TaskRuns:     trs,
+		Tasks:        ts,
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal CancelledRunningFinally Tasks Completed: 1 \\(Failed: 0, Cancelled 1\\), Incomplete: 1, Skipped: 0",
+	}
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-cancelled-run-finally", wantEvents, false)
+
+	// This PipelineRun should still be running to execute the finally task, and the status should reflect that
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun status to be running to execute the finally task, but was %v",
+			reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// There should be two task runs (failed dag task and one triggered for the finally task)
+	if len(reconciledRun.Status.TaskRuns) != 2 {
+		t.Errorf("Expected PipelineRun status to have exactly two task runs, but was %v", len(reconciledRun.Status.TaskRuns))
+	}
+
+}
+
 func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 	// TestReconcileCancelledRunFinallyFailsTaskRunCancellation runs "Reconcile" on a PipelineRun with a single TaskRun.
 	// The TaskRun cannot be cancelled. Check that the pipelinerun graceful cancel fails, that reconcile fails and

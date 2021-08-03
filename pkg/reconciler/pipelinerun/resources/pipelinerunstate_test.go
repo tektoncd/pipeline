@@ -121,6 +121,24 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		Run:          makeRunFailed(runs[0]),
 	}}
 
+	var taskFailedWithRetries = PipelineRunState{{
+		PipelineTask: &pts[4], // 2 retries needed
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeFailed(trs[0]),
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskCancelledFailedWithRetries = PipelineRunState{{
+		PipelineTask: &pts[4], // 2 retries needed
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      withCancelled(makeFailed(trs[0])),
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
 	tcs := []struct {
 		name       string
 		state      PipelineRunState
@@ -176,6 +194,16 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		state:      runFailedState,
 		expected:   true,
 		ptExpected: []bool{true},
+	}, {
+		name:       "run-failed-with-retries",
+		state:      taskFailedWithRetries,
+		expected:   false,
+		ptExpected: []bool{false},
+	}, {
+		name:       "run-cancelled-failed-with-retries",
+		state:      taskCancelledFailedWithRetries,
+		expected:   true,
+		ptExpected: []bool{true},
 	}}
 
 	for _, tc := range tcs {
@@ -191,12 +219,12 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 			}
 
 			isDone := facts.checkTasksDone(d)
-			if d := cmp.Diff(isDone, tc.expected); d != "" {
+			if d := cmp.Diff(tc.expected, isDone); d != "" {
 				t.Errorf("Didn't get expected checkTasksDone %s", diff.PrintWantGot(d))
 			}
 			for i, pt := range tc.state {
 				isDone = pt.IsDone(&facts)
-				if d := cmp.Diff(isDone, tc.ptExpected[i]); d != "" {
+				if d := cmp.Diff(tc.ptExpected[i], isDone); d != "" {
 					t.Errorf("Didn't get expected (ResolvedPipelineRunTask) IsDone %s", diff.PrintWantGot(d))
 				}
 
