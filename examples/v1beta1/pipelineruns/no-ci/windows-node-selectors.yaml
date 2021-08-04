@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: windows-task-ns
+spec:
+  steps:
+  - name: ping-localhost
+    image: mcr.microsoft.com/windows/nanoserver:1809
+    command: ["cmd.exe"]
+    args:
+      - "/S"
+      - "/C"
+      - "echo Hello from Windows"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: windows-pipeline-ns
+spec:
+  tasks:
+  - name: windows-task-ns
+    taskRef:
+      name: windows-task-ns
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: windows-pipeline-ns-run
+spec:
+  pipelineRef:
+    name: windows-pipeline-ns
+  taskRunSpecs:
+    - pipelineTaskName: windows-task-ns
+      taskPodTemplate:
+        nodeSelector:
+          kubernetes.io/os: windows
