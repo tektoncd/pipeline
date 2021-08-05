@@ -180,17 +180,21 @@ Supporting timeouts is optional but recommended.
 
 #### Developer guide for custom controllers supporting `Timeout`
 
-1. A tektoncd owned controller will never directly update the status of the
+1. Tekton controllers will never directly update the status of the
    `Run`, it is the responsibility of the custom task controller to support
-   timeout.
+   timeout. If timeouts are not supported, it's the responsibility of the custom
+   task controller to reject `Run`s that specify a timeout value.
 2. On a `pipelineRun` or `pipelineTask` timeout, the status of the
-   `Run.Spec.Status` is updated to `RunCancelled`. It is upto the custom task
-   controller, to respond to it. An existing controller, which does not yet
+   `Run.Spec.Status` is updated to `RunCancelled`. It is up to the custom task
+   controller to respond to it. An existing controller, which does not yet
    support timeout, will be able to cleanup, if it supports a cancel.
 3. A Custom Task author can watch for this status update
    (i.e. `Run.Spec.Status == RunCancelled`) and or `Run.HasTimedOut()` and take
-   any corresponding actions ( i.e. a clean up e.g., cancel a cloud build, stop
+   any corresponding actions (i.e. a clean up e.g., cancel a cloud build, stop
    the waiting timer, tear down the approval listener).
+4. Once resources or timers are cleaned up it is good practice to set a
+   `conditions` on the `Run`'s `status` of `Succeeded/False` with a `Reason`
+   of `RunTimedOut`.
 
 ### Specifying `Parameters`
 
