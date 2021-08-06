@@ -2557,9 +2557,14 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 			tb.PipelineRunStartTime(time.Now()),
 		),
 	)}
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+		tb.PipelineTask("hello-world-2", "hello-world"),
+	))}
 
 	d := test.Data{
 		PipelineRuns: prs,
+		Pipelines:    ps,
 	}
 
 	testAssets, cancel := getPipelineRunController(t, d)
@@ -2581,6 +2586,13 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-to-cancel", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if val, ok := reconciledRun.GetLabels()[pipeline.PipelineLabelKey]; !ok {
+		t.Fatalf("expected pipeline label")
+		if d := cmp.Diff("test-pipelines", val); d != "" {
+			t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
+		}
 	}
 
 	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
@@ -2698,6 +2710,82 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	actual := getTaskRunCreations(t, actions)[0]
 	if d := cmp.Diff(actual, expected); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconcilePropagateLabelsPending(t *testing.T) {
+	names.TestingSeed()
+	taskName := "hello-world-1"
+
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask(taskName, "hello-world"),
+	))}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineRunPending,
+		),
+	)}
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
+
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when updating status: %v", err)
+	}
+
+	want := "test-pipeline"
+	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconcilePropagateLabelsCancelled(t *testing.T) {
+	names.TestingSeed()
+	taskName := "hello-world-1"
+
+	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
+		tb.PipelineTask(taskName, "hello-world"),
+	))}
+	prs := []*v1beta1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", tb.PipelineRunNamespace("foo"),
+		tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa"),
+			tb.PipelineRunCancelled,
+		),
+	)}
+	ts := []*v1beta1.Task{tb.Task("hello-world", tb.TaskNamespace("foo"))}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
+
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error when updating status: %v", err)
+	}
+
+	want := "test-pipeline"
+	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
 	}
 }
 

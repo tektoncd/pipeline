@@ -206,6 +206,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
 	}
 
+	if err := propagatePipelineNameLabelToPipelineRun(pr); err != nil {
+		logger.Errorf("Failed to propagate pipeline name label to pipelinerun %s: %v", pr.Name, err)
+		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
+	}
+
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
 		err := cancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
@@ -929,6 +934,21 @@ func getTaskrunAnnotations(pr *v1beta1.PipelineRun) map[string]string {
 		annotations[key] = val
 	}
 	return annotations
+}
+
+func propagatePipelineNameLabelToPipelineRun(pr *v1beta1.PipelineRun) error {
+	if pr.ObjectMeta.Labels == nil {
+		pr.ObjectMeta.Labels = make(map[string]string)
+	}
+	switch {
+	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
+		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
+	case pr.Spec.PipelineSpec != nil:
+		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+	default:
+		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
+	}
+	return nil
 }
 
 func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includePipelineLabels bool) map[string]string {
