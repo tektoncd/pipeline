@@ -137,7 +137,11 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 	}
 
 	status := "success"
-	if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+	if pr.Status.Conditions[0].Status == corev1.ConditionFalse &&
+		(pr.Status.Conditions[0].Reason == ReasonCancelled ||
+			pr.Status.Conditions[0].Reason == ReasonCancelledDeprecated) {
+		status = "cancelled"
+	} else if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
 		status = "failed"
 	}
 

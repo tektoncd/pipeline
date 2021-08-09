@@ -88,6 +88,38 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		expectedDuration: 60,
 		expectedCount:    1,
 	}, {
+		name: "for cancelled pipeline",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: ReasonCancelled,
+					}},
+				},
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		expectedTags: map[string]string{
+			"pipeline":    "pipeline-1",
+			"pipelinerun": "pipelinerun-1",
+			"namespace":   "ns",
+			"status":      "cancelled",
+		},
+		expectedCountTags: map[string]string{
+			"status": "cancelled",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+	}, {
 		name: "for failed pipeline",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
