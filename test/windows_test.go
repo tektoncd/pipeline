@@ -30,6 +30,11 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
+var (
+	ignoreTerminatedFields = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
+	ignoreStepFields       = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
+)
+
 func TestWindows(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -41,30 +46,21 @@ func TestWindows(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskName := "windows-task"
 	taskRunName := "windows-taskrun"
+	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      taskName,
-			Namespace: namespace,
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-				Command: []string{"cmd.exe"},
-				Args:    []string{"/c", "echo hello"},
-			}}},
-		},
-	}
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
 	taskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: taskName},
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
+						Command: []string{"cmd.exe"},
+						Args:    []string{"/c", "echo hello"},
+					},
+				}},
+			},
 			PodTemplate: &v1beta1.PodTemplate{
 				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
 			},
@@ -94,10 +90,8 @@ func TestWindows(t *testing.T) {
 		Name:          "unnamed-0",
 		ContainerName: "step-unnamed-0",
 	}}
-	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
+	if d := cmp.Diff(expectedStepState, taskrun.Status.Steps, ignoreTerminatedFields, ignoreStepFields); d != "" {
+		t.Fatalf("-want, +got: %v", d)
 	}
 }
 
@@ -112,35 +106,31 @@ func TestWindowsFailure(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskName := "failing-windows-task"
 	taskRunName := "failing-windows-taskrun"
+	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-				Command: []string{"cmd.exe"},
-				Args:    []string{"/c", "echo hello"},
-			}}, {Container: corev1.Container{
-				Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-				Command: []string{"cmd.exe"},
-				Args:    []string{"/c", "exit 1"},
-			}}, {Container: corev1.Container{
-				Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-				Command: []string{"cmd.exe"},
-				Args:    []string{"/c", "ping localhost -n 5"},
-			}}},
-		},
-	}
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task: %s", err)
-	}
 	taskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
 		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: taskName},
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
+						Command: []string{"cmd.exe"},
+						Args:    []string{"/c", "echo hello"},
+					}}, {
+					Container: corev1.Container{
+						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
+						Command: []string{"cmd.exe"},
+						Args:    []string{"/c", "exit 1"},
+					}}, {
+					Container: corev1.Container{
+						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
+						Command: []string{"cmd.exe"},
+						Args:    []string{"/c", "ping localhost -n 5"},
+					}},
+				},
+			},
 			PodTemplate: &v1beta1.PodTemplate{
 				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
 			},
@@ -188,9 +178,7 @@ func TestWindowsFailure(t *testing.T) {
 		Name:          "unnamed-2",
 		ContainerName: "step-unnamed-2",
 	}}
-	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	ignoreStepFields := cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
-		t.Fatalf("-got, +want: %v", d)
+	if d := cmp.Diff(expectedStepState, taskrun.Status.Steps, ignoreTerminatedFields, ignoreStepFields); d != "" {
+		t.Fatalf("-want, +got: %v", d)
 	}
 }
