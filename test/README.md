@@ -170,6 +170,14 @@ use `TEST_RUNTIME_ARCH` environment variable to specify the target hardware arch
 You can also use
 [all of flags defined in `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
+To include tests for Windows, you need to specify the `windows_e2e` build tag. For example:
+
+```shell
+go test -v -count=1 -tags=e2e,windows_e2e -timeout=20m ./test
+```
+
+Please note that in order to run Windows tests there must be at least one Windows node available in the target Kubernetes cluster. 
+
 ### Flags
 
 - By default the e2e tests against the current cluster in `~/.kube/config` using
