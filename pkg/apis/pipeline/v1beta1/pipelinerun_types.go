@@ -488,6 +488,9 @@ type PipelineTaskRunSpec struct {
 	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
 	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
 	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+
+	// +optional
+	Debug *TaskRunDebug `json:"debug,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
@@ -505,6 +508,9 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			}
 			if task.TaskServiceAccountName != "" {
 				s.TaskServiceAccountName = task.TaskServiceAccountName
+			}
+			if task.Debug != nil {
+				s.Debug = task.Debug
 			}
 		}
 	}

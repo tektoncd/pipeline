@@ -23,6 +23,7 @@ weight: 500
   - [Monitoring execution status](#monitoring-execution-status)
   - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
   - [Pending `PipelineRuns`](#pending-pipelineruns)
+  - [Debugging `PipelineRuns`](#debugging-pipelineruns)
 
 
 
@@ -638,6 +639,28 @@ spec:
 ```
 
 To start the PipelineRun, clear the `.spec.status` field. Alternatively, update the value to `PipelineRunCancelled` to cancel it.
+                      
+
+### Debugging `PipelineRuns`
+
+#### Breakpoint on Failure
+
+You can configure a TaskRun created by a `PipelineRun` to enable debug as follows:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-case-run
+spec:
+  taskRunSpecs:
+  - pipelineTaskName: my-task 
+    debug:
+      breakpoint: ["onFailure"]
+...
+```
+
+Then refer to the [TaskRun Debugging Documentation](taskruns.md#debugging-a-taskrun) for details of how to debug the `TaskRun`
 
 ---
 

@@ -1146,6 +1146,11 @@ func (in *PipelineTaskRunSpec) DeepCopyInto(out *PipelineTaskRunSpec) {
 		*out = new(pod.Template)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Debug != nil {
+		in, out := &in.Debug, &out.Debug
+		*out = new(TaskRunDebug)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

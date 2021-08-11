@@ -21,7 +21,12 @@ weight: 11
 ## Overview
 
 `Debug` spec is used for troubleshooting and breakpointing runtime resources. This doc helps understand the inner 
-workings of debug in Tekton. Currently only the `TaskRun` resource is supported. 
+workings of debug in Tekton. Debugging is supported in the `TaskRun`. 
+
+
+## Debugging PipelineRuns
+
+To see how to configure a `PipelineRun` to enable debugging of a `TaskRun` follow the [PipelineRun Debugging Documentation](pipelineruns.md#debugging-pipelineruns). The rest of the documentation assumes debugging of a `TaskRun`.
 
 ## Debugging TaskRuns
 

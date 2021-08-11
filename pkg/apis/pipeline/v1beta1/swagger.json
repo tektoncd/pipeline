@@ -1453,6 +1453,9 @@
       "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
       "type": "object",
       "properties": {
+        "debug": {
+          "$ref": "#/definitions/v1beta1.TaskRunDebug"
+        },
         "pipelineTaskName": {
           "type": "string"
         },

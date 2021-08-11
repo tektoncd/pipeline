@@ -599,6 +599,14 @@ func TaskRunSpecStatus(status v1beta1.TaskRunSpecStatus) TaskRunSpecOp {
 	}
 }
 
+// TaskRunSpecDebugBreakpoint sets the debug breakpoints in the Spec,
+// used for enabling breakpoints on TaskRuns
+func TaskRunSpecDebugBreakpoint(breakpoints []string) TaskRunSpecOp {
+	return func(spec *v1beta1.TaskRunSpec) {
+		spec.Debug = &v1beta1.TaskRunDebug{Breakpoint: breakpoints}
+	}
+}
+
 // TaskRefKind set the specified kind to the TaskRef.
 func TaskRefKind(kind v1beta1.TaskKind) TaskRefOp {
 	return func(ref *v1beta1.TaskRef) {

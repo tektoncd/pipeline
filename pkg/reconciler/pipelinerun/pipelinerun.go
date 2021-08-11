@@ -765,6 +765,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rprt.PipelineTask),
 		},
 		Spec: v1beta1.TaskRunSpec{
+			Debug:              taskRunSpec.Debug,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTimeoutFunc(ctx, pr, rprt),
