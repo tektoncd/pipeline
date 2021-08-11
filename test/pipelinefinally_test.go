@@ -110,6 +110,7 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	dag := map[string]pipelineTask{
 		"dagtask1": {
 			TaskName: task.Name,
+			RunAfter: []string{"dagtask2", "dagtask3", "dagtask4", "dagtask5"},
 		},
 		"dagtask2": {
 			TaskName: delayedTask.Name,
@@ -828,6 +829,7 @@ type pipelineTask struct {
 	Condition string
 	Param     []v1beta1.Param
 	When      v1beta1.WhenExpressions
+	RunAfter  []string
 }
 
 func getPipeline(t *testing.T, namespace string, dag map[string]pipelineTask, f map[string]pipelineTask) *v1beta1.Pipeline {
@@ -848,6 +850,9 @@ func getPipeline(t *testing.T, namespace string, dag map[string]pipelineTask, f 
 		}
 		if len(v.When) != 0 {
 			task.WhenExpressions = v.When
+		}
+		if len(v.RunAfter) != 0 {
+			task.RunAfter = v.RunAfter
 		}
 		pt = append(pt, task)
 	}

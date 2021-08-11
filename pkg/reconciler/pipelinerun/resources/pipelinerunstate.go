@@ -409,24 +409,21 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 // GetSkippedTasks constructs a list of SkippedTask struct to be included in the PipelineRun Status
 func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 	var skipped []v1beta1.SkippedTask
-	for _, rprt := range facts.State {
-		if rprt.Skip(facts).IsSkipped {
-			skippedTask := v1beta1.SkippedTask{
-				Name:            rprt.PipelineTask.Name,
-				WhenExpressions: rprt.PipelineTask.WhenExpressions,
-			}
-			skipped = append(skipped, skippedTask)
+	appendSkippedTask := func(rprt *ResolvedPipelineRunTask, skippingReason SkippingReason) {
+		skippedTask := v1beta1.SkippedTask{
+			Name: rprt.PipelineTask.Name,
 		}
-		if rprt.IsFinallySkipped(facts).IsSkipped {
-			skippedTask := v1beta1.SkippedTask{
-				Name: rprt.PipelineTask.Name,
-			}
-			// include the when expressions only when the finally task was skipped because
-			// its when expressions evaluated to false (not because results variables were missing)
-			if !rprt.PipelineTask.WhenExpressions.HaveVariables() {
-				skippedTask.WhenExpressions = rprt.PipelineTask.WhenExpressions
-			}
-			skipped = append(skipped, skippedTask)
+		if skippingReason == WhenExpressionsSkip {
+			skippedTask.WhenExpressions = rprt.PipelineTask.WhenExpressions
+		}
+		skipped = append(skipped, skippedTask)
+	}
+	for _, rprt := range facts.State {
+		if taskSkipStatus := rprt.Skip(facts); taskSkipStatus.IsSkipped {
+			appendSkippedTask(rprt, taskSkipStatus.SkippingReason)
+		}
+		if finallyTaskSkipStatus := rprt.IsFinallySkipped(facts); finallyTaskSkipStatus.IsSkipped {
+			appendSkippedTask(rprt, finallyTaskSkipStatus.SkippingReason)
 		}
 	}
 	return skipped

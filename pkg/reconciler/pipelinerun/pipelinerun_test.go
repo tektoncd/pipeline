@@ -3941,11 +3941,6 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 	}, {
 		// was attempted, but has missing results references
 		Name: "e-task",
-		WhenExpressions: v1beta1.WhenExpressions{{
-			Input:    "$(tasks.a-task.results.aResult)",
-			Operator: "in",
-			Values:   []string{"aResultValue"},
-		}},
 	}, {
 		Name: "f-task",
 	}}
