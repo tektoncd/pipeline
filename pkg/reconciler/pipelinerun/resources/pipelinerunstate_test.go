@@ -1586,30 +1586,60 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 }
 
 func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
-	dagFailedFinalSkipped := PipelineRunState{{
-		TaskRunName:  "task0taskrun",
-		PipelineTask: &pts[0],
-		TaskRun:      makeFailed(trs[0]),
+	for _, tc := range []struct {
+		name                 string
+		state                PipelineRunState
+		dagTasks             []v1beta1.PipelineTask
+		finallyTasks         []v1beta1.PipelineTask
+		expectedSkippedTasks []v1beta1.SkippedTask
+	}{{
+		name: "missing-results-skip-finally",
+		state: PipelineRunState{{
+			TaskRunName:  "task0taskrun",
+			PipelineTask: &pts[0],
+			TaskRun:      makeFailed(trs[0]),
+		}, {
+			PipelineTask: &pts[14],
+		}},
+		dagTasks:     []v1beta1.PipelineTask{pts[0]},
+		finallyTasks: []v1beta1.PipelineTask{pts[14]},
+		expectedSkippedTasks: []v1beta1.SkippedTask{{
+			Name: pts[14].Name,
+		}},
 	}, {
-		PipelineTask: &pts[14],
-	}}
-	expectedSkippedTasks := []v1beta1.SkippedTask{{Name: pts[14].Name}}
-	d, err := dag.Build(v1beta1.PipelineTaskList{pts[0]}, v1beta1.PipelineTaskList{pts[0]}.Deps())
-	if err != nil {
-		t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", v1beta1.PipelineTaskList{pts[0]}, err)
-	}
-	df, err := dag.Build(v1beta1.PipelineTaskList{pts[14]}, map[string][]string{})
-	if err != nil {
-		t.Fatalf("Unexpected error while building graph for final tasks %v: %v", v1beta1.PipelineTaskList{pts[14]}, err)
-	}
-	facts := PipelineRunFacts{
-		State:           dagFailedFinalSkipped,
-		TasksGraph:      d,
-		FinalTasksGraph: df,
-	}
-	actualSkippedTasks := facts.GetSkippedTasks()
-	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
-		t.Fatalf("Mismatch skipped tasks %s", diff.PrintWantGot(d))
+		name: "when-expressions-skip-finally",
+		state: PipelineRunState{{
+			PipelineTask: &pts[10],
+		}},
+		finallyTasks: []v1beta1.PipelineTask{pts[10]},
+		expectedSkippedTasks: []v1beta1.SkippedTask{{
+			Name: pts[10].Name,
+			WhenExpressions: []v1beta1.WhenExpression{{
+				Input:    "foo",
+				Operator: "notin",
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := dag.Build(v1beta1.PipelineTaskList(tc.dagTasks), v1beta1.PipelineTaskList(tc.dagTasks).Deps())
+			if err != nil {
+				t.Fatalf("Unexpected error while building graph for DAG tasks %v: %v", v1beta1.PipelineTaskList{pts[0]}, err)
+			}
+			df, err := dag.Build(v1beta1.PipelineTaskList(tc.finallyTasks), map[string][]string{})
+			if err != nil {
+				t.Fatalf("Unexpected error while building graph for final tasks %v: %v", v1beta1.PipelineTaskList{pts[14]}, err)
+			}
+			facts := PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: df,
+			}
+			actualSkippedTasks := facts.GetSkippedTasks()
+			if d := cmp.Diff(tc.expectedSkippedTasks, actualSkippedTasks); d != "" {
+				t.Fatalf("Mismatch skipped tasks %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

@@ -88,66 +88,6 @@ func TestAllowsExecution(t *testing.T) {
 	}
 }
 
-func TestHaveVariables(t *testing.T) {
-	tests := []struct {
-		name            string
-		whenExpressions WhenExpressions
-		expected        bool
-	}{{
-		name: "doesn't have variable",
-		whenExpressions: WhenExpressions{
-			{
-				Input:    "foo",
-				Operator: selection.In,
-				Values:   []string{"foo", "bar"},
-			},
-		},
-		expected: false,
-	}, {
-		name: "have variable - input",
-		whenExpressions: WhenExpressions{
-			{
-				Input:    "$(params.foobar)",
-				Operator: selection.NotIn,
-				Values:   []string{"foobar"},
-			},
-		},
-		expected: true,
-	}, {
-		name: "have variable - values",
-		whenExpressions: WhenExpressions{
-			{
-				Input:    "foobar",
-				Operator: selection.In,
-				Values:   []string{"$(params.foobar)"},
-			},
-		},
-		expected: true,
-	}, {
-		name: "have variable - multiple when expressions",
-		whenExpressions: WhenExpressions{
-			{
-				Input:    "foo",
-				Operator: selection.NotIn,
-				Values:   []string{"bar"},
-			}, {
-				Input:    "foobar",
-				Operator: selection.In,
-				Values:   []string{"$(params.foobar)"},
-			},
-		},
-		expected: true,
-	}}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.whenExpressions.HaveVariables()
-			if d := cmp.Diff(tc.expected, got); d != "" {
-				t.Errorf("Error evaluating HaveVariables() for When Expressions in test case %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestReplaceWhenExpressionsVariables(t *testing.T) {
 	tests := []struct {
 		name            string

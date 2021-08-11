@@ -54,13 +54,6 @@ func (we *WhenExpression) isTrue() bool {
 	return !we.isInputInValues()
 }
 
-func (we *WhenExpression) hasVariable() bool {
-	if _, hasVariable := we.GetVarSubstitutionExpressions(); hasVariable {
-		return true
-	}
-	return false
-}
-
 func (we *WhenExpression) applyReplacements(replacements map[string]string, arrayReplacements map[string][]string) WhenExpression {
 	replacedInput := substitution.ApplyReplacements(we.Input, replacements)
 
@@ -103,17 +96,6 @@ func (wes WhenExpressions) AllowsExecution() bool {
 		}
 	}
 	return true
-}
-
-// HaveVariables indicates whether When Expressions contains variables, such as Parameters
-// or Results in the Inputs or Values.
-func (wes WhenExpressions) HaveVariables() bool {
-	for _, we := range wes {
-		if we.hasVariable() {
-			return true
-		}
-	}
-	return false
 }
 
 // ReplaceWhenExpressionsVariables interpolates variables, such as Parameters and Results, in
