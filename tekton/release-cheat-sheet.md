@@ -138,7 +138,7 @@ the pipelines repo, a terminal window and a text editor.
 
     1. Publish the GitHub release once all notes are correct and in order.
 
-1. Edit `README.md` on `master` branch, add entry to docs table with latest release links.
+1. Edit `README.md` on `main` branch, add entry to docs table with latest release links.
 
 1. Push & make PR for updated `README.md`
 
