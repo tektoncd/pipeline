@@ -39,7 +39,7 @@ import (
 const (
 	timeFormat      = "2006-01-02T15:04:05.000Z07:00"
 	ContinueOnError = "continue"
-	FailOnError     = "fail"
+	FailOnError     = "stopAndFail"
 )
 
 // Entrypointer holds fields for running commands with redirected
@@ -76,7 +76,7 @@ type Entrypointer struct {
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
 	BreakpointOnFailure bool
 	// OnError defines exiting behavior of the entrypoint
-	// set it to "fail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
+	// set it to "stopAndFail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
 	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
