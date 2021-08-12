@@ -86,6 +86,13 @@ func TestEntrypointerFailures(t *testing.T) {
 				fr = &fakeRunner{}
 			}
 			fpw := &fakePostWriter{}
+			terminationPath := "termination"
+			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+				t.Fatalf("unexpected error creating temporary termination file: %v", err)
+			} else {
+				terminationPath = terminationFile.Name()
+				defer os.Remove(terminationFile.Name())
+			}
 			err := Entrypointer{
 				Entrypoint:      "echo",
 				WaitFiles:       c.waitFiles,
@@ -94,7 +101,7 @@ func TestEntrypointerFailures(t *testing.T) {
 				Waiter:          fw,
 				Runner:          fr,
 				PostWriter:      fpw,
-				TerminationPath: "termination",
+				TerminationPath: terminationPath,
 				Timeout:         &c.timeout,
 			}.Go()
 			if err == nil {
