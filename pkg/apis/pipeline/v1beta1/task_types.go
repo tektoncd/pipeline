@@ -143,8 +143,8 @@ type Step struct {
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 
 	// OnError defines the exiting behavior of a container on error
-	// can be set to [ continue | fail ]
-	// fail indicates exit the taskRun if the container exits with non-zero exit code
+	// can be set to [ continue | stopAndFail ]
+	// stopAndFail indicates exit the taskRun if the container exits with non-zero exit code
 	// continue indicates continue executing the rest of the steps irrespective of the container exit code
 	OnError string `json:"onError,omitempty"`
 }

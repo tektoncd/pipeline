@@ -357,7 +357,7 @@ func TestEntryPointOnError(t *testing.T) {
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/steps/step-passing-step",
 			"-step_metadata_dir_link", "/tekton/steps/1",
-			"-on_error", "fail",
+			"-on_error", "stopAndFail",
 			"-entrypoint", "cmd", "--",
 		},
 		VolumeMounts:           []corev1.VolumeMount{toolsMount},

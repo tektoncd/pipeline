@@ -296,7 +296,7 @@ When a `step` in a `task` results in a failure, the rest of the steps in the `ta
 declared a failure. If you would like to ignore such step errors and continue executing the rest of the steps in
 the task, you can specify `onError` for such a `step`.
 
-`onError` can be set to either `continue` or `fail` as part of the step definition. If `onError` is
+`onError` can be set to either `continue` or `stopAndFail` as part of the step definition. If `onError` is
 set to `continue`, the entrypoint sets the original failed exit code of the [script](#running-scripts-within-steps)
 in the container terminated state. A `step` with `onError` set to `continue` does not fail the `taskRun` and continues
 executing the rest of the steps in a task.
