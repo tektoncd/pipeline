@@ -223,11 +223,11 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 
 	if s.OnError != "" {
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "step onError", config.AlphaAPIFields).ViaField("steps"))
-		if s.OnError != "continue" && s.OnError != "fail" {
+		if s.OnError != "continue" && s.OnError != "stopAndFail" {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value: %v", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either continue or fail",
+				Details: "Task step onError must be either continue or stopAndFail",
 			})
 		}
 	}
