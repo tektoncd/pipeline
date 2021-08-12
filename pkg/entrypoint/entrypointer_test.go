@@ -295,13 +295,13 @@ func TestEntrypointer_OnError(t *testing.T) {
 		onError:       ContinueOnError,
 		expectedError: false,
 	}, {
-		desc:          "the step is exiting with 1, treat the step error as failure with onError set to fail",
+		desc:          "the step is exiting with 1, treat the step error as failure with onError set to stopAndFail",
 		runner:        &fakeExitErrorRunner{},
 		expectedError: true,
 		postFile:      "step-one",
 		onError:       FailOnError,
 	}, {
-		desc:          "the step is exiting with 0, treat the step error (but there is none) as failure with onError set to fail",
+		desc:          "the step is exiting with 0, treat the step error (but there is none) as failure with onError set to stopAndFail",
 		runner:        &fakeRunner{},
 		postFile:      "step-one",
 		onError:       FailOnError,

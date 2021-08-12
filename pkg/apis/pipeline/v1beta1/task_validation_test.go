@@ -1150,9 +1150,9 @@ func TestStepOnError(t *testing.T) {
 			},
 		}},
 	}, {
-		name: "valid step - valid onError usage - set to fail - alpha API",
+		name: "valid step - valid onError usage - set to stopAndFail - alpha API",
 		steps: []v1beta1.Step{{
-			OnError: "fail",
+			OnError: "stopAndFail",
 			Container: corev1.Container{
 				Image: "image",
 				Args:  []string{"arg"},
@@ -1170,7 +1170,7 @@ func TestStepOnError(t *testing.T) {
 		expectedError: &apis.FieldError{
 			Message: fmt.Sprintf("invalid value: onError"),
 			Paths:   []string{"onError"},
-			Details: "Task step onError must be either continue or fail",
+			Details: "Task step onError must be either continue or stopAndFail",
 		},
 	}}
 	for _, tt := range tests {
