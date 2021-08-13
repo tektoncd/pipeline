@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: publish-release
+  annotations:
+    chains.tekton.dev/transparency-upload: "true"
 spec:
   params:
     - name: package
@@ -52,6 +54,10 @@ spec:
         value: "$(params.imageRegistryRegions)"
       - name: OUTPUT_RELEASE_DIR
         value: "$(workspaces.output.path)/$(params.versionTag)"
+  results:
+  # IMAGES result is picked up by Tekton Chains to sign the release.
+  # See https://github.com/tektoncd/plumbing/blob/main/docs/signing.md for more info.
+  - name: IMAGES
   steps:
 
   - name: create-ko-yaml
@@ -177,6 +183,8 @@ spec:
         IMAGE_WITHOUT_SHA_AND_TAG=${IMAGE_WITHOUT_SHA%%:*}
         IMAGE_WITH_SHA=${IMAGE_WITHOUT_SHA_AND_TAG}@${IMAGE##*@}
 
+        echo $IMAGE_WITH_SHA, >> $(results.IMAGES.path)
+
         if [[ "$(params.releaseAsLatest)" == "true" ]]
         then
           crane cp ${IMAGE_WITH_SHA} ${IMAGE_WITHOUT_SHA_AND_TAG}:latest
@@ -193,6 +201,7 @@ spec:
           else
             TAG="$(params.versionTag)"
             crane cp ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
+            echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
           fi
         done
       done
