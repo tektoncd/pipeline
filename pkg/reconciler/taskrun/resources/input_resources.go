@@ -62,7 +62,7 @@ func AddInputResource(
 	mountPVC := false
 	mountSecrets := false
 
-	prNameFromLabel := taskRun.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
+	prNameFromLabel := taskRun.Labels[pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}

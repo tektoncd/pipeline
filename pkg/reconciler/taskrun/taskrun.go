@@ -302,9 +302,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 	if tr.Spec.TaskRef != nil {
 		if tr.Spec.TaskRef.Kind == "ClusterTask" {
-			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.ClusterTaskLabelKey] = taskMeta.Name
+			tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = taskMeta.Name
 		} else {
-			tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+			tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = taskMeta.Name
 		}
 	}
 
@@ -401,7 +401,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		// List pods that have a label with this TaskRun name.  Do not include other labels from the
 		// TaskRun in this selector.  The user could change them during the lifetime of the TaskRun so the
 		// current labels may not be set on a previously created Pod.
-		labelSelector := fmt.Sprintf("%s=%s", podconvert.TaskRunLabelKey, tr.Name)
+		labelSelector := fmt.Sprintf("%s=%s", pipeline.TaskRunLabelKey, tr.Name)
 		pos, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})

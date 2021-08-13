@@ -135,8 +135,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrun-1", Namespace: "ns",
 				Labels: map[string]string{
-					pipeline.GroupName + pipeline.PipelineLabelKey:    "pipeline-1",
-					pipeline.GroupName + pipeline.PipelineRunLabelKey: "pipelinerun-1",
+					pipeline.PipelineLabelKey:    "pipeline-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
 				},
 			},
 			Spec: v1beta1.TaskRunSpec{
@@ -175,8 +175,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrun-1", Namespace: "ns",
 				Labels: map[string]string{
-					pipeline.GroupName + pipeline.PipelineLabelKey:    "pipeline-1",
-					pipeline.GroupName + pipeline.PipelineRunLabelKey: "pipelinerun-1",
+					pipeline.PipelineLabelKey:    "pipeline-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
 				},
 			},
 			Spec: v1beta1.TaskRunSpec{
@@ -347,8 +347,8 @@ func TestRecordCloudEvents(t *testing.T) {
 		name: "for succeeded task",
 		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunNamespace("ns"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
+			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline-1"),
+			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun-1"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),
@@ -379,8 +379,8 @@ func TestRecordCloudEvents(t *testing.T) {
 		name: "for failed task",
 		taskRun: tb.TaskRun("taskrun-1",
 			tb.TaskRunNamespace("ns"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline-1"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun-1"),
+			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline-1"),
+			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun-1"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task-1"),
 			),

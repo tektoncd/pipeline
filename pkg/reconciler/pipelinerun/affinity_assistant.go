@@ -115,7 +115,7 @@ func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string)
 	for key, val := range pr.ObjectMeta.Labels {
 		labels[key] = val
 	}
-	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	labels[pipeline.PipelineRunLabelKey] = pr.Name
 
 	// LabelInstance is used to configure PodAffinity for all TaskRuns belonging to this Affinity Assistant
 	// LabelComponent is used to configure PodAntiAffinity to other Affinity Assistants

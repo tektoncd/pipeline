@@ -212,8 +212,8 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		tr: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					pipeline.GroupName + pipeline.PipelineLabelKey:    "pipeline",
-					pipeline.GroupName + pipeline.PipelineRunLabelKey: "pipelinerun",
+					pipeline.PipelineLabelKey:    "pipeline",
+					pipeline.PipelineRunLabelKey: "pipelinerun",
 				},
 			},
 		},

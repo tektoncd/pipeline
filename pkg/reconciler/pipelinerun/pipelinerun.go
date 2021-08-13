@@ -352,7 +352,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	for key, value := range pipelineMeta.Labels {
 		pr.ObjectMeta.Labels[key] = value
 	}
-	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pipelineMeta.Name
+	pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pipelineMeta.Name
 
 	// Propagate annotations from Pipeline to PipelineRun.
 	if pr.ObjectMeta.Annotations == nil {
@@ -940,22 +940,22 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includeP
 			labels[key] = val
 		}
 	}
-	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	labels[pipeline.PipelineRunLabelKey] = pr.Name
 	if pipelineTaskName != "" {
-		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = pipelineTaskName
+		labels[pipeline.PipelineTaskLabelKey] = pipelineTaskName
 	}
 	if pr.Status.PipelineSpec != nil {
 		// check if a task is part of the "tasks" section, add a label to identify it during the runtime
 		for _, f := range pr.Status.PipelineSpec.Tasks {
 			if pipelineTaskName == f.Name {
-				labels[pipeline.GroupName+pipeline.MemberOfLabelKey] = v1beta1.PipelineTasks
+				labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineTasks
 				break
 			}
 		}
 		// check if a task is part of the "finally" section, add a label to identify it during the runtime
 		for _, f := range pr.Status.PipelineSpec.Finally {
 			if pipelineTaskName == f.Name {
-				labels[pipeline.GroupName+pipeline.MemberOfLabelKey] = v1beta1.PipelineFinallyTasks
+				labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineFinallyTasks
 				break
 			}
 		}
@@ -1133,8 +1133,8 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1
 
 func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
 	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name, true)
-	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
-	labels[pipeline.GroupName+pipeline.ConditionNameKey] = rcc.Condition.Name
+	labels[pipeline.ConditionCheckKey] = rcc.ConditionCheckName
+	labels[pipeline.ConditionNameKey] = rcc.Condition.Name
 
 	for key, value := range rcc.Condition.ObjectMeta.Labels {
 		labels[key] = value
@@ -1234,8 +1234,8 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.
 			continue
 		}
 		lbls := taskrun.GetLabels()
-		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
-		if _, ok := lbls[pipeline.GroupName+pipeline.ConditionCheckKey]; ok {
+		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
+		if _, ok := lbls[pipeline.ConditionCheckKey]; ok {
 			// Save condition for looping over them after this
 			if _, ok := conditionTaskRuns[pipelineTaskName]; !ok {
 				// If it's the first condition taskrun, initialise the slice
@@ -1284,7 +1284,7 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.
 				// The condition check was not found, so we need to add it
 				// We only add the condition name, the status can now be gathered by the
 				// normal reconcile process
-				if conditionName, ok := lbls[pipeline.GroupName+pipeline.ConditionNameKey]; ok {
+				if conditionName, ok := lbls[pipeline.ConditionNameKey]; ok {
 					conditionChecks[foundTaskRun.Name] = &v1beta1.PipelineRunConditionCheckStatus{
 						ConditionName: fmt.Sprintf("%s-%s", conditionName, strconv.Itoa(i)),
 					}
@@ -1316,7 +1316,7 @@ func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.Pipe
 			continue
 		}
 		lbls := run.GetLabels()
-		pipelineTaskName := lbls[pipeline.GroupName+pipeline.PipelineTaskLabelKey]
+		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
 		if _, ok := pr.Status.Runs[run.Name]; !ok {
 			// This run was missing from the status.
 			pr.Status.Runs[run.Name] = &v1beta1.PipelineRunRunStatus{
