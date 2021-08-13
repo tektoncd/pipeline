@@ -430,8 +430,8 @@ func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
 		return false, "", ""
 	}
 
-	if pl, ok := tr.Labels[pipeline.GroupName+pipeline.PipelineLabelKey]; ok {
-		return true, pl, tr.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
+	if pl, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
+		return true, pl, tr.Labels[pipeline.PipelineRunLabelKey]
 	}
 
 	return false, "", ""

@@ -73,7 +73,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 			}
 
 			pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("%s=%s", pipeline.GroupName+pipeline.TaskRunLabelKey, taskrunName),
+				LabelSelector: fmt.Sprintf("%s=%s", pipeline.TaskRunLabelKey, taskrunName),
 			})
 			if err != nil {
 				t.Errorf("Error getting TaskRun pod list: %v", err)

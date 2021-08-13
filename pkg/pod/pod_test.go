@@ -1806,9 +1806,9 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 func TestMakeLabels(t *testing.T) {
 	taskRunName := "task-run-name"
 	want := map[string]string{
-		TaskRunLabelKey: taskRunName,
-		"foo":           "bar",
-		"hello":         "world",
+		pipeline.TaskRunLabelKey: taskRunName,
+		"foo":                    "bar",
+		"hello":                  "world",
 	}
 	got := makeLabels(&v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{

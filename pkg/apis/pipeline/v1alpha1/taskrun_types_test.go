@@ -175,8 +175,8 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 	}{{
 		name: "yes",
 		tr: tb.TaskRun("taskrunname",
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun"),
+			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline"),
+			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun"),
 		),
 		expectedValue:         true,
 		expetectedPipeline:    "pipeline",

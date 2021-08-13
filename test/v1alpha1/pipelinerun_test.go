@@ -447,7 +447,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 		labels[key] = val
 	}
 	// This label is added to every PipelineRun by the PipelineRun controller
-	labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
+	labels[pipeline.PipelineLabelKey] = p.Name
 	assertLabelsMatch(t, labels, pr.ObjectMeta.Labels)
 
 	// Check label propagation to TaskRuns.
@@ -455,7 +455,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 		labels[key] = val
 	}
 	// This label is added to every TaskRun by the PipelineRun controller
-	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	labels[pipeline.PipelineRunLabelKey] = pr.Name
 	if tr.Spec.TaskRef != nil {
 		task, err := c.TaskClient.Get(ctx, tr.Spec.TaskRef.Name, metav1.GetOptions{})
 		if err != nil {
@@ -465,7 +465,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 			labels[key] = val
 		}
 		// This label is added to TaskRuns that reference a Task by the TaskRun controller
-		labels[pipeline.GroupName+pipeline.TaskLabelKey] = task.Name
+		labels[pipeline.TaskLabelKey] = task.Name
 	}
 	assertLabelsMatch(t, labels, tr.ObjectMeta.Labels)
 
@@ -475,7 +475,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 		// Check label propagation to Pods.
 		pod := getPodForTaskRun(ctx, t, c.KubeClient, namespace, tr)
 		// This label is added to every Pod by the TaskRun controller
-		labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
+		labels[pipeline.TaskRunLabelKey] = tr.Name
 		assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
 	}
 }
@@ -522,7 +522,7 @@ func checkAnnotationPropagation(ctx context.Context, t *testing.T, c *clients, n
 func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
 	pods, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: pipeline.GroupName + pipeline.TaskRunLabelKey + " = " + tr.Name,
+		LabelSelector: pipeline.TaskRunLabelKey + " = " + tr.Name,
 	})
 	if err != nil {
 		t.Fatalf("Couldn't get expected Pod for %s: %s", tr.Name, err)
