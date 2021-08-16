@@ -177,7 +177,7 @@ IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
 _EOF_
 /tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -316,7 +316,7 @@ else
 fi
 debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount, debugScriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount, debugScriptsVolumeMount},
 	}
 	want := []corev1.Container{{
 		Image:   "step-1",
@@ -408,7 +408,7 @@ IyEvYmluL3NoCnNpZGVjYXItMQ==
 _EOF_
 /tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
