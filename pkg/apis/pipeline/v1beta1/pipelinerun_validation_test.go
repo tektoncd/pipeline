@@ -433,6 +433,21 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				"workspaces[0].volumeclaimtemplate",
 			},
 		},
+	}, {
+		name: "using debug when apifields stable",
+		spec: v1beta1.PipelineRunSpec{
+			Status: v1beta1.PipelineRunSpecStatusPending,
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "prname",
+			},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "something",
+					Debug:            &v1beta1.TaskRunDebug{Breakpoint: []string{"onFailure"}},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("taskRunSpecs", "debug"),
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
@@ -448,6 +463,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 	tests := []struct {
 		name string
 		spec v1beta1.PipelineRunSpec
+		wc   func(context.Context) context.Context
 	}{{
 		name: "PipelineRun without pipelineRef",
 		spec: v1beta1.PipelineRunSpec{
@@ -460,10 +476,29 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "debug when apifields alpha",
+		spec: v1beta1.PipelineRunSpec{
+			Status: v1beta1.PipelineRunSpecStatusPending,
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "prname",
+			},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "something",
+					Debug:            &v1beta1.TaskRunDebug{Breakpoint: []string{"onFailure"}},
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
-			if err := ps.spec.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			if ps.wc != nil {
+				ctx = ps.wc(ctx)
+			}
+			if err := ps.spec.Validate(ctx); err != nil {
 				t.Error(err)
 			}
 		})
