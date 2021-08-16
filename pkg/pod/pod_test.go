@@ -652,7 +652,7 @@ func TestPodBuild(t *testing.T) {
 					Name:         "place-scripts",
 					Image:        "busybox",
 					Command:      []string{"sh"},
-					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 					Args: []string{"-c", `scriptfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
@@ -910,7 +910,7 @@ IyEvdXNyL2Jpbi9lbnYgcHl0aG9uCnByaW50KCJIZWxsbyBmcm9tIFB5dGhvbiIp
 _EOF_
 /tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
-					VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 				},
 			},
 			Containers: []corev1.Container{{
@@ -1035,7 +1035,7 @@ IyEvYmluL3NoCiQk
 _EOF_
 /tekton/tools/entrypoint decode-script "${scriptfile}"
 `},
-				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, toolsMount},
+				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
 			}},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
