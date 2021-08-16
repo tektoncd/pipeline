@@ -128,6 +128,16 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	for idx, trs := range ps.TaskRunSpecs {
+		if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+			if trs.Debug != nil {
+				errs = errs.Also(validateDebug(trs.Debug).ViaField("debug").ViaFieldIndex("taskRunSpecs", idx))
+			}
+		} else if trs.Debug != nil {
+			errs = errs.Also(apis.ErrDisallowedFields("taskRunSpecs", "debug"))
+		}
+	}
+
 	return errs
 }
 
