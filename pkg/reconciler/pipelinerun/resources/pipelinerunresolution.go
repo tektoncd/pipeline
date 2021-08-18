@@ -232,7 +232,7 @@ func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 		facts.SkipCache = make(map[string]TaskSkipStatus)
 	}
 	if _, cached := facts.SkipCache[t.PipelineTask.Name]; !cached {
-		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts) // t.skip() is same as our existing t.Skip()
+		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts)
 	}
 	return facts.SkipCache[t.PipelineTask.Name]
 }
