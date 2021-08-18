@@ -50,6 +50,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 
 	groupVersions := make(map[string]clientgentypes.GroupVersions)
 	groupGoNames := make(map[string]string)
+	groupVersionTypes := make(map[string]map[clientgentypes.Version][]*types.Type)
 	for _, inputDir := range arguments.InputDirs {
 		p := context.Universe.Package(vendorless(inputDir))
 
@@ -78,15 +79,10 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			groupGoNames[groupPackageName] = namer.IC(override[0])
 		}
 
-		// Generate the client and fake.
-		packageList = append(packageList, versionClientsPackages(versionPackagePath, boilerplate, customArgs)...)
-
-		// Generate the informer factory and fake.
-		packageList = append(packageList, versionFactoryPackages(versionPackagePath, boilerplate, customArgs)...)
-
 		var typesWithInformers []*types.Type
 		var duckTypes []*types.Type
 		var reconcilerTypes []*types.Type
+		var clientTypes []*types.Type
 		for _, t := range p.Types {
 			tags := MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
 			if tags.NeedsInformerInjection() {
@@ -97,6 +93,9 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			}
 			if tags.NeedsReconciler(t, customArgs) {
 				reconcilerTypes = append(reconcilerTypes, t)
+			}
+			if tags.GenerateClient {
+				clientTypes = append(clientTypes, t)
 			}
 		}
 
@@ -109,6 +108,12 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 		}
 		groupVersionsEntry.Versions = append(groupVersionsEntry.Versions, clientgentypes.PackageVersion{Version: gv.Version, Package: gvPackage})
 		targetGroupVersions[groupPackageName] = groupVersionsEntry
+		verTypes, ok := groupVersionTypes[groupPackageName]
+		if !ok {
+			verTypes = make(map[clientgentypes.Version][]*types.Type)
+		}
+		verTypes[gv.Version] = clientTypes
+		groupVersionTypes[groupPackageName] = verTypes
 
 		if len(typesWithInformers) != 0 {
 			orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
@@ -134,6 +139,12 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			packageList = append(packageList, reconcilerPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, reconcilerTypes, customArgs)...)
 		}
 	}
+
+	// Generate the client and fake.
+	packageList = append(packageList, versionClientsPackages(versionPackagePath, boilerplate, customArgs, groupVersions, groupGoNames, groupVersionTypes)...)
+
+	// Generate the informer factory and fake.
+	packageList = append(packageList, versionFactoryPackages(versionPackagePath, boilerplate, customArgs)...)
 
 	return packageList
 }
@@ -233,7 +244,7 @@ func typedInformerPackage(groupPkgName string, gv clientgentypes.GroupVersion, e
 	return filepath.Join(externalVersionsInformersPackage, groupPkgName, gv.Version.String())
 }
 
-func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs) []generator.Package {
+func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs, groupVersions map[string]clientgentypes.GroupVersions, groupGoNames map[string]string, groupVersionTypes map[string]map[clientgentypes.Version][]*types.Type) []generator.Package {
 	packagePath := filepath.Join(basePackage, "client")
 
 	return []generator.Package{
@@ -248,6 +259,11 @@ func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *
 					DefaultGen: generator.DefaultGen{
 						OptionalName: "client",
 					},
+
+					groupVersions:     groupVersions,
+					groupGoNames:      groupGoNames,
+					groupVersionTypes: groupVersionTypes,
+
 					outputPackage:    packagePath,
 					imports:          generator.NewImportTracker(),
 					clientSetPackage: customArgs.VersionedClientSetPackage,
@@ -392,6 +408,7 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 	filteredFactoryPackagePath := filepath.Join(basePackage, "informers", "factory", "filtered")
 
 	packagePath := filepath.Join(basePackage, "informers", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
+	listerPackagePath := filepath.Join(customArgs.ListersPackage, groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
 	vers := make([]generator.Package, 0, 2*len(typesToGenerate))
 
@@ -419,6 +436,9 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 					imports:                     generator.NewImportTracker(),
 					typedInformerPackage:        typedInformerPackage,
 					groupInformerFactoryPackage: factoryPackagePath,
+					clientSetPackage:            customArgs.VersionedClientSetPackage,
+					injectionClientSetPackage:   filepath.Join(basePackage, "client"),
+					listerPkg:                   listerPackagePath,
 				})
 				return generators
 			},
@@ -472,6 +492,9 @@ func versionInformerPackages(basePackage string, groupPkgName string, gv clientg
 					imports:                     generator.NewImportTracker(),
 					typedInformerPackage:        typedInformerPackage,
 					groupInformerFactoryPackage: filteredFactoryPackagePath,
+					clientSetPackage:            customArgs.VersionedClientSetPackage,
+					injectionClientSetPackage:   filepath.Join(basePackage, "client"),
+					listerPkg:                   listerPackagePath,
 				})
 				return generators
 			},

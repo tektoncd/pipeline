@@ -78,6 +78,29 @@ type Interface interface {
 	SetupInformers(context.Context, *rest.Config) (context.Context, []controller.Informer)
 }
 
+// DynamicInterface is the interface for interacting with dynamicclient-based injection
+// implementations, such as Dynamic below.
+type DynamicInterface interface {
+	// RegisterDynamicClient registers a new injector callback for associating
+	// a new dynamicclient-based client with a context.
+	RegisterDynamicClient(DynamicClientInjector)
+
+	// GetDynamicClients fetches all of the registered dynamicclient-based client injectors.
+	GetDynamicClients() []DynamicClientInjector
+
+	// RegisterDynamicInformer registers a new injector callback for associating
+	// a new dynamicclient-based informer with a context.
+	RegisterDynamicInformer(DynamicInformerInjector)
+
+	// GetDynamicInformers fetches all of the registered dynamicclient-based informer injectors.
+	GetDynamicInformers() []DynamicInformerInjector
+
+	// SetupDynamic runs all of the injectors against a context, starting with
+	// the clients and the given stream.  A context infused with the various elements
+	// is returned.
+	SetupDynamic(context.Context) context.Context
+}
+
 type ControllerConstructor func(context.Context, configmap.Watcher) *controller.Impl
 
 var (
@@ -89,6 +112,10 @@ var (
 	// are being run for real.
 	Default Interface = &impl{}
 
+	// Dynamic is the injection interface to use when bootstrapping a version
+	// of things based on the prototype dynamicclient-based reconciler framework.
+	Dynamic DynamicInterface = &impl{}
+
 	// Fake is the injection interface with which informers should register
 	// to make themselves available to the controller process when it is being
 	// unit tested.
@@ -99,9 +126,11 @@ type impl struct {
 	m sync.RWMutex
 
 	clients           []ClientInjector
+	dynamicClients    []DynamicClientInjector
 	clientFetchers    []ClientFetcher
 	factories         []InformerFactoryInjector
 	informers         []InformerInjector
+	dynamicInformers  []DynamicInformerInjector
 	filteredInformers []FilteredInformersInjector
 	ducks             []DuckFactoryInjector
 }

@@ -28,6 +28,10 @@ import (
 // informer type to a context.
 type InformerInjector func(context.Context) (context.Context, controller.Informer)
 
+// DynamicInformerInjector holds the type of a callback that attaches a particular
+// informer type (backed by a Dynamic) to a context.
+type DynamicInformerInjector func(context.Context) context.Context
+
 // FilteredInformersInjector holds the type of a callback that attaches a set of particular
 // filtered informers type to a context.
 type FilteredInformersInjector func(context.Context) (context.Context, []controller.Informer)
@@ -37,6 +41,13 @@ func (i *impl) RegisterInformer(ii InformerInjector) {
 	defer i.m.Unlock()
 
 	i.informers = append(i.informers, ii)
+}
+
+func (i *impl) RegisterDynamicInformer(ii DynamicInformerInjector) {
+	i.m.Lock()
+	defer i.m.Unlock()
+
+	i.dynamicInformers = append(i.dynamicInformers, ii)
 }
 
 func (i *impl) RegisterFilteredInformers(fii FilteredInformersInjector) {
@@ -54,12 +65,36 @@ func (i *impl) GetInformers() []InformerInjector {
 	return append(i.informers[:0:0], i.informers...)
 }
 
+func (i *impl) GetDynamicInformers() []DynamicInformerInjector {
+	i.m.RLock()
+	defer i.m.RUnlock()
+
+	// Copy the slice before returning.
+	return append(i.dynamicInformers[:0:0], i.dynamicInformers...)
+}
+
 func (i *impl) GetFilteredInformers() []FilteredInformersInjector {
 	i.m.RLock()
 	defer i.m.RUnlock()
 
 	// Copy the slice before returning.
 	return append(i.filteredInformers[:0:0], i.filteredInformers...)
+}
+
+func (i *impl) SetupDynamic(ctx context.Context) context.Context {
+	// Based on the reconcilers we have linked, build up a set of clients and inject
+	// them onto the context.
+	for _, ci := range i.GetDynamicClients() {
+		ctx = ci(ctx)
+	}
+
+	// Based on the reconcilers we have linked, build up a set of informers
+	// and inject them onto the context.
+	for _, ii := range i.GetDynamicInformers() {
+		ctx = ii(ctx)
+	}
+
+	return ctx
 }
 
 func (i *impl) SetupInformers(ctx context.Context, cfg *rest.Config) (context.Context, []controller.Informer) {

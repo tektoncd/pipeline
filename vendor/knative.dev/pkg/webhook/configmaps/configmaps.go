@@ -17,7 +17,6 @@ limitations under the License.
 package configmaps
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -192,8 +191,7 @@ func (ac *reconciler) validate(ctx context.Context, req *admissionv1.AdmissionRe
 
 	var newObj corev1.ConfigMap
 	if len(newBytes) != 0 {
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if err := newDecoder.Decode(&newObj); err != nil {
+		if err := json.Unmarshal(newBytes, &newObj); err != nil {
 			return fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
 	}

@@ -21,7 +21,14 @@ package customresourcedefinition
 import (
 	context "context"
 
+	apisapiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	clientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	v1 "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	cache "k8s.io/client-go/tools/cache"
+	client "knative.dev/pkg/client/injection/apiextensions/client"
 	factory "knative.dev/pkg/client/injection/apiextensions/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
@@ -30,6 +37,7 @@ import (
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
+	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -41,6 +49,11 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
+func withDynamicInformer(ctx context.Context) context.Context {
+	inf := &wrapper{client: client.Get(ctx)}
+	return context.WithValue(ctx, Key{}, inf)
+}
+
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1.CustomResourceDefinitionInformer {
 	untyped := ctx.Value(Key{})
@@ -49,4 +62,39 @@ func Get(ctx context.Context) v1.CustomResourceDefinitionInformer {
 			"Unable to fetch k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1.CustomResourceDefinitionInformer from context.")
 	}
 	return untyped.(v1.CustomResourceDefinitionInformer)
+}
+
+type wrapper struct {
+	client clientset.Interface
+}
+
+var _ v1.CustomResourceDefinitionInformer = (*wrapper)(nil)
+var _ apiextensionsv1.CustomResourceDefinitionLister = (*wrapper)(nil)
+
+func (w *wrapper) Informer() cache.SharedIndexInformer {
+	return cache.NewSharedIndexInformer(nil, &apisapiextensionsv1.CustomResourceDefinition{}, 0, nil)
+}
+
+func (w *wrapper) Lister() apiextensionsv1.CustomResourceDefinitionLister {
+	return w
+}
+
+func (w *wrapper) List(selector labels.Selector) (ret []*apisapiextensionsv1.CustomResourceDefinition, err error) {
+	lo, err := w.client.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{
+		LabelSelector: selector.String(),
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
+	if err != nil {
+		return nil, err
+	}
+	for idx := range lo.Items {
+		ret = append(ret, &lo.Items[idx])
+	}
+	return ret, nil
+}
+
+func (w *wrapper) Get(name string) (*apisapiextensionsv1.CustomResourceDefinition, error) {
+	return w.client.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), name, metav1.GetOptions{
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
 }

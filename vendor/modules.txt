@@ -195,14 +195,14 @@ github.com/google/go-containerregistry/pkg/authn/k8schain
 # github.com/google/gofuzz v1.2.0
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/uuid v1.2.0
+# github.com/google/uuid v1.3.0
 github.com/google/uuid
 # github.com/googleapis/gnostic v0.5.3
 github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
-# github.com/grpc-ecosystem/grpc-gateway v1.14.8
+# github.com/grpc-ecosystem/grpc-gateway v1.16.0
 github.com/grpc-ecosystem/grpc-gateway/internal
 github.com/grpc-ecosystem/grpc-gateway/runtime
 github.com/grpc-ecosystem/grpc-gateway/utilities
@@ -311,7 +311,7 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# go.uber.org/atomic v1.8.0
+# go.uber.org/atomic v1.9.0
 go.uber.org/atomic
 # go.uber.org/automaxprocs v1.4.0
 go.uber.org/automaxprocs/internal/cgroups
@@ -336,7 +336,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.4.2
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20210614182718-04defd469f4e
+# golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -375,7 +375,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 golang.org/x/time/rate
-# golang.org/x/tools v0.1.4
+# golang.org/x/tools v0.1.5
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/event
@@ -409,7 +409,7 @@ google.golang.org/appengine/urlfetch
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status
 google.golang.org/genproto/protobuf/field_mask
-# google.golang.org/grpc v1.38.0
+# google.golang.org/grpc v1.39.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -454,7 +454,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.26.0
+# google.golang.org/protobuf v1.27.1
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
@@ -881,7 +881,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20210730172132-bb4aaf09c430
+# knative.dev/pkg v0.0.0-20210818135208-7b5ecbc0e477
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/ducktypes
@@ -914,6 +914,7 @@ knative.dev/pkg/controller
 knative.dev/pkg/environment
 knative.dev/pkg/hash
 knative.dev/pkg/injection
+knative.dev/pkg/injection/clients/dynamicclient
 knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret
 knative.dev/pkg/injection/clients/namespacedkube/informers/factory
 knative.dev/pkg/injection/sharedmain
