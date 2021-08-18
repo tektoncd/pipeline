@@ -21,8 +21,15 @@ package task
 import (
 	context "context"
 
+	apispipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
+	client "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	cache "k8s.io/client-go/tools/cache"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -30,6 +37,7 @@ import (
 
 func init() {
 	injection.Default.RegisterInformer(withInformer)
+	injection.Dynamic.RegisterDynamicInformer(withDynamicInformer)
 }
 
 // Key is used for associating the Informer inside the context.Context.
@@ -41,6 +49,11 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return context.WithValue(ctx, Key{}, inf), inf.Informer()
 }
 
+func withDynamicInformer(ctx context.Context) context.Context {
+	inf := &wrapper{client: client.Get(ctx)}
+	return context.WithValue(ctx, Key{}, inf)
+}
+
 // Get extracts the typed informer from the context.
 func Get(ctx context.Context) v1alpha1.TaskInformer {
 	untyped := ctx.Value(Key{})
@@ -49,4 +62,45 @@ func Get(ctx context.Context) v1alpha1.TaskInformer {
 			"Unable to fetch github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1.TaskInformer from context.")
 	}
 	return untyped.(v1alpha1.TaskInformer)
+}
+
+type wrapper struct {
+	client versioned.Interface
+
+	namespace string
+}
+
+var _ v1alpha1.TaskInformer = (*wrapper)(nil)
+var _ pipelinev1alpha1.TaskLister = (*wrapper)(nil)
+
+func (w *wrapper) Informer() cache.SharedIndexInformer {
+	return cache.NewSharedIndexInformer(nil, &apispipelinev1alpha1.Task{}, 0, nil)
+}
+
+func (w *wrapper) Lister() pipelinev1alpha1.TaskLister {
+	return w
+}
+
+func (w *wrapper) Tasks(namespace string) pipelinev1alpha1.TaskNamespaceLister {
+	return &wrapper{client: w.client, namespace: namespace}
+}
+
+func (w *wrapper) List(selector labels.Selector) (ret []*apispipelinev1alpha1.Task, err error) {
+	lo, err := w.client.TektonV1alpha1().Tasks(w.namespace).List(context.TODO(), v1.ListOptions{
+		LabelSelector: selector.String(),
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
+	if err != nil {
+		return nil, err
+	}
+	for idx := range lo.Items {
+		ret = append(ret, &lo.Items[idx])
+	}
+	return ret, nil
+}
+
+func (w *wrapper) Get(name string) (*apispipelinev1alpha1.Task, error) {
+	return w.client.TektonV1alpha1().Tasks(w.namespace).Get(context.TODO(), name, v1.GetOptions{
+		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+	})
 }

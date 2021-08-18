@@ -89,7 +89,8 @@ type ExporterOptions struct {
 
 // UpdateExporterFromConfigMap returns a helper func that can be used to update the exporter
 // when a config map is updated.
-// DEPRECATED: Callers should migrate to ConfigMapWatcher.
+//
+// Deprecated: Callers should migrate to ConfigMapWatcher.
 func UpdateExporterFromConfigMap(ctx context.Context, component string, logger *zap.SugaredLogger) func(configMap *corev1.ConfigMap) {
 	return ConfigMapWatcher(ctx, component, nil, logger)
 }

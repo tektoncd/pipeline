@@ -13,7 +13,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.4.1-0.20210128200529-19c2b639fab1
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210129212729-5c4818de4025
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
@@ -35,7 +35,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
-	knative.dev/pkg v0.0.0-20210730172132-bb4aaf09c430
+	knative.dev/pkg v0.0.0-20210818135208-7b5ecbc0e477
 )
 
 // Knative deps (release-0.20)

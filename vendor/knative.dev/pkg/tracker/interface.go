@@ -61,7 +61,8 @@ type Reference struct {
 type Interface interface {
 	// Track tells us that "obj" is tracking changes to the
 	// referenced object.
-	// DEPRECATED: use TrackReference
+	//
+	// Deprecated: use TrackReference.
 	Track(ref corev1.ObjectReference, obj interface{}) error
 
 	// Track tells us that "obj" is tracking changes to the

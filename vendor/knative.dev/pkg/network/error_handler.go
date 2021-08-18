@@ -25,8 +25,8 @@ import (
 
 // ErrorHandler sets up a handler suitable for use with the ErrorHandler field on
 // httputil's reverse proxy.
-// TODO(mattmoor): Move the implementation into handlers/error.go once downstream consumers
-// have adopted the alias.
+//
+// Deprecated: Use handler.Error instead.
 func ErrorHandler(logger *zap.SugaredLogger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, req *http.Request, err error) {
 		ss := readSockStat(logger)

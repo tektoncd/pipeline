@@ -201,8 +201,7 @@ func (ac *reconciler) callback(ctx context.Context, req *admissionv1.AdmissionRe
 	if c, ok := ac.callbacks[gvk]; ok {
 		if _, supported := c.supportedVerbs[req.Operation]; supported {
 			unstruct := &unstructured.Unstructured{}
-			newDecoder := json.NewDecoder(bytes.NewBuffer(toDecode))
-			if err := newDecoder.Decode(&unstruct); err != nil {
+			if err := json.Unmarshal(toDecode, unstruct); err != nil {
 				return fmt.Errorf("cannot decode incoming new object: %w", err)
 			}
 
