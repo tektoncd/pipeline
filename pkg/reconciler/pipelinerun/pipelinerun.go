@@ -943,9 +943,9 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1beta1.PipelineRun) error {
 	}
 	switch {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
-		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
+		pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
-		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+		pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pr.Name
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)
 	}
