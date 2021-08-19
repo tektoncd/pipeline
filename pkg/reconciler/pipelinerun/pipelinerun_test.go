@@ -2586,7 +2586,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
 
-	if val, ok := reconciledRun.GetLabels()[pipeline.PipelineLabelKey]; !ok {
+	if val, ok := reconciledRun.GetLabels()[pipeline.GroupName+pipeline.PipelineLabelKey]; !ok {
 		t.Fatalf("expected pipeline label")
 		if d := cmp.Diff("test-pipelines", val); d != "" {
 			t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
