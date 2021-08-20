@@ -167,6 +167,13 @@ func TestEntrypointer(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
 			timeout := time.Duration(0)
+			terminationPath := "termination"
+			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+				t.Fatalf("unexpected error creating temporary termination file: %v", err)
+			} else {
+				terminationPath = terminationFile.Name()
+				defer os.Remove(terminationFile.Name())
+			}
 			err := Entrypointer{
 				Entrypoint:          c.entrypoint,
 				WaitFiles:           c.waitFiles,
@@ -175,7 +182,7 @@ func TestEntrypointer(t *testing.T) {
 				Waiter:              fw,
 				Runner:              fr,
 				PostWriter:          fpw,
-				TerminationPath:     "termination",
+				TerminationPath:     terminationPath,
 				Timeout:             &timeout,
 				BreakpointOnFailure: c.breakpointOnFailure,
 				StepMetadataDir:     c.stepDir,
@@ -221,7 +228,7 @@ func TestEntrypointer(t *testing.T) {
 			if c.postFile == "" && fpw.wrote != nil {
 				t.Errorf("Wrote post file when not required")
 			}
-			fileContents, err := ioutil.ReadFile("termination")
+			fileContents, err := ioutil.ReadFile(terminationPath)
 			if err == nil {
 				var entries []v1alpha1.PipelineResourceResult
 				if err := json.Unmarshal([]byte(fileContents), &entries); err == nil {
@@ -239,7 +246,7 @@ func TestEntrypointer(t *testing.T) {
 			} else if !os.IsNotExist(err) {
 				t.Error("Wanted termination file written, got nil")
 			}
-			if err := os.Remove("termination"); err != nil {
+			if err := os.Remove(terminationPath); err != nil {
 				t.Errorf("Could not remove termination path: %s", err)
 			}
 
@@ -309,6 +316,13 @@ func TestEntrypointer_OnError(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fpw := &fakePostWriter{}
+			terminationPath := "termination"
+			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+				t.Fatalf("unexpected error creating temporary termination file: %v", err)
+			} else {
+				terminationPath = terminationFile.Name()
+				defer os.Remove(terminationFile.Name())
+			}
 			err := Entrypointer{
 				Entrypoint:      "echo",
 				WaitFiles:       []string{},
@@ -317,7 +331,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 				Waiter:          &fakeWaiter{},
 				Runner:          c.runner,
 				PostWriter:      fpw,
-				TerminationPath: "termination",
+				TerminationPath: terminationPath,
 				OnError:         c.onError,
 			}.Go()
 
