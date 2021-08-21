@@ -103,7 +103,7 @@ func TestPullRequest(t *testing.T) {
 			runPRBinary(t, "download", dir, tc.url)
 			// Diff downloaded contents with golden copies.
 			golden := filepath.Join("testdata", "golden")
-			if diff, err := exec.Command("diff", "-ruZ", golden, dir).CombinedOutput(); err != nil {
+			if diff, err := exec.Command("diff", "-ruw", golden, dir).CombinedOutput(); err != nil {
 				t.Error(string(diff))
 			}
 
