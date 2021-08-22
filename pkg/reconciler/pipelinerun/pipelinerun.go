@@ -748,6 +748,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
 	if tr != nil {
+		// Don't modify the lister cache's copy.
+		tr = tr.DeepCopy()
 		// is a retry
 		addRetryHistory(tr)
 		clearStatus(tr)
