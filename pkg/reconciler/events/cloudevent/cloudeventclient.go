@@ -27,13 +27,16 @@ import (
 )
 
 func init() {
-	injection.Default.RegisterClient(withCloudEventClient)
+	injection.Default.RegisterClient(func(ctx context.Context, _ *rest.Config) context.Context {
+		return withCloudEventClient(ctx)
+	})
+	injection.Dynamic.RegisterDynamicClient(withCloudEventClient)
 }
 
 // CECKey is used to associate the CloudEventClient inside the context.Context
 type CECKey struct{}
 
-func withCloudEventClient(ctx context.Context, cfg *rest.Config) context.Context {
+func withCloudEventClient(ctx context.Context) context.Context {
 	logger := logging.FromContext(ctx)
 
 	// When KeepAlive is enabled the connections are not reused - see
