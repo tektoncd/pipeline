@@ -83,7 +83,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			}
 		})
 
-		logger.Info("Setting up event handlers")
 		taskRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
