@@ -77,6 +77,18 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 		Architecture: runtime.GOARCH,
 		OS:           runtime.GOOS,
 	}
+
+	// Attempt to lookup the image's digest.
+	// - if HEAD request fails, proceed to GET with remote.Image below --
+	//   some registries don't support HEAD requests, but those with the
+	//   strictest rate limiting (DockerHub) do.
+	desc, err := remote.Head(ref, remote.WithAuthFromKeychain(mkc))
+	if err == nil {
+		if img, ok := e.lru.Get(desc.Digest.String()); ok {
+			return img.(v1.Image), nil
+		}
+	}
+
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc), remote.WithPlatform(pf))
 	if err != nil {
 		return nil, fmt.Errorf("error getting image manifest: %v", err)
