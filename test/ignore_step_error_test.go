@@ -72,7 +72,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, FailedWithReason(pipelinerun.ReasonInvalidTaskResultReference, pipelineRun.Name), "InvalidTaskResultReference"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(pipelinerun.ReasonInvalidTaskResultReference, pipelineRun.Name), "InvalidTaskResultReference"); err != nil {
 		t.Errorf("Error waiting for PipelineRun to fail: %s", err)
 	}
 

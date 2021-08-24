@@ -86,7 +86,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				}
 
 				t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-				if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+				if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
 					t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 				}
 
@@ -133,7 +133,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				}
 				expectedCondition := FailedWithReason(expectedReason, pipelineRun.Name)
 				t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
-				if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, expectedCondition, expectedReason); err != nil {
+				if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, expectedCondition, expectedReason); err != nil {
 					t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRun.Name, err)
 				}
 

@@ -29,13 +29,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
-
-const pipelineRunTimeout = 10 * time.Minute
 
 var (
 	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
@@ -54,7 +51,7 @@ func getCreatedTektonCRD(input []byte, kind string) (string, error) {
 }
 
 func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients, pipelineRunName string) {
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
 		t.Fatalf("Failed waiting for pipeline run done: %v", err)
 	}
 }
