@@ -211,6 +211,11 @@ func TestFetch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			observer, log := observer.New(zap.InfoLevel)
+			defer func() {
+				for _, line := range log.TakeAll() {
+					t.Logf("[%q git]: %s", line.Level, line.Message)
+				}
+			}()
 			logger := zap.New(observer).Sugar()
 
 			gitDir, cleanup := createTempDir(t)
@@ -248,11 +253,11 @@ func TestFetch(t *testing.T) {
 			}
 
 			if tt.logMessage != "" {
-				takeAll := log.TakeAll()
-				if len(takeAll) == 0 {
+				allLogLines := log.All()
+				if len(allLogLines) == 0 {
 					t.Fatal("We didn't receive any logging")
 				}
-				gotmsg := takeAll[0].Message
+				gotmsg := allLogLines[0].Message
 				if !strings.Contains(gotmsg, tt.logMessage) {
 					t.Errorf("log message: '%s'\n should contains: '%s'", tt.logMessage, gotmsg)
 				}
