@@ -199,7 +199,7 @@ func TestDAGPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(ctx, c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, "dag-pipeline-run", timeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 

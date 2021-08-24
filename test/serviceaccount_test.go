@@ -174,7 +174,7 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -284,7 +284,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, pipelineRunTimeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 

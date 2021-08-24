@@ -44,14 +44,13 @@ import (
 )
 
 var (
-	pipelineName       = "pipeline"
-	pipelineRunName    = "pipelinerun"
-	secretName         = "secret"
-	saName             = "service-account"
-	taskName           = "task"
-	task1Name          = "task1"
-	cond1Name          = "cond-1"
-	pipelineRunTimeout = 10 * time.Minute
+	pipelineName    = "pipeline"
+	pipelineRunName = "pipelinerun"
+	secretName      = "secret"
+	saName          = "service-account"
+	taskName        = "task"
+	task1Name       = "task1"
+	cond1Name       = "cond-1"
 )
 
 func TestPipelineRun(t *testing.T) {
@@ -230,7 +229,7 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 
@@ -381,7 +380,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, Running(prName), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, Running(prName), "PipelineRunRunning"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
@@ -390,7 +389,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
@@ -450,7 +449,7 @@ func TestPipelineRunPending(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be marked pending", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunPending(prName), "PipelineRunPending"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunPending(prName), "PipelineRunPending"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to be marked pending: %s", prName, err)
 	}
 
@@ -472,7 +471,7 @@ func TestPipelineRunPending(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }

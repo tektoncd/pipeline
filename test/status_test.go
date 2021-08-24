@@ -90,7 +90,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, "pear", pipelineRunTimeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, "pear", timeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 }
