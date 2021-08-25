@@ -295,6 +295,11 @@ func createTempGit(t *testing.T, logger *zap.SugaredLogger, gitDir string) {
 		t.Fatal(err)
 	}
 
+	// Not defining globally so we don't mess with the global gitconfig
+	if _, err := run(logger, "", "config", "user.name", "Tekton Test"); err != nil {
+		t.Fatal(err)
+	}
+
 	if _, err := run(logger, "", "commit", "--allow-empty", "-m", "Hello Moto"); err != nil {
 		t.Fatal(err.Error())
 	}
