@@ -1,0 +1,38 @@
+From 041c3e5eb0cd8bd2f96946692acdf86822737d54 Mon Sep 17 00:00:00 2001
+From: Vincent Demeester <vdemeest@redhat.com>
+Date: Tue, 17 Aug 2021 09:44:24 +0200
+Subject: [PATCH] Patch vendor/ apimachinery to work on 1.22
+
+A new field is there in k8s 1.22, name subresource in the
+managedfields. This proves to make knative based types to not be valid
+on 1.22 and above, making tektoncd/pipeline as well as any other
+component using knative/pkg to be broken on 1.22 and above.
+
+Signed-off-by: Vincent Demeester <vdemeest@redhat.com>
+---
+ vendor/k8s.io/apimachinery/pkg/apis/meta/v1/types.go | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/types.go b/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/types.go
+index d84878d7..522336cb 100644
+--- a/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/types.go
++++ b/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/types.go
+@@ -1158,6 +1158,15 @@ type ManagedFieldsEntry struct {
+ 	// FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
+ 	// +optional
+ 	FieldsV1 *FieldsV1 `json:"fieldsV1,omitempty" protobuf:"bytes,7,opt,name=fieldsV1"`
++
++	// Subresource is the name of the subresource used to update that object, or
++	// empty string if the object was updated through the main resource. The
++	// value of this field is used to distinguish between managers, even if they
++	// share the same name. For example, a status update will be distinct from a
++	// regular update using the same manager name.
++	// Note that the APIVersion field is not related to the Subresource field and
++	// it always corresponds to the version of the main resource.
++	Subresource string `json:"subresource,omitempty" protobuf:"bytes,8,opt,name=subresource"`
+ }
+ 
+ // ManagedFieldsOperationType is the type of operation which lead to a ManagedFieldsEntry being created.
+-- 
+2.32.0
+
