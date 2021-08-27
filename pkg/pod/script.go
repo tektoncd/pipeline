@@ -176,29 +176,25 @@ cat > ${scriptfile} << '%s'
 
 	// Place debug scripts if breakpoints are enabled
 	if len(breakpoints) > 0 {
-		// Debug script names
-		debugContinueScriptName := "continue"
-		debugFailContinueScriptName := "fail-continue"
-
-		// debugContinueScript can be used by the user to mark the failing step as a success
-		debugContinueScript := defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, mountPoint)
-
-		// debugFailContinueScript can be used by the user to mark the failing step as a failure
-		debugFailContinueScript := defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, mountPoint)
-
-		// Script names and their content
-		debugScripts := map[string]string{
-			debugContinueScriptName:     debugContinueScript,
-			debugFailContinueScriptName: debugFailContinueScript,
+		type script struct {
+			name    string
+			content string
 		}
+		debugScripts := []script{{
+			name:    "continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, mountPoint),
+		}, {
+			name:    "fail-continue",
+			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, mountPoint),
+		}}
 
 		// Add debug or breakpoint related scripts to /tekton/debug/scripts
 		// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation
-		for debugScriptName, debugScript := range debugScripts {
-			tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScriptName))
-			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScriptName))
+		for _, debugScript := range debugScripts {
+			tmpFile := filepath.Join(debugScriptsDir, fmt.Sprintf("%s-%s", "debug", debugScript.name))
+			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s-heredoc-randomly-generated", "debug", debugScript.name))
 
-			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript, heredoc)
+			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript.content, heredoc)
 		}
 
 	}
