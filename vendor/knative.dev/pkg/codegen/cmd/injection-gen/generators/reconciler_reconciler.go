@@ -268,9 +268,13 @@ type ReadOnlyInterface interface {
 // controller finalizing {{.type|raw}} if they want to process tombstoned resources
 // even when they are not the leader.  Due to the nature of how finalizers are handled
 // there are no guarantees that this will be called.
+//
+// Deprecated: Use reconciler.OnDeletionInterface instead.
 type ReadOnlyFinalizer interface {
 	// ObserveFinalizeKind implements custom logic to observe the final state of {{.type|raw}}.
 	// This method should not write to the API.
+	//
+	// Deprecated: Use reconciler.ObserveDeletion instead.
 	ObserveFinalizeKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}}
 }
 
@@ -332,7 +336,6 @@ func NewReconciler(ctx {{.contextContext|raw}}, logger *{{.zapSugaredLogger|raw}
 	if _, ok := r.({{.reconcilerLeaderAware|raw}}); ok {
 		logger.Fatalf("%T implements the incorrect LeaderAware interface. Promote() should not take an argument as genreconciler handles the enqueuing automatically.", r)
 	}
-	// TODO: Consider validating when folks implement ReadOnlyFinalizer, but not Finalizer.
 
 	rec := &reconcilerImpl{
 		LeaderAwareFuncs: {{.reconcilerLeaderAwareFuncs|raw}}{

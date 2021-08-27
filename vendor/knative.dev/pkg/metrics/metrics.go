@@ -113,8 +113,8 @@ type latencyMetric struct {
 var _ metrics.LatencyMetric = (*latencyMetric)(nil)
 
 // Observe implements LatencyMetric
-func (m latencyMetric) Observe(verb string, u url.URL, t time.Duration) {
-	Record(context.Background(), m.measure.M(t.Seconds()), stats.WithTags(
+func (m latencyMetric) Observe(ctx context.Context, verb string, u url.URL, t time.Duration) {
+	Record(ctx, m.measure.M(t.Seconds()), stats.WithTags(
 		tag.Insert(tagVerb, verb),
 		tag.Insert(tagHost, u.Host),
 		tag.Insert(tagPath, u.Path),
@@ -130,8 +130,8 @@ var (
 )
 
 // Increment implements ResultMetric
-func (m resultMetric) Increment(code, method, host string) {
-	Record(context.Background(), m.measure.M(1), stats.WithTags(
+func (m resultMetric) Increment(ctx context.Context, code, method, host string) {
+	Record(ctx, m.measure.M(1), stats.WithTags(
 		tag.Insert(tagCode, code),
 		tag.Insert(tagMethod, method),
 		tag.Insert(tagHost, host),

@@ -24,55 +24,94 @@ import (
 	errors "errors"
 	fmt "fmt"
 
-	v1 "k8s.io/api/admissionregistration/v1"
-	v1beta1 "k8s.io/api/admissionregistration/v1beta1"
-	v1alpha1 "k8s.io/api/apiserverinternal/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	v1beta2 "k8s.io/api/apps/v1beta2"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+	apiserverinternalv1alpha1 "k8s.io/api/apiserverinternal/v1alpha1"
+	apiappsv1 "k8s.io/api/apps/v1"
+	apiappsv1beta1 "k8s.io/api/apps/v1beta1"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	authenticationv1beta1 "k8s.io/api/authentication/v1beta1"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
-	v2beta1 "k8s.io/api/autoscaling/v2beta1"
-	v2beta2 "k8s.io/api/autoscaling/v2beta2"
-	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
-	v2alpha1 "k8s.io/api/batch/v2alpha1"
-	certificatesv1 "k8s.io/api/certificates/v1"
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
-	coordinationv1 "k8s.io/api/coordination/v1"
-	coordinationv1beta1 "k8s.io/api/coordination/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	discoveryv1alpha1 "k8s.io/api/discovery/v1alpha1"
-	discoveryv1beta1 "k8s.io/api/discovery/v1beta1"
-	eventsv1 "k8s.io/api/events/v1"
-	eventsv1beta1 "k8s.io/api/events/v1beta1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	flowcontrolv1alpha1 "k8s.io/api/flowcontrol/v1alpha1"
-	flowcontrolv1beta1 "k8s.io/api/flowcontrol/v1beta1"
-	networkingv1 "k8s.io/api/networking/v1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
-	nodev1 "k8s.io/api/node/v1"
-	nodev1alpha1 "k8s.io/api/node/v1alpha1"
-	nodev1beta1 "k8s.io/api/node/v1beta1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
-	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
-	schedulingv1 "k8s.io/api/scheduling/v1"
-	schedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
-	schedulingv1beta1 "k8s.io/api/scheduling/v1beta1"
-	storagev1 "k8s.io/api/storage/v1"
-	storagev1alpha1 "k8s.io/api/storage/v1alpha1"
-	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
+	apibatchv1 "k8s.io/api/batch/v1"
+	apibatchv1beta1 "k8s.io/api/batch/v1beta1"
+	apicertificatesv1 "k8s.io/api/certificates/v1"
+	apicertificatesv1beta1 "k8s.io/api/certificates/v1beta1"
+	apicoordinationv1 "k8s.io/api/coordination/v1"
+	apicoordinationv1beta1 "k8s.io/api/coordination/v1beta1"
+	apicorev1 "k8s.io/api/core/v1"
+	apidiscoveryv1 "k8s.io/api/discovery/v1"
+	apidiscoveryv1beta1 "k8s.io/api/discovery/v1beta1"
+	apieventsv1 "k8s.io/api/events/v1"
+	apieventsv1beta1 "k8s.io/api/events/v1beta1"
+	apiextensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiflowcontrolv1alpha1 "k8s.io/api/flowcontrol/v1alpha1"
+	apiflowcontrolv1beta1 "k8s.io/api/flowcontrol/v1beta1"
+	apinetworkingv1 "k8s.io/api/networking/v1"
+	apinetworkingv1beta1 "k8s.io/api/networking/v1beta1"
+	apinodev1 "k8s.io/api/node/v1"
+	apinodev1alpha1 "k8s.io/api/node/v1alpha1"
+	apinodev1beta1 "k8s.io/api/node/v1beta1"
+	apipolicyv1 "k8s.io/api/policy/v1"
+	apipolicyv1beta1 "k8s.io/api/policy/v1beta1"
+	apirbacv1 "k8s.io/api/rbac/v1"
+	apirbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
+	apirbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	apischedulingv1 "k8s.io/api/scheduling/v1"
+	apischedulingv1alpha1 "k8s.io/api/scheduling/v1alpha1"
+	apischedulingv1beta1 "k8s.io/api/scheduling/v1beta1"
+	apistoragev1 "k8s.io/api/storage/v1"
+	apistoragev1alpha1 "k8s.io/api/storage/v1alpha1"
+	apistoragev1beta1 "k8s.io/api/storage/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
+	v1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
+	v1beta1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1beta1"
+	v1alpha1 "k8s.io/client-go/applyconfigurations/apiserverinternal/v1alpha1"
+	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
+	appsv1beta1 "k8s.io/client-go/applyconfigurations/apps/v1beta1"
+	v1beta2 "k8s.io/client-go/applyconfigurations/apps/v1beta2"
+	applyconfigurationsautoscalingv1 "k8s.io/client-go/applyconfigurations/autoscaling/v1"
+	v2beta1 "k8s.io/client-go/applyconfigurations/autoscaling/v2beta1"
+	v2beta2 "k8s.io/client-go/applyconfigurations/autoscaling/v2beta2"
+	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
+	batchv1beta1 "k8s.io/client-go/applyconfigurations/batch/v1beta1"
+	certificatesv1 "k8s.io/client-go/applyconfigurations/certificates/v1"
+	certificatesv1beta1 "k8s.io/client-go/applyconfigurations/certificates/v1beta1"
+	coordinationv1 "k8s.io/client-go/applyconfigurations/coordination/v1"
+	coordinationv1beta1 "k8s.io/client-go/applyconfigurations/coordination/v1beta1"
+	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	discoveryv1 "k8s.io/client-go/applyconfigurations/discovery/v1"
+	discoveryv1beta1 "k8s.io/client-go/applyconfigurations/discovery/v1beta1"
+	eventsv1 "k8s.io/client-go/applyconfigurations/events/v1"
+	eventsv1beta1 "k8s.io/client-go/applyconfigurations/events/v1beta1"
+	extensionsv1beta1 "k8s.io/client-go/applyconfigurations/extensions/v1beta1"
+	flowcontrolv1alpha1 "k8s.io/client-go/applyconfigurations/flowcontrol/v1alpha1"
+	flowcontrolv1beta1 "k8s.io/client-go/applyconfigurations/flowcontrol/v1beta1"
+	networkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
+	networkingv1beta1 "k8s.io/client-go/applyconfigurations/networking/v1beta1"
+	nodev1 "k8s.io/client-go/applyconfigurations/node/v1"
+	nodev1alpha1 "k8s.io/client-go/applyconfigurations/node/v1alpha1"
+	nodev1beta1 "k8s.io/client-go/applyconfigurations/node/v1beta1"
+	policyv1 "k8s.io/client-go/applyconfigurations/policy/v1"
+	policyv1beta1 "k8s.io/client-go/applyconfigurations/policy/v1beta1"
+	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	rbacv1alpha1 "k8s.io/client-go/applyconfigurations/rbac/v1alpha1"
+	rbacv1beta1 "k8s.io/client-go/applyconfigurations/rbac/v1beta1"
+	schedulingv1 "k8s.io/client-go/applyconfigurations/scheduling/v1"
+	schedulingv1alpha1 "k8s.io/client-go/applyconfigurations/scheduling/v1alpha1"
+	schedulingv1beta1 "k8s.io/client-go/applyconfigurations/scheduling/v1beta1"
+	storagev1 "k8s.io/client-go/applyconfigurations/storage/v1"
+	storagev1alpha1 "k8s.io/client-go/applyconfigurations/storage/v1alpha1"
+	storagev1beta1 "k8s.io/client-go/applyconfigurations/storage/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	dynamic "k8s.io/client-go/dynamic"
 	kubernetes "k8s.io/client-go/kubernetes"
@@ -91,13 +130,12 @@ import (
 	typedautoscalingv2beta2 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2"
 	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	typedbatchv1beta1 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
-	typedbatchv2alpha1 "k8s.io/client-go/kubernetes/typed/batch/v2alpha1"
 	typedcertificatesv1 "k8s.io/client-go/kubernetes/typed/certificates/v1"
 	typedcertificatesv1beta1 "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	typedcoordinationv1 "k8s.io/client-go/kubernetes/typed/coordination/v1"
 	typedcoordinationv1beta1 "k8s.io/client-go/kubernetes/typed/coordination/v1beta1"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	typeddiscoveryv1alpha1 "k8s.io/client-go/kubernetes/typed/discovery/v1alpha1"
+	typeddiscoveryv1 "k8s.io/client-go/kubernetes/typed/discovery/v1"
 	typeddiscoveryv1beta1 "k8s.io/client-go/kubernetes/typed/discovery/v1beta1"
 	typedeventsv1 "k8s.io/client-go/kubernetes/typed/events/v1"
 	typedeventsv1beta1 "k8s.io/client-go/kubernetes/typed/events/v1beta1"
@@ -109,6 +147,7 @@ import (
 	typednodev1 "k8s.io/client-go/kubernetes/typed/node/v1"
 	typednodev1alpha1 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
 	typednodev1beta1 "k8s.io/client-go/kubernetes/typed/node/v1beta1"
+	typedpolicyv1 "k8s.io/client-go/kubernetes/typed/policy/v1"
 	typedpolicyv1beta1 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	typedrbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	typedrbacv1alpha1 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
@@ -211,7 +250,15 @@ type wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl struct {
 
 var _ typedadmissionregistrationv1.MutatingWebhookConfigurationInterface = (*wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl)(nil)
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Create(ctx context.Context, in *v1.MutatingWebhookConfiguration, opts metav1.CreateOptions) (*v1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Apply(ctx context.Context, in *v1.MutatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) ApplyStatus(ctx context.Context, in *v1.MutatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Create(ctx context.Context, in *admissionregistrationv1.MutatingWebhookConfiguration, opts metav1.CreateOptions) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -225,7 +272,7 @@ func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Create(ctx
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -240,43 +287,43 @@ func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) DeleteColl
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1.MutatingWebhookConfigurationList, error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*admissionregistrationv1.MutatingWebhookConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfigurationList{}
+	out := &admissionregistrationv1.MutatingWebhookConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.MutatingWebhookConfiguration, err error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Update(ctx context.Context, in *v1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Update(ctx context.Context, in *admissionregistrationv1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -290,14 +337,14 @@ func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) Update(ctx
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *v1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *admissionregistrationv1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -311,7 +358,7 @@ func (w *wrapAdmissionregistrationV1MutatingWebhookConfigurationImpl) UpdateStat
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -338,7 +385,15 @@ type wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl struct {
 
 var _ typedadmissionregistrationv1.ValidatingWebhookConfigurationInterface = (*wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl)(nil)
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Create(ctx context.Context, in *v1.ValidatingWebhookConfiguration, opts metav1.CreateOptions) (*v1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Apply(ctx context.Context, in *v1.ValidatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) ApplyStatus(ctx context.Context, in *v1.ValidatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Create(ctx context.Context, in *admissionregistrationv1.ValidatingWebhookConfiguration, opts metav1.CreateOptions) (*admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -352,7 +407,7 @@ func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Create(c
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -367,43 +422,43 @@ func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) DeleteCo
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1.ValidatingWebhookConfigurationList, error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*admissionregistrationv1.ValidatingWebhookConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfigurationList{}
+	out := &admissionregistrationv1.ValidatingWebhookConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ValidatingWebhookConfiguration, err error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Update(ctx context.Context, in *v1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Update(ctx context.Context, in *admissionregistrationv1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -417,14 +472,14 @@ func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) Update(c
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *v1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *admissionregistrationv1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1",
@@ -438,7 +493,7 @@ func (w *wrapAdmissionregistrationV1ValidatingWebhookConfigurationImpl) UpdateSt
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -480,7 +535,15 @@ type wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl struct {
 
 var _ typedadmissionregistrationv1beta1.MutatingWebhookConfigurationInterface = (*wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl)(nil)
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Create(ctx context.Context, in *v1beta1.MutatingWebhookConfiguration, opts metav1.CreateOptions) (*v1beta1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Apply(ctx context.Context, in *v1beta1.MutatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1beta1.MutatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) ApplyStatus(ctx context.Context, in *v1beta1.MutatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1beta1.MutatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Create(ctx context.Context, in *admissionregistrationv1beta1.MutatingWebhookConfiguration, opts metav1.CreateOptions) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -494,7 +557,7 @@ func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Creat
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -509,43 +572,43 @@ func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Delet
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.MutatingWebhookConfigurationList, error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*admissionregistrationv1beta1.MutatingWebhookConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfigurationList{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.MutatingWebhookConfiguration, err error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *admissionregistrationv1beta1.MutatingWebhookConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Update(ctx context.Context, in *v1beta1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1beta1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Update(ctx context.Context, in *admissionregistrationv1beta1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -559,14 +622,14 @@ func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Updat
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *v1beta1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1beta1.MutatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *admissionregistrationv1beta1.MutatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1beta1.MutatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -580,7 +643,7 @@ func (w *wrapAdmissionregistrationV1beta1MutatingWebhookConfigurationImpl) Updat
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.MutatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.MutatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -607,7 +670,15 @@ type wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl struct {
 
 var _ typedadmissionregistrationv1beta1.ValidatingWebhookConfigurationInterface = (*wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl)(nil)
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Create(ctx context.Context, in *v1beta1.ValidatingWebhookConfiguration, opts metav1.CreateOptions) (*v1beta1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Apply(ctx context.Context, in *v1beta1.ValidatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1beta1.ValidatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) ApplyStatus(ctx context.Context, in *v1beta1.ValidatingWebhookConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *admissionregistrationv1beta1.ValidatingWebhookConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Create(ctx context.Context, in *admissionregistrationv1beta1.ValidatingWebhookConfiguration, opts metav1.CreateOptions) (*admissionregistrationv1beta1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -621,7 +692,7 @@ func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Cre
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -636,43 +707,43 @@ func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Del
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*admissionregistrationv1beta1.ValidatingWebhookConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.ValidatingWebhookConfigurationList, error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*admissionregistrationv1beta1.ValidatingWebhookConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfigurationList{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.ValidatingWebhookConfiguration, err error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *admissionregistrationv1beta1.ValidatingWebhookConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Update(ctx context.Context, in *v1beta1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1beta1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Update(ctx context.Context, in *admissionregistrationv1beta1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1beta1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -686,14 +757,14 @@ func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Upd
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *v1beta1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*v1beta1.ValidatingWebhookConfiguration, error) {
+func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) UpdateStatus(ctx context.Context, in *admissionregistrationv1beta1.ValidatingWebhookConfiguration, opts metav1.UpdateOptions) (*admissionregistrationv1beta1.ValidatingWebhookConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "admissionregistration.k8s.io",
 		Version: "v1beta1",
@@ -707,7 +778,7 @@ func (w *wrapAdmissionregistrationV1beta1ValidatingWebhookConfigurationImpl) Upd
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta1.ValidatingWebhookConfiguration{}
+	out := &admissionregistrationv1beta1.ValidatingWebhookConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -749,7 +820,15 @@ type wrapInternalV1alpha1StorageVersionImpl struct {
 
 var _ typedinternalv1alpha1.StorageVersionInterface = (*wrapInternalV1alpha1StorageVersionImpl)(nil)
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) Create(ctx context.Context, in *v1alpha1.StorageVersion, opts metav1.CreateOptions) (*v1alpha1.StorageVersion, error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) Apply(ctx context.Context, in *v1alpha1.StorageVersionApplyConfiguration, opts metav1.ApplyOptions) (result *apiserverinternalv1alpha1.StorageVersion, err error) {
+	panic("NYI")
+}
+
+func (w *wrapInternalV1alpha1StorageVersionImpl) ApplyStatus(ctx context.Context, in *v1alpha1.StorageVersionApplyConfiguration, opts metav1.ApplyOptions) (result *apiserverinternalv1alpha1.StorageVersion, err error) {
+	panic("NYI")
+}
+
+func (w *wrapInternalV1alpha1StorageVersionImpl) Create(ctx context.Context, in *apiserverinternalv1alpha1.StorageVersion, opts metav1.CreateOptions) (*apiserverinternalv1alpha1.StorageVersion, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "internal.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -763,7 +842,7 @@ func (w *wrapInternalV1alpha1StorageVersionImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersion{}
+	out := &apiserverinternalv1alpha1.StorageVersion{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -778,43 +857,43 @@ func (w *wrapInternalV1alpha1StorageVersionImpl) DeleteCollection(ctx context.Co
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1alpha1.StorageVersion, error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiserverinternalv1alpha1.StorageVersion, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersion{}
+	out := &apiserverinternalv1alpha1.StorageVersion{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1alpha1.StorageVersionList, error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiserverinternalv1alpha1.StorageVersionList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersionList{}
+	out := &apiserverinternalv1alpha1.StorageVersionList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1alpha1.StorageVersion, err error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiserverinternalv1alpha1.StorageVersion, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersion{}
+	out := &apiserverinternalv1alpha1.StorageVersion{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) Update(ctx context.Context, in *v1alpha1.StorageVersion, opts metav1.UpdateOptions) (*v1alpha1.StorageVersion, error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) Update(ctx context.Context, in *apiserverinternalv1alpha1.StorageVersion, opts metav1.UpdateOptions) (*apiserverinternalv1alpha1.StorageVersion, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "internal.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -828,14 +907,14 @@ func (w *wrapInternalV1alpha1StorageVersionImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersion{}
+	out := &apiserverinternalv1alpha1.StorageVersion{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapInternalV1alpha1StorageVersionImpl) UpdateStatus(ctx context.Context, in *v1alpha1.StorageVersion, opts metav1.UpdateOptions) (*v1alpha1.StorageVersion, error) {
+func (w *wrapInternalV1alpha1StorageVersionImpl) UpdateStatus(ctx context.Context, in *apiserverinternalv1alpha1.StorageVersion, opts metav1.UpdateOptions) (*apiserverinternalv1alpha1.StorageVersion, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "internal.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -849,7 +928,7 @@ func (w *wrapInternalV1alpha1StorageVersionImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &v1alpha1.StorageVersion{}
+	out := &apiserverinternalv1alpha1.StorageVersion{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -895,7 +974,15 @@ type wrapAppsV1ControllerRevisionImpl struct {
 
 var _ typedappsv1.ControllerRevisionInterface = (*wrapAppsV1ControllerRevisionImpl)(nil)
 
-func (w *wrapAppsV1ControllerRevisionImpl) Create(ctx context.Context, in *appsv1.ControllerRevision, opts metav1.CreateOptions) (*appsv1.ControllerRevision, error) {
+func (w *wrapAppsV1ControllerRevisionImpl) Apply(ctx context.Context, in *appsv1.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1ControllerRevisionImpl) ApplyStatus(ctx context.Context, in *appsv1.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1ControllerRevisionImpl) Create(ctx context.Context, in *apiappsv1.ControllerRevision, opts metav1.CreateOptions) (*apiappsv1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -909,7 +996,7 @@ func (w *wrapAppsV1ControllerRevisionImpl) Create(ctx context.Context, in *appsv
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevision{}
+	out := &apiappsv1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -924,43 +1011,43 @@ func (w *wrapAppsV1ControllerRevisionImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.ControllerRevision, error) {
+func (w *wrapAppsV1ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1.ControllerRevision, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevision{}
+	out := &apiappsv1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1.ControllerRevisionList, error) {
+func (w *wrapAppsV1ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1.ControllerRevisionList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevisionList{}
+	out := &apiappsv1.ControllerRevisionList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.ControllerRevision, err error) {
+func (w *wrapAppsV1ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1.ControllerRevision, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevision{}
+	out := &apiappsv1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ControllerRevisionImpl) Update(ctx context.Context, in *appsv1.ControllerRevision, opts metav1.UpdateOptions) (*appsv1.ControllerRevision, error) {
+func (w *wrapAppsV1ControllerRevisionImpl) Update(ctx context.Context, in *apiappsv1.ControllerRevision, opts metav1.UpdateOptions) (*apiappsv1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -974,14 +1061,14 @@ func (w *wrapAppsV1ControllerRevisionImpl) Update(ctx context.Context, in *appsv
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevision{}
+	out := &apiappsv1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *appsv1.ControllerRevision, opts metav1.UpdateOptions) (*appsv1.ControllerRevision, error) {
+func (w *wrapAppsV1ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *apiappsv1.ControllerRevision, opts metav1.UpdateOptions) (*apiappsv1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -995,7 +1082,7 @@ func (w *wrapAppsV1ControllerRevisionImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ControllerRevision{}
+	out := &apiappsv1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1026,7 +1113,15 @@ type wrapAppsV1DaemonSetImpl struct {
 
 var _ typedappsv1.DaemonSetInterface = (*wrapAppsV1DaemonSetImpl)(nil)
 
-func (w *wrapAppsV1DaemonSetImpl) Create(ctx context.Context, in *appsv1.DaemonSet, opts metav1.CreateOptions) (*appsv1.DaemonSet, error) {
+func (w *wrapAppsV1DaemonSetImpl) Apply(ctx context.Context, in *appsv1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1DaemonSetImpl) ApplyStatus(ctx context.Context, in *appsv1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1DaemonSetImpl) Create(ctx context.Context, in *apiappsv1.DaemonSet, opts metav1.CreateOptions) (*apiappsv1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1040,7 +1135,7 @@ func (w *wrapAppsV1DaemonSetImpl) Create(ctx context.Context, in *appsv1.DaemonS
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSet{}
+	out := &apiappsv1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1055,43 +1150,43 @@ func (w *wrapAppsV1DaemonSetImpl) DeleteCollection(ctx context.Context, opts met
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.DaemonSet, error) {
+func (w *wrapAppsV1DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1.DaemonSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSet{}
+	out := &apiappsv1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1.DaemonSetList, error) {
+func (w *wrapAppsV1DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1.DaemonSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSetList{}
+	out := &apiappsv1.DaemonSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.DaemonSet, err error) {
+func (w *wrapAppsV1DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1.DaemonSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSet{}
+	out := &apiappsv1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DaemonSetImpl) Update(ctx context.Context, in *appsv1.DaemonSet, opts metav1.UpdateOptions) (*appsv1.DaemonSet, error) {
+func (w *wrapAppsV1DaemonSetImpl) Update(ctx context.Context, in *apiappsv1.DaemonSet, opts metav1.UpdateOptions) (*apiappsv1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1105,14 +1200,14 @@ func (w *wrapAppsV1DaemonSetImpl) Update(ctx context.Context, in *appsv1.DaemonS
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSet{}
+	out := &apiappsv1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DaemonSetImpl) UpdateStatus(ctx context.Context, in *appsv1.DaemonSet, opts metav1.UpdateOptions) (*appsv1.DaemonSet, error) {
+func (w *wrapAppsV1DaemonSetImpl) UpdateStatus(ctx context.Context, in *apiappsv1.DaemonSet, opts metav1.UpdateOptions) (*apiappsv1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1126,7 +1221,7 @@ func (w *wrapAppsV1DaemonSetImpl) UpdateStatus(ctx context.Context, in *appsv1.D
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DaemonSet{}
+	out := &apiappsv1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1157,7 +1252,15 @@ type wrapAppsV1DeploymentImpl struct {
 
 var _ typedappsv1.DeploymentInterface = (*wrapAppsV1DeploymentImpl)(nil)
 
-func (w *wrapAppsV1DeploymentImpl) Create(ctx context.Context, in *appsv1.Deployment, opts metav1.CreateOptions) (*appsv1.Deployment, error) {
+func (w *wrapAppsV1DeploymentImpl) Apply(ctx context.Context, in *appsv1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1DeploymentImpl) ApplyStatus(ctx context.Context, in *appsv1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1DeploymentImpl) Create(ctx context.Context, in *apiappsv1.Deployment, opts metav1.CreateOptions) (*apiappsv1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1171,7 +1274,7 @@ func (w *wrapAppsV1DeploymentImpl) Create(ctx context.Context, in *appsv1.Deploy
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.Deployment{}
+	out := &apiappsv1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1186,43 +1289,43 @@ func (w *wrapAppsV1DeploymentImpl) DeleteCollection(ctx context.Context, opts me
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.Deployment, error) {
+func (w *wrapAppsV1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1.Deployment, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.Deployment{}
+	out := &apiappsv1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1.DeploymentList, error) {
+func (w *wrapAppsV1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1.DeploymentList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.DeploymentList{}
+	out := &apiappsv1.DeploymentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.Deployment, err error) {
+func (w *wrapAppsV1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1.Deployment, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.Deployment{}
+	out := &apiappsv1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DeploymentImpl) Update(ctx context.Context, in *appsv1.Deployment, opts metav1.UpdateOptions) (*appsv1.Deployment, error) {
+func (w *wrapAppsV1DeploymentImpl) Update(ctx context.Context, in *apiappsv1.Deployment, opts metav1.UpdateOptions) (*apiappsv1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1236,14 +1339,14 @@ func (w *wrapAppsV1DeploymentImpl) Update(ctx context.Context, in *appsv1.Deploy
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.Deployment{}
+	out := &apiappsv1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1DeploymentImpl) UpdateStatus(ctx context.Context, in *appsv1.Deployment, opts metav1.UpdateOptions) (*appsv1.Deployment, error) {
+func (w *wrapAppsV1DeploymentImpl) UpdateStatus(ctx context.Context, in *apiappsv1.Deployment, opts metav1.UpdateOptions) (*apiappsv1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1257,7 +1360,7 @@ func (w *wrapAppsV1DeploymentImpl) UpdateStatus(ctx context.Context, in *appsv1.
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.Deployment{}
+	out := &apiappsv1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1296,7 +1399,15 @@ type wrapAppsV1ReplicaSetImpl struct {
 
 var _ typedappsv1.ReplicaSetInterface = (*wrapAppsV1ReplicaSetImpl)(nil)
 
-func (w *wrapAppsV1ReplicaSetImpl) Create(ctx context.Context, in *appsv1.ReplicaSet, opts metav1.CreateOptions) (*appsv1.ReplicaSet, error) {
+func (w *wrapAppsV1ReplicaSetImpl) Apply(ctx context.Context, in *appsv1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1ReplicaSetImpl) ApplyStatus(ctx context.Context, in *appsv1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1ReplicaSetImpl) Create(ctx context.Context, in *apiappsv1.ReplicaSet, opts metav1.CreateOptions) (*apiappsv1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1310,7 +1421,7 @@ func (w *wrapAppsV1ReplicaSetImpl) Create(ctx context.Context, in *appsv1.Replic
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSet{}
+	out := &apiappsv1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1325,43 +1436,43 @@ func (w *wrapAppsV1ReplicaSetImpl) DeleteCollection(ctx context.Context, opts me
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.ReplicaSet, error) {
+func (w *wrapAppsV1ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1.ReplicaSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSet{}
+	out := &apiappsv1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1.ReplicaSetList, error) {
+func (w *wrapAppsV1ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1.ReplicaSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSetList{}
+	out := &apiappsv1.ReplicaSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.ReplicaSet, err error) {
+func (w *wrapAppsV1ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1.ReplicaSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSet{}
+	out := &apiappsv1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ReplicaSetImpl) Update(ctx context.Context, in *appsv1.ReplicaSet, opts metav1.UpdateOptions) (*appsv1.ReplicaSet, error) {
+func (w *wrapAppsV1ReplicaSetImpl) Update(ctx context.Context, in *apiappsv1.ReplicaSet, opts metav1.UpdateOptions) (*apiappsv1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1375,14 +1486,14 @@ func (w *wrapAppsV1ReplicaSetImpl) Update(ctx context.Context, in *appsv1.Replic
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSet{}
+	out := &apiappsv1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1ReplicaSetImpl) UpdateStatus(ctx context.Context, in *appsv1.ReplicaSet, opts metav1.UpdateOptions) (*appsv1.ReplicaSet, error) {
+func (w *wrapAppsV1ReplicaSetImpl) UpdateStatus(ctx context.Context, in *apiappsv1.ReplicaSet, opts metav1.UpdateOptions) (*apiappsv1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1396,7 +1507,7 @@ func (w *wrapAppsV1ReplicaSetImpl) UpdateStatus(ctx context.Context, in *appsv1.
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.ReplicaSet{}
+	out := &apiappsv1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1435,7 +1546,15 @@ type wrapAppsV1StatefulSetImpl struct {
 
 var _ typedappsv1.StatefulSetInterface = (*wrapAppsV1StatefulSetImpl)(nil)
 
-func (w *wrapAppsV1StatefulSetImpl) Create(ctx context.Context, in *appsv1.StatefulSet, opts metav1.CreateOptions) (*appsv1.StatefulSet, error) {
+func (w *wrapAppsV1StatefulSetImpl) Apply(ctx context.Context, in *appsv1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1StatefulSetImpl) ApplyStatus(ctx context.Context, in *appsv1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1StatefulSetImpl) Create(ctx context.Context, in *apiappsv1.StatefulSet, opts metav1.CreateOptions) (*apiappsv1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1449,7 +1568,7 @@ func (w *wrapAppsV1StatefulSetImpl) Create(ctx context.Context, in *appsv1.State
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSet{}
+	out := &apiappsv1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1464,43 +1583,43 @@ func (w *wrapAppsV1StatefulSetImpl) DeleteCollection(ctx context.Context, opts m
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.StatefulSet, error) {
+func (w *wrapAppsV1StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1.StatefulSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSet{}
+	out := &apiappsv1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1.StatefulSetList, error) {
+func (w *wrapAppsV1StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1.StatefulSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSetList{}
+	out := &apiappsv1.StatefulSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1.StatefulSet, err error) {
+func (w *wrapAppsV1StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1.StatefulSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSet{}
+	out := &apiappsv1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1StatefulSetImpl) Update(ctx context.Context, in *appsv1.StatefulSet, opts metav1.UpdateOptions) (*appsv1.StatefulSet, error) {
+func (w *wrapAppsV1StatefulSetImpl) Update(ctx context.Context, in *apiappsv1.StatefulSet, opts metav1.UpdateOptions) (*apiappsv1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1514,14 +1633,14 @@ func (w *wrapAppsV1StatefulSetImpl) Update(ctx context.Context, in *appsv1.State
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSet{}
+	out := &apiappsv1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1StatefulSetImpl) UpdateStatus(ctx context.Context, in *appsv1.StatefulSet, opts metav1.UpdateOptions) (*appsv1.StatefulSet, error) {
+func (w *wrapAppsV1StatefulSetImpl) UpdateStatus(ctx context.Context, in *apiappsv1.StatefulSet, opts metav1.UpdateOptions) (*apiappsv1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1",
@@ -1535,7 +1654,7 @@ func (w *wrapAppsV1StatefulSetImpl) UpdateStatus(ctx context.Context, in *appsv1
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1.StatefulSet{}
+	out := &apiappsv1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1589,7 +1708,15 @@ type wrapAppsV1beta1ControllerRevisionImpl struct {
 
 var _ typedappsv1beta1.ControllerRevisionInterface = (*wrapAppsV1beta1ControllerRevisionImpl)(nil)
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) Create(ctx context.Context, in *appsv1beta1.ControllerRevision, opts metav1.CreateOptions) (*appsv1beta1.ControllerRevision, error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) Apply(ctx context.Context, in *appsv1beta1.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1ControllerRevisionImpl) ApplyStatus(ctx context.Context, in *appsv1beta1.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1ControllerRevisionImpl) Create(ctx context.Context, in *apiappsv1beta1.ControllerRevision, opts metav1.CreateOptions) (*apiappsv1beta1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1603,7 +1730,7 @@ func (w *wrapAppsV1beta1ControllerRevisionImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevision{}
+	out := &apiappsv1beta1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1618,43 +1745,43 @@ func (w *wrapAppsV1beta1ControllerRevisionImpl) DeleteCollection(ctx context.Con
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta1.ControllerRevision, error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1beta1.ControllerRevision, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevision{}
+	out := &apiappsv1beta1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta1.ControllerRevisionList, error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1beta1.ControllerRevisionList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevisionList{}
+	out := &apiappsv1beta1.ControllerRevisionList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta1.ControllerRevision, err error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1beta1.ControllerRevision, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevision{}
+	out := &apiappsv1beta1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) Update(ctx context.Context, in *appsv1beta1.ControllerRevision, opts metav1.UpdateOptions) (*appsv1beta1.ControllerRevision, error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) Update(ctx context.Context, in *apiappsv1beta1.ControllerRevision, opts metav1.UpdateOptions) (*apiappsv1beta1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1668,14 +1795,14 @@ func (w *wrapAppsV1beta1ControllerRevisionImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevision{}
+	out := &apiappsv1beta1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *appsv1beta1.ControllerRevision, opts metav1.UpdateOptions) (*appsv1beta1.ControllerRevision, error) {
+func (w *wrapAppsV1beta1ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *apiappsv1beta1.ControllerRevision, opts metav1.UpdateOptions) (*apiappsv1beta1.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1689,7 +1816,7 @@ func (w *wrapAppsV1beta1ControllerRevisionImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.ControllerRevision{}
+	out := &apiappsv1beta1.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1720,7 +1847,15 @@ type wrapAppsV1beta1DeploymentImpl struct {
 
 var _ typedappsv1beta1.DeploymentInterface = (*wrapAppsV1beta1DeploymentImpl)(nil)
 
-func (w *wrapAppsV1beta1DeploymentImpl) Create(ctx context.Context, in *appsv1beta1.Deployment, opts metav1.CreateOptions) (*appsv1beta1.Deployment, error) {
+func (w *wrapAppsV1beta1DeploymentImpl) Apply(ctx context.Context, in *appsv1beta1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1DeploymentImpl) ApplyStatus(ctx context.Context, in *appsv1beta1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1DeploymentImpl) Create(ctx context.Context, in *apiappsv1beta1.Deployment, opts metav1.CreateOptions) (*apiappsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1734,7 +1869,7 @@ func (w *wrapAppsV1beta1DeploymentImpl) Create(ctx context.Context, in *appsv1be
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.Deployment{}
+	out := &apiappsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1749,43 +1884,43 @@ func (w *wrapAppsV1beta1DeploymentImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta1.Deployment, error) {
+func (w *wrapAppsV1beta1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1beta1.Deployment, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.Deployment{}
+	out := &apiappsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta1.DeploymentList, error) {
+func (w *wrapAppsV1beta1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1beta1.DeploymentList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.DeploymentList{}
+	out := &apiappsv1beta1.DeploymentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta1.Deployment, err error) {
+func (w *wrapAppsV1beta1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1beta1.Deployment, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.Deployment{}
+	out := &apiappsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1DeploymentImpl) Update(ctx context.Context, in *appsv1beta1.Deployment, opts metav1.UpdateOptions) (*appsv1beta1.Deployment, error) {
+func (w *wrapAppsV1beta1DeploymentImpl) Update(ctx context.Context, in *apiappsv1beta1.Deployment, opts metav1.UpdateOptions) (*apiappsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1799,14 +1934,14 @@ func (w *wrapAppsV1beta1DeploymentImpl) Update(ctx context.Context, in *appsv1be
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.Deployment{}
+	out := &apiappsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, in *appsv1beta1.Deployment, opts metav1.UpdateOptions) (*appsv1beta1.Deployment, error) {
+func (w *wrapAppsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, in *apiappsv1beta1.Deployment, opts metav1.UpdateOptions) (*apiappsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1820,7 +1955,7 @@ func (w *wrapAppsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, in *ap
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.Deployment{}
+	out := &apiappsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1851,7 +1986,15 @@ type wrapAppsV1beta1StatefulSetImpl struct {
 
 var _ typedappsv1beta1.StatefulSetInterface = (*wrapAppsV1beta1StatefulSetImpl)(nil)
 
-func (w *wrapAppsV1beta1StatefulSetImpl) Create(ctx context.Context, in *appsv1beta1.StatefulSet, opts metav1.CreateOptions) (*appsv1beta1.StatefulSet, error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) Apply(ctx context.Context, in *appsv1beta1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1StatefulSetImpl) ApplyStatus(ctx context.Context, in *appsv1beta1.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiappsv1beta1.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta1StatefulSetImpl) Create(ctx context.Context, in *apiappsv1beta1.StatefulSet, opts metav1.CreateOptions) (*apiappsv1beta1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1865,7 +2008,7 @@ func (w *wrapAppsV1beta1StatefulSetImpl) Create(ctx context.Context, in *appsv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSet{}
+	out := &apiappsv1beta1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1880,43 +2023,43 @@ func (w *wrapAppsV1beta1StatefulSetImpl) DeleteCollection(ctx context.Context, o
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta1StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta1.StatefulSet, error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiappsv1beta1.StatefulSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSet{}
+	out := &apiappsv1beta1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta1.StatefulSetList, error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiappsv1beta1.StatefulSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSetList{}
+	out := &apiappsv1beta1.StatefulSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta1.StatefulSet, err error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiappsv1beta1.StatefulSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSet{}
+	out := &apiappsv1beta1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1StatefulSetImpl) Update(ctx context.Context, in *appsv1beta1.StatefulSet, opts metav1.UpdateOptions) (*appsv1beta1.StatefulSet, error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) Update(ctx context.Context, in *apiappsv1beta1.StatefulSet, opts metav1.UpdateOptions) (*apiappsv1beta1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1930,14 +2073,14 @@ func (w *wrapAppsV1beta1StatefulSetImpl) Update(ctx context.Context, in *appsv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSet{}
+	out := &apiappsv1beta1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta1StatefulSetImpl) UpdateStatus(ctx context.Context, in *appsv1beta1.StatefulSet, opts metav1.UpdateOptions) (*appsv1beta1.StatefulSet, error) {
+func (w *wrapAppsV1beta1StatefulSetImpl) UpdateStatus(ctx context.Context, in *apiappsv1beta1.StatefulSet, opts metav1.UpdateOptions) (*apiappsv1beta1.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta1",
@@ -1951,7 +2094,7 @@ func (w *wrapAppsV1beta1StatefulSetImpl) UpdateStatus(ctx context.Context, in *a
 	if err != nil {
 		return nil, err
 	}
-	out := &appsv1beta1.StatefulSet{}
+	out := &apiappsv1beta1.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -1997,7 +2140,15 @@ type wrapAppsV1beta2ControllerRevisionImpl struct {
 
 var _ typedappsv1beta2.ControllerRevisionInterface = (*wrapAppsV1beta2ControllerRevisionImpl)(nil)
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) Create(ctx context.Context, in *v1beta2.ControllerRevision, opts metav1.CreateOptions) (*v1beta2.ControllerRevision, error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) Apply(ctx context.Context, in *v1beta2.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2ControllerRevisionImpl) ApplyStatus(ctx context.Context, in *v1beta2.ControllerRevisionApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.ControllerRevision, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2ControllerRevisionImpl) Create(ctx context.Context, in *appsv1beta2.ControllerRevision, opts metav1.CreateOptions) (*appsv1beta2.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2011,7 +2162,7 @@ func (w *wrapAppsV1beta2ControllerRevisionImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevision{}
+	out := &appsv1beta2.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2026,43 +2177,43 @@ func (w *wrapAppsV1beta2ControllerRevisionImpl) DeleteCollection(ctx context.Con
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.ControllerRevision, error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.ControllerRevision, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevision{}
+	out := &appsv1beta2.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta2.ControllerRevisionList, error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta2.ControllerRevisionList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevisionList{}
+	out := &appsv1beta2.ControllerRevisionList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta2.ControllerRevision, err error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta2.ControllerRevision, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevision{}
+	out := &appsv1beta2.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) Update(ctx context.Context, in *v1beta2.ControllerRevision, opts metav1.UpdateOptions) (*v1beta2.ControllerRevision, error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) Update(ctx context.Context, in *appsv1beta2.ControllerRevision, opts metav1.UpdateOptions) (*appsv1beta2.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2076,14 +2227,14 @@ func (w *wrapAppsV1beta2ControllerRevisionImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevision{}
+	out := &appsv1beta2.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *v1beta2.ControllerRevision, opts metav1.UpdateOptions) (*v1beta2.ControllerRevision, error) {
+func (w *wrapAppsV1beta2ControllerRevisionImpl) UpdateStatus(ctx context.Context, in *appsv1beta2.ControllerRevision, opts metav1.UpdateOptions) (*appsv1beta2.ControllerRevision, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2097,7 +2248,7 @@ func (w *wrapAppsV1beta2ControllerRevisionImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ControllerRevision{}
+	out := &appsv1beta2.ControllerRevision{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2128,7 +2279,15 @@ type wrapAppsV1beta2DaemonSetImpl struct {
 
 var _ typedappsv1beta2.DaemonSetInterface = (*wrapAppsV1beta2DaemonSetImpl)(nil)
 
-func (w *wrapAppsV1beta2DaemonSetImpl) Create(ctx context.Context, in *v1beta2.DaemonSet, opts metav1.CreateOptions) (*v1beta2.DaemonSet, error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) Apply(ctx context.Context, in *v1beta2.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2DaemonSetImpl) ApplyStatus(ctx context.Context, in *v1beta2.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2DaemonSetImpl) Create(ctx context.Context, in *appsv1beta2.DaemonSet, opts metav1.CreateOptions) (*appsv1beta2.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2142,7 +2301,7 @@ func (w *wrapAppsV1beta2DaemonSetImpl) Create(ctx context.Context, in *v1beta2.D
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSet{}
+	out := &appsv1beta2.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2157,43 +2316,43 @@ func (w *wrapAppsV1beta2DaemonSetImpl) DeleteCollection(ctx context.Context, opt
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta2DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.DaemonSet, error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.DaemonSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSet{}
+	out := &appsv1beta2.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta2.DaemonSetList, error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta2.DaemonSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSetList{}
+	out := &appsv1beta2.DaemonSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta2.DaemonSet, err error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta2.DaemonSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSet{}
+	out := &appsv1beta2.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DaemonSetImpl) Update(ctx context.Context, in *v1beta2.DaemonSet, opts metav1.UpdateOptions) (*v1beta2.DaemonSet, error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) Update(ctx context.Context, in *appsv1beta2.DaemonSet, opts metav1.UpdateOptions) (*appsv1beta2.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2207,14 +2366,14 @@ func (w *wrapAppsV1beta2DaemonSetImpl) Update(ctx context.Context, in *v1beta2.D
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSet{}
+	out := &appsv1beta2.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DaemonSetImpl) UpdateStatus(ctx context.Context, in *v1beta2.DaemonSet, opts metav1.UpdateOptions) (*v1beta2.DaemonSet, error) {
+func (w *wrapAppsV1beta2DaemonSetImpl) UpdateStatus(ctx context.Context, in *appsv1beta2.DaemonSet, opts metav1.UpdateOptions) (*appsv1beta2.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2228,7 +2387,7 @@ func (w *wrapAppsV1beta2DaemonSetImpl) UpdateStatus(ctx context.Context, in *v1b
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DaemonSet{}
+	out := &appsv1beta2.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2259,7 +2418,15 @@ type wrapAppsV1beta2DeploymentImpl struct {
 
 var _ typedappsv1beta2.DeploymentInterface = (*wrapAppsV1beta2DeploymentImpl)(nil)
 
-func (w *wrapAppsV1beta2DeploymentImpl) Create(ctx context.Context, in *v1beta2.Deployment, opts metav1.CreateOptions) (*v1beta2.Deployment, error) {
+func (w *wrapAppsV1beta2DeploymentImpl) Apply(ctx context.Context, in *v1beta2.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2DeploymentImpl) ApplyStatus(ctx context.Context, in *v1beta2.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2DeploymentImpl) Create(ctx context.Context, in *appsv1beta2.Deployment, opts metav1.CreateOptions) (*appsv1beta2.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2273,7 +2440,7 @@ func (w *wrapAppsV1beta2DeploymentImpl) Create(ctx context.Context, in *v1beta2.
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.Deployment{}
+	out := &appsv1beta2.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2288,43 +2455,43 @@ func (w *wrapAppsV1beta2DeploymentImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta2DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.Deployment, error) {
+func (w *wrapAppsV1beta2DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.Deployment, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.Deployment{}
+	out := &appsv1beta2.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta2.DeploymentList, error) {
+func (w *wrapAppsV1beta2DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta2.DeploymentList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.DeploymentList{}
+	out := &appsv1beta2.DeploymentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta2.Deployment, err error) {
+func (w *wrapAppsV1beta2DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta2.Deployment, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.Deployment{}
+	out := &appsv1beta2.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DeploymentImpl) Update(ctx context.Context, in *v1beta2.Deployment, opts metav1.UpdateOptions) (*v1beta2.Deployment, error) {
+func (w *wrapAppsV1beta2DeploymentImpl) Update(ctx context.Context, in *appsv1beta2.Deployment, opts metav1.UpdateOptions) (*appsv1beta2.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2338,14 +2505,14 @@ func (w *wrapAppsV1beta2DeploymentImpl) Update(ctx context.Context, in *v1beta2.
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.Deployment{}
+	out := &appsv1beta2.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2DeploymentImpl) UpdateStatus(ctx context.Context, in *v1beta2.Deployment, opts metav1.UpdateOptions) (*v1beta2.Deployment, error) {
+func (w *wrapAppsV1beta2DeploymentImpl) UpdateStatus(ctx context.Context, in *appsv1beta2.Deployment, opts metav1.UpdateOptions) (*appsv1beta2.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2359,7 +2526,7 @@ func (w *wrapAppsV1beta2DeploymentImpl) UpdateStatus(ctx context.Context, in *v1
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.Deployment{}
+	out := &appsv1beta2.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2390,7 +2557,15 @@ type wrapAppsV1beta2ReplicaSetImpl struct {
 
 var _ typedappsv1beta2.ReplicaSetInterface = (*wrapAppsV1beta2ReplicaSetImpl)(nil)
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) Create(ctx context.Context, in *v1beta2.ReplicaSet, opts metav1.CreateOptions) (*v1beta2.ReplicaSet, error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) Apply(ctx context.Context, in *v1beta2.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2ReplicaSetImpl) ApplyStatus(ctx context.Context, in *v1beta2.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2ReplicaSetImpl) Create(ctx context.Context, in *appsv1beta2.ReplicaSet, opts metav1.CreateOptions) (*appsv1beta2.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2404,7 +2579,7 @@ func (w *wrapAppsV1beta2ReplicaSetImpl) Create(ctx context.Context, in *v1beta2.
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSet{}
+	out := &appsv1beta2.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2419,43 +2594,43 @@ func (w *wrapAppsV1beta2ReplicaSetImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.ReplicaSet, error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.ReplicaSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSet{}
+	out := &appsv1beta2.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta2.ReplicaSetList, error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta2.ReplicaSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSetList{}
+	out := &appsv1beta2.ReplicaSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta2.ReplicaSet, err error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta2.ReplicaSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSet{}
+	out := &appsv1beta2.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) Update(ctx context.Context, in *v1beta2.ReplicaSet, opts metav1.UpdateOptions) (*v1beta2.ReplicaSet, error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) Update(ctx context.Context, in *appsv1beta2.ReplicaSet, opts metav1.UpdateOptions) (*appsv1beta2.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2469,14 +2644,14 @@ func (w *wrapAppsV1beta2ReplicaSetImpl) Update(ctx context.Context, in *v1beta2.
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSet{}
+	out := &appsv1beta2.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2ReplicaSetImpl) UpdateStatus(ctx context.Context, in *v1beta2.ReplicaSet, opts metav1.UpdateOptions) (*v1beta2.ReplicaSet, error) {
+func (w *wrapAppsV1beta2ReplicaSetImpl) UpdateStatus(ctx context.Context, in *appsv1beta2.ReplicaSet, opts metav1.UpdateOptions) (*appsv1beta2.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2490,7 +2665,7 @@ func (w *wrapAppsV1beta2ReplicaSetImpl) UpdateStatus(ctx context.Context, in *v1
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.ReplicaSet{}
+	out := &appsv1beta2.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2521,7 +2696,15 @@ type wrapAppsV1beta2StatefulSetImpl struct {
 
 var _ typedappsv1beta2.StatefulSetInterface = (*wrapAppsV1beta2StatefulSetImpl)(nil)
 
-func (w *wrapAppsV1beta2StatefulSetImpl) Create(ctx context.Context, in *v1beta2.StatefulSet, opts metav1.CreateOptions) (*v1beta2.StatefulSet, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) Apply(ctx context.Context, in *v1beta2.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2StatefulSetImpl) ApplyStatus(ctx context.Context, in *v1beta2.StatefulSetApplyConfiguration, opts metav1.ApplyOptions) (result *appsv1beta2.StatefulSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2StatefulSetImpl) Create(ctx context.Context, in *appsv1beta2.StatefulSet, opts metav1.CreateOptions) (*appsv1beta2.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2535,7 +2718,7 @@ func (w *wrapAppsV1beta2StatefulSetImpl) Create(ctx context.Context, in *v1beta2
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSet{}
+	out := &appsv1beta2.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2550,43 +2733,43 @@ func (w *wrapAppsV1beta2StatefulSetImpl) DeleteCollection(ctx context.Context, o
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.StatefulSet, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.StatefulSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSet{}
+	out := &appsv1beta2.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*v1beta2.StatefulSetList, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*appsv1beta2.StatefulSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSetList{}
+	out := &appsv1beta2.StatefulSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta2.StatefulSet, err error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *appsv1beta2.StatefulSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSet{}
+	out := &appsv1beta2.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) Update(ctx context.Context, in *v1beta2.StatefulSet, opts metav1.UpdateOptions) (*v1beta2.StatefulSet, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) Update(ctx context.Context, in *appsv1beta2.StatefulSet, opts metav1.UpdateOptions) (*appsv1beta2.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2600,14 +2783,14 @@ func (w *wrapAppsV1beta2StatefulSetImpl) Update(ctx context.Context, in *v1beta2
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSet{}
+	out := &appsv1beta2.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) UpdateStatus(ctx context.Context, in *v1beta2.StatefulSet, opts metav1.UpdateOptions) (*v1beta2.StatefulSet, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) UpdateStatus(ctx context.Context, in *appsv1beta2.StatefulSet, opts metav1.UpdateOptions) (*appsv1beta2.StatefulSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps",
 		Version: "v1beta2",
@@ -2621,7 +2804,7 @@ func (w *wrapAppsV1beta2StatefulSetImpl) UpdateStatus(ctx context.Context, in *v
 	if err != nil {
 		return nil, err
 	}
-	out := &v1beta2.StatefulSet{}
+	out := &appsv1beta2.StatefulSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -2632,11 +2815,11 @@ func (w *wrapAppsV1beta2StatefulSetImpl) Watch(ctx context.Context, opts metav1.
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta2.Scale, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1beta2.Scale, error) {
 	panic("NYI")
 }
 
-func (w *wrapAppsV1beta2StatefulSetImpl) UpdateScale(ctx context.Context, _ string, in *v1beta2.Scale, opts metav1.UpdateOptions) (*v1beta2.Scale, error) {
+func (w *wrapAppsV1beta2StatefulSetImpl) UpdateScale(ctx context.Context, _ string, in *appsv1beta2.Scale, opts metav1.UpdateOptions) (*appsv1beta2.Scale, error) {
 	panic("NYI")
 }
 
@@ -3113,6 +3296,14 @@ type wrapAutoscalingV1HorizontalPodAutoscalerImpl struct {
 
 var _ typedautoscalingv1.HorizontalPodAutoscalerInterface = (*wrapAutoscalingV1HorizontalPodAutoscalerImpl)(nil)
 
+func (w *wrapAutoscalingV1HorizontalPodAutoscalerImpl) Apply(ctx context.Context, in *applyconfigurationsautoscalingv1.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV1HorizontalPodAutoscalerImpl) ApplyStatus(ctx context.Context, in *applyconfigurationsautoscalingv1.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv1.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
 func (w *wrapAutoscalingV1HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *autoscalingv1.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*autoscalingv1.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
@@ -3259,7 +3450,15 @@ type wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl struct {
 
 var _ typedautoscalingv2beta1.HorizontalPodAutoscalerInterface = (*wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl)(nil)
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *v2beta1.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*v2beta1.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Apply(ctx context.Context, in *v2beta1.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2beta1.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) ApplyStatus(ctx context.Context, in *v2beta1.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2beta1.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *autoscalingv2beta1.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta1",
@@ -3273,7 +3472,7 @@ func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Create(ctx context.C
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3288,43 +3487,43 @@ func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) DeleteCollection(ctx
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v2beta1.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) List(ctx context.Context, opts metav1.ListOptions) (*v2beta1.HorizontalPodAutoscalerList, error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) List(ctx context.Context, opts metav1.ListOptions) (*autoscalingv2beta1.HorizontalPodAutoscalerList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscalerList{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscalerList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v2beta1.HorizontalPodAutoscaler, err error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *autoscalingv2beta1.HorizontalPodAutoscaler, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Update(ctx context.Context, in *v2beta1.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*v2beta1.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Update(ctx context.Context, in *autoscalingv2beta1.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta1",
@@ -3338,14 +3537,14 @@ func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) Update(ctx context.C
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.Context, in *v2beta1.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*v2beta1.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.Context, in *autoscalingv2beta1.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2beta1.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta1",
@@ -3359,7 +3558,7 @@ func (w *wrapAutoscalingV2beta1HorizontalPodAutoscalerImpl) UpdateStatus(ctx con
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta1.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta1.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3405,7 +3604,15 @@ type wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl struct {
 
 var _ typedautoscalingv2beta2.HorizontalPodAutoscalerInterface = (*wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl)(nil)
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *v2beta2.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*v2beta2.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Apply(ctx context.Context, in *v2beta2.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2beta2.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) ApplyStatus(ctx context.Context, in *v2beta2.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2beta2.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *autoscalingv2beta2.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta2",
@@ -3419,7 +3626,7 @@ func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Create(ctx context.C
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3434,43 +3641,43 @@ func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) DeleteCollection(ctx
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v2beta2.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) List(ctx context.Context, opts metav1.ListOptions) (*v2beta2.HorizontalPodAutoscalerList, error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) List(ctx context.Context, opts metav1.ListOptions) (*autoscalingv2beta2.HorizontalPodAutoscalerList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscalerList{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscalerList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v2beta2.HorizontalPodAutoscaler, err error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *autoscalingv2beta2.HorizontalPodAutoscaler, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Update(ctx context.Context, in *v2beta2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*v2beta2.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Update(ctx context.Context, in *autoscalingv2beta2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta2",
@@ -3484,14 +3691,14 @@ func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) Update(ctx context.C
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.Context, in *v2beta2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*v2beta2.HorizontalPodAutoscaler, error) {
+func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.Context, in *autoscalingv2beta2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2beta2.HorizontalPodAutoscaler, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "autoscaling",
 		Version: "v2beta2",
@@ -3505,7 +3712,7 @@ func (w *wrapAutoscalingV2beta2HorizontalPodAutoscalerImpl) UpdateStatus(ctx con
 	if err != nil {
 		return nil, err
 	}
-	out := &v2beta2.HorizontalPodAutoscaler{}
+	out := &autoscalingv2beta2.HorizontalPodAutoscaler{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3531,6 +3738,145 @@ func (w *wrapBatchV1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
 
+func (w *wrapBatchV1) CronJobs(namespace string) typedbatchv1.CronJobInterface {
+	return &wrapBatchV1CronJobImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "batch",
+			Version:  "v1",
+			Resource: "cronjobs",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapBatchV1CronJobImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedbatchv1.CronJobInterface = (*wrapBatchV1CronJobImpl)(nil)
+
+func (w *wrapBatchV1CronJobImpl) Apply(ctx context.Context, in *batchv1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1.CronJob, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1CronJobImpl) ApplyStatus(ctx context.Context, in *batchv1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1.CronJob, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1CronJobImpl) Create(ctx context.Context, in *apibatchv1.CronJob, opts metav1.CreateOptions) (*apibatchv1.CronJob, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "batch",
+		Version: "v1",
+		Kind:    "CronJob",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJob{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapBatchV1CronJobImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapBatchV1CronJobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apibatchv1.CronJob, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJob{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) List(ctx context.Context, opts metav1.ListOptions) (*apibatchv1.CronJobList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJobList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apibatchv1.CronJob, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJob{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) Update(ctx context.Context, in *apibatchv1.CronJob, opts metav1.UpdateOptions) (*apibatchv1.CronJob, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "batch",
+		Version: "v1",
+		Kind:    "CronJob",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJob{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) UpdateStatus(ctx context.Context, in *apibatchv1.CronJob, opts metav1.UpdateOptions) (*apibatchv1.CronJob, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "batch",
+		Version: "v1",
+		Kind:    "CronJob",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apibatchv1.CronJob{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapBatchV1CronJobImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapBatchV1) Jobs(namespace string) typedbatchv1.JobInterface {
 	return &wrapBatchV1JobImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
@@ -3551,7 +3897,15 @@ type wrapBatchV1JobImpl struct {
 
 var _ typedbatchv1.JobInterface = (*wrapBatchV1JobImpl)(nil)
 
-func (w *wrapBatchV1JobImpl) Create(ctx context.Context, in *batchv1.Job, opts metav1.CreateOptions) (*batchv1.Job, error) {
+func (w *wrapBatchV1JobImpl) Apply(ctx context.Context, in *batchv1.JobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1.Job, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1JobImpl) ApplyStatus(ctx context.Context, in *batchv1.JobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1.Job, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1JobImpl) Create(ctx context.Context, in *apibatchv1.Job, opts metav1.CreateOptions) (*apibatchv1.Job, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1",
@@ -3565,7 +3919,7 @@ func (w *wrapBatchV1JobImpl) Create(ctx context.Context, in *batchv1.Job, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.Job{}
+	out := &apibatchv1.Job{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3580,43 +3934,43 @@ func (w *wrapBatchV1JobImpl) DeleteCollection(ctx context.Context, opts metav1.D
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapBatchV1JobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*batchv1.Job, error) {
+func (w *wrapBatchV1JobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apibatchv1.Job, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.Job{}
+	out := &apibatchv1.Job{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1JobImpl) List(ctx context.Context, opts metav1.ListOptions) (*batchv1.JobList, error) {
+func (w *wrapBatchV1JobImpl) List(ctx context.Context, opts metav1.ListOptions) (*apibatchv1.JobList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.JobList{}
+	out := &apibatchv1.JobList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1JobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *batchv1.Job, err error) {
+func (w *wrapBatchV1JobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apibatchv1.Job, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.Job{}
+	out := &apibatchv1.Job{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1JobImpl) Update(ctx context.Context, in *batchv1.Job, opts metav1.UpdateOptions) (*batchv1.Job, error) {
+func (w *wrapBatchV1JobImpl) Update(ctx context.Context, in *apibatchv1.Job, opts metav1.UpdateOptions) (*apibatchv1.Job, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1",
@@ -3630,14 +3984,14 @@ func (w *wrapBatchV1JobImpl) Update(ctx context.Context, in *batchv1.Job, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.Job{}
+	out := &apibatchv1.Job{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1JobImpl) UpdateStatus(ctx context.Context, in *batchv1.Job, opts metav1.UpdateOptions) (*batchv1.Job, error) {
+func (w *wrapBatchV1JobImpl) UpdateStatus(ctx context.Context, in *apibatchv1.Job, opts metav1.UpdateOptions) (*apibatchv1.Job, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1",
@@ -3651,7 +4005,7 @@ func (w *wrapBatchV1JobImpl) UpdateStatus(ctx context.Context, in *batchv1.Job, 
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1.Job{}
+	out := &apibatchv1.Job{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3697,7 +4051,15 @@ type wrapBatchV1beta1CronJobImpl struct {
 
 var _ typedbatchv1beta1.CronJobInterface = (*wrapBatchV1beta1CronJobImpl)(nil)
 
-func (w *wrapBatchV1beta1CronJobImpl) Create(ctx context.Context, in *batchv1beta1.CronJob, opts metav1.CreateOptions) (*batchv1beta1.CronJob, error) {
+func (w *wrapBatchV1beta1CronJobImpl) Apply(ctx context.Context, in *batchv1beta1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1beta1.CronJob, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1beta1CronJobImpl) ApplyStatus(ctx context.Context, in *batchv1beta1.CronJobApplyConfiguration, opts metav1.ApplyOptions) (result *apibatchv1beta1.CronJob, err error) {
+	panic("NYI")
+}
+
+func (w *wrapBatchV1beta1CronJobImpl) Create(ctx context.Context, in *apibatchv1beta1.CronJob, opts metav1.CreateOptions) (*apibatchv1beta1.CronJob, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1beta1",
@@ -3711,7 +4073,7 @@ func (w *wrapBatchV1beta1CronJobImpl) Create(ctx context.Context, in *batchv1bet
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJob{}
+	out := &apibatchv1beta1.CronJob{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3726,43 +4088,43 @@ func (w *wrapBatchV1beta1CronJobImpl) DeleteCollection(ctx context.Context, opts
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapBatchV1beta1CronJobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*batchv1beta1.CronJob, error) {
+func (w *wrapBatchV1beta1CronJobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apibatchv1beta1.CronJob, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJob{}
+	out := &apibatchv1beta1.CronJob{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1beta1CronJobImpl) List(ctx context.Context, opts metav1.ListOptions) (*batchv1beta1.CronJobList, error) {
+func (w *wrapBatchV1beta1CronJobImpl) List(ctx context.Context, opts metav1.ListOptions) (*apibatchv1beta1.CronJobList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJobList{}
+	out := &apibatchv1beta1.CronJobList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1beta1CronJobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *batchv1beta1.CronJob, err error) {
+func (w *wrapBatchV1beta1CronJobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apibatchv1beta1.CronJob, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJob{}
+	out := &apibatchv1beta1.CronJob{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1beta1CronJobImpl) Update(ctx context.Context, in *batchv1beta1.CronJob, opts metav1.UpdateOptions) (*batchv1beta1.CronJob, error) {
+func (w *wrapBatchV1beta1CronJobImpl) Update(ctx context.Context, in *apibatchv1beta1.CronJob, opts metav1.UpdateOptions) (*apibatchv1beta1.CronJob, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1beta1",
@@ -3776,14 +4138,14 @@ func (w *wrapBatchV1beta1CronJobImpl) Update(ctx context.Context, in *batchv1bet
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJob{}
+	out := &apibatchv1beta1.CronJob{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapBatchV1beta1CronJobImpl) UpdateStatus(ctx context.Context, in *batchv1beta1.CronJob, opts metav1.UpdateOptions) (*batchv1beta1.CronJob, error) {
+func (w *wrapBatchV1beta1CronJobImpl) UpdateStatus(ctx context.Context, in *apibatchv1beta1.CronJob, opts metav1.UpdateOptions) (*apibatchv1beta1.CronJob, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "batch",
 		Version: "v1beta1",
@@ -3797,7 +4159,7 @@ func (w *wrapBatchV1beta1CronJobImpl) UpdateStatus(ctx context.Context, in *batc
 	if err != nil {
 		return nil, err
 	}
-	out := &batchv1beta1.CronJob{}
+	out := &apibatchv1beta1.CronJob{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -3805,152 +4167,6 @@ func (w *wrapBatchV1beta1CronJobImpl) UpdateStatus(ctx context.Context, in *batc
 }
 
 func (w *wrapBatchV1beta1CronJobImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return nil, errors.New("NYI: Watch")
-}
-
-// BatchV2alpha1 retrieves the BatchV2alpha1Client
-func (w *wrapClient) BatchV2alpha1() typedbatchv2alpha1.BatchV2alpha1Interface {
-	return &wrapBatchV2alpha1{
-		dyn: w.dyn,
-	}
-}
-
-type wrapBatchV2alpha1 struct {
-	dyn dynamic.Interface
-}
-
-func (w *wrapBatchV2alpha1) RESTClient() rest.Interface {
-	panic("RESTClient called on dynamic client!")
-}
-
-func (w *wrapBatchV2alpha1) CronJobs(namespace string) typedbatchv2alpha1.CronJobInterface {
-	return &wrapBatchV2alpha1CronJobImpl{
-		dyn: w.dyn.Resource(schema.GroupVersionResource{
-			Group:    "batch",
-			Version:  "v2alpha1",
-			Resource: "cronjobs",
-		}),
-
-		namespace: namespace,
-	}
-}
-
-type wrapBatchV2alpha1CronJobImpl struct {
-	dyn dynamic.NamespaceableResourceInterface
-
-	namespace string
-}
-
-var _ typedbatchv2alpha1.CronJobInterface = (*wrapBatchV2alpha1CronJobImpl)(nil)
-
-func (w *wrapBatchV2alpha1CronJobImpl) Create(ctx context.Context, in *v2alpha1.CronJob, opts metav1.CreateOptions) (*v2alpha1.CronJob, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "batch",
-		Version: "v2alpha1",
-		Kind:    "CronJob",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJob{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v2alpha1.CronJob, error) {
-	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJob{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) List(ctx context.Context, opts metav1.ListOptions) (*v2alpha1.CronJobList, error) {
-	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJobList{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v2alpha1.CronJob, err error) {
-	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJob{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) Update(ctx context.Context, in *v2alpha1.CronJob, opts metav1.UpdateOptions) (*v2alpha1.CronJob, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "batch",
-		Version: "v2alpha1",
-		Kind:    "CronJob",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJob{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) UpdateStatus(ctx context.Context, in *v2alpha1.CronJob, opts metav1.UpdateOptions) (*v2alpha1.CronJob, error) {
-	in.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "batch",
-		Version: "v2alpha1",
-		Kind:    "CronJob",
-	})
-	uo := &unstructured.Unstructured{}
-	if err := convert(in, uo); err != nil {
-		return nil, err
-	}
-	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
-	if err != nil {
-		return nil, err
-	}
-	out := &v2alpha1.CronJob{}
-	if err := convert(uo, out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (w *wrapBatchV2alpha1CronJobImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -3985,7 +4201,15 @@ type wrapCertificatesV1CertificateSigningRequestImpl struct {
 
 var _ typedcertificatesv1.CertificateSigningRequestInterface = (*wrapCertificatesV1CertificateSigningRequestImpl)(nil)
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) Create(ctx context.Context, in *certificatesv1.CertificateSigningRequest, opts metav1.CreateOptions) (*certificatesv1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) Apply(ctx context.Context, in *certificatesv1.CertificateSigningRequestApplyConfiguration, opts metav1.ApplyOptions) (result *apicertificatesv1.CertificateSigningRequest, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) ApplyStatus(ctx context.Context, in *certificatesv1.CertificateSigningRequestApplyConfiguration, opts metav1.ApplyOptions) (result *apicertificatesv1.CertificateSigningRequest, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) Create(ctx context.Context, in *apicertificatesv1.CertificateSigningRequest, opts metav1.CreateOptions) (*apicertificatesv1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1",
@@ -3999,7 +4223,7 @@ func (w *wrapCertificatesV1CertificateSigningRequestImpl) Create(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequest{}
+	out := &apicertificatesv1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4014,43 +4238,43 @@ func (w *wrapCertificatesV1CertificateSigningRequestImpl) DeleteCollection(ctx c
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*certificatesv1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicertificatesv1.CertificateSigningRequest, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequest{}
+	out := &apicertificatesv1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) List(ctx context.Context, opts metav1.ListOptions) (*certificatesv1.CertificateSigningRequestList, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicertificatesv1.CertificateSigningRequestList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequestList{}
+	out := &apicertificatesv1.CertificateSigningRequestList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *certificatesv1.CertificateSigningRequest, err error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicertificatesv1.CertificateSigningRequest, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequest{}
+	out := &apicertificatesv1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) Update(ctx context.Context, in *certificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*certificatesv1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) Update(ctx context.Context, in *apicertificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*apicertificatesv1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1",
@@ -4064,14 +4288,14 @@ func (w *wrapCertificatesV1CertificateSigningRequestImpl) Update(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequest{}
+	out := &apicertificatesv1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) UpdateStatus(ctx context.Context, in *certificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*certificatesv1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) UpdateStatus(ctx context.Context, in *apicertificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*apicertificatesv1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1",
@@ -4085,7 +4309,7 @@ func (w *wrapCertificatesV1CertificateSigningRequestImpl) UpdateStatus(ctx conte
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1.CertificateSigningRequest{}
+	out := &apicertificatesv1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4096,7 +4320,7 @@ func (w *wrapCertificatesV1CertificateSigningRequestImpl) Watch(ctx context.Cont
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapCertificatesV1CertificateSigningRequestImpl) UpdateApproval(ctx context.Context, _ string, in *certificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*certificatesv1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1CertificateSigningRequestImpl) UpdateApproval(ctx context.Context, _ string, in *apicertificatesv1.CertificateSigningRequest, opts metav1.UpdateOptions) (*apicertificatesv1.CertificateSigningRequest, error) {
 	panic("NYI")
 }
 
@@ -4131,7 +4355,15 @@ type wrapCertificatesV1beta1CertificateSigningRequestImpl struct {
 
 var _ typedcertificatesv1beta1.CertificateSigningRequestInterface = (*wrapCertificatesV1beta1CertificateSigningRequestImpl)(nil)
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Create(ctx context.Context, in *certificatesv1beta1.CertificateSigningRequest, opts metav1.CreateOptions) (*certificatesv1beta1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Apply(ctx context.Context, in *certificatesv1beta1.CertificateSigningRequestApplyConfiguration, opts metav1.ApplyOptions) (result *apicertificatesv1beta1.CertificateSigningRequest, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) ApplyStatus(ctx context.Context, in *certificatesv1beta1.CertificateSigningRequestApplyConfiguration, opts metav1.ApplyOptions) (result *apicertificatesv1beta1.CertificateSigningRequest, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Create(ctx context.Context, in *apicertificatesv1beta1.CertificateSigningRequest, opts metav1.CreateOptions) (*apicertificatesv1beta1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1beta1",
@@ -4145,7 +4377,7 @@ func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Create(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequest{}
+	out := &apicertificatesv1beta1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4160,43 +4392,43 @@ func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) DeleteCollection(
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*certificatesv1beta1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicertificatesv1beta1.CertificateSigningRequest, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequest{}
+	out := &apicertificatesv1beta1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) List(ctx context.Context, opts metav1.ListOptions) (*certificatesv1beta1.CertificateSigningRequestList, error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicertificatesv1beta1.CertificateSigningRequestList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequestList{}
+	out := &apicertificatesv1beta1.CertificateSigningRequestList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *certificatesv1beta1.CertificateSigningRequest, err error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicertificatesv1beta1.CertificateSigningRequest, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequest{}
+	out := &apicertificatesv1beta1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Update(ctx context.Context, in *certificatesv1beta1.CertificateSigningRequest, opts metav1.UpdateOptions) (*certificatesv1beta1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Update(ctx context.Context, in *apicertificatesv1beta1.CertificateSigningRequest, opts metav1.UpdateOptions) (*apicertificatesv1beta1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1beta1",
@@ -4210,14 +4442,14 @@ func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) Update(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequest{}
+	out := &apicertificatesv1beta1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) UpdateStatus(ctx context.Context, in *certificatesv1beta1.CertificateSigningRequest, opts metav1.UpdateOptions) (*certificatesv1beta1.CertificateSigningRequest, error) {
+func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) UpdateStatus(ctx context.Context, in *apicertificatesv1beta1.CertificateSigningRequest, opts metav1.UpdateOptions) (*apicertificatesv1beta1.CertificateSigningRequest, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "certificates.k8s.io",
 		Version: "v1beta1",
@@ -4231,7 +4463,7 @@ func (w *wrapCertificatesV1beta1CertificateSigningRequestImpl) UpdateStatus(ctx 
 	if err != nil {
 		return nil, err
 	}
-	out := &certificatesv1beta1.CertificateSigningRequest{}
+	out := &apicertificatesv1beta1.CertificateSigningRequest{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4277,7 +4509,15 @@ type wrapCoordinationV1LeaseImpl struct {
 
 var _ typedcoordinationv1.LeaseInterface = (*wrapCoordinationV1LeaseImpl)(nil)
 
-func (w *wrapCoordinationV1LeaseImpl) Create(ctx context.Context, in *coordinationv1.Lease, opts metav1.CreateOptions) (*coordinationv1.Lease, error) {
+func (w *wrapCoordinationV1LeaseImpl) Apply(ctx context.Context, in *coordinationv1.LeaseApplyConfiguration, opts metav1.ApplyOptions) (result *apicoordinationv1.Lease, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoordinationV1LeaseImpl) ApplyStatus(ctx context.Context, in *coordinationv1.LeaseApplyConfiguration, opts metav1.ApplyOptions) (result *apicoordinationv1.Lease, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoordinationV1LeaseImpl) Create(ctx context.Context, in *apicoordinationv1.Lease, opts metav1.CreateOptions) (*apicoordinationv1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1",
@@ -4291,7 +4531,7 @@ func (w *wrapCoordinationV1LeaseImpl) Create(ctx context.Context, in *coordinati
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.Lease{}
+	out := &apicoordinationv1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4306,43 +4546,43 @@ func (w *wrapCoordinationV1LeaseImpl) DeleteCollection(ctx context.Context, opts
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoordinationV1LeaseImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*coordinationv1.Lease, error) {
+func (w *wrapCoordinationV1LeaseImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicoordinationv1.Lease, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.Lease{}
+	out := &apicoordinationv1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1LeaseImpl) List(ctx context.Context, opts metav1.ListOptions) (*coordinationv1.LeaseList, error) {
+func (w *wrapCoordinationV1LeaseImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicoordinationv1.LeaseList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.LeaseList{}
+	out := &apicoordinationv1.LeaseList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1LeaseImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *coordinationv1.Lease, err error) {
+func (w *wrapCoordinationV1LeaseImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicoordinationv1.Lease, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.Lease{}
+	out := &apicoordinationv1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1LeaseImpl) Update(ctx context.Context, in *coordinationv1.Lease, opts metav1.UpdateOptions) (*coordinationv1.Lease, error) {
+func (w *wrapCoordinationV1LeaseImpl) Update(ctx context.Context, in *apicoordinationv1.Lease, opts metav1.UpdateOptions) (*apicoordinationv1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1",
@@ -4356,14 +4596,14 @@ func (w *wrapCoordinationV1LeaseImpl) Update(ctx context.Context, in *coordinati
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.Lease{}
+	out := &apicoordinationv1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1LeaseImpl) UpdateStatus(ctx context.Context, in *coordinationv1.Lease, opts metav1.UpdateOptions) (*coordinationv1.Lease, error) {
+func (w *wrapCoordinationV1LeaseImpl) UpdateStatus(ctx context.Context, in *apicoordinationv1.Lease, opts metav1.UpdateOptions) (*apicoordinationv1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1",
@@ -4377,7 +4617,7 @@ func (w *wrapCoordinationV1LeaseImpl) UpdateStatus(ctx context.Context, in *coor
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1.Lease{}
+	out := &apicoordinationv1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4423,7 +4663,15 @@ type wrapCoordinationV1beta1LeaseImpl struct {
 
 var _ typedcoordinationv1beta1.LeaseInterface = (*wrapCoordinationV1beta1LeaseImpl)(nil)
 
-func (w *wrapCoordinationV1beta1LeaseImpl) Create(ctx context.Context, in *coordinationv1beta1.Lease, opts metav1.CreateOptions) (*coordinationv1beta1.Lease, error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) Apply(ctx context.Context, in *coordinationv1beta1.LeaseApplyConfiguration, opts metav1.ApplyOptions) (result *apicoordinationv1beta1.Lease, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoordinationV1beta1LeaseImpl) ApplyStatus(ctx context.Context, in *coordinationv1beta1.LeaseApplyConfiguration, opts metav1.ApplyOptions) (result *apicoordinationv1beta1.Lease, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoordinationV1beta1LeaseImpl) Create(ctx context.Context, in *apicoordinationv1beta1.Lease, opts metav1.CreateOptions) (*apicoordinationv1beta1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1beta1",
@@ -4437,7 +4685,7 @@ func (w *wrapCoordinationV1beta1LeaseImpl) Create(ctx context.Context, in *coord
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.Lease{}
+	out := &apicoordinationv1beta1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4452,43 +4700,43 @@ func (w *wrapCoordinationV1beta1LeaseImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoordinationV1beta1LeaseImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*coordinationv1beta1.Lease, error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicoordinationv1beta1.Lease, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.Lease{}
+	out := &apicoordinationv1beta1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1beta1LeaseImpl) List(ctx context.Context, opts metav1.ListOptions) (*coordinationv1beta1.LeaseList, error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicoordinationv1beta1.LeaseList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.LeaseList{}
+	out := &apicoordinationv1beta1.LeaseList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1beta1LeaseImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *coordinationv1beta1.Lease, err error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicoordinationv1beta1.Lease, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.Lease{}
+	out := &apicoordinationv1beta1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1beta1LeaseImpl) Update(ctx context.Context, in *coordinationv1beta1.Lease, opts metav1.UpdateOptions) (*coordinationv1beta1.Lease, error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) Update(ctx context.Context, in *apicoordinationv1beta1.Lease, opts metav1.UpdateOptions) (*apicoordinationv1beta1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1beta1",
@@ -4502,14 +4750,14 @@ func (w *wrapCoordinationV1beta1LeaseImpl) Update(ctx context.Context, in *coord
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.Lease{}
+	out := &apicoordinationv1beta1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoordinationV1beta1LeaseImpl) UpdateStatus(ctx context.Context, in *coordinationv1beta1.Lease, opts metav1.UpdateOptions) (*coordinationv1beta1.Lease, error) {
+func (w *wrapCoordinationV1beta1LeaseImpl) UpdateStatus(ctx context.Context, in *apicoordinationv1beta1.Lease, opts metav1.UpdateOptions) (*apicoordinationv1beta1.Lease, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "coordination.k8s.io",
 		Version: "v1beta1",
@@ -4523,7 +4771,7 @@ func (w *wrapCoordinationV1beta1LeaseImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &coordinationv1beta1.Lease{}
+	out := &apicoordinationv1beta1.Lease{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4565,7 +4813,15 @@ type wrapCoreV1ComponentStatusImpl struct {
 
 var _ typedcorev1.ComponentStatusInterface = (*wrapCoreV1ComponentStatusImpl)(nil)
 
-func (w *wrapCoreV1ComponentStatusImpl) Create(ctx context.Context, in *corev1.ComponentStatus, opts metav1.CreateOptions) (*corev1.ComponentStatus, error) {
+func (w *wrapCoreV1ComponentStatusImpl) Apply(ctx context.Context, in *corev1.ComponentStatusApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ComponentStatus, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ComponentStatusImpl) ApplyStatus(ctx context.Context, in *corev1.ComponentStatusApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ComponentStatus, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ComponentStatusImpl) Create(ctx context.Context, in *apicorev1.ComponentStatus, opts metav1.CreateOptions) (*apicorev1.ComponentStatus, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4579,7 +4835,7 @@ func (w *wrapCoreV1ComponentStatusImpl) Create(ctx context.Context, in *corev1.C
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatus{}
+	out := &apicorev1.ComponentStatus{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4594,43 +4850,43 @@ func (w *wrapCoreV1ComponentStatusImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1ComponentStatusImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ComponentStatus, error) {
+func (w *wrapCoreV1ComponentStatusImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.ComponentStatus, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatus{}
+	out := &apicorev1.ComponentStatus{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ComponentStatusImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ComponentStatusList, error) {
+func (w *wrapCoreV1ComponentStatusImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ComponentStatusList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatusList{}
+	out := &apicorev1.ComponentStatusList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ComponentStatusImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ComponentStatus, err error) {
+func (w *wrapCoreV1ComponentStatusImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.ComponentStatus, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatus{}
+	out := &apicorev1.ComponentStatus{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ComponentStatusImpl) Update(ctx context.Context, in *corev1.ComponentStatus, opts metav1.UpdateOptions) (*corev1.ComponentStatus, error) {
+func (w *wrapCoreV1ComponentStatusImpl) Update(ctx context.Context, in *apicorev1.ComponentStatus, opts metav1.UpdateOptions) (*apicorev1.ComponentStatus, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4644,14 +4900,14 @@ func (w *wrapCoreV1ComponentStatusImpl) Update(ctx context.Context, in *corev1.C
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatus{}
+	out := &apicorev1.ComponentStatus{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ComponentStatusImpl) UpdateStatus(ctx context.Context, in *corev1.ComponentStatus, opts metav1.UpdateOptions) (*corev1.ComponentStatus, error) {
+func (w *wrapCoreV1ComponentStatusImpl) UpdateStatus(ctx context.Context, in *apicorev1.ComponentStatus, opts metav1.UpdateOptions) (*apicorev1.ComponentStatus, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4665,7 +4921,7 @@ func (w *wrapCoreV1ComponentStatusImpl) UpdateStatus(ctx context.Context, in *co
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ComponentStatus{}
+	out := &apicorev1.ComponentStatus{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4696,7 +4952,15 @@ type wrapCoreV1ConfigMapImpl struct {
 
 var _ typedcorev1.ConfigMapInterface = (*wrapCoreV1ConfigMapImpl)(nil)
 
-func (w *wrapCoreV1ConfigMapImpl) Create(ctx context.Context, in *corev1.ConfigMap, opts metav1.CreateOptions) (*corev1.ConfigMap, error) {
+func (w *wrapCoreV1ConfigMapImpl) Apply(ctx context.Context, in *corev1.ConfigMapApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ConfigMap, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ConfigMapImpl) ApplyStatus(ctx context.Context, in *corev1.ConfigMapApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ConfigMap, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ConfigMapImpl) Create(ctx context.Context, in *apicorev1.ConfigMap, opts metav1.CreateOptions) (*apicorev1.ConfigMap, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4710,7 +4974,7 @@ func (w *wrapCoreV1ConfigMapImpl) Create(ctx context.Context, in *corev1.ConfigM
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMap{}
+	out := &apicorev1.ConfigMap{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4725,43 +4989,43 @@ func (w *wrapCoreV1ConfigMapImpl) DeleteCollection(ctx context.Context, opts met
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1ConfigMapImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ConfigMap, error) {
+func (w *wrapCoreV1ConfigMapImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.ConfigMap, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMap{}
+	out := &apicorev1.ConfigMap{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ConfigMapImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ConfigMapList, error) {
+func (w *wrapCoreV1ConfigMapImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ConfigMapList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMapList{}
+	out := &apicorev1.ConfigMapList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ConfigMapImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ConfigMap, err error) {
+func (w *wrapCoreV1ConfigMapImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.ConfigMap, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMap{}
+	out := &apicorev1.ConfigMap{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ConfigMapImpl) Update(ctx context.Context, in *corev1.ConfigMap, opts metav1.UpdateOptions) (*corev1.ConfigMap, error) {
+func (w *wrapCoreV1ConfigMapImpl) Update(ctx context.Context, in *apicorev1.ConfigMap, opts metav1.UpdateOptions) (*apicorev1.ConfigMap, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4775,14 +5039,14 @@ func (w *wrapCoreV1ConfigMapImpl) Update(ctx context.Context, in *corev1.ConfigM
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMap{}
+	out := &apicorev1.ConfigMap{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ConfigMapImpl) UpdateStatus(ctx context.Context, in *corev1.ConfigMap, opts metav1.UpdateOptions) (*corev1.ConfigMap, error) {
+func (w *wrapCoreV1ConfigMapImpl) UpdateStatus(ctx context.Context, in *apicorev1.ConfigMap, opts metav1.UpdateOptions) (*apicorev1.ConfigMap, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4796,7 +5060,7 @@ func (w *wrapCoreV1ConfigMapImpl) UpdateStatus(ctx context.Context, in *corev1.C
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ConfigMap{}
+	out := &apicorev1.ConfigMap{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4827,7 +5091,15 @@ type wrapCoreV1EndpointsImpl struct {
 
 var _ typedcorev1.EndpointsInterface = (*wrapCoreV1EndpointsImpl)(nil)
 
-func (w *wrapCoreV1EndpointsImpl) Create(ctx context.Context, in *corev1.Endpoints, opts metav1.CreateOptions) (*corev1.Endpoints, error) {
+func (w *wrapCoreV1EndpointsImpl) Apply(ctx context.Context, in *corev1.EndpointsApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Endpoints, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1EndpointsImpl) ApplyStatus(ctx context.Context, in *corev1.EndpointsApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Endpoints, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1EndpointsImpl) Create(ctx context.Context, in *apicorev1.Endpoints, opts metav1.CreateOptions) (*apicorev1.Endpoints, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4841,7 +5113,7 @@ func (w *wrapCoreV1EndpointsImpl) Create(ctx context.Context, in *corev1.Endpoin
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Endpoints{}
+	out := &apicorev1.Endpoints{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4856,43 +5128,43 @@ func (w *wrapCoreV1EndpointsImpl) DeleteCollection(ctx context.Context, opts met
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1EndpointsImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Endpoints, error) {
+func (w *wrapCoreV1EndpointsImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Endpoints, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Endpoints{}
+	out := &apicorev1.Endpoints{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EndpointsImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.EndpointsList, error) {
+func (w *wrapCoreV1EndpointsImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.EndpointsList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.EndpointsList{}
+	out := &apicorev1.EndpointsList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EndpointsImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Endpoints, err error) {
+func (w *wrapCoreV1EndpointsImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Endpoints, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Endpoints{}
+	out := &apicorev1.Endpoints{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EndpointsImpl) Update(ctx context.Context, in *corev1.Endpoints, opts metav1.UpdateOptions) (*corev1.Endpoints, error) {
+func (w *wrapCoreV1EndpointsImpl) Update(ctx context.Context, in *apicorev1.Endpoints, opts metav1.UpdateOptions) (*apicorev1.Endpoints, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4906,14 +5178,14 @@ func (w *wrapCoreV1EndpointsImpl) Update(ctx context.Context, in *corev1.Endpoin
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Endpoints{}
+	out := &apicorev1.Endpoints{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EndpointsImpl) UpdateStatus(ctx context.Context, in *corev1.Endpoints, opts metav1.UpdateOptions) (*corev1.Endpoints, error) {
+func (w *wrapCoreV1EndpointsImpl) UpdateStatus(ctx context.Context, in *apicorev1.Endpoints, opts metav1.UpdateOptions) (*apicorev1.Endpoints, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4927,7 +5199,7 @@ func (w *wrapCoreV1EndpointsImpl) UpdateStatus(ctx context.Context, in *corev1.E
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Endpoints{}
+	out := &apicorev1.Endpoints{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4958,7 +5230,15 @@ type wrapCoreV1EventImpl struct {
 
 var _ typedcorev1.EventInterface = (*wrapCoreV1EventImpl)(nil)
 
-func (w *wrapCoreV1EventImpl) Create(ctx context.Context, in *corev1.Event, opts metav1.CreateOptions) (*corev1.Event, error) {
+func (w *wrapCoreV1EventImpl) Apply(ctx context.Context, in *corev1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1EventImpl) ApplyStatus(ctx context.Context, in *corev1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1EventImpl) Create(ctx context.Context, in *apicorev1.Event, opts metav1.CreateOptions) (*apicorev1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -4972,7 +5252,7 @@ func (w *wrapCoreV1EventImpl) Create(ctx context.Context, in *corev1.Event, opts
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Event{}
+	out := &apicorev1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -4987,43 +5267,43 @@ func (w *wrapCoreV1EventImpl) DeleteCollection(ctx context.Context, opts metav1.
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Event, error) {
+func (w *wrapCoreV1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Event, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Event{}
+	out := &apicorev1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.EventList, error) {
+func (w *wrapCoreV1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.EventList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.EventList{}
+	out := &apicorev1.EventList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Event, err error) {
+func (w *wrapCoreV1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Event, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Event{}
+	out := &apicorev1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EventImpl) Update(ctx context.Context, in *corev1.Event, opts metav1.UpdateOptions) (*corev1.Event, error) {
+func (w *wrapCoreV1EventImpl) Update(ctx context.Context, in *apicorev1.Event, opts metav1.UpdateOptions) (*apicorev1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5037,14 +5317,14 @@ func (w *wrapCoreV1EventImpl) Update(ctx context.Context, in *corev1.Event, opts
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Event{}
+	out := &apicorev1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1EventImpl) UpdateStatus(ctx context.Context, in *corev1.Event, opts metav1.UpdateOptions) (*corev1.Event, error) {
+func (w *wrapCoreV1EventImpl) UpdateStatus(ctx context.Context, in *apicorev1.Event, opts metav1.UpdateOptions) (*apicorev1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5058,7 +5338,7 @@ func (w *wrapCoreV1EventImpl) UpdateStatus(ctx context.Context, in *corev1.Event
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Event{}
+	out := &apicorev1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5089,7 +5369,15 @@ type wrapCoreV1LimitRangeImpl struct {
 
 var _ typedcorev1.LimitRangeInterface = (*wrapCoreV1LimitRangeImpl)(nil)
 
-func (w *wrapCoreV1LimitRangeImpl) Create(ctx context.Context, in *corev1.LimitRange, opts metav1.CreateOptions) (*corev1.LimitRange, error) {
+func (w *wrapCoreV1LimitRangeImpl) Apply(ctx context.Context, in *corev1.LimitRangeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.LimitRange, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1LimitRangeImpl) ApplyStatus(ctx context.Context, in *corev1.LimitRangeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.LimitRange, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1LimitRangeImpl) Create(ctx context.Context, in *apicorev1.LimitRange, opts metav1.CreateOptions) (*apicorev1.LimitRange, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5103,7 +5391,7 @@ func (w *wrapCoreV1LimitRangeImpl) Create(ctx context.Context, in *corev1.LimitR
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRange{}
+	out := &apicorev1.LimitRange{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5118,43 +5406,43 @@ func (w *wrapCoreV1LimitRangeImpl) DeleteCollection(ctx context.Context, opts me
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1LimitRangeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.LimitRange, error) {
+func (w *wrapCoreV1LimitRangeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.LimitRange, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRange{}
+	out := &apicorev1.LimitRange{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1LimitRangeImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.LimitRangeList, error) {
+func (w *wrapCoreV1LimitRangeImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.LimitRangeList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRangeList{}
+	out := &apicorev1.LimitRangeList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1LimitRangeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.LimitRange, err error) {
+func (w *wrapCoreV1LimitRangeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.LimitRange, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRange{}
+	out := &apicorev1.LimitRange{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1LimitRangeImpl) Update(ctx context.Context, in *corev1.LimitRange, opts metav1.UpdateOptions) (*corev1.LimitRange, error) {
+func (w *wrapCoreV1LimitRangeImpl) Update(ctx context.Context, in *apicorev1.LimitRange, opts metav1.UpdateOptions) (*apicorev1.LimitRange, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5168,14 +5456,14 @@ func (w *wrapCoreV1LimitRangeImpl) Update(ctx context.Context, in *corev1.LimitR
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRange{}
+	out := &apicorev1.LimitRange{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1LimitRangeImpl) UpdateStatus(ctx context.Context, in *corev1.LimitRange, opts metav1.UpdateOptions) (*corev1.LimitRange, error) {
+func (w *wrapCoreV1LimitRangeImpl) UpdateStatus(ctx context.Context, in *apicorev1.LimitRange, opts metav1.UpdateOptions) (*apicorev1.LimitRange, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5189,7 +5477,7 @@ func (w *wrapCoreV1LimitRangeImpl) UpdateStatus(ctx context.Context, in *corev1.
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.LimitRange{}
+	out := &apicorev1.LimitRange{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5216,7 +5504,15 @@ type wrapCoreV1NamespaceImpl struct {
 
 var _ typedcorev1.NamespaceInterface = (*wrapCoreV1NamespaceImpl)(nil)
 
-func (w *wrapCoreV1NamespaceImpl) Create(ctx context.Context, in *corev1.Namespace, opts metav1.CreateOptions) (*corev1.Namespace, error) {
+func (w *wrapCoreV1NamespaceImpl) Apply(ctx context.Context, in *corev1.NamespaceApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Namespace, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1NamespaceImpl) ApplyStatus(ctx context.Context, in *corev1.NamespaceApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Namespace, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1NamespaceImpl) Create(ctx context.Context, in *apicorev1.Namespace, opts metav1.CreateOptions) (*apicorev1.Namespace, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5230,7 +5526,7 @@ func (w *wrapCoreV1NamespaceImpl) Create(ctx context.Context, in *corev1.Namespa
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Namespace{}
+	out := &apicorev1.Namespace{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5241,43 +5537,43 @@ func (w *wrapCoreV1NamespaceImpl) Delete(ctx context.Context, name string, opts 
 	return w.dyn.Delete(ctx, name, opts)
 }
 
-func (w *wrapCoreV1NamespaceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Namespace, error) {
+func (w *wrapCoreV1NamespaceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Namespace, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Namespace{}
+	out := &apicorev1.Namespace{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NamespaceImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.NamespaceList, error) {
+func (w *wrapCoreV1NamespaceImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.NamespaceList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.NamespaceList{}
+	out := &apicorev1.NamespaceList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NamespaceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Namespace, err error) {
+func (w *wrapCoreV1NamespaceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Namespace, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Namespace{}
+	out := &apicorev1.Namespace{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NamespaceImpl) Update(ctx context.Context, in *corev1.Namespace, opts metav1.UpdateOptions) (*corev1.Namespace, error) {
+func (w *wrapCoreV1NamespaceImpl) Update(ctx context.Context, in *apicorev1.Namespace, opts metav1.UpdateOptions) (*apicorev1.Namespace, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5291,14 +5587,14 @@ func (w *wrapCoreV1NamespaceImpl) Update(ctx context.Context, in *corev1.Namespa
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Namespace{}
+	out := &apicorev1.Namespace{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NamespaceImpl) UpdateStatus(ctx context.Context, in *corev1.Namespace, opts metav1.UpdateOptions) (*corev1.Namespace, error) {
+func (w *wrapCoreV1NamespaceImpl) UpdateStatus(ctx context.Context, in *apicorev1.Namespace, opts metav1.UpdateOptions) (*apicorev1.Namespace, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5312,7 +5608,7 @@ func (w *wrapCoreV1NamespaceImpl) UpdateStatus(ctx context.Context, in *corev1.N
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Namespace{}
+	out := &apicorev1.Namespace{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5339,7 +5635,15 @@ type wrapCoreV1NodeImpl struct {
 
 var _ typedcorev1.NodeInterface = (*wrapCoreV1NodeImpl)(nil)
 
-func (w *wrapCoreV1NodeImpl) Create(ctx context.Context, in *corev1.Node, opts metav1.CreateOptions) (*corev1.Node, error) {
+func (w *wrapCoreV1NodeImpl) Apply(ctx context.Context, in *corev1.NodeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Node, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1NodeImpl) ApplyStatus(ctx context.Context, in *corev1.NodeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Node, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1NodeImpl) Create(ctx context.Context, in *apicorev1.Node, opts metav1.CreateOptions) (*apicorev1.Node, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5353,7 +5657,7 @@ func (w *wrapCoreV1NodeImpl) Create(ctx context.Context, in *corev1.Node, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Node{}
+	out := &apicorev1.Node{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5368,43 +5672,43 @@ func (w *wrapCoreV1NodeImpl) DeleteCollection(ctx context.Context, opts metav1.D
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1NodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Node, error) {
+func (w *wrapCoreV1NodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Node, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Node{}
+	out := &apicorev1.Node{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.NodeList, error) {
+func (w *wrapCoreV1NodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.NodeList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.NodeList{}
+	out := &apicorev1.NodeList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Node, err error) {
+func (w *wrapCoreV1NodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Node, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Node{}
+	out := &apicorev1.Node{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NodeImpl) Update(ctx context.Context, in *corev1.Node, opts metav1.UpdateOptions) (*corev1.Node, error) {
+func (w *wrapCoreV1NodeImpl) Update(ctx context.Context, in *apicorev1.Node, opts metav1.UpdateOptions) (*apicorev1.Node, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5418,14 +5722,14 @@ func (w *wrapCoreV1NodeImpl) Update(ctx context.Context, in *corev1.Node, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Node{}
+	out := &apicorev1.Node{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1NodeImpl) UpdateStatus(ctx context.Context, in *corev1.Node, opts metav1.UpdateOptions) (*corev1.Node, error) {
+func (w *wrapCoreV1NodeImpl) UpdateStatus(ctx context.Context, in *apicorev1.Node, opts metav1.UpdateOptions) (*apicorev1.Node, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5439,7 +5743,7 @@ func (w *wrapCoreV1NodeImpl) UpdateStatus(ctx context.Context, in *corev1.Node, 
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Node{}
+	out := &apicorev1.Node{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5466,7 +5770,15 @@ type wrapCoreV1PersistentVolumeImpl struct {
 
 var _ typedcorev1.PersistentVolumeInterface = (*wrapCoreV1PersistentVolumeImpl)(nil)
 
-func (w *wrapCoreV1PersistentVolumeImpl) Create(ctx context.Context, in *corev1.PersistentVolume, opts metav1.CreateOptions) (*corev1.PersistentVolume, error) {
+func (w *wrapCoreV1PersistentVolumeImpl) Apply(ctx context.Context, in *corev1.PersistentVolumeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PersistentVolume, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PersistentVolumeImpl) ApplyStatus(ctx context.Context, in *corev1.PersistentVolumeApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PersistentVolume, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PersistentVolumeImpl) Create(ctx context.Context, in *apicorev1.PersistentVolume, opts metav1.CreateOptions) (*apicorev1.PersistentVolume, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5480,7 +5792,7 @@ func (w *wrapCoreV1PersistentVolumeImpl) Create(ctx context.Context, in *corev1.
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolume{}
+	out := &apicorev1.PersistentVolume{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5495,43 +5807,43 @@ func (w *wrapCoreV1PersistentVolumeImpl) DeleteCollection(ctx context.Context, o
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1PersistentVolumeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.PersistentVolume, error) {
+func (w *wrapCoreV1PersistentVolumeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.PersistentVolume, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolume{}
+	out := &apicorev1.PersistentVolume{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PersistentVolumeList, error) {
+func (w *wrapCoreV1PersistentVolumeImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.PersistentVolumeList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeList{}
+	out := &apicorev1.PersistentVolumeList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PersistentVolume, err error) {
+func (w *wrapCoreV1PersistentVolumeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.PersistentVolume, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolume{}
+	out := &apicorev1.PersistentVolume{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeImpl) Update(ctx context.Context, in *corev1.PersistentVolume, opts metav1.UpdateOptions) (*corev1.PersistentVolume, error) {
+func (w *wrapCoreV1PersistentVolumeImpl) Update(ctx context.Context, in *apicorev1.PersistentVolume, opts metav1.UpdateOptions) (*apicorev1.PersistentVolume, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5545,14 +5857,14 @@ func (w *wrapCoreV1PersistentVolumeImpl) Update(ctx context.Context, in *corev1.
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolume{}
+	out := &apicorev1.PersistentVolume{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeImpl) UpdateStatus(ctx context.Context, in *corev1.PersistentVolume, opts metav1.UpdateOptions) (*corev1.PersistentVolume, error) {
+func (w *wrapCoreV1PersistentVolumeImpl) UpdateStatus(ctx context.Context, in *apicorev1.PersistentVolume, opts metav1.UpdateOptions) (*apicorev1.PersistentVolume, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5566,7 +5878,7 @@ func (w *wrapCoreV1PersistentVolumeImpl) UpdateStatus(ctx context.Context, in *c
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolume{}
+	out := &apicorev1.PersistentVolume{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5597,7 +5909,15 @@ type wrapCoreV1PersistentVolumeClaimImpl struct {
 
 var _ typedcorev1.PersistentVolumeClaimInterface = (*wrapCoreV1PersistentVolumeClaimImpl)(nil)
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) Create(ctx context.Context, in *corev1.PersistentVolumeClaim, opts metav1.CreateOptions) (*corev1.PersistentVolumeClaim, error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) Apply(ctx context.Context, in *corev1.PersistentVolumeClaimApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PersistentVolumeClaim, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PersistentVolumeClaimImpl) ApplyStatus(ctx context.Context, in *corev1.PersistentVolumeClaimApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PersistentVolumeClaim, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PersistentVolumeClaimImpl) Create(ctx context.Context, in *apicorev1.PersistentVolumeClaim, opts metav1.CreateOptions) (*apicorev1.PersistentVolumeClaim, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5611,7 +5931,7 @@ func (w *wrapCoreV1PersistentVolumeClaimImpl) Create(ctx context.Context, in *co
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaim{}
+	out := &apicorev1.PersistentVolumeClaim{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5626,43 +5946,43 @@ func (w *wrapCoreV1PersistentVolumeClaimImpl) DeleteCollection(ctx context.Conte
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.PersistentVolumeClaim, error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.PersistentVolumeClaim, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaim{}
+	out := &apicorev1.PersistentVolumeClaim{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PersistentVolumeClaimList, error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.PersistentVolumeClaimList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaimList{}
+	out := &apicorev1.PersistentVolumeClaimList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PersistentVolumeClaim, err error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.PersistentVolumeClaim, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaim{}
+	out := &apicorev1.PersistentVolumeClaim{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) Update(ctx context.Context, in *corev1.PersistentVolumeClaim, opts metav1.UpdateOptions) (*corev1.PersistentVolumeClaim, error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) Update(ctx context.Context, in *apicorev1.PersistentVolumeClaim, opts metav1.UpdateOptions) (*apicorev1.PersistentVolumeClaim, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5676,14 +5996,14 @@ func (w *wrapCoreV1PersistentVolumeClaimImpl) Update(ctx context.Context, in *co
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaim{}
+	out := &apicorev1.PersistentVolumeClaim{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PersistentVolumeClaimImpl) UpdateStatus(ctx context.Context, in *corev1.PersistentVolumeClaim, opts metav1.UpdateOptions) (*corev1.PersistentVolumeClaim, error) {
+func (w *wrapCoreV1PersistentVolumeClaimImpl) UpdateStatus(ctx context.Context, in *apicorev1.PersistentVolumeClaim, opts metav1.UpdateOptions) (*apicorev1.PersistentVolumeClaim, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5697,7 +6017,7 @@ func (w *wrapCoreV1PersistentVolumeClaimImpl) UpdateStatus(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PersistentVolumeClaim{}
+	out := &apicorev1.PersistentVolumeClaim{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5728,7 +6048,15 @@ type wrapCoreV1PodImpl struct {
 
 var _ typedcorev1.PodInterface = (*wrapCoreV1PodImpl)(nil)
 
-func (w *wrapCoreV1PodImpl) Create(ctx context.Context, in *corev1.Pod, opts metav1.CreateOptions) (*corev1.Pod, error) {
+func (w *wrapCoreV1PodImpl) Apply(ctx context.Context, in *corev1.PodApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Pod, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PodImpl) ApplyStatus(ctx context.Context, in *corev1.PodApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Pod, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PodImpl) Create(ctx context.Context, in *apicorev1.Pod, opts metav1.CreateOptions) (*apicorev1.Pod, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5742,7 +6070,7 @@ func (w *wrapCoreV1PodImpl) Create(ctx context.Context, in *corev1.Pod, opts met
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Pod{}
+	out := &apicorev1.Pod{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5757,43 +6085,43 @@ func (w *wrapCoreV1PodImpl) DeleteCollection(ctx context.Context, opts metav1.De
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1PodImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+func (w *wrapCoreV1PodImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Pod, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Pod{}
+	out := &apicorev1.Pod{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodList, error) {
+func (w *wrapCoreV1PodImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.PodList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodList{}
+	out := &apicorev1.PodList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Pod, err error) {
+func (w *wrapCoreV1PodImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Pod, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Pod{}
+	out := &apicorev1.Pod{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodImpl) Update(ctx context.Context, in *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error) {
+func (w *wrapCoreV1PodImpl) Update(ctx context.Context, in *apicorev1.Pod, opts metav1.UpdateOptions) (*apicorev1.Pod, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5807,14 +6135,14 @@ func (w *wrapCoreV1PodImpl) Update(ctx context.Context, in *corev1.Pod, opts met
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Pod{}
+	out := &apicorev1.Pod{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodImpl) UpdateStatus(ctx context.Context, in *corev1.Pod, opts metav1.UpdateOptions) (*corev1.Pod, error) {
+func (w *wrapCoreV1PodImpl) UpdateStatus(ctx context.Context, in *apicorev1.Pod, opts metav1.UpdateOptions) (*apicorev1.Pod, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5828,7 +6156,7 @@ func (w *wrapCoreV1PodImpl) UpdateStatus(ctx context.Context, in *corev1.Pod, op
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Pod{}
+	out := &apicorev1.Pod{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5839,11 +6167,11 @@ func (w *wrapCoreV1PodImpl) Watch(ctx context.Context, opts metav1.ListOptions) 
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapCoreV1PodImpl) GetEphemeralContainers(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.EphemeralContainers, error) {
+func (w *wrapCoreV1PodImpl) GetEphemeralContainers(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.EphemeralContainers, error) {
 	panic("NYI")
 }
 
-func (w *wrapCoreV1PodImpl) UpdateEphemeralContainers(ctx context.Context, _ string, in *corev1.EphemeralContainers, opts metav1.UpdateOptions) (*corev1.EphemeralContainers, error) {
+func (w *wrapCoreV1PodImpl) UpdateEphemeralContainers(ctx context.Context, _ string, in *apicorev1.EphemeralContainers, opts metav1.UpdateOptions) (*apicorev1.EphemeralContainers, error) {
 	panic("NYI")
 }
 
@@ -5867,7 +6195,15 @@ type wrapCoreV1PodTemplateImpl struct {
 
 var _ typedcorev1.PodTemplateInterface = (*wrapCoreV1PodTemplateImpl)(nil)
 
-func (w *wrapCoreV1PodTemplateImpl) Create(ctx context.Context, in *corev1.PodTemplate, opts metav1.CreateOptions) (*corev1.PodTemplate, error) {
+func (w *wrapCoreV1PodTemplateImpl) Apply(ctx context.Context, in *corev1.PodTemplateApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PodTemplate, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PodTemplateImpl) ApplyStatus(ctx context.Context, in *corev1.PodTemplateApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.PodTemplate, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1PodTemplateImpl) Create(ctx context.Context, in *apicorev1.PodTemplate, opts metav1.CreateOptions) (*apicorev1.PodTemplate, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5881,7 +6217,7 @@ func (w *wrapCoreV1PodTemplateImpl) Create(ctx context.Context, in *corev1.PodTe
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplate{}
+	out := &apicorev1.PodTemplate{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5896,43 +6232,43 @@ func (w *wrapCoreV1PodTemplateImpl) DeleteCollection(ctx context.Context, opts m
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1PodTemplateImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.PodTemplate, error) {
+func (w *wrapCoreV1PodTemplateImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.PodTemplate, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplate{}
+	out := &apicorev1.PodTemplate{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodTemplateImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.PodTemplateList, error) {
+func (w *wrapCoreV1PodTemplateImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.PodTemplateList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplateList{}
+	out := &apicorev1.PodTemplateList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodTemplateImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.PodTemplate, err error) {
+func (w *wrapCoreV1PodTemplateImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.PodTemplate, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplate{}
+	out := &apicorev1.PodTemplate{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodTemplateImpl) Update(ctx context.Context, in *corev1.PodTemplate, opts metav1.UpdateOptions) (*corev1.PodTemplate, error) {
+func (w *wrapCoreV1PodTemplateImpl) Update(ctx context.Context, in *apicorev1.PodTemplate, opts metav1.UpdateOptions) (*apicorev1.PodTemplate, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5946,14 +6282,14 @@ func (w *wrapCoreV1PodTemplateImpl) Update(ctx context.Context, in *corev1.PodTe
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplate{}
+	out := &apicorev1.PodTemplate{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1PodTemplateImpl) UpdateStatus(ctx context.Context, in *corev1.PodTemplate, opts metav1.UpdateOptions) (*corev1.PodTemplate, error) {
+func (w *wrapCoreV1PodTemplateImpl) UpdateStatus(ctx context.Context, in *apicorev1.PodTemplate, opts metav1.UpdateOptions) (*apicorev1.PodTemplate, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -5967,7 +6303,7 @@ func (w *wrapCoreV1PodTemplateImpl) UpdateStatus(ctx context.Context, in *corev1
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.PodTemplate{}
+	out := &apicorev1.PodTemplate{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -5998,7 +6334,15 @@ type wrapCoreV1ReplicationControllerImpl struct {
 
 var _ typedcorev1.ReplicationControllerInterface = (*wrapCoreV1ReplicationControllerImpl)(nil)
 
-func (w *wrapCoreV1ReplicationControllerImpl) Create(ctx context.Context, in *corev1.ReplicationController, opts metav1.CreateOptions) (*corev1.ReplicationController, error) {
+func (w *wrapCoreV1ReplicationControllerImpl) Apply(ctx context.Context, in *corev1.ReplicationControllerApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ReplicationController, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ReplicationControllerImpl) ApplyStatus(ctx context.Context, in *corev1.ReplicationControllerApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ReplicationController, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ReplicationControllerImpl) Create(ctx context.Context, in *apicorev1.ReplicationController, opts metav1.CreateOptions) (*apicorev1.ReplicationController, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6012,7 +6356,7 @@ func (w *wrapCoreV1ReplicationControllerImpl) Create(ctx context.Context, in *co
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationController{}
+	out := &apicorev1.ReplicationController{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6027,43 +6371,43 @@ func (w *wrapCoreV1ReplicationControllerImpl) DeleteCollection(ctx context.Conte
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1ReplicationControllerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ReplicationController, error) {
+func (w *wrapCoreV1ReplicationControllerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.ReplicationController, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationController{}
+	out := &apicorev1.ReplicationController{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ReplicationControllerImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ReplicationControllerList, error) {
+func (w *wrapCoreV1ReplicationControllerImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ReplicationControllerList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationControllerList{}
+	out := &apicorev1.ReplicationControllerList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ReplicationControllerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ReplicationController, err error) {
+func (w *wrapCoreV1ReplicationControllerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.ReplicationController, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationController{}
+	out := &apicorev1.ReplicationController{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ReplicationControllerImpl) Update(ctx context.Context, in *corev1.ReplicationController, opts metav1.UpdateOptions) (*corev1.ReplicationController, error) {
+func (w *wrapCoreV1ReplicationControllerImpl) Update(ctx context.Context, in *apicorev1.ReplicationController, opts metav1.UpdateOptions) (*apicorev1.ReplicationController, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6077,14 +6421,14 @@ func (w *wrapCoreV1ReplicationControllerImpl) Update(ctx context.Context, in *co
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationController{}
+	out := &apicorev1.ReplicationController{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ReplicationControllerImpl) UpdateStatus(ctx context.Context, in *corev1.ReplicationController, opts metav1.UpdateOptions) (*corev1.ReplicationController, error) {
+func (w *wrapCoreV1ReplicationControllerImpl) UpdateStatus(ctx context.Context, in *apicorev1.ReplicationController, opts metav1.UpdateOptions) (*apicorev1.ReplicationController, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6098,7 +6442,7 @@ func (w *wrapCoreV1ReplicationControllerImpl) UpdateStatus(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ReplicationController{}
+	out := &apicorev1.ReplicationController{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6137,7 +6481,15 @@ type wrapCoreV1ResourceQuotaImpl struct {
 
 var _ typedcorev1.ResourceQuotaInterface = (*wrapCoreV1ResourceQuotaImpl)(nil)
 
-func (w *wrapCoreV1ResourceQuotaImpl) Create(ctx context.Context, in *corev1.ResourceQuota, opts metav1.CreateOptions) (*corev1.ResourceQuota, error) {
+func (w *wrapCoreV1ResourceQuotaImpl) Apply(ctx context.Context, in *corev1.ResourceQuotaApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ResourceQuota, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ResourceQuotaImpl) ApplyStatus(ctx context.Context, in *corev1.ResourceQuotaApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ResourceQuota, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ResourceQuotaImpl) Create(ctx context.Context, in *apicorev1.ResourceQuota, opts metav1.CreateOptions) (*apicorev1.ResourceQuota, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6151,7 +6503,7 @@ func (w *wrapCoreV1ResourceQuotaImpl) Create(ctx context.Context, in *corev1.Res
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuota{}
+	out := &apicorev1.ResourceQuota{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6166,43 +6518,43 @@ func (w *wrapCoreV1ResourceQuotaImpl) DeleteCollection(ctx context.Context, opts
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1ResourceQuotaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ResourceQuota, error) {
+func (w *wrapCoreV1ResourceQuotaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.ResourceQuota, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuota{}
+	out := &apicorev1.ResourceQuota{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ResourceQuotaImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ResourceQuotaList, error) {
+func (w *wrapCoreV1ResourceQuotaImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ResourceQuotaList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuotaList{}
+	out := &apicorev1.ResourceQuotaList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ResourceQuotaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ResourceQuota, err error) {
+func (w *wrapCoreV1ResourceQuotaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.ResourceQuota, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuota{}
+	out := &apicorev1.ResourceQuota{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ResourceQuotaImpl) Update(ctx context.Context, in *corev1.ResourceQuota, opts metav1.UpdateOptions) (*corev1.ResourceQuota, error) {
+func (w *wrapCoreV1ResourceQuotaImpl) Update(ctx context.Context, in *apicorev1.ResourceQuota, opts metav1.UpdateOptions) (*apicorev1.ResourceQuota, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6216,14 +6568,14 @@ func (w *wrapCoreV1ResourceQuotaImpl) Update(ctx context.Context, in *corev1.Res
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuota{}
+	out := &apicorev1.ResourceQuota{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ResourceQuotaImpl) UpdateStatus(ctx context.Context, in *corev1.ResourceQuota, opts metav1.UpdateOptions) (*corev1.ResourceQuota, error) {
+func (w *wrapCoreV1ResourceQuotaImpl) UpdateStatus(ctx context.Context, in *apicorev1.ResourceQuota, opts metav1.UpdateOptions) (*apicorev1.ResourceQuota, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6237,7 +6589,7 @@ func (w *wrapCoreV1ResourceQuotaImpl) UpdateStatus(ctx context.Context, in *core
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ResourceQuota{}
+	out := &apicorev1.ResourceQuota{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6268,7 +6620,15 @@ type wrapCoreV1SecretImpl struct {
 
 var _ typedcorev1.SecretInterface = (*wrapCoreV1SecretImpl)(nil)
 
-func (w *wrapCoreV1SecretImpl) Create(ctx context.Context, in *corev1.Secret, opts metav1.CreateOptions) (*corev1.Secret, error) {
+func (w *wrapCoreV1SecretImpl) Apply(ctx context.Context, in *corev1.SecretApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Secret, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1SecretImpl) ApplyStatus(ctx context.Context, in *corev1.SecretApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Secret, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1SecretImpl) Create(ctx context.Context, in *apicorev1.Secret, opts metav1.CreateOptions) (*apicorev1.Secret, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6282,7 +6642,7 @@ func (w *wrapCoreV1SecretImpl) Create(ctx context.Context, in *corev1.Secret, op
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Secret{}
+	out := &apicorev1.Secret{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6297,43 +6657,43 @@ func (w *wrapCoreV1SecretImpl) DeleteCollection(ctx context.Context, opts metav1
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1SecretImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Secret, error) {
+func (w *wrapCoreV1SecretImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Secret, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Secret{}
+	out := &apicorev1.Secret{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1SecretImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.SecretList, error) {
+func (w *wrapCoreV1SecretImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.SecretList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.SecretList{}
+	out := &apicorev1.SecretList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1SecretImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Secret, err error) {
+func (w *wrapCoreV1SecretImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Secret, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Secret{}
+	out := &apicorev1.Secret{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1SecretImpl) Update(ctx context.Context, in *corev1.Secret, opts metav1.UpdateOptions) (*corev1.Secret, error) {
+func (w *wrapCoreV1SecretImpl) Update(ctx context.Context, in *apicorev1.Secret, opts metav1.UpdateOptions) (*apicorev1.Secret, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6347,14 +6707,14 @@ func (w *wrapCoreV1SecretImpl) Update(ctx context.Context, in *corev1.Secret, op
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Secret{}
+	out := &apicorev1.Secret{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1SecretImpl) UpdateStatus(ctx context.Context, in *corev1.Secret, opts metav1.UpdateOptions) (*corev1.Secret, error) {
+func (w *wrapCoreV1SecretImpl) UpdateStatus(ctx context.Context, in *apicorev1.Secret, opts metav1.UpdateOptions) (*apicorev1.Secret, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6368,7 +6728,7 @@ func (w *wrapCoreV1SecretImpl) UpdateStatus(ctx context.Context, in *corev1.Secr
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Secret{}
+	out := &apicorev1.Secret{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6399,7 +6759,15 @@ type wrapCoreV1ServiceImpl struct {
 
 var _ typedcorev1.ServiceInterface = (*wrapCoreV1ServiceImpl)(nil)
 
-func (w *wrapCoreV1ServiceImpl) Create(ctx context.Context, in *corev1.Service, opts metav1.CreateOptions) (*corev1.Service, error) {
+func (w *wrapCoreV1ServiceImpl) Apply(ctx context.Context, in *corev1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Service, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ServiceImpl) ApplyStatus(ctx context.Context, in *corev1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.Service, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ServiceImpl) Create(ctx context.Context, in *apicorev1.Service, opts metav1.CreateOptions) (*apicorev1.Service, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6413,7 +6781,7 @@ func (w *wrapCoreV1ServiceImpl) Create(ctx context.Context, in *corev1.Service, 
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Service{}
+	out := &apicorev1.Service{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6424,43 +6792,43 @@ func (w *wrapCoreV1ServiceImpl) Delete(ctx context.Context, name string, opts me
 	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
 }
 
-func (w *wrapCoreV1ServiceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Service, error) {
+func (w *wrapCoreV1ServiceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.Service, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Service{}
+	out := &apicorev1.Service{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceList, error) {
+func (w *wrapCoreV1ServiceImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ServiceList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceList{}
+	out := &apicorev1.ServiceList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.Service, err error) {
+func (w *wrapCoreV1ServiceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.Service, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Service{}
+	out := &apicorev1.Service{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceImpl) Update(ctx context.Context, in *corev1.Service, opts metav1.UpdateOptions) (*corev1.Service, error) {
+func (w *wrapCoreV1ServiceImpl) Update(ctx context.Context, in *apicorev1.Service, opts metav1.UpdateOptions) (*apicorev1.Service, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6474,14 +6842,14 @@ func (w *wrapCoreV1ServiceImpl) Update(ctx context.Context, in *corev1.Service, 
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Service{}
+	out := &apicorev1.Service{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceImpl) UpdateStatus(ctx context.Context, in *corev1.Service, opts metav1.UpdateOptions) (*corev1.Service, error) {
+func (w *wrapCoreV1ServiceImpl) UpdateStatus(ctx context.Context, in *apicorev1.Service, opts metav1.UpdateOptions) (*apicorev1.Service, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6495,7 +6863,7 @@ func (w *wrapCoreV1ServiceImpl) UpdateStatus(ctx context.Context, in *corev1.Ser
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.Service{}
+	out := &apicorev1.Service{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6526,7 +6894,15 @@ type wrapCoreV1ServiceAccountImpl struct {
 
 var _ typedcorev1.ServiceAccountInterface = (*wrapCoreV1ServiceAccountImpl)(nil)
 
-func (w *wrapCoreV1ServiceAccountImpl) Create(ctx context.Context, in *corev1.ServiceAccount, opts metav1.CreateOptions) (*corev1.ServiceAccount, error) {
+func (w *wrapCoreV1ServiceAccountImpl) Apply(ctx context.Context, in *corev1.ServiceAccountApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ServiceAccount, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ServiceAccountImpl) ApplyStatus(ctx context.Context, in *corev1.ServiceAccountApplyConfiguration, opts metav1.ApplyOptions) (result *apicorev1.ServiceAccount, err error) {
+	panic("NYI")
+}
+
+func (w *wrapCoreV1ServiceAccountImpl) Create(ctx context.Context, in *apicorev1.ServiceAccount, opts metav1.CreateOptions) (*apicorev1.ServiceAccount, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6540,7 +6916,7 @@ func (w *wrapCoreV1ServiceAccountImpl) Create(ctx context.Context, in *corev1.Se
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccount{}
+	out := &apicorev1.ServiceAccount{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6555,43 +6931,43 @@ func (w *wrapCoreV1ServiceAccountImpl) DeleteCollection(ctx context.Context, opt
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapCoreV1ServiceAccountImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.ServiceAccount, error) {
+func (w *wrapCoreV1ServiceAccountImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.ServiceAccount, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccount{}
+	out := &apicorev1.ServiceAccount{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceAccountImpl) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceAccountList, error) {
+func (w *wrapCoreV1ServiceAccountImpl) List(ctx context.Context, opts metav1.ListOptions) (*apicorev1.ServiceAccountList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccountList{}
+	out := &apicorev1.ServiceAccountList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceAccountImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *corev1.ServiceAccount, err error) {
+func (w *wrapCoreV1ServiceAccountImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apicorev1.ServiceAccount, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccount{}
+	out := &apicorev1.ServiceAccount{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceAccountImpl) Update(ctx context.Context, in *corev1.ServiceAccount, opts metav1.UpdateOptions) (*corev1.ServiceAccount, error) {
+func (w *wrapCoreV1ServiceAccountImpl) Update(ctx context.Context, in *apicorev1.ServiceAccount, opts metav1.UpdateOptions) (*apicorev1.ServiceAccount, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6605,14 +6981,14 @@ func (w *wrapCoreV1ServiceAccountImpl) Update(ctx context.Context, in *corev1.Se
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccount{}
+	out := &apicorev1.ServiceAccount{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapCoreV1ServiceAccountImpl) UpdateStatus(ctx context.Context, in *corev1.ServiceAccount, opts metav1.UpdateOptions) (*corev1.ServiceAccount, error) {
+func (w *wrapCoreV1ServiceAccountImpl) UpdateStatus(ctx context.Context, in *apicorev1.ServiceAccount, opts metav1.UpdateOptions) (*apicorev1.ServiceAccount, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "",
 		Version: "v1",
@@ -6626,7 +7002,7 @@ func (w *wrapCoreV1ServiceAccountImpl) UpdateStatus(ctx context.Context, in *cor
 	if err != nil {
 		return nil, err
 	}
-	out := &corev1.ServiceAccount{}
+	out := &apicorev1.ServiceAccount{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6641,26 +7017,26 @@ func (w *wrapCoreV1ServiceAccountImpl) CreateToken(ctx context.Context, _ string
 	panic("NYI")
 }
 
-// DiscoveryV1alpha1 retrieves the DiscoveryV1alpha1Client
-func (w *wrapClient) DiscoveryV1alpha1() typeddiscoveryv1alpha1.DiscoveryV1alpha1Interface {
-	return &wrapDiscoveryV1alpha1{
+// DiscoveryV1 retrieves the DiscoveryV1Client
+func (w *wrapClient) DiscoveryV1() typeddiscoveryv1.DiscoveryV1Interface {
+	return &wrapDiscoveryV1{
 		dyn: w.dyn,
 	}
 }
 
-type wrapDiscoveryV1alpha1 struct {
+type wrapDiscoveryV1 struct {
 	dyn dynamic.Interface
 }
 
-func (w *wrapDiscoveryV1alpha1) RESTClient() rest.Interface {
+func (w *wrapDiscoveryV1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
 
-func (w *wrapDiscoveryV1alpha1) EndpointSlices(namespace string) typeddiscoveryv1alpha1.EndpointSliceInterface {
-	return &wrapDiscoveryV1alpha1EndpointSliceImpl{
+func (w *wrapDiscoveryV1) EndpointSlices(namespace string) typeddiscoveryv1.EndpointSliceInterface {
+	return &wrapDiscoveryV1EndpointSliceImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
 			Group:    "discovery.k8s.io",
-			Version:  "v1alpha1",
+			Version:  "v1",
 			Resource: "endpointslices",
 		}),
 
@@ -6668,18 +7044,26 @@ func (w *wrapDiscoveryV1alpha1) EndpointSlices(namespace string) typeddiscoveryv
 	}
 }
 
-type wrapDiscoveryV1alpha1EndpointSliceImpl struct {
+type wrapDiscoveryV1EndpointSliceImpl struct {
 	dyn dynamic.NamespaceableResourceInterface
 
 	namespace string
 }
 
-var _ typeddiscoveryv1alpha1.EndpointSliceInterface = (*wrapDiscoveryV1alpha1EndpointSliceImpl)(nil)
+var _ typeddiscoveryv1.EndpointSliceInterface = (*wrapDiscoveryV1EndpointSliceImpl)(nil)
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Create(ctx context.Context, in *discoveryv1alpha1.EndpointSlice, opts metav1.CreateOptions) (*discoveryv1alpha1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Apply(ctx context.Context, in *discoveryv1.EndpointSliceApplyConfiguration, opts metav1.ApplyOptions) (result *apidiscoveryv1.EndpointSlice, err error) {
+	panic("NYI")
+}
+
+func (w *wrapDiscoveryV1EndpointSliceImpl) ApplyStatus(ctx context.Context, in *discoveryv1.EndpointSliceApplyConfiguration, opts metav1.ApplyOptions) (result *apidiscoveryv1.EndpointSlice, err error) {
+	panic("NYI")
+}
+
+func (w *wrapDiscoveryV1EndpointSliceImpl) Create(ctx context.Context, in *apidiscoveryv1.EndpointSlice, opts metav1.CreateOptions) (*apidiscoveryv1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
-		Version: "v1alpha1",
+		Version: "v1",
 		Kind:    "EndpointSlice",
 	})
 	uo := &unstructured.Unstructured{}
@@ -6690,61 +7074,61 @@ func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSlice{}
+	out := &apidiscoveryv1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+func (w *wrapDiscoveryV1EndpointSliceImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*discoveryv1alpha1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apidiscoveryv1.EndpointSlice, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSlice{}
+	out := &apidiscoveryv1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) List(ctx context.Context, opts metav1.ListOptions) (*discoveryv1alpha1.EndpointSliceList, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) List(ctx context.Context, opts metav1.ListOptions) (*apidiscoveryv1.EndpointSliceList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSliceList{}
+	out := &apidiscoveryv1.EndpointSliceList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *discoveryv1alpha1.EndpointSlice, err error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apidiscoveryv1.EndpointSlice, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSlice{}
+	out := &apidiscoveryv1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Update(ctx context.Context, in *discoveryv1alpha1.EndpointSlice, opts metav1.UpdateOptions) (*discoveryv1alpha1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Update(ctx context.Context, in *apidiscoveryv1.EndpointSlice, opts metav1.UpdateOptions) (*apidiscoveryv1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
-		Version: "v1alpha1",
+		Version: "v1",
 		Kind:    "EndpointSlice",
 	})
 	uo := &unstructured.Unstructured{}
@@ -6755,17 +7139,17 @@ func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSlice{}
+	out := &apidiscoveryv1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) UpdateStatus(ctx context.Context, in *discoveryv1alpha1.EndpointSlice, opts metav1.UpdateOptions) (*discoveryv1alpha1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) UpdateStatus(ctx context.Context, in *apidiscoveryv1.EndpointSlice, opts metav1.UpdateOptions) (*apidiscoveryv1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
-		Version: "v1alpha1",
+		Version: "v1",
 		Kind:    "EndpointSlice",
 	})
 	uo := &unstructured.Unstructured{}
@@ -6776,14 +7160,14 @@ func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1alpha1.EndpointSlice{}
+	out := &apidiscoveryv1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1alpha1EndpointSliceImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+func (w *wrapDiscoveryV1EndpointSliceImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -6822,7 +7206,15 @@ type wrapDiscoveryV1beta1EndpointSliceImpl struct {
 
 var _ typeddiscoveryv1beta1.EndpointSliceInterface = (*wrapDiscoveryV1beta1EndpointSliceImpl)(nil)
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Create(ctx context.Context, in *discoveryv1beta1.EndpointSlice, opts metav1.CreateOptions) (*discoveryv1beta1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Apply(ctx context.Context, in *discoveryv1beta1.EndpointSliceApplyConfiguration, opts metav1.ApplyOptions) (result *apidiscoveryv1beta1.EndpointSlice, err error) {
+	panic("NYI")
+}
+
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) ApplyStatus(ctx context.Context, in *discoveryv1beta1.EndpointSliceApplyConfiguration, opts metav1.ApplyOptions) (result *apidiscoveryv1beta1.EndpointSlice, err error) {
+	panic("NYI")
+}
+
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Create(ctx context.Context, in *apidiscoveryv1beta1.EndpointSlice, opts metav1.CreateOptions) (*apidiscoveryv1beta1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
 		Version: "v1beta1",
@@ -6836,7 +7228,7 @@ func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSlice{}
+	out := &apidiscoveryv1beta1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6851,43 +7243,43 @@ func (w *wrapDiscoveryV1beta1EndpointSliceImpl) DeleteCollection(ctx context.Con
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*discoveryv1beta1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apidiscoveryv1beta1.EndpointSlice, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSlice{}
+	out := &apidiscoveryv1beta1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) List(ctx context.Context, opts metav1.ListOptions) (*discoveryv1beta1.EndpointSliceList, error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) List(ctx context.Context, opts metav1.ListOptions) (*apidiscoveryv1beta1.EndpointSliceList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSliceList{}
+	out := &apidiscoveryv1beta1.EndpointSliceList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *discoveryv1beta1.EndpointSlice, err error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apidiscoveryv1beta1.EndpointSlice, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSlice{}
+	out := &apidiscoveryv1beta1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Update(ctx context.Context, in *discoveryv1beta1.EndpointSlice, opts metav1.UpdateOptions) (*discoveryv1beta1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Update(ctx context.Context, in *apidiscoveryv1beta1.EndpointSlice, opts metav1.UpdateOptions) (*apidiscoveryv1beta1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
 		Version: "v1beta1",
@@ -6901,14 +7293,14 @@ func (w *wrapDiscoveryV1beta1EndpointSliceImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSlice{}
+	out := &apidiscoveryv1beta1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapDiscoveryV1beta1EndpointSliceImpl) UpdateStatus(ctx context.Context, in *discoveryv1beta1.EndpointSlice, opts metav1.UpdateOptions) (*discoveryv1beta1.EndpointSlice, error) {
+func (w *wrapDiscoveryV1beta1EndpointSliceImpl) UpdateStatus(ctx context.Context, in *apidiscoveryv1beta1.EndpointSlice, opts metav1.UpdateOptions) (*apidiscoveryv1beta1.EndpointSlice, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "discovery.k8s.io",
 		Version: "v1beta1",
@@ -6922,7 +7314,7 @@ func (w *wrapDiscoveryV1beta1EndpointSliceImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &discoveryv1beta1.EndpointSlice{}
+	out := &apidiscoveryv1beta1.EndpointSlice{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6968,7 +7360,15 @@ type wrapEventsV1EventImpl struct {
 
 var _ typedeventsv1.EventInterface = (*wrapEventsV1EventImpl)(nil)
 
-func (w *wrapEventsV1EventImpl) Create(ctx context.Context, in *eventsv1.Event, opts metav1.CreateOptions) (*eventsv1.Event, error) {
+func (w *wrapEventsV1EventImpl) Apply(ctx context.Context, in *eventsv1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apieventsv1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapEventsV1EventImpl) ApplyStatus(ctx context.Context, in *eventsv1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apieventsv1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapEventsV1EventImpl) Create(ctx context.Context, in *apieventsv1.Event, opts metav1.CreateOptions) (*apieventsv1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1",
@@ -6982,7 +7382,7 @@ func (w *wrapEventsV1EventImpl) Create(ctx context.Context, in *eventsv1.Event, 
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.Event{}
+	out := &apieventsv1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -6997,43 +7397,43 @@ func (w *wrapEventsV1EventImpl) DeleteCollection(ctx context.Context, opts metav
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapEventsV1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*eventsv1.Event, error) {
+func (w *wrapEventsV1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apieventsv1.Event, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.Event{}
+	out := &apieventsv1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*eventsv1.EventList, error) {
+func (w *wrapEventsV1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*apieventsv1.EventList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.EventList{}
+	out := &apieventsv1.EventList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *eventsv1.Event, err error) {
+func (w *wrapEventsV1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apieventsv1.Event, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.Event{}
+	out := &apieventsv1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1EventImpl) Update(ctx context.Context, in *eventsv1.Event, opts metav1.UpdateOptions) (*eventsv1.Event, error) {
+func (w *wrapEventsV1EventImpl) Update(ctx context.Context, in *apieventsv1.Event, opts metav1.UpdateOptions) (*apieventsv1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1",
@@ -7047,14 +7447,14 @@ func (w *wrapEventsV1EventImpl) Update(ctx context.Context, in *eventsv1.Event, 
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.Event{}
+	out := &apieventsv1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1EventImpl) UpdateStatus(ctx context.Context, in *eventsv1.Event, opts metav1.UpdateOptions) (*eventsv1.Event, error) {
+func (w *wrapEventsV1EventImpl) UpdateStatus(ctx context.Context, in *apieventsv1.Event, opts metav1.UpdateOptions) (*apieventsv1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1",
@@ -7068,7 +7468,7 @@ func (w *wrapEventsV1EventImpl) UpdateStatus(ctx context.Context, in *eventsv1.E
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1.Event{}
+	out := &apieventsv1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7114,7 +7514,15 @@ type wrapEventsV1beta1EventImpl struct {
 
 var _ typedeventsv1beta1.EventInterface = (*wrapEventsV1beta1EventImpl)(nil)
 
-func (w *wrapEventsV1beta1EventImpl) Create(ctx context.Context, in *eventsv1beta1.Event, opts metav1.CreateOptions) (*eventsv1beta1.Event, error) {
+func (w *wrapEventsV1beta1EventImpl) Apply(ctx context.Context, in *eventsv1beta1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apieventsv1beta1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapEventsV1beta1EventImpl) ApplyStatus(ctx context.Context, in *eventsv1beta1.EventApplyConfiguration, opts metav1.ApplyOptions) (result *apieventsv1beta1.Event, err error) {
+	panic("NYI")
+}
+
+func (w *wrapEventsV1beta1EventImpl) Create(ctx context.Context, in *apieventsv1beta1.Event, opts metav1.CreateOptions) (*apieventsv1beta1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1beta1",
@@ -7128,7 +7536,7 @@ func (w *wrapEventsV1beta1EventImpl) Create(ctx context.Context, in *eventsv1bet
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.Event{}
+	out := &apieventsv1beta1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7143,43 +7551,43 @@ func (w *wrapEventsV1beta1EventImpl) DeleteCollection(ctx context.Context, opts 
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapEventsV1beta1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*eventsv1beta1.Event, error) {
+func (w *wrapEventsV1beta1EventImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apieventsv1beta1.Event, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.Event{}
+	out := &apieventsv1beta1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1beta1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*eventsv1beta1.EventList, error) {
+func (w *wrapEventsV1beta1EventImpl) List(ctx context.Context, opts metav1.ListOptions) (*apieventsv1beta1.EventList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.EventList{}
+	out := &apieventsv1beta1.EventList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1beta1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *eventsv1beta1.Event, err error) {
+func (w *wrapEventsV1beta1EventImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apieventsv1beta1.Event, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.Event{}
+	out := &apieventsv1beta1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1beta1EventImpl) Update(ctx context.Context, in *eventsv1beta1.Event, opts metav1.UpdateOptions) (*eventsv1beta1.Event, error) {
+func (w *wrapEventsV1beta1EventImpl) Update(ctx context.Context, in *apieventsv1beta1.Event, opts metav1.UpdateOptions) (*apieventsv1beta1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1beta1",
@@ -7193,14 +7601,14 @@ func (w *wrapEventsV1beta1EventImpl) Update(ctx context.Context, in *eventsv1bet
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.Event{}
+	out := &apieventsv1beta1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapEventsV1beta1EventImpl) UpdateStatus(ctx context.Context, in *eventsv1beta1.Event, opts metav1.UpdateOptions) (*eventsv1beta1.Event, error) {
+func (w *wrapEventsV1beta1EventImpl) UpdateStatus(ctx context.Context, in *apieventsv1beta1.Event, opts metav1.UpdateOptions) (*apieventsv1beta1.Event, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "events.k8s.io",
 		Version: "v1beta1",
@@ -7214,7 +7622,7 @@ func (w *wrapEventsV1beta1EventImpl) UpdateStatus(ctx context.Context, in *event
 	if err != nil {
 		return nil, err
 	}
-	out := &eventsv1beta1.Event{}
+	out := &apieventsv1beta1.Event{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7260,7 +7668,15 @@ type wrapExtensionsV1beta1DaemonSetImpl struct {
 
 var _ typedextensionsv1beta1.DaemonSetInterface = (*wrapExtensionsV1beta1DaemonSetImpl)(nil)
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) Create(ctx context.Context, in *extensionsv1beta1.DaemonSet, opts metav1.CreateOptions) (*extensionsv1beta1.DaemonSet, error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) Apply(ctx context.Context, in *extensionsv1beta1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1DaemonSetImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.DaemonSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.DaemonSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1DaemonSetImpl) Create(ctx context.Context, in *apiextensionsv1beta1.DaemonSet, opts metav1.CreateOptions) (*apiextensionsv1beta1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7274,7 +7690,7 @@ func (w *wrapExtensionsV1beta1DaemonSetImpl) Create(ctx context.Context, in *ext
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSet{}
+	out := &apiextensionsv1beta1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7289,43 +7705,43 @@ func (w *wrapExtensionsV1beta1DaemonSetImpl) DeleteCollection(ctx context.Contex
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.DaemonSet, error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.DaemonSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSet{}
+	out := &apiextensionsv1beta1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.DaemonSetList, error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.DaemonSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSetList{}
+	out := &apiextensionsv1beta1.DaemonSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.DaemonSet, err error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.DaemonSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSet{}
+	out := &apiextensionsv1beta1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) Update(ctx context.Context, in *extensionsv1beta1.DaemonSet, opts metav1.UpdateOptions) (*extensionsv1beta1.DaemonSet, error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) Update(ctx context.Context, in *apiextensionsv1beta1.DaemonSet, opts metav1.UpdateOptions) (*apiextensionsv1beta1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7339,14 +7755,14 @@ func (w *wrapExtensionsV1beta1DaemonSetImpl) Update(ctx context.Context, in *ext
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSet{}
+	out := &apiextensionsv1beta1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DaemonSetImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.DaemonSet, opts metav1.UpdateOptions) (*extensionsv1beta1.DaemonSet, error) {
+func (w *wrapExtensionsV1beta1DaemonSetImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.DaemonSet, opts metav1.UpdateOptions) (*apiextensionsv1beta1.DaemonSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7360,7 +7776,7 @@ func (w *wrapExtensionsV1beta1DaemonSetImpl) UpdateStatus(ctx context.Context, i
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DaemonSet{}
+	out := &apiextensionsv1beta1.DaemonSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7391,7 +7807,15 @@ type wrapExtensionsV1beta1DeploymentImpl struct {
 
 var _ typedextensionsv1beta1.DeploymentInterface = (*wrapExtensionsV1beta1DeploymentImpl)(nil)
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) Create(ctx context.Context, in *extensionsv1beta1.Deployment, opts metav1.CreateOptions) (*extensionsv1beta1.Deployment, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) Apply(ctx context.Context, in *extensionsv1beta1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1DeploymentImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.Deployment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1DeploymentImpl) Create(ctx context.Context, in *apiextensionsv1beta1.Deployment, opts metav1.CreateOptions) (*apiextensionsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7405,7 +7829,7 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) Create(ctx context.Context, in *ex
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Deployment{}
+	out := &apiextensionsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7420,43 +7844,43 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) DeleteCollection(ctx context.Conte
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.Deployment, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.Deployment, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Deployment{}
+	out := &apiextensionsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.DeploymentList, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.DeploymentList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.DeploymentList{}
+	out := &apiextensionsv1beta1.DeploymentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.Deployment, err error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.Deployment, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Deployment{}
+	out := &apiextensionsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) Update(ctx context.Context, in *extensionsv1beta1.Deployment, opts metav1.UpdateOptions) (*extensionsv1beta1.Deployment, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) Update(ctx context.Context, in *apiextensionsv1beta1.Deployment, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7470,14 +7894,14 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) Update(ctx context.Context, in *ex
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Deployment{}
+	out := &apiextensionsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.Deployment, opts metav1.UpdateOptions) (*extensionsv1beta1.Deployment, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.Deployment, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Deployment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7491,7 +7915,7 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateStatus(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Deployment{}
+	out := &apiextensionsv1beta1.Deployment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7502,11 +7926,11 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) Watch(ctx context.Context, opts me
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.Scale, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.Scale, error) {
 	panic("NYI")
 }
 
-func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateScale(ctx context.Context, _ string, in *extensionsv1beta1.Scale, opts metav1.UpdateOptions) (*extensionsv1beta1.Scale, error) {
+func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateScale(ctx context.Context, _ string, in *apiextensionsv1beta1.Scale, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Scale, error) {
 	panic("NYI")
 }
 
@@ -7530,7 +7954,15 @@ type wrapExtensionsV1beta1IngressImpl struct {
 
 var _ typedextensionsv1beta1.IngressInterface = (*wrapExtensionsV1beta1IngressImpl)(nil)
 
-func (w *wrapExtensionsV1beta1IngressImpl) Create(ctx context.Context, in *extensionsv1beta1.Ingress, opts metav1.CreateOptions) (*extensionsv1beta1.Ingress, error) {
+func (w *wrapExtensionsV1beta1IngressImpl) Apply(ctx context.Context, in *extensionsv1beta1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1IngressImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1IngressImpl) Create(ctx context.Context, in *apiextensionsv1beta1.Ingress, opts metav1.CreateOptions) (*apiextensionsv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7544,7 +7976,7 @@ func (w *wrapExtensionsV1beta1IngressImpl) Create(ctx context.Context, in *exten
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Ingress{}
+	out := &apiextensionsv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7559,43 +7991,43 @@ func (w *wrapExtensionsV1beta1IngressImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.Ingress, error) {
+func (w *wrapExtensionsV1beta1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.Ingress, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Ingress{}
+	out := &apiextensionsv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.IngressList, error) {
+func (w *wrapExtensionsV1beta1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.IngressList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.IngressList{}
+	out := &apiextensionsv1beta1.IngressList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.Ingress, err error) {
+func (w *wrapExtensionsV1beta1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.Ingress, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Ingress{}
+	out := &apiextensionsv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1IngressImpl) Update(ctx context.Context, in *extensionsv1beta1.Ingress, opts metav1.UpdateOptions) (*extensionsv1beta1.Ingress, error) {
+func (w *wrapExtensionsV1beta1IngressImpl) Update(ctx context.Context, in *apiextensionsv1beta1.Ingress, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7609,14 +8041,14 @@ func (w *wrapExtensionsV1beta1IngressImpl) Update(ctx context.Context, in *exten
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Ingress{}
+	out := &apiextensionsv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1IngressImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.Ingress, opts metav1.UpdateOptions) (*extensionsv1beta1.Ingress, error) {
+func (w *wrapExtensionsV1beta1IngressImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.Ingress, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7630,7 +8062,7 @@ func (w *wrapExtensionsV1beta1IngressImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.Ingress{}
+	out := &apiextensionsv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7661,7 +8093,15 @@ type wrapExtensionsV1beta1NetworkPolicyImpl struct {
 
 var _ typedextensionsv1beta1.NetworkPolicyInterface = (*wrapExtensionsV1beta1NetworkPolicyImpl)(nil)
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Create(ctx context.Context, in *extensionsv1beta1.NetworkPolicy, opts metav1.CreateOptions) (*extensionsv1beta1.NetworkPolicy, error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Apply(ctx context.Context, in *extensionsv1beta1.NetworkPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.NetworkPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.NetworkPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.NetworkPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Create(ctx context.Context, in *apiextensionsv1beta1.NetworkPolicy, opts metav1.CreateOptions) (*apiextensionsv1beta1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7675,7 +8115,7 @@ func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicy{}
+	out := &apiextensionsv1beta1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7690,43 +8130,43 @@ func (w *wrapExtensionsV1beta1NetworkPolicyImpl) DeleteCollection(ctx context.Co
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.NetworkPolicy, error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.NetworkPolicy, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicy{}
+	out := &apiextensionsv1beta1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.NetworkPolicyList, error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.NetworkPolicyList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicyList{}
+	out := &apiextensionsv1beta1.NetworkPolicyList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.NetworkPolicy, err error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.NetworkPolicy, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicy{}
+	out := &apiextensionsv1beta1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Update(ctx context.Context, in *extensionsv1beta1.NetworkPolicy, opts metav1.UpdateOptions) (*extensionsv1beta1.NetworkPolicy, error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Update(ctx context.Context, in *apiextensionsv1beta1.NetworkPolicy, opts metav1.UpdateOptions) (*apiextensionsv1beta1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7740,14 +8180,14 @@ func (w *wrapExtensionsV1beta1NetworkPolicyImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicy{}
+	out := &apiextensionsv1beta1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1NetworkPolicyImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.NetworkPolicy, opts metav1.UpdateOptions) (*extensionsv1beta1.NetworkPolicy, error) {
+func (w *wrapExtensionsV1beta1NetworkPolicyImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.NetworkPolicy, opts metav1.UpdateOptions) (*apiextensionsv1beta1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7761,7 +8201,7 @@ func (w *wrapExtensionsV1beta1NetworkPolicyImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.NetworkPolicy{}
+	out := &apiextensionsv1beta1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7788,7 +8228,15 @@ type wrapExtensionsV1beta1PodSecurityPolicyImpl struct {
 
 var _ typedextensionsv1beta1.PodSecurityPolicyInterface = (*wrapExtensionsV1beta1PodSecurityPolicyImpl)(nil)
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Create(ctx context.Context, in *extensionsv1beta1.PodSecurityPolicy, opts metav1.CreateOptions) (*extensionsv1beta1.PodSecurityPolicy, error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Apply(ctx context.Context, in *extensionsv1beta1.PodSecurityPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.PodSecurityPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.PodSecurityPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.PodSecurityPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Create(ctx context.Context, in *apiextensionsv1beta1.PodSecurityPolicy, opts metav1.CreateOptions) (*apiextensionsv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7802,7 +8250,7 @@ func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Create(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicy{}
+	out := &apiextensionsv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7817,43 +8265,43 @@ func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) DeleteCollection(ctx contex
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.PodSecurityPolicy, error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.PodSecurityPolicy, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicy{}
+	out := &apiextensionsv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.PodSecurityPolicyList, error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.PodSecurityPolicyList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicyList{}
+	out := &apiextensionsv1beta1.PodSecurityPolicyList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.PodSecurityPolicy, err error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.PodSecurityPolicy, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicy{}
+	out := &apiextensionsv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Update(ctx context.Context, in *extensionsv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*extensionsv1beta1.PodSecurityPolicy, error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Update(ctx context.Context, in *apiextensionsv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*apiextensionsv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7867,14 +8315,14 @@ func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) Update(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicy{}
+	out := &apiextensionsv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*extensionsv1beta1.PodSecurityPolicy, error) {
+func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*apiextensionsv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7888,7 +8336,7 @@ func (w *wrapExtensionsV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Co
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.PodSecurityPolicy{}
+	out := &apiextensionsv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7919,7 +8367,15 @@ type wrapExtensionsV1beta1ReplicaSetImpl struct {
 
 var _ typedextensionsv1beta1.ReplicaSetInterface = (*wrapExtensionsV1beta1ReplicaSetImpl)(nil)
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) Create(ctx context.Context, in *extensionsv1beta1.ReplicaSet, opts metav1.CreateOptions) (*extensionsv1beta1.ReplicaSet, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) Apply(ctx context.Context, in *extensionsv1beta1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) ApplyStatus(ctx context.Context, in *extensionsv1beta1.ReplicaSetApplyConfiguration, opts metav1.ApplyOptions) (result *apiextensionsv1beta1.ReplicaSet, err error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) Create(ctx context.Context, in *apiextensionsv1beta1.ReplicaSet, opts metav1.CreateOptions) (*apiextensionsv1beta1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7933,7 +8389,7 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) Create(ctx context.Context, in *ex
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSet{}
+	out := &apiextensionsv1beta1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -7948,43 +8404,43 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) DeleteCollection(ctx context.Conte
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.ReplicaSet, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.ReplicaSet, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSet{}
+	out := &apiextensionsv1beta1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*extensionsv1beta1.ReplicaSetList, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiextensionsv1beta1.ReplicaSetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSetList{}
+	out := &apiextensionsv1beta1.ReplicaSetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *extensionsv1beta1.ReplicaSet, err error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiextensionsv1beta1.ReplicaSet, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSet{}
+	out := &apiextensionsv1beta1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) Update(ctx context.Context, in *extensionsv1beta1.ReplicaSet, opts metav1.UpdateOptions) (*extensionsv1beta1.ReplicaSet, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) Update(ctx context.Context, in *apiextensionsv1beta1.ReplicaSet, opts metav1.UpdateOptions) (*apiextensionsv1beta1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -7998,14 +8454,14 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) Update(ctx context.Context, in *ex
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSet{}
+	out := &apiextensionsv1beta1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateStatus(ctx context.Context, in *extensionsv1beta1.ReplicaSet, opts metav1.UpdateOptions) (*extensionsv1beta1.ReplicaSet, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateStatus(ctx context.Context, in *apiextensionsv1beta1.ReplicaSet, opts metav1.UpdateOptions) (*apiextensionsv1beta1.ReplicaSet, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "extensions",
 		Version: "v1beta1",
@@ -8019,7 +8475,7 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateStatus(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &extensionsv1beta1.ReplicaSet{}
+	out := &apiextensionsv1beta1.ReplicaSet{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8030,11 +8486,11 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) Watch(ctx context.Context, opts me
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*extensionsv1beta1.Scale, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) GetScale(ctx context.Context, name string, opts metav1.GetOptions) (*apiextensionsv1beta1.Scale, error) {
 	panic("NYI")
 }
 
-func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateScale(ctx context.Context, _ string, in *extensionsv1beta1.Scale, opts metav1.UpdateOptions) (*extensionsv1beta1.Scale, error) {
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateScale(ctx context.Context, _ string, in *apiextensionsv1beta1.Scale, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Scale, error) {
 	panic("NYI")
 }
 
@@ -8069,7 +8525,15 @@ type wrapFlowcontrolV1alpha1FlowSchemaImpl struct {
 
 var _ typedflowcontrolv1alpha1.FlowSchemaInterface = (*wrapFlowcontrolV1alpha1FlowSchemaImpl)(nil)
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Create(ctx context.Context, in *flowcontrolv1alpha1.FlowSchema, opts metav1.CreateOptions) (*flowcontrolv1alpha1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Apply(ctx context.Context, in *flowcontrolv1alpha1.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1alpha1.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1alpha1.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1alpha1.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Create(ctx context.Context, in *apiflowcontrolv1alpha1.FlowSchema, opts metav1.CreateOptions) (*apiflowcontrolv1alpha1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8083,7 +8547,7 @@ func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchema{}
+	out := &apiflowcontrolv1alpha1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8098,43 +8562,43 @@ func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) DeleteCollection(ctx context.Con
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*flowcontrolv1alpha1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1alpha1.FlowSchema, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchema{}
+	out := &apiflowcontrolv1alpha1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) List(ctx context.Context, opts metav1.ListOptions) (*flowcontrolv1alpha1.FlowSchemaList, error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1alpha1.FlowSchemaList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchemaList{}
+	out := &apiflowcontrolv1alpha1.FlowSchemaList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *flowcontrolv1alpha1.FlowSchema, err error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1alpha1.FlowSchema, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchema{}
+	out := &apiflowcontrolv1alpha1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Update(ctx context.Context, in *flowcontrolv1alpha1.FlowSchema, opts metav1.UpdateOptions) (*flowcontrolv1alpha1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Update(ctx context.Context, in *apiflowcontrolv1alpha1.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1alpha1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8148,14 +8612,14 @@ func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchema{}
+	out := &apiflowcontrolv1alpha1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) UpdateStatus(ctx context.Context, in *flowcontrolv1alpha1.FlowSchema, opts metav1.UpdateOptions) (*flowcontrolv1alpha1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1alpha1.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1alpha1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8169,7 +8633,7 @@ func (w *wrapFlowcontrolV1alpha1FlowSchemaImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.FlowSchema{}
+	out := &apiflowcontrolv1alpha1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8196,7 +8660,15 @@ type wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl struct {
 
 var _ typedflowcontrolv1alpha1.PriorityLevelConfigurationInterface = (*wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl)(nil)
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Create(ctx context.Context, in *flowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.CreateOptions) (*flowcontrolv1alpha1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Apply(ctx context.Context, in *flowcontrolv1alpha1.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1alpha1.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1alpha1.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1alpha1.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Create(ctx context.Context, in *apiflowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.CreateOptions) (*apiflowcontrolv1alpha1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8210,7 +8682,7 @@ func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Create(ctx conte
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8225,43 +8697,43 @@ func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) DeleteCollection
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*flowcontrolv1alpha1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1alpha1.PriorityLevelConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*flowcontrolv1alpha1.PriorityLevelConfigurationList, error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1alpha1.PriorityLevelConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfigurationList{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *flowcontrolv1alpha1.PriorityLevelConfiguration, err error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1alpha1.PriorityLevelConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Update(ctx context.Context, in *flowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*flowcontrolv1alpha1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Update(ctx context.Context, in *apiflowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1alpha1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8275,14 +8747,14 @@ func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) Update(ctx conte
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) UpdateStatus(ctx context.Context, in *flowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*flowcontrolv1alpha1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1alpha1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1alpha1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1alpha1",
@@ -8296,7 +8768,7 @@ func (w *wrapFlowcontrolV1alpha1PriorityLevelConfigurationImpl) UpdateStatus(ctx
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1alpha1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1alpha1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8338,7 +8810,15 @@ type wrapFlowcontrolV1beta1FlowSchemaImpl struct {
 
 var _ typedflowcontrolv1beta1.FlowSchemaInterface = (*wrapFlowcontrolV1beta1FlowSchemaImpl)(nil)
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Create(ctx context.Context, in *flowcontrolv1beta1.FlowSchema, opts metav1.CreateOptions) (*flowcontrolv1beta1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Apply(ctx context.Context, in *flowcontrolv1beta1.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta1.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1beta1.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta1.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Create(ctx context.Context, in *apiflowcontrolv1beta1.FlowSchema, opts metav1.CreateOptions) (*apiflowcontrolv1beta1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8352,7 +8832,7 @@ func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Create(ctx context.Context, in *f
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchema{}
+	out := &apiflowcontrolv1beta1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8367,43 +8847,43 @@ func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) DeleteCollection(ctx context.Cont
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*flowcontrolv1beta1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1beta1.FlowSchema, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchema{}
+	out := &apiflowcontrolv1beta1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) List(ctx context.Context, opts metav1.ListOptions) (*flowcontrolv1beta1.FlowSchemaList, error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1beta1.FlowSchemaList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchemaList{}
+	out := &apiflowcontrolv1beta1.FlowSchemaList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *flowcontrolv1beta1.FlowSchema, err error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1beta1.FlowSchema, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchema{}
+	out := &apiflowcontrolv1beta1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Update(ctx context.Context, in *flowcontrolv1beta1.FlowSchema, opts metav1.UpdateOptions) (*flowcontrolv1beta1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Update(ctx context.Context, in *apiflowcontrolv1beta1.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1beta1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8417,14 +8897,14 @@ func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) Update(ctx context.Context, in *f
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchema{}
+	out := &apiflowcontrolv1beta1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) UpdateStatus(ctx context.Context, in *flowcontrolv1beta1.FlowSchema, opts metav1.UpdateOptions) (*flowcontrolv1beta1.FlowSchema, error) {
+func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1beta1.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1beta1.FlowSchema, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8438,7 +8918,7 @@ func (w *wrapFlowcontrolV1beta1FlowSchemaImpl) UpdateStatus(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.FlowSchema{}
+	out := &apiflowcontrolv1beta1.FlowSchema{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8465,7 +8945,15 @@ type wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl struct {
 
 var _ typedflowcontrolv1beta1.PriorityLevelConfigurationInterface = (*wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl)(nil)
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Create(ctx context.Context, in *flowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.CreateOptions) (*flowcontrolv1beta1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Apply(ctx context.Context, in *flowcontrolv1beta1.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta1.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1beta1.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta1.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Create(ctx context.Context, in *apiflowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.CreateOptions) (*apiflowcontrolv1beta1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8479,7 +8967,7 @@ func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Create(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8494,43 +8982,43 @@ func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) DeleteCollection(
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*flowcontrolv1beta1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1beta1.PriorityLevelConfiguration, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*flowcontrolv1beta1.PriorityLevelConfigurationList, error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1beta1.PriorityLevelConfigurationList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfigurationList{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfigurationList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *flowcontrolv1beta1.PriorityLevelConfiguration, err error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1beta1.PriorityLevelConfiguration, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Update(ctx context.Context, in *flowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*flowcontrolv1beta1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Update(ctx context.Context, in *apiflowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1beta1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8544,14 +9032,14 @@ func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Update(ctx contex
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) UpdateStatus(ctx context.Context, in *flowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*flowcontrolv1beta1.PriorityLevelConfiguration, error) {
+func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1beta1.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1beta1.PriorityLevelConfiguration, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "flowcontrol.apiserver.k8s.io",
 		Version: "v1beta1",
@@ -8565,7 +9053,7 @@ func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) UpdateStatus(ctx 
 	if err != nil {
 		return nil, err
 	}
-	out := &flowcontrolv1beta1.PriorityLevelConfiguration{}
+	out := &apiflowcontrolv1beta1.PriorityLevelConfiguration{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8611,7 +9099,15 @@ type wrapNetworkingV1IngressImpl struct {
 
 var _ typednetworkingv1.IngressInterface = (*wrapNetworkingV1IngressImpl)(nil)
 
-func (w *wrapNetworkingV1IngressImpl) Create(ctx context.Context, in *networkingv1.Ingress, opts metav1.CreateOptions) (*networkingv1.Ingress, error) {
+func (w *wrapNetworkingV1IngressImpl) Apply(ctx context.Context, in *networkingv1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1IngressImpl) ApplyStatus(ctx context.Context, in *networkingv1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1IngressImpl) Create(ctx context.Context, in *apinetworkingv1.Ingress, opts metav1.CreateOptions) (*apinetworkingv1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8625,7 +9121,7 @@ func (w *wrapNetworkingV1IngressImpl) Create(ctx context.Context, in *networking
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.Ingress{}
+	out := &apinetworkingv1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8640,43 +9136,43 @@ func (w *wrapNetworkingV1IngressImpl) DeleteCollection(ctx context.Context, opts
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNetworkingV1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*networkingv1.Ingress, error) {
+func (w *wrapNetworkingV1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinetworkingv1.Ingress, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.Ingress{}
+	out := &apinetworkingv1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.IngressList, error) {
+func (w *wrapNetworkingV1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinetworkingv1.IngressList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressList{}
+	out := &apinetworkingv1.IngressList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.Ingress, err error) {
+func (w *wrapNetworkingV1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinetworkingv1.Ingress, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.Ingress{}
+	out := &apinetworkingv1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressImpl) Update(ctx context.Context, in *networkingv1.Ingress, opts metav1.UpdateOptions) (*networkingv1.Ingress, error) {
+func (w *wrapNetworkingV1IngressImpl) Update(ctx context.Context, in *apinetworkingv1.Ingress, opts metav1.UpdateOptions) (*apinetworkingv1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8690,14 +9186,14 @@ func (w *wrapNetworkingV1IngressImpl) Update(ctx context.Context, in *networking
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.Ingress{}
+	out := &apinetworkingv1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressImpl) UpdateStatus(ctx context.Context, in *networkingv1.Ingress, opts metav1.UpdateOptions) (*networkingv1.Ingress, error) {
+func (w *wrapNetworkingV1IngressImpl) UpdateStatus(ctx context.Context, in *apinetworkingv1.Ingress, opts metav1.UpdateOptions) (*apinetworkingv1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8711,7 +9207,7 @@ func (w *wrapNetworkingV1IngressImpl) UpdateStatus(ctx context.Context, in *netw
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.Ingress{}
+	out := &apinetworkingv1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8738,7 +9234,15 @@ type wrapNetworkingV1IngressClassImpl struct {
 
 var _ typednetworkingv1.IngressClassInterface = (*wrapNetworkingV1IngressClassImpl)(nil)
 
-func (w *wrapNetworkingV1IngressClassImpl) Create(ctx context.Context, in *networkingv1.IngressClass, opts metav1.CreateOptions) (*networkingv1.IngressClass, error) {
+func (w *wrapNetworkingV1IngressClassImpl) Apply(ctx context.Context, in *networkingv1.IngressClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.IngressClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1IngressClassImpl) ApplyStatus(ctx context.Context, in *networkingv1.IngressClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.IngressClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1IngressClassImpl) Create(ctx context.Context, in *apinetworkingv1.IngressClass, opts metav1.CreateOptions) (*apinetworkingv1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8752,7 +9256,7 @@ func (w *wrapNetworkingV1IngressClassImpl) Create(ctx context.Context, in *netwo
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClass{}
+	out := &apinetworkingv1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8767,43 +9271,43 @@ func (w *wrapNetworkingV1IngressClassImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNetworkingV1IngressClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*networkingv1.IngressClass, error) {
+func (w *wrapNetworkingV1IngressClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinetworkingv1.IngressClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClass{}
+	out := &apinetworkingv1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.IngressClassList, error) {
+func (w *wrapNetworkingV1IngressClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinetworkingv1.IngressClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClassList{}
+	out := &apinetworkingv1.IngressClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.IngressClass, err error) {
+func (w *wrapNetworkingV1IngressClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinetworkingv1.IngressClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClass{}
+	out := &apinetworkingv1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressClassImpl) Update(ctx context.Context, in *networkingv1.IngressClass, opts metav1.UpdateOptions) (*networkingv1.IngressClass, error) {
+func (w *wrapNetworkingV1IngressClassImpl) Update(ctx context.Context, in *apinetworkingv1.IngressClass, opts metav1.UpdateOptions) (*apinetworkingv1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8817,14 +9321,14 @@ func (w *wrapNetworkingV1IngressClassImpl) Update(ctx context.Context, in *netwo
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClass{}
+	out := &apinetworkingv1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1IngressClassImpl) UpdateStatus(ctx context.Context, in *networkingv1.IngressClass, opts metav1.UpdateOptions) (*networkingv1.IngressClass, error) {
+func (w *wrapNetworkingV1IngressClassImpl) UpdateStatus(ctx context.Context, in *apinetworkingv1.IngressClass, opts metav1.UpdateOptions) (*apinetworkingv1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8838,7 +9342,7 @@ func (w *wrapNetworkingV1IngressClassImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.IngressClass{}
+	out := &apinetworkingv1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8869,7 +9373,15 @@ type wrapNetworkingV1NetworkPolicyImpl struct {
 
 var _ typednetworkingv1.NetworkPolicyInterface = (*wrapNetworkingV1NetworkPolicyImpl)(nil)
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) Create(ctx context.Context, in *networkingv1.NetworkPolicy, opts metav1.CreateOptions) (*networkingv1.NetworkPolicy, error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) Apply(ctx context.Context, in *networkingv1.NetworkPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.NetworkPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1NetworkPolicyImpl) ApplyStatus(ctx context.Context, in *networkingv1.NetworkPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1.NetworkPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1NetworkPolicyImpl) Create(ctx context.Context, in *apinetworkingv1.NetworkPolicy, opts metav1.CreateOptions) (*apinetworkingv1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8883,7 +9395,7 @@ func (w *wrapNetworkingV1NetworkPolicyImpl) Create(ctx context.Context, in *netw
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicy{}
+	out := &apinetworkingv1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -8898,43 +9410,43 @@ func (w *wrapNetworkingV1NetworkPolicyImpl) DeleteCollection(ctx context.Context
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*networkingv1.NetworkPolicy, error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinetworkingv1.NetworkPolicy, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicy{}
+	out := &apinetworkingv1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*networkingv1.NetworkPolicyList, error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinetworkingv1.NetworkPolicyList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicyList{}
+	out := &apinetworkingv1.NetworkPolicyList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1.NetworkPolicy, err error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinetworkingv1.NetworkPolicy, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicy{}
+	out := &apinetworkingv1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) Update(ctx context.Context, in *networkingv1.NetworkPolicy, opts metav1.UpdateOptions) (*networkingv1.NetworkPolicy, error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) Update(ctx context.Context, in *apinetworkingv1.NetworkPolicy, opts metav1.UpdateOptions) (*apinetworkingv1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8948,14 +9460,14 @@ func (w *wrapNetworkingV1NetworkPolicyImpl) Update(ctx context.Context, in *netw
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicy{}
+	out := &apinetworkingv1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1NetworkPolicyImpl) UpdateStatus(ctx context.Context, in *networkingv1.NetworkPolicy, opts metav1.UpdateOptions) (*networkingv1.NetworkPolicy, error) {
+func (w *wrapNetworkingV1NetworkPolicyImpl) UpdateStatus(ctx context.Context, in *apinetworkingv1.NetworkPolicy, opts metav1.UpdateOptions) (*apinetworkingv1.NetworkPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1",
@@ -8969,7 +9481,7 @@ func (w *wrapNetworkingV1NetworkPolicyImpl) UpdateStatus(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1.NetworkPolicy{}
+	out := &apinetworkingv1.NetworkPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9015,7 +9527,15 @@ type wrapNetworkingV1beta1IngressImpl struct {
 
 var _ typednetworkingv1beta1.IngressInterface = (*wrapNetworkingV1beta1IngressImpl)(nil)
 
-func (w *wrapNetworkingV1beta1IngressImpl) Create(ctx context.Context, in *networkingv1beta1.Ingress, opts metav1.CreateOptions) (*networkingv1beta1.Ingress, error) {
+func (w *wrapNetworkingV1beta1IngressImpl) Apply(ctx context.Context, in *networkingv1beta1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1beta1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1beta1IngressImpl) ApplyStatus(ctx context.Context, in *networkingv1beta1.IngressApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1beta1.Ingress, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1beta1IngressImpl) Create(ctx context.Context, in *apinetworkingv1beta1.Ingress, opts metav1.CreateOptions) (*apinetworkingv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9029,7 +9549,7 @@ func (w *wrapNetworkingV1beta1IngressImpl) Create(ctx context.Context, in *netwo
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.Ingress{}
+	out := &apinetworkingv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9044,43 +9564,43 @@ func (w *wrapNetworkingV1beta1IngressImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNetworkingV1beta1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*networkingv1beta1.Ingress, error) {
+func (w *wrapNetworkingV1beta1IngressImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinetworkingv1beta1.Ingress, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.Ingress{}
+	out := &apinetworkingv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*networkingv1beta1.IngressList, error) {
+func (w *wrapNetworkingV1beta1IngressImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinetworkingv1beta1.IngressList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressList{}
+	out := &apinetworkingv1beta1.IngressList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1beta1.Ingress, err error) {
+func (w *wrapNetworkingV1beta1IngressImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinetworkingv1beta1.Ingress, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.Ingress{}
+	out := &apinetworkingv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressImpl) Update(ctx context.Context, in *networkingv1beta1.Ingress, opts metav1.UpdateOptions) (*networkingv1beta1.Ingress, error) {
+func (w *wrapNetworkingV1beta1IngressImpl) Update(ctx context.Context, in *apinetworkingv1beta1.Ingress, opts metav1.UpdateOptions) (*apinetworkingv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9094,14 +9614,14 @@ func (w *wrapNetworkingV1beta1IngressImpl) Update(ctx context.Context, in *netwo
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.Ingress{}
+	out := &apinetworkingv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressImpl) UpdateStatus(ctx context.Context, in *networkingv1beta1.Ingress, opts metav1.UpdateOptions) (*networkingv1beta1.Ingress, error) {
+func (w *wrapNetworkingV1beta1IngressImpl) UpdateStatus(ctx context.Context, in *apinetworkingv1beta1.Ingress, opts metav1.UpdateOptions) (*apinetworkingv1beta1.Ingress, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9115,7 +9635,7 @@ func (w *wrapNetworkingV1beta1IngressImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.Ingress{}
+	out := &apinetworkingv1beta1.Ingress{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9142,7 +9662,15 @@ type wrapNetworkingV1beta1IngressClassImpl struct {
 
 var _ typednetworkingv1beta1.IngressClassInterface = (*wrapNetworkingV1beta1IngressClassImpl)(nil)
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) Create(ctx context.Context, in *networkingv1beta1.IngressClass, opts metav1.CreateOptions) (*networkingv1beta1.IngressClass, error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) Apply(ctx context.Context, in *networkingv1beta1.IngressClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1beta1.IngressClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1beta1IngressClassImpl) ApplyStatus(ctx context.Context, in *networkingv1beta1.IngressClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinetworkingv1beta1.IngressClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNetworkingV1beta1IngressClassImpl) Create(ctx context.Context, in *apinetworkingv1beta1.IngressClass, opts metav1.CreateOptions) (*apinetworkingv1beta1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9156,7 +9684,7 @@ func (w *wrapNetworkingV1beta1IngressClassImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClass{}
+	out := &apinetworkingv1beta1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9171,43 +9699,43 @@ func (w *wrapNetworkingV1beta1IngressClassImpl) DeleteCollection(ctx context.Con
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*networkingv1beta1.IngressClass, error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinetworkingv1beta1.IngressClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClass{}
+	out := &apinetworkingv1beta1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*networkingv1beta1.IngressClassList, error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinetworkingv1beta1.IngressClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClassList{}
+	out := &apinetworkingv1beta1.IngressClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *networkingv1beta1.IngressClass, err error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinetworkingv1beta1.IngressClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClass{}
+	out := &apinetworkingv1beta1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) Update(ctx context.Context, in *networkingv1beta1.IngressClass, opts metav1.UpdateOptions) (*networkingv1beta1.IngressClass, error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) Update(ctx context.Context, in *apinetworkingv1beta1.IngressClass, opts metav1.UpdateOptions) (*apinetworkingv1beta1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9221,14 +9749,14 @@ func (w *wrapNetworkingV1beta1IngressClassImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClass{}
+	out := &apinetworkingv1beta1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNetworkingV1beta1IngressClassImpl) UpdateStatus(ctx context.Context, in *networkingv1beta1.IngressClass, opts metav1.UpdateOptions) (*networkingv1beta1.IngressClass, error) {
+func (w *wrapNetworkingV1beta1IngressClassImpl) UpdateStatus(ctx context.Context, in *apinetworkingv1beta1.IngressClass, opts metav1.UpdateOptions) (*apinetworkingv1beta1.IngressClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "networking.k8s.io",
 		Version: "v1beta1",
@@ -9242,7 +9770,7 @@ func (w *wrapNetworkingV1beta1IngressClassImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &networkingv1beta1.IngressClass{}
+	out := &apinetworkingv1beta1.IngressClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9284,7 +9812,15 @@ type wrapNodeV1RuntimeClassImpl struct {
 
 var _ typednodev1.RuntimeClassInterface = (*wrapNodeV1RuntimeClassImpl)(nil)
 
-func (w *wrapNodeV1RuntimeClassImpl) Create(ctx context.Context, in *nodev1.RuntimeClass, opts metav1.CreateOptions) (*nodev1.RuntimeClass, error) {
+func (w *wrapNodeV1RuntimeClassImpl) Apply(ctx context.Context, in *nodev1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1RuntimeClassImpl) ApplyStatus(ctx context.Context, in *nodev1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1RuntimeClassImpl) Create(ctx context.Context, in *apinodev1.RuntimeClass, opts metav1.CreateOptions) (*apinodev1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1",
@@ -9298,7 +9834,7 @@ func (w *wrapNodeV1RuntimeClassImpl) Create(ctx context.Context, in *nodev1.Runt
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClass{}
+	out := &apinodev1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9313,43 +9849,43 @@ func (w *wrapNodeV1RuntimeClassImpl) DeleteCollection(ctx context.Context, opts 
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNodeV1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*nodev1.RuntimeClass, error) {
+func (w *wrapNodeV1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinodev1.RuntimeClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClass{}
+	out := &apinodev1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*nodev1.RuntimeClassList, error) {
+func (w *wrapNodeV1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinodev1.RuntimeClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClassList{}
+	out := &apinodev1.RuntimeClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *nodev1.RuntimeClass, err error) {
+func (w *wrapNodeV1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinodev1.RuntimeClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClass{}
+	out := &apinodev1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1RuntimeClassImpl) Update(ctx context.Context, in *nodev1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1.RuntimeClass, error) {
+func (w *wrapNodeV1RuntimeClassImpl) Update(ctx context.Context, in *apinodev1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1",
@@ -9363,14 +9899,14 @@ func (w *wrapNodeV1RuntimeClassImpl) Update(ctx context.Context, in *nodev1.Runt
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClass{}
+	out := &apinodev1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *nodev1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1.RuntimeClass, error) {
+func (w *wrapNodeV1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *apinodev1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1",
@@ -9384,7 +9920,7 @@ func (w *wrapNodeV1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *nodev
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1.RuntimeClass{}
+	out := &apinodev1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9426,7 +9962,15 @@ type wrapNodeV1alpha1RuntimeClassImpl struct {
 
 var _ typednodev1alpha1.RuntimeClassInterface = (*wrapNodeV1alpha1RuntimeClassImpl)(nil)
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) Create(ctx context.Context, in *nodev1alpha1.RuntimeClass, opts metav1.CreateOptions) (*nodev1alpha1.RuntimeClass, error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) Apply(ctx context.Context, in *nodev1alpha1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1alpha1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1alpha1RuntimeClassImpl) ApplyStatus(ctx context.Context, in *nodev1alpha1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1alpha1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1alpha1RuntimeClassImpl) Create(ctx context.Context, in *apinodev1alpha1.RuntimeClass, opts metav1.CreateOptions) (*apinodev1alpha1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1alpha1",
@@ -9440,7 +9984,7 @@ func (w *wrapNodeV1alpha1RuntimeClassImpl) Create(ctx context.Context, in *nodev
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClass{}
+	out := &apinodev1alpha1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9455,43 +9999,43 @@ func (w *wrapNodeV1alpha1RuntimeClassImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*nodev1alpha1.RuntimeClass, error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinodev1alpha1.RuntimeClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClass{}
+	out := &apinodev1alpha1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*nodev1alpha1.RuntimeClassList, error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinodev1alpha1.RuntimeClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClassList{}
+	out := &apinodev1alpha1.RuntimeClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *nodev1alpha1.RuntimeClass, err error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinodev1alpha1.RuntimeClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClass{}
+	out := &apinodev1alpha1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) Update(ctx context.Context, in *nodev1alpha1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1alpha1.RuntimeClass, error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) Update(ctx context.Context, in *apinodev1alpha1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1alpha1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1alpha1",
@@ -9505,14 +10049,14 @@ func (w *wrapNodeV1alpha1RuntimeClassImpl) Update(ctx context.Context, in *nodev
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClass{}
+	out := &apinodev1alpha1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1alpha1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *nodev1alpha1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1alpha1.RuntimeClass, error) {
+func (w *wrapNodeV1alpha1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *apinodev1alpha1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1alpha1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1alpha1",
@@ -9526,7 +10070,7 @@ func (w *wrapNodeV1alpha1RuntimeClassImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1alpha1.RuntimeClass{}
+	out := &apinodev1alpha1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9568,7 +10112,15 @@ type wrapNodeV1beta1RuntimeClassImpl struct {
 
 var _ typednodev1beta1.RuntimeClassInterface = (*wrapNodeV1beta1RuntimeClassImpl)(nil)
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) Create(ctx context.Context, in *nodev1beta1.RuntimeClass, opts metav1.CreateOptions) (*nodev1beta1.RuntimeClass, error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) Apply(ctx context.Context, in *nodev1beta1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1beta1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1beta1RuntimeClassImpl) ApplyStatus(ctx context.Context, in *nodev1beta1.RuntimeClassApplyConfiguration, opts metav1.ApplyOptions) (result *apinodev1beta1.RuntimeClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapNodeV1beta1RuntimeClassImpl) Create(ctx context.Context, in *apinodev1beta1.RuntimeClass, opts metav1.CreateOptions) (*apinodev1beta1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1beta1",
@@ -9582,7 +10134,7 @@ func (w *wrapNodeV1beta1RuntimeClassImpl) Create(ctx context.Context, in *nodev1
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClass{}
+	out := &apinodev1beta1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9597,43 +10149,43 @@ func (w *wrapNodeV1beta1RuntimeClassImpl) DeleteCollection(ctx context.Context, 
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*nodev1beta1.RuntimeClass, error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apinodev1beta1.RuntimeClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClass{}
+	out := &apinodev1beta1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*nodev1beta1.RuntimeClassList, error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apinodev1beta1.RuntimeClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClassList{}
+	out := &apinodev1beta1.RuntimeClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *nodev1beta1.RuntimeClass, err error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apinodev1beta1.RuntimeClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClass{}
+	out := &apinodev1beta1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) Update(ctx context.Context, in *nodev1beta1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1beta1.RuntimeClass, error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) Update(ctx context.Context, in *apinodev1beta1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1beta1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1beta1",
@@ -9647,14 +10199,14 @@ func (w *wrapNodeV1beta1RuntimeClassImpl) Update(ctx context.Context, in *nodev1
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClass{}
+	out := &apinodev1beta1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapNodeV1beta1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *nodev1beta1.RuntimeClass, opts metav1.UpdateOptions) (*nodev1beta1.RuntimeClass, error) {
+func (w *wrapNodeV1beta1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *apinodev1beta1.RuntimeClass, opts metav1.UpdateOptions) (*apinodev1beta1.RuntimeClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "node.k8s.io",
 		Version: "v1beta1",
@@ -9668,7 +10220,7 @@ func (w *wrapNodeV1beta1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &nodev1beta1.RuntimeClass{}
+	out := &apinodev1beta1.RuntimeClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9676,6 +10228,160 @@ func (w *wrapNodeV1beta1RuntimeClassImpl) UpdateStatus(ctx context.Context, in *
 }
 
 func (w *wrapNodeV1beta1RuntimeClassImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+// PolicyV1 retrieves the PolicyV1Client
+func (w *wrapClient) PolicyV1() typedpolicyv1.PolicyV1Interface {
+	return &wrapPolicyV1{
+		dyn: w.dyn,
+	}
+}
+
+type wrapPolicyV1 struct {
+	dyn dynamic.Interface
+}
+
+func (w *wrapPolicyV1) RESTClient() rest.Interface {
+	panic("RESTClient called on dynamic client!")
+}
+
+func (w *wrapPolicyV1) PodDisruptionBudgets(namespace string) typedpolicyv1.PodDisruptionBudgetInterface {
+	return &wrapPolicyV1PodDisruptionBudgetImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "policy",
+			Version:  "v1",
+			Resource: "poddisruptionbudgets",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapPolicyV1PodDisruptionBudgetImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedpolicyv1.PodDisruptionBudgetInterface = (*wrapPolicyV1PodDisruptionBudgetImpl)(nil)
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Apply(ctx context.Context, in *policyv1.PodDisruptionBudgetApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1.PodDisruptionBudget, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) ApplyStatus(ctx context.Context, in *policyv1.PodDisruptionBudgetApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1.PodDisruptionBudget, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Create(ctx context.Context, in *apipolicyv1.PodDisruptionBudget, opts metav1.CreateOptions) (*apipolicyv1.PodDisruptionBudget, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudget{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apipolicyv1.PodDisruptionBudget, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudget{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apipolicyv1.PodDisruptionBudgetList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudgetList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apipolicyv1.PodDisruptionBudget, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudget{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Update(ctx context.Context, in *apipolicyv1.PodDisruptionBudget, opts metav1.UpdateOptions) (*apipolicyv1.PodDisruptionBudget, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudget{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) UpdateStatus(ctx context.Context, in *apipolicyv1.PodDisruptionBudget, opts metav1.UpdateOptions) (*apipolicyv1.PodDisruptionBudget, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy",
+		Version: "v1",
+		Kind:    "PodDisruptionBudget",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apipolicyv1.PodDisruptionBudget{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapPolicyV1PodDisruptionBudgetImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -9734,7 +10440,15 @@ type wrapPolicyV1beta1PodDisruptionBudgetImpl struct {
 
 var _ typedpolicyv1beta1.PodDisruptionBudgetInterface = (*wrapPolicyV1beta1PodDisruptionBudgetImpl)(nil)
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Create(ctx context.Context, in *policyv1beta1.PodDisruptionBudget, opts metav1.CreateOptions) (*policyv1beta1.PodDisruptionBudget, error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Apply(ctx context.Context, in *policyv1beta1.PodDisruptionBudgetApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1beta1.PodDisruptionBudget, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) ApplyStatus(ctx context.Context, in *policyv1beta1.PodDisruptionBudgetApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1beta1.PodDisruptionBudget, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Create(ctx context.Context, in *apipolicyv1beta1.PodDisruptionBudget, opts metav1.CreateOptions) (*apipolicyv1beta1.PodDisruptionBudget, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9748,7 +10462,7 @@ func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Create(ctx context.Context, i
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudget{}
+	out := &apipolicyv1beta1.PodDisruptionBudget{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9763,43 +10477,43 @@ func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) DeleteCollection(ctx context.
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*policyv1beta1.PodDisruptionBudget, error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apipolicyv1beta1.PodDisruptionBudget, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudget{}
+	out := &apipolicyv1beta1.PodDisruptionBudget{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) List(ctx context.Context, opts metav1.ListOptions) (*policyv1beta1.PodDisruptionBudgetList, error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) List(ctx context.Context, opts metav1.ListOptions) (*apipolicyv1beta1.PodDisruptionBudgetList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudgetList{}
+	out := &apipolicyv1beta1.PodDisruptionBudgetList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *policyv1beta1.PodDisruptionBudget, err error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apipolicyv1beta1.PodDisruptionBudget, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudget{}
+	out := &apipolicyv1beta1.PodDisruptionBudget{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Update(ctx context.Context, in *policyv1beta1.PodDisruptionBudget, opts metav1.UpdateOptions) (*policyv1beta1.PodDisruptionBudget, error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Update(ctx context.Context, in *apipolicyv1beta1.PodDisruptionBudget, opts metav1.UpdateOptions) (*apipolicyv1beta1.PodDisruptionBudget, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9813,14 +10527,14 @@ func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) Update(ctx context.Context, i
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudget{}
+	out := &apipolicyv1beta1.PodDisruptionBudget{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) UpdateStatus(ctx context.Context, in *policyv1beta1.PodDisruptionBudget, opts metav1.UpdateOptions) (*policyv1beta1.PodDisruptionBudget, error) {
+func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) UpdateStatus(ctx context.Context, in *apipolicyv1beta1.PodDisruptionBudget, opts metav1.UpdateOptions) (*apipolicyv1beta1.PodDisruptionBudget, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9834,7 +10548,7 @@ func (w *wrapPolicyV1beta1PodDisruptionBudgetImpl) UpdateStatus(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodDisruptionBudget{}
+	out := &apipolicyv1beta1.PodDisruptionBudget{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9861,7 +10575,15 @@ type wrapPolicyV1beta1PodSecurityPolicyImpl struct {
 
 var _ typedpolicyv1beta1.PodSecurityPolicyInterface = (*wrapPolicyV1beta1PodSecurityPolicyImpl)(nil)
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Create(ctx context.Context, in *policyv1beta1.PodSecurityPolicy, opts metav1.CreateOptions) (*policyv1beta1.PodSecurityPolicy, error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Apply(ctx context.Context, in *policyv1beta1.PodSecurityPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1beta1.PodSecurityPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) ApplyStatus(ctx context.Context, in *policyv1beta1.PodSecurityPolicyApplyConfiguration, opts metav1.ApplyOptions) (result *apipolicyv1beta1.PodSecurityPolicy, err error) {
+	panic("NYI")
+}
+
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Create(ctx context.Context, in *apipolicyv1beta1.PodSecurityPolicy, opts metav1.CreateOptions) (*apipolicyv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9875,7 +10597,7 @@ func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicy{}
+	out := &apipolicyv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -9890,43 +10612,43 @@ func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) DeleteCollection(ctx context.Co
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*policyv1beta1.PodSecurityPolicy, error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apipolicyv1beta1.PodSecurityPolicy, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicy{}
+	out := &apipolicyv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*policyv1beta1.PodSecurityPolicyList, error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) List(ctx context.Context, opts metav1.ListOptions) (*apipolicyv1beta1.PodSecurityPolicyList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicyList{}
+	out := &apipolicyv1beta1.PodSecurityPolicyList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *policyv1beta1.PodSecurityPolicy, err error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apipolicyv1beta1.PodSecurityPolicy, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicy{}
+	out := &apipolicyv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Update(ctx context.Context, in *policyv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*policyv1beta1.PodSecurityPolicy, error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Update(ctx context.Context, in *apipolicyv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*apipolicyv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9940,14 +10662,14 @@ func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicy{}
+	out := &apipolicyv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Context, in *policyv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*policyv1beta1.PodSecurityPolicy, error) {
+func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Context, in *apipolicyv1beta1.PodSecurityPolicy, opts metav1.UpdateOptions) (*apipolicyv1beta1.PodSecurityPolicy, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy",
 		Version: "v1beta1",
@@ -9961,7 +10683,7 @@ func (w *wrapPolicyV1beta1PodSecurityPolicyImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &policyv1beta1.PodSecurityPolicy{}
+	out := &apipolicyv1beta1.PodSecurityPolicy{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10003,7 +10725,15 @@ type wrapRbacV1ClusterRoleImpl struct {
 
 var _ typedrbacv1.ClusterRoleInterface = (*wrapRbacV1ClusterRoleImpl)(nil)
 
-func (w *wrapRbacV1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1.ClusterRole, opts metav1.CreateOptions) (*rbacv1.ClusterRole, error) {
+func (w *wrapRbacV1ClusterRoleImpl) Apply(ctx context.Context, in *rbacv1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1ClusterRoleImpl) ApplyStatus(ctx context.Context, in *rbacv1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1ClusterRoleImpl) Create(ctx context.Context, in *apirbacv1.ClusterRole, opts metav1.CreateOptions) (*apirbacv1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10017,7 +10747,7 @@ func (w *wrapRbacV1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1.Clust
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRole{}
+	out := &apirbacv1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10032,43 +10762,43 @@ func (w *wrapRbacV1ClusterRoleImpl) DeleteCollection(ctx context.Context, opts m
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1.ClusterRole, error) {
+func (w *wrapRbacV1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1.ClusterRole, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRole{}
+	out := &apirbacv1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1.ClusterRoleList, error) {
+func (w *wrapRbacV1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1.ClusterRoleList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleList{}
+	out := &apirbacv1.ClusterRoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1.ClusterRole, err error) {
+func (w *wrapRbacV1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1.ClusterRole, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRole{}
+	out := &apirbacv1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1.ClusterRole, error) {
+func (w *wrapRbacV1ClusterRoleImpl) Update(ctx context.Context, in *apirbacv1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10082,14 +10812,14 @@ func (w *wrapRbacV1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1.Clust
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRole{}
+	out := &apirbacv1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *rbacv1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1.ClusterRole, error) {
+func (w *wrapRbacV1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10103,7 +10833,7 @@ func (w *wrapRbacV1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRole{}
+	out := &apirbacv1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10130,7 +10860,15 @@ type wrapRbacV1ClusterRoleBindingImpl struct {
 
 var _ typedrbacv1.ClusterRoleBindingInterface = (*wrapRbacV1ClusterRoleBindingImpl)(nil)
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) Create(ctx context.Context, in *rbacv1.ClusterRoleBinding, opts metav1.CreateOptions) (*rbacv1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) Apply(ctx context.Context, in *rbacv1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1ClusterRoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1ClusterRoleBindingImpl) Create(ctx context.Context, in *apirbacv1.ClusterRoleBinding, opts metav1.CreateOptions) (*apirbacv1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10144,7 +10882,7 @@ func (w *wrapRbacV1ClusterRoleBindingImpl) Create(ctx context.Context, in *rbacv
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBinding{}
+	out := &apirbacv1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10159,43 +10897,43 @@ func (w *wrapRbacV1ClusterRoleBindingImpl) DeleteCollection(ctx context.Context,
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1.ClusterRoleBinding, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBinding{}
+	out := &apirbacv1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1.ClusterRoleBindingList, error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1.ClusterRoleBindingList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBindingList{}
+	out := &apirbacv1.ClusterRoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1.ClusterRoleBinding, err error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1.ClusterRoleBinding, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBinding{}
+	out := &apirbacv1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) Update(ctx context.Context, in *rbacv1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) Update(ctx context.Context, in *apirbacv1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10209,14 +10947,14 @@ func (w *wrapRbacV1ClusterRoleBindingImpl) Update(ctx context.Context, in *rbacv
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBinding{}
+	out := &apirbacv1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10230,7 +10968,7 @@ func (w *wrapRbacV1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.ClusterRoleBinding{}
+	out := &apirbacv1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10261,7 +10999,15 @@ type wrapRbacV1RoleImpl struct {
 
 var _ typedrbacv1.RoleInterface = (*wrapRbacV1RoleImpl)(nil)
 
-func (w *wrapRbacV1RoleImpl) Create(ctx context.Context, in *rbacv1.Role, opts metav1.CreateOptions) (*rbacv1.Role, error) {
+func (w *wrapRbacV1RoleImpl) Apply(ctx context.Context, in *rbacv1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1RoleImpl) ApplyStatus(ctx context.Context, in *rbacv1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1RoleImpl) Create(ctx context.Context, in *apirbacv1.Role, opts metav1.CreateOptions) (*apirbacv1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10275,7 +11021,7 @@ func (w *wrapRbacV1RoleImpl) Create(ctx context.Context, in *rbacv1.Role, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.Role{}
+	out := &apirbacv1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10290,43 +11036,43 @@ func (w *wrapRbacV1RoleImpl) DeleteCollection(ctx context.Context, opts metav1.D
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1.Role, error) {
+func (w *wrapRbacV1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1.Role, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.Role{}
+	out := &apirbacv1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1.RoleList, error) {
+func (w *wrapRbacV1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1.RoleList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleList{}
+	out := &apirbacv1.RoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1.Role, err error) {
+func (w *wrapRbacV1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1.Role, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.Role{}
+	out := &apirbacv1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleImpl) Update(ctx context.Context, in *rbacv1.Role, opts metav1.UpdateOptions) (*rbacv1.Role, error) {
+func (w *wrapRbacV1RoleImpl) Update(ctx context.Context, in *apirbacv1.Role, opts metav1.UpdateOptions) (*apirbacv1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10340,14 +11086,14 @@ func (w *wrapRbacV1RoleImpl) Update(ctx context.Context, in *rbacv1.Role, opts m
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.Role{}
+	out := &apirbacv1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1.Role, opts metav1.UpdateOptions) (*rbacv1.Role, error) {
+func (w *wrapRbacV1RoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1.Role, opts metav1.UpdateOptions) (*apirbacv1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10361,7 +11107,7 @@ func (w *wrapRbacV1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1.Role, 
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.Role{}
+	out := &apirbacv1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10392,7 +11138,15 @@ type wrapRbacV1RoleBindingImpl struct {
 
 var _ typedrbacv1.RoleBindingInterface = (*wrapRbacV1RoleBindingImpl)(nil)
 
-func (w *wrapRbacV1RoleBindingImpl) Create(ctx context.Context, in *rbacv1.RoleBinding, opts metav1.CreateOptions) (*rbacv1.RoleBinding, error) {
+func (w *wrapRbacV1RoleBindingImpl) Apply(ctx context.Context, in *rbacv1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1RoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1RoleBindingImpl) Create(ctx context.Context, in *apirbacv1.RoleBinding, opts metav1.CreateOptions) (*apirbacv1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10406,7 +11160,7 @@ func (w *wrapRbacV1RoleBindingImpl) Create(ctx context.Context, in *rbacv1.RoleB
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBinding{}
+	out := &apirbacv1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10421,43 +11175,43 @@ func (w *wrapRbacV1RoleBindingImpl) DeleteCollection(ctx context.Context, opts m
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1.RoleBinding, error) {
+func (w *wrapRbacV1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1.RoleBinding, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBinding{}
+	out := &apirbacv1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1.RoleBindingList, error) {
+func (w *wrapRbacV1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1.RoleBindingList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBindingList{}
+	out := &apirbacv1.RoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1.RoleBinding, err error) {
+func (w *wrapRbacV1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1.RoleBinding, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBinding{}
+	out := &apirbacv1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleBindingImpl) Update(ctx context.Context, in *rbacv1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1.RoleBinding, error) {
+func (w *wrapRbacV1RoleBindingImpl) Update(ctx context.Context, in *apirbacv1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10471,14 +11225,14 @@ func (w *wrapRbacV1RoleBindingImpl) Update(ctx context.Context, in *rbacv1.RoleB
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBinding{}
+	out := &apirbacv1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1RoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1.RoleBinding, error) {
+func (w *wrapRbacV1RoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1",
@@ -10492,7 +11246,7 @@ func (w *wrapRbacV1RoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1.RoleBinding{}
+	out := &apirbacv1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10534,7 +11288,15 @@ type wrapRbacV1alpha1ClusterRoleImpl struct {
 
 var _ typedrbacv1alpha1.ClusterRoleInterface = (*wrapRbacV1alpha1ClusterRoleImpl)(nil)
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1alpha1.ClusterRole, opts metav1.CreateOptions) (*rbacv1alpha1.ClusterRole, error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) Apply(ctx context.Context, in *rbacv1alpha1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1ClusterRoleImpl) ApplyStatus(ctx context.Context, in *rbacv1alpha1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1ClusterRoleImpl) Create(ctx context.Context, in *apirbacv1alpha1.ClusterRole, opts metav1.CreateOptions) (*apirbacv1alpha1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10548,7 +11310,7 @@ func (w *wrapRbacV1alpha1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRole{}
+	out := &apirbacv1alpha1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10563,43 +11325,43 @@ func (w *wrapRbacV1alpha1ClusterRoleImpl) DeleteCollection(ctx context.Context, 
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1alpha1.ClusterRole, error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1alpha1.ClusterRole, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRole{}
+	out := &apirbacv1alpha1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1alpha1.ClusterRoleList, error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1alpha1.ClusterRoleList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleList{}
+	out := &apirbacv1alpha1.ClusterRoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1alpha1.ClusterRole, err error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1alpha1.ClusterRole, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRole{}
+	out := &apirbacv1alpha1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1alpha1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1alpha1.ClusterRole, error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) Update(ctx context.Context, in *apirbacv1alpha1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1alpha1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10613,14 +11375,14 @@ func (w *wrapRbacV1alpha1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRole{}
+	out := &apirbacv1alpha1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *rbacv1alpha1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1alpha1.ClusterRole, error) {
+func (w *wrapRbacV1alpha1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1alpha1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1alpha1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10634,7 +11396,7 @@ func (w *wrapRbacV1alpha1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRole{}
+	out := &apirbacv1alpha1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10661,7 +11423,15 @@ type wrapRbacV1alpha1ClusterRoleBindingImpl struct {
 
 var _ typedrbacv1alpha1.ClusterRoleBindingInterface = (*wrapRbacV1alpha1ClusterRoleBindingImpl)(nil)
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Create(ctx context.Context, in *rbacv1alpha1.ClusterRoleBinding, opts metav1.CreateOptions) (*rbacv1alpha1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Apply(ctx context.Context, in *rbacv1alpha1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1alpha1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Create(ctx context.Context, in *apirbacv1alpha1.ClusterRoleBinding, opts metav1.CreateOptions) (*apirbacv1alpha1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10675,7 +11445,7 @@ func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBinding{}
+	out := &apirbacv1alpha1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10690,43 +11460,43 @@ func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) DeleteCollection(ctx context.Co
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1alpha1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1alpha1.ClusterRoleBinding, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBinding{}
+	out := &apirbacv1alpha1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1alpha1.ClusterRoleBindingList, error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1alpha1.ClusterRoleBindingList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBindingList{}
+	out := &apirbacv1alpha1.ClusterRoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1alpha1.ClusterRoleBinding, err error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1alpha1.ClusterRoleBinding, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBinding{}
+	out := &apirbacv1alpha1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Update(ctx context.Context, in *rbacv1alpha1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1alpha1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Update(ctx context.Context, in *apirbacv1alpha1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1alpha1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10740,14 +11510,14 @@ func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBinding{}
+	out := &apirbacv1alpha1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1alpha1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1alpha1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1alpha1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1alpha1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10761,7 +11531,7 @@ func (w *wrapRbacV1alpha1ClusterRoleBindingImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.ClusterRoleBinding{}
+	out := &apirbacv1alpha1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10792,7 +11562,15 @@ type wrapRbacV1alpha1RoleImpl struct {
 
 var _ typedrbacv1alpha1.RoleInterface = (*wrapRbacV1alpha1RoleImpl)(nil)
 
-func (w *wrapRbacV1alpha1RoleImpl) Create(ctx context.Context, in *rbacv1alpha1.Role, opts metav1.CreateOptions) (*rbacv1alpha1.Role, error) {
+func (w *wrapRbacV1alpha1RoleImpl) Apply(ctx context.Context, in *rbacv1alpha1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1RoleImpl) ApplyStatus(ctx context.Context, in *rbacv1alpha1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1RoleImpl) Create(ctx context.Context, in *apirbacv1alpha1.Role, opts metav1.CreateOptions) (*apirbacv1alpha1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10806,7 +11584,7 @@ func (w *wrapRbacV1alpha1RoleImpl) Create(ctx context.Context, in *rbacv1alpha1.
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.Role{}
+	out := &apirbacv1alpha1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10821,43 +11599,43 @@ func (w *wrapRbacV1alpha1RoleImpl) DeleteCollection(ctx context.Context, opts me
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1alpha1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1alpha1.Role, error) {
+func (w *wrapRbacV1alpha1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1alpha1.Role, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.Role{}
+	out := &apirbacv1alpha1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1alpha1.RoleList, error) {
+func (w *wrapRbacV1alpha1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1alpha1.RoleList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleList{}
+	out := &apirbacv1alpha1.RoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1alpha1.Role, err error) {
+func (w *wrapRbacV1alpha1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1alpha1.Role, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.Role{}
+	out := &apirbacv1alpha1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleImpl) Update(ctx context.Context, in *rbacv1alpha1.Role, opts metav1.UpdateOptions) (*rbacv1alpha1.Role, error) {
+func (w *wrapRbacV1alpha1RoleImpl) Update(ctx context.Context, in *apirbacv1alpha1.Role, opts metav1.UpdateOptions) (*apirbacv1alpha1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10871,14 +11649,14 @@ func (w *wrapRbacV1alpha1RoleImpl) Update(ctx context.Context, in *rbacv1alpha1.
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.Role{}
+	out := &apirbacv1alpha1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1alpha1.Role, opts metav1.UpdateOptions) (*rbacv1alpha1.Role, error) {
+func (w *wrapRbacV1alpha1RoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1alpha1.Role, opts metav1.UpdateOptions) (*apirbacv1alpha1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10892,7 +11670,7 @@ func (w *wrapRbacV1alpha1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1a
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.Role{}
+	out := &apirbacv1alpha1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10923,7 +11701,15 @@ type wrapRbacV1alpha1RoleBindingImpl struct {
 
 var _ typedrbacv1alpha1.RoleBindingInterface = (*wrapRbacV1alpha1RoleBindingImpl)(nil)
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) Create(ctx context.Context, in *rbacv1alpha1.RoleBinding, opts metav1.CreateOptions) (*rbacv1alpha1.RoleBinding, error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) Apply(ctx context.Context, in *rbacv1alpha1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1RoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1alpha1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1alpha1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1alpha1RoleBindingImpl) Create(ctx context.Context, in *apirbacv1alpha1.RoleBinding, opts metav1.CreateOptions) (*apirbacv1alpha1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -10937,7 +11723,7 @@ func (w *wrapRbacV1alpha1RoleBindingImpl) Create(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBinding{}
+	out := &apirbacv1alpha1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -10952,43 +11738,43 @@ func (w *wrapRbacV1alpha1RoleBindingImpl) DeleteCollection(ctx context.Context, 
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1alpha1.RoleBinding, error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1alpha1.RoleBinding, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBinding{}
+	out := &apirbacv1alpha1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1alpha1.RoleBindingList, error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1alpha1.RoleBindingList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBindingList{}
+	out := &apirbacv1alpha1.RoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1alpha1.RoleBinding, err error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1alpha1.RoleBinding, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBinding{}
+	out := &apirbacv1alpha1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) Update(ctx context.Context, in *rbacv1alpha1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1alpha1.RoleBinding, error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) Update(ctx context.Context, in *apirbacv1alpha1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1alpha1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -11002,14 +11788,14 @@ func (w *wrapRbacV1alpha1RoleBindingImpl) Update(ctx context.Context, in *rbacv1
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBinding{}
+	out := &apirbacv1alpha1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1alpha1RoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1alpha1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1alpha1.RoleBinding, error) {
+func (w *wrapRbacV1alpha1RoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1alpha1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1alpha1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1alpha1",
@@ -11023,7 +11809,7 @@ func (w *wrapRbacV1alpha1RoleBindingImpl) UpdateStatus(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1alpha1.RoleBinding{}
+	out := &apirbacv1alpha1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11065,7 +11851,15 @@ type wrapRbacV1beta1ClusterRoleImpl struct {
 
 var _ typedrbacv1beta1.ClusterRoleInterface = (*wrapRbacV1beta1ClusterRoleImpl)(nil)
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1beta1.ClusterRole, opts metav1.CreateOptions) (*rbacv1beta1.ClusterRole, error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) Apply(ctx context.Context, in *rbacv1beta1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1ClusterRoleImpl) ApplyStatus(ctx context.Context, in *rbacv1beta1.ClusterRoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.ClusterRole, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1ClusterRoleImpl) Create(ctx context.Context, in *apirbacv1beta1.ClusterRole, opts metav1.CreateOptions) (*apirbacv1beta1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11079,7 +11873,7 @@ func (w *wrapRbacV1beta1ClusterRoleImpl) Create(ctx context.Context, in *rbacv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRole{}
+	out := &apirbacv1beta1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11094,43 +11888,43 @@ func (w *wrapRbacV1beta1ClusterRoleImpl) DeleteCollection(ctx context.Context, o
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1beta1.ClusterRole, error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1beta1.ClusterRole, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRole{}
+	out := &apirbacv1beta1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1beta1.ClusterRoleList, error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1beta1.ClusterRoleList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleList{}
+	out := &apirbacv1beta1.ClusterRoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1beta1.ClusterRole, err error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1beta1.ClusterRole, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRole{}
+	out := &apirbacv1beta1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1beta1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1beta1.ClusterRole, error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) Update(ctx context.Context, in *apirbacv1beta1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1beta1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11144,14 +11938,14 @@ func (w *wrapRbacV1beta1ClusterRoleImpl) Update(ctx context.Context, in *rbacv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRole{}
+	out := &apirbacv1beta1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *rbacv1beta1.ClusterRole, opts metav1.UpdateOptions) (*rbacv1beta1.ClusterRole, error) {
+func (w *wrapRbacV1beta1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1beta1.ClusterRole, opts metav1.UpdateOptions) (*apirbacv1beta1.ClusterRole, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11165,7 +11959,7 @@ func (w *wrapRbacV1beta1ClusterRoleImpl) UpdateStatus(ctx context.Context, in *r
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRole{}
+	out := &apirbacv1beta1.ClusterRole{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11192,7 +11986,15 @@ type wrapRbacV1beta1ClusterRoleBindingImpl struct {
 
 var _ typedrbacv1beta1.ClusterRoleBindingInterface = (*wrapRbacV1beta1ClusterRoleBindingImpl)(nil)
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Create(ctx context.Context, in *rbacv1beta1.ClusterRoleBinding, opts metav1.CreateOptions) (*rbacv1beta1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Apply(ctx context.Context, in *rbacv1beta1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1beta1.ClusterRoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.ClusterRoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Create(ctx context.Context, in *apirbacv1beta1.ClusterRoleBinding, opts metav1.CreateOptions) (*apirbacv1beta1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11206,7 +12008,7 @@ func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Create(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBinding{}
+	out := &apirbacv1beta1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11221,43 +12023,43 @@ func (w *wrapRbacV1beta1ClusterRoleBindingImpl) DeleteCollection(ctx context.Con
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1beta1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1beta1.ClusterRoleBinding, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBinding{}
+	out := &apirbacv1beta1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1beta1.ClusterRoleBindingList, error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1beta1.ClusterRoleBindingList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBindingList{}
+	out := &apirbacv1beta1.ClusterRoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1beta1.ClusterRoleBinding, err error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1beta1.ClusterRoleBinding, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBinding{}
+	out := &apirbacv1beta1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Update(ctx context.Context, in *rbacv1beta1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1beta1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Update(ctx context.Context, in *apirbacv1beta1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1beta1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11271,14 +12073,14 @@ func (w *wrapRbacV1beta1ClusterRoleBindingImpl) Update(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBinding{}
+	out := &apirbacv1beta1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1beta1.ClusterRoleBinding, opts metav1.UpdateOptions) (*rbacv1beta1.ClusterRoleBinding, error) {
+func (w *wrapRbacV1beta1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1beta1.ClusterRoleBinding, opts metav1.UpdateOptions) (*apirbacv1beta1.ClusterRoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11292,7 +12094,7 @@ func (w *wrapRbacV1beta1ClusterRoleBindingImpl) UpdateStatus(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.ClusterRoleBinding{}
+	out := &apirbacv1beta1.ClusterRoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11323,7 +12125,15 @@ type wrapRbacV1beta1RoleImpl struct {
 
 var _ typedrbacv1beta1.RoleInterface = (*wrapRbacV1beta1RoleImpl)(nil)
 
-func (w *wrapRbacV1beta1RoleImpl) Create(ctx context.Context, in *rbacv1beta1.Role, opts metav1.CreateOptions) (*rbacv1beta1.Role, error) {
+func (w *wrapRbacV1beta1RoleImpl) Apply(ctx context.Context, in *rbacv1beta1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1RoleImpl) ApplyStatus(ctx context.Context, in *rbacv1beta1.RoleApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.Role, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1RoleImpl) Create(ctx context.Context, in *apirbacv1beta1.Role, opts metav1.CreateOptions) (*apirbacv1beta1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11337,7 +12147,7 @@ func (w *wrapRbacV1beta1RoleImpl) Create(ctx context.Context, in *rbacv1beta1.Ro
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.Role{}
+	out := &apirbacv1beta1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11352,43 +12162,43 @@ func (w *wrapRbacV1beta1RoleImpl) DeleteCollection(ctx context.Context, opts met
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1beta1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1beta1.Role, error) {
+func (w *wrapRbacV1beta1RoleImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1beta1.Role, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.Role{}
+	out := &apirbacv1beta1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1beta1.RoleList, error) {
+func (w *wrapRbacV1beta1RoleImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1beta1.RoleList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleList{}
+	out := &apirbacv1beta1.RoleList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1beta1.Role, err error) {
+func (w *wrapRbacV1beta1RoleImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1beta1.Role, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.Role{}
+	out := &apirbacv1beta1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleImpl) Update(ctx context.Context, in *rbacv1beta1.Role, opts metav1.UpdateOptions) (*rbacv1beta1.Role, error) {
+func (w *wrapRbacV1beta1RoleImpl) Update(ctx context.Context, in *apirbacv1beta1.Role, opts metav1.UpdateOptions) (*apirbacv1beta1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11402,14 +12212,14 @@ func (w *wrapRbacV1beta1RoleImpl) Update(ctx context.Context, in *rbacv1beta1.Ro
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.Role{}
+	out := &apirbacv1beta1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1beta1.Role, opts metav1.UpdateOptions) (*rbacv1beta1.Role, error) {
+func (w *wrapRbacV1beta1RoleImpl) UpdateStatus(ctx context.Context, in *apirbacv1beta1.Role, opts metav1.UpdateOptions) (*apirbacv1beta1.Role, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11423,7 +12233,7 @@ func (w *wrapRbacV1beta1RoleImpl) UpdateStatus(ctx context.Context, in *rbacv1be
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.Role{}
+	out := &apirbacv1beta1.Role{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11454,7 +12264,15 @@ type wrapRbacV1beta1RoleBindingImpl struct {
 
 var _ typedrbacv1beta1.RoleBindingInterface = (*wrapRbacV1beta1RoleBindingImpl)(nil)
 
-func (w *wrapRbacV1beta1RoleBindingImpl) Create(ctx context.Context, in *rbacv1beta1.RoleBinding, opts metav1.CreateOptions) (*rbacv1beta1.RoleBinding, error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) Apply(ctx context.Context, in *rbacv1beta1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1RoleBindingImpl) ApplyStatus(ctx context.Context, in *rbacv1beta1.RoleBindingApplyConfiguration, opts metav1.ApplyOptions) (result *apirbacv1beta1.RoleBinding, err error) {
+	panic("NYI")
+}
+
+func (w *wrapRbacV1beta1RoleBindingImpl) Create(ctx context.Context, in *apirbacv1beta1.RoleBinding, opts metav1.CreateOptions) (*apirbacv1beta1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11468,7 +12286,7 @@ func (w *wrapRbacV1beta1RoleBindingImpl) Create(ctx context.Context, in *rbacv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBinding{}
+	out := &apirbacv1beta1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11483,43 +12301,43 @@ func (w *wrapRbacV1beta1RoleBindingImpl) DeleteCollection(ctx context.Context, o
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapRbacV1beta1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*rbacv1beta1.RoleBinding, error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apirbacv1beta1.RoleBinding, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBinding{}
+	out := &apirbacv1beta1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*rbacv1beta1.RoleBindingList, error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) List(ctx context.Context, opts metav1.ListOptions) (*apirbacv1beta1.RoleBindingList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBindingList{}
+	out := &apirbacv1beta1.RoleBindingList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *rbacv1beta1.RoleBinding, err error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apirbacv1beta1.RoleBinding, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBinding{}
+	out := &apirbacv1beta1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleBindingImpl) Update(ctx context.Context, in *rbacv1beta1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1beta1.RoleBinding, error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) Update(ctx context.Context, in *apirbacv1beta1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1beta1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11533,14 +12351,14 @@ func (w *wrapRbacV1beta1RoleBindingImpl) Update(ctx context.Context, in *rbacv1b
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBinding{}
+	out := &apirbacv1beta1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapRbacV1beta1RoleBindingImpl) UpdateStatus(ctx context.Context, in *rbacv1beta1.RoleBinding, opts metav1.UpdateOptions) (*rbacv1beta1.RoleBinding, error) {
+func (w *wrapRbacV1beta1RoleBindingImpl) UpdateStatus(ctx context.Context, in *apirbacv1beta1.RoleBinding, opts metav1.UpdateOptions) (*apirbacv1beta1.RoleBinding, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "rbac.authorization.k8s.io",
 		Version: "v1beta1",
@@ -11554,7 +12372,7 @@ func (w *wrapRbacV1beta1RoleBindingImpl) UpdateStatus(ctx context.Context, in *r
 	if err != nil {
 		return nil, err
 	}
-	out := &rbacv1beta1.RoleBinding{}
+	out := &apirbacv1beta1.RoleBinding{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11596,7 +12414,15 @@ type wrapSchedulingV1PriorityClassImpl struct {
 
 var _ typedschedulingv1.PriorityClassInterface = (*wrapSchedulingV1PriorityClassImpl)(nil)
 
-func (w *wrapSchedulingV1PriorityClassImpl) Create(ctx context.Context, in *schedulingv1.PriorityClass, opts metav1.CreateOptions) (*schedulingv1.PriorityClass, error) {
+func (w *wrapSchedulingV1PriorityClassImpl) Apply(ctx context.Context, in *schedulingv1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1PriorityClassImpl) ApplyStatus(ctx context.Context, in *schedulingv1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1PriorityClassImpl) Create(ctx context.Context, in *apischedulingv1.PriorityClass, opts metav1.CreateOptions) (*apischedulingv1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1",
@@ -11610,7 +12436,7 @@ func (w *wrapSchedulingV1PriorityClassImpl) Create(ctx context.Context, in *sche
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClass{}
+	out := &apischedulingv1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11625,43 +12451,43 @@ func (w *wrapSchedulingV1PriorityClassImpl) DeleteCollection(ctx context.Context
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapSchedulingV1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*schedulingv1.PriorityClass, error) {
+func (w *wrapSchedulingV1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apischedulingv1.PriorityClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClass{}
+	out := &apischedulingv1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*schedulingv1.PriorityClassList, error) {
+func (w *wrapSchedulingV1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apischedulingv1.PriorityClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClassList{}
+	out := &apischedulingv1.PriorityClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *schedulingv1.PriorityClass, err error) {
+func (w *wrapSchedulingV1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apischedulingv1.PriorityClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClass{}
+	out := &apischedulingv1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1PriorityClassImpl) Update(ctx context.Context, in *schedulingv1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1.PriorityClass, error) {
+func (w *wrapSchedulingV1PriorityClassImpl) Update(ctx context.Context, in *apischedulingv1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1",
@@ -11675,14 +12501,14 @@ func (w *wrapSchedulingV1PriorityClassImpl) Update(ctx context.Context, in *sche
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClass{}
+	out := &apischedulingv1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1PriorityClassImpl) UpdateStatus(ctx context.Context, in *schedulingv1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1.PriorityClass, error) {
+func (w *wrapSchedulingV1PriorityClassImpl) UpdateStatus(ctx context.Context, in *apischedulingv1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1",
@@ -11696,7 +12522,7 @@ func (w *wrapSchedulingV1PriorityClassImpl) UpdateStatus(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1.PriorityClass{}
+	out := &apischedulingv1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11738,7 +12564,15 @@ type wrapSchedulingV1alpha1PriorityClassImpl struct {
 
 var _ typedschedulingv1alpha1.PriorityClassInterface = (*wrapSchedulingV1alpha1PriorityClassImpl)(nil)
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) Create(ctx context.Context, in *schedulingv1alpha1.PriorityClass, opts metav1.CreateOptions) (*schedulingv1alpha1.PriorityClass, error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) Apply(ctx context.Context, in *schedulingv1alpha1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1alpha1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) ApplyStatus(ctx context.Context, in *schedulingv1alpha1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1alpha1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) Create(ctx context.Context, in *apischedulingv1alpha1.PriorityClass, opts metav1.CreateOptions) (*apischedulingv1alpha1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1alpha1",
@@ -11752,7 +12586,7 @@ func (w *wrapSchedulingV1alpha1PriorityClassImpl) Create(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClass{}
+	out := &apischedulingv1alpha1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11767,43 +12601,43 @@ func (w *wrapSchedulingV1alpha1PriorityClassImpl) DeleteCollection(ctx context.C
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*schedulingv1alpha1.PriorityClass, error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apischedulingv1alpha1.PriorityClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClass{}
+	out := &apischedulingv1alpha1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*schedulingv1alpha1.PriorityClassList, error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apischedulingv1alpha1.PriorityClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClassList{}
+	out := &apischedulingv1alpha1.PriorityClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *schedulingv1alpha1.PriorityClass, err error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apischedulingv1alpha1.PriorityClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClass{}
+	out := &apischedulingv1alpha1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) Update(ctx context.Context, in *schedulingv1alpha1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1alpha1.PriorityClass, error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) Update(ctx context.Context, in *apischedulingv1alpha1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1alpha1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1alpha1",
@@ -11817,14 +12651,14 @@ func (w *wrapSchedulingV1alpha1PriorityClassImpl) Update(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClass{}
+	out := &apischedulingv1alpha1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1alpha1PriorityClassImpl) UpdateStatus(ctx context.Context, in *schedulingv1alpha1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1alpha1.PriorityClass, error) {
+func (w *wrapSchedulingV1alpha1PriorityClassImpl) UpdateStatus(ctx context.Context, in *apischedulingv1alpha1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1alpha1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1alpha1",
@@ -11838,7 +12672,7 @@ func (w *wrapSchedulingV1alpha1PriorityClassImpl) UpdateStatus(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1alpha1.PriorityClass{}
+	out := &apischedulingv1alpha1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11880,7 +12714,15 @@ type wrapSchedulingV1beta1PriorityClassImpl struct {
 
 var _ typedschedulingv1beta1.PriorityClassInterface = (*wrapSchedulingV1beta1PriorityClassImpl)(nil)
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) Create(ctx context.Context, in *schedulingv1beta1.PriorityClass, opts metav1.CreateOptions) (*schedulingv1beta1.PriorityClass, error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) Apply(ctx context.Context, in *schedulingv1beta1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1beta1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1beta1PriorityClassImpl) ApplyStatus(ctx context.Context, in *schedulingv1beta1.PriorityClassApplyConfiguration, opts metav1.ApplyOptions) (result *apischedulingv1beta1.PriorityClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapSchedulingV1beta1PriorityClassImpl) Create(ctx context.Context, in *apischedulingv1beta1.PriorityClass, opts metav1.CreateOptions) (*apischedulingv1beta1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1beta1",
@@ -11894,7 +12736,7 @@ func (w *wrapSchedulingV1beta1PriorityClassImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClass{}
+	out := &apischedulingv1beta1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -11909,43 +12751,43 @@ func (w *wrapSchedulingV1beta1PriorityClassImpl) DeleteCollection(ctx context.Co
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*schedulingv1beta1.PriorityClass, error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apischedulingv1beta1.PriorityClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClass{}
+	out := &apischedulingv1beta1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*schedulingv1beta1.PriorityClassList, error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apischedulingv1beta1.PriorityClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClassList{}
+	out := &apischedulingv1beta1.PriorityClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *schedulingv1beta1.PriorityClass, err error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apischedulingv1beta1.PriorityClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClass{}
+	out := &apischedulingv1beta1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) Update(ctx context.Context, in *schedulingv1beta1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1beta1.PriorityClass, error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) Update(ctx context.Context, in *apischedulingv1beta1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1beta1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1beta1",
@@ -11959,14 +12801,14 @@ func (w *wrapSchedulingV1beta1PriorityClassImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClass{}
+	out := &apischedulingv1beta1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapSchedulingV1beta1PriorityClassImpl) UpdateStatus(ctx context.Context, in *schedulingv1beta1.PriorityClass, opts metav1.UpdateOptions) (*schedulingv1beta1.PriorityClass, error) {
+func (w *wrapSchedulingV1beta1PriorityClassImpl) UpdateStatus(ctx context.Context, in *apischedulingv1beta1.PriorityClass, opts metav1.UpdateOptions) (*apischedulingv1beta1.PriorityClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "scheduling.k8s.io",
 		Version: "v1beta1",
@@ -11980,7 +12822,7 @@ func (w *wrapSchedulingV1beta1PriorityClassImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &schedulingv1beta1.PriorityClass{}
+	out := &apischedulingv1beta1.PriorityClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12022,7 +12864,15 @@ type wrapStorageV1CSIDriverImpl struct {
 
 var _ typedstoragev1.CSIDriverInterface = (*wrapStorageV1CSIDriverImpl)(nil)
 
-func (w *wrapStorageV1CSIDriverImpl) Create(ctx context.Context, in *storagev1.CSIDriver, opts metav1.CreateOptions) (*storagev1.CSIDriver, error) {
+func (w *wrapStorageV1CSIDriverImpl) Apply(ctx context.Context, in *storagev1.CSIDriverApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.CSIDriver, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1CSIDriverImpl) ApplyStatus(ctx context.Context, in *storagev1.CSIDriverApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.CSIDriver, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1CSIDriverImpl) Create(ctx context.Context, in *apistoragev1.CSIDriver, opts metav1.CreateOptions) (*apistoragev1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12036,7 +12886,7 @@ func (w *wrapStorageV1CSIDriverImpl) Create(ctx context.Context, in *storagev1.C
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriver{}
+	out := &apistoragev1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12051,43 +12901,43 @@ func (w *wrapStorageV1CSIDriverImpl) DeleteCollection(ctx context.Context, opts 
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1CSIDriverImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1.CSIDriver, error) {
+func (w *wrapStorageV1CSIDriverImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1.CSIDriver, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriver{}
+	out := &apistoragev1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSIDriverImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1.CSIDriverList, error) {
+func (w *wrapStorageV1CSIDriverImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1.CSIDriverList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriverList{}
+	out := &apistoragev1.CSIDriverList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSIDriverImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.CSIDriver, err error) {
+func (w *wrapStorageV1CSIDriverImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1.CSIDriver, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriver{}
+	out := &apistoragev1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSIDriverImpl) Update(ctx context.Context, in *storagev1.CSIDriver, opts metav1.UpdateOptions) (*storagev1.CSIDriver, error) {
+func (w *wrapStorageV1CSIDriverImpl) Update(ctx context.Context, in *apistoragev1.CSIDriver, opts metav1.UpdateOptions) (*apistoragev1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12101,14 +12951,14 @@ func (w *wrapStorageV1CSIDriverImpl) Update(ctx context.Context, in *storagev1.C
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriver{}
+	out := &apistoragev1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSIDriverImpl) UpdateStatus(ctx context.Context, in *storagev1.CSIDriver, opts metav1.UpdateOptions) (*storagev1.CSIDriver, error) {
+func (w *wrapStorageV1CSIDriverImpl) UpdateStatus(ctx context.Context, in *apistoragev1.CSIDriver, opts metav1.UpdateOptions) (*apistoragev1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12122,7 +12972,7 @@ func (w *wrapStorageV1CSIDriverImpl) UpdateStatus(ctx context.Context, in *stora
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSIDriver{}
+	out := &apistoragev1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12149,7 +12999,15 @@ type wrapStorageV1CSINodeImpl struct {
 
 var _ typedstoragev1.CSINodeInterface = (*wrapStorageV1CSINodeImpl)(nil)
 
-func (w *wrapStorageV1CSINodeImpl) Create(ctx context.Context, in *storagev1.CSINode, opts metav1.CreateOptions) (*storagev1.CSINode, error) {
+func (w *wrapStorageV1CSINodeImpl) Apply(ctx context.Context, in *storagev1.CSINodeApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.CSINode, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1CSINodeImpl) ApplyStatus(ctx context.Context, in *storagev1.CSINodeApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.CSINode, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1CSINodeImpl) Create(ctx context.Context, in *apistoragev1.CSINode, opts metav1.CreateOptions) (*apistoragev1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12163,7 +13021,7 @@ func (w *wrapStorageV1CSINodeImpl) Create(ctx context.Context, in *storagev1.CSI
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINode{}
+	out := &apistoragev1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12178,43 +13036,43 @@ func (w *wrapStorageV1CSINodeImpl) DeleteCollection(ctx context.Context, opts me
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1CSINodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1.CSINode, error) {
+func (w *wrapStorageV1CSINodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1.CSINode, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINode{}
+	out := &apistoragev1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSINodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1.CSINodeList, error) {
+func (w *wrapStorageV1CSINodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1.CSINodeList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINodeList{}
+	out := &apistoragev1.CSINodeList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSINodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.CSINode, err error) {
+func (w *wrapStorageV1CSINodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1.CSINode, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINode{}
+	out := &apistoragev1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSINodeImpl) Update(ctx context.Context, in *storagev1.CSINode, opts metav1.UpdateOptions) (*storagev1.CSINode, error) {
+func (w *wrapStorageV1CSINodeImpl) Update(ctx context.Context, in *apistoragev1.CSINode, opts metav1.UpdateOptions) (*apistoragev1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12228,14 +13086,14 @@ func (w *wrapStorageV1CSINodeImpl) Update(ctx context.Context, in *storagev1.CSI
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINode{}
+	out := &apistoragev1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1CSINodeImpl) UpdateStatus(ctx context.Context, in *storagev1.CSINode, opts metav1.UpdateOptions) (*storagev1.CSINode, error) {
+func (w *wrapStorageV1CSINodeImpl) UpdateStatus(ctx context.Context, in *apistoragev1.CSINode, opts metav1.UpdateOptions) (*apistoragev1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12249,7 +13107,7 @@ func (w *wrapStorageV1CSINodeImpl) UpdateStatus(ctx context.Context, in *storage
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.CSINode{}
+	out := &apistoragev1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12276,7 +13134,15 @@ type wrapStorageV1StorageClassImpl struct {
 
 var _ typedstoragev1.StorageClassInterface = (*wrapStorageV1StorageClassImpl)(nil)
 
-func (w *wrapStorageV1StorageClassImpl) Create(ctx context.Context, in *storagev1.StorageClass, opts metav1.CreateOptions) (*storagev1.StorageClass, error) {
+func (w *wrapStorageV1StorageClassImpl) Apply(ctx context.Context, in *storagev1.StorageClassApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.StorageClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1StorageClassImpl) ApplyStatus(ctx context.Context, in *storagev1.StorageClassApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.StorageClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1StorageClassImpl) Create(ctx context.Context, in *apistoragev1.StorageClass, opts metav1.CreateOptions) (*apistoragev1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12290,7 +13156,7 @@ func (w *wrapStorageV1StorageClassImpl) Create(ctx context.Context, in *storagev
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClass{}
+	out := &apistoragev1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12305,43 +13171,43 @@ func (w *wrapStorageV1StorageClassImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1StorageClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1.StorageClass, error) {
+func (w *wrapStorageV1StorageClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1.StorageClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClass{}
+	out := &apistoragev1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1StorageClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1.StorageClassList, error) {
+func (w *wrapStorageV1StorageClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1.StorageClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClassList{}
+	out := &apistoragev1.StorageClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1StorageClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.StorageClass, err error) {
+func (w *wrapStorageV1StorageClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1.StorageClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClass{}
+	out := &apistoragev1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1StorageClassImpl) Update(ctx context.Context, in *storagev1.StorageClass, opts metav1.UpdateOptions) (*storagev1.StorageClass, error) {
+func (w *wrapStorageV1StorageClassImpl) Update(ctx context.Context, in *apistoragev1.StorageClass, opts metav1.UpdateOptions) (*apistoragev1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12355,14 +13221,14 @@ func (w *wrapStorageV1StorageClassImpl) Update(ctx context.Context, in *storagev
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClass{}
+	out := &apistoragev1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1StorageClassImpl) UpdateStatus(ctx context.Context, in *storagev1.StorageClass, opts metav1.UpdateOptions) (*storagev1.StorageClass, error) {
+func (w *wrapStorageV1StorageClassImpl) UpdateStatus(ctx context.Context, in *apistoragev1.StorageClass, opts metav1.UpdateOptions) (*apistoragev1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12376,7 +13242,7 @@ func (w *wrapStorageV1StorageClassImpl) UpdateStatus(ctx context.Context, in *st
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.StorageClass{}
+	out := &apistoragev1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12403,7 +13269,15 @@ type wrapStorageV1VolumeAttachmentImpl struct {
 
 var _ typedstoragev1.VolumeAttachmentInterface = (*wrapStorageV1VolumeAttachmentImpl)(nil)
 
-func (w *wrapStorageV1VolumeAttachmentImpl) Create(ctx context.Context, in *storagev1.VolumeAttachment, opts metav1.CreateOptions) (*storagev1.VolumeAttachment, error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) Apply(ctx context.Context, in *storagev1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1VolumeAttachmentImpl) ApplyStatus(ctx context.Context, in *storagev1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1VolumeAttachmentImpl) Create(ctx context.Context, in *apistoragev1.VolumeAttachment, opts metav1.CreateOptions) (*apistoragev1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12417,7 +13291,7 @@ func (w *wrapStorageV1VolumeAttachmentImpl) Create(ctx context.Context, in *stor
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachment{}
+	out := &apistoragev1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12432,43 +13306,43 @@ func (w *wrapStorageV1VolumeAttachmentImpl) DeleteCollection(ctx context.Context
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1.VolumeAttachment, error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1.VolumeAttachment, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachment{}
+	out := &apistoragev1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1.VolumeAttachmentList, error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1.VolumeAttachmentList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachmentList{}
+	out := &apistoragev1.VolumeAttachmentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1.VolumeAttachment, err error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1.VolumeAttachment, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachment{}
+	out := &apistoragev1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1VolumeAttachmentImpl) Update(ctx context.Context, in *storagev1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1.VolumeAttachment, error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) Update(ctx context.Context, in *apistoragev1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12482,14 +13356,14 @@ func (w *wrapStorageV1VolumeAttachmentImpl) Update(ctx context.Context, in *stor
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachment{}
+	out := &apistoragev1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *storagev1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1.VolumeAttachment, error) {
+func (w *wrapStorageV1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *apistoragev1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1",
@@ -12503,7 +13377,7 @@ func (w *wrapStorageV1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1.VolumeAttachment{}
+	out := &apistoragev1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12549,7 +13423,15 @@ type wrapStorageV1alpha1CSIStorageCapacityImpl struct {
 
 var _ typedstoragev1alpha1.CSIStorageCapacityInterface = (*wrapStorageV1alpha1CSIStorageCapacityImpl)(nil)
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Create(ctx context.Context, in *storagev1alpha1.CSIStorageCapacity, opts metav1.CreateOptions) (*storagev1alpha1.CSIStorageCapacity, error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Apply(ctx context.Context, in *storagev1alpha1.CSIStorageCapacityApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1alpha1.CSIStorageCapacity, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) ApplyStatus(ctx context.Context, in *storagev1alpha1.CSIStorageCapacityApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1alpha1.CSIStorageCapacity, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Create(ctx context.Context, in *apistoragev1alpha1.CSIStorageCapacity, opts metav1.CreateOptions) (*apistoragev1alpha1.CSIStorageCapacity, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12563,7 +13445,7 @@ func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Create(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacity{}
+	out := &apistoragev1alpha1.CSIStorageCapacity{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12578,43 +13460,43 @@ func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) DeleteCollection(ctx context
 	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1alpha1.CSIStorageCapacity, error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1alpha1.CSIStorageCapacity, error) {
 	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacity{}
+	out := &apistoragev1alpha1.CSIStorageCapacity{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1alpha1.CSIStorageCapacityList, error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1alpha1.CSIStorageCapacityList, error) {
 	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacityList{}
+	out := &apistoragev1alpha1.CSIStorageCapacityList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1alpha1.CSIStorageCapacity, err error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1alpha1.CSIStorageCapacity, err error) {
 	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacity{}
+	out := &apistoragev1alpha1.CSIStorageCapacity{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Update(ctx context.Context, in *storagev1alpha1.CSIStorageCapacity, opts metav1.UpdateOptions) (*storagev1alpha1.CSIStorageCapacity, error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Update(ctx context.Context, in *apistoragev1alpha1.CSIStorageCapacity, opts metav1.UpdateOptions) (*apistoragev1alpha1.CSIStorageCapacity, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12628,14 +13510,14 @@ func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) Update(ctx context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacity{}
+	out := &apistoragev1alpha1.CSIStorageCapacity{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) UpdateStatus(ctx context.Context, in *storagev1alpha1.CSIStorageCapacity, opts metav1.UpdateOptions) (*storagev1alpha1.CSIStorageCapacity, error) {
+func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) UpdateStatus(ctx context.Context, in *apistoragev1alpha1.CSIStorageCapacity, opts metav1.UpdateOptions) (*apistoragev1alpha1.CSIStorageCapacity, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12649,7 +13531,7 @@ func (w *wrapStorageV1alpha1CSIStorageCapacityImpl) UpdateStatus(ctx context.Con
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.CSIStorageCapacity{}
+	out := &apistoragev1alpha1.CSIStorageCapacity{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12676,7 +13558,15 @@ type wrapStorageV1alpha1VolumeAttachmentImpl struct {
 
 var _ typedstoragev1alpha1.VolumeAttachmentInterface = (*wrapStorageV1alpha1VolumeAttachmentImpl)(nil)
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Create(ctx context.Context, in *storagev1alpha1.VolumeAttachment, opts metav1.CreateOptions) (*storagev1alpha1.VolumeAttachment, error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Apply(ctx context.Context, in *storagev1alpha1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1alpha1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) ApplyStatus(ctx context.Context, in *storagev1alpha1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1alpha1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Create(ctx context.Context, in *apistoragev1alpha1.VolumeAttachment, opts metav1.CreateOptions) (*apistoragev1alpha1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12690,7 +13580,7 @@ func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Create(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachment{}
+	out := &apistoragev1alpha1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12705,43 +13595,43 @@ func (w *wrapStorageV1alpha1VolumeAttachmentImpl) DeleteCollection(ctx context.C
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1alpha1.VolumeAttachment, error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1alpha1.VolumeAttachment, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachment{}
+	out := &apistoragev1alpha1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1alpha1.VolumeAttachmentList, error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1alpha1.VolumeAttachmentList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachmentList{}
+	out := &apistoragev1alpha1.VolumeAttachmentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1alpha1.VolumeAttachment, err error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1alpha1.VolumeAttachment, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachment{}
+	out := &apistoragev1alpha1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Update(ctx context.Context, in *storagev1alpha1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1alpha1.VolumeAttachment, error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Update(ctx context.Context, in *apistoragev1alpha1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1alpha1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12755,14 +13645,14 @@ func (w *wrapStorageV1alpha1VolumeAttachmentImpl) Update(ctx context.Context, in
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachment{}
+	out := &apistoragev1alpha1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1alpha1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *storagev1alpha1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1alpha1.VolumeAttachment, error) {
+func (w *wrapStorageV1alpha1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *apistoragev1alpha1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1alpha1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1alpha1",
@@ -12776,7 +13666,7 @@ func (w *wrapStorageV1alpha1VolumeAttachmentImpl) UpdateStatus(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1alpha1.VolumeAttachment{}
+	out := &apistoragev1alpha1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12818,7 +13708,15 @@ type wrapStorageV1beta1CSIDriverImpl struct {
 
 var _ typedstoragev1beta1.CSIDriverInterface = (*wrapStorageV1beta1CSIDriverImpl)(nil)
 
-func (w *wrapStorageV1beta1CSIDriverImpl) Create(ctx context.Context, in *storagev1beta1.CSIDriver, opts metav1.CreateOptions) (*storagev1beta1.CSIDriver, error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) Apply(ctx context.Context, in *storagev1beta1.CSIDriverApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSIDriver, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSIDriverImpl) ApplyStatus(ctx context.Context, in *storagev1beta1.CSIDriverApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSIDriver, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSIDriverImpl) Create(ctx context.Context, in *apistoragev1beta1.CSIDriver, opts metav1.CreateOptions) (*apistoragev1beta1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -12832,7 +13730,7 @@ func (w *wrapStorageV1beta1CSIDriverImpl) Create(ctx context.Context, in *storag
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriver{}
+	out := &apistoragev1beta1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12847,43 +13745,43 @@ func (w *wrapStorageV1beta1CSIDriverImpl) DeleteCollection(ctx context.Context, 
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1beta1CSIDriverImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1beta1.CSIDriver, error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1beta1.CSIDriver, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriver{}
+	out := &apistoragev1beta1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSIDriverImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1beta1.CSIDriverList, error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1beta1.CSIDriverList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriverList{}
+	out := &apistoragev1beta1.CSIDriverList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSIDriverImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1beta1.CSIDriver, err error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1beta1.CSIDriver, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriver{}
+	out := &apistoragev1beta1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSIDriverImpl) Update(ctx context.Context, in *storagev1beta1.CSIDriver, opts metav1.UpdateOptions) (*storagev1beta1.CSIDriver, error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) Update(ctx context.Context, in *apistoragev1beta1.CSIDriver, opts metav1.UpdateOptions) (*apistoragev1beta1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -12897,14 +13795,14 @@ func (w *wrapStorageV1beta1CSIDriverImpl) Update(ctx context.Context, in *storag
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriver{}
+	out := &apistoragev1beta1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSIDriverImpl) UpdateStatus(ctx context.Context, in *storagev1beta1.CSIDriver, opts metav1.UpdateOptions) (*storagev1beta1.CSIDriver, error) {
+func (w *wrapStorageV1beta1CSIDriverImpl) UpdateStatus(ctx context.Context, in *apistoragev1beta1.CSIDriver, opts metav1.UpdateOptions) (*apistoragev1beta1.CSIDriver, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -12918,7 +13816,7 @@ func (w *wrapStorageV1beta1CSIDriverImpl) UpdateStatus(ctx context.Context, in *
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSIDriver{}
+	out := &apistoragev1beta1.CSIDriver{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12945,7 +13843,15 @@ type wrapStorageV1beta1CSINodeImpl struct {
 
 var _ typedstoragev1beta1.CSINodeInterface = (*wrapStorageV1beta1CSINodeImpl)(nil)
 
-func (w *wrapStorageV1beta1CSINodeImpl) Create(ctx context.Context, in *storagev1beta1.CSINode, opts metav1.CreateOptions) (*storagev1beta1.CSINode, error) {
+func (w *wrapStorageV1beta1CSINodeImpl) Apply(ctx context.Context, in *storagev1beta1.CSINodeApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSINode, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSINodeImpl) ApplyStatus(ctx context.Context, in *storagev1beta1.CSINodeApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSINode, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSINodeImpl) Create(ctx context.Context, in *apistoragev1beta1.CSINode, opts metav1.CreateOptions) (*apistoragev1beta1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -12959,7 +13865,7 @@ func (w *wrapStorageV1beta1CSINodeImpl) Create(ctx context.Context, in *storagev
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINode{}
+	out := &apistoragev1beta1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -12974,43 +13880,43 @@ func (w *wrapStorageV1beta1CSINodeImpl) DeleteCollection(ctx context.Context, op
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1beta1CSINodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1beta1.CSINode, error) {
+func (w *wrapStorageV1beta1CSINodeImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1beta1.CSINode, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINode{}
+	out := &apistoragev1beta1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSINodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1beta1.CSINodeList, error) {
+func (w *wrapStorageV1beta1CSINodeImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1beta1.CSINodeList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINodeList{}
+	out := &apistoragev1beta1.CSINodeList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSINodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1beta1.CSINode, err error) {
+func (w *wrapStorageV1beta1CSINodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1beta1.CSINode, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINode{}
+	out := &apistoragev1beta1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSINodeImpl) Update(ctx context.Context, in *storagev1beta1.CSINode, opts metav1.UpdateOptions) (*storagev1beta1.CSINode, error) {
+func (w *wrapStorageV1beta1CSINodeImpl) Update(ctx context.Context, in *apistoragev1beta1.CSINode, opts metav1.UpdateOptions) (*apistoragev1beta1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13024,14 +13930,14 @@ func (w *wrapStorageV1beta1CSINodeImpl) Update(ctx context.Context, in *storagev
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINode{}
+	out := &apistoragev1beta1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1CSINodeImpl) UpdateStatus(ctx context.Context, in *storagev1beta1.CSINode, opts metav1.UpdateOptions) (*storagev1beta1.CSINode, error) {
+func (w *wrapStorageV1beta1CSINodeImpl) UpdateStatus(ctx context.Context, in *apistoragev1beta1.CSINode, opts metav1.UpdateOptions) (*apistoragev1beta1.CSINode, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13045,7 +13951,7 @@ func (w *wrapStorageV1beta1CSINodeImpl) UpdateStatus(ctx context.Context, in *st
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.CSINode{}
+	out := &apistoragev1beta1.CSINode{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -13053,6 +13959,145 @@ func (w *wrapStorageV1beta1CSINodeImpl) UpdateStatus(ctx context.Context, in *st
 }
 
 func (w *wrapStorageV1beta1CSINodeImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+func (w *wrapStorageV1beta1) CSIStorageCapacities(namespace string) typedstoragev1beta1.CSIStorageCapacityInterface {
+	return &wrapStorageV1beta1CSIStorageCapacityImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "storage.k8s.io",
+			Version:  "v1beta1",
+			Resource: "csistoragecapacities",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapStorageV1beta1CSIStorageCapacityImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedstoragev1beta1.CSIStorageCapacityInterface = (*wrapStorageV1beta1CSIStorageCapacityImpl)(nil)
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Apply(ctx context.Context, in *storagev1beta1.CSIStorageCapacityApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSIStorageCapacity, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) ApplyStatus(ctx context.Context, in *storagev1beta1.CSIStorageCapacityApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.CSIStorageCapacity, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Create(ctx context.Context, in *apistoragev1beta1.CSIStorageCapacity, opts metav1.CreateOptions) (*apistoragev1beta1.CSIStorageCapacity, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "storage.k8s.io",
+		Version: "v1beta1",
+		Kind:    "CSIStorageCapacity",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacity{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1beta1.CSIStorageCapacity, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacity{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1beta1.CSIStorageCapacityList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacityList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1beta1.CSIStorageCapacity, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacity{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Update(ctx context.Context, in *apistoragev1beta1.CSIStorageCapacity, opts metav1.UpdateOptions) (*apistoragev1beta1.CSIStorageCapacity, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "storage.k8s.io",
+		Version: "v1beta1",
+		Kind:    "CSIStorageCapacity",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacity{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) UpdateStatus(ctx context.Context, in *apistoragev1beta1.CSIStorageCapacity, opts metav1.UpdateOptions) (*apistoragev1beta1.CSIStorageCapacity, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "storage.k8s.io",
+		Version: "v1beta1",
+		Kind:    "CSIStorageCapacity",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apistoragev1beta1.CSIStorageCapacity{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapStorageV1beta1CSIStorageCapacityImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -13072,7 +14117,15 @@ type wrapStorageV1beta1StorageClassImpl struct {
 
 var _ typedstoragev1beta1.StorageClassInterface = (*wrapStorageV1beta1StorageClassImpl)(nil)
 
-func (w *wrapStorageV1beta1StorageClassImpl) Create(ctx context.Context, in *storagev1beta1.StorageClass, opts metav1.CreateOptions) (*storagev1beta1.StorageClass, error) {
+func (w *wrapStorageV1beta1StorageClassImpl) Apply(ctx context.Context, in *storagev1beta1.StorageClassApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.StorageClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1StorageClassImpl) ApplyStatus(ctx context.Context, in *storagev1beta1.StorageClassApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.StorageClass, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1StorageClassImpl) Create(ctx context.Context, in *apistoragev1beta1.StorageClass, opts metav1.CreateOptions) (*apistoragev1beta1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13086,7 +14139,7 @@ func (w *wrapStorageV1beta1StorageClassImpl) Create(ctx context.Context, in *sto
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClass{}
+	out := &apistoragev1beta1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -13101,43 +14154,43 @@ func (w *wrapStorageV1beta1StorageClassImpl) DeleteCollection(ctx context.Contex
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1beta1StorageClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1beta1.StorageClass, error) {
+func (w *wrapStorageV1beta1StorageClassImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1beta1.StorageClass, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClass{}
+	out := &apistoragev1beta1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1StorageClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1beta1.StorageClassList, error) {
+func (w *wrapStorageV1beta1StorageClassImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1beta1.StorageClassList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClassList{}
+	out := &apistoragev1beta1.StorageClassList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1StorageClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1beta1.StorageClass, err error) {
+func (w *wrapStorageV1beta1StorageClassImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1beta1.StorageClass, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClass{}
+	out := &apistoragev1beta1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1StorageClassImpl) Update(ctx context.Context, in *storagev1beta1.StorageClass, opts metav1.UpdateOptions) (*storagev1beta1.StorageClass, error) {
+func (w *wrapStorageV1beta1StorageClassImpl) Update(ctx context.Context, in *apistoragev1beta1.StorageClass, opts metav1.UpdateOptions) (*apistoragev1beta1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13151,14 +14204,14 @@ func (w *wrapStorageV1beta1StorageClassImpl) Update(ctx context.Context, in *sto
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClass{}
+	out := &apistoragev1beta1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1StorageClassImpl) UpdateStatus(ctx context.Context, in *storagev1beta1.StorageClass, opts metav1.UpdateOptions) (*storagev1beta1.StorageClass, error) {
+func (w *wrapStorageV1beta1StorageClassImpl) UpdateStatus(ctx context.Context, in *apistoragev1beta1.StorageClass, opts metav1.UpdateOptions) (*apistoragev1beta1.StorageClass, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13172,7 +14225,7 @@ func (w *wrapStorageV1beta1StorageClassImpl) UpdateStatus(ctx context.Context, i
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.StorageClass{}
+	out := &apistoragev1beta1.StorageClass{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -13199,7 +14252,15 @@ type wrapStorageV1beta1VolumeAttachmentImpl struct {
 
 var _ typedstoragev1beta1.VolumeAttachmentInterface = (*wrapStorageV1beta1VolumeAttachmentImpl)(nil)
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) Create(ctx context.Context, in *storagev1beta1.VolumeAttachment, opts metav1.CreateOptions) (*storagev1beta1.VolumeAttachment, error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) Apply(ctx context.Context, in *storagev1beta1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) ApplyStatus(ctx context.Context, in *storagev1beta1.VolumeAttachmentApplyConfiguration, opts metav1.ApplyOptions) (result *apistoragev1beta1.VolumeAttachment, err error) {
+	panic("NYI")
+}
+
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) Create(ctx context.Context, in *apistoragev1beta1.VolumeAttachment, opts metav1.CreateOptions) (*apistoragev1beta1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13213,7 +14274,7 @@ func (w *wrapStorageV1beta1VolumeAttachmentImpl) Create(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachment{}
+	out := &apistoragev1beta1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
@@ -13228,43 +14289,43 @@ func (w *wrapStorageV1beta1VolumeAttachmentImpl) DeleteCollection(ctx context.Co
 	return w.dyn.DeleteCollection(ctx, opts, listOpts)
 }
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*storagev1beta1.VolumeAttachment, error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apistoragev1beta1.VolumeAttachment, error) {
 	uo, err := w.dyn.Get(ctx, name, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachment{}
+	out := &apistoragev1beta1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*storagev1beta1.VolumeAttachmentList, error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) List(ctx context.Context, opts metav1.ListOptions) (*apistoragev1beta1.VolumeAttachmentList, error) {
 	uo, err := w.dyn.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachmentList{}
+	out := &apistoragev1beta1.VolumeAttachmentList{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *storagev1beta1.VolumeAttachment, err error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apistoragev1beta1.VolumeAttachment, err error) {
 	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachment{}
+	out := &apistoragev1beta1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) Update(ctx context.Context, in *storagev1beta1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1beta1.VolumeAttachment, error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) Update(ctx context.Context, in *apistoragev1beta1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1beta1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13278,14 +14339,14 @@ func (w *wrapStorageV1beta1VolumeAttachmentImpl) Update(ctx context.Context, in 
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachment{}
+	out := &apistoragev1beta1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (w *wrapStorageV1beta1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *storagev1beta1.VolumeAttachment, opts metav1.UpdateOptions) (*storagev1beta1.VolumeAttachment, error) {
+func (w *wrapStorageV1beta1VolumeAttachmentImpl) UpdateStatus(ctx context.Context, in *apistoragev1beta1.VolumeAttachment, opts metav1.UpdateOptions) (*apistoragev1beta1.VolumeAttachment, error) {
 	in.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "storage.k8s.io",
 		Version: "v1beta1",
@@ -13299,7 +14360,7 @@ func (w *wrapStorageV1beta1VolumeAttachmentImpl) UpdateStatus(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	out := &storagev1beta1.VolumeAttachment{}
+	out := &apistoragev1beta1.VolumeAttachment{}
 	if err := convert(uo, out); err != nil {
 		return nil, err
 	}

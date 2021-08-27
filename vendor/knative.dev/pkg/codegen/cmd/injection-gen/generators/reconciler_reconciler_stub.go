@@ -81,10 +81,6 @@ func (g *reconcilerReconcilerStubGenerator) GenerateType(c *generator.Context, t
 			Package: g.reconcilerPkg,
 			Name:    "ReadOnlyInterface",
 		}),
-		"reconcilerReadOnlyFinalizer": c.Universe.Type(types.Name{
-			Package: g.reconcilerPkg,
-			Name:    "ReadOnlyFinalizer",
-		}),
 		"corev1EventTypeNormal": c.Universe.Type(types.Name{
 			Package: "k8s.io/api/core/v1",
 			Name:    "EventTypeNormal",
@@ -124,11 +120,6 @@ var _ {{.reconcilerInterface|raw}} = (*Reconciler)(nil)
 // Implement this to observe resources even when we are not the leader.
 //var _ {{.reconcilerReadOnlyInterface|raw}} = (*Reconciler)(nil)
 
-// Optionally check that our Reconciler implements ReadOnlyFinalizer
-// Implement this to observe tombstoned resources even when we are not
-// the leader (best effort).
-//var _ {{.reconcilerReadOnlyFinalizer|raw}} = (*Reconciler)(nil)
-
 // ReconcileKind implements Interface.ReconcileKind.
 func (r *Reconciler) ReconcileKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
 	{{if not .isKRShaped}}// TODO: use this if the resource implements InitializeConditions.
@@ -156,10 +147,4 @@ func (r *Reconciler) ReconcileKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}
 // 	// TODO: add custom observation logic here.
 // 	return nil
 // }
-
-// Optionally, use ObserveFinalizeKind to observe resources being finalized when we are no the leader.
-//func (r *Reconciler) ObserveFinalizeKind(ctx {{.contextContext|raw}}, o *{{.type|raw}}) {{.reconcilerEvent|raw}} {
-// 	// TODO: add custom observation logic here.
-//	return nil
-//}
 `

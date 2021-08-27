@@ -80,9 +80,9 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "knative.dev/pkg/controller",
 			Name:    "Reconciler",
 		}),
-		"controllerNewImpl": c.Universe.Function(types.Name{
+		"controllerNewContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/controller",
-			Name:    "NewImpl",
+			Name:    "NewContext",
 		}),
 		"loggingFromContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/logging",
@@ -134,7 +134,7 @@ func (g *reconcilerControllerGenerator) GenerateType(c *generator.Context, t *ty
 		}),
 		"controllerOptions": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
-			Name:    "Options",
+			Name:    "ControllerOptions",
 		}),
 		"controllerOptionsFn": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
@@ -257,7 +257,7 @@ func NewImpl(ctx {{.contextContext|raw}}, r Interface{{if .hasClass}}, classValu
 	)
 
 
-	impl := {{.controllerNewImpl|raw}}(rec, logger, ctrTypeName)
+	impl := {{.controllerNewContext|raw}}(ctx, rec, {{ .controllerOptions|raw }}{WorkQueueName: ctrTypeName, Logger: logger})
 	agentName := defaultControllerAgentName
 
 	// Pass impl to the options. Save any optional results.

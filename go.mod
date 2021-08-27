@@ -21,21 +21,19 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	go.opencensus.io v0.23.0
-	go.uber.org/zap v1.18.1
-	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
-	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
+	go.uber.org/zap v1.19.0
+	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	gomodules.xyz/jsonpatch/v2 v2.2.0
-	k8s.io/api v0.20.7
-	k8s.io/apimachinery v0.20.7
-	k8s.io/client-go v0.20.7
-	k8s.io/code-generator v0.20.7
+	k8s.io/api v0.21.4
+	k8s.io/apimachinery v0.21.4
+	k8s.io/client-go v0.21.4
+	k8s.io/code-generator v0.21.4
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20210113233702-8566a335510f
+	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
-	knative.dev/pkg v0.0.0-20210818135208-7b5ecbc0e477
+	knative.dev/pkg v0.0.0-20210827184538-2bd91f75571c
 )
 
 // Knative deps (release-0.20)

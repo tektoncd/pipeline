@@ -14,9 +14,6 @@
 package mapper
 
 import (
-	"sync"
-
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -56,155 +53,22 @@ func NewCacheMetrics(reg prometheus.Registerer) *CacheMetrics {
 	return &m
 }
 
-type cacheOptions struct {
-	cacheType string
-}
-
-type CacheOption func(*cacheOptions)
-
-func WithCacheType(cacheType string) CacheOption {
-	return func(o *cacheOptions) {
-		o.cacheType = cacheType
-	}
-}
-
 type MetricMapperCacheResult struct {
 	Mapping *MetricMapping
 	Matched bool
 	Labels  prometheus.Labels
 }
 
+// MetricMapperCache MUST be thread-safe and should be instrumented with CacheMetrics
 type MetricMapperCache interface {
-	Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool)
-	AddMatch(metricString string, metricType MetricType, mapping *MetricMapping, labels prometheus.Labels)
-	AddMiss(metricString string, metricType MetricType)
-}
-
-type MetricMapperLRUCache struct {
-	MetricMapperCache
-	cache   *lru.Cache
-	metrics *CacheMetrics
-}
-
-type MetricMapperNoopCache struct {
-	MetricMapperCache
-	metrics *CacheMetrics
-}
-
-func NewMetricMapperCache(reg prometheus.Registerer, size int) (*MetricMapperLRUCache, error) {
-	metrics := NewCacheMetrics(reg)
-	cache, err := lru.New(size)
-	if err != nil {
-		return &MetricMapperLRUCache{}, err
-	}
-	return &MetricMapperLRUCache{metrics: metrics, cache: cache}, nil
-}
-
-func (m *MetricMapperLRUCache) Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool) {
-	m.metrics.CacheGetsTotal.Inc()
-	if result, ok := m.cache.Get(formatKey(metricString, metricType)); ok {
-		m.metrics.CacheHitsTotal.Inc()
-		return result.(*MetricMapperCacheResult), true
-	} else {
-		return nil, false
-	}
-}
-
-func (m *MetricMapperLRUCache) AddMatch(metricString string, metricType MetricType, mapping *MetricMapping, labels prometheus.Labels) {
-	go m.trackCacheLength()
-	m.cache.Add(formatKey(metricString, metricType), &MetricMapperCacheResult{Mapping: mapping, Matched: true, Labels: labels})
-}
-
-func (m *MetricMapperLRUCache) AddMiss(metricString string, metricType MetricType) {
-	go m.trackCacheLength()
-	m.cache.Add(formatKey(metricString, metricType), &MetricMapperCacheResult{Matched: false})
-}
-
-func (m *MetricMapperLRUCache) trackCacheLength() {
-	m.metrics.CacheLength.Set(float64(m.cache.Len()))
+	// Get a cached result
+	Get(metricKey string) (interface{}, bool)
+	// Add a statsd MetricMapperResult to the cache
+	Add(metricKey string, result interface{}) // Add an item to the cache
+	// Reset clears the cache for config reloads
+	Reset()
 }
 
 func formatKey(metricString string, metricType MetricType) string {
 	return string(metricType) + "." + metricString
-}
-
-func NewMetricMapperNoopCache(reg prometheus.Registerer) *MetricMapperNoopCache {
-	return &MetricMapperNoopCache{metrics: NewCacheMetrics(reg)}
-}
-
-func (m *MetricMapperNoopCache) Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool) {
-	return nil, false
-}
-
-func (m *MetricMapperNoopCache) AddMatch(metricString string, metricType MetricType, mapping *MetricMapping, labels prometheus.Labels) {
-	return
-}
-
-func (m *MetricMapperNoopCache) AddMiss(metricString string, metricType MetricType) {
-	return
-}
-
-type MetricMapperRRCache struct {
-	MetricMapperCache
-	lock    sync.RWMutex
-	size    int
-	items   map[string]*MetricMapperCacheResult
-	metrics *CacheMetrics
-}
-
-func NewMetricMapperRRCache(reg prometheus.Registerer, size int) (*MetricMapperRRCache, error) {
-	metrics := NewCacheMetrics(reg)
-	c := &MetricMapperRRCache{
-		items:   make(map[string]*MetricMapperCacheResult, size+1),
-		size:    size,
-		metrics: metrics,
-	}
-	return c, nil
-}
-
-func (m *MetricMapperRRCache) Get(metricString string, metricType MetricType) (*MetricMapperCacheResult, bool) {
-	key := formatKey(metricString, metricType)
-
-	m.lock.RLock()
-	result, ok := m.items[key]
-	m.lock.RUnlock()
-
-	return result, ok
-}
-
-func (m *MetricMapperRRCache) addItem(metricString string, metricType MetricType, result *MetricMapperCacheResult) {
-	go m.trackCacheLength()
-
-	key := formatKey(metricString, metricType)
-
-	m.lock.Lock()
-
-	m.items[key] = result
-
-	// evict an item if needed
-	if len(m.items) > m.size {
-		for k := range m.items {
-			delete(m.items, k)
-			break
-		}
-	}
-
-	m.lock.Unlock()
-}
-
-func (m *MetricMapperRRCache) AddMatch(metricString string, metricType MetricType, mapping *MetricMapping, labels prometheus.Labels) {
-	e := &MetricMapperCacheResult{Mapping: mapping, Matched: true, Labels: labels}
-	m.addItem(metricString, metricType, e)
-}
-
-func (m *MetricMapperRRCache) AddMiss(metricString string, metricType MetricType) {
-	e := &MetricMapperCacheResult{Matched: false}
-	m.addItem(metricString, metricType, e)
-}
-
-func (m *MetricMapperRRCache) trackCacheLength() {
-	m.lock.RLock()
-	length := len(m.items)
-	m.lock.RUnlock()
-	m.metrics.CacheLength.Set(float64(length))
 }

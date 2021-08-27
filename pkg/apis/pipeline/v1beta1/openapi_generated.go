@@ -2590,7 +2590,7 @@ func schema_pkg_apis_pipeline_v1beta1_Sidecar(ref common.ReferenceCallback) comm
 					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
@@ -2946,7 +2946,7 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
+							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
