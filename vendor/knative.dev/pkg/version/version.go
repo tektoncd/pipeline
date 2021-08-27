@@ -70,13 +70,8 @@ func CheckMinimumVersion(versioner discovery.ServerVersionInterface) error {
 		minimumVersion.Pre = []semver.PRVersion{{VersionNum: 0}}
 	}
 
-	// Compare returns 1 if the first version is greater than the
-	// second version.
+	// Return error if the current version is less than the minimum version required.
 	if currentVersion.LT(minimumVersion) {
-		if len(currentVersion.Pre) > 0 {
-			return fmt.Errorf("pre-release kubernetes version %q is not compatible, need at least %q (this can be overridden with the env var %q); note pre-release version is smaller than the corresponding release version (e.g. 1.x.y-z < 1.x.y), using 1.x.y-0 as the minimum version is likely to help in this case",
-				currentVersion, minimumVersion, KubernetesMinVersionKey)
-		}
 		return fmt.Errorf("kubernetes version %q is not compatible, need at least %q (this can be overridden with the env var %q)",
 			currentVersion, minimumVersion, KubernetesMinVersionKey)
 	}

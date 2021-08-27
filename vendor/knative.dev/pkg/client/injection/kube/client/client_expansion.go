@@ -18,6 +18,7 @@ package client
 
 import (
 	context "context"
+	fmt "fmt"
 
 	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	restclient "k8s.io/client-go/rest"
 )
 
@@ -38,28 +40,70 @@ func (*wrapCoreV1ServiceImpl) ProxyGet(string, string, string, string, map[strin
 	panic("NYI")
 }
 
-func (*wrapEventsV1beta1EventImpl) CreateWithEventNamespace(*eventsv1beta1.Event) (*eventsv1beta1.Event, error) {
-	panic("NYI")
+func (e *wrapEventsV1beta1EventImpl) CreateWithEventNamespace(event *eventsv1beta1.Event) (*eventsv1beta1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't create an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapEventsV1beta1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Create(context.TODO(), event, metav1.CreateOptions{})
 }
 
-func (*wrapEventsV1beta1EventImpl) UpdateWithEventNamespace(*eventsv1beta1.Event) (*eventsv1beta1.Event, error) {
-	panic("NYI")
+func (e *wrapEventsV1beta1EventImpl) UpdateWithEventNamespace(event *eventsv1beta1.Event) (*eventsv1beta1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't update an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapEventsV1beta1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Update(context.TODO(), event, metav1.UpdateOptions{})
 }
 
-func (*wrapEventsV1beta1EventImpl) PatchWithEventNamespace(*eventsv1beta1.Event, []byte) (*eventsv1beta1.Event, error) {
-	panic("NYI")
+func (e *wrapEventsV1beta1EventImpl) PatchWithEventNamespace(event *eventsv1beta1.Event, bytes []byte) (*eventsv1beta1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't patch an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapEventsV1beta1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Patch(context.TODO(), event.Name, types.StrategicMergePatchType, bytes, metav1.PatchOptions{})
 }
 
-func (*wrapCoreV1EventImpl) CreateWithEventNamespace(*corev1.Event) (*corev1.Event, error) {
-	panic("NYI")
+func (e *wrapCoreV1EventImpl) CreateWithEventNamespace(event *corev1.Event) (*corev1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't create an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapCoreV1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Create(context.TODO(), event, metav1.CreateOptions{})
 }
 
-func (*wrapCoreV1EventImpl) UpdateWithEventNamespace(*corev1.Event) (*corev1.Event, error) {
-	panic("NYI")
+func (e *wrapCoreV1EventImpl) UpdateWithEventNamespace(event *corev1.Event) (*corev1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't update an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapCoreV1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Update(context.TODO(), event, metav1.UpdateOptions{})
 }
 
-func (*wrapCoreV1EventImpl) PatchWithEventNamespace(*corev1.Event, []byte) (*corev1.Event, error) {
-	panic("NYI")
+func (e *wrapCoreV1EventImpl) PatchWithEventNamespace(event *corev1.Event, bytes []byte) (*corev1.Event, error) {
+	if e.namespace != "" && event.Namespace != e.namespace {
+		return nil, fmt.Errorf("can't patch an event with namespace '%v' in namespace '%v'", event.Namespace, e.namespace)
+	}
+	ne := &wrapCoreV1EventImpl{
+		dyn:       e.dyn,
+		namespace: event.Namespace,
+	}
+	return ne.Patch(context.TODO(), event.Name, types.StrategicMergePatchType, bytes, metav1.PatchOptions{})
 }
 
 func (*wrapCoreV1EventImpl) Search(*runtime.Scheme, runtime.Object) (*corev1.EventList, error) {

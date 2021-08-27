@@ -58,7 +58,10 @@ Update `NewController` as follows:
 ```go
 "knative.dev/pkg/controller"
 ...
-impl := controller.NewImpl(c, logger, "NameOfController")
+impl := controller.NewContext(ctx, c, controller.ControllerOptions{
+	Logger: logger,
+	WorkQueueName: "NameOfController",
+})
 ```
 
 becomes
@@ -139,7 +142,10 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		ServiceLister: svcInformer.Lister(),
 	}
 	logger = logger.Named("NameOfController")
-	impl := controller.NewImpl(c, logger, "NameOfController")
+	impl := controller.NewContext(ctx, c, controller.ControllerOptions{
+		Logger: logger,
+		WorkQueueName: "NameOfController",
+	})
 
 	// Set up event handlers.
 	svcInformer.Informer().AddEventHandler(...)
@@ -421,7 +427,7 @@ kindreconciler "knative.dev/<repo>/pkg/client/injection/reconciler/<clientgroup>
 Controller related artifacts:
 
 - `NewImpl` - gets an injection based client and lister for `<kind>`, sets up
-  Kubernetes Event recorders, and delegates to `controller.NewImpl` for queue
+  Kubernetes Event recorders, and delegates to `controller.NewContext` for queue
   management.
 
 ```go

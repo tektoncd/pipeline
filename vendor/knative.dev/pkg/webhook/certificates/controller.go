@@ -67,7 +67,7 @@ func NewController(
 	}
 
 	const queueName = "WebhookCertificates"
-	c := controller.NewImpl(wh, logging.FromContext(ctx).Named(queueName), queueName)
+	c := controller.NewContext(ctx, wh, controller.ControllerOptions{WorkQueueName: queueName, Logger: logging.FromContext(ctx).Named(queueName)})
 
 	// Reconcile when the cert bundle changes.
 	secretInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

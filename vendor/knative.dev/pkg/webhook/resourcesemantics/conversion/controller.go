@@ -119,7 +119,7 @@ func NewConversionController(
 
 	const queueName = "ConversionWebhook"
 	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(r, logger.Named(queueName), queueName)
+	c := controller.NewContext(ctx, r, controller.ControllerOptions{WorkQueueName: queueName, Logger: logger.Named(queueName)})
 
 	// Reconciler when the named CRDs change.
 	for _, gkc := range kinds {
