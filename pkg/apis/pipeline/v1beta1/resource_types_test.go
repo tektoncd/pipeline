@@ -14,6 +14,7 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -139,6 +140,40 @@ func TestApplyTaskModifier_AlreadyAdded(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := v1beta1.ApplyTaskModifier(&tc.ts, &TestTaskModifier{}); err == nil {
 				t.Errorf("Expected error when applying values already added but got none")
+			}
+		})
+	}
+}
+
+func TestPipelineResourceResult_UnmarshalJSON(t *testing.T) {
+
+	testcases := []struct {
+		name string
+		data string
+		pr   v1beta1.PipelineResourceResult
+	}{{
+		name: "type defined as string - TaskRunResult",
+		data: "{\"key\":\"resultName\",\"value\":\"resultValue\", \"type\": \"TaskRunResult\"}",
+		pr:   v1beta1.PipelineResourceResult{Key: "resultName", Value: "resultValue", ResultType: v1beta1.TaskRunResultType},
+	},
+		{
+			name: "type defined as string - InternalTektonResult",
+			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": \"InternalTektonResult\"}",
+			pr:   v1beta1.PipelineResourceResult{Key: "resultName", Value: "", ResultType: v1beta1.InternalTektonResultType},
+		}, {
+			name: "type defined as int",
+			data: "{\"key\":\"resultName\",\"value\":\"\", \"type\": 1}",
+			pr:   v1beta1.PipelineResourceResult{Key: "resultName", Value: "", ResultType: v1beta1.TaskRunResultType},
+		}}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			pipRes := v1beta1.PipelineResourceResult{}
+			if err := json.Unmarshal([]byte(tc.data), &pipRes); err != nil {
+				t.Errorf("Unexpected error when unmarshalling the json into PipelineResourceResult")
+			}
+			if d := cmp.Diff(tc.pr, pipRes); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
 	}

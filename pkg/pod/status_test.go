@@ -549,7 +549,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
 					},
 				},
 			}},
@@ -560,7 +560,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":"TaskRunResult"}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
@@ -587,7 +587,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-banana",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type": "TaskRunResult"}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
 					},
 				},
 			}},
@@ -598,7 +598,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":"TaskRunResult"}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":1}]`,
 						}},
 					Name:          "banana",
 					ContainerName: "step-banana",
@@ -625,14 +625,14 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-one",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultNameOne","value":"resultValueOne", "type": "TaskRunResult"}, {"key":"resultNameTwo","value":"resultValueTwo", "type": "TaskRunResult"}]`,
+						Message: `[{"key":"resultNameOne","value":"resultValueOne", "type":1}, {"key":"resultNameTwo","value":"resultValueTwo", "type":1}]`,
 					},
 				},
 			}, {
 				Name: "step-two",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultNameOne","value":"resultValueThree","type":"TaskRunResult"},{"key":"resultNameTwo","value":"resultValueTwo","type":"TaskRunResult"}]`,
+						Message: `[{"key":"resultNameOne","value":"resultValueThree","type":1},{"key":"resultNameTwo","value":"resultValueTwo","type":1}]`,
 					},
 				},
 			}},
@@ -643,14 +643,14 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"resultNameOne","value":"resultValueOne","type":"TaskRunResult"},{"key":"resultNameTwo","value":"resultValueTwo","type":"TaskRunResult"}]`,
+							Message: `[{"key":"resultNameOne","value":"resultValueOne","type":1},{"key":"resultNameTwo","value":"resultValueTwo","type":1}]`,
 						}},
 					Name:          "one",
 					ContainerName: "step-one",
 				}, {
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"resultNameOne","value":"resultValueThree","type":"TaskRunResult"},{"key":"resultNameTwo","value":"resultValueTwo","type":"TaskRunResult"}]`,
+							Message: `[{"key":"resultNameOne","value":"resultValueThree","type":1},{"key":"resultNameTwo","value":"resultValueTwo","type":1}]`,
 						}},
 					Name:          "two",
 					ContainerName: "step-two",
@@ -727,6 +727,43 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-pear",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"key":"resultNameOne","value":"","type":2}, {"key":"resultNameTwo","value":"","type":3}, {"key":"resultNameThree","value":"","type":1}]`},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSuccess(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultNameOne","value":"","type":2},{"key":"resultNameThree","value":"","type":1}]`,
+						}},
+					Name:          "pear",
+					ContainerName: "step-pear",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				ResourcesResult: []v1beta1.PipelineResourceResult{{
+					Key:        "resultNameOne",
+					Value:      "",
+					ResultType: v1beta1.PipelineResourceResultType,
+				}},
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "resultNameThree",
+					Value: "",
+				}},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "filter internaltektonresult with `type` as string",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-pear",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
 						Message: `[{"key":"resultNameOne","value":"","type":"PipelineResourceResult"}, {"key":"resultNameTwo","value":"","type":"InternalTektonResult"}, {"key":"resultNameThree","value":"","type":"TaskRunResult"}]`,
 					},
 				},
@@ -738,7 +775,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"resultNameOne","value":"","type":"PipelineResourceResult"},{"key":"resultNameThree","value":"","type":"TaskRunResult"}]`,
+							Message: `[{"key":"resultNameOne","value":"","type":2},{"key":"resultNameThree","value":"","type":1}]`,
 						}},
 					Name:          "pear",
 					ContainerName: "step-pear",
@@ -747,7 +784,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
 					Key:        "resultNameOne",
 					Value:      "",
-					ResultType: "PipelineResourceResult",
+					ResultType: v1beta1.PipelineResourceResultType,
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",

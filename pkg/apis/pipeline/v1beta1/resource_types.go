@@ -17,9 +17,11 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/go-multierror"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 )
@@ -130,7 +132,46 @@ type PipelineResourceResult struct {
 }
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not
-type ResultType string
+type ResultType int
+
+// UnmarshalJSON unmarshals either an int or a string into a ResultType. String
+// ResultTypes were removed because they made JSON messages bigger, which in
+// turn limited the amount of space in termination messages for task results. String
+// support is maintained for backwards compatibility - the Pipelines controller could
+// be stopped midway through TaskRun execution, updated with support for int in place
+// of string, and then fail the running TaskRun because it doesn't know how to interpret
+// the string value that the TaskRun's entrypoint will emit when it completes.
+func (r *ResultType) UnmarshalJSON(data []byte) error {
+
+	var asInt int
+	var intErr error
+
+	if err := json.Unmarshal(data, &asInt); err != nil {
+		intErr = err
+	} else {
+		*r = ResultType(asInt)
+		return nil
+	}
+
+	var asString string
+
+	if err := json.Unmarshal(data, &asString); err != nil {
+		return fmt.Errorf("unsupported value type, neither int nor string: %v", multierror.Append(intErr, err).ErrorOrNil())
+	}
+
+	switch asString {
+	case "TaskRunResult":
+		*r = TaskRunResultType
+	case "PipelineResourceResult":
+		*r = PipelineResourceResultType
+	case "InternalTektonResult":
+		*r = InternalTektonResultType
+	default:
+		*r = UnknownResultType
+	}
+
+	return nil
+}
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {

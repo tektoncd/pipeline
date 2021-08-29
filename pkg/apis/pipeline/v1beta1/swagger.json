@@ -803,7 +803,8 @@
           "$ref": "#/definitions/v1beta1.PipelineResourceRef"
         },
         "type": {
-          "type": "string"
+          "type": "integer",
+          "format": "int32"
         },
         "value": {
           "type": "string",
