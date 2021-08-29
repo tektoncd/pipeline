@@ -23,13 +23,13 @@ import (
 
 const (
 	// TaskRunResultType default task run result value
-	TaskRunResultType ResultType = "TaskRunResult"
+	TaskRunResultType ResultType = 1
 	// PipelineResourceResultType default pipeline result value
-	PipelineResourceResultType ResultType = "PipelineResourceResult"
+	PipelineResourceResultType = 2
 	// InternalTektonResultType default internal tekton result value
-	InternalTektonResultType ResultType = "InternalTektonResult"
+	InternalTektonResultType = 3
 	// UnknownResultType default unknown result type value
-	UnknownResultType ResultType = ""
+	UnknownResultType = 10
 )
 
 // +genclient
