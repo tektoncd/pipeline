@@ -38,6 +38,8 @@ a cluster with **Kubernetes version 1.19 or later***.
 | Version | Docs | Examples |
 | ------- | ---- | -------- |
 | [HEAD](DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](/docs/README.md) | [Examples @ HEAD](/examples) |
+| [v0.27.3](https://github.com/tektoncd/pipeline/releases/tag/v0.27.3) | [Docs @ v0.27.3](https://github.com/tektoncd/pipeline/tree/v0.27.3/docs#tekton-pipelines) | [Examples @ v0.27.3](https://github.com/tektoncd/pipeline/tree/v0.27.3/examples#examples) |
+| [v0.27.2](https://github.com/tektoncd/pipeline/releases/tag/v0.27.2) | [Docs @ v0.27.2](https://github.com/tektoncd/pipeline/tree/v0.27.2/docs#tekton-pipelines) | [Examples @ v0.27.2](https://github.com/tektoncd/pipeline/tree/v0.27.2/examples#examples) |
 | [v0.27.1](https://github.com/tektoncd/pipeline/releases/tag/v0.27.1) | [Docs @ v0.27.1](https://github.com/tektoncd/pipeline/tree/v0.27.1/docs#tekton-pipelines) | [Examples @ v0.27.1](https://github.com/tektoncd/pipeline/tree/v0.27.1/examples#examples) |
 | [v0.27.0](https://github.com/tektoncd/pipeline/releases/tag/v0.27.0) | [Docs @ v0.27.0](https://github.com/tektoncd/pipeline/tree/v0.27.0/docs#tekton-pipelines) | [Examples @ v0.27.0](https://github.com/tektoncd/pipeline/tree/v0.27.0/examples#examples) |
 | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) | [Docs @ v0.26.0](https://github.com/tektoncd/pipeline/tree/v0.26.0/docs#tekton-pipelines) | [Examples @ v0.26.0](https://github.com/tektoncd/pipeline/tree/v0.26.0/examples#examples) |
