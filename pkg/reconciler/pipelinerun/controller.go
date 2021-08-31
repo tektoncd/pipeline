@@ -32,6 +32,7 @@ import (
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
+	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"k8s.io/client-go/tools/cache"
@@ -55,10 +56,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		pipelineInformer := pipelineinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
-		metrics, err := NewRecorder()
-		if err != nil {
-			logger.Errorf("Failed to create pipelinerun metrics recorder %v", err)
-		}
 
 		c := &Reconciler{
 			KubeClientSet:     kubeclientset,
@@ -73,7 +70,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),
-			metrics:           metrics,
+			metrics:           pipelinerunmetrics.Get(ctx),
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
@@ -95,8 +92,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			FilterFunc: controller.FilterController(&v1beta1.PipelineRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
-
-		go metrics.ReportRunningPipelineRuns(ctx, pipelineRunInformer.Lister())
 
 		return impl
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/pod"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
@@ -50,10 +51,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
-		metrics, err := NewRecorder()
-		if err != nil {
-			logger.Errorf("Failed to create taskrun metrics recorder %v", err)
-		}
 
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
 		if err != nil {
@@ -69,7 +66,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			clusterTaskLister: clusterTaskInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),
-			metrics:           metrics,
+			metrics:           taskrunmetrics.Get(ctx),
 			entrypointCache:   entrypointCache,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
@@ -89,8 +86,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			FilterFunc: controller.FilterController(&v1beta1.TaskRun{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
-
-		go metrics.ReportRunningTaskRuns(ctx, taskRunInformer.Lister())
 
 		return impl
 	}

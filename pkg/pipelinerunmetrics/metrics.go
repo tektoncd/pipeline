@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelinerun
+package pipelinerunmetrics
 
 import (
 	"context"
@@ -47,6 +47,13 @@ var (
 	runningPRsCount = stats.Float64("running_pipelineruns_count",
 		"Number of pipelineruns executing currently",
 		stats.UnitDimensionless)
+)
+
+const (
+	// ReasonCancelled indicates that a PipelineRun was cancelled.
+	ReasonCancelled = "Cancelled"
+	// Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
+	ReasonCancelledDeprecated = "PipelineRunCancelled"
 )
 
 // Recorder holds keys for Tekton metrics
