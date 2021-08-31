@@ -756,6 +756,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 
 	rprt.PipelineTask = resources.ApplyPipelineTaskContexts(rprt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
+	debug := MergeDebug(taskRunSpec.Debug, pr.Spec.Debug)
+
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -765,7 +767,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rprt.PipelineTask),
 		},
 		Spec: v1beta1.TaskRunSpec{
-			Debug:              taskRunSpec.Debug,
+			Debug:              debug,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTimeoutFunc(ctx, pr, rprt),
@@ -793,6 +795,32 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", rprt.TaskRunName, rprt.PipelineTask.Name)
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+}
+
+// MergeDebug returns the non nil debug or if both are not nil then combine all the non-duplicate breakpoints
+func MergeDebug(a *v1beta1.TaskRunDebug, b *v1beta1.TaskRunDebug) *v1beta1.TaskRunDebug {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+
+	// let's merge the two structs adding all the non-duplicate breakpoints
+	c := *a
+	for _, bp := range b.Breakpoint {
+		found := false
+		for _, bp2 := range c.Breakpoint {
+			if bp2 == bp {
+				found = true
+				break
+			}
+		}
+		if !found {
+			c.Breakpoint = append(c.Breakpoint, bp)
+		}
+	}
+	return &c
 }
 
 func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) (*v1alpha1.Run, error) {

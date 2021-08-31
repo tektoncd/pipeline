@@ -532,6 +532,13 @@ func PipelineRunParam(name string, value string, additionalValues ...string) Pip
 	}
 }
 
+// PipelineRunSpecDebug adds debugging to a PipelineRunSpec
+func PipelineRunSpecDebug(debug *v1beta1.TaskRunDebug) PipelineRunSpecOp {
+	return func(prs *v1beta1.PipelineRunSpec) {
+		prs.Debug = debug
+	}
+}
+
 // PipelineRunTimeout sets the timeout to the PipelineRunSpec.
 func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
 	return func(prs *v1beta1.PipelineRunSpec) {

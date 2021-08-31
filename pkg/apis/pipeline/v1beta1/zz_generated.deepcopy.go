@@ -679,6 +679,11 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Debug != nil {
+		in, out := &in.Debug, &out.Debug
+		*out = new(TaskRunDebug)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

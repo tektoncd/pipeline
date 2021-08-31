@@ -645,7 +645,21 @@ To start the PipelineRun, clear the `.spec.status` field. Alternatively, update 
 
 #### Breakpoint on Failure
 
-You can configure a TaskRun created by a `PipelineRun` to enable debug as follows:
+You can enable debugging on any TaskRun created by a `PipelineRun` as follows:
+
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-case-run
+spec:
+  debug:
+    breakpoint: ["onFailure"]
+...
+```
+
+Or you can configure a TaskRun created by a `PipelineRun` to enable debug as follows:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1

@@ -947,6 +947,10 @@
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
       "properties": {
+        "debug": {
+          "description": "Debug allows debug settings to be added to any Task created by this PipelineRun",
+          "$ref": "#/definitions/v1beta1.TaskRunDebug"
+        },
         "params": {
           "description": "Params is a list of parameter names and values.",
           "type": "array",

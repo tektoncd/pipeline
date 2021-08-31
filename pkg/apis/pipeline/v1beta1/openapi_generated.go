@@ -1575,11 +1575,17 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 							},
 						},
 					},
+					"debug": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Debug allows debug settings to be added to any Task created by this PipelineRun",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunSpecServiceAccountName", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunSpecServiceAccountName", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 

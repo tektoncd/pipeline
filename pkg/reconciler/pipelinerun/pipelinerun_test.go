@@ -807,7 +807,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	}
 }
 
-func TestReconcile_PipelineRunWithDebug(t *testing.T) {
+func TestReconcile_PipelineRunWithTaskDebug(t *testing.T) {
 	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
@@ -832,6 +832,191 @@ func TestReconcile_PipelineRunWithDebug(t *testing.T) {
 						},
 					},
 				),
+			),
+		),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-api-fields": config.AlphaAPIFields,
+				},
+			},
+		},
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+
+	actions := clients.Pipeline.Actions()
+	if len(actions) < 2 {
+		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+	}
+
+	// Check that the expected TaskRun was created
+	actual := getTaskRunCreations(t, actions)[0]
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-task-spec-9l9zj",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline-run-success"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),
+			tb.TaskRunServiceAccountName("my-sa"),
+			tb.TaskRunSpecDebugBreakpoint([]string{"onFailure"}),
+		),
+	)
+
+	// ignore IgnoreUnexported ignore both after and before steps fields
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+
+	// test taskrun is able to recreate correct pipeline-pvc-name
+	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
+		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
+	}
+
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
+	}
+
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-task-spec-9l9zj"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+}
+
+func TestReconcile_PipelineRunWithTaskAndGlobalDebug(t *testing.T) {
+	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
+	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
+	names.TestingSeed()
+
+	prs := []*v1beta1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-success",
+			tb.PipelineRunNamespace("foo"),
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunPipelineSpec(
+					tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{Container: corev1.Container{
+							Name:  "mystep",
+							Image: "myimage"}}},
+					})),
+				),
+				tb.PipelineTaskRunSpecs(
+					[]v1beta1.PipelineTaskRunSpec{
+						{
+							PipelineTaskName:       "unit-test-task-spec",
+							TaskServiceAccountName: "my-sa",
+							Debug:                  &v1beta1.TaskRunDebug{Breakpoint: []string{"onFailure", "onTask"}},
+						},
+					},
+				),
+				tb.PipelineRunSpecDebug(&v1beta1.TaskRunDebug{Breakpoint: []string{"onFailure", "onGlobal"}}),
+			),
+		),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		ConfigMaps: []*corev1.ConfigMap{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+				Data: map[string]string{
+					"enable-api-fields": config.AlphaAPIFields,
+				},
+			},
+		},
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+
+	actions := clients.Pipeline.Actions()
+	if len(actions) < 2 {
+		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+	}
+
+	// Check that the expected TaskRun was created
+	actual := getTaskRunCreations(t, actions)[0]
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-task-spec-9l9zj",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1beta1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline-run-success"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.MemberOfLabelKey, v1beta1.PipelineTasks),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(tb.Step("myimage", tb.StepName("mystep"))),
+			tb.TaskRunServiceAccountName("my-sa"),
+			tb.TaskRunSpecDebugBreakpoint([]string{"onFailure", "onTask", "onGlobal"}),
+		),
+	)
+
+	// ignore IgnoreUnexported ignore both after and before steps fields
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+
+	// test taskrun is able to recreate correct pipeline-pvc-name
+	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
+		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
+	}
+
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
+	}
+
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-task-spec-9l9zj"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+}
+
+func TestReconcile_PipelineRunWithGlobalDebug(t *testing.T) {
+	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
+	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
+	names.TestingSeed()
+
+	prs := []*v1beta1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-success",
+			tb.PipelineRunNamespace("foo"),
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunPipelineSpec(
+					tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{Container: corev1.Container{
+							Name:  "mystep",
+							Image: "myimage"}}},
+					})),
+				),
+				tb.PipelineTaskRunSpecs(
+					[]v1beta1.PipelineTaskRunSpec{
+						{
+							PipelineTaskName:       "unit-test-task-spec",
+							TaskServiceAccountName: "my-sa",
+						},
+					},
+				),
+				tb.PipelineRunSpecDebug(&v1beta1.TaskRunDebug{Breakpoint: []string{"onFailure"}}),
 			),
 		),
 	}

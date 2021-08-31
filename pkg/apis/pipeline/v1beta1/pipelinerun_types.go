@@ -205,6 +205,9 @@ type PipelineRunSpec struct {
 	// TaskRunSpecs holds a set of runtime specs
 	// +optional
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
+	// Debug allows debug settings to be added to any Task created by this PipelineRun
+	// +optional
+	Debug *TaskRunDebug `json:"debug,omitempty"`
 }
 
 type TimeoutFields struct {
