@@ -45,6 +45,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
+	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -70,7 +72,7 @@ type Reconciler struct {
 	resourceLister    resourcelisters.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
 	entrypointCache   podconvert.EntrypointCache
-	metrics           *Recorder
+	metrics           *taskrunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
 }
 
@@ -128,7 +130,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
-		go func(metrics *Recorder) {
+		go func(metrics *taskrunmetrics.Recorder) {
 			err := metrics.DurationAndCount(tr)
 			if err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)

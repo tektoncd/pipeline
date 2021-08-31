@@ -39,6 +39,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -97,9 +98,9 @@ const (
 	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
-	ReasonCancelled = "Cancelled"
+	ReasonCancelled = pipelinerunmetrics.ReasonCancelled
 	// Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
-	ReasonCancelledDeprecated = "PipelineRunCancelled"
+	ReasonCancelledDeprecated = pipelinerunmetrics.ReasonCancelledDeprecated
 	// ReasonPending indicates that a PipelineRun is pending.
 	ReasonPending = "PipelineRunPending"
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
@@ -129,7 +130,7 @@ type Reconciler struct {
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
 	cloudEventClient  cloudevent.CEClient
-	metrics           *Recorder
+	metrics           *pipelinerunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
 }
 
@@ -197,7 +198,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to update Run status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		go func(metrics *Recorder) {
+		go func(metrics *pipelinerunmetrics.Recorder) {
 			err := metrics.DurationAndCount(pr)
 			if err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
