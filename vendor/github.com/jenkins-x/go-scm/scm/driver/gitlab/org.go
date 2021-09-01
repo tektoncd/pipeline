@@ -16,19 +16,36 @@ type organizationService struct {
 	client *wrapper
 }
 
+func (s *organizationService) Create(context.Context, *scm.OrganizationInput) (*scm.Organization, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *organizationService) Delete(context.Context, string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 func (s *organizationService) IsMember(ctx context.Context, org string, user string) (bool, *scm.Response, error) {
-	users, res, err := s.ListMemberUsers(ctx, org)
-	if err != nil {
-		return false, res, err
+	var resp *scm.Response
+	var users []scm.User
+	var err error
+	firstRun := false
+	opts := scm.ListOptions{
+		Page: 1,
 	}
-	member := false
-	for _, u := range users {
-		if u.Login == user {
-			member = true
-			break
+	for !firstRun || (resp != nil && opts.Page <= resp.Page.Last) {
+		users, resp, err = s.ListMemberUsers(ctx, org, opts)
+		if err != nil {
+			return false, resp, err
 		}
+		firstRun = true
+		for _, u := range users {
+			if u.Login == user {
+				return true, resp, nil
+			}
+		}
+		opts.Page++
 	}
-	return member, res, err
+	return false, resp, err
 }
 
 func (s *organizationService) IsAdmin(ctx context.Context, org string, user string) (bool, *scm.Response, error) {
@@ -47,7 +64,7 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role 
 }
 
 func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
-	users, res, err := s.ListMemberUsers(ctx, org)
+	users, res, err := s.ListMemberUsers(ctx, org, ops)
 	if err != nil {
 		return nil, res, err
 	}
@@ -58,8 +75,8 @@ func (s *organizationService) ListOrgMembers(ctx context.Context, org string, op
 	return members, res, nil
 }
 
-func (s *organizationService) ListMemberUsers(ctx context.Context, org string) ([]scm.User, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/members/all", org)
+func (s *organizationService) ListMemberUsers(ctx context.Context, org string, opts scm.ListOptions) ([]scm.User, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/groups/%s/members/all?%s", org, encodeListOptions(opts))
 	out := []*user{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertUserList(out), res, err
@@ -79,7 +96,20 @@ func (s *organizationService) List(ctx context.Context, opts scm.ListOptions) ([
 	return convertOrganizationList(out), res, err
 }
 
+func (s *organizationService) ListPendingInvitations(ctx context.Context, org string, opts scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *organizationService) AcceptOrganizationInvitation(ctx context.Context, org string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
+func (s *organizationService) ListMemberships(ctx context.Context, opts scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 type organization struct {
+	ID     int         `json:"id"`
 	Name   string      `json:"name"`
 	Path   string      `json:"path"`
 	Avatar null.String `json:"avatar_url"`
@@ -95,6 +125,7 @@ func convertOrganizationList(from []*organization) []*scm.Organization {
 
 func convertOrganization(from *organization) *scm.Organization {
 	return &scm.Organization{
+		ID:     from.ID,
 		Name:   from.Path,
 		Avatar: from.Avatar.String,
 	}

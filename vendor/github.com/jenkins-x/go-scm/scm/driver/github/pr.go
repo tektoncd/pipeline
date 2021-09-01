@@ -59,6 +59,13 @@ func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.
 	return res, err
 }
 
+func (s *pullService) Reopen(ctx context.Context, repo string, number int) (*scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, number)
+	data := map[string]string{"state": "open"}
+	res, err := s.client.do(ctx, "PATCH", path, &data, nil)
+	return res, err
+}
+
 func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls", repo)
 	in := &prInput{
@@ -70,6 +77,27 @@ func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRe
 
 	out := new(pr)
 	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertPullRequest(out), res, err
+}
+
+func (s *pullService) Update(ctx context.Context, repo string, number int, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/pulls/%d", repo, number)
+	in := &prInput{}
+	if input.Title != "" {
+		in.Title = input.Title
+	}
+	if input.Body != "" {
+		in.Body = input.Body
+	}
+	if input.Head != "" {
+		in.Head = input.Head
+	}
+	if input.Base != "" {
+		in.Base = input.Base
+	}
+
+	out := new(pr)
+	res, err := s.client.do(ctx, "PATCH", path, in, out)
 	return convertPullRequest(out), res, err
 }
 
@@ -177,14 +205,6 @@ type prBranch struct {
 	User user       `json:"user"`
 	Repo repository `json:"repo"`
 }
-type milestone struct {
-	Number      int    `json:"number"`
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"Description"`
-	Link        string `json:"html_url"`
-	State       string `json:"state"`
-}
 
 type pr struct {
 	Number             int         `json:"number"`
@@ -193,6 +213,7 @@ type pr struct {
 	Body               string      `json:"body"`
 	Labels             []*label    `json:"labels"`
 	DiffURL            string      `json:"diff_url"`
+	HTMLURL            string      `json:"html_url"`
 	User               user        `json:"user"`
 	RequestedReviewers []user      `json:"requested_reviewers"`
 	Assignees          []user      `json:"assignees"`
@@ -223,10 +244,10 @@ type file struct {
 }
 
 type prInput struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	Head  string `json:"head"`
-	Base  string `json:"base"`
+	Title string `json:"title,omitempty"`
+	Body  string `json:"body,omitempty"`
+	Head  string `json:"head,omitempty"`
+	Base  string `json:"base,omitempty"`
 }
 
 func convertPullRequestList(from []*pr) []*scm.PullRequest {
@@ -251,7 +272,8 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 		Fork:           from.Head.Repo.FullName,
 		Base:           *convertPullRequestBranch(&from.Base),
 		Head:           *convertPullRequestBranch(&from.Head),
-		Link:           from.DiffURL,
+		DiffLink:       from.DiffURL,
+		Link:           from.HTMLURL,
 		Closed:         from.State != "open",
 		Draft:          from.Draft,
 		MergeSha:       from.MergeSha,
@@ -261,6 +283,7 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 		Rebaseable:     from.Rebaseable,
 		Author:         *convertUser(&from.User),
 		Assignees:      convertUsers(from.Assignees),
+		Reviewers:      convertUsers(from.RequestedReviewers),
 		Created:        from.CreatedAt,
 		Updated:        from.UpdatedAt,
 	}
@@ -298,14 +321,16 @@ func convertChangeList(from []*file) []*scm.Change {
 
 func convertChange(from *file) *scm.Change {
 	return &scm.Change{
-		Path:      from.Filename,
-		Added:     from.Status == "added",
-		Deleted:   from.Status == "deleted",
-		Renamed:   from.Status == "moved",
-		Additions: from.Additions,
-		Deletions: from.Deletions,
-		Changes:   from.Changes,
-		BlobURL:   from.BlobURL,
-		Sha:       from.Sha,
+		Path:         from.Filename,
+		PreviousPath: from.PreviousFilename,
+		Added:        from.Status == "added",
+		Deleted:      from.Status == "deleted",
+		Renamed:      from.Status == "moved",
+		Patch:        from.Patch,
+		Additions:    from.Additions,
+		Deletions:    from.Deletions,
+		Changes:      from.Changes,
+		BlobURL:      from.BlobURL,
+		Sha:          from.Sha,
 	}
 }

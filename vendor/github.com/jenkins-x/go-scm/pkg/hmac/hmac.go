@@ -6,7 +6,7 @@ package hmac
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec
 	"crypto/sha256"
 	"encoding/hex"
 	"hash"
@@ -42,7 +42,7 @@ func ValidatePrefix(message, key []byte, signature string) bool {
 
 func validate(h func() hash.Hash, message, key, signature []byte) bool {
 	mac := hmac.New(h, key)
-	mac.Write(message)
+	mac.Write(message) // #nosec
 	sum := mac.Sum(nil)
 	return hmac.Equal(signature, sum)
 }

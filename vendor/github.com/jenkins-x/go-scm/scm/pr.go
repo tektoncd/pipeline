@@ -11,6 +11,7 @@ import (
 )
 
 type (
+	// MergeableState represents whether the PR can be merged
 	MergeableState string
 
 	// PullRequest represents a repository pull request.
@@ -26,7 +27,6 @@ type (
 		Base           PullRequestBranch
 		Head           PullRequestBranch
 		Fork           string
-		Link           string
 		State          string
 		Closed         bool
 		Draft          bool
@@ -37,11 +37,19 @@ type (
 		MergeSha       string
 		Author         User
 		Assignees      []User
+		Reviewers      []User
 		Milestone      Milestone
 		Created        time.Time
 		Updated        time.Time
+
+		// Link links to the main pull request page
+		Link string
+
+		// DiffLink links to the diff report of a pull request
+		DiffLink string
 	}
 
+	// PullRequestInput provides the input needed to create or update a PR.
 	PullRequestInput struct {
 		Title string
 		Head  string
@@ -49,7 +57,7 @@ type (
 		Body  string
 	}
 
-	// Milestone the milestotne
+	// Milestone the milestone
 	Milestone struct {
 		Number      int
 		ID          int
@@ -57,6 +65,7 @@ type (
 		Description string
 		Link        string
 		State       string
+		DueDate     *time.Time
 	}
 
 	// PullRequestListOptions provides options for querying
@@ -82,15 +91,17 @@ type (
 
 	// Change represents a changed file.
 	Change struct {
-		Path      string
-		Added     bool
-		Renamed   bool
-		Deleted   bool
-		Additions int
-		Deletions int
-		Changes   int
-		BlobURL   string
-		Sha       string
+		Path         string
+		PreviousPath string
+		Added        bool
+		Renamed      bool
+		Deleted      bool
+		Patch        string
+		Additions    int
+		Deletions    int
+		Changes      int
+		BlobURL      string
+		Sha          string
 	}
 
 	// PullRequestMergeOptions lets you define how a pull request will be merged.
@@ -100,12 +111,21 @@ type (
 
 		// The merge method to use. Possible values include: "merge", "squash", and "rebase" with the default being merge. (Optional.)
 		MergeMethod string
+
+		// Merge automatically once the pipeline completes. (Supported only in gitlab)
+		MergeWhenPipelineSucceeds bool
+
+		// Signals to the SCM to remove the source branch during merge
+		DeleteSourceBranch bool
 	}
 
 	// PullRequestService provides access to pull request resources.
 	PullRequestService interface {
 		// Find returns the repository pull request by number.
 		Find(context.Context, string, int) (*PullRequest, *Response, error)
+
+		// Update modifies an existing pull request.
+		Update(context.Context, string, int, *PullRequestInput) (*PullRequest, *Response, error)
 
 		// FindComment returns the pull request comment by id.
 		FindComment(context.Context, string, int, int) (*Comment, *Response, error)
@@ -130,6 +150,9 @@ type (
 
 		// Close closes the repository pull request.
 		Close(context.Context, string, int) (*Response, error)
+
+		// Reopen reopens a closed repository pull request.
+		Reopen(context.Context, string, int) (*Response, error)
 
 		// CreateComment creates a new pull request comment.
 		CreateComment(context.Context, string, int, *CommentInput) (*Comment, *Response, error)
@@ -160,6 +183,12 @@ type (
 
 		// UnrequestReview removes one or more users as a reviewer on a pull request.
 		UnrequestReview(ctx context.Context, repo string, number int, logins []string) (*Response, error)
+
+		// SetMilestone adds a milestone to a pull request
+		SetMilestone(ctx context.Context, repo string, prID int, number int) (*Response, error)
+
+		// ClearMilestone removes the milestone from a pull request
+		ClearMilestone(ctx context.Context, repo string, prID int) (*Response, error)
 	}
 )
 

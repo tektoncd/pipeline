@@ -43,6 +43,30 @@ func (s *gitService) FindRef(ctx context.Context, repo, ref string) (string, *sc
 	return out.Object["sha"], res, err
 }
 
+// CreateRef creates a new ref
+func (s *gitService) CreateRef(ctx context.Context, repo, ref, sha string) (*scm.Reference, *scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/git/refs", repo)
+	in := &struct {
+		Ref string `json:"ref"`
+		Sha string `json:"sha"`
+	}{Ref: ref, Sha: sha}
+
+	out := &struct {
+		Ref    string `json:"ref"`
+		Object struct {
+			Sha string
+		} `json:"object"`
+	}{}
+
+	res, err := s.client.do(ctx, http.MethodPost, path, in, out)
+	scmRef := &scm.Reference{
+		Name: out.Ref,
+		Sha:  out.Object.Sha,
+		Path: out.Ref,
+	}
+	return scmRef, res, err
+}
+
 // DeleteRef deletes the given ref
 //
 // See https://developer.github.com/v3/git/refs/#delete-a-reference
@@ -79,6 +103,13 @@ func (s *gitService) ListTags(ctx context.Context, repo string, opts scm.ListOpt
 
 func (s *gitService) ListChanges(ctx context.Context, repo, ref string, _ scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/commits/%s", repo, ref)
+	out := new(commit)
+	res, err := s.client.do(ctx, "GET", path, nil, &out)
+	return convertChangeList(out.Files), res, err
+}
+
+func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string, _ scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
+	path := fmt.Sprintf("/repos/%s/compare/%s...%s", repo, ref1, ref2)
 	out := new(commit)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertChangeList(out.Files), res, err

@@ -24,6 +24,7 @@ type repository struct {
 	Name          string    `json:"name"`
 	FullName      string    `json:"full_name"`
 	Private       bool      `json:"private"`
+	Archived      bool      `json:"archived"`
 	Fork          bool      `json:"fork"`
 	HTMLURL       string    `json:"html_url"`
 	SSHURL        string    `json:"ssh_url"`
@@ -54,11 +55,46 @@ type hook struct {
 		URL         string `json:"url"`
 		Secret      string `json:"secret"`
 		ContentType string `json:"content_type"`
+		InsecureSSL string `json:"insecure_ssl"`
 	} `json:"config"`
+}
+
+type collaboratorBody struct {
+	Permission string `json:"permission"`
 }
 
 type repositoryService struct {
 	client *wrapper
+}
+
+// AddCollaborator adds a collaborator to the repo.
+// See https://developer.github.com/v3/repos/collaborators/#add-user-as-a-collaborator
+func (s *repositoryService) AddCollaborator(ctx context.Context, repo, user, permission string) (bool, bool, *scm.Response, error) {
+	req := &scm.Request{
+		Method: http.MethodPut,
+		Path:   fmt.Sprintf("repos/%s/collaborators/%s", repo, user),
+		Header: map[string][]string{
+			// This accept header enables the nested teams preview.
+			// https://developer.github.com/changes/2017-08-30-preview-nested-teams/
+			"Accept": {"application/vnd.github.hellcat-preview+json"},
+		},
+	}
+	body := collaboratorBody{
+		Permission: permission,
+	}
+	res, err := s.client.doRequest(ctx, req, &body, nil)
+	if err != nil && res == nil {
+		return false, false, res, err
+	}
+	code := res.Status
+	if code == 201 {
+		return true, false, res, nil
+	} else if code == 204 {
+		return false, true, res, nil
+	} else if code == 404 {
+		return false, false, res, nil
+	}
+	return false, false, res, fmt.Errorf("unexpected status: %d", code)
 }
 
 // IsCollaborator returns whether or not the user is a collaborator of the repo.
@@ -153,9 +189,17 @@ func (s *repositoryService) FindUserPermission(ctx context.Context, repo string,
 
 // List returns the user repository list.
 func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
-	path := fmt.Sprintf("user/repos?%s", encodeListOptions(opts))
+	req := &scm.Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("user/repos?visibility=all&affiliation=owner&%s", encodeListOptions(opts)),
+		Header: map[string][]string{
+			// This accept header enables the visibility parameter.
+			// https://developer.github.com/changes/2019-12-03-internal-visibility-changes/
+			"Accept": {"application/vnd.github.nebula-preview+json"},
+		},
+	}
 	out := []*repository{}
-	res, err := s.client.do(ctx, "GET", path, nil, &out)
+	res, err := s.client.doRequest(ctx, req, nil, &out)
 	return convertRepositoryList(out), res, err
 }
 
@@ -210,9 +254,9 @@ func (s *repositoryService) ListLabels(ctx context.Context, repo string, opts sc
 
 // Create creates a new repository
 func (s *repositoryService) Create(ctx context.Context, input *scm.RepositoryInput) (*scm.Repository, *scm.Response, error) {
-	path := "/user/repos"
+	path := "user/repos"
 	if input.Namespace != "" {
-		path = fmt.Sprintf("/orgs/%s/repos", input.Namespace)
+		path = fmt.Sprintf("orgs/%s/repos", input.Namespace)
 
 	}
 	in := new(repositoryInput)
@@ -220,6 +264,23 @@ func (s *repositoryService) Create(ctx context.Context, input *scm.RepositoryInp
 	in.Description = input.Description
 	in.Homepage = input.Homepage
 	in.Private = input.Private
+	out := new(repository)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertRepository(out), res, err
+}
+
+type forkInput struct {
+	Organization string `json:"organization,omitempty"`
+}
+
+func (s *repositoryService) Fork(ctx context.Context, input *scm.RepositoryInput, origRepo string) (*scm.Repository, *scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/forks", origRepo)
+
+	in := new(forkInput)
+	if input.Namespace != "" {
+		in.Organization = input.Namespace
+	}
+
 	out := new(repository)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertRepository(out), res, err
@@ -234,6 +295,11 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 	in.Config.Secret = input.Secret
 	in.Config.ContentType = "json"
 	in.Config.URL = input.Target
+	if input.SkipVerify {
+		in.Config.InsecureSSL = "1"
+	} else {
+		in.Config.InsecureSSL = "0"
+	}
 	in.Events = append(
 		input.NativeEvents,
 		convertHookEvents(input.Events)...,
@@ -241,6 +307,10 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 	out := new(hook)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertHook(out), res, err
+}
+
+func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
 }
 
 // CreateStatus creates a new commit status.
@@ -263,12 +333,19 @@ func (s *repositoryService) DeleteHook(ctx context.Context, repo string, id stri
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
+func (s *repositoryService) Delete(ctx context.Context, repo string) (*scm.Response, error) {
+	path := fmt.Sprintf("repos/%s", repo)
+	return s.client.do(ctx, "DELETE", path, nil, nil)
+}
+
 // helper function to convert from the gogs repository list to
 // the common repository structure.
 func convertRepositoryList(from []*repository) []*scm.Repository {
 	to := []*scm.Repository{}
 	for _, v := range from {
-		to = append(to, convertRepository(v))
+		if v != nil {
+			to = append(to, convertRepository(v))
+		}
 	}
 	return to
 }
@@ -289,6 +366,7 @@ func convertRepository(from *repository) *scm.Repository {
 		Link:     from.HTMLURL,
 		Branch:   from.DefaultBranch,
 		Private:  from.Private,
+		Archived: from.Archived,
 		Clone:    from.CloneURL,
 		CloneSSH: from.SSHURL,
 		Created:  from.CreatedAt,
@@ -305,11 +383,18 @@ func convertHookList(from []*hook) []*scm.Hook {
 }
 
 func convertHook(from *hook) *scm.Hook {
+
+	skipVerify := false
+	if from.Config.InsecureSSL == "1" {
+		skipVerify = true
+	}
+
 	return &scm.Hook{
-		ID:     strconv.Itoa(from.ID),
-		Active: from.Active,
-		Target: from.Config.URL,
-		Events: from.Events,
+		ID:         strconv.Itoa(from.ID),
+		Active:     from.Active,
+		Target:     from.Config.URL,
+		SkipVerify: skipVerify,
+		Events:     from.Events,
 	}
 }
 
@@ -320,6 +405,9 @@ func convertHookEvents(from scm.HookEvents) []string {
 	}
 	if from.PullRequest {
 		events = append(events, "pull_request")
+	}
+	if from.Review {
+		events = append(events, "pull_request_review")
 	}
 	if from.PullRequestComment {
 		events = append(events, "pull_request_review_comment")
@@ -333,6 +421,15 @@ func convertHookEvents(from scm.HookEvents) []string {
 	if from.Branch || from.Tag {
 		events = append(events, "create")
 		events = append(events, "delete")
+	}
+	if from.Deployment {
+		events = append(events, "deployment")
+	}
+	if from.DeploymentStatus {
+		events = append(events, "deployment_status")
+	}
+	if from.Release {
+		events = append(events, "release")
 	}
 	return events
 }
@@ -348,6 +445,7 @@ type status struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	State       string    `json:"state"`
 	TargetURL   string    `json:"target_url"`
+	URL         string    `json:"url"`
 	Description string    `json:"description"`
 	Context     string    `json:"context"`
 }
@@ -384,6 +482,7 @@ func convertStatus(from *status) *scm.Status {
 		Label:  from.Context,
 		Desc:   from.Description,
 		Target: from.TargetURL,
+		Link:   from.URL,
 	}
 }
 

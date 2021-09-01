@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/mitchellh/copystructure"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -23,7 +24,14 @@ func (s *pullService) Find(ctx context.Context, repo string, number int) (*scm.P
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d", encode(repo), number)
 	out := new(pr)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	return convertPullRequest(out), res, err
+	if err != nil {
+		return nil, res, err
+	}
+	convRepo, convRes, err := s.convertPullRequest(ctx, out)
+	if err != nil {
+		return nil, convRes, err
+	}
+	return convRepo, res, nil
 }
 
 func (s *pullService) FindComment(ctx context.Context, repo string, index, id int) (*scm.Comment, *scm.Response, error) {
@@ -37,7 +45,14 @@ func (s *pullService) List(ctx context.Context, repo string, opts scm.PullReques
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests?%s", encode(repo), encodePullRequestListOptions(opts))
 	out := []*pr{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	return convertPullRequestList(out), res, err
+	if err != nil {
+		return nil, res, err
+	}
+	convRepos, convRes, err := s.convertPullRequestList(ctx, out)
+	if err != nil {
+		return nil, convRes, err
+	}
+	return convRepos, res, nil
 }
 
 func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
@@ -71,46 +86,19 @@ func (s *pullService) ListEvents(ctx context.Context, repo string, index int, op
 }
 
 func (s *pullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	allLabels := map[string]struct{}{}
-	for _, l := range existingLabels {
-		allLabels[l.Name] = struct{}{}
-	}
-	allLabels[label] = struct{}{}
-
-	labelNames := []string{}
-	for l := range allLabels {
-		labelNames = append(labelNames, l)
-	}
-
-	return s.setLabels(ctx, repo, number, labelNames)
-}
-
-func (s *pullService) setLabels(ctx context.Context, repo string, number int, labels []string) (*scm.Response, error) {
-	in := url.Values{}
-	labelsStr := strings.Join(labels, ",")
-	in.Set("labels", labelsStr)
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d?%s", encode(repo), number, in.Encode())
-
-	return s.client.do(ctx, "PUT", path, nil, nil)
+	return s.setLabels(ctx, repo, number, label, "add_labels")
 }
 
 func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	labels := []string{}
-	for _, l := range existingLabels {
-		if l.Name != label {
-			labels = append(labels, l.Name)
-		}
-	}
-	return s.setLabels(ctx, repo, number, labels)
+	return s.setLabels(ctx, repo, number, label, "remove_labels")
+}
+
+func (s *pullService) setLabels(ctx context.Context, repo string, number int, labelsStr string, operation string) (*scm.Response, error) {
+	in := url.Values{}
+	in.Set(operation, labelsStr)
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d?%s", encode(repo), number, in.Encode())
+
+	return s.client.do(ctx, "PUT", path, nil, nil)
 }
 
 func (s *pullService) CreateComment(ctx context.Context, repo string, index int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
@@ -138,12 +126,18 @@ func (s *pullService) EditComment(ctx context.Context, repo string, number int, 
 
 func (s *pullService) Merge(ctx context.Context, repo string, number int, options *scm.PullRequestMergeOptions) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/merge", encode(repo), number)
-	res, err := s.client.do(ctx, "PUT", path, nil, nil)
+	res, err := s.client.do(ctx, "PUT", path, encodePullRequestMergeOptions(options), nil)
 	return res, err
 }
 
 func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d?state_event=closed", encode(repo), number)
+	res, err := s.client.do(ctx, "PUT", path, nil, nil)
+	return res, err
+}
+
+func (s *pullService) Reopen(ctx context.Context, repo string, number int) (*scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d?state_event=reopen", encode(repo), number)
 	res, err := s.client.do(ctx, "PUT", path, nil, nil)
 	return res, err
 }
@@ -226,7 +220,45 @@ func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRe
 
 	out := new(pr)
 	res, err := s.client.do(ctx, "POST", path, in, out)
-	return convertPullRequest(out), res, err
+	if err != nil {
+		return nil, res, err
+	}
+	convRepo, convRes, err := s.convertPullRequest(ctx, out)
+	if err != nil {
+		return nil, convRes, err
+	}
+	return convRepo, res, nil
+}
+
+func (s *pullService) Update(ctx context.Context, repo string, number int, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	updateOpts := &updateMergeRequestOptions{}
+	if input.Title != "" {
+		updateOpts.Title = &input.Title
+	}
+	if input.Body != "" {
+		updateOpts.Description = &input.Body
+	}
+	if input.Base != "" {
+		updateOpts.TargetBranch = &input.Base
+	}
+	return s.updateMergeRequestField(ctx, repo, number, updateOpts)
+}
+
+func (s *pullService) SetMilestone(ctx context.Context, repo string, prID int, number int) (*scm.Response, error) {
+	updateOpts := &updateMergeRequestOptions{
+		MilestoneID: &number,
+	}
+	_, res, err := s.updateMergeRequestField(ctx, repo, prID, updateOpts)
+	return res, err
+}
+
+func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	zeroVal := 0
+	updateOpts := &updateMergeRequestOptions{
+		MilestoneID: &zeroVal,
+	}
+	_, res, err := s.updateMergeRequestField(ctx, repo, prID, updateOpts)
+	return res, err
 }
 
 type updateMergeRequestOptions struct {
@@ -249,7 +281,14 @@ func (s *pullService) updateMergeRequestField(ctx context.Context, repo string, 
 
 	out := new(pr)
 	res, err := s.client.do(ctx, "PUT", path, input, out)
-	return convertPullRequest(out), res, err
+	if err != nil {
+		return nil, res, err
+	}
+	convRepo, convRes, err := s.convertPullRequest(ctx, out)
+	if err != nil {
+		return nil, convRes, err
+	}
+	return convRepo, res, nil
 }
 
 type pr struct {
@@ -288,6 +327,7 @@ type change struct {
 	Added   bool   `json:"new_file"`
 	Renamed bool   `json:"renamed_file"`
 	Deleted bool   `json:"deleted_file"`
+	Diff    string `json:"diff"`
 }
 
 type prInput struct {
@@ -297,15 +337,28 @@ type prInput struct {
 	TargetBranch string `json:"target_branch"`
 }
 
-func convertPullRequestList(from []*pr) []*scm.PullRequest {
-	to := []*scm.PullRequest{}
-	for _, v := range from {
-		to = append(to, convertPullRequest(v))
-	}
-	return to
+type pullRequestMergeRequest struct {
+	CommitMessage             string `json:"merge_commit_message,omitempty"`
+	SquashCommitMessage       string `json:"squash_commit_message,omitempty"`
+	Squash                    string `json:"squash,omitempty"`
+	RemoveSourceBranch        string `json:"should_remove_source_branch,omitempty"`
+	SHA                       string `json:"sha,omitempty"`
+	MergeWhenPipelineSucceeds string `json:"merge_when_pipeline_succeeds,omitempty"`
 }
 
-func convertPullRequest(from *pr) *scm.PullRequest {
+func (s *pullService) convertPullRequestList(ctx context.Context, from []*pr) ([]*scm.PullRequest, *scm.Response, error) {
+	to := []*scm.PullRequest{}
+	for _, v := range from {
+		converted, res, err := s.convertPullRequest(ctx, v)
+		if err != nil {
+			return nil, res, err
+		}
+		to = append(to, converted)
+	}
+	return to, nil, nil
+}
+
+func (s *pullService) convertPullRequest(ctx context.Context, from *pr) (*scm.PullRequest, *scm.Response, error) {
 	// Diff refs only seem to be populated in more recent merge requests. Default
 	// to from.Sha for compatibility / consistency, but fallback to HeadSHA if
 	// it's not populated.
@@ -319,6 +372,28 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 	}
 	for _, a := range from.Assignees {
 		assignees = append(assignees, *convertUser(a))
+	}
+	var res *scm.Response
+	baseRepo, res, err := s.client.Repositories.Find(ctx, strconv.Itoa(from.TargetProjectID))
+	if err != nil {
+		return nil, res, err
+	}
+	var headRepo *scm.Repository
+	if from.TargetProjectID == from.SourceProjectID {
+		repoCopy, err := copystructure.Copy(baseRepo)
+		if err != nil {
+			return nil, nil, err
+		}
+		headRepo = repoCopy.(*scm.Repository)
+	} else {
+		headRepo, res, err = s.client.Repositories.Find(ctx, strconv.Itoa(from.SourceProjectID))
+		if err != nil {
+			return nil, res, err
+		}
+	}
+	sourceRepo, err := s.getSourceFork(ctx, from)
+	if err != nil {
+		return nil, res, err
 	}
 	return &scm.PullRequest{
 		Number:         from.Number,
@@ -339,22 +414,29 @@ func convertPullRequest(from *pr) *scm.PullRequest {
 		Author:         *convertUser(&from.Author),
 		Assignees:      assignees,
 		Head: scm.PullRequestBranch{
-			Ref: from.SourceBranch,
-			Sha: headSHA,
-			Repo: scm.Repository{
-				ID: strconv.Itoa(from.SourceProjectID),
-			},
+			Ref:  from.SourceBranch,
+			Sha:  headSHA,
+			Repo: *headRepo,
 		},
 		Base: scm.PullRequestBranch{
-			Ref: from.TargetBranch,
-			Sha: from.DiffRefs.BaseSHA,
-			Repo: scm.Repository{
-				ID: strconv.Itoa(from.TargetProjectID),
-			},
+			Ref:  from.TargetBranch,
+			Sha:  from.DiffRefs.BaseSHA,
+			Repo: *baseRepo,
 		},
 		Created: from.Created,
 		Updated: from.Updated,
+		Fork:    sourceRepo.PathNamespace,
+	}, nil, nil
+}
+
+func (s *pullService) getSourceFork(ctx context.Context, from *pr) (repository, error) {
+	path := fmt.Sprintf("api/v4/projects/%d", from.SourceProjectID)
+	sourceRepo := repository{}
+	_, err := s.client.do(ctx, "GET", path, nil, &sourceRepo)
+	if err != nil {
+		return repository{}, err
 	}
+	return sourceRepo, nil
 }
 
 func convertPullRequestLabels(from []*string) []*scm.Label {
@@ -378,10 +460,12 @@ func convertChangeList(from []*change) []*scm.Change {
 
 func convertChange(from *change) *scm.Change {
 	to := &scm.Change{
-		Path:    from.NewPath,
-		Added:   from.Added,
-		Deleted: from.Deleted,
-		Renamed: from.Renamed,
+		Path:         from.NewPath,
+		PreviousPath: from.OldPath,
+		Added:        from.Added,
+		Deleted:      from.Deleted,
+		Renamed:      from.Renamed,
+		Patch:        from.Diff,
 	}
 	if to.Path == "" {
 		to.Path = from.OldPath

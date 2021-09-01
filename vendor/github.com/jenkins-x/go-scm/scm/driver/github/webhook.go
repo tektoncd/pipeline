@@ -16,7 +16,6 @@ import (
 
 	"github.com/jenkins-x/go-scm/pkg/hmac"
 	"github.com/jenkins-x/go-scm/scm"
-	"github.com/jenkins-x/go-scm/scm/driver/internal/null"
 	"github.com/sirupsen/logrus"
 )
 
@@ -45,7 +44,7 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 
 	guid := req.Header.Get("X-GitHub-Delivery")
 	if guid == "" {
-		return nil, scm.MissingHeader{"X-GitHub-Delivery"}
+		return nil, scm.MissingHeader{Header: "X-GitHub-Delivery"}
 	}
 
 	var hook scm.Webhook
@@ -68,7 +67,7 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 	case "issues":
 		hook, err = s.parseIssueHook(data)
 	case "issue_comment":
-		hook, err = s.parseIssueCommentHook(data)
+		hook, err = s.parseIssueCommentHook(data, guid)
 	case "installation", "integration_installation":
 		hook, err = s.parseInstallationHook(data)
 	case "installation_repositories", "integration_installation_repositories":
@@ -84,7 +83,7 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 	case "pull_request_review":
 		hook, err = s.parsePullRequestReviewHook(data, guid)
 	case "pull_request_review_comment":
-		hook, err = s.parsePullRequestReviewCommentHook(data)
+		hook, err = s.parsePullRequestReviewCommentHook(data, guid)
 	case "release":
 		hook, err = s.parseReleaseHook(data)
 	case "repository":
@@ -95,7 +94,7 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parseWatchHook(data)
 	default:
 		log.WithField("Event", event).Warnf("unknown webhook")
-		return nil, scm.UnknownWebhook{event}
+		return nil, scm.UnknownWebhook{Event: event}
 	}
 	if err != nil {
 		return nil, err
@@ -330,17 +329,22 @@ func (s *webhookService) parsePullRequestHook(data []byte, guid string) (scm.Web
 		dst.Action = scm.ActionSync
 	case "ready_for_review":
 		dst.Action = scm.ActionReadyForReview
+	case "converted_to_draft":
+		dst.Action = scm.ActionConvertedToDraft
 	}
 	return dst, nil
 }
 
-func (s *webhookService) parsePullRequestReviewCommentHook(data []byte) (scm.Webhook, error) {
+func (s *webhookService) parsePullRequestReviewCommentHook(data []byte, guid string) (scm.Webhook, error) {
 	src := new(pullRequestReviewCommentHook)
 	err := json.Unmarshal(data, src)
 	if err != nil {
 		return nil, err
 	}
 	dst := convertPullRequestReviewCommentHook(src)
+	if dst != nil {
+		dst.GUID = guid
+	}
 	return dst, nil
 }
 
@@ -354,13 +358,16 @@ func (s *webhookService) parseIssueHook(data []byte) (*scm.IssueHook, error) {
 	return dst, nil
 }
 
-func (s *webhookService) parseIssueCommentHook(data []byte) (*scm.IssueCommentHook, error) {
+func (s *webhookService) parseIssueCommentHook(data []byte, guid string) (*scm.IssueCommentHook, error) {
 	src := new(issueCommentHook)
 	err := json.Unmarshal(data, src)
 	if err != nil {
 		return nil, err
 	}
 	dst := convertIssueCommentHook(src)
+	if dst != nil {
+		dst.GUID = guid
+	}
 	return dst, nil
 }
 
@@ -439,13 +446,25 @@ type (
 		Installation *installationRef `json:"installation"`
 	}
 
-	// github deployment_status payload
-	deploymentStatusHook struct {
+	// github deployment webhook payload
+	deploymentHook struct {
+		Deployment   deployment       `json:"deployment"`
 		Action       string           `json:"action"`
 		Repository   repository       `json:"repository"`
 		Sender       user             `json:"sender"`
 		Label        label            `json:"label"`
 		Installation *installationRef `json:"installation"`
+	}
+
+	// github deployment_status payload
+	deploymentStatusHook struct {
+		DeploymentStatus deploymentStatus `json:"deployment_status"`
+		Deployment       deployment       `json:"deployment"`
+		Action           string           `json:"action"`
+		Repository       repository       `json:"repository"`
+		Sender           user             `json:"sender"`
+		Label            label            `json:"label"`
+		Installation     *installationRef `json:"installation"`
 	}
 
 	// github deployment_status payload
@@ -468,6 +487,7 @@ type (
 	releaseHook struct {
 		Action       string           `json:"action"`
 		Repository   repository       `json:"repository"`
+		Release      release          `json:"release"`
 		Sender       user             `json:"sender"`
 		Label        label            `json:"label"`
 		Installation *installationRef `json:"installation"`
@@ -603,11 +623,11 @@ type (
 
 	pullRequestReviewCommentHook struct {
 		// Action see https://developer.github.com/v3/activity/events/types/#pullrequestreviewcommentevent
-		Action       string           `json:"action"`
-		PullRequest  pr               `json:"pull_request"`
-		Repository   repository       `json:"repository"`
-		Comment      reviewComment    `json:"comment"`
-		Installation *installationRef `json:"installation"`
+		Action       string                `json:"action"`
+		PullRequest  pr                    `json:"pull_request"`
+		Repository   repository            `json:"repository"`
+		Comment      reviewCommentFromHook `json:"comment"`
+		Installation *installationRef      `json:"installation"`
 	}
 
 	issueHook struct {
@@ -629,16 +649,17 @@ type (
 	}
 
 	issueCommentHook struct {
-		Action       string           `json:"action"`
-		Issue        issue            `json:"issue"`
-		Repository   repository       `json:"repository"`
-		Comment      issueComment     `json:"comment"`
-		Sender       user             `json:"sender"`
+		Action     string       `json:"action"`
+		Issue      issue        `json:"issue"`
+		Repository repository   `json:"repository"`
+		Comment    issueComment `json:"comment"`
+		Sender     user         `json:"sender"`
+
 		Installation *installationRef `json:"installation"`
 	}
 
-	// reviewComment describes a Pull Request d comment
-	reviewComment struct {
+	// reviewCommentFromHook describes a Pull Request d comment
+	reviewCommentFromHook struct {
 		ID        int       `json:"id"`
 		ReviewID  int       `json:"pull_request_review_id"`
 		User      user      `json:"user"`
@@ -650,23 +671,6 @@ type (
 		// Position will be nil if the code has changed such that the comment is no
 		// longer relevant.
 		Position *int `json:"position"`
-	}
-
-	// github deployment webhook payload
-	deploymentHook struct {
-		Deployment struct {
-			Creator        user        `json:"creator"`
-			Description    null.String `json:"description"`
-			Environment    null.String `json:"environment"`
-			EnvironmentURL null.String `json:"environment_url"`
-			Sha            null.String `json:"sha"`
-			Ref            null.String `json:"ref"`
-			Task           null.String `json:"task"`
-			Payload        interface{} `json:"payload"`
-		} `json:"deployment"`
-		Repository   repository       `json:"repository"`
-		Sender       user             `json:"sender"`
-		Installation *installationRef `json:"installation"`
 	}
 
 	// installationHook a webhook invoked when the GitHub App is installed
@@ -844,13 +848,37 @@ func convertCheckSuiteHook(dst *checkSuiteHook) *scm.CheckSuiteHook {
 	}
 }
 
+func convertDeploymentHook(src *deploymentHook) *scm.DeployHook {
+	dst := &scm.DeployHook{
+		Deployment: *convertDeployment(&src.Deployment, src.Repository.FullName),
+		Ref: scm.Reference{
+			Name: src.Deployment.Ref,
+			Path: src.Deployment.Ref,
+			Sha:  src.Deployment.Sha,
+		},
+		Action:       convertAction(src.Action),
+		Repo:         *convertRepository(&src.Repository),
+		Sender:       *convertUser(&src.Sender),
+		Label:        convertLabel(src.Label),
+		Installation: convertInstallationRef(src.Installation),
+	}
+	if tagRE.MatchString(dst.Ref.Name) {
+		dst.Ref.Path = scm.ExpandRef(dst.Ref.Path, "refs/tags/")
+	} else {
+		dst.Ref.Path = scm.ExpandRef(dst.Ref.Path, "refs/heads/")
+	}
+	return dst
+}
+
 func convertDeploymentStatusHook(dst *deploymentStatusHook) *scm.DeploymentStatusHook {
 	return &scm.DeploymentStatusHook{
-		Action:       convertAction(dst.Action),
-		Repo:         *convertRepository(&dst.Repository),
-		Sender:       *convertUser(&dst.Sender),
-		Label:        convertLabel(dst.Label),
-		Installation: convertInstallationRef(dst.Installation),
+		Deployment:       *convertDeployment(&dst.Deployment, dst.Repository.FullName),
+		DeploymentStatus: *convertDeploymentStatus(&dst.DeploymentStatus),
+		Action:           convertAction(dst.Action),
+		Repo:             *convertRepository(&dst.Repository),
+		Sender:           *convertUser(&dst.Sender),
+		Label:            convertLabel(dst.Label),
+		Installation:     convertInstallationRef(dst.Installation),
 	}
 }
 
@@ -876,6 +904,7 @@ func convertReleaseHook(dst *releaseHook) *scm.ReleaseHook {
 	return &scm.ReleaseHook{
 		Action:       convertAction(dst.Action),
 		Repo:         *convertRepository(&dst.Repository),
+		Release:      *convertRelease(&dst.Release),
 		Sender:       *convertUser(&dst.Sender),
 		Label:        convertLabel(dst.Label),
 		Installation: convertInstallationRef(dst.Installation),
@@ -980,6 +1009,7 @@ func convertBranchHook(src *createDeleteHook) *scm.BranchHook {
 			ID:        fmt.Sprint(src.Repository.ID),
 			Namespace: src.Repository.Owner.Login,
 			Name:      src.Repository.Name,
+			FullName:  src.Repository.FullName,
 			Branch:    src.Repository.DefaultBranch,
 			Private:   src.Repository.Private,
 			Clone:     src.Repository.CloneURL,
@@ -1000,6 +1030,7 @@ func convertTagHook(src *createDeleteHook) *scm.TagHook {
 			ID:        fmt.Sprint(src.Repository.ID),
 			Namespace: src.Repository.Owner.Login,
 			Name:      src.Repository.Name,
+			FullName:  src.Repository.FullName,
 			Branch:    src.Repository.DefaultBranch,
 			Private:   src.Repository.Private,
 			Clone:     src.Repository.CloneURL,
@@ -1018,6 +1049,7 @@ func convertPullRequestHook(src *pullRequestHook) *scm.PullRequestHook {
 			ID:        fmt.Sprint(src.Repository.ID),
 			Namespace: src.Repository.Owner.Login,
 			Name:      src.Repository.Name,
+			FullName:  src.Repository.FullName,
 			Branch:    src.Repository.DefaultBranch,
 			Private:   src.Repository.Private,
 			Clone:     src.Repository.CloneURL,
@@ -1050,7 +1082,7 @@ func convertLabel(src label) scm.Label {
 
 func convertPullRequestReviewHook(src *pullRequestReviewHook) *scm.ReviewHook {
 	return &scm.ReviewHook{
-		Action:       convertAction(src.Action),
+		Action:       convertReviewAction(src.Action),
 		PullRequest:  *convertPullRequest(&src.PullRequest),
 		Repo:         *convertRepository(&src.Repository),
 		Review:       *convertReview(&src.Review),
@@ -1065,6 +1097,7 @@ func convertPullRequestReviewCommentHook(src *pullRequestReviewCommentHook) *scm
 			ID:        fmt.Sprint(src.Repository.ID),
 			Namespace: src.Repository.Owner.Login,
 			Name:      src.Repository.Name,
+			FullName:  src.Repository.FullName,
 			Branch:    src.Repository.DefaultBranch,
 			Private:   src.Repository.Private,
 			Clone:     src.Repository.CloneURL,
@@ -1099,7 +1132,7 @@ func convertIssueCommentHook(dst *issueCommentHook) *scm.IssueCommentHook {
 	}
 }
 
-func convertPullRequestComment(comment *reviewComment) *scm.Comment {
+func convertPullRequestComment(comment *reviewCommentFromHook) *scm.Comment {
 	return &scm.Comment{
 		ID:      comment.ID,
 		Body:    comment.Body,
@@ -1109,42 +1142,22 @@ func convertPullRequestComment(comment *reviewComment) *scm.Comment {
 	}
 }
 
-func convertDeploymentHook(src *deploymentHook) *scm.DeployHook {
-	dst := &scm.DeployHook{
-		Data: src.Deployment.Payload,
-		Desc: src.Deployment.Description.String,
-		Ref: scm.Reference{
-			Name: src.Deployment.Ref.String,
-			Path: src.Deployment.Ref.String,
-			Sha:  src.Deployment.Sha.String,
-		},
-		Repo: scm.Repository{
-			ID:        fmt.Sprint(src.Repository.ID),
-			Namespace: src.Repository.Owner.Login,
-			Name:      src.Repository.Name,
-			Branch:    src.Repository.DefaultBranch,
-			Private:   src.Repository.Private,
-			Clone:     src.Repository.CloneURL,
-			CloneSSH:  src.Repository.SSHURL,
-			Link:      src.Repository.HTMLURL,
-		},
-		Sender:       *convertUser(&src.Sender),
-		Task:         src.Deployment.Task.String,
-		Target:       src.Deployment.Environment.String,
-		TargetURL:    src.Deployment.EnvironmentURL.String,
-		Installation: convertInstallationRef(src.Installation),
-	}
-	if tagRE.MatchString(dst.Ref.Name) {
-		dst.Ref.Path = scm.ExpandRef(dst.Ref.Path, "refs/tags/")
-	} else {
-		dst.Ref.Path = scm.ExpandRef(dst.Ref.Path, "refs/heads/")
-	}
-	return dst
-}
-
 // regexp help determine if the named git object is a tag.
 // this is not meant to be 100% accurate.
 var tagRE = regexp.MustCompile("^v?(\\d+).(.+)")
+
+func convertReviewAction(src string) (action scm.Action) {
+	switch src {
+	case "submit", "submitted":
+		return scm.ActionSubmitted
+	case "edit", "edited":
+		return scm.ActionEdited
+	case "dismiss", "dismissed":
+		return scm.ActionDismissed
+	default:
+		return
+	}
+}
 
 func convertAction(src string) (action scm.Action) {
 	switch src {

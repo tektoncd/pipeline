@@ -202,6 +202,14 @@ func (s *issueService) Close(ctx context.Context, repo string, number int) (*scm
 	return res, err
 }
 
+func (s *issueService) Reopen(ctx context.Context, repo string, number int) (*scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/issues/%d", repo, number)
+	data := map[string]string{"state": "open"}
+	out := new(issue)
+	res, err := s.client.do(ctx, "PATCH", path, &data, out)
+	return res, err
+}
+
 func (s *issueService) Lock(ctx context.Context, repo string, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/issues/%d/lock", repo, number)
 	res, err := s.client.do(ctx, "PUT", path, nil, nil)
@@ -211,6 +219,26 @@ func (s *issueService) Lock(ctx context.Context, repo string, number int) (*scm.
 func (s *issueService) Unlock(ctx context.Context, repo string, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/issues/%d/lock", repo, number)
 	res, err := s.client.do(ctx, "DELETE", path, nil, nil)
+	return res, err
+}
+
+func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID int, number int) (*scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/issues/%d", repo, issueID)
+	in := &struct {
+		Milestone int `json:"milestone"`
+	}{
+		Milestone: number,
+	}
+	res, err := s.client.do(ctx, "PATCH", path, in, nil)
+	return res, err
+}
+
+func (s *issueService) ClearMilestone(ctx context.Context, repo string, id int) (*scm.Response, error) {
+	path := fmt.Sprintf("repos/%s/issues/%d", repo, id)
+	in := &struct {
+		Milestone interface{} `json:"milestone"`
+	}{}
+	res, err := s.client.do(ctx, "PATCH", path, in, nil)
 	return res, err
 }
 
@@ -225,6 +253,10 @@ type issue struct {
 		Login     string `json:"login"`
 		AvatarURL string `json:"avatar_url"`
 	} `json:"user"`
+	ClosedBy *struct {
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
+	} `json:"closed_by"`
 	Labels []struct {
 		Name string `json:"name"`
 	} `json:"labels"`
@@ -310,6 +342,13 @@ func populateRepositoryFromURL(repo *scm.Repository, u string) {
 // helper function to convert from the gogs issue structure to
 // the common issue structure.
 func convertIssue(from *issue) *scm.Issue {
+	var closedBy *scm.User
+	if from.ClosedBy != nil {
+		closedBy = &scm.User{
+			Login:  from.ClosedBy.Login,
+			Avatar: from.ClosedBy.AvatarURL,
+		}
+	}
 	return &scm.Issue{
 		Number: from.Number,
 		Title:  from.Title,
@@ -323,6 +362,7 @@ func convertIssue(from *issue) *scm.Issue {
 			Login:  from.User.Login,
 			Avatar: from.User.AvatarURL,
 		},
+		ClosedBy:    closedBy,
 		Assignees:   convertUsers(from.Assignees),
 		PullRequest: from.PullRequest != nil,
 		Created:     from.CreatedAt,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/jenkins-x/go-scm/scm"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,9 +21,6 @@ func (s *pullService) Find(ctx context.Context, repo string, number int) (*scm.P
 	if !exists {
 		return nil, nil, fmt.Errorf("Pull request number %d does not exit", number)
 	}
-	if labels, _, err := s.client.Issues.ListLabels(ctx, repo, number, scm.ListOptions{}); err == nil {
-		val.Labels = labels
-	}
 	return val, nil, nil
 }
 
@@ -30,8 +28,20 @@ func (s *pullService) FindComment(context.Context, string, int, int) (*scm.Comme
 	panic("implement me")
 }
 
-func (s *pullService) List(context.Context, string, scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
-	panic("implement me")
+func (s *pullService) List(ctx context.Context, fullName string, opts scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+	var answer []*scm.PullRequest
+	f := s.data
+	for _, pr := range f.PullRequests {
+		repo := pr.Repository()
+		fn := repo.FullName
+		if fn == "" {
+			fn = scm.Join(repo.Namespace, repo.Name)
+		}
+		if fn == fullName {
+			answer = append(answer, pr)
+		}
+	}
+	return answer, nil, nil
 }
 
 func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
@@ -67,6 +77,22 @@ func (s *pullService) ListEvents(context.Context, string, int, scm.ListOptions) 
 
 func (s *pullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
 	f := s.data
+	pr := s.data.PullRequests[number]
+	if pr != nil {
+		found := false
+		for _, l := range pr.Labels {
+			if l.Name == label {
+				found = true
+				break
+			}
+		}
+		if !found {
+			pr.Labels = append(pr.Labels, &scm.Label{
+				ID:   int64(len(pr.Labels)),
+				Name: label,
+			})
+		}
+	}
 	labelString := fmt.Sprintf("%s#%d:%s", repo, number, label)
 	if sets.NewString(f.PullRequestLabelsAdded...).Has(labelString) {
 		return nil, fmt.Errorf("cannot add %v to %s/#%d", label, repo, number)
@@ -95,11 +121,27 @@ func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, 
 	return nil, fmt.Errorf("cannot remove %v from %s/#%d", label, repo, number)
 }
 
-func (s *pullService) Merge(context.Context, string, int, *scm.PullRequestMergeOptions) (*scm.Response, error) {
+func (s *pullService) Merge(ctx context.Context, repo string, number int, mergeOpts *scm.PullRequestMergeOptions) (*scm.Response, error) {
+	pr, ok := s.data.PullRequests[number]
+	if !ok || pr == nil {
+		return nil, fmt.Errorf("pull request %d not found", number)
+	}
+	pr.Merged = true
+	pr.State = "closed"
+	pr.Closed = true
+	pr.Mergeable = false
+	return nil, nil
+}
+
+func (s *pullService) Update(ctx context.Context, repo string, number int, prInput *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
 	panic("implement me")
 }
 
 func (s *pullService) Close(context.Context, string, int) (*scm.Response, error) {
+	panic("implement me")
+}
+
+func (s *pullService) Reopen(context.Context, string, int) (*scm.Response, error) {
 	panic("implement me")
 }
 
@@ -135,7 +177,19 @@ func (s *pullService) EditComment(ctx context.Context, repo string, number int, 
 }
 
 func (s *pullService) AssignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
-	panic("implement me")
+	f := s.data
+	var m scm.MissingUsers
+	for _, a := range logins {
+		if a == "not-in-the-org" {
+			m.Users = append(m.Users, a)
+			continue
+		}
+		f.AssigneesAdded = append(f.AssigneesAdded, fmt.Sprintf("%s#%d:%s", repo, number, a))
+	}
+	if m.Users == nil {
+		return nil, nil
+	}
+	return nil, m
 }
 
 func (s *pullService) UnassignIssue(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
@@ -150,15 +204,27 @@ func (s *pullService) UnrequestReview(ctx context.Context, repo string, number i
 	return nil, scm.ErrNotSupported
 }
 
-func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+func (s *pullService) Create(_ context.Context, fullName string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
 	f := s.data
 	f.PullRequestID++
+	namespace := ""
+	name := ""
+	paths := strings.SplitN(fullName, "/", 2)
+	if len(paths) > 1 {
+		namespace = paths[0]
+		name = paths[1]
+	}
 	answer := &scm.PullRequest{
 		Number: f.PullRequestID,
 		Title:  input.Title,
 		Body:   input.Body,
 		Base: scm.PullRequestBranch{
 			Ref: input.Base,
+			Repo: scm.Repository{
+				Namespace: namespace,
+				Name:      name,
+				FullName:  fullName,
+			},
 		},
 		Head: scm.PullRequestBranch{
 			Ref: input.Head,
@@ -167,4 +233,12 @@ func (s *pullService) Create(ctx context.Context, repo string, input *scm.PullRe
 	f.PullRequestsCreated[f.PullRequestID] = input
 	f.PullRequests[f.PullRequestID] = answer
 	return answer, nil, nil
+}
+
+func (s *pullService) SetMilestone(ctx context.Context, repo string, prID int, number int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
+func (s *pullService) ClearMilestone(ctx context.Context, repo string, prID int) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
 }

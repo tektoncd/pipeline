@@ -25,6 +25,7 @@ func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm
 	return &scm.Content{
 		Path: out.Path,
 		Data: raw,
+		Sha:  out.Sha,
 	}, res, err
 }
 
@@ -36,11 +37,26 @@ func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*s
 }
 
 func (s *contentService) Create(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	endpoint := fmt.Sprintf("repos/%s/contents/%s", repo, path)
+	body := &contentBody{
+		Message: params.Message,
+		Content: params.Data,
+		Branch:  params.Branch,
+	}
+
+	return s.client.do(ctx, "PUT", endpoint, &body, nil)
 }
 
 func (s *contentService) Update(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	endpoint := fmt.Sprintf("repos/%s/contents/%s", repo, path)
+	body := &contentBody{
+		Message: params.Message,
+		Content: params.Data,
+		Branch:  params.Branch,
+		Sha:     params.Sha,
+	}
+
+	return s.client.do(ctx, "PUT", endpoint, &body, nil)
 }
 
 func (s *contentService) Delete(ctx context.Context, repo, path, ref string) (*scm.Response, error) {
@@ -77,6 +93,13 @@ type contentUpdate struct {
 		Email string    `json:"email"`
 		Date  time.Time `json:"date"`
 	} `json:"committer"`
+}
+
+type contentBody struct {
+	Message string `json:"message"`
+	Content []byte `json:"content"`
+	Sha     string `json:"sha,omitempty"`
+	Branch  string `json:"branch,omitempty"`
 }
 
 func convertEntryList(out []*entry) []*scm.FileEntry {

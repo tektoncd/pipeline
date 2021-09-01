@@ -3,9 +3,12 @@ package github
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -18,29 +21,32 @@ type deployment struct {
 	Namespace             string
 	Name                  string
 	FullName              string
-	ID                    int       `json:"id"`
-	Link                  string    `json:"url"`
-	Sha                   string    `json:"sha"`
-	Ref                   string    `json:"ref"`
-	Description           string    `json:"description"`
-	OriginalEnvironment   string    `json:"original_environment"`
-	Environment           string    `json:"environment"`
-	RepositoryLink        string    `json:"repository_url"`
-	StatusLink            string    `json:"statuses_url"`
-	Author                *user     `json:"creator"`
-	Created               time.Time `json:"created_at"`
-	Updated               time.Time `json:"updated_at"`
-	TransientEnvironment  bool      `json:"transient_environment"`
-	ProductionEnvironment bool      `json:"production_environment"`
+	ID                    int         `json:"id"`
+	Link                  string      `json:"url"`
+	Sha                   string      `json:"sha"`
+	Ref                   string      `json:"ref"`
+	Task                  string      `json:"task"`
+	Description           string      `json:"description"`
+	OriginalEnvironment   string      `json:"original_environment"`
+	Environment           string      `json:"environment"`
+	EnvironmentURL        string      `json:"environment_url"`
+	RepositoryLink        string      `json:"repository_url"`
+	StatusLink            string      `json:"statuses_url"`
+	Author                *user       `json:"creator"`
+	Created               time.Time   `json:"created_at"`
+	Updated               time.Time   `json:"updated_at"`
+	TransientEnvironment  bool        `json:"transient_environment"`
+	ProductionEnvironment bool        `json:"production_environment"`
+	Payload               interface{} `json:"payload"`
 }
 
 type deploymentInput struct {
-	Ref                   string   `json:"ref"`
-	Task                  string   `json:"task"`
-	Payload               string   `json:"payload"`
-	Environment           string   `json:"environment"`
-	Description           string   `json:"description"`
-	RequiredContexts      []string `json:"required_contexts"`
+	Ref                   string   `json:"ref,omitempty"`
+	Task                  string   `json:"task,omitempty"`
+	Payload               string   `json:"payload,omitempty"`
+	Environment           string   `json:"environment,omitempty"`
+	Description           string   `json:"description,omitempty"`
+	RequiredContexts      []string `json:"required_contexts,omitempty"`
 	AutoMerge             bool     `json:"auto_merge"`
 	TransientEnvironment  bool     `json:"transient_environment"`
 	ProductionEnvironment bool     `json:"production_environment"`
@@ -75,14 +81,14 @@ func (s *deploymentService) Find(ctx context.Context, repoFullName string, deplo
 	path := fmt.Sprintf("repos/%s/deployments/%s", repoFullName, deploymentID)
 	out := new(deployment)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	return convertDeployment(out, repoFullName), res, err
+	return convertDeployment(out, repoFullName), res, wrapError(res, err)
 }
 
 func (s *deploymentService) List(ctx context.Context, repoFullName string, opts scm.ListOptions) ([]*scm.Deployment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments?%s", repoFullName, encodeListOptions(opts))
 	out := []*deployment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	return convertDeploymentList(out, repoFullName), res, err
+	return convertDeploymentList(out, repoFullName), res, wrapError(res, err)
 }
 
 func (s *deploymentService) Create(ctx context.Context, repoFullName string, deploymentInput *scm.DeploymentInput) (*scm.Deployment, *scm.Response, error) {
@@ -90,7 +96,7 @@ func (s *deploymentService) Create(ctx context.Context, repoFullName string, dep
 	in := convertToDeploymentInput(deploymentInput)
 	out := new(deployment)
 	res, err := s.client.do(ctx, "POST", path, in, out)
-	return convertDeployment(out, repoFullName), res, err
+	return convertDeployment(out, repoFullName), res, wrapError(res, err)
 }
 
 func (s *deploymentService) Delete(ctx context.Context, repoFullName string, deploymentID string) (*scm.Response, error) {
@@ -102,14 +108,14 @@ func (s *deploymentService) FindStatus(ctx context.Context, repoFullName string,
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses/%s", repoFullName, deploymentID, statusID)
 	out := new(deploymentStatus)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
-	return convertDeploymentStatus(out), res, err
+	return convertDeploymentStatus(out), res, wrapError(res, err)
 }
 
 func (s *deploymentService) ListStatus(ctx context.Context, repoFullName string, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses?%s", repoFullName, deploymentID, encodeListOptions(opts))
 	out := []*deploymentStatus{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	return convertDeploymentStatusList(out), res, err
+	return convertDeploymentStatusList(out), res, wrapError(res, err)
 }
 
 func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName string, deploymentID string, deploymentStatusInput *scm.DeploymentStatusInput) (*scm.DeploymentStatus, *scm.Response, error) {
@@ -117,7 +123,18 @@ func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName strin
 	in := convertToDeploymentStatusInput(deploymentStatusInput)
 	out := new(deploymentStatus)
 	res, err := s.client.do(ctx, "POST", path, in, out)
-	return convertDeploymentStatus(out), res, err
+	return convertDeploymentStatus(out), res, wrapError(res, err)
+}
+
+func wrapError(res *scm.Response, err error) error {
+	if res == nil {
+		return err
+	}
+	data, err2 := ioutil.ReadAll(res.Body)
+	if err2 != nil {
+		return errors.Wrapf(err, "http status %d", res.Status)
+	}
+	return errors.Wrapf(err, "http status %d mesage %s", res.Status, string(data))
 }
 
 func convertDeploymentList(out []*deployment, fullName string) []*scm.Deployment {
@@ -158,6 +175,7 @@ func convertDeployment(from *deployment, fullName string) *scm.Deployment {
 		Sha:                   from.Sha,
 		Ref:                   from.Ref,
 		FullName:              fullName,
+		Task:                  from.Task,
 		Description:           from.Description,
 		OriginalEnvironment:   from.OriginalEnvironment,
 		Environment:           from.Environment,
@@ -168,6 +186,7 @@ func convertDeployment(from *deployment, fullName string) *scm.Deployment {
 		Updated:               from.Updated,
 		TransientEnvironment:  from.TransientEnvironment,
 		ProductionEnvironment: from.ProductionEnvironment,
+		Payload:               from.Payload,
 	}
 	names := strings.Split(fullName, "/")
 	if len(names) > 1 {

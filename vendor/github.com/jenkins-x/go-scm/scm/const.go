@@ -71,10 +71,12 @@ func ToState(s string) State {
 	}
 }
 
+// MarshalJSON marshals State to JSON
 func (s State) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%s"`, s.String())), nil
 }
 
+// UnmarshalJSON unmarshals JSON to State
 func (s *State) UnmarshalJSON(b []byte) error {
 	*s = ToState(strings.Trim(string(b), `"`))
 	return nil
@@ -102,6 +104,7 @@ const (
 	ActionReviewRequested
 	ActionReviewRequestRemoved
 	ActionReadyForReview
+	ActionConvertedToDraft
 
 	// reviews
 	ActionEdited
@@ -151,6 +154,8 @@ func (a Action) String() (s string) {
 		return "review_request_removed"
 	case ActionReadyForReview:
 		return "ready_for_review"
+	case ActionConvertedToDraft:
+		return "converted_to_draft"
 	case ActionCompleted:
 		return "completed"
 	default:
@@ -194,6 +199,14 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 		*a = ActionCompleted
 	case "ready_for_review":
 		*a = ActionReadyForReview
+	case "converted_to_draft":
+		*a = ActionConvertedToDraft
+	case "submitted":
+		*a = ActionSubmitted
+	case "dismissed":
+		*a = ActionDismissed
+	case "edited":
+		*a = ActionEdited
 	}
 	return nil
 }

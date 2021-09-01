@@ -27,6 +27,14 @@ type organizationService struct {
 	data   *Data
 }
 
+func (s *organizationService) Create(context.Context, *scm.OrganizationInput) (*scm.Organization, *scm.Response, error) {
+	panic("implement me")
+}
+
+func (s *organizationService) Delete(context.Context, string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
+}
+
 func (s *organizationService) IsMember(ctx context.Context, org string, user string) (bool, *scm.Response, error) {
 	panic("implement me")
 }
@@ -54,9 +62,9 @@ func (s *organizationService) List(context.Context, scm.ListOptions) ([]*scm.Org
 				Name:   fmt.Sprintf("organisation%d", i),
 				Avatar: fmt.Sprintf("https://github.com/organisation%d.png", i),
 				Permissions: scm.Permissions{
-					true,
-					true,
-					true,
+					MembersCreatePrivate:  true,
+					MembersCreatePublic:   true,
+					MembersCreateInternal: true,
 				},
 			}
 			orgs = append(orgs, &org)
@@ -95,4 +103,42 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, teamID int, r
 
 func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
+}
+func (s *organizationService) ListPendingInvitations(_ context.Context, org string, opts scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
+	for _, o := range s.data.Organizations {
+		if o.Name == org {
+			return []*scm.OrganizationPendingInvite{{
+				ID:           123,
+				Login:        "fred",
+				InviterLogin: "charles",
+			}}, nil, nil
+		}
+	}
+	return nil, nil, scm.ErrNotFound
+}
+
+func (s *organizationService) ListMemberships(ctx context.Context, opts scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
+
+	return []*scm.Membership{
+		{
+			OrganizationName: "test-org1",
+			State:            "active",
+			Role:             "admin",
+		},
+		{
+			OrganizationName: "test-org2",
+			State:            "pending",
+			Role:             "member",
+		},
+	}, nil, nil
+
+}
+
+func (s *organizationService) AcceptOrganizationInvitation(_ context.Context, org string) (*scm.Response, error) {
+	for _, o := range s.data.Organizations {
+		if o.Name == org {
+			return nil, nil
+		}
+	}
+	return nil, scm.ErrNotFound
 }
